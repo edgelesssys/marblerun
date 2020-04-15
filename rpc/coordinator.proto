@@ -3,7 +3,7 @@ syntax = "proto3";
 package rpc;
 option go_package = "edgeless.systems/mesh/coordinator/rpc";
 
-service NodeServer {
+service Coordinator {
   rpc SayHello (HelloRequest) returns (HelloReply) {}
 }
 

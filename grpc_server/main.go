@@ -1,4 +1,4 @@
-//go:generate protoc --proto_path=.. --go_out=plugins=grpc:./ --go_opt=paths=source_relative rpc/coordinator.proto
+//go:generate protoc --proto_path=.. --go_out=plugins=grpc:../ --go_opt=paths=source_relative rpc/coordinator.proto
 
 package main
 
@@ -16,7 +16,7 @@ type server struct {
 }
 
 func (*server) SayHello(c context.Context, r *rpc.HelloRequest) (*rpc.HelloReply, error) {
-	return &rpcHelloReply{Message: "coordinator greets you " + r.GetName()}, nil
+	return &rpc.HelloReply{Message: "coordinator greets you " + r.GetName()}, nil
 }
 
 func main() {
