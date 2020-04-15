@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	coordinator "edgeless.systems/mesh/coordinator/api"
+	"edgeless.systems/mesh/coordinator/api"
 )
 
 // func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloReply, error) {
@@ -24,6 +24,6 @@ import (
 // }
 
 func main() {
-	r := coordinator.HelloRequest{}
+	r := api.HelloRequest{}
 	fmt.Println(r)
 }
