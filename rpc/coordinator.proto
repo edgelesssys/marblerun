@@ -4,13 +4,23 @@ package rpc;
 option go_package = "edgeless.systems/mesh/coordinator/rpc";
 
 service Coordinator {
-  rpc SayHello (HelloRequest) returns (HelloReply) {}
+  rpc ActivateNode (ActivationReq) returns (ActivationRepl);
 }
 
-message HelloRequest {
-  string name = 1;
+message ActivationReq {
+  bytes quote = 1;
+  string csr = 2;
+  string package = 3;
+  string variant = 4;
 }
 
-message HelloReply {
-  string message = 1;
+message ActivationRepl {
+  bool success = 1;
+  string certificate = 2;
+  Parameters params = 3;
+}
+
+message Parameters {
+  map<string, string> env = 1;
+  repeated string argv = 2;
 }

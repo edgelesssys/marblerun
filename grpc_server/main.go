@@ -15,8 +15,8 @@ type server struct {
 	rpc.UnimplementedCoordinatorServer
 }
 
-func (*server) SayHello(c context.Context, r *rpc.HelloRequest) (*rpc.HelloReply, error) {
-	return &rpc.HelloReply{Message: "coordinator greets you " + r.GetName()}, nil
+func (*server) ActivateNode(c context.Context, r *rpc.ActivationReq) (*rpc.ActivationRepl, error) {
+	return nil, nil
 }
 
 func main() {
