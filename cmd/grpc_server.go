@@ -1,31 +1,32 @@
-//go:generate protoc --proto_path=.. --go_out=plugins=grpc:./ --go_opt=paths=source_relative api/coordinator.proto
+//go:generate protoc --proto_path=.. --go_out=plugins=grpc:./ --go_opt=paths=source_relative rpc/coordinator.proto
 
 package main
 
 import (
-	"fmt"
+	"context"
+	"log"
+	"net"
 
-	"edgeless.systems/mesh/coordinator/api"
+	"edgeless.systems/mesh/coordinator/rpc"
+	"google.golang.org/grpc"
 )
 
-// func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloReply, error) {
-// 	log.Printf("Received: %v", in.GetName())
-// 	return &pb.HelloReply{Message: "Hello " + in.GetName()}, nil
-// }
+type server struct {
+	rpc.UnimplementedCoordinatorServer
+}
 
-// func main() {
-// 	lis, err := net.Listen("tcp", port)
-// 	if err != nil {
-// 		log.Fatalf("failed to listen: %v", err)
-// 	}
-// 	s := grpc.NewServer()
-// 	pb.RegisterGreeterServer(s, &server{})
-// 	if err := s.Serve(lis); err != nil {
-// 		log.Fatalf("failed to serve: %v", err)
-// 	}
-// }
+func (*server) SayHello(c context.Context, r *rpc.HelloRequest) (*rpc.HelloReply, error) {
+	return &rpcHelloReply{Message: "coordinator greets you " + r.GetName()}, nil
+}
 
 func main() {
-	r := api.HelloRequest{}
-	fmt.Println(r)
+	lis, err := net.Listen("tcp", "localhost:2204")
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	s := grpc.NewServer()
+	rpc.RegisterCoordinatorServer(s, &server{})
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
 }
