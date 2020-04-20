@@ -3,8 +3,8 @@ syntax = "proto3";
 package rpc;
 option go_package = "edgeless.systems/mesh/coordinator/rpc";
 
-service Coordinator {
-  rpc ActivateNode (ActivationReq) returns (ActivationRepl);
+service CoordinatorNode {
+  rpc Activate (ActivationReq) returns (ActivationResp);
 }
 
 message ActivationReq {
@@ -14,10 +14,9 @@ message ActivationReq {
   string variant = 4;
 }
 
-message ActivationRepl {
-  bool success = 1;
-  string certificate = 2;
-  Parameters params = 3;
+message ActivationResp {
+  string certificate = 1;
+  Parameters params = 2;
 }
 
 message Parameters {
