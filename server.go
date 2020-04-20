@@ -127,14 +127,28 @@ func (s *Server) Activate(ctx context.Context, req *rpc.ActivationReq, cert Cert
 	if err := s.requireState(acceptingManifest); err != nil {
 		return nil, status.Error(codes.FailedPrecondition, "cannot accept nodes in current state")
 	}
-	pkg, pkgExists := s.manifest.Packages[req.GetPackage()]
+	node, nodeExists := s.manifest.Nodes[req.GetNodeType()]
+	// check activation budget (MaxActivations == 0 means infinite budget)
+	if node.MaxActivations > 0 && s.activations[req.GetNodeType()] >= node.MaxActivations {
+		return nil, status.Error(codes.ResourceExhausted, "reached max activations count for node type")
+	}
+	// check quote for certificate wrt to requested package
+	pkg, pkgExists := s.manifest.Packages[node.Package]
 	if !pkgExists {
 		return nil, status.Error(codes.InvalidArgument, "unknown package requested")
 	}
 	if err := s.qv.Validate(req.GetQuote(), cert, pkg); err != nil {
 		return nil, status.Error(codes.Unauthenticated, "failed to validate quote")
 	}
-	variant, variantExists :=
-	if s.activations[req.GetPackage()] >= 
-	return nil, errors.New("not implemented")
+	// parse CSR and issue certificate
+	csr, err := x509.ParseCertificateRequest(req.GetCsr())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "failed to parse CSR")
+	}
+	if csr.CheckSignature() != nil {
+		return nil, status.Error(codes.InvalidArgument, "signature over CSR is invalid")
+	}
+	x509.CreateCertificate()
+
+	s.activations[req.GetNodeType()]++
 }

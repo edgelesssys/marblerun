@@ -19,7 +19,7 @@ type Cert []byte
 // Node describes a type of a node
 type Node struct {
 	Package        string
-	MaxActivations int
+	MaxActivations uint
 	Parameters     struct {
 		env   map[string]string
 		argv  []string

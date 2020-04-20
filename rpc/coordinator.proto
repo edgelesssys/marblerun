@@ -9,9 +9,8 @@ service CoordinatorNode {
 
 message ActivationReq {
   bytes quote = 1;
-  string csr = 2;
-  string package = 3;
-  string variant = 4;
+  bytes csr = 2;
+  string nodeType = 3;
 }
 
 message ActivationResp {
