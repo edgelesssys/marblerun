@@ -140,7 +140,7 @@ func (s *Server) SetManifest(ctx context.Context, rawManifest []byte) error {
 }
 
 // Activate activates a node (implements the CoordinatorNodeServer interface)
-func (s *Server) Activate(ctx context.Context, req *rpc.ActivationReq, cert Cert) (*rpc.ActivationResp, error) {
+func (s *Server) Activate(ctx context.Context, req *rpc.ActivationReq, connCert RawCert) (*rpc.ActivationResp, error) {
 	defer s.mux.Unlock()
 	if err := s.requireState(acceptingManifest); err != nil {
 		return nil, status.Error(codes.FailedPrecondition, "cannot accept nodes in current state")
@@ -162,12 +162,12 @@ func (s *Server) Activate(ctx context.Context, req *rpc.ActivationReq, cert Cert
 	if !pkgExists {
 		return nil, status.Error(codes.InvalidArgument, "unknown package requested")
 	}
-	if err := s.qv.Validate(req.GetQuote(), cert, pkg); err != nil {
+	if err := s.qv.Validate(req.GetQuote(), connCert, pkg); err != nil {
 		return nil, status.Error(codes.Unauthenticated, "failed to validate quote")
 	}
 
 	// parse and verify CSR
-	csr, err := x509.ParseCertificateRequest(req.GetCsr())
+	csr, err := x509.ParseCertificateRequest(req.GetCSR())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "failed to parse CSR")
 	}

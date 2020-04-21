@@ -10,14 +10,14 @@ type Manifest struct {
 	Packages    map[string]quote.Requirements
 	Attestation struct {
 		MinCPUSVN []byte
-		RootCAs   map[string]Cert
+		RootCAs   map[string]RawCert
 	}
 	Nodes   map[string]Node
-	Clients map[string]Cert
+	Clients map[string]RawCert
 }
 
-// Cert is the certificate that identifies a party
-type Cert []byte
+// RawCert is the certificate that identifies a party
+type RawCert []byte
 
 // Node describes a type of a node
 type Node struct {

@@ -1,0 +1,55 @@
+{
+	"Packages": {
+		"tikv": {
+			"MREnclave": [1,2,3,4],
+			"ISVProdID": 99,
+			"MinISVSVN": 2
+		},
+		"tidb": {
+			"MRSigner": [5,6,7,8,9,10],
+			"ISVProdID": 44,
+			"MinISVSVN": 3,
+			"Attributes": [1,1,1,1]
+		}
+	},
+	"Attestation": {
+		"MinCPUSVN": [3,3,3],
+		"RootCAs": {
+			"Intel": [4,4,4],
+			"Azure": [5,5,5]
+		}
+	},
+	"Nodes": {
+		"tikv_first": {
+			"Package": "tikv",
+			"MaxActivations": 1,
+			"Parameters": {
+				"Files": {
+					"/abc/defg.txt": [7,7,7],
+					"/ghi/jkl.mno": [8,8,8]
+				},
+				"Env": {
+					"IS_FIRST": "true"
+				},
+				"Argv": [
+					"--first",
+					"serve"
+				]
+			}
+		},
+		"tikv_other": {
+			"Package": "tikv",
+			"Parameters": {
+				"Argv": [
+					"serve"
+				]
+			}
+		},
+		"tidb": {
+			"Package": "tidb"
+		}
+	},
+	"Clients": {
+		"owner": [9,9,9]
+	}
+}
