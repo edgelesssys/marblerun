@@ -13,6 +13,7 @@ import (
 	"math"
 	"math/big"
 	"strconv"
+	"sync"
 	"time"
 
 	"google.golang.org/grpc/codes"
@@ -34,13 +35,14 @@ const (
 
 // Server implements the core of the Coordinator logic
 type Server struct {
-	cert        *x509.Certificate
-	privk       ed25519.PrivateKey
-	manifest    Manifest
-	state       state
-	qv          quote.Validator
-	qc          quote.Creator
-	activations map[string]uint
+	cert          *x509.Certificate
+	privk         ed25519.PrivateKey
+	manifest      Manifest
+	state         state
+	qv            quote.Validator
+	qc            quote.Creator
+	activations   map[string]uint
+	activationMux sync.Mutex
 }
 
 func (s *Server) requireState(state state) error {
@@ -131,12 +133,14 @@ func (s *Server) SetManifest(ctx context.Context, rawManifest []byte) error {
 	return nil
 }
 
-// ActivateNode activates a node (implements the CoordinatorNodeServer interface)
+// Activate activates a node (implements the CoordinatorNodeServer interface)
 func (s *Server) Activate(ctx context.Context, req *rpc.ActivationReq, cert Cert) (*rpc.ActivationResp, error) {
-	// TODO: mutex for activations
 	if err := s.requireState(acceptingManifest); err != nil {
 		return nil, status.Error(codes.FailedPrecondition, "cannot accept nodes in current state")
 	}
+	s.activationMux.Lock()
+	defer s.activationMux.Unlock()
+
 	node, nodeExists := s.manifest.Nodes[req.GetNodeType()]
 	if !nodeExists {
 		return nil, status.Error(codes.InvalidArgument, "unknown node type requested")
