@@ -42,7 +42,7 @@ type Server struct {
 	manifest    Manifest
 	state       state
 	qv          quote.Validator
-	qc          quote.Creator
+	qi          quote.Issuer
 	activations map[string]uint
 	mux         sync.Mutex
 }
@@ -61,10 +61,12 @@ func (s *Server) advanceState() {
 }
 
 // NewServer creates and initializes a new server object
-func NewServer(orgName string) (*Server, error) {
+func NewServer(orgName string, qv quote.Validator, qi quote.Issuer) (*Server, error) {
 	s := &Server{
 		state:       uninitialized,
 		activations: make(map[string]uint),
+		qv:          qv,
+		qi:          qi,
 	}
 	if err := s.generateCert(orgName); err != nil {
 		return nil, err
@@ -143,7 +145,7 @@ func (s *Server) SetManifest(ctx context.Context, rawManifest []byte) error {
 // connCert is the self-signed certificate the node used to connect to the server.
 func (s *Server) Activate(ctx context.Context, req *rpc.ActivationReq, connCert RawCert) (*rpc.ActivationResp, error) {
 	defer s.mux.Unlock()
-	if err := s.requireState(acceptingManifest); err != nil {
+	if err := s.requireState(acceptingNodes); err != nil {
 		return nil, status.Error(codes.FailedPrecondition, "cannot accept nodes in current state")
 	}
 

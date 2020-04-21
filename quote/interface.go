@@ -12,9 +12,12 @@ type Requirements struct {
 
 // Validator validates quotes
 type Validator interface {
+	// Validate validates a quote for a given message and requirements
 	Validate(quote []byte, message []byte, requirements Requirements) error
 }
 
-// Creator creats quotes
-type Creator interface {
+// Issuer issues quotes
+type Issuer interface {
+	// Issue issues a quote for remote attestation for a given message
+	Issue(message []byte) (quote []byte, err error)
 }
