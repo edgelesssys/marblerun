@@ -14,11 +14,12 @@ message ActivationReq {
 }
 
 message ActivationResp {
-  string certificate = 1;
-  Parameters params = 2;
+  bytes certificate = 1;
+  Parameters parameters = 2;
 }
 
 message Parameters {
-  map<string, string> env = 1;
-  repeated string argv = 2;
+  map<string, bytes> files = 1;
+  map<string, string> env = 2;
+  repeated string argv = 3;
 }

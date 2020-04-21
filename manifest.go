@@ -1,6 +1,9 @@
 package coordinator
 
-import "edgeless.systems/mesh/coordinator/quote"
+import (
+	"edgeless.systems/mesh/coordinator/quote"
+	"edgeless.systems/mesh/coordinator/rpc"
+)
 
 // Manifest defines allowed nodes in a mesh
 type Manifest struct {
@@ -20,9 +23,5 @@ type Cert []byte
 type Node struct {
 	Package        string
 	MaxActivations uint
-	Parameters     struct {
-		env   map[string]string
-		argv  []string
-		files map[string][]byte
-	}
+	Parameters     rpc.Parameters
 }
