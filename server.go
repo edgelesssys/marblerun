@@ -33,19 +33,23 @@ const (
 	closed
 )
 
+const coordinatorName string = "Coordinator"
+
 // Server implements the core of the Coordinator logic
 type Server struct {
-	cert          *x509.Certificate
-	privk         ed25519.PrivateKey
-	manifest      Manifest
-	state         state
-	qv            quote.Validator
-	qc            quote.Creator
-	activations   map[string]uint
-	activationMux sync.Mutex
+	cert        *x509.Certificate
+	privk       ed25519.PrivateKey
+	manifest    Manifest
+	state       state
+	qv          quote.Validator
+	qc          quote.Creator
+	activations map[string]uint
+	mux         sync.Mutex
 }
 
+// Needs to be paired with `defer s.mux.Unlock()`
 func (s *Server) requireState(state state) error {
+	s.mux.Lock()
 	if s.state != state {
 		return errors.New("server is not in expected state")
 	}
@@ -74,6 +78,7 @@ func generateSerial() (*big.Int, error) {
 }
 
 func (s *Server) generateCert(orgName string) error {
+	defer s.mux.Unlock()
 	if err := s.requireState(uninitialized); err != nil {
 		return err
 	}
@@ -123,6 +128,7 @@ func (s *Server) generateCert(orgName string) error {
 
 // SetManifest sets the manifest of the coordinator
 func (s *Server) SetManifest(ctx context.Context, rawManifest []byte) error {
+	defer s.mux.Unlock()
 	if err := s.requireState(acceptingManifest); err != nil {
 		return err
 	}
@@ -135,11 +141,10 @@ func (s *Server) SetManifest(ctx context.Context, rawManifest []byte) error {
 
 // Activate activates a node (implements the CoordinatorNodeServer interface)
 func (s *Server) Activate(ctx context.Context, req *rpc.ActivationReq, cert Cert) (*rpc.ActivationResp, error) {
+	defer s.mux.Unlock()
 	if err := s.requireState(acceptingManifest); err != nil {
 		return nil, status.Error(codes.FailedPrecondition, "cannot accept nodes in current state")
 	}
-	s.activationMux.Lock()
-	defer s.activationMux.Unlock()
 
 	node, nodeExists := s.manifest.Nodes[req.GetNodeType()]
 	if !nodeExists {
