@@ -10,20 +10,19 @@ import (
 	"time"
 
 	"edgeless.systems/mesh/coordinator/quote"
-
 	"edgeless.systems/mesh/coordinator/rpc"
-
-	"golang.org/x/net/context"
-
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/net/context"
 )
 
 func TestServer(t *testing.T) {
 	var s *Server
 	var err error
+	validator := quote.NewMockValidator()
+	issuer := quote.NewMockIssuer()
 
 	t.Run("create server", func(t *testing.T) {
-		s, err = NewServer("edgeless", quote.NewMockValidator(), quote.NewMockIssuer())
+		s, err = NewServer("edgeless", validator, issuer)
 		assert.NotNil(t, s)
 		assert.Nil(t, err)
 		assert.Equal(t, s.state, acceptingManifest)
@@ -91,7 +90,7 @@ func TestServer(t *testing.T) {
 		}
 		}`
 
-	t.Run("attempt to set broken manifest", func(t *testing.T) {
+	t.Run("try to set broken manifest", func(t *testing.T) {
 		assert.NotNil(t, s.SetManifest(context.TODO(), []byte(manifest)[:len(manifest)-1]))
 	})
 
@@ -99,22 +98,42 @@ func TestServer(t *testing.T) {
 		assert.Nil(t, s.SetManifest(context.TODO(), []byte(manifest)))
 	})
 
-	t.Run("activate first tikv", func(t *testing.T) {
+	createFirstTikvCreds := func() (cert []byte, req *rpc.ActivationReq) {
 		cert, csr, err := generateNodeCredentials()
 		assert.Nil(t, err)
 		assert.NotNil(t, cert, csr)
 
-		req := rpc.ActivationReq{
+		// create mock quote for certificate
+		certQuote, err := issuer.Issue(cert)
+		assert.Nil(t, err)
+		assert.NotNil(t, certQuote)
+		validator.AddValidQuote(certQuote, cert, quote.Requirements{
+			MREnclave: []byte{1, 2, 3, 4},
+			MinISVSVN: 3,
+			ISVProdID: 99,
+		})
+
+		req = &rpc.ActivationReq{
 			CSR:      csr,
 			NodeType: "tikv_first",
-			Quote:    []byte{1, 2, 3},
+			Quote:    certQuote,
 		}
+		return
+	}
 
-		resp, err := s.Activate(context.TODO(), &req, cert)
+	t.Run("activate first tikv", func(t *testing.T) {
+		cert, req := createFirstTikvCreds()
+		resp, err := s.Activate(context.TODO(), req, cert)
 		assert.Nil(t, err)
 		assert.NotNil(t, resp)
 	})
 
+	t.Run("try to activate another first tikv", func(t *testing.T) {
+		cert, req := createFirstTikvCreds()
+		resp, err := s.Activate(context.TODO(), req, cert)
+		assert.Nil(t, err)
+		assert.NotNil(t, resp)
+	})
 }
 
 func generateNodeCredentials() (cert []byte, csr []byte, err error) {
