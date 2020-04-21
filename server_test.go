@@ -1,12 +1,63 @@
 package coordinator
 
 import (
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"math"
 	"testing"
+	"time"
+
+	"edgeless.systems/mesh/coordinator/rpc"
 
 	"golang.org/x/net/context"
 
 	"github.com/stretchr/testify/assert"
 )
+
+func generateNodeCredentials() (cert []byte, csr []byte, err error) {
+	const orgName string = "Acme Inc."
+	// create CSR for first TiKV node
+	pubk, privk, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return
+	}
+	// create self-signed certificate for use in initial TLS connection
+	notBefore := time.Now()
+	notAfter := notBefore.Add(math.MaxInt64)
+
+	serialNumber, err := generateSerial()
+	if err != nil {
+		return
+	}
+
+	templateCert := x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject: pkix.Name{
+			Organization: []string{orgName},
+			CommonName:   coordinatorName,
+		},
+		NotBefore: notBefore,
+		NotAfter:  notAfter,
+
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: false,
+		IsCA:                  true,
+	}
+	cert, err = x509.CreateCertificate(rand.Reader, &templateCert, &templateCert, pubk, privk)
+
+	// create CSR
+	templateCSR := x509.CertificateRequest{
+		Subject: pkix.Name{
+			Organization: []string{orgName},
+		},
+		PublicKey: pubk,
+	}
+	csr, err = x509.CreateCertificateRequest(rand.Reader, &templateCSR, privk)
+	return
+}
 
 func TestServer(t *testing.T) {
 	var s *Server
@@ -89,12 +140,20 @@ func TestServer(t *testing.T) {
 		assert.Nil(t, s.SetManifest(context.TODO(), []byte(manifest)))
 	})
 
-	// firstTikv := rpc.ActivationReq{
-	// 	Quote : {1,2,3,4},
+	t.Run("activate first tikv", func(t *testing.T) {
+		cert, csr, err := generateNodeCredentials()
+		assert.Nil(t, err)
+		assert.NotNil(t, cert, csr)
 
-	// }
+		req := rpc.ActivationReq{
+			CSR:      csr,
+			NodeType: "tikv_first",
+			Quote:    []byte{1, 2, 3},
+		}
 
-	// t.Run("activate first tikv", func(t *testing.T) {
+		resp, err := s.Activate(context.TODO(), &req, cert)
+		assert.Nil(t, err)
+		assert.NotNil(t, resp)
+	})
 
-	// })
 }

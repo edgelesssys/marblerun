@@ -102,7 +102,7 @@ func (s *Server) generateCert(orgName string) error {
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
 			Organization: []string{orgName},
-			CommonName:   "Coordinator",
+			CommonName:   coordinatorName,
 		},
 		NotBefore: notBefore,
 		NotAfter:  notAfter,
@@ -140,6 +140,7 @@ func (s *Server) SetManifest(ctx context.Context, rawManifest []byte) error {
 }
 
 // Activate activates a node (implements the CoordinatorNodeServer interface)
+// connCert is the self-signed certificate the node used to connect to the server.
 func (s *Server) Activate(ctx context.Context, req *rpc.ActivationReq, connCert RawCert) (*rpc.ActivationResp, error) {
 	defer s.mux.Unlock()
 	if err := s.requireState(acceptingManifest); err != nil {
