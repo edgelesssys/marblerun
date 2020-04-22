@@ -5,19 +5,17 @@ import (
 	"edgeless.systems/mesh/coordinator/rpc"
 )
 
-// Manifest defines allowed nodes in a mesh
+// Manifest defines the rules of a mesh.
 type Manifest struct {
-	Packages    map[string]quote.Requirements
-	Attestation struct {
-		MinCPUSVN []byte
-		RootCAs   map[string]RawCert
-	}
-	Nodes   map[string]Node
-	Clients map[string]RawCert
+	// Allowed enclave packages
+	Packages map[string]quote.PackageProperties
+	// Allowed infrastructures
+	Infrastructures map[string]quote.InfrastructureProperties
+	// Allowed node configurations
+	Nodes map[string]Node
+	// Authorized client x509 certificates
+	Clients map[string][]byte
 }
-
-// RawCert is the certificate that identifies a party
-type RawCert []byte
 
 // Node describes a type of a node
 type Node struct {
