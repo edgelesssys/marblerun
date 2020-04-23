@@ -11,16 +11,13 @@ type PackageProperties struct {
 
 // InfrastructureProperties contains the infrastructure-specific properties of a SGX DCAP quote.
 type InfrastructureProperties struct {
-	// Security version numbers
-	SVNs struct {
-		// Quoting Enclave
-		QE uint16
-		// Provisioning Certification Enclave
-		PCE uint16
-		// Processor model and firmware
-		// NOTE: the Intel manual states that CPUSVN "cannot be compared mathematically"
-		CPU [16]byte
-	}
+	// Quoting Enclave security version number
+	QESVN uint16
+	// Provisioning Certification Enclave security version number
+	PCESVN uint16
+	// Processor model and firmware security version number
+	// NOTE: the Intel manual states that CPUSVN "cannot be compared mathematically"
+	CPUSVN [16]byte
 	// Certificate of the root CA
 	RootCA map[string][]byte
 }

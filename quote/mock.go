@@ -34,10 +34,10 @@ func (m *MockValidator) Validate(quote []byte, message []byte, pr PackageRequire
 	if !cmp.Equal(entry.message, message) {
 		return errors.New("wrong message")
 	}
-	if err := pr.CheckCompliance(&entry.pp); err != nil {
+	if err := pr.CheckCompliance(entry.pp); err != nil {
 		return err
 	}
-	if err := ir.CheckCompliance(&entry.ip); err != nil {
+	if err := ir.CheckCompliance(entry.ip); err != nil {
 		return err
 	}
 	return nil

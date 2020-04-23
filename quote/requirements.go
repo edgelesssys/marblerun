@@ -24,7 +24,7 @@ type requirements struct {
 }
 
 // CheckCompliance checks if the given package properties comply with the requirements
-func (req *PackageRequirements) CheckCompliance(prop *PackageProperties) error {
+func (req PackageRequirements) CheckCompliance(prop PackageProperties) error {
 	if req.HigherSVNOK {
 		// TODO: implement SVN comparison
 		return errors.New("SVN comparison is not implemented")
@@ -36,7 +36,7 @@ func (req *PackageRequirements) CheckCompliance(prop *PackageProperties) error {
 }
 
 // CheckCompliance checks if the given infrastructure properties comply with the requirements
-func (req *InfrastructureRequirements) CheckCompliance(prop *InfrastructureProperties) error {
+func (req InfrastructureRequirements) CheckCompliance(prop InfrastructureProperties) error {
 	if req.HigherSVNOK {
 		// TODO: implement SVN comparison
 		return errors.New("SVN comparison is not implemented")

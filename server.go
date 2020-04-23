@@ -143,7 +143,7 @@ func (s *Server) SetManifest(ctx context.Context, rawManifest []byte) error {
 
 // Activate activates a node (implements the CoordinatorNodeServer interface)
 // connCert is the self-signed certificate the node used to connect to the server.
-func (s *Server) Activate(ctx context.Context, req *rpc.ActivationReq, connCert RawCert) (*rpc.ActivationResp, error) {
+func (s *Server) Activate(ctx context.Context, req *rpc.ActivationReq, connCert []byte) (*rpc.ActivationResp, error) {
 	defer s.mux.Unlock()
 	if err := s.requireState(acceptingNodes); err != nil {
 		return nil, status.Error(codes.FailedPrecondition, "cannot accept nodes in current state")
@@ -160,13 +160,20 @@ func (s *Server) Activate(ctx context.Context, req *rpc.ActivationReq, connCert 
 		return nil, status.Error(codes.ResourceExhausted, "reached max activations count for node type")
 	}
 
-	// check quote for certificate wrt to requested package
+	// check quote for certificate wrt to requested package for all infrastructures
 	pkg, pkgExists := s.manifest.Packages[node.Package]
 	if !pkgExists {
 		return nil, status.Error(codes.InvalidArgument, "unknown package requested")
 	}
-	if err := s.qv.Validate(req.GetQuote(), connCert, pkg); err != nil {
-		return nil, status.Error(codes.Unauthenticated, "failed to validate quote")
+	infraMatch := false
+	for _, infra := range s.manifest.Infrastructures {
+		if s.qv.Validate(req.GetQuote(), connCert, pkg, infra) == nil {
+			infraMatch = true
+			break
+		}
+	}
+	if !infraMatch {
+		return nil, status.Error(codes.Unauthenticated, "invalid quote")
 	}
 
 	// parse and verify CSR
