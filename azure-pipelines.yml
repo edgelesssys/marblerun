@@ -8,5 +8,5 @@ steps:
 - checkout: self
   submodules: recursive
 
-- script: go test .
-  displayName: 'Get dependencies, then run tests'
+- script: go test ./...
+  displayName: 'Run tests'
