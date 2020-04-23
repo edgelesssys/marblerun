@@ -1,6 +1,8 @@
 package quote
 
 import (
+	"errors"
+
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -22,19 +24,25 @@ type requirements struct {
 }
 
 // CheckCompliance checks if the given package properties comply with the requirements
-func (req *PackageRequirements) CheckCompliance(prop *PackageProperties) bool {
-	if !req.HigherSVNOK {
-		return cmp.Equal(req, prop)
+func (req *PackageRequirements) CheckCompliance(prop *PackageProperties) error {
+	if req.HigherSVNOK {
+		// TODO: implement SVN comparison
+		return errors.New("SVN comparison is not implemented")
 	}
-	// TODO: implement SVN comparison
-	return false
+	if !cmp.Equal(&req.PackageProperties, prop) {
+		return errors.New("package does not comply")
+	}
+	return nil
 }
 
 // CheckCompliance checks if the given infrastructure properties comply with the requirements
-func (req *InfrastructureRequirements) CheckCompliance(prop *InfrastructureProperties) bool {
-	if !req.HigherSVNOK {
-		return cmp.Equal(req, prop)
+func (req *InfrastructureRequirements) CheckCompliance(prop *InfrastructureProperties) error {
+	if req.HigherSVNOK {
+		// TODO: implement SVN comparison
+		return errors.New("SVN comparison is not implemented")
 	}
-	// TODO: implement SVN comparison
-	return false
+	if !cmp.Equal(&req.InfrastructureProperties, prop) {
+		return errors.New("package does not comply")
+	}
+	return nil
 }
