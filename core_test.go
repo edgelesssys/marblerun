@@ -85,6 +85,8 @@ func TestCore(t *testing.T) {
 	var err error
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
+	MiscSelect := uint32(1111111)
+	Attributes := [16]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
 
 	createTikvCreds := func(nodeType string) (cert []byte, req *rpc.ActivationReq) {
 		cert, csr, err := generateNodeCredentials()
@@ -96,9 +98,7 @@ func TestCore(t *testing.T) {
 		assert.Nil(t, err)
 		assert.NotNil(t, certQuote)
 
-		MiscSelect := uint32(1111111)
 		MREnclave := [32]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
-		Attributes := [16]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
 
 		QESVN := uint16(2)
 		PCESVN := uint16(3)
@@ -177,7 +177,58 @@ func TestCore(t *testing.T) {
 		}
 	})
 
-	// TODO: activate some TiDBs
+	createTidbCreds := func() (cert []byte, req *rpc.ActivationReq) {
+		cert, csr, err := generateNodeCredentials()
+		assert.Nil(t, err)
+		assert.NotNil(t, cert, csr)
+
+		// create mock quote for certificate
+		certQuote, err := issuer.Issue(cert)
+		assert.Nil(t, err)
+		assert.NotNil(t, certQuote)
+
+		MRSigner := [32]byte{31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0}
+		ISVProdID := uint16(44)
+		ISVSVN := uint16(3)
+
+		QESVN := uint16(2)
+		PCESVN := uint16(4)
+		CPUSVN := [16]byte{15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0}
+
+		validator.AddValidQuote(certQuote, cert,
+			// tidb
+			quote.PackageProperties{
+				MRSigner:   &MRSigner,
+				ISVProdID:  &ISVProdID,
+				ISVSVN:     &ISVSVN,
+				MiscSelect: &MiscSelect,
+				Attributes: &Attributes,
+			},
+			// alibaba
+			quote.InfrastructureProperties{
+				QESVN:  &QESVN,
+				PCESVN: &PCESVN,
+				CPUSVN: &CPUSVN,
+				RootCA: []byte{4, 4, 4},
+			},
+		)
+
+		req = &rpc.ActivationReq{
+			CSR:      csr,
+			NodeType: "tidb",
+			Quote:    certQuote,
+		}
+		return
+	}
+
+	t.Run("activate 10 tidb", func(t *testing.T) {
+		for i := 0; i < 10; i++ {
+			cert, req := createTidbCreds()
+			resp, err := c.Activate(context.TODO(), req, cert)
+			assert.Nil(t, err)
+			assert.NotNil(t, resp)
+		}
+	})
 }
 
 func generateNodeCredentials() (cert []byte, csr []byte, err error) {
