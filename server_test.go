@@ -16,23 +16,6 @@ import (
 )
 
 func TestServer(t *testing.T) {
-	var s *Server
-	var err error
-	validator := quote.NewMockValidator()
-	issuer := quote.NewMockIssuer()
-
-	t.Run("create server", func(t *testing.T) {
-		s, err = NewServer("edgeless", validator, issuer)
-		assert.NotNil(t, s)
-		assert.Nil(t, err)
-		assert.Equal(t, s.state, acceptingManifest)
-		assert.Equal(t, s.cert.Subject.Organization, []string{"edgeless"})
-		assert.Equal(t, s.cert.Subject.CommonName, coordinatorName)
-	})
-
-	// t.Run("attempt to activate node prematurely", func(t *testing.T) {
-	// 	s.Activate(context.TODO(), )
-	// })
 
 	const manifest string = `{
 		"Packages": {
@@ -96,17 +79,14 @@ func TestServer(t *testing.T) {
 		"Clients": {
 			"owner": [9,9,9]
 		}
-		}`
+	}`
 
-	t.Run("try to set broken manifest", func(t *testing.T) {
-		assert.NotNil(t, s.SetManifest(context.TODO(), []byte(manifest)[:len(manifest)-1]))
-	})
+	var s *Server
+	var err error
+	validator := quote.NewMockValidator()
+	issuer := quote.NewMockIssuer()
 
-	t.Run("set manifest", func(t *testing.T) {
-		assert.Nil(t, s.SetManifest(context.TODO(), []byte(manifest)))
-	})
-
-	createFirstTikvCreds := func() (cert []byte, req *rpc.ActivationReq) {
+	createTikvCreds := func(nodeType string) (cert []byte, req *rpc.ActivationReq) {
 		cert, csr, err := generateNodeCredentials()
 		assert.Nil(t, err)
 		assert.NotNil(t, cert, csr)
@@ -142,25 +122,62 @@ func TestServer(t *testing.T) {
 
 		req = &rpc.ActivationReq{
 			CSR:      csr,
-			NodeType: "tikv_first",
+			NodeType: nodeType,
 			Quote:    certQuote,
 		}
 		return
 	}
 
+	// actual tests
+
+	t.Run("create server", func(t *testing.T) {
+		s, err = NewServer("edgeless", validator, issuer)
+		assert.NotNil(t, s)
+		assert.Nil(t, err)
+		assert.Equal(t, s.state, acceptingManifest)
+		assert.Equal(t, s.cert.Subject.Organization, []string{"edgeless"})
+		assert.Equal(t, s.cert.Subject.CommonName, coordinatorName)
+	})
+
+	t.Run("try to activate first tikv prematurely", func(t *testing.T) {
+		cert, req := createTikvCreds("tikv_first")
+		resp, err := s.Activate(context.TODO(), req, cert)
+		assert.NotNil(t, err)
+		assert.Nil(t, resp)
+	})
+
+	t.Run("try to set broken manifest", func(t *testing.T) {
+		assert.NotNil(t, s.SetManifest(context.TODO(), []byte(manifest)[:len(manifest)-1]))
+	})
+
+	t.Run("set manifest", func(t *testing.T) {
+		assert.Nil(t, s.SetManifest(context.TODO(), []byte(manifest)))
+	})
+
 	t.Run("activate first tikv", func(t *testing.T) {
-		cert, req := createFirstTikvCreds()
+		cert, req := createTikvCreds("tikv_first")
 		resp, err := s.Activate(context.TODO(), req, cert)
 		assert.Nil(t, err)
 		assert.NotNil(t, resp)
 	})
 
 	t.Run("try to activate another first tikv", func(t *testing.T) {
-		cert, req := createFirstTikvCreds()
+		cert, req := createTikvCreds("tikv_first")
 		resp, err := s.Activate(context.TODO(), req, cert)
 		assert.NotNil(t, err)
 		assert.Nil(t, resp)
 	})
+
+	t.Run("activate 10 other tikv", func(t *testing.T) {
+		for i := 0; i < 10; i++ {
+			cert, req := createTikvCreds("tikv_other")
+			resp, err := s.Activate(context.TODO(), req, cert)
+			assert.Nil(t, err)
+			assert.NotNil(t, resp)
+		}
+	})
+
+	// TODO: activate some TiDBs
 }
 
 func generateNodeCredentials() (cert []byte, csr []byte, err error) {
