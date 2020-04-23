@@ -46,7 +46,7 @@ func TestServer(t *testing.T) {
 				"ISVProdID": 44,
 				"ISVSVN": 3,
 				"Attributes": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
-				"MiscSelect": 1111111,
+				"MiscSelect": 1111111
 			}
 		},
 		"Infrastructures": {
@@ -158,8 +158,8 @@ func TestServer(t *testing.T) {
 	t.Run("try to activate another first tikv", func(t *testing.T) {
 		cert, req := createFirstTikvCreds()
 		resp, err := s.Activate(context.TODO(), req, cert)
-		assert.Nil(t, err)
-		assert.NotNil(t, resp)
+		assert.NotNil(t, err)
+		assert.Nil(t, resp)
 	})
 }
 
