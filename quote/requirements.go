@@ -1,8 +1,6 @@
 package quote
 
 import (
-	"errors"
-
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -19,30 +17,37 @@ type PackageRequirements struct {
 }
 
 type requirements struct {
-	// If true, SVNs that are higher than the specified one are accepted.
-	HigherSVNOK bool
+	// If true, SVNs that are higher than specified are not accepted.
+	StrictSVN bool
 }
 
-// CheckCompliance checks if the given package properties comply with the requirements
-func (req PackageRequirements) CheckCompliance(prop PackageProperties) error {
-	if req.HigherSVNOK {
-		// TODO: implement SVN comparison
-		return errors.New("SVN comparison is not implemented")
+// IsCompliant checks if the given package properties comply with the requirements
+func (req PackageRequirements) IsCompliant(prop PackageProperties) bool {
+	if req.StrictSVN {
+		return cmp.Equal(req, prop)
 	}
-	if !cmp.Equal(&req.PackageProperties, prop) {
-		return errors.New("package does not comply")
+	if !cmp.Equal(req.basicPackageProperties, prop.basicPackageProperties) {
+		return false
 	}
-	return nil
+	if prop.ISVSVN < req.ISVSVN {
+		return false
+	}
+	return true
 }
 
-// CheckCompliance checks if the given infrastructure properties comply with the requirements
-func (req InfrastructureRequirements) CheckCompliance(prop InfrastructureProperties) error {
-	if req.HigherSVNOK {
-		// TODO: implement SVN comparison
-		return errors.New("SVN comparison is not implemented")
+// IsCompliant checks if the given infrastructure properties comply with the requirements
+func (req InfrastructureRequirements) IsCompliant(prop InfrastructureProperties) bool {
+	if req.StrictSVN {
+		return cmp.Equal(req, prop)
 	}
-	if !cmp.Equal(&req.InfrastructureProperties, prop) {
-		return errors.New("package does not comply")
+	if !cmp.Equal(req.basicInfrastructureProperties, prop.basicInfrastructureProperties) {
+		return false
 	}
-	return nil
+	if prop.QESVN < req.QESVN {
+		return false
+	}
+	if prop.PCESVN < req.PCESVN {
+		return false
+	}
+	return true
 }
