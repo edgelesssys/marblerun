@@ -54,8 +54,7 @@ func TestServer(t *testing.T) {
 				"QESVN": 2,
 				"PCESVN": 3,
 				"CPUSVN": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
-				"RootCA": [3,3,3],
-				"StrictSVN": true
+				"RootCA": [3,3,3]
 			},
 			"Alibaba": {
 				"QESVN": 2,
@@ -116,14 +115,21 @@ func TestServer(t *testing.T) {
 		certQuote, err := issuer.Issue(cert)
 		assert.Nil(t, err)
 		assert.NotNil(t, certQuote)
-		validator.AddValidQuote(certQuote, cert, quote.PackageProperties{BasicPackageProperties{
-			MREnclave:  {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-			ISVProdID:  99,
-			MiscSelect: 1111111,
-			Attributes: {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
-		},
-		ISVSVN: 
-		})
+		validator.AddValidQuote(certQuote, cert,
+			// tikv
+			quote.PackageProperties{
+				MREnclave:  {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
+				MiscSelect: 1111111,
+				Attributes: {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+			},
+			// azure
+			quote.InfrastructureProperties{
+				QESVN:  2,
+				PCESVN: 3,
+				CPUSVN: {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+				RootCA: {3, 3, 3},
+			},
+		)
 
 		req = &rpc.ActivationReq{
 			CSR:      csr,

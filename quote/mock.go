@@ -26,7 +26,7 @@ func NewMockValidator() *MockValidator {
 }
 
 // Validate implements the Validator interface
-func (m *MockValidator) Validate(quote []byte, message []byte, pr PackageRequirements, ir InfrastructureRequirements) error {
+func (m *MockValidator) Validate(quote []byte, message []byte, pr PackageProperties, ir InfrastructureProperties) error {
 	entry, found := m.valid[string(quote)]
 	if !found {
 		return errors.New("wrong quote")
