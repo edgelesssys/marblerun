@@ -15,7 +15,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-func TestServer(t *testing.T) {
+func TestCore(t *testing.T) {
 
 	const manifest string = `{
 		"Packages": {
@@ -81,7 +81,7 @@ func TestServer(t *testing.T) {
 		}
 	}`
 
-	var s *Server
+	var c *Core
 	var err error
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
@@ -131,39 +131,39 @@ func TestServer(t *testing.T) {
 	// actual tests
 
 	t.Run("create server", func(t *testing.T) {
-		s, err = NewServer("edgeless", validator, issuer)
-		assert.NotNil(t, s)
+		c, err = NewCore("edgeless", validator, issuer)
+		assert.NotNil(t, c)
 		assert.Nil(t, err)
-		assert.Equal(t, s.state, acceptingManifest)
-		assert.Equal(t, s.cert.Subject.Organization, []string{"edgeless"})
-		assert.Equal(t, s.cert.Subject.CommonName, coordinatorName)
+		assert.Equal(t, c.state, acceptingManifest)
+		assert.Equal(t, c.cert.Subject.Organization, []string{"edgeless"})
+		assert.Equal(t, c.cert.Subject.CommonName, coordinatorName)
 	})
 
 	t.Run("try to activate first tikv prematurely", func(t *testing.T) {
 		cert, req := createTikvCreds("tikv_first")
-		resp, err := s.Activate(context.TODO(), req, cert)
+		resp, err := c.Activate(context.TODO(), req, cert)
 		assert.NotNil(t, err)
 		assert.Nil(t, resp)
 	})
 
 	t.Run("try to set broken manifest", func(t *testing.T) {
-		assert.NotNil(t, s.SetManifest(context.TODO(), []byte(manifest)[:len(manifest)-1]))
+		assert.NotNil(t, c.SetManifest(context.TODO(), []byte(manifest)[:len(manifest)-1]))
 	})
 
 	t.Run("set manifest", func(t *testing.T) {
-		assert.Nil(t, s.SetManifest(context.TODO(), []byte(manifest)))
+		assert.Nil(t, c.SetManifest(context.TODO(), []byte(manifest)))
 	})
 
 	t.Run("activate first tikv", func(t *testing.T) {
 		cert, req := createTikvCreds("tikv_first")
-		resp, err := s.Activate(context.TODO(), req, cert)
+		resp, err := c.Activate(context.TODO(), req, cert)
 		assert.Nil(t, err)
 		assert.NotNil(t, resp)
 	})
 
 	t.Run("try to activate another first tikv", func(t *testing.T) {
 		cert, req := createTikvCreds("tikv_first")
-		resp, err := s.Activate(context.TODO(), req, cert)
+		resp, err := c.Activate(context.TODO(), req, cert)
 		assert.NotNil(t, err)
 		assert.Nil(t, resp)
 	})
@@ -171,7 +171,7 @@ func TestServer(t *testing.T) {
 	t.Run("activate 10 other tikv", func(t *testing.T) {
 		for i := 0; i < 10; i++ {
 			cert, req := createTikvCreds("tikv_other")
-			resp, err := s.Activate(context.TODO(), req, cert)
+			resp, err := c.Activate(context.TODO(), req, cert)
 			assert.Nil(t, err)
 			assert.NotNil(t, resp)
 		}

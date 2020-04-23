@@ -35,8 +35,8 @@ const (
 
 const coordinatorName string = "Coordinator"
 
-// Server implements the core of the Coordinator logic
-type Server struct {
+// Core implements the core logic of the Coordinator
+type Core struct {
 	cert        *x509.Certificate
 	privk       ed25519.PrivateKey
 	manifest    Manifest
@@ -47,31 +47,31 @@ type Server struct {
 	mux         sync.Mutex
 }
 
-// Needs to be paired with `defer s.mux.Unlock()`
-func (s *Server) requireState(state state) error {
-	s.mux.Lock()
-	if s.state != state {
+// Needs to be paired with `defer c.mux.Unlock()`
+func (c *Core) requireState(state state) error {
+	c.mux.Lock()
+	if c.state != state {
 		return errors.New("server is not in expected state")
 	}
 	return nil
 }
 
-func (s *Server) advanceState() {
-	s.state++
+func (c *Core) advanceState() {
+	c.state++
 }
 
-// NewServer creates and initializes a new server object
-func NewServer(orgName string, qv quote.Validator, qi quote.Issuer) (*Server, error) {
-	s := &Server{
+// NewCore creates and initializes a new Core object
+func NewCore(orgName string, qv quote.Validator, qi quote.Issuer) (*Core, error) {
+	c := &Core{
 		state:       uninitialized,
 		activations: make(map[string]uint),
 		qv:          qv,
 		qi:          qi,
 	}
-	if err := s.generateCert(orgName); err != nil {
+	if err := c.generateCert(orgName); err != nil {
 		return nil, err
 	}
-	return s, nil
+	return c, nil
 }
 
 func generateSerial() (*big.Int, error) {
@@ -79,9 +79,9 @@ func generateSerial() (*big.Int, error) {
 	return rand.Int(rand.Reader, serialNumberLimit)
 }
 
-func (s *Server) generateCert(orgName string) error {
-	defer s.mux.Unlock()
-	if err := s.requireState(uninitialized); err != nil {
+func (c *Core) generateCert(orgName string) error {
+	defer c.mux.Unlock()
+	if err := c.requireState(uninitialized); err != nil {
 		return err
 	}
 
@@ -119,55 +119,55 @@ func (s *Server) generateCert(orgName string) error {
 	if err != nil {
 		return err
 	}
-	s.cert, err = x509.ParseCertificate(certRaw)
+	c.cert, err = x509.ParseCertificate(certRaw)
 	if err != nil {
 		return err
 	}
-	s.privk = privk
-	s.advanceState()
+	c.privk = privk
+	c.advanceState()
 	return nil
 }
 
 // SetManifest sets the manifest of the coordinator
-func (s *Server) SetManifest(ctx context.Context, rawManifest []byte) error {
-	defer s.mux.Unlock()
-	if err := s.requireState(acceptingManifest); err != nil {
+func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) error {
+	defer c.mux.Unlock()
+	if err := c.requireState(acceptingManifest); err != nil {
 		return err
 	}
-	if err := json.Unmarshal(rawManifest, &s.manifest); err != nil {
+	if err := json.Unmarshal(rawManifest, &c.manifest); err != nil {
 		return err
 	}
-	s.advanceState()
+	c.advanceState()
 	return nil
 }
 
 // Activate activates a node (implements the CoordinatorNodeServer interface)
 // connCert is the self-signed certificate the node used to connect to the server.
-func (s *Server) Activate(ctx context.Context, req *rpc.ActivationReq, connCert []byte) (*rpc.ActivationResp, error) {
-	defer s.mux.Unlock()
-	if err := s.requireState(acceptingNodes); err != nil {
+func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq, connCert []byte) (*rpc.ActivationResp, error) {
+	defer c.mux.Unlock()
+	if err := c.requireState(acceptingNodes); err != nil {
 		return nil, status.Error(codes.FailedPrecondition, "cannot accept nodes in current state")
 	}
 
-	node, nodeExists := s.manifest.Nodes[req.GetNodeType()]
+	node, nodeExists := c.manifest.Nodes[req.GetNodeType()]
 	if !nodeExists {
 		return nil, status.Error(codes.InvalidArgument, "unknown node type requested")
 	}
 
 	// check activation budget (MaxActivations == 0 means infinite budget)
-	activations := s.activations[req.GetNodeType()]
+	activations := c.activations[req.GetNodeType()]
 	if node.MaxActivations > 0 && activations >= node.MaxActivations {
 		return nil, status.Error(codes.ResourceExhausted, "reached max activations count for node type")
 	}
 
 	// check quote for certificate wrt to requested package for all infrastructures
-	pkg, pkgExists := s.manifest.Packages[node.Package]
+	pkg, pkgExists := c.manifest.Packages[node.Package]
 	if !pkgExists {
 		return nil, status.Error(codes.InvalidArgument, "unknown package requested")
 	}
 	infraMatch := false
-	for _, infra := range s.manifest.Infrastructures {
-		if s.qv.Validate(req.GetQuote(), connCert, pkg, infra) == nil {
+	for _, infra := range c.manifest.Infrastructures {
+		if c.qv.Validate(req.GetQuote(), connCert, pkg, infra) == nil {
 			infraMatch = true
 			break
 		}
@@ -206,7 +206,7 @@ func (s *Server) Activate(ctx context.Context, req *rpc.ActivationReq, connCert 
 		BasicConstraintsValid: false,
 		IsCA:                  false,
 	}
-	certRaw, err := x509.CreateCertificate(rand.Reader, &template, s.cert, csr.PublicKey, s.privk)
+	certRaw, err := x509.CreateCertificate(rand.Reader, &template, c.cert, csr.PublicKey, c.privk)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to issue certificate")
 	}
@@ -217,6 +217,6 @@ func (s *Server) Activate(ctx context.Context, req *rpc.ActivationReq, connCert 
 		Parameters:  &node.Parameters,
 	}
 	// TODO: scan files for certificate placeholders like "$$root_ca" and replace those
-	s.activations[req.GetNodeType()]++
+	c.activations[req.GetNodeType()]++
 	return resp, nil
 }
