@@ -128,7 +128,7 @@ func TestCore(t *testing.T) {
 		}
 
 		// create a connection context that contains the client cert
-		ctx = context.WithValue(context.TODO(), clientTlsCert, cert)
+		ctx = context.WithValue(context.TODO(), clientTLSCert, cert)
 		return
 	}
 
@@ -226,7 +226,7 @@ func TestCore(t *testing.T) {
 		}
 
 		// create a connection context that contains the client cert
-		ctx = context.WithValue(context.TODO(), clientTlsCert, cert)
+		ctx = context.WithValue(context.TODO(), clientTLSCert, cert)
 		return
 	}
 

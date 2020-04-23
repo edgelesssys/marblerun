@@ -50,7 +50,7 @@ const (
 type ctxKey int
 
 const (
-	clientTlsCert ctxKey = iota
+	clientTLSCert ctxKey = iota
 )
 
 const coordinatorName string = "Coordinator"
@@ -182,7 +182,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	}
 
 	// get the node's TLS cert (used in this connection) and check corresponding quote
-	tlsCert := getClientTLSCert(ctx)
+	tlsCert := getclientTLSCert(ctx)
 	if tlsCert == nil {
 		return nil, status.Error(codes.Unauthenticated, "couldn't get node TLS certificate")
 	}
@@ -246,9 +246,9 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	return resp, nil
 }
 
-func getClientTLSCert(ctx context.Context) []byte {
+func getclientTLSCert(ctx context.Context) []byte {
 	// TODO: we assume for now that the client TLS cert is available via the context. Need to figure out how exactly this works with gRPC and TLS.
-	cert, ok := ctx.Value(clientTlsCert).([]byte)
+	cert, ok := ctx.Value(clientTLSCert).([]byte)
 	if ok {
 		return cert
 	}
