@@ -5,28 +5,12 @@ import (
 	"edgeless.systems/mesh/coordinator/rpc"
 )
 
-type requirements struct {
-	HigherSVNOK bool
-}
-
-// InfrastructureRequirements defines the requirements for the infrastructure
-type InfrastructureRequirements struct {
-	quote.InfrastructureProperties
-	requirements
-}
-
-// PackageRequirements defines the requirements for an enclave package
-type PackageRequirements struct {
-	quote.PackageProperties
-	requirements
-}
-
 // Manifest defines the rules of a mesh.
 type Manifest struct {
 	// Allowed enclave packages
-	Packages map[string]PackageRequirements
+	Packages map[string]quote.PackageRequirements
 	// Allowed infrastructures
-	Infrastructures map[string]InfrastructureRequirements
+	Infrastructures map[string]quote.InfrastructureRequirements
 	// Allowed node configurations
 	Nodes map[string]Node
 	// Authorized client x509 certificates

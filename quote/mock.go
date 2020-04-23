@@ -9,8 +9,8 @@ import (
 
 type entry struct {
 	message []byte
-	pp      PackageProperties
-	ip      InfrastructureProperties
+	pr      PackageRequirements
+	ir      InfrastructureRequirements
 }
 
 // MockValidator is a mockup quote validator
@@ -26,7 +26,7 @@ func NewMockValidator() *MockValidator {
 }
 
 // Validate implements the Validator interface
-func (m *MockValidator) Validate(quote []byte, message []byte, pp PackageProperties, ip InfrastructureProperties) error {
+func (m *MockValidator) Validate(quote []byte, message []byte, pr PackageRequirements, ir InfrastructureRequirements) error {
 	entry, found := m.valid[string(quote)]
 	if !found {
 		return errors.New("wrong quote")
@@ -41,7 +41,7 @@ func (m *MockValidator) Validate(quote []byte, message []byte, pp PackagePropert
 }
 
 // AddValidQuote adds a valid quote
-func (m *MockValidator) AddValidQuote(quote []byte, message []byte, pp PackageProperties, ip InfrastructureProperties) {
+func (m *MockValidator) AddValidQuote(quote []byte, message []byte, pr PackageRequirements, ir InfrastructureRequirements) {
 	m.valid[string(quote)] = entry{message, requirements}
 }
 
