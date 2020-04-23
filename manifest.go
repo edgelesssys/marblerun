@@ -8,9 +8,9 @@ import (
 // Manifest defines the rules of a mesh.
 type Manifest struct {
 	// Allowed enclave packages
-	Packages map[string]quote.PackageRequirements
+	Packages map[string]quote.PackageProperties
 	// Allowed infrastructures
-	Infrastructures map[string]quote.InfrastructureRequirements
+	Infrastructures map[string]quote.InfrastructureProperties
 	// Allowed node configurations
 	Nodes map[string]Node
 	// Authorized client x509 certificates

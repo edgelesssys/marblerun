@@ -115,19 +115,28 @@ func TestServer(t *testing.T) {
 		certQuote, err := issuer.Issue(cert)
 		assert.Nil(t, err)
 		assert.NotNil(t, certQuote)
+
+		MiscSelect := uint32(1111111)
+		MREnclave := [32]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
+		Attributes := [16]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
+
+		QESVN := uint16(2)
+		PCESVN := uint16(3)
+		CPUSVN := [16]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
+
 		validator.AddValidQuote(certQuote, cert,
 			// tikv
 			quote.PackageProperties{
-				MREnclave:  {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-				MiscSelect: 1111111,
-				Attributes: {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+				MREnclave:  &MREnclave,
+				MiscSelect: &MiscSelect,
+				Attributes: &Attributes,
 			},
 			// azure
 			quote.InfrastructureProperties{
-				QESVN:  2,
-				PCESVN: 3,
-				CPUSVN: {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
-				RootCA: {3, 3, 3},
+				QESVN:  &QESVN,
+				PCESVN: &PCESVN,
+				CPUSVN: &CPUSVN,
+				RootCA: []byte{3, 3, 3},
 			},
 		)
 
