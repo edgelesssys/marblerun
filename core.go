@@ -23,21 +23,10 @@ import (
 	"edgeless.systems/mesh/coordinator/rpc"
 )
 
-type state int
-
-// The sequence of states a coordinator may be in
-const (
-	uninitialized state = iota
-	acceptingManifest
-	acceptingNodes
-	closed
-)
-
-const coordinatorName string = "Coordinator"
-
 // Core implements the core logic of the Coordinator
 type Core struct {
 	cert        *x509.Certificate
+	quote       []byte
 	privk       ed25519.PrivateKey
 	manifest    Manifest
 	state       state
@@ -46,6 +35,25 @@ type Core struct {
 	activations map[string]uint
 	mux         sync.Mutex
 }
+
+// The sequence of states a Coordinator may be in
+type state int
+
+const (
+	uninitialized state = iota
+	acceptingManifest
+	acceptingNodes
+	closed
+)
+
+// Context keys known to the Coordinator
+type ctxKey int
+
+const (
+	clientTlsCert ctxKey = iota
+)
+
+const coordinatorName string = "Coordinator"
 
 // Needs to be paired with `defer c.mux.Unlock()`
 func (c *Core) requireState(state state) error {
@@ -119,16 +127,22 @@ func (c *Core) generateCert(orgName string) error {
 	if err != nil {
 		return err
 	}
-	c.cert, err = x509.ParseCertificate(certRaw)
+	cert, err := x509.ParseCertificate(certRaw)
 	if err != nil {
 		return err
 	}
+	quote, err := c.qi.Issue(certRaw)
+	if err != nil {
+		return err
+	}
+	c.cert = cert
+	c.quote = quote
 	c.privk = privk
 	c.advanceState()
 	return nil
 }
 
-// SetManifest sets the manifest of the coordinator
+// SetManifest implements the CoordinatorClient
 func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) error {
 	defer c.mux.Unlock()
 	if err := c.requireState(acceptingManifest); err != nil {
@@ -141,9 +155,16 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) error {
 	return nil
 }
 
+// GetQuote gets the quote of the server
+func (c *Core) GetQuote(ctx context.Context) ([]byte, error) {
+	if c.state == uninitialized {
+		return nil, errors.New("node doesn't have a cert or quote yet")
+	}
+	return c.quote, nil
+}
+
 // Activate activates a node (implements the CoordinatorNodeServer interface)
-// connCert is the self-signed certificate the node used to connect to the server.
-func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq, connCert []byte) (*rpc.ActivationResp, error) {
+func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.ActivationResp, error) {
 	defer c.mux.Unlock()
 	if err := c.requireState(acceptingNodes); err != nil {
 		return nil, status.Error(codes.FailedPrecondition, "cannot accept nodes in current state")
@@ -160,14 +181,18 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq, connCert []
 		return nil, status.Error(codes.ResourceExhausted, "reached max activations count for node type")
 	}
 
-	// check quote for certificate wrt to requested package for all infrastructures
+	// get the node's TLS cert (used in this connection) and check corresponding quote
+	tlsCert := getClientTLSCert(ctx)
+	if tlsCert == nil {
+		return nil, status.Error(codes.Unauthenticated, "couldn't get node TLS certificate")
+	}
 	pkg, pkgExists := c.manifest.Packages[node.Package]
 	if !pkgExists {
 		return nil, status.Error(codes.InvalidArgument, "unknown package requested")
 	}
 	infraMatch := false
 	for _, infra := range c.manifest.Infrastructures {
-		if c.qv.Validate(req.GetQuote(), connCert, pkg, infra) == nil {
+		if c.qv.Validate(req.GetQuote(), tlsCert, pkg, infra) == nil {
 			infraMatch = true
 			break
 		}
@@ -219,4 +244,13 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq, connCert []
 	// TODO: scan files for certificate placeholders like "$$root_ca" and replace those
 	c.activations[req.GetNodeType()]++
 	return resp, nil
+}
+
+func getClientTLSCert(ctx context.Context) []byte {
+	// TODO: we assume for now that the client TLS cert is available via the context. Need to figure out how exactly this works with gRPC and TLS.
+	cert, ok := ctx.Value(clientTlsCert).([]byte)
+	if ok {
+		return cert
+	}
+	return nil
 }

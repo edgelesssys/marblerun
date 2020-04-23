@@ -3,7 +3,8 @@ syntax = "proto3";
 package rpc;
 option go_package = "edgeless.systems/mesh/coordinator/rpc";
 
-service CoordinatorNode {
+service Node {
+  // Activate activates a node in the mesh.
   rpc Activate (ActivationReq) returns (ActivationResp);
 }
 

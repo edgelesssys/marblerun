@@ -81,14 +81,15 @@ func TestCore(t *testing.T) {
 		}
 	}`
 
-	var c *Core
-	var err error
+	var clientServer rpc.ClientServer
+	var nodeServer rpc.NodeServer
+
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
 	MiscSelect := uint32(1111111)
 	Attributes := [16]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
 
-	createTikvCreds := func(nodeType string) (cert []byte, req *rpc.ActivationReq) {
+	createTikvConnection := func(nodeType string) (ctx context.Context, req *rpc.ActivationReq) {
 		cert, csr, err := generateNodeCredentials()
 		assert.Nil(t, err)
 		assert.NotNil(t, cert, csr)
@@ -125,59 +126,64 @@ func TestCore(t *testing.T) {
 			NodeType: nodeType,
 			Quote:    certQuote,
 		}
+
+		// create a connection context that contains the client cert
+		ctx = context.WithValue(context.TODO(), clientTlsCert, cert)
 		return
 	}
 
 	// actual tests
 
 	t.Run("create server", func(t *testing.T) {
-		c, err = NewCore("edgeless", validator, issuer)
+		c, err := NewCore("edgeless", validator, issuer)
 		assert.NotNil(t, c)
 		assert.Nil(t, err)
 		assert.Equal(t, c.state, acceptingManifest)
 		assert.Equal(t, c.cert.Subject.Organization, []string{"edgeless"})
 		assert.Equal(t, c.cert.Subject.CommonName, coordinatorName)
+		clientServer = c
+		nodeServer = c
 	})
 
 	t.Run("try to activate first tikv prematurely", func(t *testing.T) {
-		cert, req := createTikvCreds("tikv_first")
-		resp, err := c.Activate(context.TODO(), req, cert)
+		ctx, req := createTikvConnection("tikv_first")
+		resp, err := nodeServer.Activate(ctx, req)
 		assert.NotNil(t, err)
 		assert.Nil(t, resp)
 	})
 
 	t.Run("try to set broken manifest", func(t *testing.T) {
-		assert.NotNil(t, c.SetManifest(context.TODO(), []byte(manifest)[:len(manifest)-1]))
+		assert.NotNil(t, clientServer.SetManifest(context.TODO(), []byte(manifest)[:len(manifest)-1]))
 	})
 
 	t.Run("set manifest", func(t *testing.T) {
-		assert.Nil(t, c.SetManifest(context.TODO(), []byte(manifest)))
+		assert.Nil(t, clientServer.SetManifest(context.TODO(), []byte(manifest)))
 	})
 
 	t.Run("activate first tikv", func(t *testing.T) {
-		cert, req := createTikvCreds("tikv_first")
-		resp, err := c.Activate(context.TODO(), req, cert)
+		ctx, req := createTikvConnection("tikv_first")
+		resp, err := nodeServer.Activate(ctx, req)
 		assert.Nil(t, err)
 		assert.NotNil(t, resp)
 	})
 
 	t.Run("try to activate another first tikv", func(t *testing.T) {
-		cert, req := createTikvCreds("tikv_first")
-		resp, err := c.Activate(context.TODO(), req, cert)
+		ctx, req := createTikvConnection("tikv_first")
+		resp, err := nodeServer.Activate(ctx, req)
 		assert.NotNil(t, err)
 		assert.Nil(t, resp)
 	})
 
 	t.Run("activate 10 other tikv", func(t *testing.T) {
 		for i := 0; i < 10; i++ {
-			cert, req := createTikvCreds("tikv_other")
-			resp, err := c.Activate(context.TODO(), req, cert)
+			ctx, req := createTikvConnection("tikv_other")
+			resp, err := nodeServer.Activate(ctx, req)
 			assert.Nil(t, err)
 			assert.NotNil(t, resp)
 		}
 	})
 
-	createTidbCreds := func() (cert []byte, req *rpc.ActivationReq) {
+	createTidbConnection := func() (ctx context.Context, req *rpc.ActivationReq) {
 		cert, csr, err := generateNodeCredentials()
 		assert.Nil(t, err)
 		assert.NotNil(t, cert, csr)
@@ -218,13 +224,16 @@ func TestCore(t *testing.T) {
 			NodeType: "tidb",
 			Quote:    certQuote,
 		}
+
+		// create a connection context that contains the client cert
+		ctx = context.WithValue(context.TODO(), clientTlsCert, cert)
 		return
 	}
 
 	t.Run("activate 10 tidb", func(t *testing.T) {
 		for i := 0; i < 10; i++ {
-			cert, req := createTidbCreds()
-			resp, err := c.Activate(context.TODO(), req, cert)
+			ctx, req := createTidbConnection()
+			resp, err := nodeServer.Activate(ctx, req)
 			assert.Nil(t, err)
 			assert.NotNil(t, resp)
 		}
