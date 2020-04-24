@@ -1,10 +1,9 @@
 package quote
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"errors"
-
-	"github.com/google/go-cmp/cmp"
 )
 
 type entry struct {
@@ -31,7 +30,7 @@ func (m *MockValidator) Validate(quote []byte, message []byte, pp PackagePropert
 	if !found {
 		return errors.New("wrong quote")
 	}
-	if !cmp.Equal(entry.message, message) {
+	if !bytes.Equal(entry.message, message) {
 		return errors.New("wrong message")
 	}
 	if !pp.IsCompliant(entry.pp) {
