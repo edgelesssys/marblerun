@@ -13,9 +13,11 @@ import (
 	"edgeless.systems/mesh/coordinator/rpc"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
-func TestCore(t *testing.T) {
+func TestLogic(t *testing.T) {
 
 	const manifest string = `{
 		"Packages": {
@@ -297,4 +299,16 @@ func generateNodeCredentials() (cert []byte, csr []byte, err error) {
 	}
 	csr, err = x509.CreateCertificateRequest(rand.Reader, &templateCSR, privk)
 	return
+}
+
+func TestTLSSetup(t *testing.T) {
+	core, err := NewCore("edgeless", quote.NewMockValidator(), quote.NewMockIssuer())
+	assert.Nil(t, err)
+	cert, err := core.GetTLSCertificate()
+	assert.Nil(t, err)
+	assert.NotNil(t, cert)
+
+	creds := credentials.NewServerTLSFromCert(cert)
+	grpcServer := grpc.NewServer(grpc.Creds(creds))
+	assert.NotNil(t, grpcServer)
 }

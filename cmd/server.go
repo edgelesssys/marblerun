@@ -1,9 +1,10 @@
 package cmd
 
 import (
-	"crypto/tls"
 	"log"
 	"net"
+
+	"google.golang.org/grpc/credentials"
 
 	"edgeless.systems/mesh/coordinator/rpc"
 
@@ -23,8 +24,10 @@ func main() {
 	// TODO: use proper quote validator/issuer
 	core, err := coordinator.NewCore(orgName, quote.NewMockValidator(), quote.NewMockIssuer())
 	ensure(err)
+	cert, err := core.GetTLSCertificate()
+	ensure(err)
 
-	creds := NewServerTLSFromCert(core.Cert)
+	creds := credentials.NewServerTLSFromCert(cert)
 	grpcServer := grpc.NewServer(grpc.Creds(creds))
 	rpc.RegisterNodeServer(grpcServer, core)
 	socket, err := net.Listen("tcp", "localhost:50051")

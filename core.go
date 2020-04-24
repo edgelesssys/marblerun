@@ -6,9 +6,11 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"math"
 	"math/big"
@@ -82,67 +84,6 @@ func NewCore(orgName string, qv quote.Validator, qi quote.Issuer) (*Core, error)
 	return c, nil
 }
 
-func generateSerial() (*big.Int, error) {
-	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
-	return rand.Int(rand.Reader, serialNumberLimit)
-}
-
-func (c *Core) generateCert(orgName string) error {
-	defer c.mux.Unlock()
-	if err := c.requireState(uninitialized); err != nil {
-		return err
-	}
-
-	// code (including generateSerial()) adapted from golang.org/src/crypto/tls/generate_cert.go
-	pubk, privk, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		return err
-	}
-	notBefore := time.Now()
-	// TODO: produce shorter lived certificates
-	notAfter := notBefore.Add(math.MaxInt64)
-
-	serialNumber, err := generateSerial()
-	if err != nil {
-		return err
-	}
-
-	// TODO: what else do we need to set here?
-	// Do we need x509.KeyUsageKeyEncipherment?
-	template := x509.Certificate{
-		SerialNumber: serialNumber,
-		Subject: pkix.Name{
-			Organization: []string{orgName},
-			CommonName:   coordinatorName,
-		},
-		NotBefore: notBefore,
-		NotAfter:  notAfter,
-
-		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		BasicConstraintsValid: false,
-		IsCA:                  true,
-	}
-
-	certRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, pubk, privk)
-	if err != nil {
-		return err
-	}
-	cert, err := x509.ParseCertificate(certRaw)
-	if err != nil {
-		return err
-	}
-	quote, err := c.qi.Issue(certRaw)
-	if err != nil {
-		return err
-	}
-	c.cert = cert
-	c.quote = quote
-	c.privk = privk
-	c.advanceState()
-	return nil
-}
-
 // SetManifest implements the CoordinatorClient
 func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) error {
 	defer c.mux.Unlock()
@@ -160,7 +101,7 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) error {
 // GetQuote gets the quote of the server
 func (c *Core) GetQuote(ctx context.Context) ([]byte, error) {
 	if c.state == uninitialized {
-		return nil, errors.New("node doesn't have a cert or quote yet")
+		return nil, errors.New("don't have a cert or quote yet")
 	}
 	return c.quote, nil
 }
@@ -247,6 +188,90 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	// TODO: scan files for certificate placeholders like "$$root_ca" and replace those
 	c.activations[req.GetNodeType()]++
 	return resp, nil
+}
+
+// GetTLSCertificate creates a TLS certificate for the Coordinators self-signed x509 certificate
+func (c *Core) GetTLSCertificate() (*tls.Certificate, error) {
+	if c.state == uninitialized {
+		return nil, errors.New("don't have a cert yet")
+	}
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: c.cert.Raw})
+	if certPEM == nil {
+		return nil, errors.New("failed to encode certificate as PEM")
+	}
+	privkPKCS8, err := x509.MarshalPKCS8PrivateKey(c.privk)
+	if err != nil {
+		return nil, err
+	}
+	privkPEM := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privkPKCS8})
+	if privkPEM == nil {
+		return nil, errors.New("failed to encode privk as PEM")
+	}
+	certTLS, err := tls.X509KeyPair(certPEM, privkPEM)
+	if err != nil {
+		return nil, err
+	}
+	return &certTLS, nil
+}
+
+func generateSerial() (*big.Int, error) {
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	return rand.Int(rand.Reader, serialNumberLimit)
+}
+
+func (c *Core) generateCert(orgName string) error {
+	defer c.mux.Unlock()
+	if err := c.requireState(uninitialized); err != nil {
+		return err
+	}
+
+	// code (including generateSerial()) adapted from golang.org/src/crypto/tls/generate_cert.go
+	pubk, privk, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return err
+	}
+	notBefore := time.Now()
+	notAfter := notBefore.Add(math.MaxInt64)
+
+	serialNumber, err := generateSerial()
+	if err != nil {
+		return err
+	}
+
+	// TODO: what else do we need to set here?
+	// Do we need x509.KeyUsageKeyEncipherment?
+	template := x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject: pkix.Name{
+			Organization: []string{orgName},
+			CommonName:   coordinatorName,
+		},
+		NotBefore: notBefore,
+		NotAfter:  notAfter,
+
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: false,
+		IsCA:                  true,
+	}
+
+	certRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, pubk, privk)
+	if err != nil {
+		return err
+	}
+	cert, err := x509.ParseCertificate(certRaw)
+	if err != nil {
+		return err
+	}
+	quote, err := c.qi.Issue(certRaw)
+	if err != nil {
+		return err
+	}
+	c.cert = cert
+	c.quote = quote
+	c.privk = privk
+	c.advanceState()
+	return nil
 }
 
 func getclientTLSCert(ctx context.Context) []byte {
