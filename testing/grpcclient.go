@@ -4,9 +4,12 @@ import (
 	"crypto/tls"
 	"fmt"
 	"log"
+	"net"
 
 	"golang.org/x/net/context"
 
+	"edgeless.systems/mesh/coordinator"
+	"edgeless.systems/mesh/coordinator/quote"
 	"edgeless.systems/mesh/coordinator/rpc"
 
 	"google.golang.org/grpc"
@@ -42,17 +45,39 @@ func ensure(err error) {
 	}
 }
 
+type dummyValidator struct{}
+
+func (*dummyValidator) Validate([]byte, []byte, quote.PackageProperties, quote.InfrastructureProperties) error {
+	return nil
+}
+
+func runServer(url chan string) {
+	core, err := coordinator.NewCore("edgeless", &dummyValidator{}, quote.NewMockIssuer())
+	ensure(err)
+	cert, err := core.GetTLSCertificate()
+	ensure(err)
+
+	creds := credentials.NewServerTLSFromCert(cert)
+	grpcServer := grpc.NewServer(grpc.Creds(creds))
+	rpc.RegisterNodeServer(grpcServer, core)
+	// any port is fine...
+	socket, err := net.Listen("tcp", "localhost:0")
+	ensure(err)
+	url <- socket.Addr().String()
+	ensure(grpcServer.Serve(socket))
+}
+
 func main() {
+	url := make(chan string)
+	go runServer(url)
 	cert, err := tls.X509KeyPair([]byte(certPEM), []byte(privkPEM))
 	ensure(err)
 	creds := credentials.NewServerTLSFromCert(&cert)
-	conn, err := grpc.Dial("localhost:50051", grpc.WithTransportCredentials(creds))
+	conn, err := grpc.Dial(<-url, grpc.WithTransportCredentials(creds))
 	ensure(err)
 	client := rpc.NewNodeClient(conn)
-	req := rpc.ActivationReq{
-		NodeType: "abc",
-	}
-	resp, err := client.Activate(context.TODO(), &req)
+	resp, err := client.Activate(context.TODO(), &rpc.ActivationReq{})
+	fmt.Println("Done.")
 	ensure(err)
 	fmt.Println(resp.GetCertificate())
 }
