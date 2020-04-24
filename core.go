@@ -99,6 +99,7 @@ func (c *Core) generateCert(orgName string) error {
 		return err
 	}
 	notBefore := time.Now()
+	// TODO: produce shorter lived certificates
 	notAfter := notBefore.Add(math.MaxInt64)
 
 	serialNumber, err := generateSerial()
@@ -220,6 +221,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	// TODO: do we actually need the CSR?
 	csr.Subject.CommonName = req.GetNodeType() + strconv.FormatUint(uint64(activations), 10)
 	notBefore := time.Now()
+	// TODO: produce shorter lived certificates
 	notAfter := notBefore.Add(math.MaxInt64)
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
