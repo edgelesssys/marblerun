@@ -195,6 +195,7 @@ func (c *Core) GetTLSCertificate() (*tls.Certificate, error) {
 	if c.state == uninitialized {
 		return nil, errors.New("don't have a cert yet")
 	}
+	// DER -> PEM -> TLS seems to be the only viable conversion here, somewhat cumbersome...
 	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: c.cert.Raw})
 	if certPEM == nil {
 		return nil, errors.New("failed to encode certificate as PEM")

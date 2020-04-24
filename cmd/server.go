@@ -17,12 +17,18 @@ func ensure(err error) {
 	log.Fatalln(err)
 }
 
+type dummyValidator struct{}
+
+func (*dummyValidator) Validate([]byte, []byte, quote.PackageProperties, quote.InfrastructureProperties) error {
+	return nil
+}
+
 func main() {
 	// TODO: parse args
 	const orgName string = "edgeless"
 
 	// TODO: use proper quote validator/issuer
-	core, err := coordinator.NewCore(orgName, quote.NewMockValidator(), quote.NewMockIssuer())
+	core, err := coordinator.NewCore(orgName, &dummyValidator{}, quote.NewMockIssuer())
 	ensure(err)
 	cert, err := core.GetTLSCertificate()
 	ensure(err)
