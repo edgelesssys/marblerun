@@ -17,7 +17,6 @@ type MockValidator struct {
 	valid map[string]entry
 }
 
-// NewMockValidator creates a new MockValidator
 func NewMockValidator() *MockValidator {
 	return &MockValidator{
 		make(map[string]entry),
@@ -50,7 +49,6 @@ func (m *MockValidator) AddValidQuote(quote []byte, message []byte, pp PackagePr
 // MockIssuer is a mockup quote issuer
 type MockIssuer struct{}
 
-// NewMockIssuer creates a new MockIssuer
 func NewMockIssuer() *MockIssuer {
 	return &MockIssuer{}
 }
