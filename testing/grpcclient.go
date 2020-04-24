@@ -68,20 +68,6 @@ func runTLSServer(url chan string) {
 	fmt.Println("leaving")
 }
 
-func runServer(url chan string) {
-	core, err := coordinator.NewCore("edgeless", &dummyValidator{}, quote.NewMockIssuer())
-	ensure(err)
-
-	grpcServer := grpc.NewServer()
-	rpc.RegisterNodeServer(grpcServer, core)
-	// any port is fine...
-	socket, err := net.Listen("tcp", "localhost:0")
-	ensure(err)
-	url <- socket.Addr().String()
-	ensure(grpcServer.Serve(socket))
-	fmt.Println("leaving")
-}
-
 func runTLSClient(url string) {
 	cert, err := tls.X509KeyPair([]byte(certPEM), []byte(privkPEM))
 	ensure(err)
@@ -93,15 +79,6 @@ func runTLSClient(url string) {
 	}
 	creds := credentials.NewTLS(&config)
 	conn, err := grpc.Dial(url, grpc.WithTransportCredentials(creds))
-	ensure(err)
-	client := rpc.NewNodeClient(conn)
-	resp, err := client.Activate(context.TODO(), &rpc.ActivationReq{})
-	ensure(err)
-	fmt.Println(resp.GetCertificate())
-}
-
-func runClient(url string) {
-	conn, err := grpc.Dial(url, grpc.WithInsecure())
 	ensure(err)
 	client := rpc.NewNodeClient(conn)
 	resp, err := client.Activate(context.TODO(), &rpc.ActivationReq{})
