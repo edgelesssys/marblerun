@@ -18,6 +18,9 @@ import (
 	"sync"
 	"time"
 
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/peer"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -129,7 +132,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	}
 	infraMatch := false
 	for _, infra := range c.manifest.Infrastructures {
-		if c.qv.Validate(req.GetQuote(), tlsCert, pkg, infra) == nil {
+		if c.qv.Validate(req.GetQuote(), tlsCert.Raw, pkg, infra) == nil {
 			infraMatch = true
 			break
 		}
@@ -275,11 +278,18 @@ func (c *Core) generateCert(orgName string) error {
 	return nil
 }
 
-func getclientTLSCert(ctx context.Context) []byte {
-	// TODO: we assume for now that the client TLS cert is available via the context. Need to figure out how exactly this works with gRPC and TLS.
-	cert, ok := ctx.Value(clientTLSCert).([]byte)
-	if ok {
-		return cert
+func getclientTLSCert(ctx context.Context) *x509.Certificate {
+	peer, ok := peer.FromContext(ctx)
+	if !ok {
+		return nil
 	}
-	return nil
+	tlsInfo, ok := peer.AuthInfo.(credentials.TLSInfo)
+	// the following check is just for safety (not for security)
+	if !ok {
+		return nil
+	}
+	if len(tlsInfo.State.PeerCertificates) == 0 {
+		return nil
+	}
+	return tlsInfo.State.PeerCertificates[0]
 }
