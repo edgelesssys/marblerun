@@ -51,7 +51,7 @@ func (*dummyValidator) Validate([]byte, []byte, quote.PackageProperties, quote.I
 	return nil
 }
 
-func runServer(url chan string) {
+func runTLSServer(url chan string) {
 	core, err := coordinator.NewCore("edgeless", &dummyValidator{}, quote.NewMockIssuer())
 	ensure(err)
 	cert, err := core.GetTLSCertificate()
@@ -65,19 +65,47 @@ func runServer(url chan string) {
 	ensure(err)
 	url <- socket.Addr().String()
 	ensure(grpcServer.Serve(socket))
+	fmt.Println("leaving")
+}
+
+func runServer(url chan string) {
+	core, err := coordinator.NewCore("edgeless", &dummyValidator{}, quote.NewMockIssuer())
+	ensure(err)
+
+	grpcServer := grpc.NewServer()
+	rpc.RegisterNodeServer(grpcServer, core)
+	// any port is fine...
+	socket, err := net.Listen("tcp", "localhost:0")
+	ensure(err)
+	url <- socket.Addr().String()
+	ensure(grpcServer.Serve(socket))
+	fmt.Println("leaving")
+}
+
+func runTLSClient(url string) {
+	cert, err := tls.X509KeyPair([]byte(certPEM), []byte(privkPEM))
+	ensure(err)
+	creds := credentials.NewServerTLSFromCert(&cert)
+	conn, err := grpc.Dial(url, grpc.WithTransportCredentials(creds))
+	ensure(err)
+	client := rpc.NewNodeClient(conn)
+	resp, err := client.Activate(context.TODO(), &rpc.ActivationReq{})
+	ensure(err)
+	fmt.Println(resp.GetCertificate())
+}
+
+func runClient(url string) {
+	conn, err := grpc.Dial(url, grpc.WithInsecure())
+	ensure(err)
+	client := rpc.NewNodeClient(conn)
+	resp, err := client.Activate(context.TODO(), &rpc.ActivationReq{})
+	ensure(err)
+	fmt.Println(resp.GetCertificate())
 }
 
 func main() {
 	url := make(chan string)
 	go runServer(url)
-	cert, err := tls.X509KeyPair([]byte(certPEM), []byte(privkPEM))
-	ensure(err)
-	creds := credentials.NewServerTLSFromCert(&cert)
-	conn, err := grpc.Dial(<-url, grpc.WithTransportCredentials(creds))
-	ensure(err)
-	client := rpc.NewNodeClient(conn)
-	resp, err := client.Activate(context.TODO(), &rpc.ActivationReq{})
+	runClient(<-url)
 	fmt.Println("Done.")
-	ensure(err)
-	fmt.Println(resp.GetCertificate())
 }
