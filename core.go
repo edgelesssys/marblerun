@@ -175,12 +175,6 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 		return nil, status.Error(codes.InvalidArgument, "unknown node type requested")
 	}
 
-	// check activation budget (MaxActivations == 0 means infinite budget)
-	activations := c.activations[req.GetNodeType()]
-	if node.MaxActivations > 0 && activations >= node.MaxActivations {
-		return nil, status.Error(codes.ResourceExhausted, "reached max activations count for node type")
-	}
-
 	// get the node's TLS cert (used in this connection) and check corresponding quote
 	tlsCert := getclientTLSCert(ctx)
 	if tlsCert == nil {
@@ -199,6 +193,12 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	}
 	if !infraMatch {
 		return nil, status.Error(codes.Unauthenticated, "invalid quote")
+	}
+
+	// check activation budget (MaxActivations == 0 means infinite budget)
+	activations := c.activations[req.GetNodeType()]
+	if node.MaxActivations > 0 && activations >= node.MaxActivations {
+		return nil, status.Error(codes.ResourceExhausted, "reached max activations count for node type")
 	}
 
 	// parse and verify CSR
