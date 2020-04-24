@@ -151,6 +151,7 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) error {
 	if err := json.Unmarshal(rawManifest, &c.manifest); err != nil {
 		return err
 	}
+	// TODO: sanitize manifest
 	c.advanceState()
 	return nil
 }
@@ -182,7 +183,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	}
 	pkg, pkgExists := c.manifest.Packages[node.Package]
 	if !pkgExists {
-		return nil, status.Error(codes.InvalidArgument, "unknown package requested")
+		return nil, status.Error(codes.Internal, "undefined package")
 	}
 	infraMatch := false
 	for _, infra := range c.manifest.Infrastructures {
