@@ -6,6 +6,6 @@ import "context"
 type ClientServer interface {
 	// SetManifest installs the manifest in the coordinator
 	SetManifest(ctx context.Context, rawManifest []byte) error
-	// GetQuote gets the of the coordinator's certificate
+	// GetQuote gets the quote for the coordinator's certificate
 	GetQuote(ctx context.Context) ([]byte, error)
 }
