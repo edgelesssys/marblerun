@@ -85,7 +85,13 @@ func runServer(url chan string) {
 func runTLSClient(url string) {
 	cert, err := tls.X509KeyPair([]byte(certPEM), []byte(privkPEM))
 	ensure(err)
-	creds := credentials.NewServerTLSFromCert(&cert)
+
+	config := tls.Config{
+		// NOTE: in our protocol it is not unsecure to skip server verification
+		InsecureSkipVerify: true,
+		Certificates:       []tls.Certificate{cert},
+	}
+	creds := credentials.NewTLS(&config)
 	conn, err := grpc.Dial(url, grpc.WithTransportCredentials(creds))
 	ensure(err)
 	client := rpc.NewNodeClient(conn)
@@ -105,7 +111,7 @@ func runClient(url string) {
 
 func main() {
 	url := make(chan string)
-	go runServer(url)
-	runClient(<-url)
+	go runTLSServer(url)
+	runTLSClient(<-url)
 	fmt.Println("Done.")
 }
