@@ -3,7 +3,7 @@ package quote
 // Validator validates quotes
 type Validator interface {
 	// Validate validates a quote for a given message and properties
-	Validate(quote []byte, message []byte, pr PackageProperties, ir InfrastructureProperties) error
+	Validate(quote []byte, message []byte, pp PackageProperties, ip InfrastructureProperties) error
 }
 
 // Issuer issues quotes

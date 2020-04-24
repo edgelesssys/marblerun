@@ -1,6 +1,6 @@
 package rpc
 
-import context "context"
+import "context"
 
 // ClientServer defines the interface the coordinator exposes to clients via HTTP
 type ClientServer interface {

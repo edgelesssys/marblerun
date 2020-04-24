@@ -26,7 +26,7 @@ func NewMockValidator() *MockValidator {
 }
 
 // Validate implements the Validator interface
-func (m *MockValidator) Validate(quote []byte, message []byte, pr PackageProperties, ir InfrastructureProperties) error {
+func (m *MockValidator) Validate(quote []byte, message []byte, pp PackageProperties, ip InfrastructureProperties) error {
 	entry, found := m.valid[string(quote)]
 	if !found {
 		return errors.New("wrong quote")
@@ -34,10 +34,10 @@ func (m *MockValidator) Validate(quote []byte, message []byte, pr PackagePropert
 	if !cmp.Equal(entry.message, message) {
 		return errors.New("wrong message")
 	}
-	if !pr.IsCompliant(entry.pp) {
+	if !pp.IsCompliant(entry.pp) {
 		return errors.New("package does not comply")
 	}
-	if !ir.IsCompliant(entry.ip) {
+	if !ip.IsCompliant(entry.ip) {
 		return errors.New("infrastructure does not comply")
 	}
 	return nil
