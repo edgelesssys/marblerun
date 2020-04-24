@@ -14,7 +14,9 @@ import (
 )
 
 func ensure(err error) {
-	log.Fatalln(err)
+	if err != nil {
+		log.Fatalln(err)
+	}
 }
 
 type dummyValidator struct{}
