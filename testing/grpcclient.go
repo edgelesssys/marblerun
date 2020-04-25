@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"log"
-	"net"
 
 	"golang.org/x/net/context"
 
@@ -51,23 +50,6 @@ func (*dummyValidator) Validate([]byte, []byte, quote.PackageProperties, quote.I
 	return nil
 }
 
-func runTLSServer(url chan string) {
-	core, err := coordinator.NewCore("edgeless", &dummyValidator{}, quote.NewMockIssuer())
-	ensure(err)
-	cert, err := core.GetTLSCertificate()
-	ensure(err)
-
-	creds := credentials.NewServerTLSFromCert(cert)
-	grpcServer := grpc.NewServer(grpc.Creds(creds))
-	rpc.RegisterNodeServer(grpcServer, core)
-	// any port is fine...
-	socket, err := net.Listen("tcp", "localhost:0")
-	ensure(err)
-	url <- socket.Addr().String()
-	ensure(grpcServer.Serve(socket))
-	fmt.Println("leaving")
-}
-
 func runTLSClient(url string) {
 	cert, err := tls.X509KeyPair([]byte(certPEM), []byte(privkPEM))
 	ensure(err)
@@ -87,8 +69,16 @@ func runTLSClient(url string) {
 }
 
 func main() {
-	url := make(chan string)
-	go runTLSServer(url)
-	runTLSClient(<-url)
+	addrChan := make(chan string)
+	errChan := make(chan error)
+	core, _ := coordinator.NewCore("edgeless", &dummyValidator{}, quote.NewMockIssuer())
+	go coordinator.RunGRPCServer(core, "localhost:0", addrChan, errChan)
+	var addr string
+	select {
+	case err := <-errChan:
+		log.Fatalln(err)
+	case addr = <-addrChan:
+	}
+	runTLSClient(addr)
 	fmt.Println("Done.")
 }
