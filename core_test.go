@@ -139,9 +139,9 @@ func TestCore(t *testing.T) {
 		c, err := NewCore("edgeless", validator, issuer)
 		assert.NotNil(c)
 		assert.Nil(err)
-		assert.Equal(c.state, acceptingManifest)
-		assert.Equal(c.cert.Subject.Organization, []string{"edgeless"})
-		assert.Equal(c.cert.Subject.CommonName, coordinatorName)
+		assert.Equal(acceptingManifest, c.state)
+		assert.Equal([]string{"edgeless"}, c.cert.Subject.Organization)
+		assert.Equal(coordinatorName, c.cert.Subject.CommonName)
 		clientServer = c
 		nodeServer = c
 	})
