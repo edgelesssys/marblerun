@@ -81,6 +81,7 @@ func TestCore(t *testing.T) {
 		}
 	}`
 
+	assert := assert.New(t)
 	var clientServer rpc.ClientServer
 	var nodeServer rpc.NodeServer
 
@@ -91,13 +92,13 @@ func TestCore(t *testing.T) {
 
 	createTikvConnection := func(nodeType string) (ctx context.Context, req *rpc.ActivationReq) {
 		cert, csr, err := generateNodeCredentials()
-		assert.Nil(t, err)
-		assert.NotNil(t, cert, csr)
+		assert.Nil(err)
+		assert.NotNil(cert, csr)
 
 		// create mock quote for certificate
 		certQuote, err := issuer.Issue(cert)
-		assert.Nil(t, err)
-		assert.NotNil(t, certQuote)
+		assert.Nil(err)
+		assert.NotNil(certQuote)
 
 		MREnclave := [32]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
 
@@ -136,11 +137,11 @@ func TestCore(t *testing.T) {
 
 	t.Run("create server", func(t *testing.T) {
 		c, err := NewCore("edgeless", validator, issuer)
-		assert.NotNil(t, c)
-		assert.Nil(t, err)
-		assert.Equal(t, c.state, acceptingManifest)
-		assert.Equal(t, c.cert.Subject.Organization, []string{"edgeless"})
-		assert.Equal(t, c.cert.Subject.CommonName, coordinatorName)
+		assert.NotNil(c)
+		assert.Nil(err)
+		assert.Equal(c.state, acceptingManifest)
+		assert.Equal(c.cert.Subject.Organization, []string{"edgeless"})
+		assert.Equal(c.cert.Subject.CommonName, coordinatorName)
 		clientServer = c
 		nodeServer = c
 	})
@@ -148,50 +149,50 @@ func TestCore(t *testing.T) {
 	t.Run("try to activate first tikv prematurely", func(t *testing.T) {
 		ctx, req := createTikvConnection("tikv_first")
 		resp, err := nodeServer.Activate(ctx, req)
-		assert.NotNil(t, err)
-		assert.Nil(t, resp)
+		assert.NotNil(err)
+		assert.Nil(resp)
 	})
 
 	t.Run("try to set broken manifest", func(t *testing.T) {
-		assert.NotNil(t, clientServer.SetManifest(context.TODO(), []byte(manifest)[:len(manifest)-1]))
+		assert.NotNil(clientServer.SetManifest(context.TODO(), []byte(manifest)[:len(manifest)-1]))
 	})
 
 	t.Run("set manifest", func(t *testing.T) {
-		assert.Nil(t, clientServer.SetManifest(context.TODO(), []byte(manifest)))
+		assert.Nil(clientServer.SetManifest(context.TODO(), []byte(manifest)))
 	})
 
 	t.Run("activate first tikv", func(t *testing.T) {
 		ctx, req := createTikvConnection("tikv_first")
 		resp, err := nodeServer.Activate(ctx, req)
-		assert.Nil(t, err)
-		assert.NotNil(t, resp)
+		assert.Nil(err)
+		assert.NotNil(resp)
 	})
 
 	t.Run("try to activate another first tikv", func(t *testing.T) {
 		ctx, req := createTikvConnection("tikv_first")
 		resp, err := nodeServer.Activate(ctx, req)
-		assert.NotNil(t, err)
-		assert.Nil(t, resp)
+		assert.NotNil(err)
+		assert.Nil(resp)
 	})
 
 	t.Run("activate 10 other tikv", func(t *testing.T) {
 		for i := 0; i < 10; i++ {
 			ctx, req := createTikvConnection("tikv_other")
 			resp, err := nodeServer.Activate(ctx, req)
-			assert.Nil(t, err)
-			assert.NotNil(t, resp)
+			assert.Nil(err)
+			assert.NotNil(resp)
 		}
 	})
 
 	createTidbConnection := func() (ctx context.Context, req *rpc.ActivationReq) {
 		cert, csr, err := generateNodeCredentials()
-		assert.Nil(t, err)
-		assert.NotNil(t, cert, csr)
+		assert.Nil(err)
+		assert.NotNil(cert, csr)
 
 		// create mock quote for certificate
 		certQuote, err := issuer.Issue(cert)
-		assert.Nil(t, err)
-		assert.NotNil(t, certQuote)
+		assert.Nil(err)
+		assert.NotNil(certQuote)
 
 		MRSigner := [32]byte{31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0}
 		ISVProdID := uint16(44)
@@ -234,8 +235,8 @@ func TestCore(t *testing.T) {
 		for i := 0; i < 10; i++ {
 			ctx, req := createTidbConnection()
 			resp, err := nodeServer.Activate(ctx, req)
-			assert.Nil(t, err)
-			assert.NotNil(t, resp)
+			assert.Nil(err)
+			assert.NotNil(resp)
 		}
 	})
 }
@@ -271,6 +272,9 @@ func generateNodeCredentials() (cert []byte, csr []byte, err error) {
 		IsCA:                  true,
 	}
 	cert, err = x509.CreateCertificate(rand.Reader, &templateCert, &templateCert, pubk, privk)
+	if err != nil {
+		return
+	}
 
 	// create CSR
 	templateCSR := x509.CertificateRequest{
