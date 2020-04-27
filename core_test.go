@@ -158,7 +158,7 @@ func TestLogic(t *testing.T) {
 		}
 	}
 	for i := 0; i < 10; i++ {
-		spawner.newNode("backend", pickInfra(i), true)
+		spawner.newNode("backend_other", pickInfra(i), true)
 	}
 
 	// activate 10 frontend
