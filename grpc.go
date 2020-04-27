@@ -9,8 +9,8 @@ import (
 )
 
 // RunGRPCServer starts a gRPC with the given Coordinator core.
-// `address` is the desired address like "localhost:0".
-// The address is returned via `addrChan`.
+// `address` is the desired TCP address like "localhost:0".
+// The effective TCP address is returned via `addrChan`.
 func RunGRPCServer(core *Core, addr string, addrChan chan string, errChan chan error) {
 	cert, err := core.GetTLSCertificate()
 	if err != nil {
