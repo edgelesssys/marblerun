@@ -3,11 +3,15 @@ package coordinator
 import (
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/json"
 	"math"
 	"testing"
 	"time"
+
+	"edgeless.systems/mesh/coordinator/certificates"
 
 	"edgeless.systems/mesh/coordinator/quote"
 	"edgeless.systems/mesh/coordinator/rpc"
@@ -18,15 +22,15 @@ import (
 )
 
 func TestLogic(t *testing.T) {
-
-	const manifest string = `{
+	assert := assert.New(t)
+	const manifestJSON string = `{
 		"Packages": {
-			"tikv": {
+			"backend": {
 				"MREnclave": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31],
 				"MiscSelect": 1111111,
 				"Attributes": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
 			},
-			"tidb": {
+			"frontend": {
 				"MRSigner": [31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0],
 				"ISVProdID": 44,
 				"ISVSVN": 3,
@@ -49,8 +53,8 @@ func TestLogic(t *testing.T) {
 			}
 		},
 		"Nodes": {
-			"tikv_first": {
-				"Package": "tikv",
+			"backend_first": {
+				"Package": "backend",
 				"MaxActivations": 1,
 				"Parameters": {
 					"Files": {
@@ -66,16 +70,16 @@ func TestLogic(t *testing.T) {
 					]
 				}
 			},
-			"tikv_other": {
-				"Package": "tikv",
+			"backend_other": {
+				"Package": "backend",
 				"Parameters": {
 					"Argv": [
 						"serve"
 					]
 				}
 			},
-			"tidb": {
-				"Package": "tidb"
+			"frontend": {
+				"Package": "frontend"
 			}
 		},
 		"Clients": {
@@ -83,59 +87,17 @@ func TestLogic(t *testing.T) {
 		}
 	}`
 
-	assert := assert.New(t)
-	var clientServer rpc.ClientServer
-	var nodeServer rpc.NodeServer
+	// parse manifest
+	var manifest Manifest
+	err := json.Unmarshal([]byte(manifestJSON), &manifest)
+	assert.Nil(err)
 
+	var clientServer rpc.ClientServer
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
-	MiscSelect := uint32(1111111)
-	Attributes := [16]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
 
-	createTikvConnection := func(nodeType string) (ctx context.Context, req *rpc.ActivationReq) {
-		cert, csr, err := generateNodeCredentials()
-		assert.Nil(err)
-		assert.NotNil(cert, csr)
-
-		// create mock quote for certificate
-		certQuote, err := issuer.Issue(cert)
-		assert.Nil(err)
-		assert.NotNil(certQuote)
-
-		MREnclave := [32]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
-
-		QESVN := uint16(2)
-		PCESVN := uint16(3)
-		CPUSVN := [16]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
-
-		validator.AddValidQuote(certQuote, cert,
-			// tikv
-			quote.PackageProperties{
-				MREnclave:  &MREnclave,
-				MiscSelect: &MiscSelect,
-				Attributes: &Attributes,
-			},
-			// azure
-			quote.InfrastructureProperties{
-				QESVN:  &QESVN,
-				PCESVN: &PCESVN,
-				CPUSVN: &CPUSVN,
-				RootCA: []byte{3, 3, 3},
-			},
-		)
-
-		req = &rpc.ActivationReq{
-			CSR:      csr,
-			NodeType: nodeType,
-			Quote:    certQuote,
-		}
-
-		// create a connection context that contains the client cert
-		ctx = context.WithValue(context.TODO(), clientTLSCert, cert)
-		return
-	}
-
-	// create server
+	// create core and run gRPC server
+	var grpcAddr string
 	{
 		c, err := NewCore("edgeless", validator, issuer)
 		assert.NotNil(c)
@@ -143,121 +105,70 @@ func TestLogic(t *testing.T) {
 		assert.Equal(acceptingManifest, c.state)
 		assert.Equal([]string{"edgeless"}, c.cert.Subject.Organization)
 		assert.Equal(coordinatorName, c.cert.Subject.CommonName)
+
+		// run gRPC server on localhost
+		addrChan := make(chan string)
+		errChan := make(chan error)
+		go RunGRPCServer(c, "localhost:0", addrChan, errChan)
+		select {
+		case err = <-errChan:
+			assert.Fail("Failed to start gRPC server", err)
+		case grpcAddr = <-addrChan:
+		}
+
 		clientServer = c
-		nodeServer = c
 	}
 
+	spawner := nodeSpawner{
+		assert:     assert,
+		issuer:     issuer,
+		validator:  validator,
+		serverAddr: grpcAddr,
+		manifest:   manifest,
+	}
+
+	// get quote
 	{
 		quote, err := clientServer.GetQuote(context.TODO())
 		assert.NotNil(quote)
 		assert.Nil(err)
 	}
 
-	// try to activate first tikv prematurely
-	{
-		ctx, req := createTikvConnection("tikv_first")
-		resp, err := nodeServer.Activate(ctx, req)
-		assert.NotNil(err)
-		assert.Nil(resp)
-	}
+	// try to activate first backend node prematurely
+	spawner.newNode("backend_first", "azure", false)
 
 	// try to set broken manifest
-	{
-		assert.NotNil(clientServer.SetManifest(context.TODO(), []byte(manifest)[:len(manifest)-1]))
-	}
+	assert.NotNil(clientServer.SetManifest(context.TODO(), []byte(manifestJSON)[:len(manifestJSON)-1]))
 
 	// set manifest
-	{
-		assert.Nil(clientServer.SetManifest(context.TODO(), []byte(manifest)))
-	}
+	assert.Nil(clientServer.SetManifest(context.TODO(), []byte(manifestJSON)))
 
-	// activate first tikv
-	{
-		ctx, req := createTikvConnection("tikv_first")
-		resp, err := nodeServer.Activate(ctx, req)
-		assert.Nil(err)
-		assert.NotNil(resp)
-	}
+	// activate first backend
+	spawner.newNode("backend_first", "azure", true)
 
-	// try to activate another first tikv
-	{
-		ctx, req := createTikvConnection("tikv_first")
-		resp, err := nodeServer.Activate(ctx, req)
-		assert.NotNil(err)
-		assert.Nil(resp)
-	}
+	// try to activate another first backend
+	spawner.newNode("backend_first", "azure", false)
 
-	// activate 10 other tikv
-	{
-		for i := 0; i < 10; i++ {
-			ctx, req := createTikvConnection("tikv_other")
-			resp, err := nodeServer.Activate(ctx, req)
-			assert.Nil(err)
-			assert.NotNil(resp)
+	// activate 10 other backend
+	pickInfra := func(i int) string {
+		if i&1 == 0 {
+			return "azure"
+		} else {
+			return "alibaba"
 		}
 	}
-
-	createTidbConnection := func() (ctx context.Context, req *rpc.ActivationReq) {
-		cert, csr, err := generateNodeCredentials()
-		assert.Nil(err)
-		assert.NotNil(cert, csr)
-
-		// create mock quote for certificate
-		certQuote, err := issuer.Issue(cert)
-		assert.Nil(err)
-		assert.NotNil(certQuote)
-
-		MRSigner := [32]byte{31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0}
-		ISVProdID := uint16(44)
-		ISVSVN := uint16(3)
-
-		QESVN := uint16(2)
-		PCESVN := uint16(4)
-		CPUSVN := [16]byte{15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0}
-
-		validator.AddValidQuote(certQuote, cert,
-			// tidb
-			quote.PackageProperties{
-				MRSigner:   &MRSigner,
-				ISVProdID:  &ISVProdID,
-				ISVSVN:     &ISVSVN,
-				MiscSelect: &MiscSelect,
-				Attributes: &Attributes,
-			},
-			// alibaba
-			quote.InfrastructureProperties{
-				QESVN:  &QESVN,
-				PCESVN: &PCESVN,
-				CPUSVN: &CPUSVN,
-				RootCA: []byte{4, 4, 4},
-			},
-		)
-
-		req = &rpc.ActivationReq{
-			CSR:      csr,
-			NodeType: "tidb",
-			Quote:    certQuote,
-		}
-
-		// create a connection context that contains the client cert
-		ctx = context.WithValue(context.TODO(), clientTLSCert, cert)
-		return
+	for i := 0; i < 10; i++ {
+		spawner.newNode("backend", pickInfra(i), true)
 	}
 
-	// activate 10 tidb
-	{
-		for i := 0; i < 10; i++ {
-			ctx, req := createTidbConnection()
-			resp, err := nodeServer.Activate(ctx, req)
-			assert.Nil(err)
-			assert.NotNil(resp)
-		}
+	// activate 10 frontend
+	for i := 0; i < 10; i++ {
+		spawner.newNode("frontend", pickInfra(i), true)
 	}
 }
 
-func generateNodeCredentials() (cert []byte, csr []byte, err error) {
-	const orgName string = "Acme Inc."
-	// create CSR for first TiKV node
+func generateNodeCredentials() (certTLS *tls.Certificate, cert []byte, csr []byte, err error) {
+	const orgName string = "Edgeless Systems GmbH"
 	pubk, privk, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		return
@@ -270,7 +181,6 @@ func generateNodeCredentials() (cert []byte, csr []byte, err error) {
 	if err != nil {
 		return
 	}
-
 	templateCert := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
@@ -289,7 +199,11 @@ func generateNodeCredentials() (cert []byte, csr []byte, err error) {
 	if err != nil {
 		return
 	}
-
+	// create TLS certificate
+	certTLS, err = certificates.TLSFromDER(cert, privk)
+	if err != nil {
+		return
+	}
 	// create CSR
 	templateCSR := x509.CertificateRequest{
 		Subject: pkix.Name{
@@ -301,14 +215,55 @@ func generateNodeCredentials() (cert []byte, csr []byte, err error) {
 	return
 }
 
-func TestTLSSetup(t *testing.T) {
-	core, err := NewCore("edgeless", quote.NewMockValidator(), quote.NewMockIssuer())
-	assert.Nil(t, err)
-	cert, err := core.GetTLSCertificate()
-	assert.Nil(t, err)
-	assert.NotNil(t, cert)
+type nodeSpawner struct {
+	manifest   Manifest
+	validator  *quote.MockValidator
+	issuer     quote.Issuer
+	serverAddr string
+	assert     *assert.Assertions
+}
 
-	creds := credentials.NewServerTLSFromCert(cert)
-	grpcServer := grpc.NewServer(grpc.Creds(creds))
-	assert.NotNil(t, grpcServer)
+func (ns nodeSpawner) newNode(nodeType string, infraName string, shouldSucceed bool) {
+	// create certificate and CSR
+	certTLS, cert, csr, err := generateNodeCredentials()
+	ns.assert.NotNil(cert)
+	ns.assert.NotNil(csr)
+	ns.assert.Nil(err)
+
+	// create mock quote using values from the manifest
+	quote, err := ns.issuer.Issue(cert)
+	ns.assert.NotNil(quote)
+	ns.assert.Nil(err)
+	node, ok := ns.manifest.Nodes[nodeType]
+	ns.assert.True(ok)
+	pkg, ok := ns.manifest.Packages[node.Package]
+	ns.assert.True(ok)
+	infra, ok := ns.manifest.Infrastructures[infraName]
+	ns.assert.True(ok)
+	ns.validator.AddValidQuote(quote, cert, pkg, infra)
+
+	// call Activate() over TLS
+	tlsConfig := tls.Config{
+		// NOTE: in our protocol it is not unsecure to skip server verification
+		InsecureSkipVerify: true,
+		Certificates:       []tls.Certificate{*certTLS},
+	}
+	tlsCreds := credentials.NewTLS(&tlsConfig)
+	conn, err := grpc.Dial(ns.serverAddr, grpc.WithTransportCredentials(tlsCreds))
+	ns.assert.Nil(err)
+	client := rpc.NewNodeClient(conn)
+	resp, err := client.Activate(context.TODO(), &rpc.ActivationReq{
+		CSR:      csr,
+		NodeType: nodeType,
+		Quote:    quote,
+	})
+
+	if shouldSucceed {
+		ns.assert.NotNil(resp)
+		ns.assert.Nil(err)
+	} else {
+		ns.assert.Nil(resp)
+		ns.assert.NotNil(err)
+	}
+	// TODO: check response values
 }
