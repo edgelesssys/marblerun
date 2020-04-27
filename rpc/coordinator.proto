@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package rpc;
+option go_package = "edgeless.systems/mesh/coordinator/rpc";
+
+service Node {
+  // Activate activates a node in the mesh.
+  rpc Activate (ActivationReq) returns (ActivationResp);
+}
+
+message ActivationReq {
+  bytes Quote = 1;
+  bytes CSR = 2;
+  string NodeType = 3;
+}
+
+message ActivationResp {
+  bytes Certificate = 1;
+  Parameters Parameters = 2;
+}
+
+message Parameters {
+  map<string, bytes> Files = 1;
+  map<string, string> Env = 2;
+  repeated string Argv = 3;
+}
