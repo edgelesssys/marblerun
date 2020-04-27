@@ -258,12 +258,22 @@ func (ns nodeSpawner) newNode(nodeType string, infraName string, shouldSucceed b
 		Quote:    quote,
 	})
 
-	if shouldSucceed {
-		ns.assert.Nil(err)
-		ns.assert.NotNil(resp)
-	} else {
+	if !shouldSucceed {
 		ns.assert.NotNil(err)
 		ns.assert.Nil(resp)
+		return
 	}
-	// TODO: check response values
+	ns.assert.Nil(err)
+	ns.assert.NotNil(resp)
+
+	// validate response
+	params := resp.GetParameters()
+	ns.assert.Equal(node.Parameters.Files, params.Files)
+	ns.assert.Equal(node.Parameters.Env, params.Env)
+	ns.assert.Equal(node.Parameters.Argv, params.Argv)
+
+	newCert, err := x509.ParseCertificate(resp.GetCertificate())
+	ns.assert.Nil(err)
+	ns.assert.Equal(coordinatorName, newCert.Issuer.CommonName)
+	// TODO: properly verify issued certificate
 }
