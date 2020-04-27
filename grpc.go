@@ -1,6 +1,7 @@
 package coordinator
 
 import (
+	"crypto/tls"
 	"net"
 
 	"edgeless.systems/mesh/coordinator/rpc"
@@ -17,7 +18,12 @@ func RunGRPCServer(core *Core, addr string, addrChan chan string, errChan chan e
 		errChan <- err
 		return
 	}
-	creds := credentials.NewServerTLSFromCert(cert)
+	tlsConfig := tls.Config{
+		Certificates: []tls.Certificate{*cert},
+		// NOTE: we'll verify the cert later using the given quote
+		ClientAuth: tls.RequireAnyClientCert,
+	}
+	creds := credentials.NewTLS(&tlsConfig)
 	grpcServer := grpc.NewServer(grpc.Creds(creds))
 	rpc.RegisterNodeServer(grpcServer, core)
 	socket, err := net.Listen("tcp", addr)
@@ -29,6 +35,5 @@ func RunGRPCServer(core *Core, addr string, addrChan chan string, errChan chan e
 	err = grpcServer.Serve(socket)
 	if err != nil {
 		errChan <- err
-		return
 	}
 }

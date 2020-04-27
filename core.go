@@ -116,7 +116,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	}
 
 	// get the node's TLS cert (used in this connection) and check corresponding quote
-	tlsCert := getclientTLSCert(ctx)
+	tlsCert := getClientTLSCert(ctx)
 	if tlsCert == nil {
 		return nil, status.Error(codes.Unauthenticated, "couldn't get node TLS certificate")
 	}
@@ -255,7 +255,7 @@ func (c *Core) generateCert(orgName string) error {
 	return nil
 }
 
-func getclientTLSCert(ctx context.Context) *x509.Certificate {
+func getClientTLSCert(ctx context.Context) *x509.Certificate {
 	peer, ok := peer.FromContext(ctx)
 	if !ok {
 		return nil
