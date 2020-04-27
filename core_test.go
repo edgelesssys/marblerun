@@ -133,9 +133,8 @@ func TestCore(t *testing.T) {
 		return
 	}
 
-	// actual tests
-
-	t.Run("create server", func(t *testing.T) {
+	// create server
+	{
 		c, err := NewCore("edgeless", validator, issuer)
 		assert.NotNil(c)
 		assert.Nil(err)
@@ -144,45 +143,57 @@ func TestCore(t *testing.T) {
 		assert.Equal(coordinatorName, c.cert.Subject.CommonName)
 		clientServer = c
 		nodeServer = c
-	})
+	}
 
-	t.Run("try to activate first tikv prematurely", func(t *testing.T) {
+	{
+		quote, err := clientServer.GetQuote(context.TODO())
+		assert.NotNil(quote)
+		assert.Nil(err)
+	}
+
+	// try to activate first tikv prematurely
+	{
 		ctx, req := createTikvConnection("tikv_first")
 		resp, err := nodeServer.Activate(ctx, req)
 		assert.NotNil(err)
 		assert.Nil(resp)
-	})
+	}
 
-	t.Run("try to set broken manifest", func(t *testing.T) {
+	// try to set broken manifest
+	{
 		assert.NotNil(clientServer.SetManifest(context.TODO(), []byte(manifest)[:len(manifest)-1]))
-	})
+	}
 
-	t.Run("set manifest", func(t *testing.T) {
+	// set manifest
+	{
 		assert.Nil(clientServer.SetManifest(context.TODO(), []byte(manifest)))
-	})
+	}
 
-	t.Run("activate first tikv", func(t *testing.T) {
+	// activate first tikv
+	{
 		ctx, req := createTikvConnection("tikv_first")
 		resp, err := nodeServer.Activate(ctx, req)
 		assert.Nil(err)
 		assert.NotNil(resp)
-	})
+	}
 
-	t.Run("try to activate another first tikv", func(t *testing.T) {
+	// try to activate another first tikv
+	{
 		ctx, req := createTikvConnection("tikv_first")
 		resp, err := nodeServer.Activate(ctx, req)
 		assert.NotNil(err)
 		assert.Nil(resp)
-	})
+	}
 
-	t.Run("activate 10 other tikv", func(t *testing.T) {
+	// activate 10 other tikv
+	{
 		for i := 0; i < 10; i++ {
 			ctx, req := createTikvConnection("tikv_other")
 			resp, err := nodeServer.Activate(ctx, req)
 			assert.Nil(err)
 			assert.NotNil(resp)
 		}
-	})
+	}
 
 	createTidbConnection := func() (ctx context.Context, req *rpc.ActivationReq) {
 		cert, csr, err := generateNodeCredentials()
@@ -231,14 +242,15 @@ func TestCore(t *testing.T) {
 		return
 	}
 
-	t.Run("activate 10 tidb", func(t *testing.T) {
+	// activate 10 tidb
+	{
 		for i := 0; i < 10; i++ {
 			ctx, req := createTidbConnection()
 			resp, err := nodeServer.Activate(ctx, req)
 			assert.Nil(err)
 			assert.NotNil(resp)
 		}
-	})
+	}
 }
 
 func generateNodeCredentials() (cert []byte, csr []byte, err error) {
