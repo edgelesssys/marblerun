@@ -135,7 +135,7 @@ func TestLogic(t *testing.T) {
 	}
 
 	// try to activate first backend node prematurely
-	spawner.newNode("backend_first", "azure", false)
+	spawner.newNode("backend_first", "Azure", false)
 
 	// try to set broken manifest
 	assert.NotNil(clientServer.SetManifest(context.TODO(), []byte(manifestJSON)[:len(manifestJSON)-1]))
@@ -144,17 +144,17 @@ func TestLogic(t *testing.T) {
 	assert.Nil(clientServer.SetManifest(context.TODO(), []byte(manifestJSON)))
 
 	// activate first backend
-	spawner.newNode("backend_first", "azure", true)
+	spawner.newNode("backend_first", "Azure", true)
 
 	// try to activate another first backend
-	spawner.newNode("backend_first", "azure", false)
+	spawner.newNode("backend_first", "Azure", false)
 
 	// activate 10 other backend
 	pickInfra := func(i int) string {
 		if i&1 == 0 {
-			return "azure"
+			return "Azure"
 		} else {
-			return "alibaba"
+			return "Alibaba"
 		}
 	}
 	for i := 0; i < 10; i++ {
@@ -226,9 +226,9 @@ type nodeSpawner struct {
 func (ns nodeSpawner) newNode(nodeType string, infraName string, shouldSucceed bool) {
 	// create certificate and CSR
 	certTLS, cert, csr, err := generateNodeCredentials()
+	ns.assert.Nil(err)
 	ns.assert.NotNil(cert)
 	ns.assert.NotNil(csr)
-	ns.assert.Nil(err)
 
 	// create mock quote using values from the manifest
 	quote, err := ns.issuer.Issue(cert)
@@ -259,11 +259,11 @@ func (ns nodeSpawner) newNode(nodeType string, infraName string, shouldSucceed b
 	})
 
 	if shouldSucceed {
-		ns.assert.NotNil(resp)
 		ns.assert.Nil(err)
+		ns.assert.NotNil(resp)
 	} else {
-		ns.assert.Nil(resp)
 		ns.assert.NotNil(err)
+		ns.assert.Nil(resp)
 	}
 	// TODO: check response values
 }
