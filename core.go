@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/json"
@@ -15,6 +16,11 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"edgeless.systems/mesh/coordinator/certificates"
+
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/peer"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -46,13 +52,6 @@ const (
 	closed
 )
 
-// Context keys known to the Coordinator
-type ctxKey int
-
-const (
-	clientTLSCert ctxKey = iota
-)
-
 const coordinatorName string = "Coordinator"
 
 // Needs to be paired with `defer c.mux.Unlock()`
@@ -82,67 +81,6 @@ func NewCore(orgName string, qv quote.Validator, qi quote.Issuer) (*Core, error)
 	return c, nil
 }
 
-func generateSerial() (*big.Int, error) {
-	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
-	return rand.Int(rand.Reader, serialNumberLimit)
-}
-
-func (c *Core) generateCert(orgName string) error {
-	defer c.mux.Unlock()
-	if err := c.requireState(uninitialized); err != nil {
-		return err
-	}
-
-	// code (including generateSerial()) adapted from golang.org/src/crypto/tls/generate_cert.go
-	pubk, privk, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		return err
-	}
-	notBefore := time.Now()
-	// TODO: produce shorter lived certificates
-	notAfter := notBefore.Add(math.MaxInt64)
-
-	serialNumber, err := generateSerial()
-	if err != nil {
-		return err
-	}
-
-	// TODO: what else do we need to set here?
-	// Do we need x509.KeyUsageKeyEncipherment?
-	template := x509.Certificate{
-		SerialNumber: serialNumber,
-		Subject: pkix.Name{
-			Organization: []string{orgName},
-			CommonName:   coordinatorName,
-		},
-		NotBefore: notBefore,
-		NotAfter:  notAfter,
-
-		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		BasicConstraintsValid: false,
-		IsCA:                  true,
-	}
-
-	certRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, pubk, privk)
-	if err != nil {
-		return err
-	}
-	cert, err := x509.ParseCertificate(certRaw)
-	if err != nil {
-		return err
-	}
-	quote, err := c.qi.Issue(certRaw)
-	if err != nil {
-		return err
-	}
-	c.cert = cert
-	c.quote = quote
-	c.privk = privk
-	c.advanceState()
-	return nil
-}
-
 // SetManifest implements the CoordinatorClient
 func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) error {
 	defer c.mux.Unlock()
@@ -160,7 +98,7 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) error {
 // GetQuote gets the quote of the server
 func (c *Core) GetQuote(ctx context.Context) ([]byte, error) {
 	if c.state == uninitialized {
-		return nil, errors.New("node doesn't have a cert or quote yet")
+		return nil, errors.New("don't have a cert or quote yet")
 	}
 	return c.quote, nil
 }
@@ -178,7 +116,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	}
 
 	// get the node's TLS cert (used in this connection) and check corresponding quote
-	tlsCert := getclientTLSCert(ctx)
+	tlsCert := getClientTLSCert(ctx)
 	if tlsCert == nil {
 		return nil, status.Error(codes.Unauthenticated, "couldn't get node TLS certificate")
 	}
@@ -188,7 +126,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	}
 	infraMatch := false
 	for _, infra := range c.manifest.Infrastructures {
-		if c.qv.Validate(req.GetQuote(), tlsCert, pkg, infra) == nil {
+		if c.qv.Validate(req.GetQuote(), tlsCert.Raw, pkg, infra) == nil {
 			infraMatch = true
 			break
 		}
@@ -249,11 +187,86 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	return resp, nil
 }
 
-func getclientTLSCert(ctx context.Context) []byte {
-	// TODO: we assume for now that the client TLS cert is available via the context. Need to figure out how exactly this works with gRPC and TLS.
-	cert, ok := ctx.Value(clientTLSCert).([]byte)
-	if ok {
-		return cert
+// GetTLSCertificate creates a TLS certificate for the Coordinators self-signed x509 certificate
+func (c *Core) GetTLSCertificate() (*tls.Certificate, error) {
+	if c.state == uninitialized {
+		return nil, errors.New("don't have a cert yet")
 	}
+	return certificates.TLSFromDER(c.cert.Raw, c.privk)
+}
+
+func generateSerial() (*big.Int, error) {
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	return rand.Int(rand.Reader, serialNumberLimit)
+}
+
+func (c *Core) generateCert(orgName string) error {
+	defer c.mux.Unlock()
+	if err := c.requireState(uninitialized); err != nil {
+		return err
+	}
+
+	// code (including generateSerial()) adapted from golang.org/src/crypto/tls/generate_cert.go
+	pubk, privk, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return err
+	}
+	notBefore := time.Now()
+	notAfter := notBefore.Add(math.MaxInt64)
+
+	serialNumber, err := generateSerial()
+	if err != nil {
+		return err
+	}
+
+	// TODO: what else do we need to set here?
+	// Do we need x509.KeyUsageKeyEncipherment?
+	template := x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject: pkix.Name{
+			Organization: []string{orgName},
+			CommonName:   coordinatorName,
+		},
+		NotBefore: notBefore,
+		NotAfter:  notAfter,
+
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: false,
+		IsCA:                  true,
+	}
+
+	certRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, pubk, privk)
+	if err != nil {
+		return err
+	}
+	cert, err := x509.ParseCertificate(certRaw)
+	if err != nil {
+		return err
+	}
+	quote, err := c.qi.Issue(certRaw)
+	if err != nil {
+		return err
+	}
+	c.cert = cert
+	c.quote = quote
+	c.privk = privk
+	c.advanceState()
 	return nil
+}
+
+func getClientTLSCert(ctx context.Context) *x509.Certificate {
+	peer, ok := peer.FromContext(ctx)
+	if !ok {
+		return nil
+	}
+	tlsInfo, ok := peer.AuthInfo.(credentials.TLSInfo)
+	// the following check is just for safety (not for security)
+	if !ok {
+		return nil
+	}
+	if len(tlsInfo.State.PeerCertificates) == 0 {
+		return nil
+	}
+	return tlsInfo.State.PeerCertificates[0]
 }

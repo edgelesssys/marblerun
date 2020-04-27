@@ -9,6 +9,7 @@ service Node {
 }
 
 message ActivationReq {
+  // TODO: sending the quote via metadata/context would be cleaner.
   bytes Quote = 1;
   bytes CSR = 2;
   string NodeType = 3;
