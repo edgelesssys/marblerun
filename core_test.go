@@ -11,8 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"edgeless.systems/mesh/coordinator/certificates"
-
 	"edgeless.systems/mesh/coordinator/quote"
 	"edgeless.systems/mesh/coordinator/rpc"
 	"github.com/stretchr/testify/assert"
@@ -200,10 +198,7 @@ func generateNodeCredentials() (certTLS *tls.Certificate, cert []byte, csr []byt
 		return
 	}
 	// create TLS certificate
-	certTLS, err = certificates.TLSFromDER(cert, privk)
-	if err != nil {
-		return
-	}
+	certTLS = tlsCertFromDER(cert, privk)
 	// create CSR
 	templateCSR := x509.CertificateRequest{
 		Subject: pkix.Name{

@@ -17,8 +17,6 @@ import (
 	"sync"
 	"time"
 
-	"edgeless.systems/mesh/coordinator/certificates"
-
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
 
@@ -192,7 +190,7 @@ func (c *Core) GetTLSCertificate() (*tls.Certificate, error) {
 	if c.state == uninitialized {
 		return nil, errors.New("don't have a cert yet")
 	}
-	return certificates.TLSFromDER(c.cert.Raw, c.privk)
+	return tlsCertFromDER(c.cert.Raw, c.privk), nil
 }
 
 func generateSerial() (*big.Int, error) {
@@ -269,4 +267,8 @@ func getClientTLSCert(ctx context.Context) *x509.Certificate {
 		return nil
 	}
 	return tlsInfo.State.PeerCertificates[0]
+}
+
+func tlsCertFromDER(certDER []byte, privk interface{}) *tls.Certificate {
+	return &tls.Certificate{Certificate: [][]byte{certDER}, PrivateKey: privk}
 }
