@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"net"
 
-	"edgeless.systems/mesh/coordinator/rpc"
+	"github.com/edgelesssys/coordinator/rpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )

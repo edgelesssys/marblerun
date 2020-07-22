@@ -1,13 +1,12 @@
-module edgeless.systems/mesh/coordinator
+module github.com/edgelesssys/coordinator
 
 go 1.14
 
 require (
-	github.com/golang/protobuf v1.4.0
-	github.com/google/go-cmp v0.4.0
-	github.com/stretchr/testify v1.5.1
-	golang.org/x/net v0.0.0-20190311183353-d8887717615a
-	google.golang.org/genproto v0.0.0-20190819201941-24fa4b261c55
-	google.golang.org/grpc v1.28.1
-	google.golang.org/protobuf v1.21.0
+	github.com/golang/protobuf v1.4.2
+	github.com/google/go-cmp v0.5.1
+	github.com/stretchr/testify v1.6.1
+	golang.org/x/net v0.0.0-20200707034311-ab3426394381
+	google.golang.org/grpc v1.30.0
+	google.golang.org/protobuf v1.25.0
 )

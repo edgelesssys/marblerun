@@ -1,8 +1,8 @@
 package coordinator
 
 import (
-	"edgeless.systems/mesh/coordinator/quote"
-	"edgeless.systems/mesh/coordinator/rpc"
+	"github.com/edgelesssys/coordinator/quote"
+	"github.com/edgelesssys/coordinator/rpc"
 )
 
 // Manifest defines the rules of a mesh.

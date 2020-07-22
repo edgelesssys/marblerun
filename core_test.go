@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"edgeless.systems/mesh/coordinator/quote"
-	"edgeless.systems/mesh/coordinator/rpc"
+	"github.com/edgelesssys/coordinator/quote"
+	"github.com/edgelesssys/coordinator/rpc"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"

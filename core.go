@@ -23,8 +23,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"edgeless.systems/mesh/coordinator/quote"
-	"edgeless.systems/mesh/coordinator/rpc"
+	"github.com/edgelesssys/coordinator/quote"
+	"github.com/edgelesssys/coordinator/rpc"
 )
 
 // Core implements the core logic of the Coordinator
