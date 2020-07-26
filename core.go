@@ -107,20 +107,39 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	if err := c.requireState(acceptingNodes); err != nil {
 		return nil, status.Error(codes.FailedPrecondition, "cannot accept nodes in current state")
 	}
+	if err := c.verifyManifestRequirement(ctx, req); err != nil {
+		return nil, err
+	}
+	certRaw, err := c.generateCertFromCSR(req)
+	if err != nil {
+		return nil, err
+	}
+	// write response
+	node, _ := c.manifest.Nodes[req.GetNodeType()]
+	resp := &rpc.ActivationResp{
+		Certificate: certRaw,
+		Parameters:  &node.Parameters,
+	}
+	// TODO: scan files for certificate placeholders like "$$root_ca" and replace those
+	c.activations[req.GetNodeType()]++
+	return resp, nil
+}
 
+// VerifyActivationReq TODO
+func (c *Core) verifyManifestRequirement(ctx context.Context, req *rpc.ActivationReq) error {
 	node, nodeExists := c.manifest.Nodes[req.GetNodeType()]
 	if !nodeExists {
-		return nil, status.Error(codes.InvalidArgument, "unknown node type requested")
+		return status.Error(codes.InvalidArgument, "unknown node type requested")
 	}
 
 	// get the node's TLS cert (used in this connection) and check corresponding quote
 	tlsCert := getClientTLSCert(ctx)
 	if tlsCert == nil {
-		return nil, status.Error(codes.Unauthenticated, "couldn't get node TLS certificate")
+		return status.Error(codes.Unauthenticated, "couldn't get node TLS certificate")
 	}
 	pkg, pkgExists := c.manifest.Packages[node.Package]
 	if !pkgExists {
-		return nil, status.Error(codes.Internal, "undefined package")
+		return status.Error(codes.Internal, "undefined package")
 	}
 	infraMatch := false
 	for _, infra := range c.manifest.Infrastructures {
@@ -130,15 +149,19 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 		}
 	}
 	if !infraMatch {
-		return nil, status.Error(codes.Unauthenticated, "invalid quote")
+		return status.Error(codes.Unauthenticated, "invalid quote")
 	}
 
 	// check activation budget (MaxActivations == 0 means infinite budget)
 	activations := c.activations[req.GetNodeType()]
 	if node.MaxActivations > 0 && activations >= node.MaxActivations {
-		return nil, status.Error(codes.ResourceExhausted, "reached max activations count for node type")
+		return status.Error(codes.ResourceExhausted, "reached max activations count for node type")
 	}
 
+	return nil
+}
+
+func (c *Core) generateCertFromCSR(req *rpc.ActivationReq) ([]byte, error) {
 	// parse and verify CSR
 	csr, err := x509.ParseCertificateRequest(req.GetCSR())
 	if err != nil {
@@ -155,7 +178,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	// create certificate
 	// overwrite common name in CSR
 	// TODO: do we actually need the CSR?
-	csr.Subject.CommonName = req.GetNodeType() + strconv.FormatUint(uint64(activations), 10)
+	csr.Subject.CommonName = req.GetNodeType() + strconv.FormatUint(uint64(c.activations[req.GetNodeType()]), 10)
 	notBefore := time.Now()
 	// TODO: produce shorter lived certificates
 	notAfter := notBefore.Add(math.MaxInt64)
@@ -168,21 +191,14 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyAgreement,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 		BasicConstraintsValid: false,
-		IsCA:                  false,
+		IsCA: false,
 	}
 	certRaw, err := x509.CreateCertificate(rand.Reader, &template, c.cert, csr.PublicKey, c.privk)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to issue certificate")
 	}
 
-	// write response
-	resp := &rpc.ActivationResp{
-		Certificate: certRaw,
-		Parameters:  &node.Parameters,
-	}
-	// TODO: scan files for certificate placeholders like "$$root_ca" and replace those
-	c.activations[req.GetNodeType()]++
-	return resp, nil
+	return certRaw, nil
 }
 
 // GetTLSCertificate creates a TLS certificate for the Coordinators self-signed x509 certificate
@@ -231,7 +247,7 @@ func (c *Core) generateCert(orgName string) error {
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: false,
-		IsCA:                  true,
+		IsCA: true,
 	}
 
 	certRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, pubk, privk)
