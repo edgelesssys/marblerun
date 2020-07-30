@@ -92,7 +92,7 @@ func TestLogic(t *testing.T) {
 
 	var clientServer rpc.ClientServer
 	validator := quote.NewMockValidator()
-	issuer := quote.NewMockIssuer()
+	issuer := quote.NewIssuerImpl()
 
 	// create core and run gRPC server
 	var grpcAddr string
@@ -191,7 +191,7 @@ func generateNodeCredentials() (certTLS *tls.Certificate, cert []byte, csr []byt
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: false,
-		IsCA:                  true,
+		IsCA: true,
 	}
 	cert, err = x509.CreateCertificate(rand.Reader, &templateCert, &templateCert, pubk, privk)
 	if err != nil {
@@ -231,11 +231,11 @@ func (ns nodeSpawner) newNode(nodeType string, infraName string, shouldSucceed b
 	ns.assert.Nil(err)
 	node, ok := ns.manifest.Nodes[nodeType]
 	ns.assert.True(ok)
-	pkg, ok := ns.manifest.Packages[node.Package]
+	//pkg, ok := ns.manifest.Packages[node.Package]
 	ns.assert.True(ok)
 	infra, ok := ns.manifest.Infrastructures[infraName]
 	ns.assert.True(ok)
-	ns.validator.AddValidQuote(quote, cert, pkg, infra)
+	//ns.validator.AddValidQuote(quote, cert, pkg, infra)
 
 	// call Activate() over TLS
 	tlsConfig := tls.Config{

@@ -110,6 +110,9 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	if err := c.verifyManifestRequirement(ctx, req); err != nil {
 		return nil, err
 	}
+
+	// verifyQuote
+
 	certRaw, err := c.generateCertFromCSR(req)
 	if err != nil {
 		return nil, err
