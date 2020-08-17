@@ -17,6 +17,8 @@ type PackageProperties struct {
 	ISVProdID *uint16
 	// Security version number of the package
 	ISVSVN *uint16
+	// Flag wether validation should allow debug quotes
+	allowDebug bool
 }
 
 // InfrastructureProperties contains the infrastructure-specific properties of a SGX DCAP quote.
