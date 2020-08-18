@@ -115,6 +115,7 @@ func NewIssuerImpl() *IssuerImpl {
 
 // Issue implements the Issuer interface. Argument message will be included in the report
 func (m *IssuerImpl) Issue(message []byte) ([]byte, error) {
-	//hash := sha256.Sum256(message)
-	return enc.GetRemoteReport(message)
+	return enc.GetRemoteReport( 
+		sha256.Sum256(message)
+	)
 }
