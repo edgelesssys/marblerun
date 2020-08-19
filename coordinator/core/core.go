@@ -23,8 +23,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/edgelesssys/coordinator/quote"
-	"github.com/edgelesssys/coordinator/rpc"
+	"github.com/edgelesssys/coordinator/coordinator/quote"
+	"github.com/edgelesssys/coordinator/coordinator/rpc"
 )
 
 // Core implements the core logic of the Coordinator
@@ -108,39 +108,69 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 		return nil, status.Error(codes.FailedPrecondition, "cannot accept nodes in current state")
 	}
 
-	node, nodeExists := c.manifest.Nodes[req.GetNodeType()]
-	if !nodeExists {
-		return nil, status.Error(codes.InvalidArgument, "unknown node type requested")
-	}
-
-	// get the node's TLS cert (used in this connection) and check corresponding quote
 	tlsCert := getClientTLSCert(ctx)
+	// get the node's TLS cert (used in this connection) and check corresponding quote
 	if tlsCert == nil {
 		return nil, status.Error(codes.Unauthenticated, "couldn't get node TLS certificate")
 	}
+
+	if err := c.verifyManifestRequirement(tlsCert, req.GetQuote(), req.GetNodeType()); err != nil {
+		return nil, err
+	}
+
+	//TODO verifyQuote
+
+	certRaw, err := c.generateCertFromCSR(req.GetCSR(), req.GetNodeType())
+
+	if err != nil {
+		return nil, err
+	}
+	// write response
+	node, _ := c.manifest.Nodes[req.GetNodeType()]
+	resp := &rpc.ActivationResp{
+		Certificate: certRaw,
+		Parameters:  &node.Parameters,
+	}
+	// TODO: scan files for certificate placeholders like "$$root_ca" and replace those
+	c.activations[req.GetNodeType()]++
+	return resp, nil
+}
+
+// verifyManifestRequirement verifies node attempting to register with respect to manifest
+func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, quote []byte, nodeType string) error {
+	node, nodeExists := c.manifest.Nodes[nodeType]
+	if !nodeExists {
+		return status.Error(codes.InvalidArgument, "unknown node type requested")
+	}
+
 	pkg, pkgExists := c.manifest.Packages[node.Package]
 	if !pkgExists {
-		return nil, status.Error(codes.Internal, "undefined package")
+		return status.Error(codes.Internal, "undefined package")
 	}
 	infraMatch := false
 	for _, infra := range c.manifest.Infrastructures {
-		if c.qv.Validate(req.GetQuote(), tlsCert.Raw, pkg, infra) == nil {
+		if c.qv.Validate(quote, tlsCert.Raw, pkg, infra) == nil {
 			infraMatch = true
 			break
 		}
 	}
 	if !infraMatch {
-		return nil, status.Error(codes.Unauthenticated, "invalid quote")
+		return status.Error(codes.Unauthenticated, "invalid quote")
 	}
 
 	// check activation budget (MaxActivations == 0 means infinite budget)
-	activations := c.activations[req.GetNodeType()]
+	activations := c.activations[nodeType]
 	if node.MaxActivations > 0 && activations >= node.MaxActivations {
-		return nil, status.Error(codes.ResourceExhausted, "reached max activations count for node type")
+		return status.Error(codes.ResourceExhausted, "reached max activations count for node type")
 	}
 
+	return nil
+}
+
+// generateCertFromCSR signs the CSR from node attempting to register
+func (c *Core) generateCertFromCSR(csrReq []byte, nodeType string) ([]byte, error) {
 	// parse and verify CSR
-	csr, err := x509.ParseCertificateRequest(req.GetCSR())
+	csr, err := x509.ParseCertificateRequest(csrReq)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "failed to parse CSR")
 	}
@@ -155,7 +185,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	// create certificate
 	// overwrite common name in CSR
 	// TODO: do we actually need the CSR?
-	csr.Subject.CommonName = req.GetNodeType() + strconv.FormatUint(uint64(activations), 10)
+	csr.Subject.CommonName = nodeType + strconv.FormatUint(uint64(c.activations[nodeType]), 10)
 	notBefore := time.Now()
 	// TODO: produce shorter lived certificates
 	notAfter := notBefore.Add(math.MaxInt64)
@@ -168,21 +198,14 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyAgreement,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 		BasicConstraintsValid: false,
-		IsCA:                  false,
+		IsCA: false,
 	}
 	certRaw, err := x509.CreateCertificate(rand.Reader, &template, c.cert, csr.PublicKey, c.privk)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to issue certificate")
 	}
 
-	// write response
-	resp := &rpc.ActivationResp{
-		Certificate: certRaw,
-		Parameters:  &node.Parameters,
-	}
-	// TODO: scan files for certificate placeholders like "$$root_ca" and replace those
-	c.activations[req.GetNodeType()]++
-	return resp, nil
+	return certRaw, nil
 }
 
 // GetTLSCertificate creates a TLS certificate for the Coordinators self-signed x509 certificate
@@ -231,7 +254,7 @@ func (c *Core) generateCert(orgName string) error {
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: false,
-		IsCA:                  true,
+		IsCA: true,
 	}
 
 	certRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, pubk, privk)

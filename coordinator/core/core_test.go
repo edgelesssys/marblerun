@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/edgelesssys/coordinator/quote"
-	"github.com/edgelesssys/coordinator/rpc"
+	"github.com/edgelesssys/coordinator/coordinator/quote"
+	"github.com/edgelesssys/coordinator/coordinator/rpc"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -191,7 +191,7 @@ func generateNodeCredentials() (certTLS *tls.Certificate, cert []byte, csr []byt
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: false,
-		IsCA:                  true,
+		IsCA: true,
 	}
 	cert, err = x509.CreateCertificate(rand.Reader, &templateCert, &templateCert, pubk, privk)
 	if err != nil {
