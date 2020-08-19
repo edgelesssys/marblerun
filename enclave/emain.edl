@@ -1,0 +1,11 @@
+enclave {
+    from "openenclave/edl/logging.edl" import *;
+    from "openenclave/edl/syscall.edl" import *;
+    from "platform.edl" import *;
+
+    trusted {
+        public void emain(
+            [in, string] const char* cwd,
+            [in, string] const char* config);
+    };
+};
