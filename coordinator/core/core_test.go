@@ -1,4 +1,4 @@
-package coordinator
+package core
 
 import (
 	"crypto/ed25519"
@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/edgelesssys/coordinator/quote"
-	"github.com/edgelesssys/coordinator/rpc"
+	"github.com/edgelesssys/coordinator/coordinator/quote"
+	"github.com/edgelesssys/coordinator/coordinator/rpc"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
