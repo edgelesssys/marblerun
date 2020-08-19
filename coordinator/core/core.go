@@ -119,6 +119,10 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	}
 
 	//TODO verifyQuote
+	c.qv.Validate(req.GetQuote(),
+		tlsCert.Raw,
+		c.manifest.Packages,
+		c.manifest.Infrastructures)
 
 	certRaw, err := c.generateCertFromCSR(req.GetCSR(), req.GetNodeType())
 
@@ -198,7 +202,7 @@ func (c *Core) generateCertFromCSR(csrReq []byte, nodeType string) ([]byte, erro
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyAgreement,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 		BasicConstraintsValid: false,
-		IsCA: false,
+		IsCA:                  false,
 	}
 	certRaw, err := x509.CreateCertificate(rand.Reader, &template, c.cert, csr.PublicKey, c.privk)
 	if err != nil {
@@ -254,7 +258,7 @@ func (c *Core) generateCert(orgName string) error {
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: false,
-		IsCA: true,
+		IsCA:                  true,
 	}
 
 	certRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, pubk, privk)
