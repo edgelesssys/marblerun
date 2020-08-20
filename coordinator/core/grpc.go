@@ -1,10 +1,10 @@
-package coordinator
+package core
 
 import (
 	"crypto/tls"
 	"net"
 
-	"github.com/edgelesssys/coordinator/rpc"
+	"github.com/edgelesssys/coordinator/coordinator/rpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )

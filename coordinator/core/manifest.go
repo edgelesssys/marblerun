@@ -1,8 +1,8 @@
-package coordinator
+package core
 
 import (
-	"github.com/edgelesssys/coordinator/quote"
-	"github.com/edgelesssys/coordinator/rpc"
+	"github.com/edgelesssys/coordinator/coordinator/quote"
+	"github.com/edgelesssys/coordinator/coordinator/rpc"
 )
 
 // Manifest defines the rules of a mesh.
