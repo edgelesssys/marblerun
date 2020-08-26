@@ -11,14 +11,14 @@ type Manifest struct {
 	Packages map[string]quote.PackageProperties
 	// Allowed infrastructures
 	Infrastructures map[string]quote.InfrastructureProperties
-	// Allowed node configurations
-	Nodes map[string]Node
+	// Allowed pod configurations
+	Pods map[string]Pod
 	// Authorized client x509 certificates
 	Clients map[string][]byte
 }
 
-// Node describes a type of a node
-type Node struct {
+// Pod describes a type of a pod
+type Pod struct {
 	Package        string
 	MaxActivations uint
 	Parameters     rpc.Parameters

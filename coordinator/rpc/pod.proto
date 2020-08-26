@@ -1,10 +1,10 @@
 syntax = "proto3";
 
 package rpc;
-option go_package = "github.com/edgelesssys/coordinator/rpc";
+option go_package = "github.com/edgelesssys/coordinator/coordinator/rpc";
 
-service Node {
-  // Activate activates a node in the mesh.
+service Pod {
+  // Activate activates a pod in the mesh.
   rpc Activate (ActivationReq) returns (ActivationResp);
 }
 
@@ -12,7 +12,7 @@ message ActivationReq {
   // TODO: sending the quote via metadata/context would be cleaner.
   bytes Quote = 1;
   bytes CSR = 2;
-  string NodeType = 3;
+  string PodType = 3;
 }
 
 message ActivationResp {

@@ -50,7 +50,7 @@ func TestLogic(t *testing.T) {
 				"RootCA": [4,4,4]
 			}
 		},
-		"Nodes": {
+		"Pods": {
 			"backend_first": {
 				"Package": "backend",
 				"MaxActivations": 1,
@@ -117,7 +117,7 @@ func TestLogic(t *testing.T) {
 		clientServer = c
 	}
 
-	spawner := nodeSpawner{
+	spawner := podSpawner{
 		assert:     assert,
 		issuer:     issuer,
 		validator:  validator,
@@ -132,8 +132,8 @@ func TestLogic(t *testing.T) {
 		assert.Nil(err)
 	}
 
-	// try to activate first backend node prematurely
-	spawner.newNode("backend_first", "Azure", false)
+	// try to activate first backend pod prematurely
+	spawner.newPod("backend_first", "Azure", false)
 
 	// try to set broken manifest
 	assert.NotNil(clientServer.SetManifest(context.TODO(), []byte(manifestJSON)[:len(manifestJSON)-1]))
@@ -142,10 +142,10 @@ func TestLogic(t *testing.T) {
 	assert.Nil(clientServer.SetManifest(context.TODO(), []byte(manifestJSON)))
 
 	// activate first backend
-	spawner.newNode("backend_first", "Azure", true)
+	spawner.newPod("backend_first", "Azure", true)
 
 	// try to activate another first backend
-	spawner.newNode("backend_first", "Azure", false)
+	spawner.newPod("backend_first", "Azure", false)
 
 	// activate 10 other backend
 	pickInfra := func(i int) string {
@@ -156,16 +156,16 @@ func TestLogic(t *testing.T) {
 		}
 	}
 	for i := 0; i < 10; i++ {
-		spawner.newNode("backend_other", pickInfra(i), true)
+		spawner.newPod("backend_other", pickInfra(i), true)
 	}
 
 	// activate 10 frontend
 	for i := 0; i < 10; i++ {
-		spawner.newNode("frontend", pickInfra(i), true)
+		spawner.newPod("frontend", pickInfra(i), true)
 	}
 }
 
-func generateNodeCredentials() (certTLS *tls.Certificate, cert []byte, csr []byte, err error) {
+func generatePodCredentials() (certTLS *tls.Certificate, cert []byte, csr []byte, err error) {
 	const orgName string = "Edgeless Systems GmbH"
 	pubk, privk, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -210,7 +210,7 @@ func generateNodeCredentials() (certTLS *tls.Certificate, cert []byte, csr []byt
 	return
 }
 
-type nodeSpawner struct {
+type podSpawner struct {
 	manifest   Manifest
 	validator  *quote.MockValidator
 	issuer     quote.Issuer
@@ -218,9 +218,9 @@ type nodeSpawner struct {
 	assert     *assert.Assertions
 }
 
-func (ns nodeSpawner) newNode(nodeType string, infraName string, shouldSucceed bool) {
+func (ns podSpawner) newPod(podType string, infraName string, shouldSucceed bool) {
 	// create certificate and CSR
-	certTLS, cert, csr, err := generateNodeCredentials()
+	certTLS, cert, csr, err := generatePodCredentials()
 	ns.assert.Nil(err)
 	ns.assert.NotNil(cert)
 	ns.assert.NotNil(csr)
@@ -229,9 +229,9 @@ func (ns nodeSpawner) newNode(nodeType string, infraName string, shouldSucceed b
 	quote, err := ns.issuer.Issue(cert)
 	ns.assert.NotNil(quote)
 	ns.assert.Nil(err)
-	node, ok := ns.manifest.Nodes[nodeType]
+	pod, ok := ns.manifest.Pods[podType]
 	ns.assert.True(ok)
-	pkg, ok := ns.manifest.Packages[node.Package]
+	pkg, ok := ns.manifest.Packages[pod.Package]
 	ns.assert.True(ok)
 	infra, ok := ns.manifest.Infrastructures[infraName]
 	ns.assert.True(ok)
@@ -246,11 +246,11 @@ func (ns nodeSpawner) newNode(nodeType string, infraName string, shouldSucceed b
 	tlsCreds := credentials.NewTLS(&tlsConfig)
 	conn, err := grpc.Dial(ns.serverAddr, grpc.WithTransportCredentials(tlsCreds))
 	ns.assert.Nil(err)
-	client := rpc.NewNodeClient(conn)
+	client := rpc.NewPodClient(conn)
 	resp, err := client.Activate(context.TODO(), &rpc.ActivationReq{
-		CSR:      csr,
-		NodeType: nodeType,
-		Quote:    quote,
+		CSR:     csr,
+		PodType: podType,
+		Quote:   quote,
 	})
 
 	if !shouldSucceed {
@@ -263,9 +263,9 @@ func (ns nodeSpawner) newNode(nodeType string, infraName string, shouldSucceed b
 
 	// validate response
 	params := resp.GetParameters()
-	ns.assert.Equal(node.Parameters.Files, params.Files)
-	ns.assert.Equal(node.Parameters.Env, params.Env)
-	ns.assert.Equal(node.Parameters.Argv, params.Argv)
+	ns.assert.Equal(pod.Parameters.Files, params.Files)
+	ns.assert.Equal(pod.Parameters.Env, params.Env)
+	ns.assert.Equal(pod.Parameters.Argv, params.Argv)
 
 	newCert, err := x509.ParseCertificate(resp.GetCertificate())
 	ns.assert.Nil(err)
