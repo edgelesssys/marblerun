@@ -10,11 +10,14 @@ if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Debug)
 endif ()
 
-add_custom_target(app ertgo build -buildmode=c-archive
-  -o coordinator.a
-  ${CMAKE_SOURCE_DIR}/enclave/invokemain.go
-  ${CMAKE_SOURCE_DIR}/enclave/coordinatormain.go
+add_custom_target(coordinatorlib
+  ertgo build -buildmode=c-archive
+  -o libcoordinator.a
+  ${CMAKE_SOURCE_DIR}/cmd/coordinator
 )
+
+add_custom_target(coordinator-noenclave ALL
+  go build ${CMAKE_SOURCE_DIR}/cmd/coordinator-noenclave)
 
 # Use the edger8r to generate C bindings from the EDL file.
 add_custom_command(
@@ -23,21 +26,20 @@ add_custom_command(
   COMMAND openenclave::oeedger8r ${CMAKE_SOURCE_DIR}/enclave/emain.edl --search-path
           ${OE_INCLUDEDIR} --search-path ${OE_INCLUDEDIR}/openenclave/edl/sgx)
 
-add_executable(enclave enclave/emain.cpp emain_t.c) #enclave/stubs.c
+add_executable(enclave enclave/emain.cpp emain_t.c)
 target_include_directories(enclave PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-add_dependencies(enclave app)
+add_dependencies(enclave coordinatorlib)
 
-target_link_libraries(enclave -static
+target_link_libraries(enclave
+  ${CMAKE_BINARY_DIR}/libcoordinator.a
   openenclave::oeenclave
   openenclave::oehostepoll
   openenclave::oehostfs
   openenclave::oehostsock
   openenclave::oecustomfs
   crypto
-  openenclave::oecore
-  openenclave::oelibcxx
-  ${CMAKE_BINARY_DIR}/coordinator.a
-  )
+  openenclave::ertlibc
+ )
 
 # Generate key
 add_custom_command(

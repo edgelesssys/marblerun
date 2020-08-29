@@ -9,6 +9,9 @@
 
 #include "emain_t.h"
 
+extern "C" const bool ert_enable_signals = true;
+extern "C" const bool ert_enable_sigsegv = true;
+
 extern "C" void invokemain(const char* cwd, const char* config);
 
 void emain(const char* cwd, const char* config) {
@@ -19,6 +22,5 @@ void emain(const char* cwd, const char* config) {
     return;
   }
   
-  std::cout << "emain" << std::endl;
   invokemain(cwd, config);
 }

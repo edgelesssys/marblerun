@@ -11,18 +11,13 @@ import (
 	"errors"
 	"math"
 	"math/big"
-	"strconv"
 	"sync"
 	"time"
 
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
 
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
 	"github.com/edgelesssys/coordinator/coordinator/quote"
-	"github.com/edgelesssys/coordinator/coordinator/rpc"
 )
 
 // Core implements the core logic of the Coordinator
