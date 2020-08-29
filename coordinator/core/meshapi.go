@@ -1,0 +1,119 @@
+package core
+
+import (
+	"context"
+	"crypto/rand"
+	"crypto/x509"
+	"math"
+	"strconv"
+	"time"
+
+	"github.com/edgelesssys/coordinator/coordinator/rpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+)
+
+// Activate activates a pod (implements the PodServer interface)
+func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.ActivationResp, error) {
+	defer c.mux.Unlock()
+	if err := c.requireState(acceptingPods); err != nil {
+		return nil, status.Error(codes.FailedPrecondition, "cannot accept pods in current state")
+	}
+
+	// get the pod's TLS cert (used in this connection) and check corresponding quote
+	tlsCert := getClientTLSCert(ctx)
+	if tlsCert == nil {
+		return nil, status.Error(codes.Unauthenticated, "couldn't get pod TLS certificate")
+	}
+
+	if err := c.verifyManifestRequirement(tlsCert, req.GetQuote(), req.GetPodType()); err != nil {
+		return nil, err
+	}
+
+	certRaw, err := c.generateCertFromCSR(req.GetCSR(), req.GetPodType())
+	if err != nil {
+		return nil, err
+	}
+
+	// write response
+	pod := c.manifest.Pods[req.GetPodType()] // existence has been checked in verifyManifestRequirement
+	resp := &rpc.ActivationResp{
+		Certificate: certRaw,
+		Parameters:  &pod.Parameters,
+	}
+	// TODO: scan files for certificate placeholders like "$$root_ca" and replace those
+	c.activations[req.GetPodType()]++
+	return resp, nil
+}
+
+// verifyManifestRequirement verifies pod attempting to register with respect to manifest
+func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, quote []byte, podType string) error {
+	pod, podExists := c.manifest.Pods[podType]
+	if !podExists {
+		return status.Error(codes.InvalidArgument, "unknown pod type requested")
+	}
+
+	pkg, pkgExists := c.manifest.Packages[pod.Package]
+	if !pkgExists {
+		return status.Error(codes.Internal, "undefined package")
+	}
+	infraMatch := false
+	for _, infra := range c.manifest.Infrastructures {
+		if c.qv.Validate(quote, tlsCert.Raw, pkg, infra) == nil {
+			infraMatch = true
+			break
+		}
+	}
+	if !infraMatch {
+		return status.Error(codes.Unauthenticated, "invalid quote")
+	}
+
+	// check activation budget (MaxActivations == 0 means infinite budget)
+	activations := c.activations[podType]
+	if pod.MaxActivations > 0 && activations >= pod.MaxActivations {
+		return status.Error(codes.ResourceExhausted, "reached max activations count for pod type")
+	}
+
+	return nil
+}
+
+// generateCertFromCSR signs the CSR from pod attempting to register
+func (c *Core) generateCertFromCSR(csrReq []byte, podType string) ([]byte, error) {
+	// parse and verify CSR
+	csr, err := x509.ParseCertificateRequest(csrReq)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "failed to parse CSR")
+	}
+	if csr.CheckSignature() != nil {
+		return nil, status.Error(codes.InvalidArgument, "signature over CSR is invalid")
+	}
+	serialNumber, err := generateSerial()
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to generate serial")
+	}
+
+	// create certificate
+	// overwrite common name in CSR
+	// TODO: do we actually need the CSR?
+	csr.Subject.CommonName = podType + strconv.FormatUint(uint64(c.activations[podType]), 10)
+	notBefore := time.Now()
+	// TODO: produce shorter lived certificates
+	notAfter := notBefore.Add(math.MaxInt64)
+	template := x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject:      csr.Subject,
+		NotBefore:    notBefore,
+		NotAfter:     notAfter,
+
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyAgreement,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		BasicConstraintsValid: false,
+		IsCA:                  false,
+	}
+	certRaw, err := x509.CreateCertificate(rand.Reader, &template, c.cert, csr.PublicKey, c.privk)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to issue certificate")
+	}
+
+	return certRaw, nil
+}
