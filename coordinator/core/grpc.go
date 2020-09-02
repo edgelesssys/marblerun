@@ -25,7 +25,7 @@ func RunGRPCServer(core *Core, addr string, addrChan chan string, errChan chan e
 	}
 	creds := credentials.NewTLS(&tlsConfig)
 	grpcServer := grpc.NewServer(grpc.Creds(creds))
-	rpc.RegisterNodeServer(grpcServer, core)
+	rpc.RegisterMarbleServer(grpcServer, core)
 	socket, err := net.Listen("tcp", addr)
 	if err != nil {
 		errChan <- err
