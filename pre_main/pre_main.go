@@ -15,6 +15,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/edgelesssys/coordinator/coordinator/quote"
 	"github.com/edgelesssys/coordinator/coordinator/rpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -23,8 +24,11 @@ import (
 // Required env variable with Coordinator addr
 const edgCoordinatorAddr string = "EDG_COORDINATOR_ADDR"
 
-// Unique ID of this marble
+// Required env variable with unique ID of this marble
 const edgMarbleID string = "EDG_MARBLE_ID"
+
+// Required env variable with pod type of this marble
+const edgPodType string = "EDG_POD_TYPE"
 
 // TLS Cert orgName
 const orgName string = "Marble"
@@ -38,7 +42,9 @@ type Authenticator struct {
 	privk      ed25519.PrivateKey
 	pubk       ed25519.PublicKey
 	tlsCert    *x509.Certificate
+	csr        *x509.CertificateRequest
 	quote      []byte
+	qi         quote.Issuer
 	signedCert *tls.Certificate
 	params     *rpc.Parameters
 }
@@ -127,9 +133,33 @@ func (a *Authenticator) generateCert(orgName string) error {
 	if err != nil {
 		return err
 	}
+	quote, err := a.qi.Issue(certRaw)
+	if err != nil {
+		return err
+	}
 	a.pubk = pubk
 	a.privk = privk
+	a.quote = quote
 	a.tlsCert = cert
+	return nil
+}
+
+func (a *Authenticator) generateCSR(orgName string) error {
+	template := x509.CertificateRequest{
+		Subject: pkix.Name{
+			Organization: []string{orgName},
+			CommonName:   a.commonName,
+		},
+	}
+	csrRaw, err := x509.CreateCertificateRequest(rand.Reader, &template, a.privk)
+	if err != nil {
+		return err
+	}
+	csr, err := x509.ParseCertificateRequest(csrRaw)
+	if err != nil {
+		return err
+	}
+	a.csr = csr
 	return nil
 }
 
@@ -151,9 +181,14 @@ func preMain() {
 		log.Fatalf("%v: Environment Variable not set.", edgMarbleID)
 		return
 	}
+	podType := os.Getenv(edgPodType)
+	if len(podType) == 0 {
+		log.Fatalf("%v: Environment Variable not set.", edgPodType)
+		return
+	}
 
 	// load TLS Credentials
-	commonName := fmt.Sprintf("Marble_%v", marbleID)
+	commonName := fmt.Sprintf("marble%v", marbleID)
 	a, err := newAuthenticator(orgName, commonName)
 	if err != nil {
 		log.Fatalln("cannot create Authenticator: ", err)
@@ -163,7 +198,7 @@ func preMain() {
 		log.Fatalln("cannot load TLS credentials: ", err)
 	}
 
-	// Initiate grpc connection to Coordinator
+	// initiate grpc connection to Coordinator
 	cc, err := grpc.Dial(edgCoordinatorAddr, grpc.WithTransportCredentials(tlsCredentials))
 
 	if err != nil {
@@ -173,12 +208,17 @@ func preMain() {
 
 	defer cc.Close()
 
-	// Authenticate with Coordinator
+	// generate CSR
+	if err := a.generateCSR(orgName); err != nil {
+		log.Fatalln("cannot generate CSR: ", err)
+	}
+
+	// authenticate with Coordinator
 	c := rpc.NewPodClient(cc)
 	req := &rpc.ActivationReq{
-		CSR:     []byte("TODO"),
-		PodType: "TODO",
-		Quote:   []byte("TODO"),
+		CSR:     a.csr.Raw,
+		PodType: podType,
+		Quote:   a.quote,
 	}
 
 	activiationResp, err := c.Activate(context.Background(), req)
