@@ -48,7 +48,7 @@ const manifestMeshAPIJSON string = `{
 			"RootCA": [4,4,4]
 		}
 	},
-	"Pods": {
+	"Marbles": {
 		"backend_first": {
 			"Package": "backend",
 			"MaxActivations": 1,
@@ -156,7 +156,7 @@ func (ns marbleSpawner) newMarble(marbleType string, infraName string, shouldSuc
 	quote, err := ns.issuer.Issue(cert)
 	ns.assert.NotNil(quote)
 	ns.assert.Nil(err)
-	marble, ok := ns.manifest.Pods[marbleType]
+	marble, ok := ns.manifest.Marbles[marbleType]
 	ns.assert.True(ok)
 	pkg, ok := ns.manifest.Packages[marble.Package]
 	ns.assert.True(ok)
@@ -175,9 +175,9 @@ func (ns marbleSpawner) newMarble(marbleType string, infraName string, shouldSuc
 	})
 
 	resp, err := coreServer.Activate(ctx, &rpc.ActivationReq{
-		CSR:     csr,
-		PodType: marbleType,
-		Quote:   quote,
+		CSR:        csr,
+		MarbleType: marbleType,
+		Quote:      quote,
 	})
 
 	if !shouldSucceed {
