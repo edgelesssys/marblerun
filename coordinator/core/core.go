@@ -44,7 +44,7 @@ type state int
 const (
 	uninitialized state = iota
 	acceptingManifest
-	acceptingNodes
+	acceptingMarbles
 	closed
 )
 
@@ -99,49 +99,49 @@ func (c *Core) GetQuote(ctx context.Context) ([]byte, error) {
 	return c.quote, nil
 }
 
-// Activate activates a node (implements the CoordinatorNodeServer interface)
+// Activate activates a marble (implements the CoordinatorMarbleServer interface)
 func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.ActivationResp, error) {
 	defer c.mux.Unlock()
-	if err := c.requireState(acceptingNodes); err != nil {
-		return nil, status.Error(codes.FailedPrecondition, "cannot accept nodes in current state")
+	if err := c.requireState(acceptingMarbles); err != nil {
+		return nil, status.Error(codes.FailedPrecondition, "cannot accept marbles in current state")
 	}
 
-	// get the node's TLS cert (used in this connection) and check corresponding quote
+	// get the marble's TLS cert (used in this connection) and check corresponding quote
 	tlsCert := getClientTLSCert(ctx)
 	if tlsCert == nil {
-		return nil, status.Error(codes.Unauthenticated, "couldn't get node TLS certificate")
+		return nil, status.Error(codes.Unauthenticated, "couldn't get marble TLS certificate")
 	}
 
-	if err := c.verifyManifestRequirement(tlsCert, req.GetQuote(), req.GetNodeType()); err != nil {
+	if err := c.verifyManifestRequirement(tlsCert, req.GetQuote(), req.GetMarbleType()); err != nil {
 		return nil, err
 	}
 
 	//TODO verifyQuote
 
-	certRaw, err := c.generateCertFromCSR(req.GetCSR(), req.GetNodeType())
+	certRaw, err := c.generateCertFromCSR(req.GetCSR(), req.GetMarbleType())
 	if err != nil {
 		return nil, err
 	}
 
 	// write response
-	node := c.manifest.Nodes[req.GetNodeType()] // existence has been checked in verifyManifestRequirement
+	marble := c.manifest.Marbles[req.GetMarbleType()] // existence has been checked in verifyManifestRequirement
 	resp := &rpc.ActivationResp{
 		Certificate: certRaw,
-		Parameters:  &node.Parameters,
+		Parameters:  &marble.Parameters,
 	}
 	// TODO: scan files for certificate placeholders like "$$root_ca" and replace those
-	c.activations[req.GetNodeType()]++
+	c.activations[req.GetMarbleType()]++
 	return resp, nil
 }
 
-// verifyManifestRequirement verifies node attempting to register with respect to manifest
-func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, quote []byte, nodeType string) error {
-	node, nodeExists := c.manifest.Nodes[nodeType]
-	if !nodeExists {
-		return status.Error(codes.InvalidArgument, "unknown node type requested")
+// verifyManifestRequirement verifies marble attempting to register with respect to manifest
+func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, quote []byte, marbleType string) error {
+	marble, marbleExists := c.manifest.Marbles[marbleType]
+	if !marbleExists {
+		return status.Error(codes.InvalidArgument, "unknown marble type requested")
 	}
 
-	pkg, pkgExists := c.manifest.Packages[node.Package]
+	pkg, pkgExists := c.manifest.Packages[marble.Package]
 	if !pkgExists {
 		return status.Error(codes.Internal, "undefined package")
 	}
@@ -157,16 +157,16 @@ func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, quote []byte
 	}
 
 	// check activation budget (MaxActivations == 0 means infinite budget)
-	activations := c.activations[nodeType]
-	if node.MaxActivations > 0 && activations >= node.MaxActivations {
-		return status.Error(codes.ResourceExhausted, "reached max activations count for node type")
+	activations := c.activations[marbleType]
+	if marble.MaxActivations > 0 && activations >= marble.MaxActivations {
+		return status.Error(codes.ResourceExhausted, "reached max activations count for marble type")
 	}
 
 	return nil
 }
 
-// generateCertFromCSR signs the CSR from node attempting to register
-func (c *Core) generateCertFromCSR(csrReq []byte, nodeType string) ([]byte, error) {
+// generateCertFromCSR signs the CSR from marble attempting to register
+func (c *Core) generateCertFromCSR(csrReq []byte, marbleType string) ([]byte, error) {
 	// parse and verify CSR
 	csr, err := x509.ParseCertificateRequest(csrReq)
 	if err != nil {
@@ -183,7 +183,7 @@ func (c *Core) generateCertFromCSR(csrReq []byte, nodeType string) ([]byte, erro
 	// create certificate
 	// overwrite common name in CSR
 	// TODO: do we actually need the CSR?
-	csr.Subject.CommonName = nodeType + strconv.FormatUint(uint64(c.activations[nodeType]), 10)
+	csr.Subject.CommonName = marbleType + strconv.FormatUint(uint64(c.activations[marbleType]), 10)
 	notBefore := time.Now()
 	// TODO: produce shorter lived certificates
 	notAfter := notBefore.Add(math.MaxInt64)
