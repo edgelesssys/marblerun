@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const manifestMeshAPIJSON string = `{
+const manifestJSON string = `{
 	"Packages": {
 		"backend": {
 			"MREnclave": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31],
@@ -88,7 +88,7 @@ func TestLogic(t *testing.T) {
 
 	// parse manifest
 	var manifest core.Manifest
-	err := json.Unmarshal([]byte(manifestMeshAPIJSON), &manifest)
+	err := json.Unmarshal([]byte(manifestJSON), &manifest)
 	assert.Nil(err, err)
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
@@ -98,14 +98,14 @@ func TestLogic(t *testing.T) {
 	assert.NotNil(coordinator, "coordinator empty")
 	assert.Nil(err, err)
 
-	coordinator.SetManifest(context.TODO(), []byte(manifestMeshAPIJSON))
+	coordinator.SetManifest(context.TODO(), []byte(manifestJSON))
 
-	// run mesh server
+	// run marble server
 	var grpcAddr string
 	addrChan := make(chan string)
 	errChan := make(chan error)
-	meshServerAddr := flag.String("ip", "localhost:0", "")
-	go server.RunMeshServer(coordinator, *meshServerAddr, addrChan, errChan)
+	marbleServerAddr := flag.String("ip", "localhost:0", "")
+	go server.RunMarbleServer(coordinator, *marbleServerAddr, addrChan, errChan)
 	select {
 	case err = <-errChan:
 		fmt.Println("Failed to start gRPC server", err)
