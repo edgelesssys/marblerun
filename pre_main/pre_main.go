@@ -29,9 +29,6 @@ const edgMarbleID string = "EDG_MARBLE_ID"
 // edgMarbleType: Required env variable with type of this marble
 const edgMarbleType string = "EDG_MARBLE_TYPE"
 
-// edgMarbleType: Required env variable with the Coordinator's RootCA
-const edgRootCa string = "EDG_ROOT_CA"
-
 // TLS Cert orgName
 const orgName string = "Edgeless Systems GmbH"
 
@@ -64,21 +61,13 @@ func newAuthenticator(orgName string, commonName string, qi quote.Issuer) (*Auth
 
 // loadTLSCreddentials builds a TLS config from the Authenticator's self-signed certificate and the Coordinator's RootCA
 func loadTLSCredentials(a *Authenticator) (credentials.TransportCredentials, error) {
-	pemCoordinatorCa := os.Getenv(edgRootCa)
-	if len(pemCoordinatorCa) == 0 {
-		return nil, fmt.Errorf("%v: Environment Variable not set", edgRootCa)
-	}
-	certPool := x509.NewCertPool()
-	if !certPool.AppendCertsFromPEM([]byte(pemCoordinatorCa)) {
-		return nil, fmt.Errorf("failed to add Coordinator CA's certificate")
-	}
 	clientCert, err := a.getTLSCertificate()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Marble self-signed x509 certificate")
 	}
 	tlsConfig := &tls.Config{
-		Certificates: []tls.Certificate{*clientCert},
-		// RootCAs:      certPool,
+		Certificates:       []tls.Certificate{*clientCert},
+		InsecureSkipVerify: true,
 	}
 	return credentials.NewTLS(tlsConfig), nil
 }

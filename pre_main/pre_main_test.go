@@ -1,14 +1,11 @@
 package premain
 
 import (
-	"bytes"
 	"context"
 	"crypto/x509"
 	"encoding/json"
-	"encoding/pem"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"testing"
 
@@ -122,16 +119,6 @@ func TestLogic(t *testing.T) {
 	assert.Nil(err)
 	err = os.Setenv(edgMarbleType, "backend")
 	assert.Nil(err)
-
-	// store Coordinator's certificate in env
-	coordinatorCert, err := core.GetTLSCertificate()
-	assert.Nil(err)
-	derBytes := coordinatorCert.Certificate[0]
-	certOut := new(bytes.Buffer)
-	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes}); err != nil {
-		log.Fatalf("Failed to encode PEM cert: %v", err)
-	}
-	os.Setenv(edgRootCa, certOut.String())
 
 	// create Authenticator
 	a, err := newAuthenticator("Edgeless Systems GmbH", "Marble", issuer)
