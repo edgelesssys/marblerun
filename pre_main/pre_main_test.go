@@ -9,7 +9,7 @@ import (
 	"os"
 	"testing"
 
-	_core "github.com/edgelesssys/coordinator/coordinator/core"
+	"github.com/edgelesssys/coordinator/coordinator/core"
 	"github.com/edgelesssys/coordinator/coordinator/quote"
 	"github.com/edgelesssys/coordinator/coordinator/rpc"
 	"github.com/edgelesssys/coordinator/coordinator/server"
@@ -86,25 +86,27 @@ func TestLogic(t *testing.T) {
 	assert := assert.New(t)
 
 	// parse manifest
-	var manifest _core.Manifest
+	var manifest core.Manifest
 	err := json.Unmarshal([]byte(manifestMeshAPIJSON), &manifest)
 	assert.Nil(err)
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
 
 	// create core and run gRPC server
-	core, err := _core.NewCore("edgeless", validator, issuer)
-	assert.NotNil(core)
+	orgName := "edgless"
+	commonName := "Coordinator" // TODO: core does not export this, for now just use it hardcoded
+	coordinator, err := core.NewCore(orgName, validator, issuer)
+	assert.NotNil(coordinator)
 	assert.Nil(err)
 
-	core.SetManifest(context.TODO(), []byte(manifestMeshAPIJSON))
+	coordinator.SetManifest(context.TODO(), []byte(manifestMeshAPIJSON))
 
 	// run mesh server
 	var grpcAddr string
 	addrChan := make(chan string)
 	errChan := make(chan error)
 	meshServerAddr := flag.String("ip", "localhost:0", "")
-	go server.RunMeshServer(core, *meshServerAddr, addrChan, errChan)
+	go server.RunMeshServer(coordinator, *meshServerAddr, addrChan, errChan)
 	select {
 	case err = <-errChan:
 		fmt.Println("Failed to start gRPC server", err)
