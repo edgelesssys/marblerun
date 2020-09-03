@@ -8,7 +8,6 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math"
 	"math/big"
@@ -21,40 +20,43 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-// Required env variable with Coordinator addr
+// edgCoordinatorAddr: Required env variable with Coordinator addr
 const edgCoordinatorAddr string = "EDG_COORDINATOR_ADDR"
 
-// Required env variable with unique ID of this marble
+// edgMarbleID: Required env variable with unique ID of this marble
 const edgMarbleID string = "EDG_MARBLE_ID"
 
-// Required env variable with pod type of this marble
-const edgPodType string = "EDG_POD_TYPE"
+// edgMarbleType: Required env variable with type of this marble
+const edgMarbleType string = "EDG_MARBLE_TYPE"
+
+// edgMarbleType: Required env variable with the Coordinator's RootCA
+const edgRootCa string = "EDG_ROOT_CA"
 
 // TLS Cert orgName
-const orgName string = "Marble"
-
-// File location of the Coordinators RootCA
-const rootCAFile string = "/certs/root.pem"
+const orgName string = "Edgeless Systems GmbH"
 
 // Authenticator holds the information for authenticating with the Coordinator
 type Authenticator struct {
 	commonName string
+	orgName    string
 	privk      ed25519.PrivateKey
 	pubk       ed25519.PublicKey
-	tlsCert    *x509.Certificate
+	initCert   *x509.Certificate
 	csr        *x509.CertificateRequest
 	quote      []byte
 	qi         quote.Issuer
-	signedCert *tls.Certificate
+	marbleCert *x509.Certificate
 	params     *rpc.Parameters
 }
 
 // newAuthenticator creates a new Authenticator instance
-func newAuthenticator(orgName string, commonName string) (*Authenticator, error) {
+func newAuthenticator(orgName string, commonName string, qi quote.Issuer) (*Authenticator, error) {
 	a := &Authenticator{
 		commonName: commonName,
+		orgName:    orgName,
+		qi:         qi,
 	}
-	if err := a.generateCert(orgName); err != nil {
+	if err := a.generateCert(); err != nil {
 		return nil, err
 	}
 	return a, nil
@@ -62,12 +64,12 @@ func newAuthenticator(orgName string, commonName string) (*Authenticator, error)
 
 // loadTLSCreddentials builds a TLS config from the Authenticator's self-signed certificate and the Coordinator's RootCA
 func loadTLSCredentials(a *Authenticator) (credentials.TransportCredentials, error) {
-	pemCoordinatorCa, err := ioutil.ReadFile(rootCAFile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read rootCA file at %v", rootCAFile)
+	pemCoordinatorCa := os.Getenv(edgRootCa)
+	if len(pemCoordinatorCa) == 0 {
+		return nil, fmt.Errorf("%v: Environment Variable not set", edgRootCa)
 	}
 	certPool := x509.NewCertPool()
-	if !certPool.AppendCertsFromPEM(pemCoordinatorCa) {
+	if !certPool.AppendCertsFromPEM([]byte(pemCoordinatorCa)) {
 		return nil, fmt.Errorf("failed to add Coordinator CA's certificate")
 	}
 	clientCert, err := a.getTLSCertificate()
@@ -76,14 +78,14 @@ func loadTLSCredentials(a *Authenticator) (credentials.TransportCredentials, err
 	}
 	tlsConfig := &tls.Config{
 		Certificates: []tls.Certificate{*clientCert},
-		RootCAs:      certPool,
+		// RootCAs:      certPool,
 	}
 	return credentials.NewTLS(tlsConfig), nil
 }
 
 // getTLSCertificate creates a TLS certificate for the Marbles self-signed x509 certificate
 func (a *Authenticator) getTLSCertificate() (*tls.Certificate, error) {
-	return tlsCertFromDER(a.tlsCert.Raw, a.privk), nil
+	return tlsCertFromDER(a.initCert.Raw, a.privk), nil
 }
 
 // generateSerial returns a random serialNumber
@@ -93,7 +95,7 @@ func generateSerial() (*big.Int, error) {
 }
 
 // generateCert generates a new self-signed certificate associated key-pair
-func (a *Authenticator) generateCert(orgName string) error {
+func (a *Authenticator) generateCert() error {
 
 	// code (including generateSerial()) adapted from golang.org/src/crypto/tls/generate_cert.go
 	pubk, privk, err := ed25519.GenerateKey(rand.Reader)
@@ -113,7 +115,7 @@ func (a *Authenticator) generateCert(orgName string) error {
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
-			Organization: []string{orgName},
+			Organization: []string{a.orgName},
 			CommonName:   a.commonName,
 		},
 		NotBefore: notBefore,
@@ -140,16 +142,17 @@ func (a *Authenticator) generateCert(orgName string) error {
 	a.pubk = pubk
 	a.privk = privk
 	a.quote = quote
-	a.tlsCert = cert
+	a.initCert = cert
 	return nil
 }
 
-func (a *Authenticator) generateCSR(orgName string) error {
+func (a *Authenticator) generateCSR() error {
 	template := x509.CertificateRequest{
 		Subject: pkix.Name{
-			Organization: []string{orgName},
+			Organization: []string{a.orgName},
 			CommonName:   a.commonName,
 		},
+		PublicKey: a.pubk,
 	}
 	csrRaw, err := x509.CreateCertificateRequest(rand.Reader, &template, a.privk)
 	if err != nil {
@@ -181,15 +184,16 @@ func preMain() {
 		log.Fatalf("%v: Environment Variable not set.", edgMarbleID)
 		return
 	}
-	podType := os.Getenv(edgPodType)
-	if len(podType) == 0 {
-		log.Fatalf("%v: Environment Variable not set.", edgPodType)
+	marbleType := os.Getenv(edgMarbleType)
+	if len(marbleType) == 0 {
+		log.Fatalf("%v: Environment Variable not set.", edgMarbleType)
 		return
 	}
 
 	// load TLS Credentials
 	commonName := fmt.Sprintf("marble%v", marbleID)
-	a, err := newAuthenticator(orgName, commonName)
+	issuer := quote.NewMockIssuer() // TODO: Use real issuer
+	a, err := newAuthenticator(orgName, commonName, issuer)
 	if err != nil {
 		log.Fatalln("cannot create Authenticator: ", err)
 	}
@@ -202,30 +206,34 @@ func preMain() {
 	cc, err := grpc.Dial(edgCoordinatorAddr, grpc.WithTransportCredentials(tlsCredentials))
 
 	if err != nil {
-		log.Fatalf("Could not connect: %v", err)
+		log.Fatalf("cannot connect: %v", err)
 		return
 	}
 
 	defer cc.Close()
 
 	// generate CSR
-	if err := a.generateCSR(orgName); err != nil {
+	if err := a.generateCSR(); err != nil {
 		log.Fatalln("cannot generate CSR: ", err)
 	}
 
 	// authenticate with Coordinator
-	c := rpc.NewPodClient(cc)
+	c := rpc.NewMarbleClient(cc)
 	req := &rpc.ActivationReq{
-		CSR:     a.csr.Raw,
-		PodType: podType,
-		Quote:   a.quote,
+		CSR:        a.csr.Raw,
+		MarbleType: marbleType,
+		Quote:      a.quote,
 	}
 
 	activiationResp, err := c.Activate(context.Background(), req)
 	if err != nil {
 		log.Fatalf("Unexpected error %v", err)
 	}
-	a.signedCert = tlsCertFromDER(activiationResp.GetCertificate(), a.privk)
+	newCert, err := x509.ParseCertificate(activiationResp.GetCertificate())
+	if err != nil {
+		log.Fatalln("cannot pase certificate: ", err)
+	}
+	a.marbleCert = newCert
 	a.params = activiationResp.GetParameters()
 
 	// TODO: Store certificate in virtual file system and call actual main with params
