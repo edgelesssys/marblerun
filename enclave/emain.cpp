@@ -19,6 +19,5 @@ void emain(const char* cwd, const char* config) {
     return;
   }
   
-  std::cout << "emain" << std::endl;
   invokemain(cwd, config);
 }
