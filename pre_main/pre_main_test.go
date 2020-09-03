@@ -171,5 +171,10 @@ func TestLogic(t *testing.T) {
 	assert.Equal(marble.Parameters.Env, a.params.Env)
 	assert.Equal(marble.Parameters.Argv, a.params.Argv)
 
-	// TODO check certificate
+	assert.Equal(a.marbleCert.Issuer.CommonName, commonName)
+	assert.Equal(a.marbleCert.Issuer.Organization[0], orgName)
+	// commonName gets overwritten
+	// assert.Equal(a.marbleCert.Subject.CommonName, a.commonName)
+	assert.Equal(a.marbleCert.Subject.Organization[0], a.orgName)
+	assert.Equal(a.marbleCert.PublicKey, a.pubk)
 }
