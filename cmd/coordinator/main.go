@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	_core "github.com/edgelesssys/coordinator/coordinator/core"
+	"github.com/edgelesssys/coordinator/coordinator/core"
 	"github.com/edgelesssys/coordinator/coordinator/quote"
 	"github.com/edgelesssys/coordinator/coordinator/server"
 )
@@ -13,8 +13,8 @@ func main() {}
 
 func coordinatormain(cwd, config string) {
 	cfg := struct {
-		MeshServerPort   string
-		ClientServerPort string
+		MeshServerAddr   string
+		ClientServerAddr string
 	}{
 		"localhost:0",
 		"localhost:25555",
@@ -26,28 +26,31 @@ func coordinatormain(cwd, config string) {
 		}
 	}
 
-	// coordinator setup
+	// initialize coordinator
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
-	core, _ := _core.NewCore("Coordinator", validator, issuer)
+	core, err := core.NewCore("Coordinator", validator, issuer)
+	if err != nil {
+		panic(err)
+	}
 
 	// start client server
-	fmt.Println("start client server at ", cfg.ClientServerPort)
 	mux := server.CreateServeMux(core)
-	go server.RunServer(mux, cfg.ClientServerPort, nil)
+	go server.RunClientServer(mux, cfg.ClientServerAddr, nil)
 
-	// run mesh server
-	var err error
-	var grpcAddr string
+	// run marble server
 	addrChan := make(chan string)
 	errChan := make(chan error)
-	go server.RunMeshServer(core, cfg.MeshServerPort, addrChan, errChan)
-	select {
-	case err = <-errChan:
-		fmt.Println("Failed to start gRPC server", err)
-	case grpcAddr = <-addrChan:
-		fmt.Println("start mesh server at ", grpcAddr)
-	}
+	go server.RunMarbleServer(core, cfg.MeshServerAddr, addrChan, errChan)
 	for {
+		select {
+		case err := <-errChan:
+			if err != nil {
+				panic(err)
+			}
+			return
+		case grpcAddr := <-addrChan:
+			fmt.Println("start mesh server at ", grpcAddr)
+		}
 	}
 }

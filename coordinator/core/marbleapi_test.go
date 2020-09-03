@@ -19,92 +19,20 @@ import (
 	"google.golang.org/grpc/peer"
 )
 
-const manifestMeshAPIJSON string = `{
-	"Packages": {
-		"backend": {
-			"MREnclave": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31],
-			"MiscSelect": 1111111,
-			"Attributes": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
-		},
-		"frontend": {
-			"MRSigner": [31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0],
-			"ISVProdID": 44,
-			"ISVSVN": 3,
-			"Attributes": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
-			"MiscSelect": 1111111
-		}
-	},
-	"Infrastructures": {
-		"Azure": {
-			"QESVN": 2,
-			"PCESVN": 3,
-			"CPUSVN": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
-			"RootCA": [3,3,3]
-		},
-		"Alibaba": {
-			"QESVN": 2,
-			"PCESVN": 4,
-			"CPUSVN": [15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0],
-			"RootCA": [4,4,4]
-		}
-	},
-	"Marbles": {
-		"backend_first": {
-			"Package": "backend",
-			"MaxActivations": 1,
-			"Parameters": {
-				"Files": {
-					"/abc/defg.txt": [7,7,7],
-					"/ghi/jkl.mno": [8,8,8]
-				},
-				"Env": {
-					"IS_FIRST": "true"
-				},
-				"Argv": [
-					"--first",
-					"serve"
-				]
-			}
-		},
-		"backend_other": {
-			"Package": "backend",
-			"Parameters": {
-				"Argv": [
-					"serve"
-				]
-			}
-		},
-		"frontend": {
-			"Package": "frontend"
-		}
-	},
-	"Clients": {
-		"owner": [9,9,9]
-	}
-}`
-
-var coreServer *Core
-
-func TestLogic(t *testing.T) {
+func TestMarbleAPI(t *testing.T) {
 	assert := assert.New(t)
 
 	// parse manifest
 	var manifest Manifest
-	err := json.Unmarshal([]byte(manifestMeshAPIJSON), &manifest)
+	err := json.Unmarshal([]byte(manifestJSON), &manifest)
 	assert.Nil(err)
+
+	// create core
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
-
-	// create core and run gRPC server
-	{
-		c, err := NewCore("edgeless", validator, issuer)
-		assert.NotNil(c)
-		assert.Nil(err)
-
-		c.SetManifest(context.TODO(), []byte(manifestMeshAPIJSON))
-
-		coreServer = c
-	}
+	coreServer, err := NewCore("edgeless", validator, issuer)
+	assert.NotNil(coreServer)
+	assert.Nil(err)
 
 	spawner := marbleSpawner{
 		assert:    assert,
@@ -113,11 +41,17 @@ func TestLogic(t *testing.T) {
 		manifest:  manifest,
 	}
 
+	// try to activate first backend marble prematurely before manifest is set
+	spawner.newMarble(coreServer, "backend_first", "Azure", false)
+
+	// set manifest
+	assert.Nil(coreServer.SetManifest(context.TODO(), []byte(manifestJSON)))
+
 	// activate first backend
-	spawner.newMarble("backend_first", "Azure", true)
+	spawner.newMarble(coreServer, "backend_first", "Azure", true)
 
 	// try to activate another first backend
-	spawner.newMarble("backend_first", "Azure", false)
+	spawner.newMarble(coreServer, "backend_first", "Azure", false)
 
 	// activate 10 other backend
 	pickInfra := func(i int) string {
@@ -128,12 +62,12 @@ func TestLogic(t *testing.T) {
 		}
 	}
 	for i := 0; i < 10; i++ {
-		spawner.newMarble("backend_other", pickInfra(i), true)
+		spawner.newMarble(coreServer, "backend_other", pickInfra(i), true)
 	}
 
 	// activate 10 frontend
 	for i := 0; i < 10; i++ {
-		spawner.newMarble("frontend", pickInfra(i), true)
+		spawner.newMarble(coreServer, "frontend", pickInfra(i), true)
 	}
 }
 
@@ -145,24 +79,24 @@ type marbleSpawner struct {
 	assert     *assert.Assertions
 }
 
-func (ns marbleSpawner) newMarble(marbleType string, infraName string, shouldSucceed bool) {
+func (ms marbleSpawner) newMarble(coreServer *Core, marbleType string, infraName string, shouldSucceed bool) {
 	// create certificate and CSR
 	certTLS, cert, csr, err := generateMarbleCredentials()
-	ns.assert.Nil(err)
-	ns.assert.NotNil(cert)
-	ns.assert.NotNil(csr)
+	ms.assert.Nil(err)
+	ms.assert.NotNil(cert)
+	ms.assert.NotNil(csr)
 
 	// create mock quote using values from the manifest
-	quote, err := ns.issuer.Issue(cert)
-	ns.assert.NotNil(quote)
-	ns.assert.Nil(err)
-	marble, ok := ns.manifest.Marbles[marbleType]
-	ns.assert.True(ok)
-	pkg, ok := ns.manifest.Packages[marble.Package]
-	ns.assert.True(ok)
-	infra, ok := ns.manifest.Infrastructures[infraName]
-	ns.assert.True(ok)
-	ns.validator.AddValidQuote(quote, cert, pkg, infra)
+	quote, err := ms.issuer.Issue(cert)
+	ms.assert.NotNil(quote)
+	ms.assert.Nil(err)
+	marble, ok := ms.manifest.Marbles[marbleType]
+	ms.assert.True(ok)
+	pkg, ok := ms.manifest.Packages[marble.Package]
+	ms.assert.True(ok)
+	infra, ok := ms.manifest.Infrastructures[infraName]
+	ms.assert.True(ok)
+	ms.validator.AddValidQuote(quote, cert, pkg, infra)
 
 	tlsInfo := credentials.TLSInfo{
 		State: tls.ConnectionState{
@@ -181,22 +115,22 @@ func (ns marbleSpawner) newMarble(marbleType string, infraName string, shouldSuc
 	})
 
 	if !shouldSucceed {
-		ns.assert.NotNil(err)
-		ns.assert.Nil(resp)
+		ms.assert.NotNil(err)
+		ms.assert.Nil(resp)
 		return
 	}
-	ns.assert.Nil(err)
-	ns.assert.NotNil(resp)
+	ms.assert.Nil(err)
+	ms.assert.NotNil(resp)
 
 	// validate response
 	params := resp.GetParameters()
-	ns.assert.Equal(marble.Parameters.Files, params.Files)
-	ns.assert.Equal(marble.Parameters.Env, params.Env)
-	ns.assert.Equal(marble.Parameters.Argv, params.Argv)
+	ms.assert.Equal(marble.Parameters.Files, params.Files)
+	ms.assert.Equal(marble.Parameters.Env, params.Env)
+	ms.assert.Equal(marble.Parameters.Argv, params.Argv)
 
 	newCert, err := x509.ParseCertificate(resp.GetCertificate())
-	ns.assert.Nil(err)
-	ns.assert.Equal(coordinatorName, newCert.Issuer.CommonName)
+	ms.assert.Nil(err)
+	ms.assert.Equal(coordinatorName, newCert.Issuer.CommonName)
 	// TODO: properly verify issued certificate
 }
 

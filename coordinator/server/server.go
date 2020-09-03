@@ -6,16 +6,16 @@ import (
 	"net"
 	"net/http"
 
-	_core "github.com/edgelesssys/coordinator/coordinator/core"
+	"github.com/edgelesssys/coordinator/coordinator/core"
 	"github.com/edgelesssys/coordinator/coordinator/rpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
 
-// RunMeshServer starts a gRPC with the given Coordinator core.
+// RunMarbleServer starts a gRPC with the given Coordinator core.
 // `address` is the desired TCP address like "localhost:0".
 // The effective TCP address is returned via `addrChan`.
-func RunMeshServer(core *_core.Core, addr string, addrChan chan string, errChan chan error) {
+func RunMarbleServer(core *core.Core, addr string, addrChan chan string, errChan chan error) {
 	cert, err := core.GetTLSCertificate()
 	if err != nil {
 		errChan <- err
@@ -41,8 +41,8 @@ func RunMeshServer(core *_core.Core, addr string, addrChan chan string, errChan 
 	}
 }
 
-// CreateServeMux creates a mux that serves the client API.
-func CreateServeMux(core *_core.Core) *http.ServeMux {
+// CreateServeMux creates a mux that serves the client API. provisionally
+func CreateServeMux(core *core.Core) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/quote", func(w http.ResponseWriter, r *http.Request) {
@@ -58,13 +58,13 @@ func CreateServeMux(core *_core.Core) *http.ServeMux {
 	return mux
 }
 
-// RunServer runs a HTTP server serving mux.
-func RunServer(mux *http.ServeMux, address string, tlsConfig *tls.Config) {
+// RunClientServer runs a HTTP server serving mux. provisionally
+func RunClientServer(mux *http.ServeMux, address string, tlsConfig *tls.Config) {
 	server := http.Server{
 		Addr:      address,
 		Handler:   mux,
 		TLSConfig: tlsConfig,
 	}
-
+	fmt.Println("start client server at ", address)
 	fmt.Println(server.ListenAndServe())
 }
