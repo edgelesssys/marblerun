@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/edgelesssys/coordinator/coordinator/core"
@@ -82,22 +81,22 @@ const manifestMeshAPIJSON string = `{
 	}
 }`
 
+const commonName string = "Coordinator" // TODO: core does not export this, for now just use it hardcoded
+
 func TestLogic(t *testing.T) {
 	assert := assert.New(t)
 
 	// parse manifest
 	var manifest core.Manifest
 	err := json.Unmarshal([]byte(manifestMeshAPIJSON), &manifest)
-	assert.Nil(err)
+	assert.Nil(err, err)
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
 
 	// create core and run gRPC server
-	orgName := "edgless"
-	commonName := "Coordinator" // TODO: core does not export this, for now just use it hardcoded
 	coordinator, err := core.NewCore(orgName, validator, issuer)
-	assert.NotNil(coordinator)
-	assert.Nil(err)
+	assert.NotNil(coordinator, "coordinator empty")
+	assert.Nil(err, err)
 
 	coordinator.SetManifest(context.TODO(), []byte(manifestMeshAPIJSON))
 
@@ -114,43 +113,74 @@ func TestLogic(t *testing.T) {
 		fmt.Println("start mesh server at", grpcAddr)
 	}
 
-	// set env variables
-	err = os.Setenv(edgCoordinatorAddr, grpcAddr)
-	assert.Nil(err)
-	err = os.Setenv(edgMarbleID, "001")
-	assert.Nil(err)
-	err = os.Setenv(edgMarbleType, "backend")
-	assert.Nil(err)
+	spawner := marbleSpawner{
+		assert:     assert,
+		issuer:     issuer,
+		validator:  validator,
+		manifest:   manifest,
+		serverAddr: grpcAddr,
+	}
 
-	// create Authenticator
-	a, err := newAuthenticator("Edgeless Systems GmbH", "Marble", issuer)
-	assert.Nil(err)
+	// activate first backend
+	spawner.newMarble("backend_first", "Azure", true)
+
+	// try to activate another first backend
+	spawner.newMarble("backend_first", "Azure", false)
+
+	// activate 10 other backend
+	pickInfra := func(i int) string {
+		if i&1 == 0 {
+			return "Azure"
+		}
+		return "Alibaba"
+	}
+	for i := 0; i < 10; i++ {
+		spawner.newMarble("backend_other", pickInfra(i), true)
+	}
+
+	// activate 10 frontend
+	for i := 0; i < 10; i++ {
+		spawner.newMarble("frontend", pickInfra(i), true)
+	}
+
+}
+
+type marbleSpawner struct {
+	manifest   core.Manifest
+	validator  *quote.MockValidator
+	issuer     quote.Issuer
+	serverAddr string
+	assert     *assert.Assertions
+}
+
+func (ns marbleSpawner) newMarble(marbleType string, infraName string, shouldSucceed bool) {
+	// create authenticator
+	a, err := newAuthenticator("Edgeless Systems GmbH", "Marble", ns.issuer)
+	ns.assert.Nil(err, err)
 
 	// create mock quote using values from the manifest
-	marbleType := "backend_first"
-	infraName := "Azure"
-	quote, err := issuer.Issue(a.initCert.Raw)
-	assert.NotNil(quote)
-	assert.Nil(err)
-	marble, ok := manifest.Marbles[marbleType]
-	assert.True(ok)
-	pkg, ok := manifest.Packages[marble.Package]
-	assert.True(ok)
-	infra, ok := manifest.Infrastructures[infraName]
-	assert.True(ok)
-	validator.AddValidQuote(quote, a.initCert.Raw, pkg, infra)
+	quote, err := ns.issuer.Issue(a.initCert.Raw)
+	ns.assert.NotNil(quote, "expected empty quote, but got: %v", quote)
+	ns.assert.Nil(err, err)
+	marble, ok := ns.manifest.Marbles[marbleType]
+	ns.assert.True(ok, "marbleType '%v' does not exist", marbleType)
+	pkg, ok := ns.manifest.Packages[marble.Package]
+	ns.assert.True(ok, "Package '%v' does not exist", marble.Package)
+	infra, ok := ns.manifest.Infrastructures[infraName]
+	ns.assert.True(ok, "Infrastructure '%v' does not exist", infraName)
+	ns.validator.AddValidQuote(quote, a.initCert.Raw, pkg, infra)
 
 	// initiate grpc connection to Coordinator
 	tlsCredentials, err := loadTLSCredentials(a)
-	assert.Nil(err)
-	cc, err := grpc.Dial(grpcAddr, grpc.WithTransportCredentials(tlsCredentials))
-	assert.Nil(err)
+	ns.assert.Nil(err, err)
+	cc, err := grpc.Dial(ns.serverAddr, grpc.WithTransportCredentials(tlsCredentials))
+	ns.assert.Nil(err, err)
 
 	defer cc.Close()
 
 	// generate CSR
 	err = a.generateCSR()
-	assert.Nil(err)
+	ns.assert.Nil(err, err)
 
 	// authenticate with Coordinator
 	c := rpc.NewMarbleClient(cc)
@@ -159,22 +189,28 @@ func TestLogic(t *testing.T) {
 		MarbleType: marbleType,
 		Quote:      a.quote,
 	}
+	activationResp, err := c.Activate(context.Background(), req)
 
-	activiationResp, err := c.Activate(context.Background(), req)
-	assert.Nil(err)
-	newCert, err := x509.ParseCertificate(activiationResp.GetCertificate())
-	assert.Nil(err)
+	if !shouldSucceed {
+		ns.assert.NotNil(err, err)
+		ns.assert.Nil(activationResp, "expected empty activationResp, but got %v", activationResp)
+		return
+	}
+	ns.assert.Nil(err, err)
+	ns.assert.NotNil(activationResp, "activationResp empty, but no Error returned")
+	newCert, err := x509.ParseCertificate(activationResp.GetCertificate())
+	ns.assert.Nil(err, err)
 	a.marbleCert = newCert
-	a.params = activiationResp.GetParameters()
+	a.params = activationResp.GetParameters()
 
-	assert.Equal(marble.Parameters.Files, a.params.Files)
-	assert.Equal(marble.Parameters.Env, a.params.Env)
-	assert.Equal(marble.Parameters.Argv, a.params.Argv)
+	ns.assert.Equal(marble.Parameters.Files, a.params.Files, "expected equal: '%v' - '%v'", marble.Parameters.Files, a.params.Files)
+	ns.assert.Equal(marble.Parameters.Env, a.params.Env, "expected equal: '%v' - '%v'", marble.Parameters.Env, a.params.Env)
+	ns.assert.Equal(marble.Parameters.Argv, a.params.Argv, "expected equal: '%v' - '%v'", marble.Parameters.Argv, a.params.Argv)
 
-	assert.Equal(a.marbleCert.Issuer.CommonName, commonName)
-	assert.Equal(a.marbleCert.Issuer.Organization[0], orgName)
+	ns.assert.Equal(a.marbleCert.Issuer.CommonName, commonName, "expected equal: '%v' - '%v'", a.marbleCert.Issuer.CommonName, commonName)
+	ns.assert.Equal(a.marbleCert.Issuer.Organization[0], orgName, "expected equal: '%v' - '%v'", a.marbleCert.Issuer.Organization[0], orgName)
 	// commonName gets overwritten
 	// assert.Equal(a.marbleCert.Subject.CommonName, a.commonName)
-	assert.Equal(a.marbleCert.Subject.Organization[0], a.orgName)
-	assert.Equal(a.marbleCert.PublicKey, a.pubk)
+	ns.assert.Equal(a.marbleCert.Subject.Organization[0], a.orgName, "expected equal: '%v' - '%v'", a.marbleCert.Subject.Organization[0], a.orgName)
+	ns.assert.Equal(a.marbleCert.PublicKey, a.pubk, "expected equal: '%v' - '%v'", a.marbleCert.PublicKey, a.pubk)
 }

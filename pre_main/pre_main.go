@@ -29,6 +29,7 @@ const edgMarbleID string = "EDG_MARBLE_ID"
 // edgMarbleType: Required env variable with type of this marble
 const edgMarbleType string = "EDG_MARBLE_TYPE"
 
+// TODO: Create a central place where all certificate information is managed
 // TLS Cert orgName
 const orgName string = "Edgeless Systems GmbH"
 
@@ -161,22 +162,19 @@ func tlsCertFromDER(certDER []byte, privk interface{}) *tls.Certificate {
 }
 
 // preMain is supposed to run before the App's actual main and authenticate with the Coordinator
-func preMain() {
+func preMain() (*x509.Certificate, *rpc.Parameters, error) {
 	// get env variables
 	coordAddr := os.Getenv(edgCoordinatorAddr)
 	if len(coordAddr) == 0 {
-		log.Fatalf("%v: Environment Variable not set.", edgCoordinatorAddr)
-		return
+		return nil, nil, fmt.Errorf("%v: Environment Variable not set", edgCoordinatorAddr)
 	}
 	marbleID := os.Getenv(edgMarbleID)
 	if len(marbleID) == 0 {
-		log.Fatalf("%v: Environment Variable not set.", edgMarbleID)
-		return
+		return nil, nil, fmt.Errorf("%v: Environment Variable not set", edgMarbleID)
 	}
 	marbleType := os.Getenv(edgMarbleType)
 	if len(marbleType) == 0 {
-		log.Fatalf("%v: Environment Variable not set.", edgMarbleType)
-		return
+		return nil, nil, fmt.Errorf("%v: Environment Variable not set", edgMarbleType)
 	}
 
 	// load TLS Credentials
@@ -184,26 +182,25 @@ func preMain() {
 	issuer := quote.NewMockIssuer() // TODO: Use real issuer
 	a, err := newAuthenticator(orgName, commonName, issuer)
 	if err != nil {
-		log.Fatalln("cannot create Authenticator: ", err)
+		return nil, nil, err
 	}
 	tlsCredentials, err := loadTLSCredentials(a)
 	if err != nil {
-		log.Fatalln("cannot load TLS credentials: ", err)
+		return nil, nil, err
 	}
 
 	// initiate grpc connection to Coordinator
 	cc, err := grpc.Dial(edgCoordinatorAddr, grpc.WithTransportCredentials(tlsCredentials))
 
 	if err != nil {
-		log.Fatalf("cannot connect: %v", err)
-		return
+		return nil, nil, err
 	}
 
 	defer cc.Close()
 
 	// generate CSR
 	if err := a.generateCSR(); err != nil {
-		log.Fatalln("cannot generate CSR: ", err)
+		return nil, nil, err
 	}
 
 	// authenticate with Coordinator
@@ -216,19 +213,23 @@ func preMain() {
 
 	activiationResp, err := c.Activate(context.Background(), req)
 	if err != nil {
-		log.Fatalf("Unexpected error %v", err)
+		return nil, nil, err
 	}
 	newCert, err := x509.ParseCertificate(activiationResp.GetCertificate())
 	if err != nil {
-		log.Fatalln("cannot pase certificate: ", err)
+		return nil, nil, err
 	}
 	a.marbleCert = newCert
 	a.params = activiationResp.GetParameters()
 
 	// TODO: Store certificate in virtual file system and call actual main with params
+	return a.marbleCert, a.params, nil
 
 }
 
 func main() {
-	preMain()
+	_, _, err := preMain()
+	if err != nil {
+		log.Fatalf("pre_main failed: %v", err)
+	}
 }
