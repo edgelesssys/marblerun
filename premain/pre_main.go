@@ -23,9 +23,6 @@ import (
 // edgCoordinatorAddr: Required env variable with Coordinator addr
 const edgCoordinatorAddr string = "EDG_COORDINATOR_ADDR"
 
-// edgMarbleID: Required env variable with unique ID of this marble
-const edgMarbleID string = "EDG_MARBLE_ID"
-
 // edgMarbleType: Required env variable with type of this marble
 const edgMarbleType string = "EDG_MARBLE_TYPE"
 
@@ -162,35 +159,26 @@ func tlsCertFromDER(certDER []byte, privk interface{}) *tls.Certificate {
 }
 
 // preMain is supposed to run before the App's actual main and authenticate with the Coordinator
-func preMain() (*x509.Certificate, *rpc.Parameters, error) {
+func preMain(a *Authenticator) (*x509.Certificate, *rpc.Parameters, error) {
 	// get env variables
 	coordAddr := os.Getenv(edgCoordinatorAddr)
 	if len(coordAddr) == 0 {
-		return nil, nil, fmt.Errorf("%v: Environment Variable not set", edgCoordinatorAddr)
+		return nil, nil, fmt.Errorf("environment variable not set: %v", edgCoordinatorAddr)
 	}
-	marbleID := os.Getenv(edgMarbleID)
-	if len(marbleID) == 0 {
-		return nil, nil, fmt.Errorf("%v: Environment Variable not set", edgMarbleID)
-	}
+
 	marbleType := os.Getenv(edgMarbleType)
 	if len(marbleType) == 0 {
-		return nil, nil, fmt.Errorf("%v: Environment Variable not set", edgMarbleType)
+		return nil, nil, fmt.Errorf("environment variable not set: %v", edgMarbleType)
 	}
 
 	// load TLS Credentials
-	commonName := fmt.Sprintf("marble%v", marbleID)
-	issuer := quote.NewMockIssuer() // TODO: Use real issuer
-	a, err := newAuthenticator(orgName, commonName, issuer)
-	if err != nil {
-		return nil, nil, err
-	}
 	tlsCredentials, err := loadTLSCredentials(a)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// initiate grpc connection to Coordinator
-	cc, err := grpc.Dial(edgCoordinatorAddr, grpc.WithTransportCredentials(tlsCredentials))
+	cc, err := grpc.Dial(coordAddr, grpc.WithTransportCredentials(tlsCredentials))
 
 	if err != nil {
 		return nil, nil, err
@@ -228,7 +216,13 @@ func preMain() (*x509.Certificate, *rpc.Parameters, error) {
 }
 
 func main() {
-	_, _, err := preMain()
+	commonName := "marble"          // Coordinator will assign an ID to us
+	issuer := quote.NewMockIssuer() // TODO: Use real issuer
+	a, err := newAuthenticator(orgName, commonName, issuer)
+	if err != nil {
+		log.Fatalf("failed to create Authenticator: %v", err)
+	}
+	_, _, err = preMain(a)
 	if err != nil {
 		log.Fatalf("pre_main failed: %v", err)
 	}
