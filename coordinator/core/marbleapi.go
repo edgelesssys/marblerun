@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/x509"
 	"math"
 	"strconv"
@@ -57,9 +58,10 @@ func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, quote []byte
 	if !pkgExists {
 		return status.Error(codes.Internal, "undefined package")
 	}
+	certHash := sha256.Sum256(tlsCert.Raw)
 	infraMatch := false
 	for _, infra := range c.manifest.Infrastructures {
-		if c.qv.Validate(quote, tlsCert.Raw, pkg, infra) == nil {
+		if c.qv.Validate(quote, certHash[:], pkg, infra) == nil {
 			infraMatch = true
 			break
 		}

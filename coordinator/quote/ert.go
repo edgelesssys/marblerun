@@ -2,21 +2,24 @@ package quote
 
 import "github.com/google/go-cmp/cmp"
 
-// PackageProperties contains the enclave package-specific properties of a SGX DCAP quote.
-// Either MREnclave or MRSigner, ISVProdID, and ISVSVN should be specified.
+// TODO Pull this from #include <openenclave/enclave.h> or include it in ertgolib
+const OE_UNIQUE_ID_SIZE = 32
+const OE_SIGNER_ID_SIZE = 32
+const OE_PRODUCT_ID_SIZE = 16
+
+// PackageProperties contains the enclave package-specific properties of an OpenEnclave quote.
+// Either UniqueID or SignerID, ProductID, and SecurityVersion should be specified.
 type PackageProperties struct {
-	MiscSelect *uint32
-	Attributes *[16]byte
-
+	// Debug Flag of the Attributes
+	Debug bool
 	// Hash of the enclave
-	MREnclave *[32]byte
-
+	UniqueID *[OE_UNIQUE_ID_SIZE]byte
 	// Hash of the enclave signer's public key
-	MRSigner *[32]byte
+	SignerID *[OE_SIGNER_ID_SIZE]byte
 	// Product ID of the package
-	ISVProdID *uint16
+	ProductID *[OE_PRODUCT_ID_SIZE]byte
 	// Security version number of the package
-	ISVSVN *uint16
+	SecurityVersion *uint
 }
 
 // InfrastructureProperties contains the infrastructure-specific properties of a SGX DCAP quote.
