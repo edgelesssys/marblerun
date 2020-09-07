@@ -1,7 +1,6 @@
 package quote
 
 import (
-	"bytes"
 	"fmt"
 
 	"github.com/edgelesssys/ertgolib/ertenclave"
@@ -22,20 +21,15 @@ func (m *ERTValidator) Validate(quote []byte, message []byte, pp PackageProperti
 	if err != nil {
 		return fmt.Errorf("verifying quote failed: %v", err)
 	}
-	if !bytes.Equal(message, report.Data) {
-		return fmt.Errorf("message != report.Data: %v != %v", message, report.Data)
+	reportedProps := PackageProperties{
+		UniqueID:        report.UniqueID,
+		SignerID:        report.SignerID,
+		Debug:           report.Debug,
+		ProductID:       report.ProductID,
+		SecurityVersion: &report.SecurityVersion,
 	}
-	if pp.UniqueID != nil && !bytes.Equal((*pp.UniqueID)[:], report.UniqueID) {
-		return fmt.Errorf("manifest.UniqueID != report.UniqueID: %v != %v", *pp.UniqueID, report.UniqueID)
-	}
-	if pp.SignerID != nil && !bytes.Equal((*pp.SignerID)[:], report.SignerID) {
-		return fmt.Errorf("manifest.SignerID != report.SignerID: %v != %v", *pp.SignerID, report.SignerID)
-	}
-	if pp.ProductID != nil && !bytes.Equal(pp.ProductID[:], report.ProductID) {
-		return fmt.Errorf("manifest.ProductID != report.ProductID: %v != %v", *pp.ProductID, report.ProductID)
-	}
-	if pp.SecurityVersion != nil && *pp.SecurityVersion != report.SecurityVersion {
-		return fmt.Errorf("manifest.SecurityVersion != report.ISVSVN: %v != %v", *pp.SecurityVersion, report.SecurityVersion)
+	if !pp.IsCompliant(reportedProps) {
+		return fmt.Errorf("PackageProperties not compliant")
 	}
 
 	// TODO Verify InfrastructureProperties with information from OE Quote

@@ -2,22 +2,17 @@ package quote
 
 import "github.com/google/go-cmp/cmp"
 
-// TODO Pull this from #include <openenclave/enclave.h> or include it in ertgolib
-const OE_UNIQUE_ID_SIZE = 32
-const OE_SIGNER_ID_SIZE = 32
-const OE_PRODUCT_ID_SIZE = 16
-
 // PackageProperties contains the enclave package-specific properties of an OpenEnclave quote.
 // Either UniqueID or SignerID, ProductID, and SecurityVersion should be specified.
 type PackageProperties struct {
 	// Debug Flag of the Attributes
 	Debug bool
 	// Hash of the enclave
-	UniqueID *[OE_UNIQUE_ID_SIZE]byte
+	UniqueID []byte
 	// Hash of the enclave signer's public key
-	SignerID *[OE_SIGNER_ID_SIZE]byte
+	SignerID []byte
 	// Product ID of the package
-	ProductID *[OE_PRODUCT_ID_SIZE]byte
+	ProductID []byte
 	// Security version number of the package
 	SecurityVersion *uint
 }
@@ -26,7 +21,7 @@ type PackageProperties struct {
 type InfrastructureProperties struct {
 	// Processor model and firmware security version number
 	// NOTE: the Intel manual states that CPUSVN "cannot be compared mathematically"
-	CPUSVN *[16]byte
+	CPUSVN []byte
 	// Quoting Enclave security version number
 	QESVN *uint16
 	// Provisioning Certification Enclave security version number
