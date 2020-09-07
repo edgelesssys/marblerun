@@ -158,7 +158,7 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, shouldSuc
 	// create Authenticator
 	commonName := "marble"          // Coordinator will assign an ID to us
 	issuer := quote.NewMockIssuer() // TODO: Use real issuer
-	a, err := newAuthenticator(orgName, commonName, issuer)
+	a, err := NewAuthenticator(orgName, commonName, issuer)
 	ms.assert.Nil(err, "failed to create Authenticator: %v", err)
 	ms.assert.NotNil(a, "got empty Authenticator")
 
@@ -172,7 +172,7 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, shouldSuc
 	ms.validator.AddValidQuote(a.quote, a.initCert.Raw, pkg, infra)
 
 	// call preMain
-	cert, params, err := preMain(a)
+	cert, params, err := PreMain(a)
 	if !shouldSucceed {
 		ms.assert.NotNil(err, err)
 		ms.assert.Nil(cert, "expected empty cert, but got %v", cert)

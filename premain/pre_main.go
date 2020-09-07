@@ -44,8 +44,8 @@ type Authenticator struct {
 	params     *rpc.Parameters
 }
 
-// newAuthenticator creates a new Authenticator instance
-func newAuthenticator(orgName string, commonName string, qi quote.Issuer) (*Authenticator, error) {
+// NewAuthenticator creates a new Authenticator instance
+func NewAuthenticator(orgName string, commonName string, qi quote.Issuer) (*Authenticator, error) {
 	a := &Authenticator{
 		commonName: commonName,
 		orgName:    orgName,
@@ -158,8 +158,8 @@ func tlsCertFromDER(certDER []byte, privk interface{}) *tls.Certificate {
 	return &tls.Certificate{Certificate: [][]byte{certDER}, PrivateKey: privk}
 }
 
-// preMain is supposed to run before the App's actual main and authenticate with the Coordinator
-func preMain(a *Authenticator) (*x509.Certificate, *rpc.Parameters, error) {
+// PreMain is supposed to run before the App's actual main and authenticate with the Coordinator
+func PreMain(a *Authenticator) (*x509.Certificate, *rpc.Parameters, error) {
 	// get env variables
 	coordAddr := os.Getenv(edgCoordinatorAddr)
 	if len(coordAddr) == 0 {
@@ -218,11 +218,11 @@ func preMain(a *Authenticator) (*x509.Certificate, *rpc.Parameters, error) {
 func main() {
 	commonName := "marble"          // Coordinator will assign an ID to us
 	issuer := quote.NewMockIssuer() // TODO: Use real issuer
-	a, err := newAuthenticator(orgName, commonName, issuer)
+	a, err := NewAuthenticator(orgName, commonName, issuer)
 	if err != nil {
 		log.Fatalf("failed to create Authenticator: %v", err)
 	}
-	_, _, err = preMain(a)
+	_, _, err = PreMain(a)
 	if err != nil {
 		log.Fatalf("pre_main failed: %v", err)
 	}
