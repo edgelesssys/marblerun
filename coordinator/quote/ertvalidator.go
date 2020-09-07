@@ -1,6 +1,7 @@
 package quote
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/edgelesssys/ertgolib/ertenclave"
@@ -17,10 +18,18 @@ func NewERTValidator() *ERTValidator {
 
 // Validate implements the Validator interface for ERTValidator
 func (m *ERTValidator) Validate(quote []byte, message []byte, pp PackageProperties, ip InfrastructureProperties) error {
+	// Verify Quote
 	report, err := ertenclave.VerifyRemoteReport(quote)
 	if err != nil {
 		return fmt.Errorf("verifying quote failed: %v", err)
 	}
+
+	// Check that message is equal
+	if !bytes.Equal(message, report.Data) {
+		return fmt.Errorf("message != report.Data: %v != %v", message, report.Data)
+	}
+
+	// Verify PackageProperties
 	reportedProps := PackageProperties{
 		UniqueID:        report.UniqueID,
 		SignerID:        report.SignerID,
