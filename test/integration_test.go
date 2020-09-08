@@ -60,9 +60,11 @@ func TestMain(m *testing.M) {
 	if *coordinatorExe == "" {
 		log.Fatalln("You must provide the path of the coordinator executable using th -c flag.")
 	}
-	if *coordinatorExe == "" {
+
+	if *marbleExe == "" {
 		log.Fatalln("You must provide the path of the marble executable using th -m flag.")
 	}
+
 	if _, err := os.Stat(*coordinatorExe); err != nil {
 		log.Fatalln(err)
 	}
@@ -76,7 +78,7 @@ func TestMain(m *testing.M) {
 	listenerDB, clientServerAddr = getListenerAndAddr()
 	listenerAPI.Close()
 	listenerDB.Close()
-
+	log.Printf("Got marbleServerAddr: %v and clientServerAddr: %v\n", marbleServerAddr, clientServerAddr)
 	os.Exit(m.Run())
 }
 
@@ -130,7 +132,10 @@ func TestMarbleAPI(t *testing.T) {
 	defer marbleProc.Kill()
 
 	// Check that Marble Authenticated successfully
-	// TODO
+	procState, err := marbleProc.Wait()
+	assert.Nil(err, "error while waiting for marble proc: %v", err)
+	exitCode := procState.ExitCode()
+	assert.Equal(exitCode, 0, "marble authentication failed. exit code: %v", exitCode)
 }
 
 func TestClientAPI(t *testing.T) {
