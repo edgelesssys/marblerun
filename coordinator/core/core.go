@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -151,7 +152,8 @@ func (c *Core) generateCert(orgName string) error {
 	if err != nil {
 		return err
 	}
-	quote, err := c.qi.Issue(certRaw)
+	certHash := sha256.Sum256(certRaw)
+	quote, err := c.qi.Issue(certHash[:])
 	if err != nil {
 		return err
 	}
