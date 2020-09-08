@@ -1,4 +1,4 @@
-package marbletest
+package main
 
 import "C"
 

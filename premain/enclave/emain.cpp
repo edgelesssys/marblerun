@@ -16,7 +16,7 @@ int emain(void) {
       oe_load_module_host_file_system() != OE_OK ||
       oe_load_module_host_socket_interface() != OE_OK) {
     puts("oe_load_module_host failed");
-    return;
+    return -3;
   }
   
   return invokemain();

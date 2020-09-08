@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
   cout << "[coordinator] Entering enclave ...\n";
   signal(SIGPIPE, SIG_IGN);
   int ret;
-  if (emain(&ret, enclave) != OE_OK)
+  if (emain(enclave, &ret) != OE_OK)
     cout << "ecall failed\n";
 
   oe_terminate_enclave(enclave);
