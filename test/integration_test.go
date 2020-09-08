@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
@@ -14,17 +15,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/edgelesssys/coordinator/coordinator/core"
+	"github.com/edgelesssys/coordinator/coordinator/server"
 	"github.com/stretchr/testify/assert"
 )
 
 // TODO: Use correct values here
 const manifestJSON string = `{
 	"Packages": {
-		"test_marble": {
-			"UniqueID": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31],
-			"SignerID": [31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0],
-			"Debug": false
-		},
+		"backend": {
+			"SecurityVersion": 1
+		}
 	},
 	"Infrastructures": {
 		"Azure": {
@@ -32,7 +33,7 @@ const manifestJSON string = `{
 			"PCESVN": 3,
 			"CPUSVN": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
 			"RootCA": [3,3,3]
-		},
+		}
 	},
 	"Marbles": {
 		"test_marble": {
@@ -42,12 +43,11 @@ const manifestJSON string = `{
 					"/abc/defg.txt": [7,7,7],
 					"/ghi/jkl.mno": [8,8,8]
 				},
-				},
 				"Argv": [
 					"serve"
 				]
 			}
-		},
+		}
 	},
 	"Clients": {
 		"owner": [9,9,9]
@@ -125,7 +125,13 @@ func TestMarbleAPI(t *testing.T) {
 	defer coordinatorProc.Kill()
 
 	// set Manifest
-	err := setManifest(manifestJSON)
+	time.Sleep(time.Second * 5)
+	var manifest core.Manifest
+	err := json.Unmarshal([]byte(manifestJSON), &manifest)
+	if err != nil {
+		panic(err)
+	}
+	err = setManifest(manifest)
 	assert.Nil(err, "failed to set Manifest: %v", err)
 
 	// start Marble
@@ -137,8 +143,9 @@ func TestMarbleAPI(t *testing.T) {
 	// Check that Marble Authenticated successfully
 	procState, err := marbleProc.Wait()
 	assert.Nil(err, "error while waiting for marble proc: %v", err)
+	assert.NotNil(procState, "procState is empty after call to Wait()")
 	exitCode := procState.ExitCode()
-	assert.Equal(exitCode, 0, "marble authentication failed. exit code: %v", exitCode)
+	assert.Equal(0, exitCode, "marble authentication failed. exit code: %v", exitCode)
 }
 
 func TestClientAPI(t *testing.T) {
@@ -193,31 +200,43 @@ func startCoordinator(configFilename string) *os.Process {
 
 	log.Println("Coordinator starting ...")
 	for {
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 		return cmd.Process
 	}
 }
 
-func setManifest(manifest string) error {
+func setManifest(manifest core.Manifest) error {
 	// Use ClientAPI to set Manifest
 	clientAPIURL := url.URL{
-		Scheme: "https",
+		Scheme: "http",
 		Host:   clientServerAddr,
 		Path:   "set_manifest", // TODO set real path
 	}
-	manifestRaw, err := json.Marshal(manifestJSON)
+
+	manifestRaw, err := json.Marshal(manifest)
+	if err != nil {
+		panic(err)
+	}
+	manifestReq := server.SetManifestRequest{
+		Manifest: manifestRaw,
+	}
+	manifestReqRaw, err := json.Marshal(manifestReq)
 	if err != nil {
 		panic(err)
 	}
 
-	resp, err := http.Post(clientAPIURL.String(), "application/json", bytes.NewBuffer(manifestRaw))
+	resp, err := http.Post(clientAPIURL.String(), "application/json", bytes.NewBuffer(manifestReqRaw))
 	if err != nil {
 		panic(err)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
 		panic(err)
+	}
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("expected 200, but set_manifest returned %v: %v", resp.Status, string(body))
 	}
 	return nil
 }
