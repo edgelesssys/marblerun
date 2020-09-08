@@ -1,11 +1,14 @@
 package coordinator
 
 import (
+	"bytes"
 	"encoding/json"
 	"flag"
 	"io/ioutil"
 	"log"
 	"net"
+	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"testing"
@@ -196,7 +199,26 @@ func startCoordinator(configFilename string) *os.Process {
 }
 
 func setManifest(manifest string) error {
-	// TODO Use ClientAPI to set Manifest
+	// Use ClientAPI to set Manifest
+	clientAPIURL := url.URL{
+		Scheme: "https",
+		Host:   clientServerAddr,
+		Path:   "set_manifest", // TODO set real path
+	}
+	manifestRaw, err := json.Marshal(manifestJSON)
+	if err != nil {
+		panic(err)
+	}
+
+	resp, err := http.Post(clientAPIURL.String(), "application/json", bytes.NewBuffer(manifestRaw))
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		panic(err)
+	}
 	return nil
 }
 
