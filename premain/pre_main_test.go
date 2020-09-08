@@ -2,6 +2,7 @@ package premain
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -23,7 +24,7 @@ const manifestJSON string = `{
 		},
 		"frontend": {
 			"SignerID": [31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0],
-			"ProductID": 44,
+			"ProductID": [44],
 			"SecurityVersion": 3,
 			"Debug": true
 		}
@@ -169,7 +170,8 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, shouldSuc
 	ms.assert.True(ok, "Package '%v' does not exist", marble.Package)
 	infra, ok := ms.manifest.Infrastructures[infraName]
 	ms.assert.True(ok, "Infrastructure '%v' does not exist", infraName)
-	ms.validator.AddValidQuote(a.quote, a.initCert.Raw, pkg, infra)
+	certHash := sha256.Sum256(a.initCert.Raw)
+	ms.validator.AddValidQuote(a.quote, certHash[:], pkg, infra)
 
 	// call preMain
 	cert, params, err := PreMain(a)
