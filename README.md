@@ -7,13 +7,23 @@ cd build
 cmake ..
 make 
 ```
+
+To build the marble-dummy host and enclave parts for testing:
+```
+cd premain
+mkdir build
+cd build
+cmake ..
+make 
+```
+
 ## Run
 ```
 OE_SIMULATION=1 ./coordinator
 ```
 ## Test (//TODO)
 ```
-go test integration_test.go -e build/coordinator
+go test test/integration_test.go -v --args -c ../build/coordinator -m ../premain/build/marble
 ```
 
 # Protobuf
