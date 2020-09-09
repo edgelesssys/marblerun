@@ -13,7 +13,7 @@ import (
 type ClientCore interface {
 	SetManifest(ctx context.Context, rawManifest []byte) error
 	GetCertQuote(ctx context.Context) (cert string, certQuote []byte, err error)
-	GetManifestSignature(ctx context.Context) (manifestSignature []byte, err error)
+	GetManifestSignature(ctx context.Context) (manifestSignature [32]byte, err error)
 	GetStatus(ctx context.Context) (status string, statusSignature []byte, err error)
 }
 
@@ -34,7 +34,11 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) error {
 
 // GetCertQuote gets the Coordinators certificate and corresponding quote (containing the cert)
 func (c *Core) GetCertQuote(ctx context.Context) (string, []byte, error) {
-	pemCert := pem.EncodeToMemory(&pem.Block{Type: "Certificate", Bytes: c.cert.Raw})
+	cert, err := c.getCert(ctx)
+	if err != nil {
+		return "", nil, err
+	}
+	pemCert := pem.EncodeToMemory(&pem.Block{Type: "Certificate", Bytes: cert.Raw})
 	if len(pemCert) <= 0 {
 		return "", nil, errors.New("pem.EncodeToMemory failed")
 	}
@@ -42,12 +46,17 @@ func (c *Core) GetCertQuote(ctx context.Context) (string, []byte, error) {
 	return strCert, c.quote, nil
 }
 
-// GetManifestSignature returns the singed hash of the manifest
-func (c *Core) GetManifestSignature(ctx context.Context) ([]byte, error) {
-	hash := sha256.Sum256(c.rawManifest)
-	signature := ed25519.Sign(c.privk, hash[:])
+// GetManifestSignature returns the hash of the manifest
+func (c *Core) GetManifestSignature(ctx context.Context) ([32]byte, error) {
+	//todo check state
+	hash := new([32]byte)
+	if c.state == uninitialized || c.state == acceptingManifest {
+		return [32]byte{}, errors.New("don't have manifest yet")
+	}
+	*hash = sha256.Sum256(c.rawManifest)
+	//signature := ed25519.Sign(c.privk, hash[:])
 
-	return signature, nil
+	return *hash, nil
 }
 
 // GetStatus IS A DUMMY IMPLEMENTATION. TODO
