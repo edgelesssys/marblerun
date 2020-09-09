@@ -2,7 +2,6 @@ package premain
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -170,8 +169,7 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, shouldSuc
 	ms.assert.True(ok, "Package '%v' does not exist", marble.Package)
 	infra, ok := ms.manifest.Infrastructures[infraName]
 	ms.assert.True(ok, "Infrastructure '%v' does not exist", infraName)
-	certHash := sha256.Sum256(a.initCert.Raw)
-	ms.validator.AddValidQuote(a.quote, certHash[:], pkg, infra)
+	ms.validator.AddValidQuote(a.quote, a.initCert.Raw, pkg, infra)
 
 	// call preMain
 	cert, params, err := PreMain(a)
