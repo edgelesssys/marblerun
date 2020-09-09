@@ -1,6 +1,10 @@
 package quote
 
-import "github.com/google/go-cmp/cmp"
+import (
+	"bytes"
+
+	"github.com/google/go-cmp/cmp"
+)
 
 // PackageProperties contains the enclave package-specific properties of an OpenEnclave quote.
 // Either UniqueID or SignerID, ProductID, and SecurityVersion should be specified.
@@ -36,16 +40,16 @@ func (required PackageProperties) IsCompliant(given PackageProperties) bool {
 	if required.Debug != given.Debug {
 		return false
 	}
-	if len(required.UniqueID) > 0 && !cmp.Equal(required.UniqueID, given.UniqueID) {
+	if len(required.UniqueID) > 0 && !bytes.Equal(required.UniqueID, given.UniqueID) {
 		return false
 	}
-	if len(required.SignerID) > 0 && !cmp.Equal(required.SignerID, given.SignerID) {
+	if len(required.SignerID) > 0 && !bytes.Equal(required.SignerID, given.SignerID) {
 		return false
 	}
-	if len(required.ProductID) > 0 && !cmp.Equal(required.ProductID, given.ProductID[:len(required.ProductID)]) {
+	if len(required.ProductID) > 0 && !bytes.Equal(required.ProductID, given.ProductID[:len(required.ProductID)]) {
 		return false
 	}
-	if required.SecurityVersion != nil && *required.SecurityVersion != *given.SecurityVersion {
+	if required.SecurityVersion != nil && *required.SecurityVersion > *given.SecurityVersion {
 		return false
 	}
 	return true
