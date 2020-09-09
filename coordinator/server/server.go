@@ -23,7 +23,7 @@ type statusResp struct {
 	Signatur []byte
 }
 type manifestSignatureResp struct {
-	ManifestSignature []byte
+	ManifestSignature [32]byte
 }
 
 // RunMarbleServer starts a gRPC with the given Coordinator core.
