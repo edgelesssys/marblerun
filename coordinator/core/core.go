@@ -80,6 +80,13 @@ func (c *Core) GetQuote(ctx context.Context) ([]byte, error) {
 	return c.quote, nil
 }
 
+func (c *Core) getCert(ctx context.Context) (*x509.Certificate, error) {
+	if c.state == uninitialized {
+		return nil, errors.New("don't have a cert yet")
+	}
+	return c.cert, nil
+}
+
 // GetTLSCertificate creates a TLS certificate for the Coordinators self-signed x509 certificate
 func (c *Core) GetTLSCertificate() (*tls.Certificate, error) {
 	if c.state == uninitialized {
