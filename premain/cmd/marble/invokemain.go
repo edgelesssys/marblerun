@@ -3,6 +3,6 @@ package main
 import "C"
 
 //export invokemain
-func invokemain() int {
-	return premainTest()
+func invokemain(coordinatorAddr, marbleType *C.char) int {
+	return premainTest(C.GoString(coordinatorAddr), C.GoString(marbleType))
 }

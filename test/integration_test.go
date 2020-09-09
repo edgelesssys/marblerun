@@ -24,7 +24,9 @@ import (
 const manifestJSON string = `{
 	"Packages": {
 		"backend": {
-			"SecurityVersion": 1
+			"Debug": true,
+			"SecurityVersion": 1,
+			"ProductID": [3]
 		}
 	},
 	"Infrastructures": {
@@ -133,6 +135,10 @@ func TestMarbleAPI(t *testing.T) {
 	}
 	err = setManifest(manifest)
 	assert.Nil(err, "failed to set Manifest: %v", err)
+
+	// wait for me
+	// log.Printf("coordinator Addr: %v", marbleServerAddr)
+	// time.Sleep(100 * time.Second)
 
 	// start Marble
 	marbleCfg := createMarbleConfig(marbleServerAddr, "test_marble")

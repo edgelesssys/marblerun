@@ -29,6 +29,8 @@ static string GetEnclavePath() {
   return dirname(path.data()) + "/enclave.signed"s;
 }
 
+
+
 int main(int argc, char *argv[]) {
   string enclavePath;
   try {
@@ -41,9 +43,12 @@ int main(int argc, char *argv[]) {
   const char *const env_simulation = getenv("OE_SIMULATION");
   const bool simulate = env_simulation && *env_simulation == '1';
 
+  char *coordinator_addr = getenv("EDG_COORDINATOR_ADDR");
+  char *marble_type = getenv("EDG_MARBLE_TYPE");
+
   oe_enclave_t *enclave = nullptr;
 
-  cout << "[coordinator] Loading enclave ...\n";
+  cout << "[marble] Loading enclave ...\n";
   if (oe_create_emain_enclave(
           enclavePath.c_str(),
           OE_ENCLAVE_TYPE_AUTO,
@@ -56,12 +61,14 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
   }
 
-  cout << "[coordinator] Entering enclave ...\n";
+  cout << "[marble] Entering enclave ...\n";
   signal(SIGPIPE, SIG_IGN);
   int ret;
-  if (emain(enclave, &ret) != OE_OK)
+  if (emain(enclave, &ret, coordinator_addr, marble_type) != OE_OK)
     cout << "ecall failed\n";
-
+  
+  cout << "[marble] Terminating enclave...\n";
   oe_terminate_enclave(enclave);
+
   return ret;
 }
