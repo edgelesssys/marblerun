@@ -1,4 +1,4 @@
-package premain
+package marble
 
 import (
 	"context"
@@ -20,11 +20,11 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-// edgCoordinatorAddr: Required env variable with Coordinator addr
-const edgCoordinatorAddr string = "EDG_COORDINATOR_ADDR"
+// EdgCoordinatorAddr: Required env variable with Coordinator addr
+const EdgCoordinatorAddr string = "EDG_COORDINATOR_ADDR"
 
-// edgMarbleType: Required env variable with type of this marble
-const edgMarbleType string = "EDG_MARBLE_TYPE"
+// EdgMarbleType: Required env variable with type of this marble
+const EdgMarbleType string = "EDG_MARBLE_TYPE"
 
 // TODO: Create a central place where all certificate information is managed
 // TLS Cert orgName
@@ -44,8 +44,8 @@ type Authenticator struct {
 	params     *rpc.Parameters
 }
 
-// newAuthenticator creates a new Authenticator instance
-func newAuthenticator(orgName string, commonName string, qi quote.Issuer) (*Authenticator, error) {
+// NewAuthenticator creates a new Authenticator instance
+func NewAuthenticator(orgName string, commonName string, qi quote.Issuer) (*Authenticator, error) {
 	a := &Authenticator{
 		commonName: commonName,
 		orgName:    orgName,
@@ -158,17 +158,17 @@ func tlsCertFromDER(certDER []byte, privk interface{}) *tls.Certificate {
 	return &tls.Certificate{Certificate: [][]byte{certDER}, PrivateKey: privk}
 }
 
-// preMain is supposed to run before the App's actual main and authenticate with the Coordinator
-func preMain(a *Authenticator) (*x509.Certificate, *rpc.Parameters, error) {
+// PreMain is supposed to run before the App's actual main and authenticate with the Coordinator
+func PreMain(a *Authenticator) (*x509.Certificate, *rpc.Parameters, error) {
 	// get env variables
-	coordAddr := os.Getenv(edgCoordinatorAddr)
+	coordAddr := os.Getenv(EdgCoordinatorAddr)
 	if len(coordAddr) == 0 {
-		return nil, nil, fmt.Errorf("environment variable not set: %v", edgCoordinatorAddr)
+		return nil, nil, fmt.Errorf("environment variable not set: %v", EdgCoordinatorAddr)
 	}
 
-	marbleType := os.Getenv(edgMarbleType)
+	marbleType := os.Getenv(EdgMarbleType)
 	if len(marbleType) == 0 {
-		return nil, nil, fmt.Errorf("environment variable not set: %v", edgMarbleType)
+		return nil, nil, fmt.Errorf("environment variable not set: %v", EdgMarbleType)
 	}
 
 	// load TLS Credentials
@@ -218,11 +218,11 @@ func preMain(a *Authenticator) (*x509.Certificate, *rpc.Parameters, error) {
 func main() {
 	commonName := "marble"          // Coordinator will assign an ID to us
 	issuer := quote.NewMockIssuer() // TODO: Use real issuer
-	a, err := newAuthenticator(orgName, commonName, issuer)
+	a, err := NewAuthenticator(orgName, commonName, issuer)
 	if err != nil {
 		log.Fatalf("failed to create Authenticator: %v", err)
 	}
-	_, _, err = preMain(a)
+	_, _, err = PreMain(a)
 	if err != nil {
 		log.Fatalf("pre_main failed: %v", err)
 	}

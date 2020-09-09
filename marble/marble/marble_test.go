@@ -1,4 +1,4 @@
-package premain
+package marble
 
 import (
 	"context"
@@ -23,7 +23,7 @@ const manifestJSON string = `{
 		},
 		"frontend": {
 			"SignerID": [31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0],
-			"ProductID": 44,
+			"ProductID": [44],
 			"SecurityVersion": 3,
 			"Debug": true
 		}
@@ -150,15 +150,15 @@ type marbleSpawner struct {
 
 func (ms marbleSpawner) newMarble(marbleType string, infraName string, shouldSucceed bool) {
 	// set env vars
-	err := os.Setenv(edgCoordinatorAddr, ms.serverAddr)
+	err := os.Setenv(EdgCoordinatorAddr, ms.serverAddr)
 	ms.assert.Nil(err, "failed to set env variable: %v", err)
-	err = os.Setenv(edgMarbleType, marbleType)
+	err = os.Setenv(EdgMarbleType, marbleType)
 	ms.assert.Nil(err, "failed to set env variable: %v", err)
 
 	// create Authenticator
 	commonName := "marble"          // Coordinator will assign an ID to us
 	issuer := quote.NewMockIssuer() // TODO: Use real issuer
-	a, err := newAuthenticator(orgName, commonName, issuer)
+	a, err := NewAuthenticator(orgName, commonName, issuer)
 	ms.assert.Nil(err, "failed to create Authenticator: %v", err)
 	ms.assert.NotNil(a, "got empty Authenticator")
 
@@ -172,7 +172,7 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, shouldSuc
 	ms.validator.AddValidQuote(a.quote, a.initCert.Raw, pkg, infra)
 
 	// call preMain
-	cert, params, err := preMain(a)
+	cert, params, err := PreMain(a)
 	if !shouldSucceed {
 		ms.assert.NotNil(err, err)
 		ms.assert.Nil(cert, "expected empty cert, but got %v", cert)
