@@ -113,7 +113,7 @@ func TestTest(t *testing.T) {
 	assert.Nil(startCoordinator(cfgFilename).Kill())
 
 	marbleCfg := createMarbleConfig(marbleServerAddr, clientServerAddr)
-	assert.Nil(startMarble(marbleCfg).Kill())
+	assert.Nil(startMarble(marbleCfg).Process.Kill())
 }
 
 func TestMarbleAPI(t *testing.T) {
@@ -142,15 +142,14 @@ func TestMarbleAPI(t *testing.T) {
 
 	// start Marble
 	marbleCfg := createMarbleConfig(marbleServerAddr, "test_marble")
-	marbleProc := startMarble(marbleCfg)
-	assert.NotNil(marbleProc)
-	defer marbleProc.Kill()
+	marbleCmd := startMarble(marbleCfg)
+	assert.NotNil(marbleCmd)
 
 	// Check that Marble Authenticated successfully
-	procState, err := marbleProc.Wait()
-	assert.Nil(err, "error while waiting for marble proc: %v", err)
-	assert.NotNil(procState, "procState is empty after call to Wait()")
-	exitCode := procState.ExitCode()
+	err = marbleCmd.Wait()
+	assert.Nil(err, "error while waiting for marble process: %v", err)
+	assert.NotNil(marbleCmd.ProcessState, "empty ProcessState after Wait")
+	exitCode := marbleCmd.ProcessState.ExitCode()
 	assert.Equal(0, exitCode, "marble authentication failed. exit code: %v", exitCode)
 }
 
@@ -260,7 +259,7 @@ func createMarbleConfig(coordinatorAddr string, marbleType string) marbleConfig 
 	return cfg
 }
 
-func startMarble(config marbleConfig) *os.Process {
+func startMarble(config marbleConfig) *exec.Cmd {
 	if err := os.Setenv("EDG_COORDINATOR_ADDR", config.edgCoordinatorAddr); err != nil {
 		panic(err)
 	}
@@ -268,16 +267,14 @@ func startMarble(config marbleConfig) *os.Process {
 		panic(err)
 	}
 	cmd := exec.Command(*marbleExe)
+	cmd.Env = os.Environ()
 	if err := cmd.Start(); err != nil {
 		panic(err)
 	}
 
-	// Wait on the command so that cmd.ProcessState will be updated if the process dies.
-	go cmd.Wait()
-
 	log.Println("Marble starting ...")
 	for {
 		time.Sleep(10 * time.Millisecond)
-		return cmd.Process
+		return cmd
 	}
 }
