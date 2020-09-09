@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/edgelesssys/coordinator/coordinator/quote"
-	"github.com/edgelesssys/coordinator/premain"
+	"github.com/edgelesssys/coordinator/marble/marble"
 )
 
 const (
@@ -17,26 +17,26 @@ const (
 
 func main() {}
 
-func premainTest(coordinationAddr, marbleType string) int {
+func marbleTest(coordinationAddr, marbleType string) int {
 	// set env vars
-	if err := os.Setenv(premain.EdgCoordinatorAddr, coordinationAddr); err != nil {
+	if err := os.Setenv(marble.EdgCoordinatorAddr, coordinationAddr); err != nil {
 		log.Fatalf("failed to set env variable: %v", err)
 		return InternalError
 	}
-	if err := os.Setenv(premain.EdgMarbleType, marbleType); err != nil {
+	if err := os.Setenv(marble.EdgMarbleType, marbleType); err != nil {
 		log.Fatalf("failed to set env variable: %v", err)
 		return InternalError
 	}
 
-	// call preMain
+	// call PreMain
 	commonName := "marble" // Coordinator will assign an ID to us
 	orgName := "Edgeless Systems GmbH"
 	issuer := quote.NewERTIssuer()
-	a, err := premain.NewAuthenticator(orgName, commonName, issuer)
+	a, err := marble.NewAuthenticator(orgName, commonName, issuer)
 	if err != nil {
 		return InternalError
 	}
-	_, _, err = premain.PreMain(a)
+	_, _, err = marble.PreMain(a)
 	if err != nil {
 		fmt.Println(err)
 		return AuthenticationError
