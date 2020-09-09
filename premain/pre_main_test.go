@@ -151,9 +151,9 @@ type marbleSpawner struct {
 
 func (ms marbleSpawner) newMarble(marbleType string, infraName string, shouldSucceed bool) {
 	// set env vars
-	err := os.Setenv(edgCoordinatorAddr, ms.serverAddr)
+	err := os.Setenv(EdgCoordinatorAddr, ms.serverAddr)
 	ms.assert.Nil(err, "failed to set env variable: %v", err)
-	err = os.Setenv(edgMarbleType, marbleType)
+	err = os.Setenv(EdgMarbleType, marbleType)
 	ms.assert.Nil(err, "failed to set env variable: %v", err)
 
 	// create Authenticator

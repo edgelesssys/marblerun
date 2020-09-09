@@ -3,8 +3,8 @@ package core
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
 	"crypto/x509"
+	"log"
 	"math"
 	"strconv"
 	"time"
@@ -43,6 +43,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 		Parameters:  &marble.Parameters,
 	}
 	// TODO: scan files for certificate placeholders like "$$root_ca" and replace those
+	log.Printf("Successfully activated new Marble of type '%v'\n", req.GetMarbleType())
 	c.activations[req.GetMarbleType()]++
 	return resp, nil
 }
@@ -58,10 +59,9 @@ func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, quote []byte
 	if !pkgExists {
 		return status.Error(codes.Internal, "undefined package")
 	}
-	certHash := sha256.Sum256(tlsCert.Raw)
 	infraMatch := false
 	for _, infra := range c.manifest.Infrastructures {
-		if c.qv.Validate(quote, certHash[:], pkg, infra) == nil {
+		if c.qv.Validate(quote, tlsCert.Raw, pkg, infra) == nil {
 			infraMatch = true
 			break
 		}
@@ -75,7 +75,6 @@ func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, quote []byte
 	if marble.MaxActivations > 0 && activations >= marble.MaxActivations {
 		return status.Error(codes.ResourceExhausted, "reached max activations count for marble type")
 	}
-
 	return nil
 }
 
