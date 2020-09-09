@@ -33,7 +33,22 @@ type InfrastructureProperties struct {
 // IsCompliant checks if the given package properties comply with the requirements
 func (required PackageProperties) IsCompliant(given PackageProperties) bool {
 	// TODO: implement proper logic including SVN comparison
-	return cmp.Equal(required, given)
+	if required.Debug != given.Debug {
+		return false
+	}
+	if len(required.UniqueID) > 0 && !cmp.Equal(required.UniqueID, given.UniqueID) {
+		return false
+	}
+	if len(required.SignerID) > 0 && !cmp.Equal(required.SignerID, given.SignerID) {
+		return false
+	}
+	if len(required.ProductID) > 0 && !cmp.Equal(required.ProductID, given.ProductID[:len(required.ProductID)]) {
+		return false
+	}
+	if required.SecurityVersion != nil && *required.SecurityVersion != *given.SecurityVersion {
+		return false
+	}
+	return true
 }
 
 // IsCompliant checks if the given infrastructure properties comply with the requirements

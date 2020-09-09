@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -82,6 +83,7 @@ type marbleSpawner struct {
 func (ms marbleSpawner) newMarble(coreServer *Core, marbleType string, infraName string, shouldSucceed bool) {
 	// create certificate and CSR
 	certTLS, cert, csr, err := generateMarbleCredentials()
+	certHash := sha256.Sum256(cert)
 	ms.assert.Nil(err)
 	ms.assert.NotNil(cert)
 	ms.assert.NotNil(csr)
@@ -96,7 +98,7 @@ func (ms marbleSpawner) newMarble(coreServer *Core, marbleType string, infraName
 	ms.assert.True(ok)
 	infra, ok := ms.manifest.Infrastructures[infraName]
 	ms.assert.True(ok)
-	ms.validator.AddValidQuote(quote, cert, pkg, infra)
+	ms.validator.AddValidQuote(quote, certHash[:], pkg, infra)
 
 	tlsInfo := credentials.TLSInfo{
 		State: tls.ConnectionState{
