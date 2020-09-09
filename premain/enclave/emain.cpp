@@ -9,9 +9,9 @@
 
 #include "emain_t.h"
 
-extern "C" int invokemain(char *, char *);
+extern "C" int invokemain(const char *, const char *);
 
-int emain(char *coordinator_addr, char *marble_type) {
+int emain(const char *coordinator_addr, const char *marble_type) {
   if (oe_load_module_host_epoll() != OE_OK ||
       oe_load_module_host_file_system() != OE_OK ||
       oe_load_module_host_socket_interface() != OE_OK) {

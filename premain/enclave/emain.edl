@@ -5,6 +5,6 @@ enclave {
     from "openenclave/edl/ertlibc.edl" import *;
 
     trusted {
-        public int emain(char *coordinator_addr, char *marble_type);
+        public int emain(const char *coordinator_addr, const char *marble_type);
     };
 };

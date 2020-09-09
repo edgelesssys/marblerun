@@ -43,8 +43,8 @@ int main(int argc, char *argv[]) {
   const char *const env_simulation = getenv("OE_SIMULATION");
   const bool simulate = env_simulation && *env_simulation == '1';
 
-  char *coordinator_addr = getenv("EDG_COORDINATOR_ADDR");
-  char *marble_type = getenv("EDG_MARBLE_TYPE");
+  const char *const coordinator_addr = getenv("EDG_COORDINATOR_ADDR");
+  const char *const marble_type = getenv("EDG_MARBLE_TYPE");
 
   oe_enclave_t *enclave = nullptr;
 
