@@ -117,6 +117,11 @@ func TestCore(t *testing.T) {
 	assert.NotNil(cert)
 	assert.Nil(err)
 
+	//get TLS config
+	config, err := c.GetTLSConfig()
+	assert.NotNil(config)
+	assert.Nil(err)
+
 	// try to set broken manifest
 	assert.NotNil(c.SetManifest(context.TODO(), []byte(manifestJSON)[:len(manifestJSON)-1]))
 
