@@ -62,3 +62,21 @@ func TestSetManifest(t *testing.T) {
 	assert.NotNil(err, "SetManifest should fail on broken json")
 	assert.Equal(*manifest, c.manifest, "Manifest should still be set correctly")
 }
+
+func TestGetCertQuote(t *testing.T) {
+	assert := assert.New(t)
+
+	c, _, err := getSetup()
+	if err != nil {
+		panic(err)
+	}
+	cert, _, err := c.GetCertQuote(context.TODO())
+	assert.Nil(err, "GetCertQuote should not fail (without manifest)")
+
+	c.SetManifest(context.TODO(), []byte(manifestJSON))
+	_, _, err = c.GetCertQuote(context.TODO())
+	assert.Nil(err, "GetCertQuote should not fail (with manifest)")
+	assert.Contains(cert, "-----BEGIN Certificate-----", "simple format check")
+	//todo check quote
+
+}
