@@ -19,11 +19,11 @@ type certQuoteResp struct {
 	Quote []byte
 }
 type statusResp struct {
-	Status   string
-	Signatur []byte
+	Status    string
+	Signature []byte
 }
 type manifestSignatureResp struct {
-	ManifestSignature [32]byte
+	ManifestSignature []byte
 }
 
 // RunMarbleServer starts a gRPC with the given Coordinator core.
@@ -60,52 +60,62 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
-		status, statussignature, err := cc.GetStatus(r.Context())
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		switch r.Method {
+		case http.MethodGet:
+			status, signature, err := cc.GetStatus(r.Context())
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+			strct := statusResp{status, signature}
+			jsn, err := json.Marshal(strct)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+			w.Write(jsn)
+		default:
+			http.Error(w, "", http.StatusMethodNotAllowed)
 		}
-		strct := statusResp{status, statussignature}
-		jsn, err := json.Marshal(strct)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-
-		io.WriteString(w, string(jsn))
 	})
-	mux.HandleFunc("/manifestsignature", func(w http.ResponseWriter, r *http.Request) {
-		signature, err := cc.GetManifestSignature(r.Context())
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+	mux.HandleFunc("/manifest", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			signature, err := cc.GetManifestSignature(r.Context())
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+			strct := manifestSignatureResp{signature}
+			jsn, err := json.Marshal(strct)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+			io.WriteString(w, string(jsn))
+		case http.MethodPost:
+			manifest := r.FormValue("manifest")
+			err := cc.SetManifest(r.Context(), []byte(manifest))
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+			}
+			fmt.Println(manifest)
+		default:
+			http.Error(w, "", http.StatusMethodNotAllowed)
 		}
-		strct := manifestSignatureResp{signature}
-		jsn, err := json.Marshal(strct)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-		io.WriteString(w, string(jsn))
-
 	})
-	mux.HandleFunc("/certquote", func(w http.ResponseWriter, r *http.Request) {
-		cert, certquote, err := cc.GetCertQuote(r.Context())
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+	mux.HandleFunc("/quote", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			cert, quote, err := cc.GetCertQuote(r.Context())
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+			strct := certQuoteResp{cert, quote}
+			jsn, err := json.Marshal(strct)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+			w.Write(jsn)
+		default:
+			http.Error(w, "", http.StatusMethodNotAllowed)
 		}
-		strct := certQuoteResp{cert, certquote}
-		jsn, err := json.Marshal(strct)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-		io.WriteString(w, string(jsn))
-		//io.WriteString(w, string(certquote))
-	})
-	mux.HandleFunc("/setManifest", func(w http.ResponseWriter, r *http.Request) {
-		manifest := r.FormValue("manifest")
-		err := cc.SetManifest(r.Context(), []byte(manifest))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			fmt.Println("errrrrrrrrrrrrrrrrrrrrrrrrrr")
-		}
-		fmt.Println(manifest)
 	})
 
 	return mux
