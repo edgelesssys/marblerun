@@ -56,11 +56,20 @@ func TestSetManifest(t *testing.T) {
 	assert.Nil(err, "SetManifest should succed on first try")
 	assert.Equal(*manifest, c.manifest, "Manifest should be set correctly")
 	err = c.SetManifest(context.TODO(), []byte(manifestJSON))
-	assert.NotNil(err, "Set manifest should fail on the second try")
+	assert.NotNil(err, "SetManifest should fail on the second try")
 	assert.Equal(*manifest, c.manifest, "Manifest should still be set correctly")
 	err = c.SetManifest(context.TODO(), []byte(manifestJSON)[:len(manifestJSON)-1])
 	assert.NotNil(err, "SetManifest should fail on broken json")
 	assert.Equal(*manifest, c.manifest, "Manifest should still be set correctly")
+
+	//use new core
+	c, _, err = getSetup()
+	assert.NotNil(c.SetManifest(context.TODO(), []byte(manifestJSON)[:len(manifestJSON)-1]), "SetManifest should fail on broken json")
+	c, _, err = getSetup()
+	assert.NotNil(c.SetManifest(context.TODO(), []byte("")), "empty string should not be accepted")
+	err = c.SetManifest(context.TODO(), []byte(manifestJSON))
+	assert.Nil(err, "SetManifest should succed after failed tries")
+	assert.Equal(*manifest, c.manifest, "Manifest should be set correctly")
 }
 
 func TestGetCertQuote(t *testing.T) {
