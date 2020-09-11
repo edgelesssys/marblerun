@@ -87,6 +87,17 @@ func (c *Core) getCert(ctx context.Context) (*x509.Certificate, error) {
 	return c.cert, nil
 }
 
+// GetTLSConfig gets the core's TLS configuration
+func (c *Core) GetTLSConfig() (*tls.Config, error) {
+	cert, err := c.GetTLSCertificate()
+	if err != nil {
+		return nil, err
+	}
+	return &tls.Config{
+		Certificates: []tls.Certificate{*cert},
+	}, nil
+}
+
 // GetTLSCertificate creates a TLS certificate for the Coordinators self-signed x509 certificate
 func (c *Core) GetTLSCertificate() (*tls.Certificate, error) {
 	if c.state == uninitialized {
