@@ -43,3 +43,22 @@ func TestGetManifestSignature(t *testing.T) {
 	assert.Equal(sha256.Sum256([]byte(manifestJSON)), sig)
 
 }
+
+func TestSetManifest(t *testing.T) {
+	assert := assert.New(t)
+
+	c, manifest, err := getSetup()
+	if err != nil {
+		panic(err)
+	}
+	err = c.SetManifest(context.TODO(), []byte(manifestJSON))
+
+	assert.Nil(err, "SetManifest should succed on first try")
+	assert.Equal(*manifest, c.manifest, "Manifest should be set correctly")
+	err = c.SetManifest(context.TODO(), []byte(manifestJSON))
+	assert.NotNil(err, "Set manifest should fail on the second try")
+	assert.Equal(*manifest, c.manifest, "Manifest should still be set correctly")
+	err = c.SetManifest(context.TODO(), []byte(manifestJSON)[:len(manifestJSON)-1])
+	assert.NotNil(err, "SetManifest should fail on broken json")
+	assert.Equal(*manifest, c.manifest, "Manifest should still be set correctly")
+}
