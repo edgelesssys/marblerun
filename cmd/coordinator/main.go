@@ -36,7 +36,11 @@ func coordinatormain(cwd, config string) {
 
 	// start client server
 	mux := server.CreateServeMux(core)
-	go server.RunClientServer(mux, cfg.ClientServerAddr, nil)
+	clientServerTLSConfig, err := core.GetTLSConfig()
+	if err != nil {
+		panic(err)
+	}
+	go server.RunClientServer(mux, cfg.ClientServerAddr, clientServerTLSConfig)
 
 	// run marble server
 	addrChan := make(chan string)
