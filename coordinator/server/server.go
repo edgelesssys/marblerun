@@ -142,12 +142,12 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 	mux.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
 		status, statussignature, err := cc.GetStatus(r.Context())
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusTeapot) //todo figure which status to use.
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		strct := statusResp{status, statussignature}
 		jsn, err := json.Marshal(strct)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusTeapot) //todo figure which status to use.
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
 		io.WriteString(w, string(jsn))
@@ -155,12 +155,12 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 	mux.HandleFunc("/manifestsignature", func(w http.ResponseWriter, r *http.Request) {
 		signature, err := cc.GetManifestSignature(r.Context())
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusTeapot) //todo figure which status to use.
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		strct := manifestSignatureResp{signature}
 		jsn, err := json.Marshal(strct)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusTeapot) //todo figure which status to use.
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		io.WriteString(w, string(jsn))
 
@@ -168,12 +168,12 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 	mux.HandleFunc("/certquote", func(w http.ResponseWriter, r *http.Request) {
 		cert, certquote, err := cc.GetCertQuote(r.Context())
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusTeapot) //todo figure which status to use.
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		strct := certQuoteResp{cert, certquote}
 		jsn, err := json.Marshal(strct)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusTeapot) //todo figure which status to use.
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		io.WriteString(w, string(jsn))
 		//io.WriteString(w, string(certquote))
@@ -182,7 +182,7 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 		manifest := r.FormValue("manifest")
 		err := cc.SetManifest(r.Context(), []byte(manifest))
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusTeapot) //todo figure which status to use.
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			fmt.Println("errrrrrrrrrrrrrrrrrrrrrrrrrr")
 		}
 		fmt.Println(manifest)
