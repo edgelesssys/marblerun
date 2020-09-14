@@ -156,6 +156,8 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, shouldSuc
 	ms.assert.Nil(err, "failed to set env variable: %v", err)
 	err = os.Setenv(EdgMarbleType, marbleType)
 	ms.assert.Nil(err, "failed to set env variable: %v", err)
+	err = os.Setenv(EdgMarbleDNSNames, "backend_service,backend")
+	ms.assert.Nil(err, "failed to set env variable: %v", err)
 
 	// create Authenticator
 	commonName := "marble"          // Coordinator will assign an ID to us
