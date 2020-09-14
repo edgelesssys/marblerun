@@ -15,6 +15,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/edgelesssys/coordinator/coordinator/quote"
@@ -28,6 +29,9 @@ const EdgCoordinatorAddr string = "EDG_COORDINATOR_ADDR"
 
 // EdgMarbleType is a required env variable with type of this marble
 const EdgMarbleType string = "EDG_MARBLE_TYPE"
+
+// EdgMarbleDNSNames is an optional env variable with alternative dns names for this marble's certificate
+const EdgMarbleDNSNames string = "EDG_MARBLE_DNS_NAMES"
 
 // EdgMarbleCert is the env variable used to store the cert signed by the Coordinator
 const EdgMarbleCert string = "EDG_MARBLE_CERT"
@@ -149,7 +153,7 @@ func (a *Authenticator) generateCert() error {
 	return nil
 }
 
-func (a *Authenticator) generateCSR() error {
+func (a *Authenticator) generateCSR(marbleDNSNames []string) error {
 	template := x509.CertificateRequest{
 		Subject: pkix.Name{
 			Organization: []string{a.orgName},
@@ -157,7 +161,7 @@ func (a *Authenticator) generateCSR() error {
 		},
 		PublicKey: a.pubk,
 		// TODO: Add proper AltNames here: AB #172
-		DNSNames:    []string{"localhost"},
+		DNSNames:    append(marbleDNSNames, "localhost"),
 		IPAddresses: []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
 	}
 	csrRaw, err := x509.CreateCertificateRequest(rand.Reader, &template, a.privk)
@@ -190,6 +194,12 @@ func PreMain(a *Authenticator, main mainFunc) (*x509.Certificate, *rpc.Parameter
 		return nil, nil, fmt.Errorf("environment variable not set: %v", EdgMarbleType)
 	}
 
+	marbleDNSNamesString := os.Getenv(EdgMarbleDNSNames)
+	if len(marbleType) == 0 {
+		return nil, nil, fmt.Errorf("environment variable not set: %v", EdgMarbleDNSNames)
+	}
+	marbleDNSNames := strings.Split(marbleDNSNamesString, ",")
+
 	// load TLS Credentials
 	tlsCredentials, err := loadTLSCredentials(a)
 	if err != nil {
@@ -206,7 +216,7 @@ func PreMain(a *Authenticator, main mainFunc) (*x509.Certificate, *rpc.Parameter
 	defer cc.Close()
 
 	// generate CSR
-	if err := a.generateCSR(); err != nil {
+	if err := a.generateCSR(marbleDNSNames); err != nil {
 		return nil, nil, err
 	}
 

@@ -131,13 +131,18 @@ func runClient(certRaw []byte, keyRaw []byte, rootCARaw []byte) error {
 	return nil
 }
 
-func marbleTest(coordinationAddr, marbleType string) int {
+func marbleTest(coordinationAddr, marbleType, marbleDNSNames string) int {
 	// set env vars
 	if err := os.Setenv(marble.EdgCoordinatorAddr, coordinationAddr); err != nil {
 		log.Fatalf("failed to set env variable: %v", err)
 		return InternalError
 	}
 	if err := os.Setenv(marble.EdgMarbleType, marbleType); err != nil {
+		log.Fatalf("failed to set env variable: %v", err)
+		return InternalError
+	}
+
+	if err := os.Setenv(marble.EdgMarbleDNSNames, marbleDNSNames); err != nil {
 		log.Fatalf("failed to set env variable: %v", err)
 		return InternalError
 	}

@@ -45,6 +45,7 @@ int main(int argc, char *argv[]) {
 
   const char *const coordinator_addr = getenv("EDG_COORDINATOR_ADDR");
   const char *const marble_type = getenv("EDG_MARBLE_TYPE");
+  const char *const marble_dns_names = getenv("EDG_MARBLE_DNS_NAMES");
 
   oe_enclave_t *enclave = nullptr;
 
@@ -64,7 +65,7 @@ int main(int argc, char *argv[]) {
   cout << "[marble] Entering enclave ...\n";
   signal(SIGPIPE, SIG_IGN);
   int ret;
-  if (emain(enclave, &ret, coordinator_addr, marble_type) != OE_OK)
+  if (emain(enclave, &ret, coordinator_addr, marble_type, marble_dns_names) != OE_OK)
     cout << "ecall failed\n";
   
   cout << "[marble] Terminating enclave...\n";

@@ -10,9 +10,9 @@
 
 #include "emain_t.h"
 
-extern "C" int invokemain(const char*, const char*);
+extern "C" int invokemain(const char*, const char*, const char*);
 
-int emain(const char* coordinator_addr, const char* marble_type) {
+int emain(const char* coordinator_addr, const char* marble_type, const char* marble_dns_names) {
   if (oe_load_module_host_epoll() != OE_OK ||
       oe_load_module_host_file_system() != OE_OK ||
       oe_load_module_host_socket_interface() != OE_OK) {
@@ -28,5 +28,5 @@ int emain(const char* coordinator_addr, const char* marble_type) {
     return -1;
   }
 
-  return invokemain(coordinator_addr, marble_type);
+  return invokemain(coordinator_addr, marble_type, marble_dns_names);
 }
