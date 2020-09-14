@@ -40,6 +40,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	marble := c.manifest.Marbles[req.GetMarbleType()] // existence has been checked in verifyManifestRequirement
 	resp := &rpc.ActivationResp{
 		Certificate: certRaw,
+		RootCA:      c.cert.Raw,
 		Parameters:  &marble.Parameters,
 	}
 	// TODO: scan files for certificate placeholders like "$$root_ca" and replace those
