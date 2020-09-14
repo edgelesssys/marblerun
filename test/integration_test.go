@@ -17,6 +17,7 @@ import (
 
 	"github.com/edgelesssys/coordinator/coordinator/core"
 	"github.com/edgelesssys/coordinator/coordinator/server"
+	"github.com/edgelesssys/coordinator/marble/marble"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -43,24 +44,39 @@ const manifestJSON string = `{
 		}
 	},
 	"Marbles": {
-		"test_marble": {
+		"test_marble_server": {
 			"Package": "backend",
 			"Parameters": {
 				"Files": {
-					"/abc/defg.txt": [7,7,7],
-					"/ghi/jkl.mno": [8,8,8]
+					"/tmp/defg.txt": [7,7,7],
+					"/tmp/jkl.mno": [8,8,8]
 				},
 				"Argv": [
 					"serve"
-				]
+				],
+				"Env": {
+					"IS_FIRST": "true"
+				}
+			}
+		},
+		"test_marble_client": {
+			"Package": "backend",
+			"Parameters": {
+				"Files": {
+					"/tmp/defg.txt": [7,7,7],
+					"/tmp/jkl.mno": [8,8,8]
+				},
+				"Env": {
+					"IS_FIRST": "true"
+				}
 			}
 		},
 		"bad_marble": {
 			"Package": "frontend",
 			"Parameters": {
 				"Files": {
-					"/abc/defg.txt": [7,7,7],
-					"/ghi/jkl.mno": [8,8,8]
+					"/tmp/defg.txt": [7,7,7],
+					"/tmp/jkl.mno": [8,8,8]
 				}
 			}
 		}
@@ -126,7 +142,7 @@ func TestTest(t *testing.T) {
 	defer cleanupCoordinatorConfig(cfgFilename)
 	assert.Nil(startCoordinator(cfgFilename).Kill())
 
-	marbleCfg := createMarbleConfig(marbleServerAddr, clientServerAddr)
+	marbleCfg := createMarbleConfig(marbleServerAddr, "test_marble_client")
 	assert.Nil(startMarble(marbleCfg).Process.Kill())
 }
 
@@ -151,21 +167,29 @@ func TestMarbleAPI(t *testing.T) {
 
 	// wait for me
 	// log.Printf("coordinator Addr: %v", marbleServerAddr)
-	// time.Sleep(10000 * time.Second)
+	// time.Sleep(10000000 * time.Second)
 
 	// start Marbles
-	runMarble(assert, "test_marble", true)
-	runMarble(assert, "test_marble", true)
-	runMarble(assert, "test_marble", true)
-	runMarble(assert, "bad_marble", false)
-	runMarble(assert, "bad_marble", false)
+	serverCmd := runMarble(assert, "test_marble_server", true, false)
+	defer serverCmd.Process.Kill()
+	err = waitForServer()
+	assert.Nil(err, "failed to start server-marble: %v", err)
+	_ = runMarble(assert, "test_marble_client", true, true)
+	_ = runMarble(assert, "test_marble_client", true, true)
+	_ = runMarble(assert, "bad_marble", false, true)
+	_ = runMarble(assert, "bad_marble", false, true)
 
 }
 
-func runMarble(assert *assert.Assertions, marbleType string, shouldSucceed bool) {
+func runMarble(assert *assert.Assertions, marbleType string, shouldSucceed bool, terminates bool) *exec.Cmd {
 	marbleCfg := createMarbleConfig(marbleServerAddr, marbleType)
+	log.Printf("Starting %v...\n", marbleType)
 	marbleCmd := startMarble(marbleCfg)
 	assert.NotNil(marbleCmd)
+
+	if !terminates {
+		return marbleCmd
+	}
 
 	// Check that Marble Authenticated successfully
 	err := marbleCmd.Wait()
@@ -173,14 +197,32 @@ func runMarble(assert *assert.Assertions, marbleType string, shouldSucceed bool)
 		assert.NotNil(err, "expected Wait to fail because of return value != 0, but got not error")
 		assert.NotNil(marbleCmd.ProcessState)
 		exitCode := marbleCmd.ProcessState.ExitCode()
-		assert.Equal(252, exitCode, "marble authentication failed. exit code: %v", exitCode)
-		return
+		assert.Equal(4, exitCode, "expected marble authentication to fail, but got exit code: %v", exitCode)
+		return marbleCmd
 	}
 	assert.Nil(err, "error while waiting for marble process: %v", err)
 	assert.NotNil(marbleCmd.ProcessState, "empty ProcessState after Wait")
 	exitCode := marbleCmd.ProcessState.ExitCode()
 	assert.Equal(0, exitCode, "marble authentication failed. exit code: %v", exitCode)
 	log.Println("Marble authenticated successfully and terminated.")
+	return marbleCmd
+}
+
+func waitForServer() error {
+	log.Println("Waiting for server...")
+	timeout := time.Second * 5
+	var err error
+	for i := 0; i < 20; i++ {
+		var conn net.Conn
+		conn, err = net.DialTimeout("tcp", net.JoinHostPort("localhost", "8080"), timeout)
+		if err == nil {
+			conn.Close()
+			log.Println("Server started")
+			return nil
+		}
+		time.Sleep(1 * time.Second)
+	}
+	return fmt.Errorf("connection error: %v", err)
 }
 
 func TestClientAPI(t *testing.T) {
@@ -308,10 +350,10 @@ func createMarbleConfig(coordinatorAddr string, marbleType string) marbleConfig 
 }
 
 func startMarble(config marbleConfig) *exec.Cmd {
-	if err := os.Setenv("EDG_COORDINATOR_ADDR", config.edgCoordinatorAddr); err != nil {
+	if err := os.Setenv(marble.EdgCoordinatorAddr, config.edgCoordinatorAddr); err != nil {
 		panic(err)
 	}
-	if err := os.Setenv("EDG_MARBLE_TYPE", config.edgMarbleType); err != nil {
+	if err := os.Setenv(marble.EdgMarbleType, config.edgMarbleType); err != nil {
 		panic(err)
 	}
 	cmd := exec.Command(*marbleExe)
