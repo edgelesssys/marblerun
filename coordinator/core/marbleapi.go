@@ -111,6 +111,8 @@ func (c *Core) generateCertFromCSR(csrReq []byte, marbleType string) ([]byte, er
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 		BasicConstraintsValid: false,
 		IsCA:                  false,
+		DNSNames:              csr.DNSNames,
+		IPAddresses:           csr.IPAddresses,
 	}
 	certRaw, err := x509.CreateCertificate(rand.Reader, &template, c.cert, csr.PublicKey, c.privk)
 	if err != nil {
