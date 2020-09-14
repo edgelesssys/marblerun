@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"math"
 	"math/big"
+	"net"
 	"os"
 	"path/filepath"
 	"time"
@@ -155,6 +156,9 @@ func (a *Authenticator) generateCSR() error {
 			CommonName:   a.commonName,
 		},
 		PublicKey: a.pubk,
+		// TODO: Add proper AltNames here: AB #172
+		DNSNames:    []string{"localhost"},
+		IPAddresses: []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
 	}
 	csrRaw, err := x509.CreateCertificateRequest(rand.Reader, &template, a.privk)
 	if err != nil {
