@@ -125,7 +125,7 @@ func (a *Authenticator) generateCert() error {
 		NotAfter:  notAfter,
 
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 		BasicConstraintsValid: false,
 		IsCA:                  true,
 	}
@@ -257,7 +257,7 @@ func PreMain(a *Authenticator, main mainFunc) (*x509.Certificate, *rpc.Parameter
 	privKeyPKCS8, err := x509.MarshalPKCS8PrivateKey(a.privk)
 	if err != nil {
 		return nil, nil, err
-}
+	}
 	pemKey := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privKeyPKCS8})
 	os.Setenv(EdgMarblePrivKey, string(pemKey))
 
@@ -265,7 +265,7 @@ func PreMain(a *Authenticator, main mainFunc) (*x509.Certificate, *rpc.Parameter
 	for path, content := range a.params.Files {
 		os.MkdirAll(filepath.Dir(path), os.ModePerm)
 		err := ioutil.WriteFile(path, content, 0600)
-	if err != nil {
+		if err != nil {
 			return nil, nil, err
 		}
 	}
