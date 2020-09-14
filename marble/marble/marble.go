@@ -7,11 +7,13 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
-	"log"
+	"io/ioutil"
 	"math"
 	"math/big"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/edgelesssys/coordinator/coordinator/quote"
@@ -20,15 +22,27 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-// EdgCoordinatorAddr: Required env variable with Coordinator addr
+// EdgCoordinatorAddr is a required env variable with Coordinator addr
 const EdgCoordinatorAddr string = "EDG_COORDINATOR_ADDR"
 
-// EdgMarbleType: Required env variable with type of this marble
+// EdgMarbleType is a required env variable with type of this marble
 const EdgMarbleType string = "EDG_MARBLE_TYPE"
+
+// EdgMarbleCert is the env variable used to store the cert signed by the Coordinator
+const EdgMarbleCert string = "EDG_MARBLE_CERT"
+
+// EdgRootCA is the env variable used to store the Coordinator's RootCA
+const EdgRootCA string = "EDG_ROOT_CA"
+
+// EdgMarblePrivKey is the env variable used to store the private key for the cert
+const EdgMarblePrivKey string = "EDG_MARBLE_PRIV_KEY"
 
 // TODO: Create a central place where all certificate information is managed
 // TLS Cert orgName
 const orgName string = "Edgeless Systems GmbH"
+
+// Signature for main function
+type mainFunc func(int, []string, []string) int
 
 // Authenticator holds the information for authenticating with the Coordinator
 type Authenticator struct {
@@ -41,6 +55,7 @@ type Authenticator struct {
 	quote      []byte
 	qi         quote.Issuer
 	marbleCert *x509.Certificate
+	rootCA     *x509.Certificate
 	params     *rpc.Parameters
 }
 
@@ -159,7 +174,7 @@ func tlsCertFromDER(certDER []byte, privk interface{}) *tls.Certificate {
 }
 
 // PreMain is supposed to run before the App's actual main and authenticate with the Coordinator
-func PreMain(a *Authenticator) (*x509.Certificate, *rpc.Parameters, error) {
+func PreMain(a *Authenticator, main mainFunc) (*x509.Certificate, *rpc.Parameters, error) {
 	// get env variables
 	coordAddr := os.Getenv(EdgCoordinatorAddr)
 	if len(coordAddr) == 0 {
@@ -199,31 +214,71 @@ func PreMain(a *Authenticator) (*x509.Certificate, *rpc.Parameters, error) {
 		Quote:      a.quote,
 	}
 
-	activiationResp, err := c.Activate(context.Background(), req)
+	activationResp, err := c.Activate(context.Background(), req)
 	if err != nil {
 		return nil, nil, err
 	}
-	newCert, err := x509.ParseCertificate(activiationResp.GetCertificate())
+	newCert, err := x509.ParseCertificate(activationResp.GetCertificate())
 	if err != nil {
 		return nil, nil, err
 	}
 	a.marbleCert = newCert
-	a.params = activiationResp.GetParameters()
+	rootCA, err := x509.ParseCertificate(activationResp.GetRootCA())
+	if err != nil {
+		return nil, nil, err
+	}
+	a.rootCA = rootCA
+	a.params = activationResp.GetParameters()
 
-	// TODO: Store certificate in virtual file system and call actual main with params
+	// Store certificate in environment and file system
+	pemCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: a.marbleCert.Raw})
+	os.Setenv(EdgMarbleCert, string(pemCert))
+	certFile, err := ioutil.TempFile("", "*.pem")
+	if err != nil {
+		return nil, nil, err
+	}
+	certFilename := certFile.Name()
+	_, err = certFile.Write(pemCert)
+	if err != nil {
+		return nil, nil, err
+	}
+	certFile.Close()
+	defer os.Remove(certFilename)
+
+	// Store RootCA in environment
+	pemRootCA := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: a.rootCA.Raw})
+	os.Setenv(EdgRootCA, string(pemRootCA))
+
+	// Store private key in environment
+	privKeyPKCS8, err := x509.MarshalPKCS8PrivateKey(a.privk)
+	if err != nil {
+		return nil, nil, err
+}
+	pemKey := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privKeyPKCS8})
+	os.Setenv(EdgMarblePrivKey, string(pemKey))
+
+	// Store files in file system
+	for path, content := range a.params.Files {
+		os.MkdirAll(filepath.Dir(path), os.ModePerm)
+		err := ioutil.WriteFile(path, content, 0600)
+	if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	// // Set environment variables
+	for key, value := range a.params.Env {
+		os.Setenv(key, value)
+	}
+
+	// call main with args
+	argv := a.params.Argv
+	argc := len(argv)
+	env := os.Environ()
+	status := main(argc, argv, env)
+	if status != 0 {
+		return nil, nil, fmt.Errorf("main function returned error code: %v", status)
+	}
 	return a.marbleCert, a.params, nil
 
-}
-
-func main() {
-	commonName := "marble"          // Coordinator will assign an ID to us
-	issuer := quote.NewMockIssuer() // TODO: Use real issuer
-	a, err := NewAuthenticator(orgName, commonName, issuer)
-	if err != nil {
-		log.Fatalf("failed to create Authenticator: %v", err)
-	}
-	_, _, err = PreMain(a)
-	if err != nil {
-		log.Fatalf("pre_main failed: %v", err)
-	}
 }
