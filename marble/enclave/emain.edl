@@ -1,0 +1,12 @@
+enclave {
+    from "openenclave/edl/logging.edl" import *;
+    from "openenclave/edl/syscall.edl" import *;
+    from "platform.edl" import *;
+    from "openenclave/edl/ertlibc.edl" import *;
+
+    trusted {
+        public int emain(
+            [in, string] const char* coordinator_addr,
+            [in, string] const char* marble_type);
+    };
+};

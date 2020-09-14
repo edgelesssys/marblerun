@@ -27,8 +27,8 @@ func coordinatormain(cwd, config string) {
 	}
 
 	// initialize coordinator
-	validator := quote.NewMockValidator()
-	issuer := quote.NewMockIssuer()
+	validator := quote.NewERTValidator()
+	issuer := quote.NewERTIssuer()
 	core, err := core.NewCore("Coordinator", validator, issuer)
 	if err != nil {
 		panic(err)

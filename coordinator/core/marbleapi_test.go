@@ -104,7 +104,7 @@ func (ms marbleSpawner) newMarble(coreServer *Core, marbleType string, infraName
 		},
 	}
 
-	ctx := peer.NewContext(nil, &peer.Peer{
+	ctx := peer.NewContext(context.TODO(), &peer.Peer{
 		AuthInfo: tlsInfo,
 	})
 
@@ -119,7 +119,7 @@ func (ms marbleSpawner) newMarble(coreServer *Core, marbleType string, infraName
 		ms.assert.Nil(resp)
 		return
 	}
-	ms.assert.Nil(err)
+	ms.assert.Nil(err, "Activate failed: %v", err)
 	ms.assert.NotNil(resp)
 
 	// validate response
