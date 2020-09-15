@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"log"
@@ -165,10 +166,9 @@ func marbleTest(config string) int {
 	}
 
 	// call PreMain
-	commonName := "marble" // Coordinator will assign an ID to us
 	orgName := "Edgeless Systems GmbH"
 	issuer := quote.NewERTIssuer()
-	a, err := marble.NewAuthenticator(orgName, commonName, issuer)
+	a, err := marble.NewAuthenticator(orgName, issuer)
 	if err != nil {
 		return InternalError
 	}
