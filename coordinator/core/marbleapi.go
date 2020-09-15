@@ -40,6 +40,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	marble := c.manifest.Marbles[req.GetMarbleType()] // existence has been checked in verifyManifestRequirement
 	resp := &rpc.ActivationResp{
 		Certificate: certRaw,
+		RootCA:      c.cert.Raw,
 		Parameters:  &marble.Parameters,
 	}
 	// TODO: scan files for certificate placeholders like "$$root_ca" and replace those
@@ -110,6 +111,8 @@ func (c *Core) generateCertFromCSR(csrReq []byte, marbleType string) ([]byte, er
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 		BasicConstraintsValid: false,
 		IsCA:                  false,
+		DNSNames:              csr.DNSNames,
+		IPAddresses:           csr.IPAddresses,
 	}
 	certRaw, err := x509.CreateCertificate(rand.Reader, &template, c.cert, csr.PublicKey, c.privk)
 	if err != nil {

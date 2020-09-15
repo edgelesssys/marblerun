@@ -24,19 +24,24 @@ add_custom_command(
   COMMAND openenclave::oeedger8r ${CMAKE_SOURCE_DIR}/enclave/emain.edl --search-path
           ${OE_INCLUDEDIR} --search-path ${OE_INCLUDEDIR}/openenclave/edl/sgx)
 
-add_executable(enclave enclave/emain.cpp emain_t.c)
-target_include_directories(enclave PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+add_library(emain enclave/emain.cpp emain_t.c)
+target_include_directories(emain PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_link_libraries(emain PRIVATE openenclave::oe_includes)
+
+add_executable(enclave emain_t.c)
+# target_include_directories(enclave PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 add_dependencies(enclave marblelib)
 
 target_link_libraries(enclave
-  ${CMAKE_BINARY_DIR}/libmarble.a
+  emain
   openenclave::oeenclave
   openenclave::oehostepoll
   openenclave::oehostfs
   openenclave::oehostsock
-  openenclave::oecustomfs
+  ${CMAKE_BINARY_DIR}/libmarble.a
   crypto
   openenclave::ertlibc
+  openenclave::oecustomfs
  )
 
 # Generate key

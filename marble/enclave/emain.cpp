@@ -1,5 +1,6 @@
 #include <openenclave/enclave.h>
 #include <openenclave/enclave_args.h>
+#include <openenclave/ert.h>
 #include <sys/mount.h>
 
 #include <array>
@@ -19,5 +20,13 @@ int emain(const char* coordinator_addr, const char* marble_type) {
     return -3;
   }
   
+  const char* const devname_tmpfs = "tmpfs";
+  const ert::Memfs memfs(devname_tmpfs);
+
+  if (mount("/", "/tmp/", devname_tmpfs, 0, nullptr) != 0) {
+    puts("mount tmpfs failed");
+    return -1;
+  }
+
   return invokemain(coordinator_addr, marble_type);
 }

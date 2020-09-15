@@ -3,8 +3,10 @@ package marble
 import (
 	"context"
 	"encoding/json"
+	"encoding/pem"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"testing"
 
@@ -48,8 +50,8 @@ const manifestJSON string = `{
 			"MaxActivations": 1,
 			"Parameters": {
 				"Files": {
-					"/abc/defg.txt": [7,7,7],
-					"/ghi/jkl.mno": [8,8,8]
+					"/tmp/defg.txt": [7,7,7],
+					"/tmp/jkl.mno": [8,8,8]
 				},
 				"Env": {
 					"IS_FIRST": "true"
@@ -171,8 +173,37 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, shouldSuc
 	ms.assert.True(ok, "Infrastructure '%v' does not exist", infraName)
 	ms.validator.AddValidQuote(a.quote, a.initCert.Raw, pkg, infra)
 
+	dummyMain := func(argc int, argv []string, env []string) int {
+		// check argv
+		ms.assert.Equal(len(marble.Parameters.Argv), argc)
+		ms.assert.Equal(marble.Parameters.Argv, argv)
+
+		// check env
+		for key, value := range marble.Parameters.Env {
+			readValue := os.Getenv(key)
+			ms.assert.Equal(value, readValue, "%v env var differs from manifest", key)
+		}
+
+		// check files
+		for path, content := range marble.Parameters.Files {
+			_, err := os.Stat(path)
+			ms.assert.Nil(err, "error looking for file %v: %v ", path, err)
+			readContent, err := ioutil.ReadFile(path)
+			ms.assert.Nil(err, "error reading file %v: %v", path, err)
+			ms.assert.Equal(content, readContent, "content of file %v differs from manifest", path)
+		}
+
+		// check cert in env
+		certPem := os.Getenv(EdgMarbleCert)
+		decodedCert, rest := pem.Decode([]byte(certPem))
+		ms.assert.Equal([]byte{}, rest)
+		ms.assert.Equal(a.marbleCert.Raw, decodedCert.Bytes, "cert exposed from preMain through environment does not match cert retrieved from coordinator")
+
+		return 0
+	}
+
 	// call preMain
-	cert, params, err := PreMain(a)
+	cert, params, err := PreMain(a, dummyMain)
 	if !shouldSucceed {
 		ms.assert.NotNil(err, err)
 		ms.assert.Nil(cert, "expected empty cert, but got %v", cert)
