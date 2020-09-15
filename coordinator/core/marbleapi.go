@@ -6,10 +6,10 @@ import (
 	"crypto/x509"
 	"log"
 	"math"
-	"strconv"
 	"time"
 
 	"github.com/edgelesssys/coordinator/coordinator/rpc"
+	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -30,11 +30,13 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	if err := c.verifyManifestRequirement(tlsCert, req.GetQuote(), req.GetMarbleType()); err != nil {
 		return nil, err
 	}
-
-	certRaw, err := c.generateCertFromCSR(req.GetCSR(), req.GetMarbleType())
+	// TODO: AB#187 Check if UUID in Activation Request is present
+	marbleUUID := uuid.New()
+	certRaw, err := c.generateCertFromCSR(req.GetCSR(), req.GetMarbleType(), marbleUUID.String())
 	if err != nil {
 		return nil, err
 	}
+	// TODO: AB#186 Derive sealing key and return it marble
 
 	// write response
 	marble := c.manifest.Marbles[req.GetMarbleType()] // existence has been checked in verifyManifestRequirement
@@ -44,7 +46,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 		Parameters:  &marble.Parameters,
 	}
 	// TODO: scan files for certificate placeholders like "$$root_ca" and replace those
-	log.Printf("Successfully activated new Marble of type '%v'\n", req.GetMarbleType())
+	log.Printf("Successfully activated new Marble of type '%v: %v'\n", req.GetMarbleType(), marbleUUID.String())
 	c.activations[req.GetMarbleType()]++
 	return resp, nil
 }
@@ -80,7 +82,7 @@ func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, quote []byte
 }
 
 // generateCertFromCSR signs the CSR from marble attempting to register
-func (c *Core) generateCertFromCSR(csrReq []byte, marbleType string) ([]byte, error) {
+func (c *Core) generateCertFromCSR(csrReq []byte, marbleType string, marbleUUID string) ([]byte, error) {
 	// parse and verify CSR
 	csr, err := x509.ParseCertificateRequest(csrReq)
 	if err != nil {
@@ -95,9 +97,7 @@ func (c *Core) generateCertFromCSR(csrReq []byte, marbleType string) ([]byte, er
 	}
 
 	// create certificate
-	// overwrite common name in CSR
-	// TODO: do we actually need the CSR?
-	csr.Subject.CommonName = marbleType + strconv.FormatUint(uint64(c.activations[marbleType]), 10)
+	csr.Subject.CommonName = marbleUUID
 	notBefore := time.Now()
 	// TODO: produce shorter lived certificates
 	notAfter := notBefore.Add(math.MaxInt64)
