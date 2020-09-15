@@ -17,7 +17,6 @@ import (
 
 	"github.com/edgelesssys/coordinator/coordinator/core"
 	"github.com/edgelesssys/coordinator/coordinator/server"
-	"github.com/edgelesssys/coordinator/marble/marble"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -142,7 +141,8 @@ func TestTest(t *testing.T) {
 	defer cleanupCoordinatorConfig(cfgFilename)
 	assert.Nil(startCoordinator(cfgFilename).Kill())
 
-	marbleCfg := createMarbleConfig(marbleServerAddr, "test_marble_client")
+	marbleCfg := createMarbleConfig(marbleServerAddr, "test_marble_client", "")
+	defer cleanupMarbleConfig(marbleCfg)
 	assert.Nil(startMarble(marbleCfg).Process.Kill())
 }
 
@@ -166,24 +166,33 @@ func TestMarbleAPI(t *testing.T) {
 	assert.Nil(err, "failed to set Manifest: %v", err)
 
 	// wait for me
+	// marbleCfg := createMarbleConfig(marbleServerAddr, "test_marble_server", "test_marble_server")
+	// log.Printf("config; %v", marbleCfg)
 	// log.Printf("coordinator Addr: %v", marbleServerAddr)
 	// time.Sleep(10000000 * time.Second)
 
-	// start Marbles
-	serverCmd := runMarble(assert, "test_marble_server", true, false)
+	// start server
+	serverCfg := createMarbleConfig(marbleServerAddr, "test_marble_server", "server,backend")
+	defer cleanupMarbleConfig(serverCfg)
+	serverCmd := runMarble(assert, serverCfg, true, false)
 	defer serverCmd.Process.Kill()
 	err = waitForServer()
+	// start clients
 	assert.Nil(err, "failed to start server-marble: %v", err)
-	_ = runMarble(assert, "test_marble_client", true, true)
-	_ = runMarble(assert, "test_marble_client", true, true)
-	_ = runMarble(assert, "bad_marble", false, true)
-	_ = runMarble(assert, "bad_marble", false, true)
+	clientCfg := createMarbleConfig(marbleServerAddr, "test_marble_client", "client,frontend")
+	defer cleanupMarbleConfig(clientCfg)
+	_ = runMarble(assert, clientCfg, true, true)
+	_ = runMarble(assert, clientCfg, true, true)
+	// start bad marbles
+	badCfg := createMarbleConfig(marbleServerAddr, "bad_marble", "bad")
+	defer cleanupMarbleConfig(badCfg)
+	_ = runMarble(assert, badCfg, false, true)
+	_ = runMarble(assert, badCfg, false, true)
 
 }
 
-func runMarble(assert *assert.Assertions, marbleType string, shouldSucceed bool, terminates bool) *exec.Cmd {
-	marbleCfg := createMarbleConfig(marbleServerAddr, marbleType)
-	log.Printf("Starting %v...\n", marbleType)
+func runMarble(assert *assert.Assertions, marbleCfg string, shouldSucceed bool, terminates bool) *exec.Cmd {
+	log.Println("Starting marble")
 	marbleCmd := startMarble(marbleCfg)
 	assert.NotNil(marbleCmd)
 
@@ -337,27 +346,64 @@ func setManifest(manifest core.Manifest) error {
 }
 
 type marbleConfig struct {
-	edgCoordinatorAddr string
-	edgMarbleType      string
+	CoordinatorAddr string
+	MarbleType      string
+	DNSNames        string
+	DataPath        string
 }
 
-func createMarbleConfig(coordinatorAddr string, marbleType string) marbleConfig {
+func createMarbleConfig(coordinatorAddr, marbleType, marbleDNSNames string) string {
 	cfg := marbleConfig{
-		edgCoordinatorAddr: coordinatorAddr,
-		edgMarbleType:      marbleType,
+		CoordinatorAddr: coordinatorAddr,
+		MarbleType:      marbleType,
+		DNSNames:        marbleDNSNames,
 	}
-	return cfg
+	var err error
+	cfg.DataPath, err = ioutil.TempDir("", "")
+	if err != nil {
+		panic(err)
+	}
+	jsonCfg, err := json.Marshal(cfg)
+	if err != nil {
+		os.RemoveAll(cfg.DataPath)
+		panic(err)
+	}
+
+	file, err := ioutil.TempFile("", "")
+	if err != nil {
+		os.RemoveAll(cfg.DataPath)
+		panic(err)
+	}
+
+	name := file.Name()
+
+	_, err = file.Write(jsonCfg)
+	file.Close()
+	if err != nil {
+		os.Remove(name)
+		os.RemoveAll(cfg.DataPath)
+		panic(err)
+	}
+	return name
 }
 
-func startMarble(config marbleConfig) *exec.Cmd {
-	if err := os.Setenv(marble.EdgCoordinatorAddr, config.edgCoordinatorAddr); err != nil {
+func cleanupMarbleConfig(filename string) {
+	jsonCfg, err := ioutil.ReadFile(filename)
+	os.Remove(filename)
+	if err != nil {
 		panic(err)
 	}
-	if err := os.Setenv(marble.EdgMarbleType, config.edgMarbleType); err != nil {
+	var cfg marbleConfig
+	if err := json.Unmarshal(jsonCfg, &cfg); err != nil {
 		panic(err)
 	}
-	cmd := exec.Command(*marbleExe)
-	cmd.Env = os.Environ()
+	if err := os.RemoveAll(cfg.DataPath); err != nil {
+		panic(err)
+	}
+}
+
+func startMarble(cfgFilename string) *exec.Cmd {
+	cmd := exec.Command(*marbleExe, "-c", cfgFilename)
 	if err := cmd.Start(); err != nil {
 		panic(err)
 	}

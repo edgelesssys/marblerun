@@ -33,6 +33,9 @@ const EdgMarbleType string = "EDG_MARBLE_TYPE"
 // EdgMarbleDNSNames is an optional env variable with alternative dns names for this marble's certificate
 const EdgMarbleDNSNames string = "EDG_MARBLE_DNS_NAMES"
 
+// EdgMarbleUUIDFile is a required env variable with the path to store the marble's uuid
+const EdgMarbleUUIDFile string = "EDG_MARBLE_UUID_FILE"
+
 // EdgMarbleCert is the env variable used to store the cert signed by the Coordinator
 const EdgMarbleCert string = "EDG_MARBLE_CERT"
 
