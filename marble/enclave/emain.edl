@@ -6,8 +6,10 @@ enclave {
 
     trusted {
         public int emain(
-            [in, string] const char* coordinator_addr,
-            [in, string] const char* marble_type,
-            [in, string] const char* marble_dns_names);
+            [in, string] const char* config);
+    };
+    
+    untrusted {
+        bool mkdir_ocall([in, string] const char* path);
     };
 };

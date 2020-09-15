@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/edgelesssys/coordinator/coordinator/quote"
@@ -131,18 +132,34 @@ func runClient(certRaw []byte, keyRaw []byte, rootCARaw []byte) error {
 	return nil
 }
 
-func marbleTest(coordinationAddr, marbleType, marbleDNSNames string) int {
+func marbleTest(config string) int {
+	cfg := struct {
+		CoordinatorAddr string
+		MarbleType      string
+		DNSNames        string
+		DataPath        string
+	}{}
+	if err := json.Unmarshal([]byte(config), &cfg); err != nil {
+		panic(err)
+	}
+	// mount data dir
+	mountData(cfg.DataPath)
 	// set env vars
-	if err := os.Setenv(marble.EdgCoordinatorAddr, coordinationAddr); err != nil {
+	if err := os.Setenv(marble.EdgCoordinatorAddr, cfg.CoordinatorAddr); err != nil {
 		log.Fatalf("failed to set env variable: %v", err)
 		return InternalError
 	}
-	if err := os.Setenv(marble.EdgMarbleType, marbleType); err != nil {
+	if err := os.Setenv(marble.EdgMarbleType, cfg.MarbleType); err != nil {
 		log.Fatalf("failed to set env variable: %v", err)
 		return InternalError
 	}
 
-	if err := os.Setenv(marble.EdgMarbleDNSNames, marbleDNSNames); err != nil {
+	if err := os.Setenv(marble.EdgMarbleDNSNames, cfg.DNSNames); err != nil {
+		log.Fatalf("failed to set env variable: %v", err)
+		return InternalError
+	}
+	uuidFile := filepath.Join(cfg.DataPath, "uuid")
+	if err := os.Setenv(marble.EdgMarbleUUIDFile, uuidFile); err != nil {
 		log.Fatalf("failed to set env variable: %v", err)
 		return InternalError
 	}
