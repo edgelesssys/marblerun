@@ -9,11 +9,13 @@ import (
 	"crypto/x509/pkix"
 	"encoding/json"
 	"math"
+	"net"
 	"testing"
 	"time"
 
 	"github.com/edgelesssys/coordinator/coordinator/quote"
 	"github.com/edgelesssys/coordinator/coordinator/rpc"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
@@ -131,7 +133,34 @@ func (ms marbleSpawner) newMarble(coreServer *Core, marbleType string, infraName
 	newCert, err := x509.ParseCertificate(resp.GetCertificate())
 	ms.assert.Nil(err)
 	ms.assert.Equal(coordinatorName, newCert.Issuer.CommonName)
-	// TODO: properly verify issued certificate
+	// Check CommonName
+	_, err = uuid.Parse(newCert.Subject.CommonName)
+	ms.assert.Nil(err, "cert.Subject.CommonName is not a valid UUID: %v", err)
+	// Check KeyUusage:
+	ms.assert.Equal(certTLS.KeyUsage, newCert.KeyUsage)
+	// Check ExtKeyUsage
+	ms.assert.Equal(certTLS.ExtKeyUsage, newCert.ExtKeyUsage)
+	// Check DNSNames
+	ms.assert.Equal(certTLS.DNSNames, newCert.DNSNames)
+	ms.assert.Equal(certTLS.IPAddresses, newCert.IPAddresses)
+	// Check Signature
+	pubk := coreServer.cert.PublicKey.(ed25519.PublicKey)
+	ms.assert.True(ed25519.Verify(pubk, newCert.RawTBSCertificate, newCert.Signature))
+	// Check cert-chain
+	rootCARaw := resp.GetRootCA()
+	rootCA, err := x509.ParseCertificate(rootCARaw)
+	ms.assert.Nil(err, "cannot parse rootCA: %v", err)
+	roots := x509.NewCertPool()
+	roots.AddCert(rootCA)
+	opts := x509.VerifyOptions{
+		Roots:         roots,
+		CurrentTime:   time.Now(),
+		DNSName:       "localhost",
+		Intermediates: x509.NewCertPool(),
+		KeyUsages:     newCert.ExtKeyUsage,
+	}
+	_, err = newCert.Verify(opts)
+	ms.assert.Nil(err, "failed to verify new certificate: %v", err)
 }
 
 func generateMarbleCredentials() (certTLS *x509.Certificate, cert []byte, csr []byte, err error) {
@@ -152,15 +181,16 @@ func generateMarbleCredentials() (certTLS *x509.Certificate, cert []byte, csr []
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
 			Organization: []string{orgName},
-			CommonName:   coordinatorName,
 		},
-		NotBefore: notBefore,
-		NotAfter:  notAfter,
+		NotBefore:   notBefore,
+		NotAfter:    notAfter,
+		DNSNames:    []string{"localhost", "*.foobar.net", "*.example.org"},
+		IPAddresses: []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
 
-		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		BasicConstraintsValid: false,
-		IsCA:                  true,
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyAgreement,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		BasicConstraintsValid: true,
+		IsCA:                  false,
 	}
 	cert, err = x509.CreateCertificate(rand.Reader, &templateCert, &templateCert, pubk, privk)
 	if err != nil {
@@ -177,7 +207,9 @@ func generateMarbleCredentials() (certTLS *x509.Certificate, cert []byte, csr []
 		Subject: pkix.Name{
 			Organization: []string{orgName},
 		},
-		PublicKey: pubk,
+		PublicKey:   pubk,
+		DNSNames:    []string{"localhost", "*.foobar.net", "*.example.org"},
+		IPAddresses: []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
 	}
 	csr, err = x509.CreateCertificateRequest(rand.Reader, &templateCSR, privk)
 	return
