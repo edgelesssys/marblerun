@@ -30,8 +30,12 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	if err := c.verifyManifestRequirement(tlsCert, req.GetQuote(), req.GetMarbleType()); err != nil {
 		return nil, err
 	}
-	// TODO: AB#187 Check if UUID in Activation Request is present
-	marbleUUID := uuid.New()
+	uuidStr := req.GetUUID()
+	marbleUUID, err := uuid.Parse(uuidStr)
+	if err != nil {
+		return nil, err
+	}
+
 	certRaw, err := c.generateCertFromCSR(req.GetCSR(), req.GetMarbleType(), marbleUUID.String())
 	if err != nil {
 		return nil, err

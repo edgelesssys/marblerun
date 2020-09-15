@@ -114,6 +114,7 @@ func (ms marbleSpawner) newMarble(coreServer *Core, marbleType string, infraName
 		CSR:        csr,
 		MarbleType: marbleType,
 		Quote:      quote,
+		UUID:       uuid.New().String(),
 	})
 
 	if !shouldSucceed {
