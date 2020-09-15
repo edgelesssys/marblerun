@@ -197,9 +197,11 @@ func PreMain(a *Authenticator, main mainFunc) (*x509.Certificate, *rpc.Parameter
 		return nil, nil, fmt.Errorf("environment variable not set: %v", EdgMarbleType)
 	}
 
+	marbleDNSNames := []string{}
 	marbleDNSNamesString := os.Getenv(EdgMarbleDNSNames)
-	if len(marbleType) == 0 {
-		return nil, nil, fmt.Errorf("environment variable not set: %v", EdgMarbleDNSNames)
+	if len(marbleType) > 0 {
+		marbleDNSNames = strings.Split(marbleDNSNamesString, ",")
+	}
 	}
 	marbleDNSNames := strings.Split(marbleDNSNamesString, ",")
 
