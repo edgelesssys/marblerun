@@ -55,6 +55,12 @@ const manifestJSON string = `{
 				],
 				"Env": {
 					"IS_FIRST": "true"
+				},
+				"Secrets": {
+					"MarbleCert": {"Secrets": [{"Type": 0,"Path": "/tmp/marble.pem"},{"Type": 1,"Path": "EDG_MARBLE_CERT"}]},
+					"MarbleKey": {"Secrets": [{"Type": 1,"Path": "EDG_MARBLE_PRIV_KEY"}]},
+					"RootCA": {"Secrets": [{"Type": 1,"Path": "EDG_ROOT_CA"}]},
+					"SealKey": {"Secrets": [{"Type": 1,"Path": "EDG_SEAL_KEY"}]}
 				}
 			}
 		},
@@ -67,6 +73,12 @@ const manifestJSON string = `{
 				},
 				"Env": {
 					"IS_FIRST": "true"
+				},
+				"Secrets": {
+					"MarbleCert": {"Secrets": [{"Type": 0,"Path": "/tmp/marble.pem"},{"Type": 1,"Path": "EDG_MARBLE_CERT"}]},
+					"MarbleKey": {"Secrets": [{"Type": 1,"Path": "EDG_MARBLE_PRIV_KEY"}]},
+					"RootCA": {"Secrets": [{"Type": 1,"Path": "EDG_ROOT_CA"}]},
+					"SealKey": {"Secrets": [{"Type": 1,"Path": "EDG_SEAL_KEY"}]}
 				}
 			}
 		},
@@ -76,6 +88,12 @@ const manifestJSON string = `{
 				"Files": {
 					"/tmp/defg.txt": [7,7,7],
 					"/tmp/jkl.mno": [8,8,8]
+				},
+				"Secrets": {
+					"MarbleCert": {"Secrets": [{"Type": 0,"Path": "/tmp/marble.pem"},{"Type": 1,"Path": "EDG_MARBLE_CERT"}]},
+					"MarbleKey": {"Secrets": [{"Type": 1,"Path": "EDG_MARBLE_PRIV_KEY"}]},
+					"RootCA": {"Secrets": [{"Type": 1,"Path": "EDG_ROOT_CA"}]},
+					"SealKey": {"Secrets": [{"Type": 1,"Path": "EDG_SEAL_KEY"}]}
 				}
 			}
 		}

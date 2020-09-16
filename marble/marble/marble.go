@@ -14,6 +14,7 @@ import (
 	"math/big"
 	"net"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -302,32 +303,60 @@ func PreMain(a *Authenticator, main mainFunc) (*x509.Certificate, *rpc.Parameter
 	// get seal key
 	a.sealKey = activationResp.GetSealKey()
 
-	// Store certificate in environment and file system
-	pemCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: a.marbleCert.Raw})
-	os.Setenv(EdgMarbleCert, string(pemCert))
-	certFile, err := ioutil.TempFile("", "*.pem")
-	if err != nil {
-		return nil, nil, err
+	// Expose secrets according to Manifest
+	secrets := a.params.Secrets
+	exposeSecret := func(secretList *rpc.SecretList, data []byte) error {
+		if secretList == nil {
+			return nil
+		}
+		var err error
+		for _, location := range secretList.Secrets {
+			switch location.Type {
+			case rpc.PathType_Env:
+				err = os.Setenv(location.Path, string(data))
+				if err != nil {
+					return err
+				}
+			case rpc.PathType_File:
+				err = os.MkdirAll(path.Dir(location.Path), 0700)
+				if err != nil {
+					return err
+				}
+				err = ioutil.WriteFile(location.Path, data, 0600)
+				if err != nil {
+					return err
+				}
+			default:
+				return fmt.Errorf("unsupported PathType: %v", location.Type)
+			}
+		}
+		return nil
 	}
-	certFilename := certFile.Name()
-	_, err = certFile.Write(pemCert)
-	if err != nil {
-		return nil, nil, err
+	for key, secretList := range secrets {
+		switch key {
+		case "MarbleCert":
+			// Expose Marble certificate
+			pemCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: a.marbleCert.Raw})
+			exposeSecret(secretList, pemCert)
+		case "RootCA":
+			// Expose RootCA
+			pemRootCA := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: a.rootCA.Raw})
+			exposeSecret(secretList, pemRootCA)
+		case "MarbleKey":
+			// Expose Marble private key
+			privKeyPKCS8, err := x509.MarshalPKCS8PrivateKey(a.privk)
+			if err != nil {
+				return nil, nil, err
+			}
+			pemPrivKey := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privKeyPKCS8})
+			exposeSecret(secretList, pemPrivKey)
+		case "SealKey":
+			// Expose Sealing Key
+			exposeSecret(secretList, a.sealKey)
+		default:
+			return nil, nil, fmt.Errorf("unsupported Secret: %v", key)
+		}
 	}
-	certFile.Close()
-	defer os.Remove(certFilename)
-
-	// Store RootCA in environment
-	pemRootCA := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: a.rootCA.Raw})
-	os.Setenv(EdgRootCA, string(pemRootCA))
-
-	// Store private key in environment
-	privKeyPKCS8, err := x509.MarshalPKCS8PrivateKey(a.privk)
-	if err != nil {
-		return nil, nil, err
-	}
-	pemKey := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privKeyPKCS8})
-	os.Setenv(EdgMarblePrivKey, string(pemKey))
 
 	// Store files in file system
 	for path, content := range a.params.Files {

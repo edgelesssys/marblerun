@@ -51,7 +51,13 @@ const manifestJSON string = `{
 				"Argv": [
 					"--first",
 					"serve"
-				]
+				],
+				"Secrets": {
+					"MarbleCert": {"Secrets": [{"Type": 0,"Path": "/tmp/marble.pem"},{"Type": 1,"Path": "EDG_MARBLE_CERT"}]},
+					"MarbleKey": {"Secrets": [{"Type": 1,"Path": "EDG_MARBLE_PRIV_KEY"}]},
+					"RootCA": {"Secrets": [{"Type": 1,"Path": "EDG_ROOT_CA"}]},
+					"SealKey": {"Secrets": [{"Type": 1,"Path": "EDG_SEAL_KEY"}]}
+				}
 			}
 		},
 		"backend_other": {
@@ -59,11 +65,25 @@ const manifestJSON string = `{
 			"Parameters": {
 				"Argv": [
 					"serve"
-				]
+				],
+				"Secrets": {
+					"MarbleCert": {"Secrets": [{"Type": 0,"Path": "/tmp/marble.pem"},{"Type": 1,"Path": "EDG_MARBLE_CERT"}]},
+					"MarbleKey": {"Secrets": [{"Type": 1,"Path": "EDG_MARBLE_PRIV_KEY"}]},
+					"RootCA": {"Secrets": [{"Type": 1,"Path": "EDG_ROOT_CA"}]},
+					"SealKey": {"Secrets": [{"Type": 1,"Path": "EDG_SEAL_KEY"}]}
+				}
 			}
 		},
 		"frontend": {
-			"Package": "frontend"
+			"Package": "frontend",
+			"Parameters": {
+				"Secrets": {
+					"MarbleCert": {"Secrets": [{"Type": 0,"Path": "/tmp/marble.pem"},{"Type": 1,"Path": "EDG_MARBLE_CERT"}]},
+					"MarbleKey": {"Secrets": [{"Type": 1,"Path": "EDG_MARBLE_PRIV_KEY"}]},
+					"RootCA": {"Secrets": [{"Type": 1,"Path": "EDG_ROOT_CA"}]},
+					"SealKey": {"Secrets": [{"Type": 1,"Path": "EDG_SEAL_KEY"}]}
+				}
+			}
 		}
 	},
 	"Clients": {
