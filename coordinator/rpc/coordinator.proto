@@ -20,6 +20,7 @@ message ActivationResp {
   bytes Certificate = 1;
   Parameters Parameters = 2;
   bytes RootCA = 3;
+  bytes SealKey = 4;
 }
 
 message Parameters {

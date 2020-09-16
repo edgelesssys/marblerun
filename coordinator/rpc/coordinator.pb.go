@@ -109,6 +109,7 @@ type ActivationResp struct {
 	Certificate []byte      `protobuf:"bytes,1,opt,name=Certificate,proto3" json:"Certificate,omitempty"`
 	Parameters  *Parameters `protobuf:"bytes,2,opt,name=Parameters,proto3" json:"Parameters,omitempty"`
 	RootCA      []byte      `protobuf:"bytes,3,opt,name=RootCA,proto3" json:"RootCA,omitempty"`
+	SealKey     []byte      `protobuf:"bytes,4,opt,name=SealKey,proto3" json:"SealKey,omitempty"`
 }
 
 func (x *ActivationResp) Reset() {
@@ -160,6 +161,13 @@ func (x *ActivationResp) GetParameters() *Parameters {
 func (x *ActivationResp) GetRootCA() []byte {
 	if x != nil {
 		return x.RootCA
+	}
+	return nil
+}
+
+func (x *ActivationResp) GetSealKey() []byte {
+	if x != nil {
+		return x.SealKey
 	}
 	return nil
 }
