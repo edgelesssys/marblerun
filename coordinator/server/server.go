@@ -65,11 +65,13 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 			status, signature, err := cc.GetStatus(r.Context())
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
 			}
 			strct := statusResp{status, signature}
 			jsn, err := json.Marshal(strct)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
 			}
 			w.Write(jsn)
 		default:
@@ -82,11 +84,13 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 			signature, err := cc.GetManifestSignature(r.Context())
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
 			}
 			strct := manifestSignatureResp{signature}
 			jsn, err := json.Marshal(strct)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
 			}
 			io.WriteString(w, string(jsn))
 		case http.MethodPost:
@@ -94,6 +98,7 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 			err := cc.SetManifest(r.Context(), []byte(manifest))
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
 			}
 			fmt.Println(manifest)
 		default:
@@ -106,11 +111,13 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 			cert, quote, err := cc.GetCertQuote(r.Context())
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
 			}
 			strct := certQuoteResp{cert, quote}
 			jsn, err := json.Marshal(strct)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
 			}
 			w.Write(jsn)
 		default:
