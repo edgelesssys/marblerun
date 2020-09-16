@@ -26,5 +26,20 @@ message ActivationResp {
 message Parameters {
   map<string, bytes> Files = 1;
   map<string, string> Env = 2;
-  repeated string Argv = 3;
+  map<string, SecretList> Secrets = 3;
+  repeated string Argv = 4;
+}
+
+enum PathType {
+  File = 0;
+  Env = 1;
+}
+
+message Secret {
+  PathType type = 1;
+  string path = 2;
+}
+
+message SecretList {
+  repeated Secret Secrets = 1;
 }
