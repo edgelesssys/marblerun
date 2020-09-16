@@ -65,6 +65,7 @@ type Authenticator struct {
 	marbleCert *x509.Certificate
 	rootCA     *x509.Certificate
 	params     *rpc.Parameters
+	sealKey    []byte
 }
 
 // NewAuthenticator creates a new Authenticator instance
@@ -298,6 +299,8 @@ func PreMain(a *Authenticator, main mainFunc) (*x509.Certificate, *rpc.Parameter
 	a.rootCA = rootCA
 	// get params
 	a.params = activationResp.GetParameters()
+	// get seal key
+	a.sealKey = activationResp.GetSealKey()
 
 	// Store certificate in environment and file system
 	pemCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: a.marbleCert.Raw})
