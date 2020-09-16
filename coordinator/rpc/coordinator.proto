@@ -13,6 +13,7 @@ message ActivationReq {
   bytes Quote = 1;
   bytes CSR = 2;
   string MarbleType = 3;
+  string UUID = 4;
 }
 
 message ActivationResp {

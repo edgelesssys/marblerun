@@ -13,6 +13,7 @@ import (
 	"github.com/edgelesssys/coordinator/coordinator/core"
 	"github.com/edgelesssys/coordinator/coordinator/quote"
 	"github.com/edgelesssys/coordinator/coordinator/server"
+	"github.com/google/uuid"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -81,6 +82,8 @@ const manifestJSON string = `{
 
 const coordinatorCommonName string = "Coordinator" // TODO: core does not export this, for now just use it hardcoded
 
+var uuidFile string
+
 func TestLogic(t *testing.T) {
 	assert := assert.New(t)
 
@@ -111,6 +114,15 @@ func TestLogic(t *testing.T) {
 		fmt.Println("start mesh server at", grpcAddr)
 	}
 
+	// create UUID file
+	tmpFile, err := ioutil.TempFile(os.TempDir(), "*_uuid")
+	if err != nil {
+		panic(err)
+	}
+	uuidFile = tmpFile.Name()
+	tmpFile.Close()
+	defer os.RemoveAll(uuidFile)
+
 	spawner := marbleSpawner{
 		assert:     assert,
 		issuer:     issuer,
@@ -119,10 +131,10 @@ func TestLogic(t *testing.T) {
 		serverAddr: grpcAddr,
 	}
 	// activate first backend
-	spawner.newMarble("backend_first", "Azure", true)
+	spawner.newMarble("backend_first", "Azure", false, true)
 
 	// try to activate another first backend
-	spawner.newMarble("backend_first", "Azure", false)
+	spawner.newMarble("backend_first", "Azure", false, false)
 
 	// activate 10 other backend
 	pickInfra := func(i int) string {
@@ -131,13 +143,16 @@ func TestLogic(t *testing.T) {
 		}
 		return "Alibaba"
 	}
+	pickUUID := func(i int) bool {
+		return i&1 != 0
+	}
 	for i := 0; i < 10; i++ {
-		spawner.newMarble("backend_other", pickInfra(i), true)
+		spawner.newMarble("backend_other", pickInfra(i), pickUUID(i), true)
 	}
 
 	// activate 10 frontend
 	for i := 0; i < 10; i++ {
-		spawner.newMarble("frontend", pickInfra(i), true)
+		spawner.newMarble("frontend", pickInfra(i), pickUUID(i), true)
 	}
 
 }
@@ -150,7 +165,7 @@ type marbleSpawner struct {
 	assert     *assert.Assertions
 }
 
-func (ms marbleSpawner) newMarble(marbleType string, infraName string, shouldSucceed bool) {
+func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID bool, shouldSucceed bool) {
 	// set env vars
 	err := os.Setenv(EdgCoordinatorAddr, ms.serverAddr)
 	ms.assert.Nil(err, "failed to set env variable: %v", err)
@@ -159,10 +174,15 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, shouldSuc
 	err = os.Setenv(EdgMarbleDNSNames, "backend_service,backend")
 	ms.assert.Nil(err, "failed to set env variable: %v", err)
 
+	if !reuseUUID {
+		os.RemoveAll(uuidFile)
+	}
+	err = os.Setenv(EdgMarbleUUIDFile, uuidFile)
+	ms.assert.Nil(err, "failed to set env variable: %v", err)
+
 	// create Authenticator
-	commonName := "marble"          // Coordinator will assign an ID to us
 	issuer := quote.NewMockIssuer() // TODO: Use real issuer
-	a, err := NewAuthenticator(orgName, commonName, issuer)
+	a, err := NewAuthenticator(orgName, issuer)
 	ms.assert.Nil(err, "failed to create Authenticator: %v", err)
 	ms.assert.NotNil(a, "got empty Authenticator")
 
@@ -226,4 +246,13 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, shouldSuc
 	// assert.Equal(a.marbleCert.Subject.CommonName, a.commonName)
 	ms.assert.Equal(a.marbleCert.Subject.Organization[0], a.orgName, "expected equal: '%v' - '%v'", a.marbleCert.Subject.Organization[0], a.orgName)
 	ms.assert.Equal(a.marbleCert.PublicKey, a.pubk, "expected equal: '%v' - '%v'", a.marbleCert.PublicKey, a.pubk)
+
+	uuidBytes, err := ioutil.ReadFile(uuidFile)
+	ms.assert.Nil(err, "error reading uuidFile: %v", err)
+	marbleUUID, err := uuid.NewUUID()
+	ms.assert.Nil(err, "error creating UUID: %v", err)
+	err = marbleUUID.UnmarshalBinary(uuidBytes)
+	ms.assert.Nil(err, "error unmarshaling UUID: %v", err)
+	ms.assert.Equal(marbleUUID.String(), a.marbleCert.Subject.CommonName)
+
 }
