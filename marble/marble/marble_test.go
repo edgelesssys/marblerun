@@ -2,6 +2,8 @@ package marble
 
 import (
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"encoding/json"
 	"encoding/pem"
 	"flag"
@@ -83,6 +85,8 @@ const manifestJSON string = `{
 const coordinatorCommonName string = "Coordinator" // TODO: core does not export this, for now just use it hardcoded
 
 var uuidFile string
+
+var sealKey []byte
 
 func TestLogic(t *testing.T) {
 	assert := assert.New(t)
@@ -221,6 +225,15 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 		ms.assert.Equal([]byte{}, rest)
 		ms.assert.Equal(a.marbleCert.Raw, decodedCert.Bytes, "cert exposed from preMain through environment does not match cert retrieved from coordinator")
 
+		if reuseUUID {
+			// check if we get back the same seal key
+			ms.assert.Equal(sealKey, a.sealKey)
+		} else {
+			// check that the seal key is different
+			ms.assert.NotEqual(sealKey, a.sealKey)
+		}
+		// store seal key
+		sealKey = a.sealKey
 		return 0
 	}
 
@@ -255,4 +268,38 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 	ms.assert.Nil(err, "error unmarshaling UUID: %v", err)
 	ms.assert.Equal(marbleUUID.String(), a.marbleCert.Subject.CommonName)
 
+}
+
+func seal(plaintext []byte, key []byte, nonce []byte) []byte {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	aesgcm, err := cipher.NewGCM(block)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	ciphertext := aesgcm.Seal(nil, nonce, plaintext, nil)
+	return ciphertext
+}
+
+func unseal(ciphertext []byte, key []byte, nonce []byte) []byte {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	aesgcm, err := cipher.NewGCM(block)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	plaintext, err := aesgcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	return plaintext
 }
