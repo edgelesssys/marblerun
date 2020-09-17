@@ -94,7 +94,10 @@ func parsePemFromEnv(env []string, certName string) (*pem.Block, []byte, error) 
 func runServer(certRaw []byte, keyRaw []byte, rootCARaw []byte) {
 	// generate server with TLSConfig
 	roots := x509.NewCertPool()
-	roots.AppendCertsFromPEM(rootCARaw)
+	if !roots.AppendCertsFromPEM(rootCARaw) {
+		log.Fatalf("cannot append rootCa to CertPool")
+		return
+	}
 	tlsCert, err := tls.X509KeyPair(certRaw, keyRaw)
 	if err != nil {
 		log.Fatalf("cannot create TLS cert: %v", err)
