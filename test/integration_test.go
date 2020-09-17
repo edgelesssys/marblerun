@@ -47,36 +47,50 @@ const manifestJSON string = `{
 			"Package": "backend",
 			"Parameters": {
 				"Files": {
-					"/tmp/defg.txt": [7,7,7],
-					"/tmp/jkl.mno": [8,8,8]
+					"/tmp/defg.txt": "foo",
+					"/tmp/jkl.mno": "bar"
 				},
 				"Argv": [
 					"serve"
 				],
 				"Env": {
-					"IS_FIRST": "true"
-				}
+					"IS_FIRST": "true",
+					"ROOT_CA": "$$root_ca",
+					"SEAL_KEY": "$$seal_key",
+					"MARBLE_CERT": "$$marble_cert",
+					"MARBLE_KEY": "$$marble_key"
+				},
 			}
 		},
 		"test_marble_client": {
 			"Package": "backend",
 			"Parameters": {
 				"Files": {
-					"/tmp/defg.txt": [7,7,7],
-					"/tmp/jkl.mno": [8,8,8]
+					"/tmp/defg.txt": "foo",
+					"/tmp/jkl.mno": "bar"
 				},
 				"Env": {
-					"IS_FIRST": "true"
-				}
+					"IS_FIRST": "true",
+					"ROOT_CA": "$$root_ca",
+					"SEAL_KEY": "$$seal_key",
+					"MARBLE_CERT": "$$marble_cert",
+					"MARBLE_KEY": "$$marble_key"
+				},
 			}
 		},
 		"bad_marble": {
 			"Package": "frontend",
 			"Parameters": {
 				"Files": {
-					"/tmp/defg.txt": [7,7,7],
-					"/tmp/jkl.mno": [8,8,8]
-				}
+					"/tmp/defg.txt": "foo",
+					"/tmp/jkl.mno": "bar"
+				},
+				"Env": {
+					"ROOT_CA": "$$root_ca",
+					"SEAL_KEY": "$$seal_key",
+					"MARBLE_CERT": "$$marble_cert",
+					"MARBLE_KEY": "$$marble_key"
+				},
 			}
 		}
 	},
