@@ -223,6 +223,7 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 		certPem := os.Getenv(EdgMarbleCert)
 		decodedCert, rest := pem.Decode([]byte(certPem))
 		ms.assert.Equal([]byte{}, rest)
+		ms.assert.NotNil(decodedCert)
 		ms.assert.Equal(a.marbleCert.Raw, decodedCert.Bytes, "cert exposed from preMain through environment does not match cert retrieved from coordinator")
 
 		if reuseUUID {

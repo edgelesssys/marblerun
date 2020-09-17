@@ -39,6 +39,10 @@ func premainTarget(argc int, argv []string, env []string) int {
 	if err != nil {
 		log.Fatalf("failed to get private key: %v", err)
 	}
+	_, _, err = parsePemFromEnv(env, marble.EdgSealKey)
+	if err != nil {
+		log.Fatalf("failed to get seal key: %v", err)
+	}
 
 	// Verify certificate chain
 	roots := x509.NewCertPool()
