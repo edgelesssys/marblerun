@@ -14,7 +14,6 @@ import (
 	"math/big"
 	"net"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -310,7 +309,7 @@ func PreMain(a *Authenticator, main mainFunc) (*x509.Certificate, *rpc.Parameter
 			return nil
 		}
 		var err error
-		for _, location := range secretList.Secrets {
+		for _, location := range secretList.GetSecrets() {
 			switch location.Type {
 			case rpc.PathType_Env:
 				err = os.Setenv(location.Path, string(data))
@@ -318,10 +317,6 @@ func PreMain(a *Authenticator, main mainFunc) (*x509.Certificate, *rpc.Parameter
 					return err
 				}
 			case rpc.PathType_File:
-				err = os.MkdirAll(path.Dir(location.Path), 0700)
-				if err != nil {
-					return err
-				}
 				err = ioutil.WriteFile(location.Path, data, 0600)
 				if err != nil {
 					return err
@@ -337,11 +332,15 @@ func PreMain(a *Authenticator, main mainFunc) (*x509.Certificate, *rpc.Parameter
 		case "MarbleCert":
 			// Expose Marble certificate
 			pemCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: a.marbleCert.Raw})
-			exposeSecret(secretList, pemCert)
+			if err := exposeSecret(secretList, pemCert); err != nil {
+				return nil, nil, err
+			}
 		case "RootCA":
 			// Expose RootCA
 			pemRootCA := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: a.rootCA.Raw})
-			exposeSecret(secretList, pemRootCA)
+			if err := exposeSecret(secretList, pemRootCA); err != nil {
+				return nil, nil, err
+			}
 		case "MarbleKey":
 			// Expose Marble private key
 			privKeyPKCS8, err := x509.MarshalPKCS8PrivateKey(a.privk)
@@ -349,10 +348,14 @@ func PreMain(a *Authenticator, main mainFunc) (*x509.Certificate, *rpc.Parameter
 				return nil, nil, err
 			}
 			pemPrivKey := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privKeyPKCS8})
-			exposeSecret(secretList, pemPrivKey)
+			if err := exposeSecret(secretList, pemPrivKey); err != nil {
+				return nil, nil, err
+			}
 		case "SealKey":
 			// Expose Sealing Key
-			exposeSecret(secretList, a.sealKey)
+			if err := exposeSecret(secretList, a.sealKey); err != nil {
+				return nil, nil, err
+			}
 		default:
 			return nil, nil, fmt.Errorf("unsupported Secret: %v", key)
 		}
