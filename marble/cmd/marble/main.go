@@ -39,6 +39,10 @@ func premainTarget(argc int, argv []string, env []string) int {
 	if err != nil {
 		log.Fatalf("failed to get private key: %v", err)
 	}
+	_, _, err = parsePemFromEnv(env, marble.EdgSealKey)
+	if err != nil {
+		log.Fatalf("failed to get seal key: %v", err)
+	}
 
 	// Verify certificate chain
 	roots := x509.NewCertPool()
@@ -144,7 +148,7 @@ func marbleTest(config string) int {
 		panic(err)
 	}
 	// mount data dir
-	mountData(cfg.DataPath)
+	mountData(cfg.DataPath) // mounts DataPath to /marble/data
 	// set env vars
 	if err := os.Setenv(marble.EdgCoordinatorAddr, cfg.CoordinatorAddr); err != nil {
 		log.Fatalf("failed to set env variable: %v", err)
@@ -159,7 +163,7 @@ func marbleTest(config string) int {
 		log.Fatalf("failed to set env variable: %v", err)
 		return InternalError
 	}
-	uuidFile := filepath.Join(cfg.DataPath, "uuid")
+	uuidFile := filepath.Join("marble", "data", "uuid")
 	if err := os.Setenv(marble.EdgMarbleUUIDFile, uuidFile); err != nil {
 		log.Fatalf("failed to set env variable: %v", err)
 		return InternalError
