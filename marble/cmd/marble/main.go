@@ -144,7 +144,7 @@ func marbleTest(config string) int {
 		panic(err)
 	}
 	// mount data dir
-	mountData(cfg.DataPath)
+	mountData(cfg.DataPath) // mounts DataPath to /marble/data
 	// set env vars
 	if err := os.Setenv(marble.EdgCoordinatorAddr, cfg.CoordinatorAddr); err != nil {
 		log.Fatalf("failed to set env variable: %v", err)
@@ -159,7 +159,7 @@ func marbleTest(config string) int {
 		log.Fatalf("failed to set env variable: %v", err)
 		return InternalError
 	}
-	uuidFile := filepath.Join(cfg.DataPath, "uuid")
+	uuidFile := filepath.Join("marble", "data", "uuid")
 	if err := os.Setenv(marble.EdgMarbleUUIDFile, uuidFile); err != nil {
 		log.Fatalf("failed to set env variable: %v", err)
 		return InternalError
