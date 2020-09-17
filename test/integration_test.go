@@ -59,7 +59,7 @@ const manifestJSON string = `{
 					"SEAL_KEY": "$$seal_key",
 					"MARBLE_CERT": "$$marble_cert",
 					"MARBLE_KEY": "$$marble_key"
-				},
+			}
 			}
 		},
 		"test_marble_client": {
@@ -75,7 +75,7 @@ const manifestJSON string = `{
 					"SEAL_KEY": "$$seal_key",
 					"MARBLE_CERT": "$$marble_cert",
 					"MARBLE_KEY": "$$marble_key"
-				},
+			}
 			}
 		},
 		"bad_marble": {
@@ -90,8 +90,8 @@ const manifestJSON string = `{
 					"SEAL_KEY": "$$seal_key",
 					"MARBLE_CERT": "$$marble_cert",
 					"MARBLE_KEY": "$$marble_key"
-				},
 			}
+		}
 		}
 	},
 	"Clients": {

@@ -159,28 +159,23 @@ func (c *Core) generateCertFromCSR(csrReq []byte, pubk ed25519.PublicKey, marble
 }
 
 func customizeParameters(params rpc.Parameters, rootCA []byte, marbleCert []byte, marbleKey []byte, sealKey []byte) rpc.Parameters {
-	var customParams rpc.Parameters
-	customParams = rpc.Parameters{
+	customParams := rpc.Parameters{
 		Argv:  params.Argv,
 		Files: make(map[string]string),
 		Env:   make(map[string]string),
 	}
-
 	// replace placeholders in files
-	replace := func(data string) string {
-		newData := strings.ReplaceAll(data, RootCAPlaceholder, string(rootCA))
-		newData = strings.ReplaceAll(newData, MarbleCertPlaceholder, string(marbleCert))
-		newData = strings.ReplaceAll(newData, MarbleKeyPlaceholder, string(marbleKey))
-		newData = strings.ReplaceAll(newData, SealKeyPlaceholder, string(sealKey))
-		return newData
-	}
+	r := strings.NewReplacer(RootCAPlaceholder, string(rootCA),
+		MarbleCertPlaceholder, string(marbleCert),
+		MarbleKeyPlaceholder, string(marbleKey),
+		SealKeyPlaceholder, string(sealKey))
 	for path, data := range params.Files {
-		newData := replace(data)
+		newData := r.Replace(data)
 		customParams.Files[path] = newData
 	}
 
 	for name, data := range params.Env {
-		newData := replace(data)
+		newData := r.Replace(data)
 		customParams.Env[name] = newData
 	}
 

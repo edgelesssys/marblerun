@@ -126,14 +126,33 @@ func (ms marbleSpawner) newMarble(coreServer *Core, marbleType string, infraName
 	ms.assert.Nil(err, "Activate failed: %v", err)
 	ms.assert.NotNil(resp)
 
-	// validate response
+	// Validate response
 	params := resp.GetParameters()
-	ms.assert.Equal(marble.Parameters.Files, params.Files)
-	ms.assert.Equal(marble.Parameters.Env, params.Env)
-	ms.assert.Equal(marble.Parameters.Argv, params.Argv)
+	// Validate Files
+	if marble.Parameters.Files != nil {
+		ms.assert.Equal(marble.Parameters.Files, params.Files)
+	}
+	// Validate Argv
+	if marble.Parameters.Argv != nil {
+		ms.assert.Equal(marble.Parameters.Argv, params.Argv)
+	}
 
+	// Validate SealKey
+	pemSealKey := resp.GetParameters().Env["SEAL_KEY"]
+	ms.assert.NotNil(pemSealKey)
+	p, _ := pem.Decode([]byte(pemSealKey))
+	ms.assert.NotNil(p)
+
+	// Validate Marble Key
+	pemMarbleKey := resp.GetParameters().Env["MARBLE_KEY"]
+	ms.assert.NotNil(pemMarbleKey)
+	p, _ = pem.Decode([]byte(pemMarbleKey))
+	ms.assert.NotNil(p)
+
+	// Validate Cert
 	pemCert := resp.GetParameters().Env["MARBLE_CERT"]
-	p, _ := pem.Decode([]byte(pemCert))
+	ms.assert.NotNil(pemCert)
+	p, _ = pem.Decode([]byte(pemCert))
 	ms.assert.NotNil(p)
 	newCert, err := x509.ParseCertificate(p.Bytes)
 	ms.assert.Nil(err)
@@ -153,6 +172,7 @@ func (ms marbleSpawner) newMarble(coreServer *Core, marbleType string, infraName
 	ms.assert.True(ed25519.Verify(pubk, newCert.RawTBSCertificate, newCert.Signature))
 	// Check cert-chain
 	pemRootCA := resp.GetParameters().Env["ROOT_CA"]
+	ms.assert.NotNil(pemRootCA)
 	p, _ = pem.Decode([]byte(pemRootCA))
 	ms.assert.NotNil(p)
 	rootCA, err := x509.ParseCertificate(p.Bytes)
@@ -168,6 +188,7 @@ func (ms marbleSpawner) newMarble(coreServer *Core, marbleType string, infraName
 	}
 	_, err = newCert.Verify(opts)
 	ms.assert.Nil(err, "failed to verify new certificate: %v", err)
+
 }
 
 func generateMarbleCredentials() (certTLS *x509.Certificate, cert []byte, csr []byte, err error) {

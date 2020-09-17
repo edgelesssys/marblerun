@@ -73,7 +73,15 @@ const manifestJSON string = `{
 			}
 		},
 		"frontend": {
-			"Package": "frontend"
+			"Package": "frontend",
+			"Parameters": {
+				"Env": {
+					"ROOT_CA": "$$root_ca",
+					"SEAL_KEY": "$$seal_key",
+					"MARBLE_CERT": "$$marble_cert",
+					"MARBLE_KEY": "$$marble_key"
+				}
+			}
 		}
 	},
 	"Clients": {

@@ -5,7 +5,7 @@ import (
 	"github.com/edgelesssys/coordinator/coordinator/rpc"
 )
 
-// RootCAPlaceholder is a Manifest placeholder variable for the RootCAPlaceholder
+// RootCAPlaceholder is a Manifest placeholder variable for the Coordinator's root certificate
 const RootCAPlaceholder string = "$$root_ca"
 
 // MarbleCertPlaceholder is a Manifest placeholder variable for the Marble's Certificate
