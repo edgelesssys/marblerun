@@ -3,13 +3,16 @@ package core
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/x509"
+	"io"
 	"log"
 	"math"
 	"time"
 
 	"github.com/edgelesssys/coordinator/coordinator/rpc"
 	"github.com/google/uuid"
+	"golang.org/x/crypto/hkdf"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -40,7 +43,17 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	if err != nil {
 		return nil, err
 	}
-	// TODO: AB#186 Derive sealing key and return it marble
+	// Derive sealing key using HKDF and return it to marble
+	uuidBytes, err := marbleUUID.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	// Derive key
+	hkdf := hkdf.New(sha256.New, uuidBytes, c.privk.Seed(), nil)
+	sealKey := make([]byte, 32)
+	if _, err := io.ReadFull(hkdf, sealKey); err != nil {
+		return nil, err
+	}
 
 	// write response
 	marble := c.manifest.Marbles[req.GetMarbleType()] // existence has been checked in verifyManifestRequirement
@@ -48,7 +61,9 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 		Certificate: certRaw,
 		RootCA:      c.cert.Raw,
 		Parameters:  &marble.Parameters,
+		SealKey:     sealKey,
 	}
+
 	// TODO: scan files for certificate placeholders like "$$root_ca" and replace those
 	log.Printf("Successfully activated new Marble of type '%v: %v'\n", req.GetMarbleType(), marbleUUID.String())
 	c.activations[req.GetMarbleType()]++
