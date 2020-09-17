@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/json"
+	"encoding/pem"
 	"math"
 	"net"
 	"testing"
@@ -131,7 +132,10 @@ func (ms marbleSpawner) newMarble(coreServer *Core, marbleType string, infraName
 	ms.assert.Equal(marble.Parameters.Env, params.Env)
 	ms.assert.Equal(marble.Parameters.Argv, params.Argv)
 
-	newCert, err := x509.ParseCertificate(resp.GetCertificate())
+	pemCert := resp.GetParameters().Env["MARBLE_CERT"]
+	p, _ := pem.Decode([]byte(pemCert))
+	ms.assert.NotNil(p)
+	newCert, err := x509.ParseCertificate(p.Bytes)
 	ms.assert.Nil(err)
 	ms.assert.Equal(coordinatorName, newCert.Issuer.CommonName)
 	// Check CommonName
@@ -148,8 +152,10 @@ func (ms marbleSpawner) newMarble(coreServer *Core, marbleType string, infraName
 	pubk := coreServer.cert.PublicKey.(ed25519.PublicKey)
 	ms.assert.True(ed25519.Verify(pubk, newCert.RawTBSCertificate, newCert.Signature))
 	// Check cert-chain
-	rootCARaw := resp.GetRootCA()
-	rootCA, err := x509.ParseCertificate(rootCARaw)
+	pemRootCA := resp.GetParameters().Env["ROOT_CA"]
+	p, _ = pem.Decode([]byte(pemRootCA))
+	ms.assert.NotNil(p)
+	rootCA, err := x509.ParseCertificate(p.Bytes)
 	ms.assert.Nil(err, "cannot parse rootCA: %v", err)
 	roots := x509.NewCertPool()
 	roots.AddCert(rootCA)

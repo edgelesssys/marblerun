@@ -21,7 +21,7 @@ message ActivationResp {
 }
 
 message Parameters {
-  map<string, bytes> Files = 1;
+  map<string, string> Files = 1;
   map<string, string> Env = 2;
   repeated string Argv = 3;
 }

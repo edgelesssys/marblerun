@@ -39,7 +39,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 		return nil, err
 	}
 
-	certRaw, err := c.generateCertFromCSR(req.GetCSR(), req.GetMarbleType(), marbleUUID.String())
+	// certRaw, err := c.generateCertFromCSR(req.GetCSR(), req.GetMarbleType(), marbleUUID.String())
 	if err != nil {
 		return nil, err
 	}
@@ -58,10 +58,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	// write response
 	marble := c.manifest.Marbles[req.GetMarbleType()] // existence has been checked in verifyManifestRequirement
 	resp := &rpc.ActivationResp{
-		Certificate: certRaw,
-		RootCA:      c.cert.Raw,
-		Parameters:  &marble.Parameters,
-		SealKey:     sealKey,
+		Parameters: &marble.Parameters,
 	}
 
 	// TODO: scan files for certificate placeholders like "$$root_ca" and replace those
