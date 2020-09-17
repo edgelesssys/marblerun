@@ -2,12 +2,15 @@ package core
 
 import (
 	"context"
+	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/pem"
 	"io"
 	"log"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/edgelesssys/coordinator/coordinator/rpc"
@@ -38,11 +41,16 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	if err != nil {
 		return nil, err
 	}
-
-	// certRaw, err := c.generateCertFromCSR(req.GetCSR(), req.GetMarbleType(), marbleUUID.String())
+	// generate key-pair for marble
+	pubk, privk, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		return nil, err
 	}
+	encodedPrivKey, err := x509.MarshalPKCS8PrivateKey(privk)
+	if err != nil {
+		return nil, err
+	}
+
 	// Derive sealing key using HKDF and return it to marble
 	uuidBytes, err := marbleUUID.MarshalBinary()
 	if err != nil {
@@ -55,10 +63,22 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 		return nil, err
 	}
 
-	// write response
+	certRaw, err := c.generateCertFromCSR(req.GetCSR(), pubk, req.GetMarbleType(), marbleUUID.String())
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO Replace placeholders in Manifest
+	pemRootCA := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: c.cert.Raw})
+	pemMarbleCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certRaw})
+	pemMarbleKey := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: encodedPrivKey})
+	pemSealKey := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: sealKey})
 	marble := c.manifest.Marbles[req.GetMarbleType()] // existence has been checked in verifyManifestRequirement
+	params := customizeParameters(marble.Parameters, pemRootCA, pemMarbleCert, pemMarbleKey, pemSealKey)
+
+	// write response
 	resp := &rpc.ActivationResp{
-		Parameters: &marble.Parameters,
+		Parameters: &params,
 	}
 
 	// TODO: scan files for certificate placeholders like "$$root_ca" and replace those
@@ -98,7 +118,7 @@ func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, quote []byte
 }
 
 // generateCertFromCSR signs the CSR from marble attempting to register
-func (c *Core) generateCertFromCSR(csrReq []byte, marbleType string, marbleUUID string) ([]byte, error) {
+func (c *Core) generateCertFromCSR(csrReq []byte, pubk ed25519.PublicKey, marbleType string, marbleUUID string) ([]byte, error) {
 	// parse and verify CSR
 	csr, err := x509.ParseCertificateRequest(csrReq)
 	if err != nil {
@@ -130,10 +150,39 @@ func (c *Core) generateCertFromCSR(csrReq []byte, marbleType string, marbleUUID 
 		DNSNames:              csr.DNSNames,
 		IPAddresses:           csr.IPAddresses,
 	}
-	certRaw, err := x509.CreateCertificate(rand.Reader, &template, c.cert, csr.PublicKey, c.privk)
+	certRaw, err := x509.CreateCertificate(rand.Reader, &template, c.cert, pubk, c.privk)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to issue certificate")
 	}
 
 	return certRaw, nil
+}
+
+func customizeParameters(params rpc.Parameters, rootCA []byte, marbleCert []byte, marbleKey []byte, sealKey []byte) rpc.Parameters {
+	var customParams rpc.Parameters
+	customParams = rpc.Parameters{
+		Argv:  params.Argv,
+		Files: make(map[string]string),
+		Env:   make(map[string]string),
+	}
+
+	// replace placeholders in files
+	replace := func(data string) string {
+		newData := strings.ReplaceAll(data, RootCAPlaceholder, string(rootCA))
+		newData = strings.ReplaceAll(newData, MarbleCertPlaceholder, string(marbleCert))
+		newData = strings.ReplaceAll(newData, MarbleKeyPlaceholder, string(marbleKey))
+		newData = strings.ReplaceAll(newData, SealKeyPlaceholder, string(sealKey))
+		return newData
+	}
+	for path, data := range params.Files {
+		newData := replace(data)
+		customParams.Files[path] = newData
+	}
+
+	for name, data := range params.Env {
+		newData := replace(data)
+		customParams.Env[name] = newData
+	}
+
+	return customParams
 }
