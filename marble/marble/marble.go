@@ -46,6 +46,9 @@ const EdgRootCA string = "EDG_ROOT_CA"
 // EdgMarblePrivKey is the env variable used to store the private key for the cert
 const EdgMarblePrivKey string = "EDG_MARBLE_PRIV_KEY"
 
+// EdgMarblePrivKey is the env variable used to store the marble's seal key
+const EdgSealKey string = "EDG_Seal_KEY"
+
 // TODO: Create a central place where all certificate information is managed
 // TLS Cert orgName
 const orgName string = "Edgeless Systems GmbH"
@@ -353,7 +356,8 @@ func PreMain(a *Authenticator, main mainFunc) (*x509.Certificate, *rpc.Parameter
 			}
 		case "SealKey":
 			// Expose Sealing Key
-			if err := exposeSecret(secretList, a.sealKey); err != nil {
+			pemSealKey := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: a.sealKey})
+			if err := exposeSecret(secretList, pemSealKey); err != nil {
 				return nil, nil, err
 			}
 		default:
@@ -372,7 +376,9 @@ func PreMain(a *Authenticator, main mainFunc) (*x509.Certificate, *rpc.Parameter
 
 	// // Set environment variables
 	for key, value := range a.params.Env {
-		os.Setenv(key, value)
+		if err := os.Setenv(key, value); err != nil {
+			return nil, nil, err
+		}
 	}
 
 	// call main with args
