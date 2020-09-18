@@ -16,6 +16,11 @@ add_custom_target(marblelib
   ${CMAKE_SOURCE_DIR}/cmd/marble
 )
 
+add_custom_target(marbletestlib
+  ertgo build -buildmode=c-archive
+  -o libmarbletest.a
+  ${CMAKE_SOURCE_DIR}/cmd/marble-test
+)
 
 # Use the edger8r to generate C bindings from the EDL file.
 add_custom_command(
@@ -30,6 +35,7 @@ target_link_libraries(emain PRIVATE openenclave::oe_includes)
 
 add_executable(enclave emain_t.c)
 # target_include_directories(enclave PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+add_dependencies(enclave marbletestlib)
 add_dependencies(enclave marblelib)
 
 target_link_libraries(enclave
@@ -38,7 +44,7 @@ target_link_libraries(enclave
   openenclave::oehostepoll
   openenclave::oehostfs
   openenclave::oehostsock
-  ${CMAKE_BINARY_DIR}/libmarble.a
+  ${CMAKE_BINARY_DIR}/libmarbletest.a
   crypto
   openenclave::ertlibc
   openenclave::oecustomfs
