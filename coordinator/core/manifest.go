@@ -5,6 +5,18 @@ import (
 	"github.com/edgelesssys/coordinator/coordinator/rpc"
 )
 
+// RootCAPlaceholder is a Manifest placeholder variable for the Coordinator's root certificate
+const RootCAPlaceholder string = "$$root_ca"
+
+// MarbleCertPlaceholder is a Manifest placeholder variable for the Marble's Certificate
+const MarbleCertPlaceholder string = "$$marble_cert"
+
+// MarbleKeyPlaceholder is a Manifest placeholder variable for the Marble's Private Key
+const MarbleKeyPlaceholder string = "$$marble_key"
+
+// SealKeyPlaceholder is a Manifest placeholder variable for the Marble's Sealing Key
+const SealKeyPlaceholder string = "$$seal_key"
+
 // Manifest defines the rules of a mesh.
 type Manifest struct {
 	// Allowed enclave packages

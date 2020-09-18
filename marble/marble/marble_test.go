@@ -4,13 +4,16 @@ import (
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/edgelesssys/coordinator/coordinator/core"
 	"github.com/edgelesssys/coordinator/coordinator/quote"
@@ -53,11 +56,16 @@ const manifestJSON string = `{
 			"MaxActivations": 1,
 			"Parameters": {
 				"Files": {
-					"/tmp/defg.txt": [7,7,7],
-					"/tmp/jkl.mno": [8,8,8]
+					"/tmp/defg.txt": "foo",
+					"/tmp/jkl.mno": "bar",
+					"/tmp/root.pem": "$$root_ca"
 				},
 				"Env": {
-					"IS_FIRST": "true"
+					"IS_FIRST": "true",
+					"ROOT_CA": "$$root_ca",
+					"SEAL_KEY": "$$seal_key",
+					"MARBLE_CERT": "$$marble_cert",
+					"MARBLE_KEY": "$$marble_key"
 				},
 				"Argv": [
 					"--first",
@@ -68,13 +76,27 @@ const manifestJSON string = `{
 		"backend_other": {
 			"Package": "backend",
 			"Parameters": {
+				"Env": {
+					"ROOT_CA": "$$root_ca",
+					"SEAL_KEY": "$$seal_key",
+					"MARBLE_CERT": "$$marble_cert",
+					"MARBLE_KEY": "$$marble_key"
+				},
 				"Argv": [
 					"serve"
 				]
 			}
 		},
 		"frontend": {
-			"Package": "frontend"
+			"Package": "frontend",
+			"Parameters": {
+				"Env": {
+					"ROOT_CA": "$$root_ca",
+					"SEAL_KEY": "$$seal_key",
+					"MARBLE_CERT": "$$marble_cert",
+					"MARBLE_KEY": "$$marble_key"
+				}
+			}
 		}
 	},
 	"Clients": {
@@ -207,59 +229,93 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 		// check env
 		for key, value := range marble.Parameters.Env {
 			readValue := os.Getenv(key)
-			ms.assert.Equal(value, readValue, "%v env var differs from manifest", key)
+			if !strings.Contains(value, "$$") {
+				ms.assert.Equal(value, readValue, "%v env var differs from manifest", key)
+			}
 		}
 
 		// check files
-		for path, content := range marble.Parameters.Files {
-			_, err := os.Stat(path)
-			ms.assert.Nil(err, "error looking for file %v: %v ", path, err)
+		for path, data := range marble.Parameters.Files {
 			readContent, err := ioutil.ReadFile(path)
 			ms.assert.Nil(err, "error reading file %v: %v", path, err)
-			ms.assert.Equal(content, readContent, "content of file %v differs from manifest", path)
+			if !strings.Contains(data, "$$") {
+				ms.assert.Equal(data, string(readContent), "content of file %v differs from manifest", path)
+			}
+
 		}
+		// Validate SealKey
+		pemSealKey := os.Getenv("SEAL_KEY")
+		ms.assert.NotNil(pemSealKey)
+		p, _ := pem.Decode([]byte(pemSealKey))
+		ms.assert.NotNil(p)
 
-		// check cert in env
-		certPem := os.Getenv(EdgMarbleCert)
-		decodedCert, rest := pem.Decode([]byte(certPem))
-		ms.assert.Equal([]byte{}, rest)
-		ms.assert.NotNil(decodedCert)
-		ms.assert.Equal(a.marbleCert.Raw, decodedCert.Bytes, "cert exposed from preMain through environment does not match cert retrieved from coordinator")
+		// Validate Marble Key
+		pemMarbleKey := os.Getenv("MARBLE_KEY")
+		ms.assert.NotNil(pemMarbleKey)
+		p, _ = pem.Decode([]byte(pemMarbleKey))
+		ms.assert.NotNil(p)
 
+		// Validate Cert
+		pemCert := os.Getenv("MARBLE_CERT")
+		ms.assert.NotNil(pemCert)
+		p, _ = pem.Decode([]byte(pemCert))
+		ms.assert.NotNil(p)
+		newCert, err := x509.ParseCertificate(p.Bytes)
+		ms.assert.Nil(err)
+		// Check cert-chain
+		pemRootCA := os.Getenv("ROOT_CA")
+		ms.assert.NotNil(pemRootCA)
+		p, _ = pem.Decode([]byte(pemRootCA))
+		ms.assert.NotNil(p)
+		rootCA, err := x509.ParseCertificate(p.Bytes)
+		ms.assert.Nil(err, "cannot parse rootCA: %v", err)
+		roots := x509.NewCertPool()
+		roots.AddCert(rootCA)
+		opts := x509.VerifyOptions{
+			Roots:         roots,
+			CurrentTime:   time.Now(),
+			DNSName:       "localhost",
+			Intermediates: x509.NewCertPool(),
+			KeyUsages:     newCert.ExtKeyUsage,
+		}
+		_, err = newCert.Verify(opts)
+		ms.assert.Nil(err, "failed to verify new certificate: %v", err)
+
+		receivedSealKey := []byte(os.Getenv("SEAL_KEY"))
 		if reuseUUID {
 			// check if we get back the same seal key
-			ms.assert.Equal(sealKey, a.sealKey)
+			ms.assert.Equal(sealKey, receivedSealKey)
 		} else {
 			// check that the seal key is different
-			ms.assert.NotEqual(sealKey, a.sealKey)
+			ms.assert.NotEqual(sealKey, receivedSealKey)
 		}
 		// store seal key
-		sealKey = a.sealKey
+		sealKey = receivedSealKey
 		return 0
 	}
 
 	// call preMain
-	cert, params, err := PreMain(a, dummyMain)
+	params, err := PreMain(a, dummyMain)
 	if !shouldSucceed {
 		ms.assert.NotNil(err, err)
-		ms.assert.Nil(cert, "expected empty cert, but got %v", cert)
 		ms.assert.Nil(params, "expected empty params, but got %v", params)
 		return
 	}
 	ms.assert.Nil(err, "preMain failed: %v", err)
-	ms.assert.NotNil(cert, "got empty cert: %v", cert)
 	ms.assert.NotNil(params, "got empty params: %v", params)
 
-	ms.assert.Equal(marble.Parameters.Files, a.params.Files, "expected equal: '%v' - '%v'", marble.Parameters.Files, a.params.Files)
-	ms.assert.Equal(marble.Parameters.Env, a.params.Env, "expected equal: '%v' - '%v'", marble.Parameters.Env, a.params.Env)
 	ms.assert.Equal(marble.Parameters.Argv, a.params.Argv, "expected equal: '%v' - '%v'", marble.Parameters.Argv, a.params.Argv)
 
-	ms.assert.Equal(a.marbleCert.Issuer.CommonName, coordinatorCommonName, "expected equal: '%v' - '%v'", a.marbleCert.Issuer.CommonName, coordinatorCommonName)
-	ms.assert.Equal(a.marbleCert.Issuer.Organization[0], orgName, "expected equal: '%v' - '%v'", a.marbleCert.Issuer.Organization[0], orgName)
-	// commonName gets overwritten
-	// assert.Equal(a.marbleCert.Subject.CommonName, a.commonName)
-	ms.assert.Equal(a.marbleCert.Subject.Organization[0], a.orgName, "expected equal: '%v' - '%v'", a.marbleCert.Subject.Organization[0], a.orgName)
-	ms.assert.Equal(a.marbleCert.PublicKey, a.pubk, "expected equal: '%v' - '%v'", a.marbleCert.PublicKey, a.pubk)
+	pemCert := params.Env["MARBLE_CERT"]
+	p, _ := pem.Decode([]byte(pemCert))
+	ms.assert.NotNil(p)
+	newCert, err := x509.ParseCertificate(p.Bytes)
+	ms.assert.Nil(err)
+
+	ms.assert.Equal(newCert.Issuer.CommonName, coordinatorCommonName, "expected equal: '%v' - '%v'", newCert.Issuer.CommonName, coordinatorCommonName)
+	ms.assert.Equal(newCert.Issuer.Organization[0], orgName, "expected equal: '%v' - '%v'", newCert.Issuer.Organization[0], orgName)
+	ms.assert.Equal(newCert.Subject.Organization[0], a.orgName, "expected equal: '%v' - '%v'", newCert.Subject.Organization[0], a.orgName)
+	// ms.assert.Equal(newCert.PublicKey, a.pubk, "expected equal: '%v' - '%v'", newCert.PublicKey, a.pubk)
 
 	uuidBytes, err := ioutil.ReadFile(uuidFile)
 	ms.assert.Nil(err, "error reading uuidFile: %v", err)
@@ -267,7 +323,7 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 	ms.assert.Nil(err, "error creating UUID: %v", err)
 	err = marbleUUID.UnmarshalBinary(uuidBytes)
 	ms.assert.Nil(err, "error unmarshaling UUID: %v", err)
-	ms.assert.Equal(marbleUUID.String(), a.marbleCert.Subject.CommonName)
+	ms.assert.Equal(marbleUUID.String(), newCert.Subject.CommonName)
 
 }
 

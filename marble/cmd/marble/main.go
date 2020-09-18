@@ -27,19 +27,19 @@ func main() {}
 
 func premainTarget(argc int, argv []string, env []string) int {
 	isServer := argc > 0 && argv[0] == "serve"
-	tlsCertPem, tlsCertRaw, err := parsePemFromEnv(env, marble.EdgMarbleCert)
+	tlsCertPem, tlsCertRaw, err := parsePemFromEnv(env, "MARBLE_CERT")
 	if err != nil {
 		log.Fatalf("failed to get TLS Certificate: %v", err)
 	}
-	_, rootCARaw, err := parsePemFromEnv(env, marble.EdgRootCA)
+	_, rootCARaw, err := parsePemFromEnv(env, "ROOT_CA")
 	if err != nil {
 		log.Fatalf("failed to get root CA: %v", err)
 	}
-	_, privkRaw, err := parsePemFromEnv(env, marble.EdgMarblePrivKey)
+	_, privkRaw, err := parsePemFromEnv(env, "MARBLE_KEY")
 	if err != nil {
 		log.Fatalf("failed to get private key: %v", err)
 	}
-	_, _, err = parsePemFromEnv(env, marble.EdgSealKey)
+	_, _, err = parsePemFromEnv(env, "SEAL_KEY")
 	if err != nil {
 		log.Fatalf("failed to get seal key: %v", err)
 	}
@@ -94,7 +94,10 @@ func parsePemFromEnv(env []string, certName string) (*pem.Block, []byte, error) 
 func runServer(certRaw []byte, keyRaw []byte, rootCARaw []byte) {
 	// generate server with TLSConfig
 	roots := x509.NewCertPool()
-	roots.AppendCertsFromPEM(rootCARaw)
+	if !roots.AppendCertsFromPEM(rootCARaw) {
+		log.Fatalf("cannot append rootCa to CertPool")
+		return
+	}
 	tlsCert, err := tls.X509KeyPair(certRaw, keyRaw)
 	if err != nil {
 		log.Fatalf("cannot create TLS cert: %v", err)
@@ -176,7 +179,7 @@ func marbleTest(config string) int {
 	if err != nil {
 		return InternalError
 	}
-	_, _, err = marble.PreMain(a, premainTarget)
+	_, err = marble.PreMain(a, premainTarget)
 	if err != nil {
 		fmt.Println(err)
 		return AuthenticationError

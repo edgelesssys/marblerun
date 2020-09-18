@@ -42,11 +42,15 @@ const manifestJSON string = `{
 			"MaxActivations": 1,
 			"Parameters": {
 				"Files": {
-					"/abc/defg.txt": [7,7,7],
-					"/ghi/jkl.mno": [8,8,8]
+					"/abc/defg.txt": "foo",
+					"/ghi/jkl.mno": "bar"
 				},
 				"Env": {
-					"IS_FIRST": "true"
+					"IS_FIRST": "true",
+					"ROOT_CA": "$$root_ca",
+					"SEAL_KEY": "$$seal_key",
+					"MARBLE_CERT": "$$marble_cert",
+					"MARBLE_KEY": "$$marble_key"
 				},
 				"Argv": [
 					"--first",
@@ -57,13 +61,27 @@ const manifestJSON string = `{
 		"backend_other": {
 			"Package": "backend",
 			"Parameters": {
+				"Env": {
+					"ROOT_CA": "$$root_ca",
+					"SEAL_KEY": "$$seal_key",
+					"MARBLE_CERT": "$$marble_cert",
+					"MARBLE_KEY": "$$marble_key"
+				},
 				"Argv": [
 					"serve"
 				]
 			}
 		},
 		"frontend": {
-			"Package": "frontend"
+			"Package": "frontend",
+			"Parameters": {
+				"Env": {
+					"ROOT_CA": "$$root_ca",
+					"SEAL_KEY": "$$seal_key",
+					"MARBLE_CERT": "$$marble_cert",
+					"MARBLE_KEY": "$$marble_key"
+				}
+			}
 		}
 	},
 	"Clients": {
