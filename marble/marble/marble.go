@@ -35,9 +35,6 @@ const EdgMarbleDNSNames string = "EDG_MARBLE_DNS_NAMES"
 // EdgMarbleUUIDFile is a required env variable with the path to store the marble's uuid
 const EdgMarbleUUIDFile string = "EDG_MARBLE_UUID_FILE"
 
-// Signature for main function
-type mainFunc func(int, []string, []string) int
-
 // loadTLSCreddentials builds a TLS config from the Authenticator's self-signed certificate and the Coordinator's RootCA
 func loadTLSCredentials(cert *x509.Certificate, privk ed25519.PrivateKey) (credentials.TransportCredentials, error) {
 	clientCert, err := getTLSCertificate(cert, privk)
