@@ -173,9 +173,8 @@ func marbleTest(config string) int {
 	}
 
 	// call PreMain
-	orgName := "Edgeless Systems GmbH"
 	issuer := quote.NewERTIssuer()
-	a, err := marble.NewAuthenticator(orgName, issuer)
+	a, err := marble.NewAuthenticator(issuer)
 	if err != nil {
 		return InternalError
 	}
