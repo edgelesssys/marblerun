@@ -2,8 +2,6 @@ package marble
 
 import (
 	"context"
-	"crypto/aes"
-	"crypto/cipher"
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
@@ -121,7 +119,7 @@ func TestLogic(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 
 	// create core and run gRPC server
-	coordinator, err := core.NewCore(orgName, validator, issuer)
+	coordinator, err := core.NewCore("Edgeless Systems GmbH", validator, issuer)
 	assert.NotNil(coordinator, "coordinator empty")
 	assert.Nil(err, err)
 
@@ -206,11 +204,12 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 	err = os.Setenv(EdgMarbleUUIDFile, uuidFile)
 	ms.assert.Nil(err, "failed to set env variable: %v", err)
 
-	// create Authenticator
-	issuer := quote.NewMockIssuer() // TODO: Use real issuer
-	a, err := NewAuthenticator(orgName, issuer)
-	ms.assert.Nil(err, "failed to create Authenticator: %v", err)
-	ms.assert.NotNil(a, "got empty Authenticator")
+	// create mock args for preMain
+	issuer := quote.NewMockIssuer()
+	cert, privk, err := generateCert()
+	ms.assert.Nil(err, "failed to generate cert: %v", err)
+	quote, err := issuer.Issue(cert.Raw)
+	ms.assert.Nil(err, "failed to generate quote: %v", err)
 
 	// store quote in validator
 	marble, ok := ms.manifest.Marbles[marbleType]
@@ -219,7 +218,7 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 	ms.assert.True(ok, "Package '%v' does not exist", marble.Package)
 	infra, ok := ms.manifest.Infrastructures[infraName]
 	ms.assert.True(ok, "Infrastructure '%v' does not exist", infraName)
-	ms.validator.AddValidQuote(a.quote, a.initCert.Raw, pkg, infra)
+	ms.validator.AddValidQuote(quote, cert.Raw, pkg, infra)
 
 	dummyMain := func(argc int, argv []string, env []string) int {
 		// check argv
@@ -295,7 +294,7 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 	}
 
 	// call preMain
-	params, err := PreMain(a, dummyMain)
+	params, err := preMain(cert, privk, issuer)
 	if !shouldSucceed {
 		ms.assert.NotNil(err, err)
 		ms.assert.Nil(params, "expected empty params, but got %v", params)
@@ -304,7 +303,7 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 	ms.assert.Nil(err, "preMain failed: %v", err)
 	ms.assert.NotNil(params, "got empty params: %v", params)
 
-	ms.assert.Equal(marble.Parameters.Argv, a.params.Argv, "expected equal: '%v' - '%v'", marble.Parameters.Argv, a.params.Argv)
+	ms.assert.Equal(marble.Parameters.Argv, params.Argv, "expected equal: '%v' - '%v'", marble.Parameters.Argv, params.Argv)
 
 	pemCert := params.Env["MARBLE_CERT"]
 	p, _ := pem.Decode([]byte(pemCert))
@@ -313,9 +312,7 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 	ms.assert.Nil(err)
 
 	ms.assert.Equal(newCert.Issuer.CommonName, coordinatorCommonName, "expected equal: '%v' - '%v'", newCert.Issuer.CommonName, coordinatorCommonName)
-	ms.assert.Equal(newCert.Issuer.Organization[0], orgName, "expected equal: '%v' - '%v'", newCert.Issuer.Organization[0], orgName)
-	ms.assert.Equal(newCert.Subject.Organization[0], a.orgName, "expected equal: '%v' - '%v'", newCert.Subject.Organization[0], a.orgName)
-	// ms.assert.Equal(newCert.PublicKey, a.pubk, "expected equal: '%v' - '%v'", newCert.PublicKey, a.pubk)
+	ms.assert.Equal(newCert.Subject.Organization[0], newCert.Issuer.Organization[0], "expected equal: '%v' - '%v'", newCert.Subject.Organization[0], newCert.Issuer.Organization[0])
 
 	uuidBytes, err := ioutil.ReadFile(uuidFile)
 	ms.assert.Nil(err, "error reading uuidFile: %v", err)
@@ -325,38 +322,8 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 	ms.assert.Nil(err, "error unmarshaling UUID: %v", err)
 	ms.assert.Equal(marbleUUID.String(), newCert.Subject.CommonName)
 
-}
+	// call dummyMain
+	ret := dummyMain(len(os.Args), os.Args, os.Environ())
+	ms.assert.Equal(0, ret, "dummyMain returned status code != 0: %v", ret)
 
-func seal(plaintext []byte, key []byte, nonce []byte) []byte {
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	aesgcm, err := cipher.NewGCM(block)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	ciphertext := aesgcm.Seal(nil, nonce, plaintext, nil)
-	return ciphertext
-}
-
-func unseal(ciphertext []byte, key []byte, nonce []byte) []byte {
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	aesgcm, err := cipher.NewGCM(block)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	plaintext, err := aesgcm.Open(nil, nonce, ciphertext, nil)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	return plaintext
 }

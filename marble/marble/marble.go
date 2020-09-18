@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
-	"crypto/x509/pkix"
 	"fmt"
 	"io/ioutil"
 	"math"
@@ -36,40 +35,9 @@ const EdgMarbleDNSNames string = "EDG_MARBLE_DNS_NAMES"
 // EdgMarbleUUIDFile is a required env variable with the path to store the marble's uuid
 const EdgMarbleUUIDFile string = "EDG_MARBLE_UUID_FILE"
 
-// TODO: Create a central place where all certificate information is managed
-// TLS Cert orgName
-const orgName string = "Edgeless Systems GmbH"
-
-// Signature for main function
-type mainFunc func(int, []string, []string) int
-
-// Authenticator holds the information for authenticating with the Coordinator
-type Authenticator struct {
-	orgName  string
-	privk    ed25519.PrivateKey
-	pubk     ed25519.PublicKey
-	initCert *x509.Certificate
-	csr      *x509.CertificateRequest
-	quote    []byte
-	qi       quote.Issuer
-	params   *rpc.Parameters
-}
-
-// NewAuthenticator creates a new Authenticator instance
-func NewAuthenticator(orgName string, qi quote.Issuer) (*Authenticator, error) {
-	a := &Authenticator{
-		orgName: orgName,
-		qi:      qi,
-	}
-	if err := a.generateCert(); err != nil {
-		return nil, err
-	}
-	return a, nil
-}
-
 // loadTLSCreddentials builds a TLS config from the Authenticator's self-signed certificate and the Coordinator's RootCA
-func loadTLSCredentials(a *Authenticator) (credentials.TransportCredentials, error) {
-	clientCert, err := a.getTLSCertificate()
+func loadTLSCredentials(cert *x509.Certificate, privk ed25519.PrivateKey) (credentials.TransportCredentials, error) {
+	clientCert, err := getTLSCertificate(cert, privk)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Marble self-signed x509 certificate")
 	}
@@ -81,8 +49,13 @@ func loadTLSCredentials(a *Authenticator) (credentials.TransportCredentials, err
 }
 
 // getTLSCertificate creates a TLS certificate for the Marbles self-signed x509 certificate
-func (a *Authenticator) getTLSCertificate() (*tls.Certificate, error) {
-	return tlsCertFromDER(a.initCert.Raw, a.privk), nil
+func getTLSCertificate(cert *x509.Certificate, privk ed25519.PrivateKey) (*tls.Certificate, error) {
+	return tlsCertFromDER(cert.Raw, privk), nil
+}
+
+// tlsCertFromDER converts a certificate from raw DER representation to a tls.Certificate
+func tlsCertFromDER(certDER []byte, privk interface{}) *tls.Certificate {
+	return &tls.Certificate{Certificate: [][]byte{certDER}, PrivateKey: privk}
 }
 
 // generateSerial returns a random serialNumber
@@ -92,30 +65,27 @@ func generateSerial() (*big.Int, error) {
 }
 
 // generateCert generates a new self-signed certificate associated key-pair
-func (a *Authenticator) generateCert() error {
+func generateCert() (*x509.Certificate, ed25519.PrivateKey, error) {
 
 	// code (including generateSerial()) adapted from golang.org/src/crypto/tls/generate_cert.go
 	pubk, privk, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	notBefore := time.Now()
 	notAfter := notBefore.Add(math.MaxInt64)
 
 	serialNumber, err := generateSerial()
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	// TODO: what else do we need to set here?
 	// Do we need x509.KeyUsageKeyEncipherment?
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
-		Subject: pkix.Name{
-			Organization: []string{a.orgName},
-		},
-		NotBefore: notBefore,
-		NotAfter:  notAfter,
+		NotBefore:    notBefore,
+		NotAfter:     notAfter,
 
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
@@ -125,47 +95,30 @@ func (a *Authenticator) generateCert() error {
 
 	certRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, pubk, privk)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	cert, err := x509.ParseCertificate(certRaw)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
-	quote, err := a.qi.Issue(certRaw)
-	if err != nil {
-		return err
-	}
-	a.pubk = pubk
-	a.privk = privk
-	a.quote = quote
-	a.initCert = cert
-	return nil
+	return cert, privk, nil
 }
 
-func (a *Authenticator) generateCSR(marbleDNSNames []string) error {
+func generateCSR(marbleDNSNames []string, privk ed25519.PrivateKey) (*x509.CertificateRequest, error) {
 	template := x509.CertificateRequest{
-		Subject: pkix.Name{
-			Organization: []string{a.orgName},
-		},
 		// TODO: Add proper AltNames here: AB #172
 		DNSNames:    append(marbleDNSNames, "localhost"),
 		IPAddresses: []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
 	}
-	csrRaw, err := x509.CreateCertificateRequest(rand.Reader, &template, a.privk)
+	csrRaw, err := x509.CreateCertificateRequest(rand.Reader, &template, privk)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	csr, err := x509.ParseCertificateRequest(csrRaw)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	a.csr = csr
-	return nil
-}
-
-// tlsCertFromDER converts a certificate from raw DER representation to a tls.Certificate
-func tlsCertFromDER(certDER []byte, privk interface{}) *tls.Certificate {
-	return &tls.Certificate{Certificate: [][]byte{certDER}, PrivateKey: privk}
+	return csr, nil
 }
 
 // storeUUID stores the uuid to the fs
@@ -197,7 +150,17 @@ func readUUID(filename string) (*uuid.UUID, error) {
 }
 
 // PreMain is supposed to run before the App's actual main and authenticate with the Coordinator
-func PreMain(a *Authenticator, main mainFunc) (*rpc.Parameters, error) {
+func PreMain() error {
+	// generate certificate
+	cert, privk, err := generateCert()
+	if err != nil {
+		return err
+	}
+	_, err = preMain(cert, privk, quote.NewERTIssuer())
+	return err
+}
+
+func preMain(cert *x509.Certificate, privk ed25519.PrivateKey, issuer quote.Issuer) (*rpc.Parameters, error) {
 	// get env variables
 	coordAddr := os.Getenv(EdgCoordinatorAddr)
 	if len(coordAddr) == 0 {
@@ -221,7 +184,7 @@ func PreMain(a *Authenticator, main mainFunc) (*rpc.Parameters, error) {
 	}
 
 	// load TLS Credentials
-	tlsCredentials, err := loadTLSCredentials(a)
+	tlsCredentials, err := loadTLSCredentials(cert, privk)
 	if err != nil {
 		return nil, err
 	}
@@ -241,7 +204,18 @@ func PreMain(a *Authenticator, main mainFunc) (*rpc.Parameters, error) {
 	uuidStr := marbleUUID.String()
 
 	// generate CSR
-	if err := a.generateCSR(marbleDNSNames); err != nil {
+	csr, err := generateCSR(marbleDNSNames, privk)
+	if err != nil {
+		return nil, err
+	}
+
+	// generate Quote
+	if issuer == nil {
+		// default
+		issuer = quote.NewERTIssuer()
+	}
+	quote, err := issuer.Issue(cert.Raw)
+	if err != nil {
 		return nil, err
 	}
 
@@ -255,9 +229,9 @@ func PreMain(a *Authenticator, main mainFunc) (*rpc.Parameters, error) {
 
 	// authenticate with Coordinator
 	req := &rpc.ActivationReq{
-		CSR:        a.csr.Raw,
+		CSR:        csr.Raw,
 		MarbleType: marbleType,
-		Quote:      a.quote,
+		Quote:      quote,
 		UUID:       uuidStr,
 	}
 	c := rpc.NewMarbleClient(cc)
@@ -272,10 +246,10 @@ func PreMain(a *Authenticator, main mainFunc) (*rpc.Parameters, error) {
 	}
 
 	// get params
-	a.params = activationResp.GetParameters()
+	params := activationResp.GetParameters()
 
 	// Store files in file system
-	for path, data := range a.params.Files {
+	for path, data := range params.Files {
 		os.MkdirAll(filepath.Dir(path), os.ModePerm)
 		err := ioutil.WriteFile(path, []byte(data), 0600)
 		if err != nil {
@@ -283,21 +257,15 @@ func PreMain(a *Authenticator, main mainFunc) (*rpc.Parameters, error) {
 		}
 	}
 
-	// // Set environment variables
-	for key, value := range a.params.Env {
+	// Set environment variables
+	for key, value := range params.Env {
 		if err := os.Setenv(key, value); err != nil {
 			return nil, err
 		}
 	}
 
-	// call main with args
-	argv := a.params.Argv
-	argc := len(argv)
-	env := os.Environ()
-	status := main(argc, argv, env)
-	if status != 0 {
-		return nil, fmt.Errorf("main function returned error code: %v", status)
-	}
-	return a.params, nil
+	// Set Args
+	os.Args = params.Argv
 
+	return params, nil
 }

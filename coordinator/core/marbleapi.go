@@ -134,6 +134,7 @@ func (c *Core) generateCertFromCSR(csrReq []byte, pubk ed25519.PublicKey, marble
 
 	// create certificate
 	csr.Subject.CommonName = marbleUUID
+	csr.Subject.Organization = c.cert.Issuer.Organization
 	notBefore := time.Now()
 	// TODO: produce shorter lived certificates
 	notAfter := notBefore.Add(math.MaxInt64)
