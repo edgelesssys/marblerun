@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/edgelesssys/coordinator/coordinator/quote"
 	"github.com/edgelesssys/coordinator/marble/marble"
 )
 
@@ -173,16 +172,15 @@ func marbleTest(config string) int {
 	}
 
 	// call PreMain
-	orgName := "Edgeless Systems GmbH"
-	issuer := quote.NewERTIssuer()
-	a, err := marble.NewAuthenticator(orgName, issuer)
-	if err != nil {
-		return InternalError
-	}
-	_, err = marble.PreMain(a, premainTarget)
+	err := marble.PreMain()
 	if err != nil {
 		fmt.Println(err)
 		return AuthenticationError
+	}
+	ret := premainTarget(len(os.Args), os.Args, os.Environ())
+	if ret != 0 {
+		log.Fatalf("premainTarget returned: %v", ret)
+		return UsageError
 	}
 	log.Println("Successfully authenticated with Coordinator!")
 	return Success
