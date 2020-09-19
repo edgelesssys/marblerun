@@ -85,7 +85,7 @@ func TestSimple(t *testing.T) {
 
 	mux := CreateServeMux(c)
 
-	req := httptest.NewRequest("GET", "http://localhost:25555/status", nil)
+	req := httptest.NewRequest(http.MethodGet, "http://localhost:25555/quote", nil)
 	w := httptest.NewRecorder()
 
 	mux.ServeHTTP(w, req)
@@ -115,7 +115,7 @@ func TestManifest(t *testing.T) {
 
 	mux.ServeHTTP(w, req)
 	resp := w.Result()
-	assert.Equal(200, resp.StatusCode)
+	assert.Equal(http.StatusOK, resp.StatusCode)
 
 	//get manifest signature
 	req = httptest.NewRequest(http.MethodGet, "/manifest", nil)
@@ -129,7 +129,7 @@ func TestManifest(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	assert.Equal(200, resp.StatusCode)
+	assert.Equal(http.StatusOK, resp.StatusCode)
 	assert.Equal("{\"ManifestSignature\":\"UgvnOnVC7F3wRpTYPBCs8hB9w+9VelUmepvt2ZIP3BQ=\"}", string(b))
 
 	//try set manifest again, should fail
@@ -145,7 +145,7 @@ func TestManifest(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	assert.Equal(400, resp.StatusCode)
+	assert.Equal(http.StatusBadRequest, resp.StatusCode)
 	assert.Equal("server is not in expected state\n", string(b))
 
 }
