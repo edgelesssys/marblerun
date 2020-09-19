@@ -7,7 +7,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/json"
 	"errors"
 	"math"
 	"math/big"
@@ -26,6 +25,7 @@ type Core struct {
 	quote       []byte
 	privk       ed25519.PrivateKey
 	manifest    Manifest
+	rawManifest []byte
 	state       state
 	qv          quote.Validator
 	qi          quote.Issuer
@@ -72,26 +72,19 @@ func NewCore(orgName string, qv quote.Validator, qi quote.Issuer) (*Core, error)
 	return c, nil
 }
 
-// SetManifest implements the CoordinatorClient
-func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) error {
-	defer c.mux.Unlock()
-	if err := c.requireState(acceptingManifest); err != nil {
-		return err
-	}
-	if err := json.Unmarshal(rawManifest, &c.manifest); err != nil {
-		return err
-	}
-	// TODO: sanitize manifest
-	c.advanceState()
-	return nil
-}
-
 // GetQuote gets the quote of the server
 func (c *Core) GetQuote(ctx context.Context) ([]byte, error) {
 	if c.state == uninitialized {
 		return nil, errors.New("don't have a cert or quote yet")
 	}
 	return c.quote, nil
+}
+
+func (c *Core) getCert(ctx context.Context) (*x509.Certificate, error) {
+	if c.state == uninitialized {
+		return nil, errors.New("don't have a cert yet")
+	}
+	return c.cert, nil
 }
 
 // GetTLSCertificate creates a TLS certificate for the Coordinators self-signed x509 certificate
@@ -180,4 +173,8 @@ func getClientTLSCert(ctx context.Context) *x509.Certificate {
 
 func tlsCertFromDER(certDER []byte, privk interface{}) *tls.Certificate {
 	return &tls.Certificate{Certificate: [][]byte{certDER}, PrivateKey: privk}
+}
+func (c *Core) getStatus(ctx context.Context) (string, error) {
+	return "this is a test status", nil
+	//return nil, errors.New("getStatus is not yet implemented")
 }
