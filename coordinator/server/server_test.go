@@ -74,7 +74,7 @@ const manifestJSON string = `{
 	}
 }`
 
-func TestSimple(t *testing.T) {
+func TestQuote(t *testing.T) {
 	assert := assert.New(t)
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
