@@ -45,11 +45,15 @@ const manifestJSON string = `{
 			"MaxActivations": 1,
 			"Parameters": {
 				"Files": {
-					"/abc/defg.txt": [7,7,7],
-					"/ghi/jkl.mno": [8,8,8]
+					"/abc/defg.txt": "foo",
+					"/ghi/jkl.mno": "bar"
 				},
 				"Env": {
-					"IS_FIRST": "true"
+					"IS_FIRST": "true",
+					"ROOT_CA": "$$root_ca",
+					"SEAL_KEY": "$$seal_key",
+					"MARBLE_CERT": "$$marble_cert",
+					"MARBLE_KEY": "$$marble_key"
 				},
 				"Argv": [
 					"--first",
@@ -60,13 +64,27 @@ const manifestJSON string = `{
 		"backend_other": {
 			"Package": "backend",
 			"Parameters": {
+				"Env": {
+					"ROOT_CA": "$$root_ca",
+					"SEAL_KEY": "$$seal_key",
+					"MARBLE_CERT": "$$marble_cert",
+					"MARBLE_KEY": "$$marble_key"
+				},
 				"Argv": [
 					"serve"
 				]
 			}
 		},
 		"frontend": {
-			"Package": "frontend"
+			"Package": "frontend",
+			"Parameters": {
+				"Env": {
+					"ROOT_CA": "$$root_ca",
+					"SEAL_KEY": "$$seal_key",
+					"MARBLE_CERT": "$$marble_cert",
+					"MARBLE_KEY": "$$marble_key"
+				}
+			}
 		}
 	},
 	"Clients": {
@@ -130,7 +148,7 @@ func TestManifest(t *testing.T) {
 		panic(err)
 	}
 	assert.Equal(http.StatusOK, resp.StatusCode)
-	assert.Equal("{\"ManifestSignature\":\"UgvnOnVC7F3wRpTYPBCs8hB9w+9VelUmepvt2ZIP3BQ=\"}", string(b))
+	assert.Contains(string(b), "{\"ManifestSignature\":")
 
 	//try set manifest again, should fail
 	req = httptest.NewRequest(http.MethodPost, "/manifest", nil)
