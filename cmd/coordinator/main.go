@@ -29,7 +29,11 @@ func coordinatormain(cwd, config string) {
 	// initialize coordinator
 	validator := quote.NewERTValidator()
 	issuer := quote.NewERTIssuer()
-	core, err := core.NewCore("Coordinator", validator, issuer)
+	sealKey, err := ertenclave.GetProductSealKey()
+	if err != nil {
+		panic(err)
+	}
+	core, err := core.NewCore("Coordinator", validator, issuer, sealKey)
 	if err != nil {
 		panic(err)
 	}

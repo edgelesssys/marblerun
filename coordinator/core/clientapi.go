@@ -28,6 +28,7 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) error {
 	c.rawManifest = rawManifest
 	// TODO: sanitize manifest AB#166
 	c.advanceState()
+	c.sealState()
 	return nil
 }
 

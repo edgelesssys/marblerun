@@ -2,6 +2,8 @@ package core
 
 import (
 	"encoding/json"
+	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/edgelesssys/coordinator/coordinator/quote"
@@ -100,7 +102,13 @@ func TestCore(t *testing.T) {
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
 
-	c, err := NewCore("edgeless", validator, issuer)
+	tempDir, err := ioutil.TempDir("/tmp", "edg_coordinator_*")
+	if err != nil {
+		panic(err)
+	}
+	defer os.RemoveAll(tempDir)
+	mockKey := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
+	c, err := NewCore("edgeless", validator, issuer, tempDir, mockKey)
 	assert.NotNil(c)
 	assert.Nil(err)
 	assert.Equal(acceptingManifest, c.state)
@@ -130,4 +138,23 @@ func TestCore(t *testing.T) {
 
 	// set manifest a second time
 	assert.NotNil(c.SetManifest(context.TODO(), []byte(manifestJSON)))
+
+	// Check sealing
+	c2, err := NewCore("edgeless", validator, issuer, tempDir, mockKey)
+	assert.NotNil(c2)
+	assert.Nil(err)
+	assert.Equal(acceptingMarbles, c2.state)
+
+	quote2, err := c2.GetQuote(context.TODO())
+	assert.NotNil(quote2)
+	assert.Nil(err)
+	assert.Equal(quote, quote2)
+
+	cert2, err := c2.GetTLSCertificate()
+	assert.NotNil(cert2)
+	assert.Nil(err)
+	assert.Equal(cert, cert2)
+
+	assert.NotNil(c2.SetManifest(context.TODO(), []byte(manifestJSON)))
+
 }

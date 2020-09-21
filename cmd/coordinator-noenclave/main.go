@@ -17,7 +17,7 @@ func main() {
 	// initialize coordinator
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
-	core, err := core.NewCore("Coordinator", validator, issuer)
+	core, err := core.NewCore("Coordinator", validator, issuer, []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15})
 	if err != nil {
 		panic(err)
 	}
