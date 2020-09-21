@@ -220,7 +220,7 @@ func runMarble(assert *assert.Assertions, marbleCfg string, shouldSucceed bool, 
 		assert.NotNil(err, "expected Wait to fail because of return value != 0, but got not error")
 		assert.NotNil(marbleCmd.ProcessState)
 		exitCode := marbleCmd.ProcessState.ExitCode()
-		assert.Equal(4, exitCode, "expected marble authentication to fail, but got exit code: %v", exitCode)
+		assert.NotEqual(0, exitCode, "expected marble authentication to fail, but got exit code: %v", exitCode)
 		return marbleCmd
 	}
 	assert.Nil(err, "error while waiting for marble process: %v", err)

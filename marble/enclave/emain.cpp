@@ -10,14 +10,16 @@
 
 #include "emain_t.h"
 
-extern "C" int invokemain(const char*);
+using namespace std;
 
-int emain(const char* config) {
+extern "C" void ert_meshentry_premain(const char* config, int* argc, char*** argv);
+
+void emain(const char* config) {
   if (oe_load_module_host_epoll() != OE_OK ||
       oe_load_module_host_file_system() != OE_OK ||
       oe_load_module_host_socket_interface() != OE_OK) {
     puts("oe_load_module_host failed");
-    return -3;
+    return;
   }
   
   const char* const devname_tmpfs = "tmpfs";
@@ -25,10 +27,13 @@ int emain(const char* config) {
 
   if (mount("/", "/tmp/", devname_tmpfs, 0, nullptr) != 0) {
     puts("mount tmpfs failed");
-    return -1;
+    return;
   }
 
-  return invokemain(config);
+  cout << "invoking premain\n";
+  int argc = 0;
+  char** argv = nullptr;
+  ert_meshentry_premain(config, &argc, &argv);
 }
 
 extern "C" void mountData(const char* path) {

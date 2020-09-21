@@ -90,14 +90,15 @@ int main(int argc, char *argv[]) {
 
   cout << "[marble] Entering enclave ...\n";
   signal(SIGPIPE, SIG_IGN);
-  int ret;
-  if (emain(enclave, &ret, config.c_str()) != OE_OK)
+  if (emain(enclave, config.c_str()) != OE_OK) {
     cout << "ecall failed\n";
+    return 1;
+  }
   
   cout << "[marble] Terminating enclave...\n";
   // oe_terminate_enclave(enclave); // TODO: BUG 167
 
-  return ret;
+  return 0;
 }
 
 bool mkdir_ocall(const char *path) {
