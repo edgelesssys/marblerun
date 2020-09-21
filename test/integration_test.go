@@ -1,7 +1,7 @@
 package coordinator
 
 import (
-	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/edgelesssys/coordinator/coordinator/core"
-	"github.com/edgelesssys/coordinator/coordinator/server"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -297,9 +296,11 @@ func startCoordinator(configFilename string) *os.Process {
 		output <- out
 	}()
 
-	// client := http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}} // TODO: User Story 182: Use TLS
-	client := http.Client{}
-	url := url.URL{Scheme: "http", Host: clientServerAddr, Path: "quote"}
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := http.Client{Transport: tr}
+	url := url.URL{Scheme: "https", Host: clientServerAddr, Path: "quote"}
 
 	log.Println("Coordinator starting ...")
 	for {
@@ -311,7 +312,7 @@ func startCoordinator(configFilename string) *os.Process {
 			return nil
 		default:
 		}
-		resp, err := client.Head(url.String())
+		resp, err := client.Get(url.String())
 		if err == nil {
 			log.Println("Coordinator started")
 			resp.Body.Close()
@@ -325,25 +326,24 @@ func startCoordinator(configFilename string) *os.Process {
 
 func setManifest(manifest core.Manifest) error {
 	// Use ClientAPI to set Manifest
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := http.Client{Transport: tr}
 	clientAPIURL := url.URL{
-		Scheme: "http",
+		Scheme: "https",
 		Host:   clientServerAddr,
-		Path:   "set_manifest", // TODO set real path
+		Path:   "manifest", // TODO set real path
 	}
 
 	manifestRaw, err := json.Marshal(manifest)
 	if err != nil {
 		panic(err)
 	}
-	manifestReq := server.SetManifestRequest{
-		Manifest: manifestRaw,
-	}
-	manifestReqRaw, err := json.Marshal(manifestReq)
-	if err != nil {
-		panic(err)
-	}
 
-	resp, err := http.Post(clientAPIURL.String(), "application/json", bytes.NewBuffer(manifestReqRaw))
+	form := url.Values{}
+	form.Add("manifest", string(manifestRaw))
+	resp, err := client.PostForm(clientAPIURL.String(), form)
 	if err != nil {
 		panic(err)
 	}
