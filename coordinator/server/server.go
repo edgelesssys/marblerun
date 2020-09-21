@@ -19,8 +19,7 @@ type certQuoteResp struct {
 	Quote []byte
 }
 type statusResp struct {
-	Status    string
-	Signature []byte
+	Status string
 }
 type manifestSignatureResp struct {
 	ManifestSignature []byte
@@ -62,12 +61,12 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 	mux.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			status, signature, err := cc.GetStatus(r.Context())
+			status, err := cc.GetStatus(r.Context())
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			strct := statusResp{status, signature}
+			strct := statusResp{status}
 			jsn, err := json.Marshal(strct)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)

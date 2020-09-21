@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/json"
 	"encoding/pem"
@@ -14,7 +13,7 @@ type ClientCore interface {
 	SetManifest(ctx context.Context, rawManifest []byte) error
 	GetCertQuote(ctx context.Context) (cert string, certQuote []byte, err error)
 	GetManifestSignature(ctx context.Context) (manifestSignature []byte, err error)
-	GetStatus(ctx context.Context) (status string, statusSignature []byte, err error)
+	GetStatus(ctx context.Context) (status string, err error)
 }
 
 // SetManifest sets the manifest, once and for all
@@ -27,7 +26,7 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) error {
 		return err
 	}
 	c.rawManifest = rawManifest
-	// TODO: sanitize manifest
+	// TODO: sanitize manifest AB#166
 	c.advanceState()
 	return nil
 }
@@ -48,25 +47,20 @@ func (c *Core) GetCertQuote(ctx context.Context) (string, []byte, error) {
 
 // GetManifestSignature returns the hash of the manifest
 func (c *Core) GetManifestSignature(ctx context.Context) ([]byte, error) {
-	//todo check state
-	hash := new([32]byte)
 	if c.state == uninitialized || c.state == acceptingManifest {
-		return []byte{}, errors.New("don't have manifest yet")
+		return nil, errors.New("don't have manifest yet")
 	}
-	*hash = sha256.Sum256(c.rawManifest)
-	//signature := ed25519.Sign(c.privk, hash[:])
-
-	return (*hash)[:], nil
+	hash := sha256.Sum256(c.rawManifest)
+	return hash[:], nil
 }
 
 // GetStatus IS A DUMMY IMPLEMENTATION. TODO
-func (c *Core) GetStatus(ctx context.Context) (status string, statusSignature []byte, err error) {
+func (c *Core) GetStatus(ctx context.Context) (status string, err error) {
 	status, err = c.getStatus(ctx)
 	if err != nil {
-		return "", nil, err
+		return "", err
 	}
-	signature := ed25519.Sign(c.privk, []byte(status))
 
-	return status, signature, nil
+	return status, nil
 
 }

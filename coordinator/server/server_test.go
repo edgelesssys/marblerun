@@ -103,14 +103,15 @@ func TestQuote(t *testing.T) {
 
 	mux := CreateServeMux(c)
 
-	req := httptest.NewRequest(http.MethodGet, "http://localhost:25555/quote", nil)
+	req := httptest.NewRequest(http.MethodGet, "/quote", nil)
 	w := httptest.NewRecorder()
 
 	mux.ServeHTTP(w, req)
 	resp := w.Result()
-	assert.Equal(200, resp.StatusCode)
+	assert.Equal(http.StatusOK, resp.StatusCode)
 
 }
+
 func TestManifest(t *testing.T) {
 	assert := assert.New(t)
 	validator := quote.NewMockValidator()

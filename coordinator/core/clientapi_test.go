@@ -10,33 +10,27 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func getSetup() (*Core, *Manifest, error) {
-
+func mustSetup() (*Core, *Manifest) {
 	var manifest Manifest
 	err := json.Unmarshal([]byte(manifestJSON), &manifest)
 	if err != nil {
-		return nil, nil, err
+		panic(err)
 	}
 
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
-
 	c, err := NewCore("edgeless", validator, issuer)
-
-	return c, &manifest, nil
-
+	if err != nil {
+		panic(err)
+	}
+	return c, &manifest
 }
 func TestGetManifestSignature(t *testing.T) {
 	assert := assert.New(t)
 
-	c, _, err := getSetup()
-	if err != nil {
-		panic(err)
-	}
-	err = c.SetManifest(context.TODO(), []byte(manifestJSON))
-	if err != nil {
-		panic(err)
-	}
+	c, _ := mustSetup()
+
+	err := c.SetManifest(context.TODO(), []byte(manifestJSON))
 
 	sig, err := c.GetManifestSignature(context.TODO())
 	assert.Nil(err)
@@ -48,11 +42,8 @@ func TestGetManifestSignature(t *testing.T) {
 func TestSetManifest(t *testing.T) {
 	assert := assert.New(t)
 
-	c, manifest, err := getSetup()
-	if err != nil {
-		panic(err)
-	}
-	err = c.SetManifest(context.TODO(), []byte(manifestJSON))
+	c, manifest := mustSetup()
+	err := c.SetManifest(context.TODO(), []byte(manifestJSON))
 
 	assert.Nil(err, "SetManifest should succed on first try")
 	assert.Equal(*manifest, c.manifest, "Manifest should be set correctly")
@@ -64,9 +55,9 @@ func TestSetManifest(t *testing.T) {
 	assert.Equal(*manifest, c.manifest, "Manifest should still be set correctly")
 
 	//use new core
-	c, _, err = getSetup()
+	c, _ = mustSetup()
 	assert.NotNil(c.SetManifest(context.TODO(), []byte(manifestJSON)[:len(manifestJSON)-1]), "SetManifest should fail on broken json")
-	c, _, err = getSetup()
+	c, _ = mustSetup()
 	assert.NotNil(c.SetManifest(context.TODO(), []byte("")), "empty string should not be accepted")
 	err = c.SetManifest(context.TODO(), []byte(manifestJSON))
 	assert.Nil(err, "SetManifest should succed after failed tries")
@@ -76,10 +67,8 @@ func TestSetManifest(t *testing.T) {
 func TestGetCertQuote(t *testing.T) {
 	assert := assert.New(t)
 
-	c, _, err := getSetup()
-	if err != nil {
-		panic(err)
-	}
+	c, _ := mustSetup()
+
 	cert, _, err := c.GetCertQuote(context.TODO())
 	assert.Nil(err, "GetCertQuote should not fail (without manifest)")
 
