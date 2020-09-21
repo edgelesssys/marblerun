@@ -27,7 +27,7 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) error {
 		return err
 	}
 	c.rawManifest = rawManifest
-	// TODO: sanitize manifest
+	// TODO: sanitize manifest AB#166
 	c.advanceState()
 	return nil
 }
@@ -48,15 +48,11 @@ func (c *Core) GetCertQuote(ctx context.Context) (string, []byte, error) {
 
 // GetManifestSignature returns the hash of the manifest
 func (c *Core) GetManifestSignature(ctx context.Context) ([]byte, error) {
-	//todo check state
-	hash := new([32]byte)
 	if c.state == uninitialized || c.state == acceptingManifest {
 		return []byte{}, errors.New("don't have manifest yet")
 	}
-	*hash = sha256.Sum256(c.rawManifest)
-	//signature := ed25519.Sign(c.privk, hash[:])
-
-	return (*hash)[:], nil
+	hash := sha256.Sum256(c.rawManifest)
+	return hash[:], nil
 }
 
 // GetStatus IS A DUMMY IMPLEMENTATION. TODO
