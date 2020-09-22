@@ -106,7 +106,6 @@ func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, quote []byte
 				break
 			}
 		}
-		// Only fail here if are not in simulation mode
 		if !infraMatch {
 			return status.Error(codes.Unauthenticated, "invalid quote")
 		}

@@ -82,7 +82,7 @@ func NewCore(orgName string, qv quote.Validator, qi quote.Issuer, sealer Sealer)
 	if err != nil {
 		return nil, err
 	}
-	quote, err := c.qi.Issue(c.cert.Raw)
+	quote, err := c.qi.Issue(cert.Raw)
 	if err != nil {
 		// If we run in SimulationMode we get an error here
 		// For testing purpose we do not want to just fail here

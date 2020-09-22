@@ -22,6 +22,9 @@ add_custom_target(marbletestlib
   ${CMAKE_SOURCE_DIR}/cmd/marble-test
 )
 
+add_custom_target(marble-noenclave ALL
+  go build ${CMAKE_SOURCE_DIR}/cmd/marble-test-noenclave)
+
 # Use the edger8r to generate C bindings from the EDL file.
 add_custom_command(
   OUTPUT emain_t.c emain_u.c

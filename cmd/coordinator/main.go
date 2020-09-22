@@ -29,7 +29,7 @@ func coordinatormain(cwd, config string) {
 		ClientServerAddr string
 		DataPath         string
 	}{
-		"localhost:0",
+		"localhost:25554",
 		"localhost:25555",
 		"/coordinator/data",
 	}

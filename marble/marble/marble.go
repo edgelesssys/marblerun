@@ -160,6 +160,16 @@ func PreMain() error {
 	return err
 }
 
+func PreMainMock() error {
+	// generate certificate
+	cert, privk, err := generateCert()
+	if err != nil {
+		return err
+	}
+	_, err = preMain(cert, privk, quote.NewFailIssuer())
+	return err
+}
+
 func preMain(cert *x509.Certificate, privk ed25519.PrivateKey, issuer quote.Issuer) (*rpc.Parameters, error) {
 	// get env variables
 	coordAddr := os.Getenv(EdgCoordinatorAddr)
