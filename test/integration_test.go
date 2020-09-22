@@ -151,7 +151,13 @@ func getListenerAndAddr() (net.Listener, string) {
 // sanity test of the integration test environment
 func TestTest(t *testing.T) {
 	assert := assert.New(t)
-	cfgFilename := createCoordinatorConfig()
+
+	tempDir, err := ioutil.TempDir("/tmp", "edg_coordinator_*")
+	if err != nil {
+		panic(err)
+	}
+	defer os.RemoveAll(tempDir)
+	cfgFilename := createCoordinatorConfig(tempDir)
 	defer cleanupCoordinatorConfig(cfgFilename)
 	assert.Nil(startCoordinator(cfgFilename).Kill())
 
@@ -164,16 +170,22 @@ func TestMarbleAPI(t *testing.T) {
 	assert := assert.New(t)
 
 	// start Coordinator
-	cfgFilename := createCoordinatorConfig()
+	log.Println("Starting a coordinator enclave")
+	tempDir, err := ioutil.TempDir("/tmp", "edg_coordinator_*")
+	if err != nil {
+		panic(err)
+	}
+	defer os.RemoveAll(tempDir)
+	cfgFilename := createCoordinatorConfig(tempDir)
 	defer cleanupCoordinatorConfig(cfgFilename)
 	coordinatorProc := startCoordinator(cfgFilename)
 	assert.NotNil(coordinatorProc)
 	defer coordinatorProc.Kill()
 
 	// set Manifest
+	log.Println("Setting the Manifest")
 	var manifest core.Manifest
-	err := json.Unmarshal([]byte(manifestJSON), &manifest)
-	if err != nil {
+	if err := json.Unmarshal([]byte(manifestJSON), &manifest); err != nil {
 		panic(err)
 	}
 	err = setManifest(manifest)
@@ -186,12 +198,14 @@ func TestMarbleAPI(t *testing.T) {
 	// time.Sleep(10000000 * time.Second)
 
 	// start server
+	log.Println("Starting a Server-Marble")
 	serverCfg := createMarbleConfig(marbleServerAddr, "test_marble_server", "server,backend")
 	defer cleanupMarbleConfig(serverCfg)
 	serverCmd := runMarble(assert, serverCfg, true, false)
 	defer serverCmd.Process.Kill()
 	err = waitForServer()
 	// start clients
+	log.Println("Starting a bunch of Client-Marbles")
 	assert.Nil(err, "failed to start server-marble: %v", err)
 	clientCfg := createMarbleConfig(marbleServerAddr, "test_marble_client", "client,frontend")
 	defer cleanupMarbleConfig(clientCfg)
@@ -202,7 +216,65 @@ func TestMarbleAPI(t *testing.T) {
 	defer cleanupMarbleConfig(badCfg)
 	_ = runMarble(assert, badCfg, false, true)
 	_ = runMarble(assert, badCfg, false, true)
+}
 
+func TestRestart(t *testing.T) {
+	assert := assert.New(t)
+	log.Println("Testing the restart capabilities")
+	// start Coordinator
+	log.Println("Starting a coordinator enclave")
+	tempDir, err := ioutil.TempDir("/tmp", "edg_coordinator_*")
+	if err != nil {
+		panic(err)
+	}
+	defer os.RemoveAll(tempDir)
+	cfgFilename := createCoordinatorConfig(tempDir)
+	defer cleanupCoordinatorConfig(cfgFilename)
+	coordinatorProc := startCoordinator(cfgFilename)
+	assert.NotNil(coordinatorProc)
+	// set Manifest
+	log.Println("Setting the Manifest")
+	var manifest core.Manifest
+	if err := json.Unmarshal([]byte(manifestJSON), &manifest); err != nil {
+		panic(err)
+	}
+	err = setManifest(manifest)
+	assert.Nil(err, "failed to set Manifest: %v", err)
+	// start server
+	log.Println("Starting a Server-Marble")
+	serverCfg := createMarbleConfig(marbleServerAddr, "test_marble_server", "server,backend")
+	defer cleanupMarbleConfig(serverCfg)
+	serverCmd := runMarble(assert, serverCfg, true, false)
+	defer serverCmd.Process.Kill()
+	err = waitForServer()
+	// start clients
+	log.Println("Starting a bunch of Client-Marbles")
+	assert.Nil(err, "failed to start server-marble: %v", err)
+	clientCfg := createMarbleConfig(marbleServerAddr, "test_marble_client", "client,frontend")
+	defer cleanupMarbleConfig(clientCfg)
+	_ = runMarble(assert, clientCfg, true, true)
+	_ = runMarble(assert, clientCfg, true, true)
+
+	// simulate restart of coordinator
+	log.Println("Simulating a restart of the coordinator enclave...")
+	log.Println("Killing the old instance")
+	if err := coordinatorProc.Kill(); err != nil {
+		panic(err)
+	}
+	log.Println("Restarting the old instance")
+	coordinatorProc = startCoordinator(cfgFilename)
+	assert.NotNil(coordinatorProc)
+	defer coordinatorProc.Kill()
+
+	// try do malicious update of manifest
+	log.Println("Trying to set a new Manifest, which should already be set")
+	err = setManifest(manifest)
+	assert.NotNil(err, "expected updating of manifest to fail, but succeeded")
+
+	// start a bunch of client marbles and assert they still work with old server marble
+	log.Println("Starting a bunch of Client-Marbles, which should still authenticate successfully with the Server-Marble")
+	_ = runMarble(assert, clientCfg, true, true)
+	_ = runMarble(assert, clientCfg, true, true)
 }
 
 func runMarble(assert *assert.Assertions, marbleCfg string, shouldSucceed bool, terminates bool) *exec.Cmd {
@@ -227,7 +299,9 @@ func runMarble(assert *assert.Assertions, marbleCfg string, shouldSucceed bool, 
 	assert.NotNil(marbleCmd.ProcessState, "empty ProcessState after Wait")
 	exitCode := marbleCmd.ProcessState.ExitCode()
 	assert.Equal(0, exitCode, "marble authentication failed. exit code: %v", exitCode)
-	log.Println("Marble authenticated successfully and terminated.")
+	if exitCode == 0 {
+		log.Println("Marble authenticated successfully and terminated.")
+	}
 	return marbleCmd
 }
 
@@ -255,10 +329,11 @@ func TestClientAPI(t *testing.T) {
 type coordinatorConfig struct {
 	MeshServerAddr   string
 	ClientServerAddr string
+	DataPath         string
 }
 
-func createCoordinatorConfig() string {
-	cfg := coordinatorConfig{MeshServerAddr: marbleServerAddr, ClientServerAddr: clientServerAddr}
+func createCoordinatorConfig(dataPath string) string {
+	cfg := coordinatorConfig{MeshServerAddr: marbleServerAddr, ClientServerAddr: clientServerAddr, DataPath: dataPath}
 
 	jsonCfg, err := json.Marshal(cfg)
 	if err != nil {
