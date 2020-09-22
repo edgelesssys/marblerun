@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
+	"os"
 
 	"github.com/edgelesssys/coordinator/coordinator/core"
 	"github.com/edgelesssys/coordinator/coordinator/quote"
@@ -17,7 +19,13 @@ func main() {
 	// initialize coordinator
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
-	core, err := core.NewCore("Coordinator", validator, issuer, []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15})
+	tempDir, err := ioutil.TempDir("/tmp", "edg_coordinator_*")
+	if err != nil {
+		panic(err)
+	}
+	defer os.RemoveAll(tempDir)
+	mockKey := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
+	core, err := core.NewCore("Coordinator", validator, issuer, tempDir, mockKey)
 	if err != nil {
 		panic(err)
 	}

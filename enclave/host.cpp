@@ -97,3 +97,7 @@ int main(int argc, char *argv[]) {
 
   oe_terminate_enclave(enclave);
 }
+
+bool mkdir_ocall(const char *path) {
+  return path && *path && (mkdir(path, 0700) == 0 || errno == EEXIST);
+}

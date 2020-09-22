@@ -9,4 +9,8 @@ enclave {
             [in, string] const char* cwd,
             [in, string] const char* config);
     };
+
+    untrusted {
+        bool mkdir_ocall([in, string] const char* path);
+    };
 };

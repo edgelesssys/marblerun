@@ -30,7 +30,7 @@ add_library(emain enclave/emain.cpp emain_t.c)
 target_include_directories(emain PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(emain PRIVATE openenclave::oe_includes)
 
-add_executable(enclave enclave/emain.cpp emain_t.c)
+add_executable(enclave emain_t.c)
 target_include_directories(enclave PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 add_dependencies(enclave coordinatorlib)
 

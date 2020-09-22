@@ -62,9 +62,6 @@ const (
 
 const coordinatorName string = "Coordinator"
 
-// EdgCoordinatorSealDir is a required env variable with the path to store the coordinator's state
-const EdgCoordinatorSealDir string = "EDG_COORDINATOR_SEAL_DIR"
-
 // Needs to be paired with `defer c.mux.Unlock()`
 func (c *Core) requireState(state state) error {
 	c.mux.Lock()
