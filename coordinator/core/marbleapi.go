@@ -98,15 +98,18 @@ func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, quote []byte
 	if !pkgExists {
 		return status.Error(codes.Internal, "undefined package")
 	}
-	infraMatch := false
-	for _, infra := range c.manifest.Infrastructures {
-		if c.qv.Validate(quote, tlsCert.Raw, pkg, infra) == nil {
-			infraMatch = true
-			break
+	if !c.InSimulationMode() {
+		infraMatch := false
+		for _, infra := range c.manifest.Infrastructures {
+			if c.qv.Validate(quote, tlsCert.Raw, pkg, infra) == nil {
+				infraMatch = true
+				break
+			}
 		}
-	}
-	if !infraMatch {
-		return status.Error(codes.Unauthenticated, "invalid quote")
+		// Only fail here if are not in simulation mode
+		if !infraMatch {
+			return status.Error(codes.Unauthenticated, "invalid quote")
+		}
 	}
 
 	// check activation budget (MaxActivations == 0 means infinite budget)
