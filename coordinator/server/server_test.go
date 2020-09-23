@@ -1,10 +1,11 @@
 package server
 
 import (
+	"bytes"
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"testing"
 
 	"github.com/edgelesssys/coordinator/coordinator/core"
@@ -124,11 +125,15 @@ func TestManifest(t *testing.T) {
 	mux := CreateServeMux(c)
 
 	//set manifest
-	form := url.Values{}
-	form.Add("manifest", manifestJSON)
+	manifestReq := SetManifestRequest{
+		Manifest: []byte(manifestJSON),
+	}
+	manifestReqRaw, err := json.Marshal(manifestReq)
+	if err != nil {
+		panic(err)
+	}
 
-	req := httptest.NewRequest(http.MethodPost, "/manifest", nil)
-	req.PostForm = form
+	req := httptest.NewRequest(http.MethodPost, "/manifest", bytes.NewReader(manifestReqRaw))
 
 	w := httptest.NewRecorder()
 
@@ -152,8 +157,7 @@ func TestManifest(t *testing.T) {
 	assert.Contains(string(b), "{\"ManifestSignature\":")
 
 	//try set manifest again, should fail
-	req = httptest.NewRequest(http.MethodPost, "/manifest", nil)
-	req.PostForm = form
+	req = httptest.NewRequest(http.MethodPost, "/manifest", bytes.NewReader(manifestReqRaw))
 	w = httptest.NewRecorder()
 
 	mux.ServeHTTP(w, req)
