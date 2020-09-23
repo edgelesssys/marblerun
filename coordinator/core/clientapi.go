@@ -12,7 +12,7 @@ import (
 type ClientCore interface {
 	SetManifest(ctx context.Context, rawManifest []byte) error
 	GetCertQuote(ctx context.Context) (cert string, certQuote []byte, err error)
-	GetManifestSignature(ctx context.Context) (manifestSignature []byte, err error)
+	GetManifestSignature(ctx context.Context) (manifestSignature []byte)
 	GetStatus(ctx context.Context) (status string, err error)
 }
 
@@ -46,12 +46,12 @@ func (c *Core) GetCertQuote(ctx context.Context) (string, []byte, error) {
 }
 
 // GetManifestSignature returns the hash of the manifest
-func (c *Core) GetManifestSignature(ctx context.Context) ([]byte, error) {
+func (c *Core) GetManifestSignature(ctx context.Context) []byte {
 	if c.state == uninitialized || c.state == acceptingManifest {
-		return nil, errors.New("don't have manifest yet")
+		return nil
 	}
 	hash := sha256.Sum256(c.rawManifest)
-	return hash[:], nil
+	return hash[:]
 }
 
 // GetStatus IS A DUMMY IMPLEMENTATION. TODO

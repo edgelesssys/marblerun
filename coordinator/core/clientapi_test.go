@@ -31,9 +31,9 @@ func TestGetManifestSignature(t *testing.T) {
 	c, _ := mustSetup()
 
 	err := c.SetManifest(context.TODO(), []byte(manifestJSON))
-
-	sig, err := c.GetManifestSignature(context.TODO())
 	assert.Nil(err)
+
+	sig := c.GetManifestSignature(context.TODO())
 	expectedHash := sha256.Sum256([]byte(manifestJSON))
 	assert.Equal(expectedHash[:], sig)
 

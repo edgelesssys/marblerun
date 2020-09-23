@@ -80,11 +80,7 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 	mux.HandleFunc("/manifest", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			signature, err := cc.GetManifestSignature(r.Context())
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
+			signature := cc.GetManifestSignature(r.Context())
 			strct := manifestSignatureResp{signature}
 			jsn, err := json.Marshal(strct)
 			if err != nil {
