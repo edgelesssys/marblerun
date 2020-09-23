@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/edgelesssys/coordinator/coordinator/core"
-	"github.com/edgelesssys/coordinator/coordinator/server"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -335,22 +334,15 @@ func setManifest(manifest core.Manifest) error {
 	clientAPIURL := url.URL{
 		Scheme: "https",
 		Host:   clientServerAddr,
-		Path:   "manifest", // TODO set real path
+		Path:   "manifest",
 	}
 
 	manifestRaw, err := json.Marshal(manifest)
 	if err != nil {
 		panic(err)
 	}
-	manifestReq := server.SetManifestRequest{
-		Manifest: manifestRaw,
-	}
-	manifestReqRaw, err := json.Marshal(manifestReq)
-	if err != nil {
-		panic(err)
-	}
 
-	resp, err := client.Post(clientAPIURL.String(), "application/json", bytes.NewBuffer(manifestReqRaw))
+	resp, err := client.Post(clientAPIURL.String(), "application/json", bytes.NewBuffer([]byte(manifestRaw)))
 	if err != nil {
 		panic(err)
 	}

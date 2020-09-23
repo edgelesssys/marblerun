@@ -2,7 +2,6 @@ package server
 
 import (
 	"bytes"
-	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -108,8 +107,7 @@ func TestQuote(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	mux.ServeHTTP(w, req)
-	resp := w.Result()
-	assert.Equal(http.StatusOK, resp.StatusCode)
+	assert.Equal(http.StatusOK, w.Code)
 
 }
 
@@ -125,15 +123,7 @@ func TestManifest(t *testing.T) {
 	mux := CreateServeMux(c)
 
 	//set manifest
-	manifestReq := SetManifestRequest{
-		Manifest: []byte(manifestJSON),
-	}
-	manifestReqRaw, err := json.Marshal(manifestReq)
-	if err != nil {
-		panic(err)
-	}
-
-	req := httptest.NewRequest(http.MethodPost, "/manifest", bytes.NewReader(manifestReqRaw))
+	req := httptest.NewRequest(http.MethodPost, "/manifest", bytes.NewReader([]byte(manifestJSON)))
 
 	w := httptest.NewRecorder()
 
@@ -157,7 +147,7 @@ func TestManifest(t *testing.T) {
 	assert.Contains(string(b), "{\"ManifestSignature\":")
 
 	//try set manifest again, should fail
-	req = httptest.NewRequest(http.MethodPost, "/manifest", bytes.NewReader(manifestReqRaw))
+	req = httptest.NewRequest(http.MethodPost, "/manifest", bytes.NewReader([]byte(manifestJSON)))
 	w = httptest.NewRecorder()
 
 	mux.ServeHTTP(w, req)
