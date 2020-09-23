@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -249,7 +250,72 @@ func waitForServer() error {
 }
 
 func TestClientAPI(t *testing.T) {
-	// TODO
+	assert := assert.New(t)
+	eof := errors.New("EOF")
+
+	// start Coordinator
+	cfgFilename := createCoordinatorConfig()
+	defer cleanupCoordinatorConfig(cfgFilename)
+	coordinatorProc := startCoordinator(cfgFilename)
+	assert.NotNil(coordinatorProc, "could not start coordinator")
+	defer coordinatorProc.Kill()
+
+	//create client
+	tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+	client := http.Client{Transport: tr}
+	clientAPIURL := url.URL{
+		Scheme: "https",
+		Host:   clientServerAddr,
+		Path:   "quote",
+	}
+
+	//test get quote
+	resp, err := client.Get(clientAPIURL.String())
+	assert.Nil(err, err)
+	assert.Equal(http.StatusOK, resp.StatusCode, "get quote failed")
+	resp.Body.Close()
+
+	//test manifest
+	clientAPIURL.Path = "manifest"
+
+	//try read before set
+	buffer := make([]byte, 1024)
+	resp, err = client.Get(clientAPIURL.String())
+	_, readErr := resp.Body.Read(buffer)
+
+	assert.Nil(err, err)
+	assert.Equal(eof, readErr)
+	assert.Contains(string(buffer), "{\"ManifestSignature\":null}")
+	assert.Equal(http.StatusOK, resp.StatusCode, "status != ok")
+	resp.Body.Close()
+
+	//set Manifest
+	resp, err = client.Post(clientAPIURL.String(), "application/json", bytes.NewBuffer([]byte(manifestJSON)))
+
+	assert.Nil(err)
+	assert.Equal(http.StatusOK, resp.StatusCode)
+	resp.Body.Close()
+
+	//read after set
+	resp, err = client.Get(clientAPIURL.String())
+
+	assert.Nil(err)
+	assert.Equal(http.StatusOK, resp.StatusCode)
+
+	_, readErr = resp.Body.Read(buffer)
+	resp.Body.Close()
+
+	assert.Equal(eof, readErr, readErr)
+	assert.NotContains(string(buffer), "{\"ManifestSignature\":null}")
+
+	//try set manifest again
+	resp, err = client.Post(clientAPIURL.String(), "application/json", bytes.NewBuffer([]byte(manifestJSON)))
+	assert.Nil(err)
+	assert.Equal(http.StatusBadRequest, resp.StatusCode)
+	resp.Body.Close()
+
+	//todo test status AB#121
+
 }
 
 type coordinatorConfig struct {
