@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/edgelesssys/coordinator/coordinator/core"
@@ -96,7 +97,13 @@ func TestQuote(t *testing.T) {
 	assert := assert.New(t)
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
-	c, err := core.NewCore("edgeless", validator, issuer)
+	tempDir, err := ioutil.TempDir("/tmp", "edg_coordinator_*")
+	if err != nil {
+		panic(err)
+	}
+	defer os.RemoveAll(tempDir)
+	mockKey := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
+	c, err := core.NewCore("edgeless", validator, issuer, tempDir, mockKey)
 	if err != nil {
 		panic(err)
 	}
@@ -115,7 +122,13 @@ func TestManifest(t *testing.T) {
 	assert := assert.New(t)
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
-	c, err := core.NewCore("edgeless", validator, issuer)
+	tempDir, err := ioutil.TempDir("/tmp", "edg_coordinator_*")
+	if err != nil {
+		panic(err)
+	}
+	defer os.RemoveAll(tempDir)
+	mockKey := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
+	c, err := core.NewCore("edgeless", validator, issuer, tempDir, mockKey)
 	if err != nil {
 		panic(err)
 	}
