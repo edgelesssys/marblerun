@@ -1,6 +1,7 @@
 package coordinator
 
 import (
+	"bytes"
 	"crypto/tls"
 	"encoding/json"
 	"flag"
@@ -16,6 +17,7 @@ import (
 	"time"
 
 	"github.com/edgelesssys/coordinator/coordinator/core"
+	"github.com/edgelesssys/coordinator/coordinator/server"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -340,10 +342,15 @@ func setManifest(manifest core.Manifest) error {
 	if err != nil {
 		panic(err)
 	}
+	manifestReq := server.SetManifestRequest{
+		Manifest: manifestRaw,
+	}
+	manifestReqRaw, err := json.Marshal(manifestReq)
+	if err != nil {
+		panic(err)
+	}
 
-	form := url.Values{}
-	form.Add("manifest", string(manifestRaw))
-	resp, err := client.PostForm(clientAPIURL.String(), form)
+	resp, err := client.Post(clientAPIURL.String(), "application/json", bytes.NewBuffer(manifestReqRaw))
 	if err != nil {
 		panic(err)
 	}
@@ -353,8 +360,8 @@ func setManifest(manifest core.Manifest) error {
 	if err != nil {
 		panic(err)
 	}
-	if resp.StatusCode != 200 {
-		return fmt.Errorf("expected 200, but set_manifest returned %v: %v", resp.Status, string(body))
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("expected %v, but /manifest returned %v: %v", http.StatusOK, resp.Status, string(body))
 	}
 	return nil
 }
