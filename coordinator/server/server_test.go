@@ -1,12 +1,15 @@
-package core
+package server
 
 import (
-	"encoding/json"
+	"bytes"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	"github.com/edgelesssys/coordinator/coordinator/core"
 	"github.com/edgelesssys/coordinator/coordinator/quote"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/context"
 )
 
 const manifestJSON string = `{
@@ -89,45 +92,73 @@ const manifestJSON string = `{
 	}
 }`
 
-func TestCore(t *testing.T) {
+func TestQuote(t *testing.T) {
 	assert := assert.New(t)
-
-	// parse manifest
-	var manifest Manifest
-	err := json.Unmarshal([]byte(manifestJSON), &manifest)
-	assert.Nil(err)
-
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
+	c, err := core.NewCore("edgeless", validator, issuer)
+	if err != nil {
+		panic(err)
+	}
 
-	c, err := NewCore("edgeless", validator, issuer)
-	assert.NotNil(c)
-	assert.Nil(err)
-	assert.Equal(acceptingManifest, c.state)
-	assert.Equal([]string{"edgeless"}, c.cert.Subject.Organization)
-	assert.Equal(coordinatorName, c.cert.Subject.CommonName)
+	mux := CreateServeMux(c)
 
-	// get quote
-	quote, err := c.GetQuote(context.TODO())
-	assert.NotNil(quote)
-	assert.Nil(err)
+	req := httptest.NewRequest(http.MethodGet, "/quote", nil)
+	w := httptest.NewRecorder()
 
-	// get TLS certificate
-	cert, err := c.GetTLSCertificate()
-	assert.NotNil(cert)
-	assert.Nil(err)
+	mux.ServeHTTP(w, req)
+	assert.Equal(http.StatusOK, w.Code)
 
-	//get TLS config
-	config, err := c.GetTLSConfig()
-	assert.NotNil(config)
-	assert.Nil(err)
+}
 
-	// try to set broken manifest
-	assert.NotNil(c.SetManifest(context.TODO(), []byte(manifestJSON)[:len(manifestJSON)-1]))
+func TestManifest(t *testing.T) {
+	assert := assert.New(t)
+	validator := quote.NewMockValidator()
+	issuer := quote.NewMockIssuer()
+	c, err := core.NewCore("edgeless", validator, issuer)
+	if err != nil {
+		panic(err)
+	}
 
-	// set manifest
-	assert.Nil(c.SetManifest(context.TODO(), []byte(manifestJSON)))
+	mux := CreateServeMux(c)
 
-	// set manifest a second time
-	assert.NotNil(c.SetManifest(context.TODO(), []byte(manifestJSON)))
+	//set manifest
+	req := httptest.NewRequest(http.MethodPost, "/manifest", bytes.NewReader([]byte(manifestJSON)))
+
+	w := httptest.NewRecorder()
+
+	mux.ServeHTTP(w, req)
+	resp := w.Result()
+	assert.Equal(http.StatusOK, resp.StatusCode)
+
+	//get manifest signature
+	req = httptest.NewRequest(http.MethodGet, "/manifest", nil)
+
+	w = httptest.NewRecorder()
+
+	mux.ServeHTTP(w, req)
+	resp = w.Result()
+
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	assert.Equal(http.StatusOK, resp.StatusCode)
+	assert.Contains(string(b), "{\"ManifestSignature\":")
+
+	//try set manifest again, should fail
+	req = httptest.NewRequest(http.MethodPost, "/manifest", bytes.NewReader([]byte(manifestJSON)))
+	w = httptest.NewRecorder()
+
+	mux.ServeHTTP(w, req)
+
+	resp = w.Result()
+
+	b, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	assert.Equal(http.StatusBadRequest, resp.StatusCode)
+	assert.Equal("server is not in expected state\n", string(b))
+
 }
