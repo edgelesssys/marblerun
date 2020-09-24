@@ -69,9 +69,17 @@ func NewCore(orgName string, qv quote.Validator, qi quote.Issuer, sealer Sealer)
 		qi:          qi,
 		sealer:      sealer,
 	}
-	if err := c.loadState(orgName); err != nil {
+	cert, privk, err := c.loadState(orgName)
+	if err != nil {
 		return nil, err
 	}
+	quote, err := c.qi.Issue(cert.Raw)
+	if err != nil {
+		return nil, err
+	}
+	c.quote = quote
+	c.cert = cert
+	c.privk = privk
 	return c, nil
 }
 
@@ -109,11 +117,11 @@ func (c *Core) GetTLSCertificate() (*tls.Certificate, error) {
 	return tlsCertFromDER(c.cert.Raw, c.privk), nil
 }
 
-func (c *Core) loadState(orgName string) error {
+func (c *Core) loadState(orgName string) (*x509.Certificate, ed25519.PrivateKey, error) {
 	var loadedState sealedState
 	stateRaw, err := c.sealer.Unseal()
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	// generate new state if there isn't something in the fs yet
 	if len(stateRaw) == 0 {
@@ -121,25 +129,19 @@ func (c *Core) loadState(orgName string) error {
 	}
 	// load state
 	if err := json.Unmarshal(stateRaw, &loadedState); err != nil {
-		return err
+		return nil, nil, err
 	}
 	// set Core to loaded state
-	c.privk = loadedState.Privk
 	if err := json.Unmarshal(loadedState.RawManifest, &c.manifest); err != nil {
-		return err
+		return nil, nil, err
 	}
-	c.cert, err = x509.ParseCertificate(loadedState.RawCert)
+	cert, err := x509.ParseCertificate(loadedState.RawCert)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
-	quote, err := c.qi.Issue(c.cert.Raw)
-	if err != nil {
-		return err
-	}
-	c.quote = quote
 	c.state = loadedState.State
 	c.activations = loadedState.ActivationsMap
-	return nil
+	return cert, loadedState.Privk, err
 }
 
 func (c *Core) sealState() error {
@@ -166,23 +168,23 @@ func generateSerial() (*big.Int, error) {
 	return rand.Int(rand.Reader, serialNumberLimit)
 }
 
-func (c *Core) generateCert(orgName string) error {
+func (c *Core) generateCert(orgName string) (*x509.Certificate, ed25519.PrivateKey, error) {
 	defer c.mux.Unlock()
 	if err := c.requireState(uninitialized); err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	// code (including generateSerial()) adapted from golang.org/src/crypto/tls/generate_cert.go
 	pubk, privk, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	notBefore := time.Now()
 	notAfter := notBefore.Add(math.MaxInt64)
 
 	serialNumber, err := generateSerial()
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	// TODO: what else do we need to set here?
@@ -204,21 +206,14 @@ func (c *Core) generateCert(orgName string) error {
 
 	certRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, pubk, privk)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	cert, err := x509.ParseCertificate(certRaw)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
-	quote, err := c.qi.Issue(certRaw)
-	if err != nil {
-		return err
-	}
-	c.cert = cert
-	c.quote = quote
-	c.privk = privk
 	c.advanceState()
-	return nil
+	return cert, privk, nil
 }
 
 func getClientTLSCert(ctx context.Context) *x509.Certificate {
