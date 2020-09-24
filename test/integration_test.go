@@ -102,6 +102,7 @@ const manifestJSON string = `{
 var coordinatorExe = flag.String("c", "", "Coordinator executable")
 var marbleExe = flag.String("m", "", "Marble executable")
 var marbleServerAddr, clientServerAddr string
+var manifest core.Manifest
 
 func TestMain(m *testing.M) {
 	flag.Parse()
@@ -117,6 +118,10 @@ func TestMain(m *testing.M) {
 		log.Fatalln(err)
 	}
 	if _, err := os.Stat(*marbleExe); err != nil {
+		log.Fatalln(err)
+	}
+
+	if err := json.Unmarshal([]byte(manifestJSON), &manifest); err != nil {
 		log.Fatalln(err)
 	}
 
@@ -174,10 +179,6 @@ func TestMarbleAPI(t *testing.T) {
 
 	// set Manifest
 	log.Println("Setting the Manifest")
-	var manifest core.Manifest
-	if err := json.Unmarshal([]byte(manifestJSON), &manifest); err != nil {
-		panic(err)
-	}
 	err := setManifest(manifest)
 	assert.Nil(err, "failed to set Manifest: %v", err)
 
@@ -219,10 +220,6 @@ func TestRestart(t *testing.T) {
 	assert.NotNil(coordinatorProc)
 	// set Manifest
 	log.Println("Setting the Manifest")
-	var manifest core.Manifest
-	if err := json.Unmarshal([]byte(manifestJSON), &manifest); err != nil {
-		panic(err)
-	}
 	err := setManifest(manifest)
 	assert.Nil(err, "failed to set Manifest: %v", err)
 	// start server
