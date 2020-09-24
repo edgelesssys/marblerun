@@ -119,13 +119,7 @@ func TestLogic(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 
 	// create core and run gRPC server
-	tempDir, err := ioutil.TempDir("/tmp", "edg_coordinator_*")
-	if err != nil {
-		panic(err)
-	}
-	defer os.RemoveAll(tempDir)
-	mockKey := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
-	sealer := core.AESGCMSealer{SealDir: tempDir, SealKey: mockKey}
+	sealer := core.NewMockSealer()
 	coordinator, err := core.NewCore("Edgeless Systems GmbH", validator, issuer, sealer)
 	assert.NotNil(coordinator, "coordinator empty")
 	assert.Nil(err, err)

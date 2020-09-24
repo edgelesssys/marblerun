@@ -1,9 +1,7 @@
 package core
 
 import (
-	"encoding/json"
-	"io/ioutil"
-	"os"
+	"crypto/sha256"
 	"testing"
 
 	"github.com/edgelesssys/coordinator/coordinator/quote"
@@ -94,21 +92,9 @@ const manifestJSON string = `{
 func TestCore(t *testing.T) {
 	assert := assert.New(t)
 
-	// parse manifest
-	var manifest Manifest
-	err := json.Unmarshal([]byte(manifestJSON), &manifest)
-	assert.Nil(err)
-
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
-
-	tempDir, err := ioutil.TempDir("/tmp", "edg_coordinator_*")
-	if err != nil {
-		panic(err)
-	}
-	defer os.RemoveAll(tempDir)
-	mockKey := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
-	sealer := AESGCMSealer{SealDir: tempDir, SealKey: mockKey}
+	sealer := NewMockSealer()
 	c, err := NewCore("edgeless", validator, issuer, sealer)
 	assert.NotNil(c)
 	assert.Nil(err)
@@ -144,20 +130,9 @@ func TestCore(t *testing.T) {
 func TestSeal(t *testing.T) {
 	assert := assert.New(t)
 
-	// parse manifest
-	var manifest Manifest
-	err := json.Unmarshal([]byte(manifestJSON), &manifest)
-	assert.Nil(err)
-
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
-	tempDir, err := ioutil.TempDir("/tmp", "edg_coordinator_*")
-	if err != nil {
-		panic(err)
-	}
-	defer os.RemoveAll(tempDir)
-	mockKey := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
-	sealer := AESGCMSealer{SealDir: tempDir, SealKey: mockKey}
+	sealer := NewMockSealer()
 
 	// create Core
 	c, err := NewCore("edgeless", validator, issuer, sealer)
@@ -173,6 +148,10 @@ func TestSeal(t *testing.T) {
 	cert, err := c.GetTLSCertificate()
 	assert.NotNil(cert)
 	assert.Nil(err)
+	//get Manifest Signature
+	signature := c.GetManifestSignature(context.TODO())
+	hash := sha256.Sum256(c.rawManifest)
+	assert.Equal(hash[:], signature, "manifest signature is not correct")
 
 	// check sealing
 	c2, err := NewCore("edgeless", validator, issuer, sealer)
@@ -191,5 +170,8 @@ func TestSeal(t *testing.T) {
 	assert.Equal(cert, cert2)
 
 	assert.NotNil(c2.SetManifest(context.TODO(), []byte(manifestJSON)))
+
+	signature2 := c.GetManifestSignature(context.TODO())
+	assert.Equal(signature, signature2, "manifest signature differs after restart")
 
 }

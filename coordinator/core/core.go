@@ -45,6 +45,15 @@ const (
 	closed
 )
 
+// sealedState represents the state information, required for persistence, that gets sealed to the filesystem
+type sealedState struct {
+	Privk          ed25519.PrivateKey
+	RawManifest    []byte
+	RawCert        []byte
+	State          state
+	ActivationsMap map[string]uint
+}
+
 const coordinatorName string = "Coordinator"
 
 // Needs to be paired with `defer c.mux.Unlock()`
@@ -118,7 +127,6 @@ func (c *Core) GetTLSCertificate() (*tls.Certificate, error) {
 }
 
 func (c *Core) loadState(orgName string) (*x509.Certificate, ed25519.PrivateKey, error) {
-	var loadedState sealedState
 	stateRaw, err := c.sealer.Unseal()
 	if err != nil {
 		return nil, nil, err
@@ -128,6 +136,7 @@ func (c *Core) loadState(orgName string) (*x509.Certificate, ed25519.PrivateKey,
 		return c.generateCert(orgName)
 	}
 	// load state
+	var loadedState sealedState
 	if err := json.Unmarshal(stateRaw, &loadedState); err != nil {
 		return nil, nil, err
 	}
@@ -157,10 +166,7 @@ func (c *Core) sealState() error {
 	if err != nil {
 		return err
 	}
-	if err := c.sealer.Seal(stateRaw); err != nil {
-		return err
-	}
-	return nil
+	return c.sealer.Seal(stateRaw)
 }
 
 func generateSerial() (*big.Int, error) {

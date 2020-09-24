@@ -152,12 +152,7 @@ func getListenerAndAddr() (net.Listener, string) {
 func TestTest(t *testing.T) {
 	assert := assert.New(t)
 
-	tempDir, err := ioutil.TempDir("/tmp", "edg_coordinator_*")
-	if err != nil {
-		panic(err)
-	}
-	defer os.RemoveAll(tempDir)
-	cfgFilename := createCoordinatorConfig(tempDir)
+	cfgFilename := createCoordinatorConfig()
 	defer cleanupCoordinatorConfig(cfgFilename)
 	assert.Nil(startCoordinator(cfgFilename).Kill())
 
@@ -171,12 +166,7 @@ func TestMarbleAPI(t *testing.T) {
 
 	// start Coordinator
 	log.Println("Starting a coordinator enclave")
-	tempDir, err := ioutil.TempDir("/tmp", "edg_coordinator_*")
-	if err != nil {
-		panic(err)
-	}
-	defer os.RemoveAll(tempDir)
-	cfgFilename := createCoordinatorConfig(tempDir)
+	cfgFilename := createCoordinatorConfig()
 	defer cleanupCoordinatorConfig(cfgFilename)
 	coordinatorProc := startCoordinator(cfgFilename)
 	assert.NotNil(coordinatorProc)
@@ -188,7 +178,7 @@ func TestMarbleAPI(t *testing.T) {
 	if err := json.Unmarshal([]byte(manifestJSON), &manifest); err != nil {
 		panic(err)
 	}
-	err = setManifest(manifest)
+	err := setManifest(manifest)
 	assert.Nil(err, "failed to set Manifest: %v", err)
 
 	// wait for me
@@ -223,12 +213,7 @@ func TestRestart(t *testing.T) {
 	log.Println("Testing the restart capabilities")
 	// start Coordinator
 	log.Println("Starting a coordinator enclave")
-	tempDir, err := ioutil.TempDir("/tmp", "edg_coordinator_*")
-	if err != nil {
-		panic(err)
-	}
-	defer os.RemoveAll(tempDir)
-	cfgFilename := createCoordinatorConfig(tempDir)
+	cfgFilename := createCoordinatorConfig()
 	defer cleanupCoordinatorConfig(cfgFilename)
 	coordinatorProc := startCoordinator(cfgFilename)
 	assert.NotNil(coordinatorProc)
@@ -238,7 +223,7 @@ func TestRestart(t *testing.T) {
 	if err := json.Unmarshal([]byte(manifestJSON), &manifest); err != nil {
 		panic(err)
 	}
-	err = setManifest(manifest)
+	err := setManifest(manifest)
 	assert.Nil(err, "failed to set Manifest: %v", err)
 	// start server
 	log.Println("Starting a Server-Marble")
@@ -332,8 +317,12 @@ type coordinatorConfig struct {
 	DataPath         string
 }
 
-func createCoordinatorConfig(dataPath string) string {
-	cfg := coordinatorConfig{MeshServerAddr: marbleServerAddr, ClientServerAddr: clientServerAddr, DataPath: dataPath}
+func createCoordinatorConfig() string {
+	tempDir, err := ioutil.TempDir("/tmp", "edg_coordinator_*")
+	if err != nil {
+		panic(err)
+	}
+	cfg := coordinatorConfig{MeshServerAddr: marbleServerAddr, ClientServerAddr: clientServerAddr, DataPath: tempDir}
 
 	jsonCfg, err := json.Marshal(cfg)
 	if err != nil {
@@ -358,8 +347,16 @@ func createCoordinatorConfig(dataPath string) string {
 }
 
 func cleanupCoordinatorConfig(filename string) {
-	err := os.Remove(filename)
+	jsonCfg, err := ioutil.ReadFile(filename)
+	os.Remove(filename)
 	if err != nil {
+		panic(err)
+	}
+	var cfg coordinatorConfig
+	if err := json.Unmarshal(jsonCfg, &cfg); err != nil {
+		panic(err)
+	}
+	if err := os.RemoveAll(cfg.DataPath); err != nil {
 		panic(err)
 	}
 }

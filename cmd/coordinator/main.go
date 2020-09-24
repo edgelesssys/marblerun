@@ -53,7 +53,7 @@ func coordinatormain(cwd, config string) {
 	if err := os.MkdirAll(sealDir, 0700); err != nil {
 		panic(err)
 	}
-	sealer := core.AESGCMSealer{SealDir: sealDir, SealKey: sealKey}
+	sealer := core.NewAESGCMSealer(sealDir, sealKey)
 	core, err := core.NewCore("Coordinator", validator, issuer, sealer)
 	if err != nil {
 		panic(err)

@@ -9,10 +9,8 @@ import (
 	"crypto/x509/pkix"
 	"encoding/json"
 	"encoding/pem"
-	"io/ioutil"
 	"math"
 	"net"
-	"os"
 	"testing"
 	"time"
 
@@ -35,13 +33,7 @@ func TestMarbleAPI(t *testing.T) {
 	// create core
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
-	tempDir, err := ioutil.TempDir("/tmp", "edg_coordinator_*")
-	if err != nil {
-		panic(err)
-	}
-	defer os.RemoveAll(tempDir)
-	mockKey := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
-	sealer := AESGCMSealer{SealDir: tempDir, SealKey: mockKey}
+	sealer := NewMockSealer()
 	coreServer, err := NewCore("edgeless", validator, issuer, sealer)
 	assert.NotNil(coreServer)
 	assert.Nil(err)

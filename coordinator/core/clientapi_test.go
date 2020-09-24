@@ -4,8 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
-	"io/ioutil"
-	"os"
 	"testing"
 
 	"github.com/edgelesssys/coordinator/coordinator/quote"
@@ -21,13 +19,7 @@ func mustSetup() (*Core, *Manifest) {
 
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
-	tempDir, err := ioutil.TempDir("/tmp", "edg_coordinator_*")
-	if err != nil {
-		panic(err)
-	}
-	defer os.RemoveAll(tempDir)
-	mockKey := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
-	sealer := AESGCMSealer{SealDir: tempDir, SealKey: mockKey}
+	sealer := NewMockSealer()
 	c, err := NewCore("edgeless", validator, issuer, sealer)
 	if err != nil {
 		panic(err)

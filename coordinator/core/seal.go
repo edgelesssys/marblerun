@@ -3,7 +3,6 @@ package core
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/ed25519"
 	"crypto/rand"
 	"io"
 	"io/ioutil"
@@ -11,14 +10,7 @@ import (
 	"path/filepath"
 )
 
-// sealedState represents the state information, required for persistence, that gets sealed to the filesystem
-type sealedState struct {
-	Privk          ed25519.PrivateKey
-	RawManifest    []byte
-	RawCert        []byte
-	State          state
-	ActivationsMap map[string]uint
-}
+const defaultSealFname string = "sealed_data"
 
 // Sealer is an interface for the Core object to seal information to the filesystem for persistence
 type Sealer interface {
@@ -32,11 +24,15 @@ type AESGCMSealer struct {
 	SealKey []byte
 }
 
+// NewAESGCMSealer creates and initializes a new AESGCMSealer object
+func NewAESGCMSealer(sealDir string, sealKey []byte) *AESGCMSealer {
+	return &AESGCMSealer{SealDir: sealDir, SealKey: sealKey}
+}
+
 // Unseal reads and decrypts stored information from the fs
-func (s AESGCMSealer) Unseal() ([]byte, error) {
+func (s *AESGCMSealer) Unseal() ([]byte, error) {
 	// load from fs
-	dataFname := filepath.Join(s.SealDir, "sealed_data")
-	sealedData, err := ioutil.ReadFile(dataFname)
+	sealedData, err := ioutil.ReadFile(s.getFname())
 	if os.IsNotExist(err) {
 		return nil, nil
 	} else if err != nil {
@@ -64,9 +60,7 @@ func (s AESGCMSealer) Unseal() ([]byte, error) {
 }
 
 // Seal encrypts and stores information to the fs
-func (s AESGCMSealer) Seal(data []byte) error {
-	dataFname := filepath.Join(s.SealDir, "sealed_data")
-
+func (s *AESGCMSealer) Seal(data []byte) error {
 	// encrypt
 	block, err := aes.NewCipher(s.SealKey)
 	if err != nil {
@@ -85,8 +79,30 @@ func (s AESGCMSealer) Seal(data []byte) error {
 	encData := aesgcm.Seal(nil, nonce, data, nil)
 
 	// store to fs
-	if err := ioutil.WriteFile(dataFname, append(nonce, encData...), 0600); err != nil {
-		return err
-	}
+	return ioutil.WriteFile(s.getFname(), append(nonce, encData...), 0600)
+}
+
+func (s *AESGCMSealer) getFname() string {
+	return filepath.Join(s.SealDir, defaultSealFname)
+}
+
+// MockSealer is a mockup sealer
+type MockSealer struct {
+	data []byte
+}
+
+// NewMockSealer creates and initializes a new MockSealer object
+func NewMockSealer() *MockSealer {
+	return &MockSealer{}
+}
+
+// Unseal implements the Sealer interface
+func (s *MockSealer) Unseal() ([]byte, error) {
+	return s.data, nil
+}
+
+// Seal implements the Sealer interface
+func (s *MockSealer) Seal(data []byte) error {
+	s.data = data
 	return nil
 }
