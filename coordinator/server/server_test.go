@@ -103,7 +103,8 @@ func TestQuote(t *testing.T) {
 	}
 	defer os.RemoveAll(tempDir)
 	mockKey := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
-	c, err := core.NewCore("edgeless", validator, issuer, tempDir, mockKey)
+	sealer := core.AESGCMSealer{SealDir: tempDir, SealKey: mockKey}
+	c, err := core.NewCore("edgeless", validator, issuer, sealer)
 	if err != nil {
 		panic(err)
 	}
@@ -128,7 +129,8 @@ func TestManifest(t *testing.T) {
 	}
 	defer os.RemoveAll(tempDir)
 	mockKey := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
-	c, err := core.NewCore("edgeless", validator, issuer, tempDir, mockKey)
+	sealer := core.AESGCMSealer{SealDir: tempDir, SealKey: mockKey}
+	c, err := core.NewCore("edgeless", validator, issuer, sealer)
 	if err != nil {
 		panic(err)
 	}

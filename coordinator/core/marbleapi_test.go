@@ -41,7 +41,8 @@ func TestMarbleAPI(t *testing.T) {
 	}
 	defer os.RemoveAll(tempDir)
 	mockKey := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
-	coreServer, err := NewCore("edgeless", validator, issuer, tempDir, mockKey)
+	sealer := AESGCMSealer{SealDir: tempDir, SealKey: mockKey}
+	coreServer, err := NewCore("edgeless", validator, issuer, sealer)
 	assert.NotNil(coreServer)
 	assert.Nil(err)
 

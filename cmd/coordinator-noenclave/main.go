@@ -25,7 +25,8 @@ func main() {
 	}
 	defer os.RemoveAll(tempDir)
 	mockKey := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
-	core, err := core.NewCore("Coordinator", validator, issuer, tempDir, mockKey)
+	sealer := core.AESGCMSealer{SealDir: tempDir, SealKey: mockKey}
+	core, err := core.NewCore("Coordinator", validator, issuer, sealer)
 	if err != nil {
 		panic(err)
 	}

@@ -2,8 +2,6 @@ package core
 
 import (
 	"context"
-	"crypto/aes"
-	"crypto/cipher"
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/tls"
@@ -11,12 +9,8 @@ import (
 	"crypto/x509/pkix"
 	"encoding/json"
 	"errors"
-	"io"
-	"io/ioutil"
 	"math"
 	"math/big"
-	"os"
-	"path/filepath"
 	"sync"
 	"time"
 
@@ -31,8 +25,7 @@ type Core struct {
 	cert        *x509.Certificate
 	quote       []byte
 	privk       ed25519.PrivateKey
-	sealDir     string
-	sealKey     []byte
+	sealer      Sealer
 	manifest    Manifest
 	rawManifest []byte
 	state       state
@@ -40,14 +33,6 @@ type Core struct {
 	qi          quote.Issuer
 	activations map[string]uint
 	mux         sync.Mutex
-}
-
-// sealedState represents the state information, required for persistence, that gets sealed to the filesystem
-type sealedState struct {
-	Privk    ed25519.PrivateKey
-	Manifest Manifest
-	Cert     x509.Certificate
-	State    state
 }
 
 // The sequence of states a Coordinator may be in
@@ -76,14 +61,13 @@ func (c *Core) advanceState() {
 }
 
 // NewCore creates and initializes a new Core object
-func NewCore(orgName string, qv quote.Validator, qi quote.Issuer, sealDir string, sealKey []byte) (*Core, error) {
+func NewCore(orgName string, qv quote.Validator, qi quote.Issuer, sealer Sealer) (*Core, error) {
 	c := &Core{
 		state:       uninitialized,
 		activations: make(map[string]uint),
 		qv:          qv,
 		qi:          qi,
-		sealDir:     sealDir,
-		sealKey:     sealKey,
+		sealer:      sealer,
 	}
 	if err := c.loadState(orgName); err != nil {
 		return nil, err
@@ -126,119 +110,52 @@ func (c *Core) GetTLSCertificate() (*tls.Certificate, error) {
 }
 
 func (c *Core) loadState(orgName string) error {
-	loadedState, err := unsealData(c.sealDir, c.sealKey)
+	var loadedState sealedState
+	stateRaw, err := c.sealer.Unseal()
 	if err != nil {
 		return err
 	}
 	// generate new state if there isn't something in the fs yet
-	if loadedState == nil {
-		if err := c.generateCert(orgName); err != nil {
-			return err
-		}
-		return nil
+	if len(stateRaw) == 0 {
+		return c.generateCert(orgName)
+	}
+	// load state
+	if err := json.Unmarshal(stateRaw, &loadedState); err != nil {
+		return err
 	}
 	// set Core to loaded state
 	c.privk = loadedState.Privk
-	c.manifest = loadedState.Manifest
-	c.cert = &loadedState.Cert
+	if err := json.Unmarshal(loadedState.RawManifest, &c.manifest); err != nil {
+		return err
+	}
+	c.cert, err = x509.ParseCertificate(loadedState.RawCert)
+	if err != nil {
+		return err
+	}
 	quote, err := c.qi.Issue(c.cert.Raw)
 	if err != nil {
 		return err
 	}
 	c.quote = quote
 	c.state = loadedState.State
+	c.activations = loadedState.ActivationsMap
 	return nil
 }
 
 func (c *Core) sealState() error {
 	// seal with manifest set
-	data := sealedState{
-		Privk:    c.privk,
-		Manifest: c.manifest,
-		Cert:     *c.cert,
-		State:    c.state,
+	state := sealedState{
+		Privk:          c.privk,
+		RawManifest:    c.rawManifest,
+		RawCert:        c.cert.Raw,
+		State:          c.state,
+		ActivationsMap: c.activations,
 	}
-	if err := sealData(c.sealDir, data, c.sealKey); err != nil {
-		return err
-	}
-	return nil
-}
-
-// loadPrivateKey reads the coordinator's sealed data  from the fs if present
-func unsealData(secretDir string, sealKey []byte) (*sealedState, error) {
-	// load from fs
-	nonceFname := filepath.Join(secretDir, "nonce")
-	keyFname := filepath.Join(secretDir, "sealed_data")
-	nonce, err := ioutil.ReadFile(nonceFname)
-	if os.IsNotExist(err) {
-		return nil, nil
-	} else if err != nil {
-		return nil, err
-	}
-	sealedBytes, err := ioutil.ReadFile(keyFname)
-	if os.IsNotExist(err) {
-		return nil, nil
-	} else if err != nil {
-		return nil, err
-	}
-
-	// decrypt
-	block, err := aes.NewCipher(sealKey)
-	if err != nil {
-		return nil, err
-	}
-
-	aesgcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, err
-	}
-
-	dataRaw, err := aesgcm.Open(nil, nonce, sealedBytes, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	// unmarsahl
-	var data sealedState
-	if err := json.Unmarshal(dataRaw, &data); err != nil {
-		return nil, err
-	}
-
-	return &data, nil
-}
-
-// sealData stores the coordinator's data sealed to the fs
-func sealData(secretDir string, data sealedState, sealKey []byte) error {
-	nonceFname := filepath.Join(secretDir, "nonce")
-	keyFname := filepath.Join(secretDir, "sealed_data")
-
-	// marshal
-	dataRaw, err := json.Marshal(data)
+	stateRaw, err := json.Marshal(state)
 	if err != nil {
 		return err
 	}
-
-	// encrypt
-	block, err := aes.NewCipher(sealKey)
-	if err != nil {
-		return err
-	}
-	nonce := make([]byte, 12)
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return err
-	}
-
-	aesgcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return err
-	}
-	sealedKey := aesgcm.Seal(nil, nonce, dataRaw, nil)
-
-	// store to fs
-	if err := ioutil.WriteFile(nonceFname, nonce, 0600); err != nil {
-		return err
-	}
-	if err := ioutil.WriteFile(keyFname, sealedKey, 0600); err != nil {
+	if err := c.sealer.Seal(stateRaw); err != nil {
 		return err
 	}
 	return nil
