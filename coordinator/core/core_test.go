@@ -139,8 +139,42 @@ func TestCore(t *testing.T) {
 
 	// set manifest a second time
 	assert.NotNil(c.SetManifest(context.TODO(), []byte(manifestJSON)))
+}
 
-	// Check sealing
+func TestSeal(t *testing.T) {
+	assert := assert.New(t)
+
+	// parse manifest
+	var manifest Manifest
+	err := json.Unmarshal([]byte(manifestJSON), &manifest)
+	assert.Nil(err)
+
+	validator := quote.NewMockValidator()
+	issuer := quote.NewMockIssuer()
+	tempDir, err := ioutil.TempDir("/tmp", "edg_coordinator_*")
+	if err != nil {
+		panic(err)
+	}
+	defer os.RemoveAll(tempDir)
+	mockKey := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
+	sealer := AESGCMSealer{SealDir: tempDir, SealKey: mockKey}
+
+	// create Core
+	c, err := NewCore("edgeless", validator, issuer, sealer)
+	assert.NotNil(c)
+	assert.Nil(err)
+	// set manifest
+	assert.Nil(c.SetManifest(context.TODO(), []byte(manifestJSON)))
+	// get quote
+	quote, err := c.GetQuote(context.TODO())
+	assert.NotNil(quote)
+	assert.Nil(err)
+	// get TLS certificate
+	cert, err := c.GetTLSCertificate()
+	assert.NotNil(cert)
+	assert.Nil(err)
+
+	// check sealing
 	c2, err := NewCore("edgeless", validator, issuer, sealer)
 	assert.NotNil(c2)
 	assert.Nil(err)
