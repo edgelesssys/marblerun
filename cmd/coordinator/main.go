@@ -1,23 +1,37 @@
 package main
 
+// #cgo LDFLAGS: -Wl,-unresolved-symbols=ignore-in-object-files
+// void mountData(const char* path);
+import "C"
+
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
+	"unsafe"
 
 	"github.com/edgelesssys/coordinator/coordinator/core"
 	"github.com/edgelesssys/coordinator/coordinator/quote"
 	"github.com/edgelesssys/coordinator/coordinator/server"
+	"github.com/edgelesssys/ertgolib/ertenclave"
 )
 
 func main() {}
+
+func mountData(path string) {
+	C.mountData((*C.char)(unsafe.Pointer(&[]byte(path)[0])))
+}
 
 func coordinatormain(cwd, config string) {
 	cfg := struct {
 		MeshServerAddr   string
 		ClientServerAddr string
+		DataPath         string
 	}{
 		"localhost:0",
 		"localhost:25555",
+		"/coordinator/data",
 	}
 
 	if config != "" {
@@ -25,11 +39,22 @@ func coordinatormain(cwd, config string) {
 			panic(err)
 		}
 	}
+	// mount data dir
+	mountData(cfg.DataPath) // mounts DataPath to /marble/data
 
 	// initialize coordinator
 	validator := quote.NewERTValidator()
 	issuer := quote.NewERTIssuer()
-	core, err := core.NewCore("Coordinator", validator, issuer)
+	sealKey, _, err := ertenclave.GetProductSealKey()
+	if err != nil {
+		panic(err)
+	}
+	sealDir := filepath.Join("coordinator", "data", "sealing")
+	if err := os.MkdirAll(sealDir, 0700); err != nil {
+		panic(err)
+	}
+	sealer := core.NewAESGCMSealer(sealDir, sealKey)
+	core, err := core.NewCore("Coordinator", validator, issuer, sealer)
 	if err != nil {
 		panic(err)
 	}

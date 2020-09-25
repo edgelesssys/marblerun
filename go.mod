@@ -3,7 +3,7 @@ module github.com/edgelesssys/coordinator
 go 1.14
 
 require (
-	github.com/edgelesssys/ertgolib v0.1.0
+	github.com/edgelesssys/ertgolib v0.1.1
 	github.com/golang/gddo v0.0.0-20200831202555-721e228c7686
 	github.com/golang/protobuf v1.4.2
 	github.com/google/go-cmp v0.5.1

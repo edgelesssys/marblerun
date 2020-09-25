@@ -119,7 +119,8 @@ func TestLogic(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 
 	// create core and run gRPC server
-	coordinator, err := core.NewCore("Edgeless Systems GmbH", validator, issuer)
+	sealer := core.NewMockSealer()
+	coordinator, err := core.NewCore("Edgeless Systems GmbH", validator, issuer, sealer)
 	assert.NotNil(coordinator, "coordinator empty")
 	assert.Nil(err, err)
 

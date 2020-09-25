@@ -33,7 +33,8 @@ func TestMarbleAPI(t *testing.T) {
 	// create core
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
-	coreServer, err := NewCore("edgeless", validator, issuer)
+	sealer := NewMockSealer()
+	coreServer, err := NewCore("edgeless", validator, issuer, sealer)
 	assert.NotNil(coreServer)
 	assert.Nil(err)
 

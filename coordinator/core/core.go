@@ -7,6 +7,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/json"
 	"errors"
 	"math"
 	"math/big"
@@ -24,6 +25,7 @@ type Core struct {
 	cert        *x509.Certificate
 	quote       []byte
 	privk       ed25519.PrivateKey
+	sealer      Sealer
 	manifest    Manifest
 	rawManifest []byte
 	state       state
@@ -43,6 +45,15 @@ const (
 	closed
 )
 
+// sealedState represents the state information, required for persistence, that gets sealed to the filesystem
+type sealedState struct {
+	Privk          ed25519.PrivateKey
+	RawManifest    []byte
+	RawCert        []byte
+	State          state
+	ActivationsMap map[string]uint
+}
+
 const coordinatorName string = "Coordinator"
 
 // Needs to be paired with `defer c.mux.Unlock()`
@@ -59,16 +70,25 @@ func (c *Core) advanceState() {
 }
 
 // NewCore creates and initializes a new Core object
-func NewCore(orgName string, qv quote.Validator, qi quote.Issuer) (*Core, error) {
+func NewCore(orgName string, qv quote.Validator, qi quote.Issuer, sealer Sealer) (*Core, error) {
 	c := &Core{
 		state:       uninitialized,
 		activations: make(map[string]uint),
 		qv:          qv,
 		qi:          qi,
+		sealer:      sealer,
 	}
-	if err := c.generateCert(orgName); err != nil {
+	cert, privk, err := c.loadState(orgName)
+	if err != nil {
 		return nil, err
 	}
+	quote, err := c.qi.Issue(cert.Raw)
+	if err != nil {
+		return nil, err
+	}
+	c.quote = quote
+	c.cert = cert
+	c.privk = privk
 	return c, nil
 }
 
@@ -106,28 +126,71 @@ func (c *Core) GetTLSCertificate() (*tls.Certificate, error) {
 	return tlsCertFromDER(c.cert.Raw, c.privk), nil
 }
 
+func (c *Core) loadState(orgName string) (*x509.Certificate, ed25519.PrivateKey, error) {
+	stateRaw, err := c.sealer.Unseal()
+	if err != nil {
+		return nil, nil, err
+	}
+	// generate new state if there isn't something in the fs yet
+	if len(stateRaw) == 0 {
+		return c.generateCert(orgName)
+	}
+	// load state
+	var loadedState sealedState
+	if err := json.Unmarshal(stateRaw, &loadedState); err != nil {
+		return nil, nil, err
+	}
+	// set Core to loaded state
+	if err := json.Unmarshal(loadedState.RawManifest, &c.manifest); err != nil {
+		return nil, nil, err
+	}
+	cert, err := x509.ParseCertificate(loadedState.RawCert)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.state = loadedState.State
+	c.activations = loadedState.ActivationsMap
+	return cert, loadedState.Privk, err
+}
+
+func (c *Core) sealState() error {
+	// seal with manifest set
+	state := sealedState{
+		Privk:          c.privk,
+		RawManifest:    c.rawManifest,
+		RawCert:        c.cert.Raw,
+		State:          c.state,
+		ActivationsMap: c.activations,
+	}
+	stateRaw, err := json.Marshal(state)
+	if err != nil {
+		return err
+	}
+	return c.sealer.Seal(stateRaw)
+}
+
 func generateSerial() (*big.Int, error) {
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	return rand.Int(rand.Reader, serialNumberLimit)
 }
 
-func (c *Core) generateCert(orgName string) error {
+func (c *Core) generateCert(orgName string) (*x509.Certificate, ed25519.PrivateKey, error) {
 	defer c.mux.Unlock()
 	if err := c.requireState(uninitialized); err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	// code (including generateSerial()) adapted from golang.org/src/crypto/tls/generate_cert.go
 	pubk, privk, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	notBefore := time.Now()
 	notAfter := notBefore.Add(math.MaxInt64)
 
 	serialNumber, err := generateSerial()
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	// TODO: what else do we need to set here?
@@ -149,21 +212,14 @@ func (c *Core) generateCert(orgName string) error {
 
 	certRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, pubk, privk)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	cert, err := x509.ParseCertificate(certRaw)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
-	quote, err := c.qi.Issue(certRaw)
-	if err != nil {
-		return err
-	}
-	c.cert = cert
-	c.quote = quote
-	c.privk = privk
 	c.advanceState()
-	return nil
+	return cert, privk, nil
 }
 
 func getClientTLSCert(ctx context.Context) *x509.Certificate {

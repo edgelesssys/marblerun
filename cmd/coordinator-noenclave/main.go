@@ -17,7 +17,8 @@ func main() {
 	// initialize coordinator
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
-	core, err := core.NewCore("Coordinator", validator, issuer)
+	sealer := core.NewMockSealer()
+	core, err := core.NewCore("Coordinator", validator, issuer, sealer)
 	if err != nil {
 		panic(err)
 	}

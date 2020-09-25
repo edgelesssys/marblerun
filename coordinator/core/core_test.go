@@ -1,7 +1,7 @@
 package core
 
 import (
-	"encoding/json"
+	"crypto/sha256"
 	"testing"
 
 	"github.com/edgelesssys/coordinator/coordinator/quote"
@@ -92,15 +92,10 @@ const manifestJSON string = `{
 func TestCore(t *testing.T) {
 	assert := assert.New(t)
 
-	// parse manifest
-	var manifest Manifest
-	err := json.Unmarshal([]byte(manifestJSON), &manifest)
-	assert.Nil(err)
-
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
-
-	c, err := NewCore("edgeless", validator, issuer)
+	sealer := NewMockSealer()
+	c, err := NewCore("edgeless", validator, issuer, sealer)
 	assert.NotNil(c)
 	assert.Nil(err)
 	assert.Equal(acceptingManifest, c.state)
@@ -130,4 +125,53 @@ func TestCore(t *testing.T) {
 
 	// set manifest a second time
 	assert.NotNil(c.SetManifest(context.TODO(), []byte(manifestJSON)))
+}
+
+func TestSeal(t *testing.T) {
+	assert := assert.New(t)
+
+	validator := quote.NewMockValidator()
+	issuer := quote.NewMockIssuer()
+	sealer := NewMockSealer()
+
+	// create Core
+	c, err := NewCore("edgeless", validator, issuer, sealer)
+	assert.NotNil(c)
+	assert.Nil(err)
+	// set manifest
+	assert.Nil(c.SetManifest(context.TODO(), []byte(manifestJSON)))
+	// get quote
+	quote, err := c.GetQuote(context.TODO())
+	assert.NotNil(quote)
+	assert.Nil(err)
+	// get TLS certificate
+	cert, err := c.GetTLSCertificate()
+	assert.NotNil(cert)
+	assert.Nil(err)
+	//get Manifest Signature
+	signature := c.GetManifestSignature(context.TODO())
+	hash := sha256.Sum256(c.rawManifest)
+	assert.Equal(hash[:], signature, "manifest signature is not correct")
+
+	// check sealing
+	c2, err := NewCore("edgeless", validator, issuer, sealer)
+	assert.NotNil(c2)
+	assert.Nil(err)
+	assert.Equal(acceptingMarbles, c2.state)
+
+	quote2, err := c2.GetQuote(context.TODO())
+	assert.NotNil(quote2)
+	assert.Nil(err)
+	assert.Equal(quote, quote2)
+
+	cert2, err := c2.GetTLSCertificate()
+	assert.NotNil(cert2)
+	assert.Nil(err)
+	assert.Equal(cert, cert2)
+
+	assert.NotNil(c2.SetManifest(context.TODO(), []byte(manifestJSON)))
+
+	signature2 := c.GetManifestSignature(context.TODO())
+	assert.Equal(signature, signature2, "manifest signature differs after restart")
+
 }
