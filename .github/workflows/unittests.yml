@@ -1,0 +1,43 @@
+name: Unit Tests
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  create:
+  workflow_dispatch:
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    env:
+      GO111MODULE: 'on'
+    #container: 
+      #image: ghcr.io/edgelesssys/edgelessrt-private:latest
+
+    # ertgolib requires ert -> use edgelessrt docker image
+    # ->problem: cannot run workflow in image from private repo
+    # alternative: pull image and run tests within image
+    # ->problem: coordinator source code not in image
+    #
+    #for now, skip integration test due to no sgx capabalilites in github
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - uses: actions/setup-go@v2
+      with:
+        go-version: '1.14'
+
+    - run: echo "machine github.com login ${{ secrets.CI_GITHUB_REPOS }} password ${{ secrets.CI_GITHUB_REPOS }}" > .netrc
+
+    - name: Test core
+      run: |
+        go get -v github.com/edgelesssys/ertgolib
+        go test || ( \
+        cd coordinator/core && \
+        go test)
+
+    - run: rm .netrc
+      
