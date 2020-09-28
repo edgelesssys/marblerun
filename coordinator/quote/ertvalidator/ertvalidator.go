@@ -1,10 +1,11 @@
-package quote
+package ertvalidator
 
 import (
 	"bytes"
 	"crypto/sha256"
 	"fmt"
 
+	"github.com/edgelesssys/coordinator/coordinator/quote"
 	"github.com/edgelesssys/ertgolib/ertenclave"
 )
 
@@ -18,9 +19,9 @@ func NewERTValidator() *ERTValidator {
 }
 
 // Validate implements the Validator interface for ERTValidator
-func (m *ERTValidator) Validate(quote []byte, cert []byte, pp PackageProperties, ip InfrastructureProperties) error {
+func (m *ERTValidator) Validate(givenQuote []byte, cert []byte, pp quote.PackageProperties, ip quote.InfrastructureProperties) error {
 	// Verify Quote
-	report, err := ertenclave.VerifyRemoteReport(quote)
+	report, err := ertenclave.VerifyRemoteReport(givenQuote)
 	if err != nil {
 		return fmt.Errorf("verifying quote failed: %v", err)
 	}
@@ -32,7 +33,7 @@ func (m *ERTValidator) Validate(quote []byte, cert []byte, pp PackageProperties,
 	}
 
 	// Verify PackageProperties
-	reportedProps := PackageProperties{
+	reportedProps := quote.PackageProperties{
 		UniqueID:        report.UniqueID,
 		SignerID:        report.SignerID,
 		Debug:           report.Debug,

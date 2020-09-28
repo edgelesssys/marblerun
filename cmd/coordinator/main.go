@@ -12,7 +12,7 @@ import (
 	"unsafe"
 
 	"github.com/edgelesssys/coordinator/coordinator/core"
-	"github.com/edgelesssys/coordinator/coordinator/quote"
+	"github.com/edgelesssys/coordinator/coordinator/quote/ertvalidator"
 	"github.com/edgelesssys/coordinator/coordinator/server"
 	"github.com/edgelesssys/ertgolib/ertenclave"
 )
@@ -43,8 +43,8 @@ func coordinatormain(cwd, config string) {
 	mountData(cfg.DataPath) // mounts DataPath to /marble/data
 
 	// initialize coordinator
-	validator := quote.NewERTValidator()
-	issuer := quote.NewERTIssuer()
+	validator := ertvalidator.NewERTValidator()
+	issuer := ertvalidator.NewERTIssuer()
 	sealKey, _, err := ertenclave.GetProductSealKey()
 	if err != nil {
 		panic(err)
