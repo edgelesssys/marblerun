@@ -17,7 +17,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/edgelesssys/coordinator/coordinator/config"
 	"github.com/edgelesssys/coordinator/coordinator/core"
+	_marbleConfig "github.com/edgelesssys/coordinator/marble/config"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -184,7 +186,7 @@ func TestRestart(t *testing.T) {
 	_ = runMarble(assert, clientCfg, true, true)
 }
 
-func runMarble(assert *assert.Assertions, marbleCfg string, shouldSucceed bool, terminates bool) *exec.Cmd {
+func runMarble(assert *assert.Assertions, marbleCfg marbleConfig, shouldSucceed bool, terminates bool) *exec.Cmd {
 	log.Println("Starting marble")
 	marbleCmd := startMarble(marbleCfg)
 	assert.NotNil(marbleCmd)
@@ -301,55 +303,30 @@ func TestClientAPI(t *testing.T) {
 type coordinatorConfig struct {
 	MeshServerAddr   string
 	ClientServerAddr string
-	DataPath         string
+	SealDir          string
 }
 
-func createCoordinatorConfig() string {
+func createCoordinatorConfig() coordinatorConfig {
 	tempDir, err := ioutil.TempDir("/tmp", "edg_coordinator_*")
 	if err != nil {
 		panic(err)
 	}
-	cfg := coordinatorConfig{MeshServerAddr: marbleServerAddr, ClientServerAddr: clientServerAddr, DataPath: tempDir}
+	cfg := coordinatorConfig{MeshServerAddr: marbleServerAddr, ClientServerAddr: clientServerAddr, SealDir: tempDir}
 
-	jsonCfg, err := json.Marshal(cfg)
-	if err != nil {
-		panic(err)
-	}
-
-	file, err := ioutil.TempFile("", "")
-	if err != nil {
-		panic(err)
-	}
-
-	name := file.Name()
-
-	_, err = file.Write(jsonCfg)
-	file.Close()
-	if err != nil {
-		os.Remove(name)
-		panic(err)
-	}
-
-	return name
+	return cfg
 }
 
-func cleanupCoordinatorConfig(filename string) {
-	jsonCfg, err := ioutil.ReadFile(filename)
-	os.Remove(filename)
-	if err != nil {
-		panic(err)
-	}
-	var cfg coordinatorConfig
-	if err := json.Unmarshal(jsonCfg, &cfg); err != nil {
-		panic(err)
-	}
-	if err := os.RemoveAll(cfg.DataPath); err != nil {
+func cleanupCoordinatorConfig(cfg coordinatorConfig) {
+	if err := os.RemoveAll(cfg.SealDir); err != nil {
 		panic(err)
 	}
 }
 
-func startCoordinator(configFilename string) *os.Process {
-	cmd := exec.Command(*coordinatorExe, "-c", configFilename)
+func startCoordinator(cfg coordinatorConfig) *os.Process {
+	cmd := exec.Command(*coordinatorExe)
+	cmd.Env = append(cmd.Env, fmt.Sprintf("%v=%v", config.EdgMeshServerAddr, cfg.MeshServerAddr))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("%v=%v", config.EdgClientServerAddr, cfg.ClientServerAddr))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("%v=%v", config.EdgCoordinatorSealDir, cfg.SealDir))
 	output := make(chan []byte)
 	go func() {
 		out, _ := cmd.CombinedOutput()
@@ -424,7 +401,7 @@ type marbleConfig struct {
 	DataPath        string
 }
 
-func createMarbleConfig(coordinatorAddr, marbleType, marbleDNSNames string) string {
+func createMarbleConfig(coordinatorAddr, marbleType, marbleDNSNames string) marbleConfig {
 	cfg := marbleConfig{
 		CoordinatorAddr: coordinatorAddr,
 		MarbleType:      marbleType,
@@ -435,47 +412,21 @@ func createMarbleConfig(coordinatorAddr, marbleType, marbleDNSNames string) stri
 	if err != nil {
 		panic(err)
 	}
-	jsonCfg, err := json.Marshal(cfg)
-	if err != nil {
-		os.RemoveAll(cfg.DataPath)
-		panic(err)
-	}
-
-	file, err := ioutil.TempFile("", "")
-	if err != nil {
-		os.RemoveAll(cfg.DataPath)
-		panic(err)
-	}
-
-	name := file.Name()
-
-	_, err = file.Write(jsonCfg)
-	file.Close()
-	if err != nil {
-		os.Remove(name)
-		os.RemoveAll(cfg.DataPath)
-		panic(err)
-	}
-	return name
+	return cfg
 }
 
-func cleanupMarbleConfig(filename string) {
-	jsonCfg, err := ioutil.ReadFile(filename)
-	os.Remove(filename)
-	if err != nil {
-		panic(err)
-	}
-	var cfg marbleConfig
-	if err := json.Unmarshal(jsonCfg, &cfg); err != nil {
-		panic(err)
-	}
+func cleanupMarbleConfig(cfg marbleConfig) {
 	if err := os.RemoveAll(cfg.DataPath); err != nil {
 		panic(err)
 	}
 }
 
-func startMarble(cfgFilename string) *exec.Cmd {
-	cmd := exec.Command(*marbleExe, "-c", cfgFilename)
+func startMarble(cfg marbleConfig) *exec.Cmd {
+	cmd := exec.Command(*marbleExe)
+	cmd.Env = append(cmd.Env, fmt.Sprintf("%v=%v", _marbleConfig.EdgCoordinatorAddr, cfg.CoordinatorAddr))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("%v=%v", _marbleConfig.EdgMarbleType, cfg.MarbleType))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("%v=%v", _marbleConfig.EdgMarbleDNSNames, cfg.DNSNames))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("%v=%v", _marbleConfig.EdgMarbleUUIDFile, cfg.DataPath))
 	if err := cmd.Start(); err != nil {
 		panic(err)
 	}
