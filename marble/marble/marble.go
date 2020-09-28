@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/edgelesssys/coordinator/coordinator/quote"
+	"github.com/edgelesssys/coordinator/coordinator/quote/ertvalidator"
 	"github.com/edgelesssys/coordinator/coordinator/rpc"
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
@@ -156,7 +157,7 @@ func PreMain() error {
 	if err != nil {
 		return err
 	}
-	_, err = preMain(cert, privk, quote.NewERTIssuer())
+	_, err = preMain(cert, privk, ertvalidator.NewERTIssuer())
 	return err
 }
 
@@ -222,7 +223,7 @@ func preMain(cert *x509.Certificate, privk ed25519.PrivateKey, issuer quote.Issu
 	// generate Quote
 	if issuer == nil {
 		// default
-		issuer = quote.NewERTIssuer()
+		issuer = ertvalidator.NewERTIssuer()
 	}
 	quote, err := issuer.Issue(cert.Raw)
 	if err != nil {
