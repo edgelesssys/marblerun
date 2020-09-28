@@ -21,9 +21,18 @@ make
 ```
 OE_SIMULATION=1 ./coordinator
 ```
-## Test (//TODO)
+## Test
+### SGX2
 ```
-go test test/integration_test.go -v --args -c ../build/coordinator -m ../marble/build/marble
+go test ./test/ -v --args -c ../build/coordinator -m ../marble/build/marble
+```
+### Simulation
+```
+OE_SIMULATION=1 go test ./test/ -v --args -c ../build/coordinator -m ../marble/build/marble -s
+```
+### NoEnclave
+```
+go test ./test/ -v --args -c ../build/coordinator-noenclave -m ../marble/build/marble-test-noenclave -s
 ```
 
 # Protobuf
