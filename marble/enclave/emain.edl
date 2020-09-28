@@ -5,8 +5,7 @@ enclave {
     from "openenclave/edl/ertlibc.edl" import *;
 
     trusted {
-        public void emain(
-            [in, string] const char* config);
+        public void emain();
     };
     
     untrusted {

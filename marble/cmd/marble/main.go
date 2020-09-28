@@ -5,10 +5,7 @@ package main
 import "C"
 
 import (
-	"encoding/json"
-	"log"
 	"os"
-	"path/filepath"
 	"unsafe"
 
 	"github.com/edgelesssys/coordinator/marble/marble"
@@ -23,40 +20,7 @@ func mountData(path string) {
 }
 
 //export ert_meshentry_premain
-func ert_meshentry_premain(configStr *C.char, argc *C.int, argv ***C.char) {
-	config := C.GoString(configStr)
-
-	cfg := struct {
-		CoordinatorAddr string
-		MarbleType      string
-		DNSNames        string
-		DataPath        string
-	}{}
-	if err := json.Unmarshal([]byte(config), &cfg); err != nil {
-		panic(err)
-	}
-	// mount data dir
-	mountData(cfg.DataPath) // mounts DataPath to /marble/data
-	// set env vars
-	if err := os.Setenv(marble.EdgCoordinatorAddr, cfg.CoordinatorAddr); err != nil {
-		log.Fatalf("failed to set env variable: %v", err)
-		return
-	}
-	if err := os.Setenv(marble.EdgMarbleType, cfg.MarbleType); err != nil {
-		log.Fatalf("failed to set env variable: %v", err)
-		return
-	}
-
-	if err := os.Setenv(marble.EdgMarbleDNSNames, cfg.DNSNames); err != nil {
-		log.Fatalf("failed to set env variable: %v", err)
-		return
-	}
-	uuidFile := filepath.Join("marble", "data", "uuid")
-	if err := os.Setenv(marble.EdgMarbleUUIDFile, uuidFile); err != nil {
-		log.Fatalf("failed to set env variable: %v", err)
-		return
-	}
-
+func ert_meshentry_premain(argc *C.int, argv ***C.char) {
 	if err := marble.PreMain(); err != nil {
 		panic(err)
 	}

@@ -12,9 +12,9 @@
 
 using namespace std;
 
-extern "C" void ert_meshentry_premain(const char* config, int* argc, char*** argv);
+extern "C" void ert_meshentry_premain(int* argc, char*** argv);
 
-void emain(const char* config) {
+void emain() {
   if (oe_load_module_host_epoll() != OE_OK ||
       oe_load_module_host_file_system() != OE_OK ||
       oe_load_module_host_socket_interface() != OE_OK) {
@@ -33,7 +33,7 @@ void emain(const char* config) {
   cout << "invoking premain\n";
   int argc = 0;
   char** argv = nullptr;
-  ert_meshentry_premain(config, &argc, &argv);
+  ert_meshentry_premain(&argc, &argv);
 }
 
 extern "C" void mountData(const char* path) {

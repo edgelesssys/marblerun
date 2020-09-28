@@ -19,22 +19,11 @@ import (
 	"github.com/edgelesssys/coordinator/coordinator/quote"
 	"github.com/edgelesssys/coordinator/coordinator/quote/ertvalidator"
 	"github.com/edgelesssys/coordinator/coordinator/rpc"
+	"github.com/edgelesssys/coordinator/marble/config"
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
-
-// EdgCoordinatorAddr is a required env variable with Coordinator addr
-const EdgCoordinatorAddr string = "EDG_COORDINATOR_ADDR"
-
-// EdgMarbleType is a required env variable with type of this marble
-const EdgMarbleType string = "EDG_MARBLE_TYPE"
-
-// EdgMarbleDNSNames is an optional env variable with alternative dns names for this marble's certificate
-const EdgMarbleDNSNames string = "EDG_MARBLE_DNS_NAMES"
-
-// EdgMarbleUUIDFile is a required env variable with the path to store the marble's uuid
-const EdgMarbleUUIDFile string = "EDG_MARBLE_UUID_FILE"
 
 // loadTLSCreddentials builds a TLS config from the Authenticator's self-signed certificate and the Coordinator's RootCA
 func loadTLSCredentials(cert *x509.Certificate, privk ed25519.PrivateKey) (credentials.TransportCredentials, error) {
@@ -173,25 +162,25 @@ func PreMainMock() error {
 
 func preMain(cert *x509.Certificate, privk ed25519.PrivateKey, issuer quote.Issuer) (*rpc.Parameters, error) {
 	// get env variables
-	coordAddr := os.Getenv(EdgCoordinatorAddr)
+	coordAddr := os.Getenv(config.EdgCoordinatorAddr)
 	if len(coordAddr) == 0 {
-		return nil, fmt.Errorf("environment variable not set: %v", EdgCoordinatorAddr)
+		return nil, fmt.Errorf("environment variable not set: %v", config.EdgCoordinatorAddr)
 	}
 
-	marbleType := os.Getenv(EdgMarbleType)
+	marbleType := os.Getenv(config.EdgMarbleType)
 	if len(marbleType) == 0 {
-		return nil, fmt.Errorf("environment variable not set: %v", EdgMarbleType)
+		return nil, fmt.Errorf("environment variable not set: %v", config.EdgMarbleType)
 	}
 
 	marbleDNSNames := []string{}
-	marbleDNSNamesString := os.Getenv(EdgMarbleDNSNames)
+	marbleDNSNamesString := os.Getenv(config.EdgMarbleDNSNames)
 	if len(marbleType) > 0 {
 		marbleDNSNames = strings.Split(marbleDNSNamesString, ",")
 	}
 
-	uuidFile := os.Getenv(EdgMarbleUUIDFile)
+	uuidFile := os.Getenv(config.EdgMarbleUUIDFile)
 	if len(uuidFile) == 0 {
-		return nil, fmt.Errorf("environment variable not set: %v", EdgMarbleUUIDFile)
+		return nil, fmt.Errorf("environment variable not set: %v", config.EdgMarbleUUIDFile)
 	}
 
 	// load TLS Credentials

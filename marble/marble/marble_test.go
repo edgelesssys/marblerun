@@ -16,6 +16,7 @@ import (
 	"github.com/edgelesssys/coordinator/coordinator/core"
 	"github.com/edgelesssys/coordinator/coordinator/quote"
 	"github.com/edgelesssys/coordinator/coordinator/server"
+	"github.com/edgelesssys/coordinator/marble/config"
 	"github.com/edgelesssys/coordinator/test"
 	"github.com/google/uuid"
 
@@ -112,17 +113,17 @@ type marbleSpawner struct {
 
 func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID bool, shouldSucceed bool) {
 	// set env vars
-	err := os.Setenv(EdgCoordinatorAddr, ms.serverAddr)
+	err := os.Setenv(config.EdgCoordinatorAddr, ms.serverAddr)
 	ms.assert.Nil(err, "failed to set env variable: %v", err)
-	err = os.Setenv(EdgMarbleType, marbleType)
+	err = os.Setenv(config.EdgMarbleType, marbleType)
 	ms.assert.Nil(err, "failed to set env variable: %v", err)
-	err = os.Setenv(EdgMarbleDNSNames, "backend_service,backend")
+	err = os.Setenv(config.EdgMarbleDNSNames, "backend_service,backend")
 	ms.assert.Nil(err, "failed to set env variable: %v", err)
 
 	if !reuseUUID {
 		os.RemoveAll(uuidFile)
 	}
-	err = os.Setenv(EdgMarbleUUIDFile, uuidFile)
+	err = os.Setenv(config.EdgMarbleUUIDFile, uuidFile)
 	ms.assert.Nil(err, "failed to set env variable: %v", err)
 
 	// create mock args for preMain
