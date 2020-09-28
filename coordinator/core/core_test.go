@@ -5,89 +5,10 @@ import (
 	"testing"
 
 	"github.com/edgelesssys/coordinator/coordinator/quote"
+	"github.com/edgelesssys/coordinator/test"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
-
-const manifestJSON string = `{
-	"Packages": {
-		"backend": {
-			"UniqueID": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31],
-			"Debug": false
-		},
-		"frontend": {
-			"SignerID": [31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0],
-			"ProductID": [44],
-			"SecurityVersion": 3,
-			"Debug": true
-		}
-	},
-	"Infrastructures": {
-		"Azure": {
-			"QESVN": 2,
-			"PCESVN": 3,
-			"CPUSVN": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
-			"RootCA": [3,3,3]
-		},
-		"Alibaba": {
-			"QESVN": 2,
-			"PCESVN": 4,
-			"CPUSVN": [15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0],
-			"RootCA": [4,4,4]
-		}
-	},
-	"Marbles": {
-		"backend_first": {
-			"Package": "backend",
-			"MaxActivations": 1,
-			"Parameters": {
-				"Files": {
-					"/abc/defg.txt": "foo",
-					"/ghi/jkl.mno": "bar"
-				},
-				"Env": {
-					"IS_FIRST": "true",
-					"ROOT_CA": "$$root_ca",
-					"SEAL_KEY": "$$seal_key",
-					"MARBLE_CERT": "$$marble_cert",
-					"MARBLE_KEY": "$$marble_key"
-				},
-				"Argv": [
-					"--first",
-					"serve"
-				]
-			}
-		},
-		"backend_other": {
-			"Package": "backend",
-			"Parameters": {
-				"Env": {
-					"ROOT_CA": "$$root_ca",
-					"SEAL_KEY": "$$seal_key",
-					"MARBLE_CERT": "$$marble_cert",
-					"MARBLE_KEY": "$$marble_key"
-				},
-				"Argv": [
-					"serve"
-				]
-			}
-		},
-		"frontend": {
-			"Package": "frontend",
-			"Parameters": {
-				"Env": {
-					"ROOT_CA": "$$root_ca",
-					"SEAL_KEY": "$$seal_key",
-					"MARBLE_CERT": "$$marble_cert",
-					"MARBLE_KEY": "$$marble_key"
-				}
-			}
-		}
-	},
-	"Clients": {
-		"owner": [9,9,9]
-	}
-}`
 
 func TestCore(t *testing.T) {
 	assert := assert.New(t)
@@ -118,13 +39,13 @@ func TestCore(t *testing.T) {
 	assert.Nil(err)
 
 	// try to set broken manifest
-	assert.NotNil(c.SetManifest(context.TODO(), []byte(manifestJSON)[:len(manifestJSON)-1]))
+	assert.NotNil(c.SetManifest(context.TODO(), []byte(test.ManifestJSON)[:len(test.ManifestJSON)-1]))
 
 	// set manifest
-	assert.Nil(c.SetManifest(context.TODO(), []byte(manifestJSON)))
+	assert.Nil(c.SetManifest(context.TODO(), []byte(test.ManifestJSON)))
 
 	// set manifest a second time
-	assert.NotNil(c.SetManifest(context.TODO(), []byte(manifestJSON)))
+	assert.NotNil(c.SetManifest(context.TODO(), []byte(test.ManifestJSON)))
 }
 
 func TestSeal(t *testing.T) {
@@ -139,7 +60,7 @@ func TestSeal(t *testing.T) {
 	assert.NotNil(c)
 	assert.Nil(err)
 	// set manifest
-	assert.Nil(c.SetManifest(context.TODO(), []byte(manifestJSON)))
+	assert.Nil(c.SetManifest(context.TODO(), []byte(test.ManifestJSON)))
 	// get quote
 	quote, err := c.GetQuote(context.TODO())
 	assert.NotNil(quote)
@@ -169,7 +90,7 @@ func TestSeal(t *testing.T) {
 	assert.Nil(err)
 	assert.Equal(cert, cert2)
 
-	assert.NotNil(c2.SetManifest(context.TODO(), []byte(manifestJSON)))
+	assert.NotNil(c2.SetManifest(context.TODO(), []byte(test.ManifestJSON)))
 
 	signature2 := c.GetManifestSignature(context.TODO())
 	assert.Equal(signature, signature2, "manifest signature differs after restart")

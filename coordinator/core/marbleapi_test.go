@@ -16,6 +16,7 @@ import (
 
 	"github.com/edgelesssys/coordinator/coordinator/quote"
 	"github.com/edgelesssys/coordinator/coordinator/rpc"
+	"github.com/edgelesssys/coordinator/test"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/credentials"
@@ -27,7 +28,7 @@ func TestMarbleAPI(t *testing.T) {
 
 	// parse manifest
 	var manifest Manifest
-	err := json.Unmarshal([]byte(manifestJSON), &manifest)
+	err := json.Unmarshal([]byte(test.ManifestJSON), &manifest)
 	assert.Nil(err)
 
 	// create core
@@ -49,7 +50,7 @@ func TestMarbleAPI(t *testing.T) {
 	spawner.newMarble(coreServer, "backend_first", "Azure", false)
 
 	// set manifest
-	assert.Nil(coreServer.SetManifest(context.TODO(), []byte(manifestJSON)))
+	assert.Nil(coreServer.SetManifest(context.TODO(), []byte(test.ManifestJSON)))
 
 	// activate first backend
 	spawner.newMarble(coreServer, "backend_first", "Azure", true)
