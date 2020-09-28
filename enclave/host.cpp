@@ -19,14 +19,6 @@
 
 using namespace std;
 
-static string ReadConfig(const string &config_filename) {
-  if (config_filename.empty())
-    return string();
-  ifstream f;
-  f.exceptions(ios::badbit | ios::failbit | ios::eofbit);
-  f.open(config_filename);
-  return string(istreambuf_iterator<char>(f), istreambuf_iterator<char>());
-}
 
 static string GetCwd() {
   array<char, PATH_MAX> cwd{};
@@ -46,25 +38,9 @@ static string GetEnclavePath() {
 }
 
 int main(int argc, char *argv[]) {
-  // parse args
-  string config_filename;
-  int opt;
-  while ((opt = getopt(argc, argv, "c:")) != -1) {
-    switch (opt) {
-      case 'c':
-        config_filename = optarg;
-        break;
-      default:
-        cout << "Usage: " << argv[0] << " [-c config]\n";
-        return EXIT_FAILURE;
-    }
-  }
-
-  string config;
   string cwd;
   string enclavePath;
   try {
-    config = ReadConfig(config_filename);
     cwd = GetCwd();
     enclavePath = GetEnclavePath();
   } catch (const exception &e) {
@@ -92,7 +68,7 @@ int main(int argc, char *argv[]) {
 
   cout << "[coordinator] Entering enclave ...\n";
   signal(SIGPIPE, SIG_IGN);
-  if (emain(enclave, cwd.c_str(), config.c_str()) != OE_OK)
+  if (emain(enclave, cwd.c_str()) != OE_OK)
     cout << "ecall failed\n";
 
   oe_terminate_enclave(enclave);

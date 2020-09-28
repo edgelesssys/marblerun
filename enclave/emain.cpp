@@ -12,9 +12,9 @@
 
 using namespace std;
 
-extern "C" void invokemain(const char* cwd, const char* config);
+extern "C" void invokemain(const char* cwd);
 
-void emain(const char* cwd, const char* config) {
+void emain(const char* cwd) {
   if (oe_load_module_host_epoll() != OE_OK ||
       oe_load_module_host_file_system() != OE_OK ||
       oe_load_module_host_socket_interface() != OE_OK) {
@@ -28,7 +28,7 @@ void emain(const char* cwd, const char* config) {
     puts("mount tmpfs failed");
     return;
   }
-  invokemain(cwd, config);
+  invokemain(cwd);
 }
 
 extern "C" void mountData(const char* path) {

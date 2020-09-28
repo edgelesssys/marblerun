@@ -17,5 +17,5 @@ import "C"
 
 //export invokemain
 func invokemain(cwd, config *C.char) {
-	coordinatormain(C.GoString(cwd), C.GoString(config))
+	coordinatormain(C.GoString(cwd))
 }

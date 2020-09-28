@@ -6,8 +6,7 @@ enclave {
 
     trusted {
         public void emain(
-            [in, string] const char* cwd,
-            [in, string] const char* config);
+            [in, string] const char* cwd);
     };
 
     untrusted {

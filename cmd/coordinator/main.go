@@ -5,12 +5,11 @@ package main
 import "C"
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"unsafe"
 
+	"github.com/edgelesssys/coordinator/coordinator/config"
 	"github.com/edgelesssys/coordinator/coordinator/core"
 	"github.com/edgelesssys/coordinator/coordinator/quote/ertvalidator"
 	"github.com/edgelesssys/coordinator/coordinator/server"
@@ -23,25 +22,7 @@ func mountData(path string) {
 	C.mountData((*C.char)(unsafe.Pointer(&[]byte(path)[0])))
 }
 
-func coordinatormain(cwd, config string) {
-	cfg := struct {
-		MeshServerAddr   string
-		ClientServerAddr string
-		DataPath         string
-	}{
-		"localhost:25554",
-		"localhost:25555",
-		"/coordinator/data",
-	}
-
-	if config != "" {
-		if err := json.Unmarshal([]byte(config), &cfg); err != nil {
-			panic(err)
-		}
-	}
-	// mount data dir
-	mountData(cfg.DataPath) // mounts DataPath to /marble/data
-
+func coordinatormain(cwd string) {
 	// initialize coordinator
 	validator := ertvalidator.NewERTValidator()
 	issuer := ertvalidator.NewERTIssuer()
@@ -49,7 +30,10 @@ func coordinatormain(cwd, config string) {
 	if err != nil {
 		panic(err)
 	}
-	sealDir := filepath.Join("coordinator", "data", "sealing")
+	sealDir := os.Getenv(config.EdgCoordinatorSealDir)
+	if len(sealDir) == 0 {
+		panic(fmt.Errorf("environment variable not set: %v", config.EdgCoordinatorSealDir))
+	}
 	if err := os.MkdirAll(sealDir, 0700); err != nil {
 		panic(err)
 	}
@@ -65,12 +49,20 @@ func coordinatormain(cwd, config string) {
 	if err != nil {
 		panic(err)
 	}
-	go server.RunClientServer(mux, cfg.ClientServerAddr, clientServerTLSConfig)
+	clientServerAddr := os.Getenv(config.EdgClientServerAddr)
+	if len(clientServerAddr) == 0 {
+		panic(fmt.Errorf("environment variable not set: %v", config.EdgClientServerAddr))
+	}
+	go server.RunClientServer(mux, clientServerAddr, clientServerTLSConfig)
 
 	// run marble server
 	addrChan := make(chan string)
 	errChan := make(chan error)
-	go server.RunMarbleServer(core, cfg.MeshServerAddr, addrChan, errChan)
+	meshServerAddr := os.Getenv(config.EdgMeshServerAddr)
+	if len(meshServerAddr) == 0 {
+		panic(fmt.Errorf("environment variable not set: %v", config.EdgMeshServerAddr))
+	}
+	go server.RunMarbleServer(core, meshServerAddr, addrChan, errChan)
 	for {
 		select {
 		case err := <-errChan:

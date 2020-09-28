@@ -1,46 +1,24 @@
 package main
 
 import (
-	"encoding/json"
-	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
-	"path/filepath"
 
+	"github.com/edgelesssys/coordinator/coordinator/config"
 	"github.com/edgelesssys/coordinator/coordinator/core"
 	"github.com/edgelesssys/coordinator/coordinator/quote"
 	"github.com/edgelesssys/coordinator/coordinator/server"
 )
 
 func main() {
-	configPath := flag.String("c", "", "config file path")
-	flag.Parse()
-	cfg := struct {
-		MeshServerAddr   string
-		ClientServerAddr string
-		DataPath         string
-	}{
-		"localhost:25554",
-		"localhost:25555",
-		"/tmp/edg_coordinator_0",
-	}
-	if *configPath == "" {
-		panic(fmt.Errorf("no valid config path provided"))
-	}
-	config, err := ioutil.ReadFile(*configPath)
-	if err != nil {
-		panic(err)
-	}
-	if err := json.Unmarshal(config, &cfg); err != nil {
-		panic(err)
-	}
-
 	// initialize coordinator
 	validator := quote.NewFailValidator()
 	issuer := quote.NewFailIssuer()
 	sealKey := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
-	sealDir := filepath.Join(cfg.DataPath, "sealing")
+	sealDir := os.Getenv(config.EdgCoordinatorSealDir)
+	if len(sealDir) == 0 {
+		panic(fmt.Errorf("environment variable not set: %v", config.EdgCoordinatorSealDir))
+	}
 	if err := os.MkdirAll(sealDir, 0700); err != nil {
 		panic(err)
 	}
@@ -56,12 +34,20 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	go server.RunClientServer(mux, cfg.ClientServerAddr, clientServerTLSConfig)
+	clientServerAddr := os.Getenv(config.EdgClientServerAddr)
+	if len(clientServerAddr) == 0 {
+		panic(fmt.Errorf("environment variable not set: %v", config.EdgClientServerAddr))
+	}
+	go server.RunClientServer(mux, clientServerAddr, clientServerTLSConfig)
 
 	// run marble server
 	addrChan := make(chan string)
 	errChan := make(chan error)
-	go server.RunMarbleServer(core, cfg.MeshServerAddr, addrChan, errChan)
+	meshServerAddr := os.Getenv(config.EdgMeshServerAddr)
+	if len(meshServerAddr) == 0 {
+		panic(fmt.Errorf("environment variable not set: %v", config.EdgMeshServerAddr))
+	}
+	go server.RunMarbleServer(core, meshServerAddr, addrChan, errChan)
 	for {
 		select {
 		case err := <-errChan:
