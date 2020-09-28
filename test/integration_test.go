@@ -102,6 +102,7 @@ const manifestJSON string = `{
 
 var coordinatorExe = flag.String("c", "", "Coordinator executable")
 var marbleExe = flag.String("m", "", "Marble executable")
+var simulationMode = flag.Bool("s", false, "Execute test in simulation mode (without real quoting)")
 var marbleServerAddr, clientServerAddr string
 var manifest core.Manifest
 
@@ -203,11 +204,13 @@ func TestMarbleAPI(t *testing.T) {
 	defer cleanupMarbleConfig(clientCfg)
 	_ = runMarble(assert, clientCfg, true, true)
 	_ = runMarble(assert, clientCfg, true, true)
-	// start bad marbles
-	badCfg := createMarbleConfig(marbleServerAddr, "bad_marble", "bad")
-	defer cleanupMarbleConfig(badCfg)
-	_ = runMarble(assert, badCfg, false, true)
-	_ = runMarble(assert, badCfg, false, true)
+	if !*simulationMode {
+		// start bad marbles (would be accepted if we run in SimulationMode)
+		badCfg := createMarbleConfig(marbleServerAddr, "bad_marble", "bad")
+		defer cleanupMarbleConfig(badCfg)
+		_ = runMarble(assert, badCfg, false, true)
+		_ = runMarble(assert, badCfg, false, true)
+	}
 }
 
 func TestRestart(t *testing.T) {

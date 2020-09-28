@@ -84,9 +84,13 @@ func NewCore(orgName string, qv quote.Validator, qi quote.Issuer, sealer Sealer)
 	}
 	quote, err := c.qi.Issue(cert.Raw)
 	if err != nil {
-		return nil, err
+		// If we run in SimulationMode we get an error here
+		// For testing purpose we do not want to just fail here
+		// Instead we store an empty quote that will make it transparent to the client that the network is not secure
+		c.quote = []byte{}
+	} else {
+		c.quote = quote
 	}
-	c.quote = quote
 	c.cert = cert
 	c.privk = privk
 	return c, nil
@@ -98,6 +102,11 @@ func (c *Core) GetQuote(ctx context.Context) ([]byte, error) {
 		return nil, errors.New("don't have a cert or quote yet")
 	}
 	return c.quote, nil
+}
+
+// InSimulationMode returns true if we operate in OE_SIMULATION mode an the network is not secure
+func (c *Core) InSimulationMode() bool {
+	return len(c.quote) == 0
 }
 
 func (c *Core) getCert(ctx context.Context) (*x509.Certificate, error) {

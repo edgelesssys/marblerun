@@ -160,6 +160,16 @@ func PreMain() error {
 	return err
 }
 
+func PreMainMock() error {
+	// generate certificate
+	cert, privk, err := generateCert()
+	if err != nil {
+		return err
+	}
+	_, err = preMain(cert, privk, quote.NewFailIssuer())
+	return err
+}
+
 func preMain(cert *x509.Certificate, privk ed25519.PrivateKey, issuer quote.Issuer) (*rpc.Parameters, error) {
 	// get env variables
 	coordAddr := os.Getenv(EdgCoordinatorAddr)
@@ -216,7 +226,10 @@ func preMain(cert *x509.Certificate, privk ed25519.PrivateKey, issuer quote.Issu
 	}
 	quote, err := issuer.Issue(cert.Raw)
 	if err != nil {
-		return nil, err
+		// If we run in SimulationMode we get an error here
+		// For testing purpose we do not want to just fail here
+		// Instead we store an empty quote that will only be accepted if the coordinator also runs in SimulationMode
+		quote = []byte{}
 	}
 
 	// initiate grpc connection to Coordinator
