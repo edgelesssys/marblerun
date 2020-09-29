@@ -13,5 +13,4 @@ RUN cmake .. && make
 FROM ghcr.io/edgelesssys/edgelessrt-private:deploy AS release
 LABEL description="EdgelessCoordinator"
 COPY --from=build /coordinator/build/coordinator /coordinator/build/coordinator-noenclave /coordinator/build/enclave.signed /
-ENTRYPOINT /coordinator
-CMD ["-c", "config.json"]
+ENTRYPOINT ["/coordinator"]
