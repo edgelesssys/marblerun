@@ -23,7 +23,7 @@ func mountData(path string) {
 	C.mountData((*C.char)(unsafe.Pointer(&[]byte(path)[0])))
 }
 
-func coordinatormain(cwd string) {
+func coordinatormain() {
 	// initialize coordinator
 	validator := ertvalidator.NewERTValidator()
 	issuer := ertvalidator.NewERTIssuer()

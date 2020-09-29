@@ -16,6 +16,10 @@ package main
 import "C"
 
 //export invokemain
-func invokemain(cwd, config *C.char) {
-	coordinatormain(C.GoString(cwd))
+func invokemain() {
+	coordinatormain()
+}
+
+//export ert_meshentry_premain
+func ert_meshentry_premain(argc *C.int, argv ***C.char) {
 }

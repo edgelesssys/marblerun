@@ -21,7 +21,9 @@ const (
 	UsageError          int = 8
 )
 
-func main() {}
+//export invokemain
+func invokemain() { main() }
+func main()       {}
 
 func mountData(path string) {
 	C.mountData((*C.char)(unsafe.Pointer(&[]byte(path)[0])))
