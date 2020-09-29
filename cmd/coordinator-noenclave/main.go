@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/edgelesssys/coordinator/coordinator/config"
 	"github.com/edgelesssys/coordinator/coordinator/core"
@@ -22,8 +23,13 @@ func main() {
 	if err := os.MkdirAll(sealDir, 0700); err != nil {
 		panic(err)
 	}
+	dnsNames := []string{"localhost"}
+	dnsNamesString := os.Getenv(config.EdgCoordinatorDNSNames)
+	if len(dnsNamesString) > 0 {
+		dnsNames = strings.Split(dnsNamesString, ",")
+	}
 	sealer := core.NewAESGCMSealer(sealDir, sealKey)
-	core, err := core.NewCore("Coordinator", validator, issuer, sealer)
+	core, err := core.NewCore("Coordinator", dnsNames, validator, issuer, sealer)
 	if err != nil {
 		panic(err)
 	}

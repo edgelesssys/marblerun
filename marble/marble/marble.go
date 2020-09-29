@@ -96,8 +96,7 @@ func generateCert() (*x509.Certificate, ed25519.PrivateKey, error) {
 
 func generateCSR(marbleDNSNames []string, privk ed25519.PrivateKey) (*x509.CertificateRequest, error) {
 	template := x509.CertificateRequest{
-		// TODO: Add proper AltNames here: AB #172
-		DNSNames:    append(marbleDNSNames, "localhost"),
+		DNSNames:    marbleDNSNames,
 		IPAddresses: []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
 	}
 	csrRaw, err := x509.CreateCertificateRequest(rand.Reader, &template, privk)

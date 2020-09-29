@@ -11,6 +11,7 @@ import (
 	"errors"
 	"math"
 	"math/big"
+	"net"
 	"sync"
 	"time"
 
@@ -70,7 +71,7 @@ func (c *Core) advanceState() {
 }
 
 // NewCore creates and initializes a new Core object
-func NewCore(orgName string, qv quote.Validator, qi quote.Issuer, sealer Sealer) (*Core, error) {
+func NewCore(orgName string, dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer Sealer) (*Core, error) {
 	c := &Core{
 		state:       uninitialized,
 		activations: make(map[string]uint),
@@ -78,7 +79,7 @@ func NewCore(orgName string, qv quote.Validator, qi quote.Issuer, sealer Sealer)
 		qi:          qi,
 		sealer:      sealer,
 	}
-	cert, privk, err := c.loadState(orgName)
+	cert, privk, err := c.loadState(orgName, dnsNames)
 	if err != nil {
 		return nil, err
 	}
@@ -135,14 +136,14 @@ func (c *Core) GetTLSCertificate() (*tls.Certificate, error) {
 	return tlsCertFromDER(c.cert.Raw, c.privk), nil
 }
 
-func (c *Core) loadState(orgName string) (*x509.Certificate, ed25519.PrivateKey, error) {
+func (c *Core) loadState(orgName string, dnsNames []string) (*x509.Certificate, ed25519.PrivateKey, error) {
 	stateRaw, err := c.sealer.Unseal()
 	if err != nil {
 		return nil, nil, err
 	}
 	// generate new state if there isn't something in the fs yet
 	if len(stateRaw) == 0 {
-		return c.generateCert(orgName)
+		return c.generateCert(orgName, dnsNames)
 	}
 	// load state
 	var loadedState sealedState
@@ -183,7 +184,7 @@ func generateSerial() (*big.Int, error) {
 	return rand.Int(rand.Reader, serialNumberLimit)
 }
 
-func (c *Core) generateCert(orgName string) (*x509.Certificate, ed25519.PrivateKey, error) {
+func (c *Core) generateCert(orgName string, dnsNames []string) (*x509.Certificate, ed25519.PrivateKey, error) {
 	defer c.mux.Unlock()
 	if err := c.requireState(uninitialized); err != nil {
 		return nil, nil, err
@@ -210,8 +211,10 @@ func (c *Core) generateCert(orgName string) (*x509.Certificate, ed25519.PrivateK
 			Organization: []string{orgName},
 			CommonName:   coordinatorName,
 		},
-		NotBefore: notBefore,
-		NotAfter:  notAfter,
+		DNSNames:    dnsNames,
+		IPAddresses: []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
+		NotBefore:   notBefore,
+		NotAfter:    notAfter,
 
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},

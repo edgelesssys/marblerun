@@ -19,7 +19,7 @@ func TestQuote(t *testing.T) {
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
 	sealer := core.NewMockSealer()
-	c, err := core.NewCore("edgeless", validator, issuer, sealer)
+	c, err := core.NewCore("edgeless", []string{"localhost"}, validator, issuer, sealer)
 	if err != nil {
 		panic(err)
 	}
@@ -45,7 +45,7 @@ func TestManifest(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 	mockKey := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
 	sealer := core.NewAESGCMSealer(tempDir, mockKey)
-	c, err := core.NewCore("edgeless", validator, issuer, sealer)
+	c, err := core.NewCore("edgeless", []string{"localhost"}, validator, issuer, sealer)
 	if err != nil {
 		panic(err)
 	}

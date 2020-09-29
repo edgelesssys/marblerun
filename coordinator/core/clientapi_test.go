@@ -21,7 +21,7 @@ func mustSetup() (*Core, *Manifest) {
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
 	sealer := NewMockSealer()
-	c, err := NewCore("edgeless", validator, issuer, sealer)
+	c, err := NewCore("edgeless", []string{"localhost"}, validator, issuer, sealer)
 	if err != nil {
 		panic(err)
 	}

@@ -41,7 +41,7 @@ func TestLogic(t *testing.T) {
 
 	// create core and run gRPC server
 	sealer := core.NewMockSealer()
-	coordinator, err := core.NewCore("Edgeless Systems GmbH", validator, issuer, sealer)
+	coordinator, err := core.NewCore("Edgeless Systems GmbH", []string{"localhost"}, validator, issuer, sealer)
 	assert.NotNil(coordinator, "coordinator empty")
 	assert.Nil(err, err)
 
@@ -117,7 +117,7 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 	ms.assert.Nil(err, "failed to set env variable: %v", err)
 	err = os.Setenv(config.EdgMarbleType, marbleType)
 	ms.assert.Nil(err, "failed to set env variable: %v", err)
-	err = os.Setenv(config.EdgMarbleDNSNames, "backend_service,backend")
+	err = os.Setenv(config.EdgMarbleDNSNames, "backend_service,backend,localhost")
 	ms.assert.Nil(err, "failed to set env variable: %v", err)
 
 	if !reuseUUID {
