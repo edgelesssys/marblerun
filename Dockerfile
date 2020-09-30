@@ -1,9 +1,7 @@
 # syntax=docker/dockerfile:experimental
 
-FROM ubuntu:18.04 AS pull
-RUN apt update && apt install -y git
-RUN ln -s /run/secrets/repoaccess ~/.netrc
-RUN --mount=type=secret,id=repoaccess git clone https://github.com/edgelesssys/coordinator.git
+FROM alpine/git:latest AS pull
+RUN --mount=type=secret,id=repoaccess,dst=/root/.netrc,required=true git clone https://github.com/edgelesssys/coordinator.git /coordinator
 
 FROM ghcr.io/edgelesssys/edgelessrt-private:latest AS build
 COPY --from=pull /coordinator /coordinator
@@ -12,5 +10,5 @@ RUN cmake .. && make
 
 FROM ghcr.io/edgelesssys/edgelessrt-private:deploy AS release
 LABEL description="EdgelessCoordinator"
-COPY --from=build /coordinator/build/coordinator /coordinator/build/coordinator-noenclave /coordinator/build/enclave.signed /
-ENTRYPOINT ["/coordinator"]
+COPY --from=build /coordinator/build/enclave.signed /coordinator/build/coordinator-noenclave /
+ENTRYPOINT ["erthost", "enclave.signed"]
