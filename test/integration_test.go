@@ -20,7 +20,7 @@ import (
 
 	"github.com/edgelesssys/coordinator/coordinator/config"
 	"github.com/edgelesssys/coordinator/coordinator/core"
-	_marbleConfig "github.com/edgelesssys/coordinator/marble/config"
+	mConfig "github.com/edgelesssys/coordinator/marble/config"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -49,18 +49,6 @@ func TestMain(m *testing.M) {
 
 	if err := json.Unmarshal([]byte(IntegrationManifestJSON), &manifest); err != nil {
 		log.Fatalln(err)
-	}
-
-	if !*simulationMode {
-		for name, marble := range manifest.Marbles {
-			newFiles := make(map[string]string)
-			for path, data := range marble.Parameters.Files {
-				newPath := filepath.Join(filepath.FromSlash("/edg"), "hostfs", path)
-				newFiles[newPath] = data
-			}
-			marble.Parameters.Files = newFiles
-			manifest.Marbles[name] = marble
-		}
 	}
 
 	// get unused ports
@@ -336,6 +324,10 @@ func cleanupCoordinatorConfig(cfg coordinatorConfig) {
 	}
 }
 
+func makeEnv(key, value string) string {
+	return fmt.Sprintf("%v=%v", key, value)
+}
+
 func startCoordinator(cfg coordinatorConfig) *os.Process {
 	var cmd *exec.Cmd
 	if *simulationMode {
@@ -343,14 +335,12 @@ func startCoordinator(cfg coordinatorConfig) *os.Process {
 	} else {
 		cmd = exec.Command("erthost", *coordinatorExe)
 	}
-	cmd.Env = append(cmd.Env, fmt.Sprintf("%v=%v", config.EdgMeshServerAddr, cfg.MeshServerAddr))
-	cmd.Env = append(cmd.Env, fmt.Sprintf("%v=%v", config.EdgClientServerAddr, cfg.ClientServerAddr))
-	cmd.Env = append(cmd.Env, fmt.Sprintf("%v=%v", config.EdgCoordinatorDNSNames, cfg.DNSNames))
-	sealDir := cfg.SealDir
-	if !*simulationMode {
-		sealDir = filepath.Join(filepath.FromSlash("/edg"), "hostfs", cfg.SealDir)
+	cmd.Env = []string{
+		makeEnv(config.EdgMeshServerAddr, cfg.MeshServerAddr),
+		makeEnv(config.EdgClientServerAddr, cfg.ClientServerAddr),
+		makeEnv(config.EdgCoordinatorDNSNames, cfg.DNSNames),
+		makeEnv(config.EdgCoordinatorSealDir, cfg.SealDir),
 	}
-	cmd.Env = append(cmd.Env, fmt.Sprintf("%v=%v", config.EdgCoordinatorSealDir, sealDir))
 	output := make(chan []byte)
 	go func() {
 		out, _ := cmd.CombinedOutput()
@@ -452,17 +442,18 @@ func startMarble(cfg marbleConfig) *exec.Cmd {
 	} else {
 		cmd = exec.Command("erthost", *marbleExe)
 	}
-
-	cmd.Env = append(cmd.Env, fmt.Sprintf("%v=%v", _marbleConfig.EdgCoordinatorAddr, cfg.CoordinatorAddr))
-	cmd.Env = append(cmd.Env, fmt.Sprintf("%v=%v", _marbleConfig.EdgMarbleType, cfg.MarbleType))
-	cmd.Env = append(cmd.Env, fmt.Sprintf("%v=%v", _marbleConfig.EdgMarbleDNSNames, cfg.DNSNames))
 	var uuidFile string
 	if !*simulationMode {
 		uuidFile = filepath.Join(filepath.FromSlash("/edg"), "hostfs", cfg.DataPath, "uuid")
 	} else {
 		uuidFile = filepath.Join(cfg.DataPath, "uuid")
 	}
-	cmd.Env = append(cmd.Env, fmt.Sprintf("%v=%v", _marbleConfig.EdgMarbleUUIDFile, uuidFile))
+	cmd.Env = []string{
+		makeEnv(mConfig.EdgCoordinatorAddr, cfg.CoordinatorAddr),
+		makeEnv(mConfig.EdgMarbleType, cfg.MarbleType),
+		makeEnv(mConfig.EdgMarbleDNSNames, cfg.DNSNames),
+		makeEnv(mConfig.EdgMarbleUUIDFile, uuidFile),
+	}
 	if err := cmd.Start(); err != nil {
 		panic(err)
 	}
