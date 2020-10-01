@@ -31,10 +31,13 @@ func coordinatormain() {
 	if err != nil {
 		panic(err)
 	}
-	sealDir := os.Getenv(config.EdgCoordinatorSealDir)
-	if len(sealDir) == 0 {
-		panic(fmt.Errorf("environment variable not set: %v", config.EdgCoordinatorSealDir))
-	}
+	sealDir := util.MustGetenv(config.EdgCoordinatorSealDir)
+	dnsNames := []string{"localhost"}
+	dnsNamesString := util.MustGetenv(config.EdgCoordinatorDNSNames)
+	dnsNames = strings.Split(dnsNamesString, ",")
+	clientServerAddr := util.MustGetenv(config.EdgClientServerAddr)
+	meshServerAddr := util.MustGetenv(config.EdgMeshServerAddr)
+
 	if err := os.MkdirAll(sealDir, 0700); err != nil {
 		panic(err)
 	}

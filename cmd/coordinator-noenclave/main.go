@@ -16,10 +16,12 @@ func main() {
 	validator := quote.NewFailValidator()
 	issuer := quote.NewFailIssuer()
 	sealKey := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
-	sealDir := os.Getenv(config.EdgCoordinatorSealDir)
-	if len(sealDir) == 0 {
-		panic(fmt.Errorf("environment variable not set: %v", config.EdgCoordinatorSealDir))
-	}
+	sealDir := util.MustGetenv(config.EdgCoordinatorSealDir)
+	dnsNames := []string{"localhost"}
+	dnsNamesString := util.MustGetenv(config.EdgCoordinatorDNSNames)
+	dnsNames = strings.Split(dnsNamesString, ",")
+	clientServerAddr := util.MustGetenv(config.EdgClientServerAddr)
+	meshServerAddr := util.MustGetenv(config.EdgMeshServerAddr)
 	if err := os.MkdirAll(sealDir, 0700); err != nil {
 		panic(err)
 	}

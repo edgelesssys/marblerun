@@ -18,6 +18,7 @@ import (
 	"github.com/edgelesssys/coordinator/coordinator/server"
 	"github.com/edgelesssys/coordinator/marble/config"
 	"github.com/edgelesssys/coordinator/test"
+	"github.com/edgelesssys/coordinator/util"
 	"github.com/google/uuid"
 
 	"github.com/stretchr/testify/assert"
@@ -149,7 +150,7 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 
 		// check env
 		for key, value := range marble.Parameters.Env {
-			readValue := os.Getenv(key)
+			readValue := util.MustGetenv(key)
 			if !strings.Contains(value, "$$") {
 				ms.assert.Equal(value, readValue, "%v env var differs from manifest", key)
 			}
@@ -165,26 +166,26 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 
 		}
 		// Validate SealKey
-		pemSealKey := os.Getenv("SEAL_KEY")
+		pemSealKey := util.MustGetenv("SEAL_KEY")
 		ms.assert.NotNil(pemSealKey)
 		p, _ := pem.Decode([]byte(pemSealKey))
 		ms.assert.NotNil(p)
 
 		// Validate Marble Key
-		pemMarbleKey := os.Getenv("MARBLE_KEY")
+		pemMarbleKey := util.MustGetenv("MARBLE_KEY")
 		ms.assert.NotNil(pemMarbleKey)
 		p, _ = pem.Decode([]byte(pemMarbleKey))
 		ms.assert.NotNil(p)
 
 		// Validate Cert
-		pemCert := os.Getenv("MARBLE_CERT")
+		pemCert := util.MustGetenv("MARBLE_CERT")
 		ms.assert.NotNil(pemCert)
 		p, _ = pem.Decode([]byte(pemCert))
 		ms.assert.NotNil(p)
 		newCert, err := x509.ParseCertificate(p.Bytes)
 		ms.assert.Nil(err)
 		// Check cert-chain
-		pemRootCA := os.Getenv("ROOT_CA")
+		pemRootCA := util.MustGetenv("ROOT_CA")
 		ms.assert.NotNil(pemRootCA)
 		p, _ = pem.Decode([]byte(pemRootCA))
 		ms.assert.NotNil(p)
@@ -202,7 +203,7 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 		_, err = newCert.Verify(opts)
 		ms.assert.Nil(err, "failed to verify new certificate: %v", err)
 
-		receivedSealKey := []byte(os.Getenv("SEAL_KEY"))
+		receivedSealKey := []byte(util.MustGetenv("SEAL_KEY"))
 		if reuseUUID {
 			// check if we get back the same seal key
 			ms.assert.Equal(sealKey, receivedSealKey)
