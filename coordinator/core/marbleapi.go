@@ -22,49 +22,62 @@ import (
 
 // Activate activates a marble (implements the MarbleServer interface)
 func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.ActivationResp, error) {
+	log.SetPrefix("[Coordinator] ")
+	log.Println("activation request for type", req.MarbleType)
 	defer c.mux.Unlock()
 	if err := c.requireState(acceptingMarbles); err != nil {
-		return nil, status.Error(codes.FailedPrecondition, "cannot accept marbles in current state")
+		err = status.Error(codes.FailedPrecondition, "cannot accept marbles in current state")
+		log.Println(err.Error())
+		return nil, err
 	}
 
 	// get the marble's TLS cert (used in this connection) and check corresponding quote
 	tlsCert := getClientTLSCert(ctx)
 	if tlsCert == nil {
-		return nil, status.Error(codes.Unauthenticated, "couldn't get marble TLS certificate")
+		err := status.Error(codes.Unauthenticated, "couldn't get marble TLS certificate")
+		log.Println(err.Error())
+		return nil, err
 	}
 
 	if err := c.verifyManifestRequirement(tlsCert, req.GetQuote(), req.GetMarbleType()); err != nil {
+		log.Println(err.Error())
 		return nil, err
 	}
 	uuidStr := req.GetUUID()
 	marbleUUID, err := uuid.Parse(uuidStr)
 	if err != nil {
+		log.Println(err.Error())
 		return nil, err
 	}
 	// generate key-pair for marble
 	pubk, privk, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
+		log.Println(err.Error())
 		return nil, err
 	}
 	encodedPrivKey, err := x509.MarshalPKCS8PrivateKey(privk)
 	if err != nil {
+		log.Println(err.Error())
 		return nil, err
 	}
 
 	// Derive sealing key using HKDF and return it to marble
 	uuidBytes, err := marbleUUID.MarshalBinary()
 	if err != nil {
+		log.Println(err.Error())
 		return nil, err
 	}
 	// Derive key
 	hkdf := hkdf.New(sha256.New, uuidBytes, c.privk.Seed(), nil)
 	sealKey := make([]byte, 32)
 	if _, err := io.ReadFull(hkdf, sealKey); err != nil {
+		log.Println(err.Error())
 		return nil, err
 	}
 
 	certRaw, err := c.generateCertFromCSR(req.GetCSR(), pubk, req.GetMarbleType(), marbleUUID.String())
 	if err != nil {
+		log.Println(err.Error())
 		return nil, err
 	}
 

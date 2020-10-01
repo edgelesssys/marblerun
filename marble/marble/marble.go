@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math"
 	"math/big"
 	"net"
@@ -20,6 +21,7 @@ import (
 	"github.com/edgelesssys/coordinator/coordinator/quote/ertvalidator"
 	"github.com/edgelesssys/coordinator/coordinator/rpc"
 	"github.com/edgelesssys/coordinator/marble/config"
+	"github.com/edgelesssys/coordinator/util"
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -160,26 +162,32 @@ func PreMainMock() error {
 }
 
 func preMain(cert *x509.Certificate, privk ed25519.PrivateKey, issuer quote.Issuer) (*rpc.Parameters, error) {
+	log.SetPrefix("[PreMain] ")
+	log.Println("starting PreMain")
 	// get env variables
+	log.Println("fetching env variables")
 	coordAddr := util.MustGetenv(config.EdgCoordinatorAddr)
 	marbleType := util.MustGetenv(config.EdgMarbleType)
 	marbleDNSNames := []string{}
 	marbleDNSNamesString := util.MustGetenv(config.EdgMarbleDNSNames)
-		marbleDNSNames = strings.Split(marbleDNSNamesString, ",")
+	marbleDNSNames = strings.Split(marbleDNSNamesString, ",")
 	uuidFile := util.MustGetenv(config.EdgMarbleUUIDFile)
 
 	// load TLS Credentials
+	log.Println("loading TLS Credentials")
 	tlsCredentials, err := loadTLSCredentials(cert, privk)
 	if err != nil {
 		return nil, err
 	}
 
 	// check if we have a uuid stored in the fs (means we are restarted)
+	log.Println("loading UUID")
 	existingUUID, err := readUUID(uuidFile)
 	if err != nil {
 		return nil, err
 	}
 	// generate new UUID if not present
+	log.Println("UUID not found. Generating a new UUID")
 	var marbleUUID uuid.UUID
 	if existingUUID == nil {
 		marbleUUID = uuid.New()
@@ -189,18 +197,21 @@ func preMain(cert *x509.Certificate, privk ed25519.PrivateKey, issuer quote.Issu
 	uuidStr := marbleUUID.String()
 
 	// generate CSR
+	log.Println("generating CSR")
 	csr, err := generateCSR(marbleDNSNames, privk)
 	if err != nil {
 		return nil, err
 	}
 
 	// generate Quote
+	log.Println("generating quote")
 	if issuer == nil {
 		// default
 		issuer = ertvalidator.NewERTIssuer()
 	}
 	quote, err := issuer.Issue(cert.Raw)
 	if err != nil {
+		log.Println("failed to get quote. Proceeding in simulation mode")
 		// If we run in SimulationMode we get an error here
 		// For testing purpose we do not want to just fail here
 		// Instead we store an empty quote that will only be accepted if the coordinator also runs in SimulationMode
@@ -223,12 +234,14 @@ func preMain(cert *x509.Certificate, privk ed25519.PrivateKey, issuer quote.Issu
 		UUID:       uuidStr,
 	}
 	c := rpc.NewMarbleClient(cc)
+	log.Println("activating marble of type", marbleType)
 	activationResp, err := c.Activate(context.Background(), req)
 	if err != nil {
 		return nil, err
 	}
 
 	// store UUID to file
+	log.Println("storing UUID")
 	if err := storeUUID(marbleUUID, uuidFile); err != nil {
 		return nil, err
 	}
@@ -237,6 +250,7 @@ func preMain(cert *x509.Certificate, privk ed25519.PrivateKey, issuer quote.Issu
 	params := activationResp.GetParameters()
 
 	// Store files in file system
+	log.Println("creating files from manifest")
 	for path, data := range params.Files {
 		os.MkdirAll(filepath.Dir(path), os.ModePerm)
 		err := ioutil.WriteFile(path, []byte(data), 0600)
@@ -246,6 +260,7 @@ func preMain(cert *x509.Certificate, privk ed25519.PrivateKey, issuer quote.Issu
 	}
 
 	// Set environment variables
+	log.Println("setting env vars from manifest")
 	for key, value := range params.Env {
 		if err := os.Setenv(key, value); err != nil {
 			return nil, err
@@ -255,5 +270,6 @@ func preMain(cert *x509.Certificate, privk ed25519.PrivateKey, issuer quote.Issu
 	// Set Args
 	os.Args = params.Argv
 
+	log.Println("done with PreMain")
 	return params, nil
 }

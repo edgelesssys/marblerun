@@ -3,9 +3,9 @@ package server
 import (
 	"crypto/tls"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 
@@ -60,6 +60,7 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
+		log.Println("/status request from ", r.RemoteAddr)
 		switch r.Method {
 		case http.MethodGet:
 			status, err := cc.GetStatus(r.Context())
@@ -79,6 +80,7 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 		}
 	})
 	mux.HandleFunc("/manifest", func(w http.ResponseWriter, r *http.Request) {
+		log.Println("/manifest request from ", r.RemoteAddr)
 		switch r.Method {
 		case http.MethodGet:
 			signature := cc.GetManifestSignature(r.Context())
@@ -104,6 +106,7 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 		}
 	})
 	mux.HandleFunc("/quote", func(w http.ResponseWriter, r *http.Request) {
+		log.Println("/quote request from ", r.RemoteAddr)
 		switch r.Method {
 		case http.MethodGet:
 			cert, quote, err := cc.GetCertQuote(r.Context())
@@ -133,8 +136,8 @@ func RunClientServer(mux *http.ServeMux, address string, tlsConfig *tls.Config) 
 		Handler:   mux,
 		TLSConfig: tlsConfig,
 	}
-	fmt.Println("start client server at ", address)
-	fmt.Println(server.ListenAndServeTLS("", ""))
+	log.Println("started https server at ", address)
+	log.Println(server.ListenAndServeTLS("", ""))
 }
 
 type malformedRequest struct {

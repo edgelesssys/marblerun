@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -9,26 +9,30 @@ import (
 	"github.com/edgelesssys/coordinator/coordinator/core"
 	"github.com/edgelesssys/coordinator/coordinator/quote"
 	"github.com/edgelesssys/coordinator/coordinator/server"
+	"github.com/edgelesssys/coordinator/util"
 )
 
 func main() {
+	log.Println("starting coordinator")
 	// initialize coordinator
+	log.Println("initializing")
 	validator := quote.NewFailValidator()
 	issuer := quote.NewFailIssuer()
 	sealKey := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
+
+	// fetching env vars
+	log.Println("fetching env variables")
 	sealDir := util.MustGetenv(config.EdgCoordinatorSealDir)
 	dnsNames := []string{"localhost"}
 	dnsNamesString := util.MustGetenv(config.EdgCoordinatorDNSNames)
 	dnsNames = strings.Split(dnsNamesString, ",")
 	clientServerAddr := util.MustGetenv(config.EdgClientServerAddr)
 	meshServerAddr := util.MustGetenv(config.EdgMeshServerAddr)
+
+	// creating core
+	log.Println("creating the Core object")
 	if err := os.MkdirAll(sealDir, 0700); err != nil {
 		panic(err)
-	}
-	dnsNames := []string{"localhost"}
-	dnsNamesString := os.Getenv(config.EdgCoordinatorDNSNames)
-	if len(dnsNamesString) > 0 {
-		dnsNames = strings.Split(dnsNamesString, ",")
 	}
 	sealer := core.NewAESGCMSealer(sealDir, sealKey)
 	core, err := core.NewCore("Coordinator", dnsNames, validator, issuer, sealer)
@@ -37,24 +41,18 @@ func main() {
 	}
 
 	// start client server
+	log.Println("starting the client server")
 	mux := server.CreateServeMux(core)
 	clientServerTLSConfig, err := core.GetTLSConfig()
 	if err != nil {
 		panic(err)
 	}
-	clientServerAddr := os.Getenv(config.EdgClientServerAddr)
-	if len(clientServerAddr) == 0 {
-		panic(fmt.Errorf("environment variable not set: %v", config.EdgClientServerAddr))
-	}
 	go server.RunClientServer(mux, clientServerAddr, clientServerTLSConfig)
 
 	// run marble server
+	log.Println("starting the marble server")
 	addrChan := make(chan string)
 	errChan := make(chan error)
-	meshServerAddr := os.Getenv(config.EdgMeshServerAddr)
-	if len(meshServerAddr) == 0 {
-		panic(fmt.Errorf("environment variable not set: %v", config.EdgMeshServerAddr))
-	}
 	go server.RunMarbleServer(core, meshServerAddr, addrChan, errChan)
 	for {
 		select {
@@ -64,7 +62,7 @@ func main() {
 			}
 			return
 		case grpcAddr := <-addrChan:
-			fmt.Println("start mesh server at ", grpcAddr)
+			log.Println("started gRPC server at ", grpcAddr)
 		}
 	}
 }
