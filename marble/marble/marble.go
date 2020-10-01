@@ -7,7 +7,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math"
 	"math/big"
@@ -113,20 +112,20 @@ func generateCSR(marbleDNSNames []string, privk ed25519.PrivateKey) (*x509.Certi
 }
 
 // storeUUID stores the uuid to the fs
-func storeUUID(marbleUUID uuid.UUID, filename string) error {
+func storeUUID(fh fileHandler, marbleUUID uuid.UUID, filename string) error {
 	uuidBytes, err := marbleUUID.MarshalBinary()
 	if err != nil {
 		return fmt.Errorf("failed to marshal UUID: %v", err)
 	}
-	if err := ioutil.WriteFile(filename, uuidBytes, 0600); err != nil {
+	if err := fh.Write(filename, uuidBytes, 0600); err != nil {
 		return fmt.Errorf("failed to store uuid to file: %v", err)
 	}
 	return nil
 }
 
 // readUUID reads the uuid from the fs if present
-func readUUID(filename string) (*uuid.UUID, error) {
-	uuidBytes, err := ioutil.ReadFile(filename)
+func readUUID(fh fileHandler, filename string) (*uuid.UUID, error) {
+	uuidBytes, err := fh.Read(filename)
 	if os.IsNotExist(err) {
 		return nil, nil
 	} else if err != nil {
@@ -147,21 +146,24 @@ func PreMain() error {
 	if err != nil {
 		return err
 	}
-	_, err = preMain(cert, privk, ertvalidator.NewERTIssuer())
+	pfh := &prefixFileHandler{Prefix: filepath.Join(filepath.FromSlash("/edg"), "hostfs")}
+	_, err = preMain(cert, privk, ertvalidator.NewERTIssuer(), pfh)
 	return err
 }
 
+// PreMainMock is similar to PreMain but mocks the quoting and file handler interfaces
 func PreMainMock() error {
 	// generate certificate
 	cert, privk, err := generateCert()
 	if err != nil {
 		return err
 	}
-	_, err = preMain(cert, privk, quote.NewFailIssuer())
+	pfh := &prefixFileHandler{Prefix: ""}
+	_, err = preMain(cert, privk, quote.NewFailIssuer(), pfh)
 	return err
 }
 
-func preMain(cert *x509.Certificate, privk ed25519.PrivateKey, issuer quote.Issuer) (*rpc.Parameters, error) {
+func preMain(cert *x509.Certificate, privk ed25519.PrivateKey, issuer quote.Issuer, fh fileHandler) (*rpc.Parameters, error) {
 	log.SetPrefix("[PreMain] ")
 	log.Println("starting PreMain")
 	// get env variables
@@ -182,7 +184,7 @@ func preMain(cert *x509.Certificate, privk ed25519.PrivateKey, issuer quote.Issu
 
 	// check if we have a uuid stored in the fs (means we are restarted)
 	log.Println("loading UUID")
-	existingUUID, err := readUUID(uuidFile)
+	existingUUID, err := readUUID(fh, uuidFile)
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +244,7 @@ func preMain(cert *x509.Certificate, privk ed25519.PrivateKey, issuer quote.Issu
 
 	// store UUID to file
 	log.Println("storing UUID")
-	if err := storeUUID(marbleUUID, uuidFile); err != nil {
+	if err := storeUUID(fh, marbleUUID, uuidFile); err != nil {
 		return nil, err
 	}
 
@@ -252,9 +254,10 @@ func preMain(cert *x509.Certificate, privk ed25519.PrivateKey, issuer quote.Issu
 	// Store files in file system
 	log.Println("creating files from manifest")
 	for path, data := range params.Files {
-		os.MkdirAll(filepath.Dir(path), os.ModePerm)
-		err := ioutil.WriteFile(path, []byte(data), 0600)
-		if err != nil {
+		if err := fh.Create(path, os.ModePerm); err != nil {
+			return nil, err
+		}
+		if err := fh.Write(path, []byte(data), 0600); err != nil {
 			return nil, err
 		}
 	}

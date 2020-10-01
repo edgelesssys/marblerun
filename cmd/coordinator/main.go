@@ -7,6 +7,7 @@ import "C"
 import (
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"unsafe"
 
@@ -38,6 +39,7 @@ func coordinatormain() {
 	// fetching env vars
 	log.Println("fetching env variables")
 	sealDir := util.MustGetenv(config.EdgCoordinatorSealDir)
+	sealDir = filepath.Join(filepath.FromSlash("/edg"), "hostfs", sealDir)
 	dnsNames := []string{"localhost"}
 	dnsNamesString := util.MustGetenv(config.EdgCoordinatorDNSNames)
 	dnsNames = strings.Split(dnsNamesString, ",")

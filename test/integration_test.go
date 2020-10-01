@@ -442,12 +442,7 @@ func startMarble(cfg marbleConfig) *exec.Cmd {
 	} else {
 		cmd = exec.Command("erthost", *marbleExe)
 	}
-	var uuidFile string
-	if !*simulationMode {
-		uuidFile = filepath.Join(filepath.FromSlash("/edg"), "hostfs", cfg.DataPath, "uuid")
-	} else {
-		uuidFile = filepath.Join(cfg.DataPath, "uuid")
-	}
+	uuidFile := filepath.Join(cfg.DataPath, "uuid")
 	cmd.Env = []string{
 		makeEnv(mConfig.EdgCoordinatorAddr, cfg.CoordinatorAddr),
 		makeEnv(mConfig.EdgMarbleType, cfg.MarbleType),

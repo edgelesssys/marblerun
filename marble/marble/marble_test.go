@@ -7,7 +7,6 @@ import (
 	"encoding/pem"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -26,7 +25,9 @@ import (
 
 const coordinatorCommonName string = "Coordinator" // TODO: core does not export this, for now just use it hardcoded
 
-var uuidFile string
+const uuidFile string = "uuid"
+
+var mfh *mockFileHandler
 
 var sealKey []byte
 
@@ -61,14 +62,8 @@ func TestLogic(t *testing.T) {
 		fmt.Println("start mesh server at", grpcAddr)
 	}
 
-	// create UUID file
-	tmpFile, err := ioutil.TempFile(os.TempDir(), "*_uuid")
-	if err != nil {
-		panic(err)
-	}
-	uuidFile = tmpFile.Name()
-	tmpFile.Close()
-	defer os.RemoveAll(uuidFile)
+	// create MockFileHandler
+	mfh = &mockFileHandler{files: make(map[string][]byte)}
 
 	spawner := marbleSpawner{
 		assert:     assert,
@@ -122,7 +117,7 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 	ms.assert.Nil(err, "failed to set env variable: %v", err)
 
 	if !reuseUUID {
-		os.RemoveAll(uuidFile)
+		mfh.Destroy(uuidFile)
 	}
 	err = os.Setenv(config.EdgMarbleUUIDFile, uuidFile)
 	ms.assert.Nil(err, "failed to set env variable: %v", err)
@@ -158,7 +153,7 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 
 		// check files
 		for path, data := range marble.Parameters.Files {
-			readContent, err := ioutil.ReadFile(path)
+			readContent, err := mfh.Read(path)
 			ms.assert.Nil(err, "error reading file %v: %v", path, err)
 			if !strings.Contains(data, "$$") {
 				ms.assert.Equal(data, string(readContent), "content of file %v differs from manifest", path)
@@ -217,7 +212,7 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 	}
 
 	// call preMain
-	params, err := preMain(cert, privk, issuer)
+	params, err := preMain(cert, privk, issuer, mfh)
 	if !shouldSucceed {
 		ms.assert.NotNil(err, err)
 		ms.assert.Nil(params, "expected empty params, but got %v", params)
@@ -237,7 +232,7 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 	ms.assert.Equal(newCert.Issuer.CommonName, coordinatorCommonName, "expected equal: '%v' - '%v'", newCert.Issuer.CommonName, coordinatorCommonName)
 	ms.assert.Equal(newCert.Subject.Organization[0], newCert.Issuer.Organization[0], "expected equal: '%v' - '%v'", newCert.Subject.Organization[0], newCert.Issuer.Organization[0])
 
-	uuidBytes, err := ioutil.ReadFile(uuidFile)
+	uuidBytes, err := mfh.Read(uuidFile)
 	ms.assert.Nil(err, "error reading uuidFile: %v", err)
 	marbleUUID, err := uuid.NewUUID()
 	ms.assert.Nil(err, "error creating UUID: %v", err)
