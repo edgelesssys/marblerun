@@ -27,6 +27,7 @@ import (
 var coordinatorExe = flag.String("c", "", "Coordinator executable")
 var marbleExe = flag.String("m", "", "Marble executable")
 var simulationMode = flag.Bool("s", false, "Execute test in simulation mode (without real quoting)")
+var noenclave = flag.Bool("noenclave", false, "Do not run with erthost")
 var marbleServerAddr, clientServerAddr string
 var manifest core.Manifest
 
@@ -330,16 +331,23 @@ func makeEnv(key, value string) string {
 
 func startCoordinator(cfg coordinatorConfig) *os.Process {
 	var cmd *exec.Cmd
-	if *simulationMode {
+	if *noenclave {
 		cmd = exec.Command(*coordinatorExe)
 	} else {
 		cmd = exec.Command("erthost", *coordinatorExe)
+	}
+	var simFlag string
+	if *simulationMode {
+		simFlag = makeEnv("OE_SIMULATION", "1")
+	} else {
+		simFlag = makeEnv("OE_SIMULATION", "0")
 	}
 	cmd.Env = []string{
 		makeEnv(config.EdgMeshServerAddr, cfg.MeshServerAddr),
 		makeEnv(config.EdgClientServerAddr, cfg.ClientServerAddr),
 		makeEnv(config.EdgCoordinatorDNSNames, cfg.DNSNames),
 		makeEnv(config.EdgCoordinatorSealDir, cfg.SealDir),
+		simFlag,
 	}
 	output := make(chan []byte)
 	go func() {
@@ -437,10 +445,16 @@ func cleanupMarbleConfig(cfg marbleConfig) {
 
 func startMarble(cfg marbleConfig) *exec.Cmd {
 	var cmd *exec.Cmd
-	if *simulationMode {
+	if *noenclave {
 		cmd = exec.Command(*marbleExe)
 	} else {
 		cmd = exec.Command("erthost", *marbleExe)
+	}
+	var simFlag string
+	if *simulationMode {
+		simFlag = makeEnv("OE_SIMULATION", "1")
+	} else {
+		simFlag = makeEnv("OE_SIMULATION", "0")
 	}
 	uuidFile := filepath.Join(cfg.DataPath, "uuid")
 	cmd.Env = []string{
@@ -448,6 +462,7 @@ func startMarble(cfg marbleConfig) *exec.Cmd {
 		makeEnv(mConfig.EdgMarbleType, cfg.MarbleType),
 		makeEnv(mConfig.EdgMarbleDNSNames, cfg.DNSNames),
 		makeEnv(mConfig.EdgMarbleUUIDFile, uuidFile),
+		simFlag,
 	}
 	if err := cmd.Start(); err != nil {
 		panic(err)

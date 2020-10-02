@@ -24,15 +24,15 @@ OE_SIMULATION=1 ./coordinator
 ## Test
 ### SGX2
 ```
-go test ./test/ -v --args -c ../build/coordinator -m ../marble/build/marble
+go test ./test/ -v --args -c ../build/enclave.signed -m ../marble/build/enclave.signed
 ```
 ### Simulation
 ```
-OE_SIMULATION=1 go test ./test/ -v --args -c ../build/coordinator -m ../marble/build/marble -s
+go test ./test/ -v --args -c ../build/enclave.signed -m ../marble/build/enclave.signed -s
 ```
 ### NoEnclave
 ```
-go test ./test/ -v --args -c ../build/coordinator-noenclave -m ../marble/build/marble-test-noenclave -s
+go test ./test/ -v --args -c ../build/coordinator-noenclave -m ../marble/build/marble-test-noenclave -s -noenclave
 ```
 
 # Protobuf
