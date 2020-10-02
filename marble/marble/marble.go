@@ -80,9 +80,8 @@ func preMain(cert *x509.Certificate, privk ed25519.PrivateKey, issuer quote.Issu
 	log.Println("fetching env variables")
 	coordAddr := util.MustGetenv(config.EdgCoordinatorAddr)
 	marbleType := util.MustGetenv(config.EdgMarbleType)
-	marbleDNSNames := []string{}
 	marbleDNSNamesString := util.MustGetenv(config.EdgMarbleDNSNames)
-	marbleDNSNames = strings.Split(marbleDNSNamesString, ",")
+	marbleDNSNames := strings.Split(marbleDNSNamesString, ",")
 	uuidFile := util.MustGetenv(config.EdgMarbleUUIDFile)
 
 	// load TLS Credentials
