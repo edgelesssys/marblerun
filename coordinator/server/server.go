@@ -8,9 +8,11 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 
 	"github.com/edgelesssys/coordinator/coordinator/core"
 	"github.com/edgelesssys/coordinator/coordinator/rpc"
+	"github.com/gorilla/handlers"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -65,7 +67,6 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
-		log.Println("/status request from ", r.RemoteAddr)
 		switch r.Method {
 		case http.MethodGet:
 			status, err := cc.GetStatus(r.Context())
@@ -85,7 +86,6 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 		}
 	})
 	mux.HandleFunc("/manifest", func(w http.ResponseWriter, r *http.Request) {
-		log.Println("/manifest request from ", r.RemoteAddr)
 		switch r.Method {
 		case http.MethodGet:
 			signature := cc.GetManifestSignature(r.Context())
@@ -111,7 +111,6 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 		}
 	})
 	mux.HandleFunc("/quote", func(w http.ResponseWriter, r *http.Request) {
-		log.Println("/quote request from ", r.RemoteAddr)
 		switch r.Method {
 		case http.MethodGet:
 			cert, quote, err := cc.GetCertQuote(r.Context())
@@ -136,12 +135,13 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 
 // RunClientServer runs a HTTP server serving mux. provisionally
 func RunClientServer(mux *http.ServeMux, address string, tlsConfig *tls.Config) {
+	loggedRouter := handlers.LoggingHandler(os.Stdout, mux)
 	server := http.Server{
 		Addr:      address,
-		Handler:   mux,
+		Handler:   loggedRouter,
 		TLSConfig: tlsConfig,
 	}
-	log.Println("started https server at ", address)
+	log.Println("starting https server at ", address)
 	log.Println(server.ListenAndServeTLS("", ""))
 }
 
