@@ -23,7 +23,6 @@ import (
 
 // Activate activates a marble (implements the MarbleServer interface)
 func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.ActivationResp, error) {
-	log.SetPrefix("[Coordinator] ")
 	log.Println("activation request for type", req.MarbleType)
 
 	// get the marble's TLS cert (used in this connection) and check corresponding quote

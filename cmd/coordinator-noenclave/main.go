@@ -13,6 +13,7 @@ import (
 )
 
 func main() {
+	log.SetPrefix("[Coordinator] ")
 	log.Println("starting coordinator")
 	// initialize coordinator
 	log.Println("initializing")
