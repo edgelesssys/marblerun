@@ -189,12 +189,13 @@ func preMain(cert *x509.Certificate, privk ed25519.PrivateKey, issuer quote.Issu
 		return nil, err
 	}
 	// generate new UUID if not present
-	log.Println("UUID not found. Generating a new UUID")
 	var marbleUUID uuid.UUID
 	if existingUUID == nil {
+		log.Println("UUID not found. Generating a new UUID")
 		marbleUUID = uuid.New()
 	} else {
 		marbleUUID = *existingUUID
+		log.Println("found UUID:", marbleUUID.String())
 	}
 	uuidStr := marbleUUID.String()
 
