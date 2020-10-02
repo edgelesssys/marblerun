@@ -40,9 +40,8 @@ func coordinatormain() {
 	log.Println("fetching env variables")
 	sealDir := util.MustGetenv(config.EdgCoordinatorSealDir)
 	sealDir = filepath.Join(filepath.FromSlash("/edg"), "hostfs", sealDir)
-	dnsNames := []string{"localhost"}
 	dnsNamesString := util.MustGetenv(config.EdgCoordinatorDNSNames)
-	dnsNames = strings.Split(dnsNamesString, ",")
+	dnsNames := strings.Split(dnsNamesString, ",")
 	clientServerAddr := util.MustGetenv(config.EdgClientServerAddr)
 	meshServerAddr := util.MustGetenv(config.EdgMeshServerAddr)
 

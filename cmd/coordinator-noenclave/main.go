@@ -23,9 +23,8 @@ func main() {
 	// fetching env vars
 	log.Println("fetching env variables")
 	sealDir := util.MustGetenv(config.EdgCoordinatorSealDir)
-	dnsNames := []string{"localhost"}
 	dnsNamesString := util.MustGetenv(config.EdgCoordinatorDNSNames)
-	dnsNames = strings.Split(dnsNamesString, ",")
+	dnsNames := strings.Split(dnsNamesString, ",")
 	clientServerAddr := util.MustGetenv(config.EdgClientServerAddr)
 	meshServerAddr := util.MustGetenv(config.EdgMeshServerAddr)
 
