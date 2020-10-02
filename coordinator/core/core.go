@@ -9,6 +9,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/json"
 	"errors"
+	"log"
 	"math"
 	"math/big"
 	"net"
@@ -79,12 +80,15 @@ func NewCore(orgName string, dnsNames []string, qv quote.Validator, qi quote.Iss
 		qi:          qi,
 		sealer:      sealer,
 	}
+	log.Println("loading state")
 	cert, privk, err := c.loadState(orgName, dnsNames)
 	if err != nil {
 		return nil, err
 	}
+	log.Println("generating quote")
 	quote, err := c.qi.Issue(cert.Raw)
 	if err != nil {
+		log.Println("failed to get quote. Proceeding in simulation mode")
 		// If we run in SimulationMode we get an error here
 		// For testing purpose we do not want to just fail here
 		// Instead we store an empty quote that will make it transparent to the client that the network is not secure
@@ -143,9 +147,11 @@ func (c *Core) loadState(orgName string, dnsNames []string) (*x509.Certificate, 
 	}
 	// generate new state if there isn't something in the fs yet
 	if len(stateRaw) == 0 {
+		log.Println("no sealed state found. Proceeding with new state")
 		return c.generateCert(orgName, dnsNames)
 	}
 	// load state
+	log.Println("loading state from fs")
 	var loadedState sealedState
 	if err := json.Unmarshal(stateRaw, &loadedState); err != nil {
 		return nil, nil, err
