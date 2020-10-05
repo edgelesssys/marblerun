@@ -125,7 +125,7 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 
 	// create mock args for preMain
 	issuer := quote.NewMockIssuer()
-	cert, privk, err := generateCert()
+	cert, privk, err := util.GenerateCert()
 	ms.assert.Nil(err, "failed to generate cert: %v", err)
 	quote, err := issuer.Issue(cert.Raw)
 	ms.assert.Nil(err, "failed to generate quote: %v", err)
