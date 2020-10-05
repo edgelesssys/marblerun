@@ -41,7 +41,7 @@ func RunMarbleServer(core *core.Core, addr string, addrChan chan string, errChan
 		ClientAuth: tls.RequireAnyClientCert,
 	}
 	creds := credentials.NewTLS(&tlsConfig)
-	grpcServer := grpc.NewServer(grpc.Creds(creds))
+	grpcServer := grpc.NewServer(grpc.Creds(creds), withServerUnaryInterceptor(core))
 	rpc.RegisterMarbleServer(grpcServer, core)
 	socket, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -53,6 +53,11 @@ func RunMarbleServer(core *core.Core, addr string, addrChan chan string, errChan
 	if err != nil {
 		errChan <- err
 	}
+}
+
+func withServerUnaryInterceptor(c *core.Core) grpc.ServerOption {
+	mai := &core.MarbleAPIInterceptor{Core: c}
+	return grpc.UnaryInterceptor(mai.UnaryServerInterceptor)
 }
 
 // CreateServeMux creates a mux that serves the client API. provisionally

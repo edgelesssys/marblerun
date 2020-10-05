@@ -16,6 +16,7 @@ import (
 	"github.com/edgelesssys/coordinator/coordinator/rpc"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/hkdf"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -24,12 +25,6 @@ import (
 func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.ActivationResp, error) {
 	log.SetPrefix("[Coordinator] ")
 	log.Println("activation request for type", req.MarbleType)
-	defer c.mux.Unlock()
-	if err := c.requireState(acceptingMarbles); err != nil {
-		err = status.Error(codes.FailedPrecondition, "cannot accept marbles in current state")
-		log.Println(err.Error())
-		return nil, err
-	}
 
 	// get the marble's TLS cert (used in this connection) and check corresponding quote
 	tlsCert := getClientTLSCert(ctx)
@@ -196,4 +191,29 @@ func customizeParameters(params rpc.Parameters, rootCA []byte, marbleCert []byte
 	}
 
 	return customParams
+}
+
+// MarbleAPIInterceptor implements the gRPC's UnaryServerInterceptor interface to handle state requirements for the MarbleAPI
+type MarbleAPIInterceptor struct {
+	Core *Core
+}
+
+// UnaryServerInterceptor verifies if the core's state allows acceptance of marbles
+func (mai *MarbleAPIInterceptor) UnaryServerInterceptor(ctx context.Context,
+	req interface{},
+	info *grpc.UnaryServerInfo,
+	handler grpc.UnaryHandler) (interface{}, error) {
+	// Check if we are in the required state
+	log.Println("FullMethod:", info.FullMethod)
+	if info.FullMethod == "/rpc.Marble/Activate" {
+		defer mai.Core.mux.Unlock()
+		if err := mai.Core.requireState(acceptingMarbles); err != nil {
+			err = status.Error(codes.FailedPrecondition, "cannot accept marbles in current state")
+			log.Println(err.Error())
+			return nil, err
+		}
+	}
+
+	// Calls the handler
+	return handler(ctx, req)
 }
