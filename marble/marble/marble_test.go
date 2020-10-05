@@ -7,6 +7,7 @@ import (
 	"encoding/pem"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -154,7 +155,8 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 
 		// check files
 		for path, data := range marble.Parameters.Files {
-			readContent, err := afero.ReadFile(appFs, path)
+			defer os.RemoveAll(path)
+			readContent, err := ioutil.ReadFile(path)
 			ms.assert.Nil(err, "error reading file %v: %v", path, err)
 			if !strings.Contains(data, "$$") {
 				ms.assert.Equal(data, string(readContent), "content of file %v differs from manifest", path)

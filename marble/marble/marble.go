@@ -5,10 +5,12 @@ import (
 	"crypto/ed25519"
 	"crypto/x509"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/edgelesssys/coordinator/coordinator/quote"
 	"github.com/edgelesssys/coordinator/coordinator/quote/ertvalidator"
@@ -57,6 +59,7 @@ func PreMain() error {
 	}
 	baseFs := afero.NewOsFs()
 	appFs := afero.NewBasePathFs(baseFs, filepath.Join(filepath.FromSlash("/edg"), "hostfs"))
+	syscall.Mount("/", "/", "edg_memfs", 0, "")
 	_, err = preMain(cert, privk, ertvalidator.NewERTIssuer(), appFs)
 	return err
 }
@@ -164,10 +167,11 @@ func preMain(cert *x509.Certificate, privk ed25519.PrivateKey, issuer quote.Issu
 	// Store files in file system
 	log.Println("creating files from manifest")
 	for path, data := range params.Files {
-		if err := appFs.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
-			return nil, err
-		}
-		if err := afero.WriteFile(appFs, path, []byte(data), 0600); err != nil {
+		// edg_memfs does not support creating directories yet
+		// if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
+		// 	return nil, err
+		// }
+		if err := ioutil.WriteFile(path, []byte(data), 0600); err != nil {
 			return nil, err
 		}
 	}
