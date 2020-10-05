@@ -15,62 +15,27 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-// GenerateMarbleCredentials returns dummy Marble TLS scredentials for testing
-func GenerateMarbleCredentials() (certTLS *x509.Certificate, cert []byte, csr []byte, privk ed25519.PrivateKey, err error) {
-	const orgName string = "Edgeless Systems GmbH"
-	pubk, privk, err := ed25519.GenerateKey(rand.Reader)
+// OrgName is the Edgeless org name for cetificates
+const OrgName string = "Edgeless Systems GmbH"
+
+// GenerateMarbleCredentials returns dummy Marble TLS credentials for testing
+func GenerateMarbleCredentials() (certTLS *x509.Certificate, certRaw []byte, csrRaw []byte, privk ed25519.PrivateKey, err error) {
+	dnsNames := []string{"localhost", "*.foobar.net", "*.example.org"}
+	ipAddrs := []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback}
+
+	certTLS, privk, err = GenerateCert(dnsNames, ipAddrs, false)
 	if err != nil {
 		return
 	}
-	// create self-signed certificate for use in initial TLS connection
-	notBefore := time.Now()
-	notAfter := notBefore.Add(math.MaxInt64)
+	certRaw = certTLS.Raw
 
-	serialNumber, err := generateSerial()
-	if err != nil {
-		return
-	}
-	templateCert := x509.Certificate{
-		SerialNumber: serialNumber,
-		Subject: pkix.Name{
-			Organization: []string{orgName},
-		},
-		NotBefore:   notBefore,
-		NotAfter:    notAfter,
-		DNSNames:    []string{"localhost", "*.foobar.net", "*.example.org"},
-		IPAddresses: []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
-
-		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyAgreement,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
-		BasicConstraintsValid: true,
-		IsCA:                  false,
-	}
-	cert, err = x509.CreateCertificate(rand.Reader, &templateCert, &templateCert, pubk, privk)
-	if err != nil {
-		return
-	}
-
-	certTLS, err = x509.ParseCertificate(cert)
-	if err != nil {
-		return
-	}
-
-	// create CSR
-	templateCSR := x509.CertificateRequest{
-		Subject: pkix.Name{
-			Organization: []string{orgName},
-		},
-		PublicKey:   pubk,
-		DNSNames:    []string{"localhost", "*.foobar.net", "*.example.org"},
-		IPAddresses: []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
-	}
-	csr, err = x509.CreateCertificateRequest(rand.Reader, &templateCSR, privk)
+	csr, err := GenerateCSR(dnsNames, privk)
+	csrRaw = csr.Raw
 	return
 }
 
 // GenerateCert generates a new self-signed certificate associated key-pair
-func GenerateCert() (*x509.Certificate, ed25519.PrivateKey, error) {
-
+func GenerateCert(DNSNames []string, IPAddrs []net.IP, isCA bool) (*x509.Certificate, ed25519.PrivateKey, error) {
 	// code (including generateSerial()) adapted from golang.org/src/crypto/tls/generate_cert.go
 	pubk, privk, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -87,14 +52,19 @@ func GenerateCert() (*x509.Certificate, ed25519.PrivateKey, error) {
 	// TODO: what else do we need to set here?
 	// Do we need x509.KeyUsageKeyEncipherment?
 	template := x509.Certificate{
+		Subject: pkix.Name{
+			Organization: []string{OrgName},
+		},
 		SerialNumber: serialNumber,
 		NotBefore:    notBefore,
 		NotAfter:     notAfter,
+		DNSNames:     DNSNames,
+		IPAddresses:  IPAddrs,
 
-		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign | x509.KeyUsageKeyAgreement,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
-		BasicConstraintsValid: false,
-		IsCA:                  true,
+		BasicConstraintsValid: true,
+		IsCA:                  isCA,
 	}
 
 	certRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, pubk, privk)

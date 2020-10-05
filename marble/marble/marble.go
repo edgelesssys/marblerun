@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -53,7 +54,10 @@ func readUUID(appFs afero.Fs, filename string) (*uuid.UUID, error) {
 // PreMain is supposed to run before the App's actual main and authenticate with the Coordinator
 func PreMain() error {
 	// generate certificate
-	cert, privk, err := util.GenerateCert()
+	marbleDNSNamesString := util.MustGetenv(config.EdgMarbleDNSNames)
+	marbleDNSNames := strings.Split(marbleDNSNamesString, ",")
+	ipAddrs := []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback}
+	cert, privk, err := util.GenerateCert(marbleDNSNames, ipAddrs, false)
 	if err != nil {
 		return err
 	}
@@ -67,7 +71,10 @@ func PreMain() error {
 // PreMainMock is similar to PreMain but mocks the quoting and file handler interfaces
 func PreMainMock() error {
 	// generate certificate
-	cert, privk, err := util.GenerateCert()
+	marbleDNSNamesString := util.MustGetenv(config.EdgMarbleDNSNames)
+	marbleDNSNames := strings.Split(marbleDNSNamesString, ",")
+	ipAddrs := []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback}
+	cert, privk, err := util.GenerateCert(marbleDNSNames, ipAddrs, false)
 	if err != nil {
 		return err
 	}

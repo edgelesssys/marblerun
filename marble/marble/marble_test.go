@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"strings"
 	"testing"
@@ -126,7 +127,9 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 
 	// create mock args for preMain
 	issuer := quote.NewMockIssuer()
-	cert, privk, err := util.GenerateCert()
+	dnsNames := []string{"localhost"}
+	ipAddrs := []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback}
+	cert, privk, err := util.GenerateCert(dnsNames, ipAddrs, false)
 	ms.assert.Nil(err, "failed to generate cert: %v", err)
 	quote, err := issuer.Issue(cert.Raw)
 	ms.assert.Nil(err, "failed to generate quote: %v", err)
