@@ -19,6 +19,7 @@ import (
 	"github.com/edgelesssys/coordinator/test"
 	"github.com/edgelesssys/coordinator/util"
 	"github.com/google/uuid"
+	"github.com/spf13/afero"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -27,7 +28,7 @@ const coordinatorCommonName string = "Coordinator" // TODO: core does not export
 
 const uuidFile string = "uuid"
 
-var mfh *mockFileHandler
+var appFs afero.Fs
 
 var sealKey []byte
 
@@ -63,7 +64,7 @@ func TestLogic(t *testing.T) {
 	}
 
 	// create MockFileHandler
-	mfh = &mockFileHandler{files: make(map[string][]byte)}
+	appFs = afero.NewMemMapFs()
 
 	spawner := marbleSpawner{
 		assert:     assert,
@@ -117,7 +118,7 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 	ms.assert.Nil(err, "failed to set env variable: %v", err)
 
 	if !reuseUUID {
-		mfh.Destroy(uuidFile)
+		appFs.RemoveAll(uuidFile)
 	}
 	err = os.Setenv(config.EdgMarbleUUIDFile, uuidFile)
 	ms.assert.Nil(err, "failed to set env variable: %v", err)
@@ -153,7 +154,7 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 
 		// check files
 		for path, data := range marble.Parameters.Files {
-			readContent, err := mfh.Read(path)
+			readContent, err := afero.ReadFile(appFs, path)
 			ms.assert.Nil(err, "error reading file %v: %v", path, err)
 			if !strings.Contains(data, "$$") {
 				ms.assert.Equal(data, string(readContent), "content of file %v differs from manifest", path)
@@ -212,7 +213,7 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 	}
 
 	// call preMain
-	params, err := preMain(cert, privk, issuer, mfh)
+	params, err := preMain(cert, privk, issuer, appFs)
 	if !shouldSucceed {
 		ms.assert.NotNil(err, err)
 		ms.assert.Nil(params, "expected empty params, but got %v", params)
@@ -232,7 +233,7 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 	ms.assert.Equal(newCert.Issuer.CommonName, coordinatorCommonName, "expected equal: '%v' - '%v'", newCert.Issuer.CommonName, coordinatorCommonName)
 	ms.assert.Equal(newCert.Subject.Organization[0], newCert.Issuer.Organization[0], "expected equal: '%v' - '%v'", newCert.Subject.Organization[0], newCert.Issuer.Organization[0])
 
-	uuidBytes, err := mfh.Read(uuidFile)
+	uuidBytes, err := afero.ReadFile(appFs, uuidFile)
 	ms.assert.Nil(err, "error reading uuidFile: %v", err)
 	marbleUUID, err := uuid.NewUUID()
 	ms.assert.Nil(err, "error creating UUID: %v", err)

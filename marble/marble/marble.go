@@ -22,6 +22,7 @@ import (
 	"github.com/edgelesssys/coordinator/marble/config"
 	"github.com/edgelesssys/coordinator/util"
 	"github.com/google/uuid"
+	"github.com/spf13/afero"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -112,20 +113,20 @@ func generateCSR(marbleDNSNames []string, privk ed25519.PrivateKey) (*x509.Certi
 }
 
 // storeUUID stores the uuid to the fs
-func storeUUID(fh fileHandler, marbleUUID uuid.UUID, filename string) error {
+func storeUUID(appFs afero.Fs, marbleUUID uuid.UUID, filename string) error {
 	uuidBytes, err := marbleUUID.MarshalBinary()
 	if err != nil {
 		return fmt.Errorf("failed to marshal UUID: %v", err)
 	}
-	if err := fh.Write(filename, uuidBytes, 0600); err != nil {
+	if err := afero.WriteFile(appFs, filename, uuidBytes, 0600); err != nil {
 		return fmt.Errorf("failed to store uuid to file: %v", err)
 	}
 	return nil
 }
 
 // readUUID reads the uuid from the fs if present
-func readUUID(fh fileHandler, filename string) (*uuid.UUID, error) {
-	uuidBytes, err := fh.Read(filename)
+func readUUID(appFs afero.Fs, filename string) (*uuid.UUID, error) {
+	uuidBytes, err := afero.ReadFile(appFs, filename)
 	if os.IsNotExist(err) {
 		return nil, nil
 	} else if err != nil {
@@ -146,8 +147,9 @@ func PreMain() error {
 	if err != nil {
 		return err
 	}
-	pfh := &prefixFileHandler{Prefix: filepath.Join(filepath.FromSlash("/edg"), "hostfs")}
-	_, err = preMain(cert, privk, ertvalidator.NewERTIssuer(), pfh)
+	baseFs := afero.NewOsFs()
+	appFs := afero.NewBasePathFs(baseFs, filepath.Join(filepath.FromSlash("/edg"), "hostfs"))
+	_, err = preMain(cert, privk, ertvalidator.NewERTIssuer(), appFs)
 	return err
 }
 
@@ -158,12 +160,12 @@ func PreMainMock() error {
 	if err != nil {
 		return err
 	}
-	pfh := &prefixFileHandler{Prefix: ""}
-	_, err = preMain(cert, privk, quote.NewFailIssuer(), pfh)
+	appFs := afero.NewOsFs()
+	_, err = preMain(cert, privk, quote.NewFailIssuer(), appFs)
 	return err
 }
 
-func preMain(cert *x509.Certificate, privk ed25519.PrivateKey, issuer quote.Issuer, fh fileHandler) (*rpc.Parameters, error) {
+func preMain(cert *x509.Certificate, privk ed25519.PrivateKey, issuer quote.Issuer, appFs afero.Fs) (*rpc.Parameters, error) {
 	log.SetPrefix("[PreMain] ")
 	log.Println("starting PreMain")
 	// get env variables
@@ -184,7 +186,7 @@ func preMain(cert *x509.Certificate, privk ed25519.PrivateKey, issuer quote.Issu
 
 	// check if we have a uuid stored in the fs (means we are restarted)
 	log.Println("loading UUID")
-	existingUUID, err := readUUID(fh, uuidFile)
+	existingUUID, err := readUUID(appFs, uuidFile)
 	if err != nil {
 		return nil, err
 	}
@@ -245,7 +247,7 @@ func preMain(cert *x509.Certificate, privk ed25519.PrivateKey, issuer quote.Issu
 
 	// store UUID to file
 	log.Println("storing UUID")
-	if err := storeUUID(fh, marbleUUID, uuidFile); err != nil {
+	if err := storeUUID(appFs, marbleUUID, uuidFile); err != nil {
 		return nil, err
 	}
 
@@ -255,10 +257,10 @@ func preMain(cert *x509.Certificate, privk ed25519.PrivateKey, issuer quote.Issu
 	// Store files in file system
 	log.Println("creating files from manifest")
 	for path, data := range params.Files {
-		if err := fh.Create(path, os.ModePerm); err != nil {
+		if err := appFs.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
 			return nil, err
 		}
-		if err := fh.Write(path, []byte(data), 0600); err != nil {
+		if err := afero.WriteFile(appFs, path, []byte(data), 0600); err != nil {
 			return nil, err
 		}
 	}

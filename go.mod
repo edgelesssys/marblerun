@@ -8,6 +8,8 @@ require (
 	github.com/golang/protobuf v1.4.2
 	github.com/google/go-cmp v0.5.1
 	github.com/google/uuid v1.1.2
+	github.com/gorilla/handlers v1.5.1
+	github.com/spf13/afero v0.0.0-20170901052352-ee1bd8ee15a1
 	github.com/stretchr/testify v1.6.1
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	golang.org/x/net v0.0.0-20200707034311-ab3426394381
