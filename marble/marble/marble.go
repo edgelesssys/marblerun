@@ -51,19 +51,24 @@ func readUUID(appFs afero.Fs, filename string) (*uuid.UUID, error) {
 	return &marbleUUID, nil
 }
 
-// PreMain is supposed to run before the App's actual main and authenticate with the Coordinator
-func PreMain() error {
+func genCert() (*x509.Certificate, ed25519.PrivateKey, error) {
 	// generate certificate
 	marbleDNSNamesString := util.MustGetenv(config.EdgMarbleDNSNames)
 	marbleDNSNames := strings.Split(marbleDNSNamesString, ",")
 	ipAddrs := []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback}
-	cert, privk, err := util.GenerateCert(marbleDNSNames, ipAddrs, false)
+	return util.GenerateCert(marbleDNSNames, ipAddrs, false)
+}
+
+// PreMain is supposed to run before the App's actual main and authenticate with the Coordinator
+func PreMain() error {
+	cert, privk, err := genCert()
 	if err != nil {
 		return err
 	}
-	baseFs := afero.NewOsFs()
-	appFs := afero.NewBasePathFs(baseFs, filepath.Join(filepath.FromSlash("/edg"), "hostfs"))
-	syscall.Mount("/", "/", "edg_memfs", 0, "")
+	appFs := afero.NewBasePathFs(afero.NewOsFs(), filepath.Join(filepath.FromSlash("/edg"), "hostfs"))
+	if err := syscall.Mount("/", "/", "edg_memfs", 0, ""); err != nil {
+		return err
+	}
 	_, err = preMain(cert, privk, ertvalidator.NewERTIssuer(), appFs)
 	return err
 }
@@ -71,10 +76,7 @@ func PreMain() error {
 // PreMainMock is similar to PreMain but mocks the quoting and file handler interfaces
 func PreMainMock() error {
 	// generate certificate
-	marbleDNSNamesString := util.MustGetenv(config.EdgMarbleDNSNames)
-	marbleDNSNames := strings.Split(marbleDNSNamesString, ",")
-	ipAddrs := []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback}
-	cert, privk, err := util.GenerateCert(marbleDNSNames, ipAddrs, false)
+	cert, privk, err := genCert()
 	if err != nil {
 		return err
 	}
