@@ -30,8 +30,6 @@ const coordinatorCommonName string = "Coordinator" // TODO: core does not export
 
 const uuidFile string = "uuid"
 
-var appFs afero.Fs
-
 var sealKey []byte
 
 func TestLogic(t *testing.T) {
@@ -66,7 +64,7 @@ func TestLogic(t *testing.T) {
 	}
 
 	// create MockFileHandler
-	appFs = afero.NewMemMapFs()
+	appFs := afero.NewMemMapFs()
 
 	spawner := marbleSpawner{
 		assert:     assert,
@@ -74,6 +72,7 @@ func TestLogic(t *testing.T) {
 		validator:  validator,
 		manifest:   manifest,
 		serverAddr: grpcAddr,
+		appFs:      appFs,
 	}
 	// activate first backend
 	spawner.newMarble("backend_first", "Azure", false, true)
@@ -108,6 +107,7 @@ type marbleSpawner struct {
 	issuer     quote.Issuer
 	serverAddr string
 	assert     *assert.Assertions
+	appFs      afero.Fs
 }
 
 func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID bool, shouldSucceed bool) {
@@ -120,7 +120,7 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 	ms.assert.Nil(err, "failed to set env variable: %v", err)
 
 	if !reuseUUID {
-		appFs.RemoveAll(uuidFile)
+		ms.appFs.RemoveAll(uuidFile)
 	}
 	err = os.Setenv(config.EdgMarbleUUIDFile, uuidFile)
 	ms.assert.Nil(err, "failed to set env variable: %v", err)
@@ -218,7 +218,7 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 	}
 
 	// call preMain
-	params, err := preMain(cert, privk, issuer, appFs)
+	params, err := preMain(cert, privk, issuer, ms.appFs)
 	if !shouldSucceed {
 		ms.assert.NotNil(err, err)
 		ms.assert.Nil(params, "expected empty params, but got %v", params)
@@ -238,7 +238,7 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 	ms.assert.Equal(newCert.Issuer.CommonName, coordinatorCommonName, "expected equal: '%v' - '%v'", newCert.Issuer.CommonName, coordinatorCommonName)
 	ms.assert.Equal(newCert.Subject.Organization[0], newCert.Issuer.Organization[0], "expected equal: '%v' - '%v'", newCert.Subject.Organization[0], newCert.Issuer.Organization[0])
 
-	uuidBytes, err := afero.ReadFile(appFs, uuidFile)
+	uuidBytes, err := afero.ReadFile(ms.appFs, uuidFile)
 	ms.assert.Nil(err, "error reading uuidFile: %v", err)
 	marbleUUID, err := uuid.NewUUID()
 	ms.assert.Nil(err, "error creating UUID: %v", err)
