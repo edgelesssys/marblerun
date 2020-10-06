@@ -44,7 +44,7 @@ func TestMarbleAPI(t *testing.T) {
 	}
 
 	// try to activate first backend marble prematurely before manifest is set
-	// spawner.newMarble(coreServer, "backend_first", "Azure", false)
+	spawner.newMarble(coreServer, "backend_first", "Azure", false)
 
 	// set manifest
 	assert.Nil(coreServer.SetManifest(context.TODO(), []byte(test.ManifestJSON)))

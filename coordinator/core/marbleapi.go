@@ -16,7 +16,6 @@ import (
 	"github.com/edgelesssys/coordinator/coordinator/rpc"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/hkdf"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -24,54 +23,49 @@ import (
 // Activate activates a marble (implements the MarbleServer interface)
 func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.ActivationResp, error) {
 	log.Println("activation request for type", req.MarbleType)
+	defer c.mux.Unlock()
+	if err := c.requireState(acceptingMarbles); err != nil {
+		return nil, status.Error(codes.FailedPrecondition, "cannot accept marbles in current state")
+	}
 
 	// get the marble's TLS cert (used in this connection) and check corresponding quote
 	tlsCert := getClientTLSCert(ctx)
 	if tlsCert == nil {
-		err := status.Error(codes.Unauthenticated, "couldn't get marble TLS certificate")
-		log.Println(err.Error())
-		return nil, err
+		return nil, status.Error(codes.Unauthenticated, "couldn't get marble TLS certificate")
 	}
 
 	if err := c.verifyManifestRequirement(tlsCert, req.GetQuote(), req.GetMarbleType()); err != nil {
-		log.Println(err.Error())
 		return nil, err
 	}
 	uuidStr := req.GetUUID()
 	marbleUUID, err := uuid.Parse(uuidStr)
 	if err != nil {
-		log.Println(err.Error())
 		return nil, err
 	}
 	// generate key-pair for marble
 	pubk, privk, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
-		log.Println(err.Error())
 		return nil, err
 	}
 	encodedPrivKey, err := x509.MarshalPKCS8PrivateKey(privk)
 	if err != nil {
-		log.Println(err.Error())
 		return nil, err
 	}
 
 	// Derive sealing key using HKDF and return it to marble
 	uuidBytes, err := marbleUUID.MarshalBinary()
 	if err != nil {
-		log.Println(err.Error())
 		return nil, err
 	}
 	// Derive key
 	hkdf := hkdf.New(sha256.New, uuidBytes, c.privk.Seed(), nil)
 	sealKey := make([]byte, 32)
 	if _, err := io.ReadFull(hkdf, sealKey); err != nil {
-		log.Println(err.Error())
 		return nil, err
 	}
 
 	certRaw, err := c.generateCertFromCSR(req.GetCSR(), pubk, req.GetMarbleType(), marbleUUID.String())
 	if err != nil {
-		log.Println(err.Error())
 		return nil, err
 	}
 
@@ -190,29 +184,4 @@ func customizeParameters(params rpc.Parameters, rootCA []byte, marbleCert []byte
 	}
 
 	return customParams
-}
-
-// MarbleAPIInterceptor implements the gRPC's UnaryServerInterceptor interface to handle state requirements for the MarbleAPI
-type MarbleAPIInterceptor struct {
-	Core *Core
-}
-
-// UnaryServerInterceptor verifies if the core's state allows acceptance of marbles
-func (mai *MarbleAPIInterceptor) UnaryServerInterceptor(ctx context.Context,
-	req interface{},
-	info *grpc.UnaryServerInfo,
-	handler grpc.UnaryHandler) (interface{}, error) {
-	// Check if we are in the required state
-	log.Println("FullMethod:", info.FullMethod)
-	if info.FullMethod == "/rpc.Marble/Activate" {
-		defer mai.Core.mux.Unlock()
-		if err := mai.Core.requireState(acceptingMarbles); err != nil {
-			err = status.Error(codes.FailedPrecondition, "cannot accept marbles in current state")
-			log.Println(err.Error())
-			return nil, err
-		}
-	}
-
-	// Calls the handler
-	return handler(ctx, req)
 }
