@@ -17,11 +17,12 @@ import (
 
 var manifest core.Manifest
 
-func TestMain(m *testing.M) {
+func init() {
 	if err := json.Unmarshal([]byte(test.ManifestJSON), &manifest); err != nil {
 		log.Fatalln(err)
 	}
 }
+
 func TestQuote(t *testing.T) {
 	assert := assert.New(t)
 	validator := quote.NewMockValidator()
