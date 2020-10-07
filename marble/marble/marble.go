@@ -173,26 +173,11 @@ func PreMainMock() error {
 
 func preMain(cert *x509.Certificate, privk ed25519.PrivateKey, issuer quote.Issuer) (*rpc.Parameters, error) {
 	// get env variables
-	coordAddr := os.Getenv(EdgCoordinatorAddr)
-	if len(coordAddr) == 0 {
-		return nil, fmt.Errorf("environment variable not set: %v", EdgCoordinatorAddr)
-	}
-
-	marbleType := os.Getenv(EdgMarbleType)
-	if len(marbleType) == 0 {
-		return nil, fmt.Errorf("environment variable not set: %v", EdgMarbleType)
-	}
-
-	marbleDNSNames := []string{}
-	marbleDNSNamesString := os.Getenv(EdgMarbleDNSNames)
-	if len(marbleType) > 0 {
-		marbleDNSNames = strings.Split(marbleDNSNamesString, ",")
-	}
-
-	uuidFile := os.Getenv(EdgMarbleUUIDFile)
-	if len(uuidFile) == 0 {
-		return nil, fmt.Errorf("environment variable not set: %v", EdgMarbleUUIDFile)
-	}
+	coordAddr := util.MustGetenv(config.EdgCoordinatorAddr)
+	marbleType := util.MustGetenv(config.EdgMarbleType)
+	marbleDNSNamesString := util.MustGetenv(config.EdgMarbleDNSNames)
+	marbleDNSNames := strings.Split(marbleDNSNamesString, ",")
+	uuidFile := util.MustGetenv(config.EdgMarbleUUIDFile)
 
 	// load TLS Credentials
 	tlsCredentials, err := loadTLSCredentials(cert, privk)

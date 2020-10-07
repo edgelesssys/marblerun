@@ -103,6 +103,7 @@ const manifestJSON string = `{
 var coordinatorExe = flag.String("c", "", "Coordinator executable")
 var marbleExe = flag.String("m", "", "Marble executable")
 var simulationMode = flag.Bool("s", false, "Execute test in simulation mode (without real quoting)")
+var noenclave = flag.Bool("noenclave", false, "Do not run with erthost")
 var marbleServerAddr, clientServerAddr string
 var manifest core.Manifest
 
@@ -263,7 +264,7 @@ func TestRestart(t *testing.T) {
 	_ = runMarble(assert, clientCfg, true, true)
 }
 
-func runMarble(assert *assert.Assertions, marbleCfg string, shouldSucceed bool, terminates bool) *exec.Cmd {
+func runMarble(assert *assert.Assertions, marbleCfg marbleConfig, shouldSucceed bool, terminates bool) *exec.Cmd {
 	log.Println("Starting marble")
 	marbleCmd := startMarble(marbleCfg)
 	assert.NotNil(marbleCmd)
@@ -380,55 +381,49 @@ func TestClientAPI(t *testing.T) {
 type coordinatorConfig struct {
 	MeshServerAddr   string
 	ClientServerAddr string
-	DataPath         string
+	SealDir          string
 }
 
-func createCoordinatorConfig() string {
+func createCoordinatorConfig(dnsNames string) coordinatorConfig {
 	tempDir, err := ioutil.TempDir("/tmp", "edg_coordinator_*")
 	if err != nil {
 		panic(err)
 	}
-	cfg := coordinatorConfig{MeshServerAddr: marbleServerAddr, ClientServerAddr: clientServerAddr, DataPath: tempDir}
+	cfg := coordinatorConfig{MeshServerAddr: marbleServerAddr, ClientServerAddr: clientServerAddr, DNSNames: dnsNames, SealDir: tempDir}
 
-	jsonCfg, err := json.Marshal(cfg)
-	if err != nil {
-		panic(err)
+	return cfg
 	}
 
-	file, err := ioutil.TempFile("", "")
-	if err != nil {
+func cleanupCoordinatorConfig(cfg coordinatorConfig) {
+	if err := os.RemoveAll(cfg.SealDir); err != nil {
 		panic(err)
 	}
-
-	name := file.Name()
-
-	_, err = file.Write(jsonCfg)
-	file.Close()
-	if err != nil {
-		os.Remove(name)
-		panic(err)
 	}
 
-	return name
+func makeEnv(key, value string) string {
+	return fmt.Sprintf("%v=%v", key, value)
 }
 
-func cleanupCoordinatorConfig(filename string) {
-	jsonCfg, err := ioutil.ReadFile(filename)
-	os.Remove(filename)
-	if err != nil {
-		panic(err)
+func startCoordinator(cfg coordinatorConfig) *os.Process {
+	var cmd *exec.Cmd
+	if *noenclave {
+		cmd = exec.Command(*coordinatorExe)
+	} else {
+		cmd = exec.Command("erthost", *coordinatorExe)
 	}
-	var cfg coordinatorConfig
-	if err := json.Unmarshal(jsonCfg, &cfg); err != nil {
-		panic(err)
+	var simFlag string
+	if *simulationMode {
+		simFlag = makeEnv("OE_SIMULATION", "1")
+	} else {
+		simFlag = makeEnv("OE_SIMULATION", "0")
 	}
-	if err := os.RemoveAll(cfg.DataPath); err != nil {
-		panic(err)
-	}
+	cmd.Env = []string{
+		makeEnv(config.EdgMeshServerAddr, cfg.MeshServerAddr),
+		makeEnv(config.EdgClientServerAddr, cfg.ClientServerAddr),
+		makeEnv(config.EdgCoordinatorDNSNames, cfg.DNSNames),
+		makeEnv(config.EdgCoordinatorSealDir, cfg.SealDir),
+		simFlag,
 }
-
-func startCoordinator(configFilename string) *os.Process {
-	cmd := exec.Command(*coordinatorExe, "-c", configFilename)
 	output := make(chan []byte)
 	go func() {
 		out, _ := cmd.CombinedOutput()
@@ -503,7 +498,7 @@ type marbleConfig struct {
 	DataPath        string
 }
 
-func createMarbleConfig(coordinatorAddr, marbleType, marbleDNSNames string) string {
+func createMarbleConfig(coordinatorAddr, marbleType, marbleDNSNames string) marbleConfig {
 	cfg := marbleConfig{
 		CoordinatorAddr: coordinatorAddr,
 		MarbleType:      marbleType,
@@ -514,47 +509,36 @@ func createMarbleConfig(coordinatorAddr, marbleType, marbleDNSNames string) stri
 	if err != nil {
 		panic(err)
 	}
-	jsonCfg, err := json.Marshal(cfg)
-	if err != nil {
-		os.RemoveAll(cfg.DataPath)
-		panic(err)
+	return cfg
 	}
 
-	file, err := ioutil.TempFile("", "")
-	if err != nil {
-		os.RemoveAll(cfg.DataPath)
-		panic(err)
-	}
-
-	name := file.Name()
-
-	_, err = file.Write(jsonCfg)
-	file.Close()
-	if err != nil {
-		os.Remove(name)
-		os.RemoveAll(cfg.DataPath)
-		panic(err)
-	}
-	return name
-}
-
-func cleanupMarbleConfig(filename string) {
-	jsonCfg, err := ioutil.ReadFile(filename)
-	os.Remove(filename)
-	if err != nil {
-		panic(err)
-	}
-	var cfg marbleConfig
-	if err := json.Unmarshal(jsonCfg, &cfg); err != nil {
-		panic(err)
-	}
+func cleanupMarbleConfig(cfg marbleConfig) {
 	if err := os.RemoveAll(cfg.DataPath); err != nil {
 		panic(err)
 	}
 }
 
-func startMarble(cfgFilename string) *exec.Cmd {
-	cmd := exec.Command(*marbleExe, "-c", cfgFilename)
+func startMarble(cfg marbleConfig) *exec.Cmd {
+	var cmd *exec.Cmd
+	if *noenclave {
+		cmd = exec.Command(*marbleExe)
+	} else {
+		cmd = exec.Command("erthost", *marbleExe)
+	}
+	var simFlag string
+	if *simulationMode {
+		simFlag = makeEnv("OE_SIMULATION", "1")
+	} else {
+		simFlag = makeEnv("OE_SIMULATION", "0")
+	}
+	uuidFile := filepath.Join(cfg.DataPath, "uuid")
+	cmd.Env = []string{
+		makeEnv(mConfig.EdgCoordinatorAddr, cfg.CoordinatorAddr),
+		makeEnv(mConfig.EdgMarbleType, cfg.MarbleType),
+		makeEnv(mConfig.EdgMarbleDNSNames, cfg.DNSNames),
+		makeEnv(mConfig.EdgMarbleUUIDFile, uuidFile),
+		simFlag,
+}
 	if err := cmd.Start(); err != nil {
 		panic(err)
 	}

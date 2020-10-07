@@ -33,7 +33,13 @@ func coordinatormain() {
 	if err != nil {
 		panic(err)
 	}
-	sealDir := filepath.Join("coordinator", "data", "sealing")
+	sealDir := util.MustGetenv(config.EdgCoordinatorSealDir)
+	sealDir = filepath.Join(filepath.FromSlash("/edg"), "hostfs", sealDir)
+	dnsNamesString := util.MustGetenv(config.EdgCoordinatorDNSNames)
+	dnsNames := strings.Split(dnsNamesString, ",")
+	clientServerAddr := util.MustGetenv(config.EdgClientServerAddr)
+	meshServerAddr := util.MustGetenv(config.EdgMeshServerAddr)
+
 	if err := os.MkdirAll(sealDir, 0700); err != nil {
 		panic(err)
 	}
@@ -49,12 +55,12 @@ func coordinatormain() {
 	if err != nil {
 		panic(err)
 	}
-	go server.RunClientServer(mux, cfg.ClientServerAddr, clientServerTLSConfig)
+	go server.RunClientServer(mux, clientServerAddr, clientServerTLSConfig)
 
 	// run marble server
 	addrChan := make(chan string)
 	errChan := make(chan error)
-	go server.RunMarbleServer(core, cfg.MeshServerAddr, addrChan, errChan)
+	go server.RunMarbleServer(core, meshServerAddr, addrChan, errChan)
 	for {
 		select {
 		case err := <-errChan:

@@ -73,10 +73,7 @@ func PremainTarget(argc int, argv []string, env []string) int {
 }
 
 func parsePemFromEnv(env []string, certName string) (*pem.Block, []byte, error) {
-	certRaw := os.Getenv(certName)
-	if len(certRaw) == 0 {
-		return nil, nil, fmt.Errorf("could not find certificate in env")
-	}
+	certRaw := util.MustGetenv(certName)
 	certPem, _ := pem.Decode([]byte(certRaw))
 	if certPem == nil {
 		return nil, nil, fmt.Errorf("could not decode certificate in PEM format")

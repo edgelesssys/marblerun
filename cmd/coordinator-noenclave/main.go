@@ -20,7 +20,12 @@ func main() {
 	validator := quote.NewFailValidator()
 	issuer := quote.NewFailIssuer()
 	sealKey := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
-	sealDir := filepath.Join(cfg.DataPath, "sealing")
+	sealDir := util.MustGetenv(config.EdgCoordinatorSealDir)
+	dnsNamesString := util.MustGetenv(config.EdgCoordinatorDNSNames)
+	dnsNames := strings.Split(dnsNamesString, ",")
+	clientServerAddr := util.MustGetenv(config.EdgClientServerAddr)
+	meshServerAddr := util.MustGetenv(config.EdgMeshServerAddr)
+
 	if err := os.MkdirAll(sealDir, 0700); err != nil {
 		panic(err)
 	}
@@ -36,12 +41,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	go server.RunClientServer(mux, cfg.ClientServerAddr, clientServerTLSConfig)
+	go server.RunClientServer(mux, clientServerAddr, clientServerTLSConfig)
 
 	// run marble server
 	addrChan := make(chan string)
 	errChan := make(chan error)
-	go server.RunMarbleServer(core, cfg.MeshServerAddr, addrChan, errChan)
+	go server.RunMarbleServer(core, meshServerAddr, addrChan, errChan)
 	for {
 		select {
 		case err := <-errChan:
