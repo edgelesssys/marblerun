@@ -2,9 +2,7 @@ package server
 
 import (
 	"bytes"
-	"encoding/json"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -14,14 +12,6 @@ import (
 	"github.com/edgelesssys/coordinator/test"
 	"github.com/stretchr/testify/assert"
 )
-
-var manifest core.Manifest
-
-func init() {
-	if err := json.Unmarshal([]byte(test.ManifestJSON), &manifest); err != nil {
-		log.Fatalln(err)
-	}
-}
 
 func TestQuote(t *testing.T) {
 	assert := assert.New(t)
