@@ -9,8 +9,10 @@ import (
 	"crypto/x509/pkix"
 	"encoding/json"
 	"errors"
+	"log"
 	"math"
 	"math/big"
+	"net"
 	"sync"
 	"time"
 
@@ -70,7 +72,7 @@ func (c *Core) advanceState() {
 }
 
 // NewCore creates and initializes a new Core object
-func NewCore(orgName string, qv quote.Validator, qi quote.Issuer, sealer Sealer) (*Core, error) {
+func NewCore(orgName string, dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer Sealer) (*Core, error) {
 	c := &Core{
 		state:       uninitialized,
 		activations: make(map[string]uint),
@@ -78,12 +80,15 @@ func NewCore(orgName string, qv quote.Validator, qi quote.Issuer, sealer Sealer)
 		qi:          qi,
 		sealer:      sealer,
 	}
-	cert, privk, err := c.loadState(orgName)
+	log.Println("loading state")
+	cert, privk, err := c.loadState(orgName, dnsNames)
 	if err != nil {
 		return nil, err
 	}
+	log.Println("generating quote")
 	quote, err := c.qi.Issue(cert.Raw)
 	if err != nil {
+		log.Println("failed to get quote. Proceeding in simulation mode")
 		// If we run in SimulationMode we get an error here
 		// For testing purpose we do not want to just fail here
 		// Instead we store an empty quote that will make it transparent to the client that the network is not secure
@@ -135,16 +140,18 @@ func (c *Core) GetTLSCertificate() (*tls.Certificate, error) {
 	return tlsCertFromDER(c.cert.Raw, c.privk), nil
 }
 
-func (c *Core) loadState(orgName string) (*x509.Certificate, ed25519.PrivateKey, error) {
+func (c *Core) loadState(orgName string, dnsNames []string) (*x509.Certificate, ed25519.PrivateKey, error) {
 	stateRaw, err := c.sealer.Unseal()
 	if err != nil {
 		return nil, nil, err
 	}
 	// generate new state if there isn't something in the fs yet
 	if len(stateRaw) == 0 {
-		return c.generateCert(orgName)
+		log.Println("no sealed state found. Proceeding with new state")
+		return c.generateCert(orgName, dnsNames)
 	}
 	// load state
+	log.Println("loading state from fs")
 	var loadedState sealedState
 	if err := json.Unmarshal(stateRaw, &loadedState); err != nil {
 		return nil, nil, err
@@ -183,7 +190,7 @@ func generateSerial() (*big.Int, error) {
 	return rand.Int(rand.Reader, serialNumberLimit)
 }
 
-func (c *Core) generateCert(orgName string) (*x509.Certificate, ed25519.PrivateKey, error) {
+func (c *Core) generateCert(orgName string, dnsNames []string) (*x509.Certificate, ed25519.PrivateKey, error) {
 	defer c.mux.Unlock()
 	if err := c.requireState(uninitialized); err != nil {
 		return nil, nil, err
@@ -210,8 +217,10 @@ func (c *Core) generateCert(orgName string) (*x509.Certificate, ed25519.PrivateK
 			Organization: []string{orgName},
 			CommonName:   coordinatorName,
 		},
-		NotBefore: notBefore,
-		NotAfter:  notAfter,
+		DNSNames:    dnsNames,
+		IPAddresses: []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
+		NotBefore:   notBefore,
+		NotAfter:    notAfter,
 
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},

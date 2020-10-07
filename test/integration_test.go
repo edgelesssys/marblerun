@@ -14,95 +14,20 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/edgelesssys/coordinator/coordinator/config"
 	"github.com/edgelesssys/coordinator/coordinator/core"
+	mConfig "github.com/edgelesssys/coordinator/marble/config"
 	"github.com/stretchr/testify/assert"
 )
-
-// TODO: Use correct values here
-const manifestJSON string = `{
-	"Packages": {
-		"backend": {
-			"Debug": true,
-			"SecurityVersion": 1,
-			"ProductID": [3]
-		},
-		"frontend": {
-			"Debug": true,
-			"SecurityVersion": 2,
-			"ProductID": [3]
-		}
-	},
-	"Infrastructures": {
-		"Azure": {
-			"QESVN": 2,
-			"PCESVN": 3,
-			"CPUSVN": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
-			"RootCA": [3,3,3]
-		}
-	},
-	"Marbles": {
-		"test_marble_server": {
-			"Package": "backend",
-			"Parameters": {
-				"Files": {
-					"/tmp/defg.txt": "foo",
-					"/tmp/jkl.mno": "bar"
-				},
-				"Argv": [
-					"serve"
-				],
-				"Env": {
-					"IS_FIRST": "true",
-					"ROOT_CA": "$$root_ca",
-					"SEAL_KEY": "$$seal_key",
-					"MARBLE_CERT": "$$marble_cert",
-					"MARBLE_KEY": "$$marble_key"
-			}
-			}
-		},
-		"test_marble_client": {
-			"Package": "backend",
-			"Parameters": {
-				"Files": {
-					"/tmp/defg.txt": "foo",
-					"/tmp/jkl.mno": "bar"
-				},
-				"Env": {
-					"IS_FIRST": "true",
-					"ROOT_CA": "$$root_ca",
-					"SEAL_KEY": "$$seal_key",
-					"MARBLE_CERT": "$$marble_cert",
-					"MARBLE_KEY": "$$marble_key"
-			}
-			}
-		},
-		"bad_marble": {
-			"Package": "frontend",
-			"Parameters": {
-				"Files": {
-					"/tmp/defg.txt": "foo",
-					"/tmp/jkl.mno": "bar"
-				},
-				"Env": {
-					"ROOT_CA": "$$root_ca",
-					"SEAL_KEY": "$$seal_key",
-					"MARBLE_CERT": "$$marble_cert",
-					"MARBLE_KEY": "$$marble_key"
-			}
-		}
-		}
-	},
-	"Clients": {
-		"owner": [9,9,9]
-	}
-}`
 
 var coordinatorExe = flag.String("c", "", "Coordinator executable")
 var marbleExe = flag.String("m", "", "Marble executable")
 var simulationMode = flag.Bool("s", false, "Execute test in simulation mode (without real quoting)")
+var noenclave = flag.Bool("noenclave", false, "Do not run with erthost")
 var marbleServerAddr, clientServerAddr string
 var manifest core.Manifest
 
@@ -123,7 +48,7 @@ func TestMain(m *testing.M) {
 		log.Fatalln(err)
 	}
 
-	if err := json.Unmarshal([]byte(manifestJSON), &manifest); err != nil {
+	if err := json.Unmarshal([]byte(IntegrationManifestJSON), &manifest); err != nil {
 		log.Fatalln(err)
 	}
 
@@ -159,11 +84,11 @@ func getListenerAndAddr() (net.Listener, string) {
 func TestTest(t *testing.T) {
 	assert := assert.New(t)
 
-	cfgFilename := createCoordinatorConfig()
+	cfgFilename := createCoordinatorConfig("localhost")
 	defer cleanupCoordinatorConfig(cfgFilename)
 	assert.Nil(startCoordinator(cfgFilename).Kill())
 
-	marbleCfg := createMarbleConfig(marbleServerAddr, "test_marble_client", "")
+	marbleCfg := createMarbleConfig(marbleServerAddr, "test_marble_client", "localhost")
 	defer cleanupMarbleConfig(marbleCfg)
 	assert.Nil(startMarble(marbleCfg).Process.Kill())
 }
@@ -173,7 +98,7 @@ func TestMarbleAPI(t *testing.T) {
 
 	// start Coordinator
 	log.Println("Starting a coordinator enclave")
-	cfgFilename := createCoordinatorConfig()
+	cfgFilename := createCoordinatorConfig("localhost")
 	defer cleanupCoordinatorConfig(cfgFilename)
 	coordinatorProc := startCoordinator(cfgFilename)
 	assert.NotNil(coordinatorProc)
@@ -192,7 +117,7 @@ func TestMarbleAPI(t *testing.T) {
 
 	// start server
 	log.Println("Starting a Server-Marble")
-	serverCfg := createMarbleConfig(marbleServerAddr, "test_marble_server", "server,backend")
+	serverCfg := createMarbleConfig(marbleServerAddr, "test_marble_server", "server,backend,localhost")
 	defer cleanupMarbleConfig(serverCfg)
 	serverCmd := runMarble(assert, serverCfg, true, false)
 	defer serverCmd.Process.Kill()
@@ -200,13 +125,13 @@ func TestMarbleAPI(t *testing.T) {
 	// start clients
 	log.Println("Starting a bunch of Client-Marbles")
 	assert.Nil(err, "failed to start server-marble: %v", err)
-	clientCfg := createMarbleConfig(marbleServerAddr, "test_marble_client", "client,frontend")
+	clientCfg := createMarbleConfig(marbleServerAddr, "test_marble_client", "client,frontend,localhost")
 	defer cleanupMarbleConfig(clientCfg)
 	_ = runMarble(assert, clientCfg, true, true)
 	_ = runMarble(assert, clientCfg, true, true)
 	if !*simulationMode {
 		// start bad marbles (would be accepted if we run in SimulationMode)
-		badCfg := createMarbleConfig(marbleServerAddr, "bad_marble", "bad")
+		badCfg := createMarbleConfig(marbleServerAddr, "bad_marble", "bad,localhost")
 		defer cleanupMarbleConfig(badCfg)
 		_ = runMarble(assert, badCfg, false, true)
 		_ = runMarble(assert, badCfg, false, true)
@@ -218,7 +143,7 @@ func TestRestart(t *testing.T) {
 	log.Println("Testing the restart capabilities")
 	// start Coordinator
 	log.Println("Starting a coordinator enclave")
-	cfgFilename := createCoordinatorConfig()
+	cfgFilename := createCoordinatorConfig("localhost")
 	defer cleanupCoordinatorConfig(cfgFilename)
 	coordinatorProc := startCoordinator(cfgFilename)
 	assert.NotNil(coordinatorProc)
@@ -228,7 +153,7 @@ func TestRestart(t *testing.T) {
 	assert.Nil(err, "failed to set Manifest: %v", err)
 	// start server
 	log.Println("Starting a Server-Marble")
-	serverCfg := createMarbleConfig(marbleServerAddr, "test_marble_server", "server,backend")
+	serverCfg := createMarbleConfig(marbleServerAddr, "test_marble_server", "server,backend,localhost")
 	defer cleanupMarbleConfig(serverCfg)
 	serverCmd := runMarble(assert, serverCfg, true, false)
 	defer serverCmd.Process.Kill()
@@ -236,7 +161,7 @@ func TestRestart(t *testing.T) {
 	// start clients
 	log.Println("Starting a bunch of Client-Marbles")
 	assert.Nil(err, "failed to start server-marble: %v", err)
-	clientCfg := createMarbleConfig(marbleServerAddr, "test_marble_client", "client,frontend")
+	clientCfg := createMarbleConfig(marbleServerAddr, "test_marble_client", "client,frontend,localhost")
 	defer cleanupMarbleConfig(clientCfg)
 	_ = runMarble(assert, clientCfg, true, true)
 	_ = runMarble(assert, clientCfg, true, true)
@@ -263,7 +188,7 @@ func TestRestart(t *testing.T) {
 	_ = runMarble(assert, clientCfg, true, true)
 }
 
-func runMarble(assert *assert.Assertions, marbleCfg string, shouldSucceed bool, terminates bool) *exec.Cmd {
+func runMarble(assert *assert.Assertions, marbleCfg marbleConfig, shouldSucceed bool, terminates bool) *exec.Cmd {
 	log.Println("Starting marble")
 	marbleCmd := startMarble(marbleCfg)
 	assert.NotNil(marbleCmd)
@@ -313,7 +238,7 @@ func TestClientAPI(t *testing.T) {
 	eof := errors.New("EOF")
 
 	// start Coordinator
-	cfgFilename := createCoordinatorConfig()
+	cfgFilename := createCoordinatorConfig("localhost")
 	defer cleanupCoordinatorConfig(cfgFilename)
 	coordinatorProc := startCoordinator(cfgFilename)
 	assert.NotNil(coordinatorProc, "could not start coordinator")
@@ -349,7 +274,7 @@ func TestClientAPI(t *testing.T) {
 	resp.Body.Close()
 
 	//set Manifest
-	resp, err = client.Post(clientAPIURL.String(), "application/json", bytes.NewBuffer([]byte(manifestJSON)))
+	resp, err = client.Post(clientAPIURL.String(), "application/json", bytes.NewBuffer([]byte(IntegrationManifestJSON)))
 
 	assert.Nil(err)
 	assert.Equal(http.StatusOK, resp.StatusCode)
@@ -368,7 +293,7 @@ func TestClientAPI(t *testing.T) {
 	assert.NotContains(string(buffer), "{\"ManifestSignature\":null}")
 
 	//try set manifest again
-	resp, err = client.Post(clientAPIURL.String(), "application/json", bytes.NewBuffer([]byte(manifestJSON)))
+	resp, err = client.Post(clientAPIURL.String(), "application/json", bytes.NewBuffer([]byte(IntegrationManifestJSON)))
 	assert.Nil(err)
 	assert.Equal(http.StatusBadRequest, resp.StatusCode)
 	resp.Body.Close()
@@ -380,55 +305,50 @@ func TestClientAPI(t *testing.T) {
 type coordinatorConfig struct {
 	MeshServerAddr   string
 	ClientServerAddr string
-	DataPath         string
+	DNSNames         string
+	SealDir          string
 }
 
-func createCoordinatorConfig() string {
+func createCoordinatorConfig(dnsNames string) coordinatorConfig {
 	tempDir, err := ioutil.TempDir("/tmp", "edg_coordinator_*")
 	if err != nil {
 		panic(err)
 	}
-	cfg := coordinatorConfig{MeshServerAddr: marbleServerAddr, ClientServerAddr: clientServerAddr, DataPath: tempDir}
+	cfg := coordinatorConfig{MeshServerAddr: marbleServerAddr, ClientServerAddr: clientServerAddr, DNSNames: dnsNames, SealDir: tempDir}
 
-	jsonCfg, err := json.Marshal(cfg)
-	if err != nil {
-		panic(err)
-	}
-
-	file, err := ioutil.TempFile("", "")
-	if err != nil {
-		panic(err)
-	}
-
-	name := file.Name()
-
-	_, err = file.Write(jsonCfg)
-	file.Close()
-	if err != nil {
-		os.Remove(name)
-		panic(err)
-	}
-
-	return name
+	return cfg
 }
 
-func cleanupCoordinatorConfig(filename string) {
-	jsonCfg, err := ioutil.ReadFile(filename)
-	os.Remove(filename)
-	if err != nil {
-		panic(err)
-	}
-	var cfg coordinatorConfig
-	if err := json.Unmarshal(jsonCfg, &cfg); err != nil {
-		panic(err)
-	}
-	if err := os.RemoveAll(cfg.DataPath); err != nil {
+func cleanupCoordinatorConfig(cfg coordinatorConfig) {
+	if err := os.RemoveAll(cfg.SealDir); err != nil {
 		panic(err)
 	}
 }
 
-func startCoordinator(configFilename string) *os.Process {
-	cmd := exec.Command(*coordinatorExe, "-c", configFilename)
+func makeEnv(key, value string) string {
+	return fmt.Sprintf("%v=%v", key, value)
+}
+
+func startCoordinator(cfg coordinatorConfig) *os.Process {
+	var cmd *exec.Cmd
+	if *noenclave {
+		cmd = exec.Command(*coordinatorExe)
+	} else {
+		cmd = exec.Command("erthost", *coordinatorExe)
+	}
+	var simFlag string
+	if *simulationMode {
+		simFlag = makeEnv("OE_SIMULATION", "1")
+	} else {
+		simFlag = makeEnv("OE_SIMULATION", "0")
+	}
+	cmd.Env = []string{
+		makeEnv(config.EdgMeshServerAddr, cfg.MeshServerAddr),
+		makeEnv(config.EdgClientServerAddr, cfg.ClientServerAddr),
+		makeEnv(config.EdgCoordinatorDNSNames, cfg.DNSNames),
+		makeEnv(config.EdgCoordinatorSealDir, cfg.SealDir),
+		simFlag,
+	}
 	output := make(chan []byte)
 	go func() {
 		out, _ := cmd.CombinedOutput()
@@ -503,7 +423,7 @@ type marbleConfig struct {
 	DataPath        string
 }
 
-func createMarbleConfig(coordinatorAddr, marbleType, marbleDNSNames string) string {
+func createMarbleConfig(coordinatorAddr, marbleType, marbleDNSNames string) marbleConfig {
 	cfg := marbleConfig{
 		CoordinatorAddr: coordinatorAddr,
 		MarbleType:      marbleType,
@@ -514,47 +434,36 @@ func createMarbleConfig(coordinatorAddr, marbleType, marbleDNSNames string) stri
 	if err != nil {
 		panic(err)
 	}
-	jsonCfg, err := json.Marshal(cfg)
-	if err != nil {
-		os.RemoveAll(cfg.DataPath)
-		panic(err)
-	}
-
-	file, err := ioutil.TempFile("", "")
-	if err != nil {
-		os.RemoveAll(cfg.DataPath)
-		panic(err)
-	}
-
-	name := file.Name()
-
-	_, err = file.Write(jsonCfg)
-	file.Close()
-	if err != nil {
-		os.Remove(name)
-		os.RemoveAll(cfg.DataPath)
-		panic(err)
-	}
-	return name
+	return cfg
 }
 
-func cleanupMarbleConfig(filename string) {
-	jsonCfg, err := ioutil.ReadFile(filename)
-	os.Remove(filename)
-	if err != nil {
-		panic(err)
-	}
-	var cfg marbleConfig
-	if err := json.Unmarshal(jsonCfg, &cfg); err != nil {
-		panic(err)
-	}
+func cleanupMarbleConfig(cfg marbleConfig) {
 	if err := os.RemoveAll(cfg.DataPath); err != nil {
 		panic(err)
 	}
 }
 
-func startMarble(cfgFilename string) *exec.Cmd {
-	cmd := exec.Command(*marbleExe, "-c", cfgFilename)
+func startMarble(cfg marbleConfig) *exec.Cmd {
+	var cmd *exec.Cmd
+	if *noenclave {
+		cmd = exec.Command(*marbleExe)
+	} else {
+		cmd = exec.Command("erthost", *marbleExe)
+	}
+	var simFlag string
+	if *simulationMode {
+		simFlag = makeEnv("OE_SIMULATION", "1")
+	} else {
+		simFlag = makeEnv("OE_SIMULATION", "0")
+	}
+	uuidFile := filepath.Join(cfg.DataPath, "uuid")
+	cmd.Env = []string{
+		makeEnv(mConfig.EdgCoordinatorAddr, cfg.CoordinatorAddr),
+		makeEnv(mConfig.EdgMarbleType, cfg.MarbleType),
+		makeEnv(mConfig.EdgMarbleDNSNames, cfg.DNSNames),
+		makeEnv(mConfig.EdgMarbleUUIDFile, uuidFile),
+		simFlag,
+	}
 	if err := cmd.Start(); err != nil {
 		panic(err)
 	}
