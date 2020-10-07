@@ -3,18 +3,15 @@ package marble
 import (
 	"context"
 	"crypto/ed25519"
-	"crypto/rand"
-	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
-	"math"
-	"math/big"
+	"log"
 	"net"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
+	"syscall"
 
 	"github.com/edgelesssys/coordinator/coordinator/quote"
 	"github.com/edgelesssys/coordinator/coordinator/quote/ertvalidator"
@@ -22,24 +19,25 @@ import (
 	"github.com/edgelesssys/coordinator/marble/config"
 	"github.com/edgelesssys/coordinator/util"
 	"github.com/google/uuid"
+	"github.com/spf13/afero"
 	"google.golang.org/grpc"
 )
 
 // storeUUID stores the uuid to the fs
-func storeUUID(marbleUUID uuid.UUID, filename string) error {
+func storeUUID(appFs afero.Fs, marbleUUID uuid.UUID, filename string) error {
 	uuidBytes, err := marbleUUID.MarshalBinary()
 	if err != nil {
 		return fmt.Errorf("failed to marshal UUID: %v", err)
 	}
-	if err := ioutil.WriteFile(filename, uuidBytes, 0600); err != nil {
+	if err := afero.WriteFile(appFs, filename, uuidBytes, 0600); err != nil {
 		return fmt.Errorf("failed to store uuid to file: %v", err)
 	}
 	return nil
 }
 
 // readUUID reads the uuid from the fs if present
-func readUUID(filename string) (*uuid.UUID, error) {
-	uuidBytes, err := ioutil.ReadFile(filename)
+func readUUID(appFs afero.Fs, filename string) (*uuid.UUID, error) {
+	uuidBytes, err := afero.ReadFile(appFs, filename)
 	if os.IsNotExist(err) {
 		return nil, nil
 	} else if err != nil {
@@ -67,20 +65,27 @@ func PreMain() error {
 	if err != nil {
 		return err
 	}
-	_, err = preMain(cert, privk, ertvalidator.NewERTIssuer())
+	appFs := afero.NewBasePathFs(afero.NewOsFs(), filepath.Join(filepath.FromSlash("/edg"), "hostfs"))
+	if err := syscall.Mount("/", "/", "edg_memfs", 0, ""); err != nil {
+		return err
+	}
+	_, err = preMain(cert, privk, ertvalidator.NewERTIssuer(), appFs)
 	return err
 }
 
+// PreMainMock is similar to PreMain but mocks the quoting and file handler interfaces
 func PreMainMock() error {
 	// generate certificate
 	cert, privk, err := genCert()
 	if err != nil {
 		return err
 	}
-	_, err = preMain(cert, privk, quote.NewFailIssuer())
+	appFs := afero.NewOsFs()
+	_, err = preMain(cert, privk, quote.NewFailIssuer(), appFs)
 	return err
 }
 
+func preMain(cert *x509.Certificate, privk ed25519.PrivateKey, issuer quote.Issuer, appFs afero.Fs) (*rpc.Parameters, error) {
 	log.SetPrefix("[PreMain] ")
 	log.Println("starting PreMain")
 	// get env variables
@@ -100,6 +105,7 @@ func PreMainMock() error {
 
 	// check if we have a uuid stored in the fs (means we are restarted)
 	log.Println("loading UUID")
+	existingUUID, err := readUUID(appFs, uuidFile)
 	if err != nil {
 		return nil, err
 	}
@@ -152,13 +158,15 @@ func PreMainMock() error {
 		UUID:       uuidStr,
 	}
 	c := rpc.NewMarbleClient(cc)
+	log.Println("activating marble of type", marbleType)
 	activationResp, err := c.Activate(context.Background(), req)
 	if err != nil {
 		return nil, err
 	}
 
 	// store UUID to file
-	if err := storeUUID(marbleUUID, uuidFile); err != nil {
+	log.Println("storing UUID")
+	if err := storeUUID(appFs, marbleUUID, uuidFile); err != nil {
 		return nil, err
 	}
 
@@ -166,15 +174,19 @@ func PreMainMock() error {
 	params := activationResp.GetParameters()
 
 	// Store files in file system
+	log.Println("creating files from manifest")
 	for path, data := range params.Files {
-		os.MkdirAll(filepath.Dir(path), os.ModePerm)
-		err := ioutil.WriteFile(path, []byte(data), 0600)
-		if err != nil {
+		// edg_memfs does not support creating directories yet
+		// if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
+		// 	return nil, err
+		// }
+		if err := ioutil.WriteFile(path, []byte(data), 0600); err != nil {
 			return nil, err
 		}
 	}
 
 	// Set environment variables
+	log.Println("setting env vars from manifest")
 	for key, value := range params.Env {
 		if err := os.Setenv(key, value); err != nil {
 			return nil, err
@@ -184,5 +196,6 @@ func PreMainMock() error {
 	// Set Args
 	os.Args = params.Argv
 
+	log.Println("done with PreMain")
 	return params, nil
 }

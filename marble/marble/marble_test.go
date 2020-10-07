@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"strings"
 	"testing"
@@ -16,15 +17,18 @@ import (
 	"github.com/edgelesssys/coordinator/coordinator/core"
 	"github.com/edgelesssys/coordinator/coordinator/quote"
 	"github.com/edgelesssys/coordinator/coordinator/server"
+	"github.com/edgelesssys/coordinator/marble/config"
 	"github.com/edgelesssys/coordinator/test"
+	"github.com/edgelesssys/coordinator/util"
 	"github.com/google/uuid"
+	"github.com/spf13/afero"
 
 	"github.com/stretchr/testify/assert"
 )
 
 const coordinatorCommonName string = "Coordinator" // TODO: core does not export this, for now just use it hardcoded
 
-var uuidFile string
+const uuidFile string = "uuid"
 
 var sealKey []byte
 
@@ -40,7 +44,7 @@ func TestLogic(t *testing.T) {
 
 	// create core and run gRPC server
 	sealer := core.NewMockSealer()
-	coordinator, err := core.NewCore("Edgeless Systems GmbH", validator, issuer, sealer)
+	coordinator, err := core.NewCore("Edgeless Systems GmbH", []string{"localhost"}, validator, issuer, sealer)
 	assert.NotNil(coordinator, "coordinator empty")
 	assert.Nil(err, err)
 
@@ -59,14 +63,8 @@ func TestLogic(t *testing.T) {
 		fmt.Println("start mesh server at", grpcAddr)
 	}
 
-	// create UUID file
-	tmpFile, err := ioutil.TempFile(os.TempDir(), "*_uuid")
-	if err != nil {
-		panic(err)
-	}
-	uuidFile = tmpFile.Name()
-	tmpFile.Close()
-	defer os.RemoveAll(uuidFile)
+	// create MockFileHandler
+	appFs := afero.NewMemMapFs()
 
 	spawner := marbleSpawner{
 		assert:     assert,
@@ -74,6 +72,7 @@ func TestLogic(t *testing.T) {
 		validator:  validator,
 		manifest:   manifest,
 		serverAddr: grpcAddr,
+		appFs:      appFs,
 	}
 	// activate first backend
 	spawner.newMarble("backend_first", "Azure", false, true)
@@ -108,6 +107,7 @@ type marbleSpawner struct {
 	issuer     quote.Issuer
 	serverAddr string
 	assert     *assert.Assertions
+	appFs      afero.Fs
 }
 
 func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID bool, shouldSucceed bool) {
@@ -120,7 +120,7 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 	ms.assert.Nil(err, "failed to set env variable: %v", err)
 
 	if !reuseUUID {
-		os.RemoveAll(uuidFile)
+		ms.appFs.RemoveAll(uuidFile)
 	}
 	err = os.Setenv(config.EdgMarbleUUIDFile, uuidFile)
 	ms.assert.Nil(err, "failed to set env variable: %v", err)
@@ -158,6 +158,7 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 
 		// check files
 		for path, data := range marble.Parameters.Files {
+			defer os.RemoveAll(path)
 			readContent, err := ioutil.ReadFile(path)
 			ms.assert.Nil(err, "error reading file %v: %v", path, err)
 			if !strings.Contains(data, "$$") {
@@ -217,7 +218,7 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 	}
 
 	// call preMain
-	params, err := preMain(cert, privk, issuer)
+	params, err := preMain(cert, privk, issuer, ms.appFs)
 	if !shouldSucceed {
 		ms.assert.NotNil(err, err)
 		ms.assert.Nil(params, "expected empty params, but got %v", params)
@@ -237,7 +238,7 @@ func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID
 	ms.assert.Equal(newCert.Issuer.CommonName, coordinatorCommonName, "expected equal: '%v' - '%v'", newCert.Issuer.CommonName, coordinatorCommonName)
 	ms.assert.Equal(newCert.Subject.Organization[0], newCert.Issuer.Organization[0], "expected equal: '%v' - '%v'", newCert.Subject.Organization[0], newCert.Issuer.Organization[0])
 
-	uuidBytes, err := ioutil.ReadFile(uuidFile)
+	uuidBytes, err := afero.ReadFile(ms.appFs, uuidFile)
 	ms.assert.Nil(err, "error reading uuidFile: %v", err)
 	marbleUUID, err := uuid.NewUUID()
 	ms.assert.Nil(err, "error creating UUID: %v", err)
