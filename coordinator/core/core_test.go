@@ -16,7 +16,7 @@ func TestCore(t *testing.T) {
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
 	sealer := NewMockSealer()
-	c, err := NewCore("edgeless", validator, issuer, sealer)
+	c, err := NewCore("edgeless", []string{"localhost"}, validator, issuer, sealer)
 	assert.NotNil(c)
 	assert.Nil(err)
 	assert.Equal(acceptingManifest, c.state)
@@ -56,7 +56,7 @@ func TestSeal(t *testing.T) {
 	sealer := NewMockSealer()
 
 	// create Core
-	c, err := NewCore("edgeless", validator, issuer, sealer)
+	c, err := NewCore("edgeless", []string{"localhost"}, validator, issuer, sealer)
 	assert.NotNil(c)
 	assert.Nil(err)
 	// set manifest
@@ -75,7 +75,7 @@ func TestSeal(t *testing.T) {
 	assert.Equal(hash[:], signature, "manifest signature is not correct")
 
 	// check sealing
-	c2, err := NewCore("edgeless", validator, issuer, sealer)
+	c2, err := NewCore("edgeless", []string{"localhost"}, validator, issuer, sealer)
 	assert.NotNil(c2)
 	assert.Nil(err)
 	assert.Equal(acceptingMarbles, c2.state)

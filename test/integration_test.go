@@ -160,11 +160,11 @@ func getListenerAndAddr() (net.Listener, string) {
 func TestTest(t *testing.T) {
 	assert := assert.New(t)
 
-	cfgFilename := createCoordinatorConfig()
+	cfgFilename := createCoordinatorConfig("localhost")
 	defer cleanupCoordinatorConfig(cfgFilename)
 	assert.Nil(startCoordinator(cfgFilename).Kill())
 
-	marbleCfg := createMarbleConfig(marbleServerAddr, "test_marble_client", "")
+	marbleCfg := createMarbleConfig(marbleServerAddr, "test_marble_client", "localhost")
 	defer cleanupMarbleConfig(marbleCfg)
 	assert.Nil(startMarble(marbleCfg).Process.Kill())
 }
@@ -174,7 +174,7 @@ func TestMarbleAPI(t *testing.T) {
 
 	// start Coordinator
 	log.Println("Starting a coordinator enclave")
-	cfgFilename := createCoordinatorConfig()
+	cfgFilename := createCoordinatorConfig("localhost")
 	defer cleanupCoordinatorConfig(cfgFilename)
 	coordinatorProc := startCoordinator(cfgFilename)
 	assert.NotNil(coordinatorProc)
@@ -193,7 +193,7 @@ func TestMarbleAPI(t *testing.T) {
 
 	// start server
 	log.Println("Starting a Server-Marble")
-	serverCfg := createMarbleConfig(marbleServerAddr, "test_marble_server", "server,backend")
+	serverCfg := createMarbleConfig(marbleServerAddr, "test_marble_server", "server,backend,localhost")
 	defer cleanupMarbleConfig(serverCfg)
 	serverCmd := runMarble(assert, serverCfg, true, false)
 	defer serverCmd.Process.Kill()
@@ -201,13 +201,13 @@ func TestMarbleAPI(t *testing.T) {
 	// start clients
 	log.Println("Starting a bunch of Client-Marbles")
 	assert.Nil(err, "failed to start server-marble: %v", err)
-	clientCfg := createMarbleConfig(marbleServerAddr, "test_marble_client", "client,frontend")
+	clientCfg := createMarbleConfig(marbleServerAddr, "test_marble_client", "client,frontend,localhost")
 	defer cleanupMarbleConfig(clientCfg)
 	_ = runMarble(assert, clientCfg, true, true)
 	_ = runMarble(assert, clientCfg, true, true)
 	if !*simulationMode {
 		// start bad marbles (would be accepted if we run in SimulationMode)
-		badCfg := createMarbleConfig(marbleServerAddr, "bad_marble", "bad")
+		badCfg := createMarbleConfig(marbleServerAddr, "bad_marble", "bad,localhost")
 		defer cleanupMarbleConfig(badCfg)
 		_ = runMarble(assert, badCfg, false, true)
 		_ = runMarble(assert, badCfg, false, true)
@@ -219,7 +219,7 @@ func TestRestart(t *testing.T) {
 	log.Println("Testing the restart capabilities")
 	// start Coordinator
 	log.Println("Starting a coordinator enclave")
-	cfgFilename := createCoordinatorConfig()
+	cfgFilename := createCoordinatorConfig("localhost")
 	defer cleanupCoordinatorConfig(cfgFilename)
 	coordinatorProc := startCoordinator(cfgFilename)
 	assert.NotNil(coordinatorProc)
@@ -229,7 +229,7 @@ func TestRestart(t *testing.T) {
 	assert.Nil(err, "failed to set Manifest: %v", err)
 	// start server
 	log.Println("Starting a Server-Marble")
-	serverCfg := createMarbleConfig(marbleServerAddr, "test_marble_server", "server,backend")
+	serverCfg := createMarbleConfig(marbleServerAddr, "test_marble_server", "server,backend,localhost")
 	defer cleanupMarbleConfig(serverCfg)
 	serverCmd := runMarble(assert, serverCfg, true, false)
 	defer serverCmd.Process.Kill()
@@ -237,7 +237,7 @@ func TestRestart(t *testing.T) {
 	// start clients
 	log.Println("Starting a bunch of Client-Marbles")
 	assert.Nil(err, "failed to start server-marble: %v", err)
-	clientCfg := createMarbleConfig(marbleServerAddr, "test_marble_client", "client,frontend")
+	clientCfg := createMarbleConfig(marbleServerAddr, "test_marble_client", "client,frontend,localhost")
 	defer cleanupMarbleConfig(clientCfg)
 	_ = runMarble(assert, clientCfg, true, true)
 	_ = runMarble(assert, clientCfg, true, true)
@@ -314,7 +314,7 @@ func TestClientAPI(t *testing.T) {
 	eof := errors.New("EOF")
 
 	// start Coordinator
-	cfgFilename := createCoordinatorConfig()
+	cfgFilename := createCoordinatorConfig("localhost")
 	defer cleanupCoordinatorConfig(cfgFilename)
 	coordinatorProc := startCoordinator(cfgFilename)
 	assert.NotNil(coordinatorProc, "could not start coordinator")
@@ -381,6 +381,7 @@ func TestClientAPI(t *testing.T) {
 type coordinatorConfig struct {
 	MeshServerAddr   string
 	ClientServerAddr string
+	DNSNames         string
 	SealDir          string
 }
 

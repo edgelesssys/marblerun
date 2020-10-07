@@ -44,7 +44,7 @@ func coordinatormain() {
 		panic(err)
 	}
 	sealer := core.NewAESGCMSealer(sealDir, sealKey)
-	core, err := core.NewCore("Coordinator", validator, issuer, sealer)
+	core, err := core.NewCore("Coordinator", dnsNames, validator, issuer, sealer)
 	if err != nil {
 		panic(err)
 	}

@@ -150,10 +150,17 @@ func readUUID(filename string) (*uuid.UUID, error) {
 	return &marbleUUID, nil
 }
 
+func genCert() (*x509.Certificate, ed25519.PrivateKey, error) {
+	// generate certificate
+	marbleDNSNamesString := util.MustGetenv(config.EdgMarbleDNSNames)
+	marbleDNSNames := strings.Split(marbleDNSNamesString, ",")
+	ipAddrs := []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback}
+	return util.GenerateCert(marbleDNSNames, ipAddrs, false)
+}
+
 // PreMain is supposed to run before the App's actual main and authenticate with the Coordinator
 func PreMain() error {
-	// generate certificate
-	cert, privk, err := generateCert()
+	cert, privk, err := genCert()
 	if err != nil {
 		return err
 	}
@@ -163,7 +170,7 @@ func PreMain() error {
 
 func PreMainMock() error {
 	// generate certificate
-	cert, privk, err := generateCert()
+	cert, privk, err := genCert()
 	if err != nil {
 		return err
 	}
