@@ -1,7 +1,8 @@
 package util
 
 import (
-	"crypto/ed25519"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
@@ -19,7 +20,7 @@ import (
 const OrgName string = "Edgeless Systems GmbH"
 
 // GenerateMarbleCredentials returns dummy Marble TLS credentials for testing
-func GenerateMarbleCredentials() (certTLS *x509.Certificate, certRaw []byte, csrRaw []byte, privk ed25519.PrivateKey, err error) {
+func GenerateMarbleCredentials() (certTLS *x509.Certificate, certRaw []byte, csrRaw []byte, privk *ecdsa.PrivateKey, err error) {
 	dnsNames := []string{"localhost", "*.foobar.net", "*.example.org"}
 	ipAddrs := []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback}
 
@@ -35,12 +36,13 @@ func GenerateMarbleCredentials() (certTLS *x509.Certificate, certRaw []byte, csr
 }
 
 // GenerateCert generates a new self-signed certificate associated key-pair
-func GenerateCert(DNSNames []string, IPAddrs []net.IP, isCA bool) (*x509.Certificate, ed25519.PrivateKey, error) {
+func GenerateCert(DNSNames []string, IPAddrs []net.IP, isCA bool) (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	// code (including generateSerial()) adapted from golang.org/src/crypto/tls/generate_cert.go
-	pubk, privk, err := ed25519.GenerateKey(rand.Reader)
+	privk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, nil, err
 	}
+	pubk := &privk.PublicKey
 	notBefore := time.Now()
 	notAfter := notBefore.Add(math.MaxInt64)
 
@@ -79,7 +81,7 @@ func GenerateCert(DNSNames []string, IPAddrs []net.IP, isCA bool) (*x509.Certifi
 }
 
 // GenerateCSR generates a new CSR for the given DNSNames and private key
-func GenerateCSR(DNSNames []string, privk ed25519.PrivateKey) (*x509.CertificateRequest, error) {
+func GenerateCSR(DNSNames []string, privk *ecdsa.PrivateKey) (*x509.CertificateRequest, error) {
 	template := x509.CertificateRequest{
 		DNSNames:    DNSNames,
 		IPAddresses: []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
@@ -101,7 +103,7 @@ func generateSerial() (*big.Int, error) {
 }
 
 // LoadTLSCredentials returns a TLS configuration based on cert and privk
-func LoadTLSCredentials(cert *x509.Certificate, privk ed25519.PrivateKey) (credentials.TransportCredentials, error) {
+func LoadTLSCredentials(cert *x509.Certificate, privk *ecdsa.PrivateKey) (credentials.TransportCredentials, error) {
 	clientCert, err := getTLSCertificate(cert, privk)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Marble self-signed x509 certificate")
@@ -114,7 +116,7 @@ func LoadTLSCredentials(cert *x509.Certificate, privk ed25519.PrivateKey) (crede
 }
 
 // getTLSCertificate creates a TLS certificate for the Marbles self-signed x509 certificate
-func getTLSCertificate(cert *x509.Certificate, privk ed25519.PrivateKey) (*tls.Certificate, error) {
+func getTLSCertificate(cert *x509.Certificate, privk *ecdsa.PrivateKey) (*tls.Certificate, error) {
 	return tlsCertFromDER(cert.Raw, privk), nil
 }
 
