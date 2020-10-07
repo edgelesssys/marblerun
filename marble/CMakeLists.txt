@@ -25,30 +25,19 @@ add_custom_target(marbletestlib
 add_custom_target(marble-noenclave ALL
   go build ${CMAKE_SOURCE_DIR}/cmd/marble-test-noenclave)
 
-# Use the edger8r to generate C bindings from the EDL file.
-add_custom_command(
-  OUTPUT emain_t.c emain_u.c
-  DEPENDS enclave/emain.edl
-  COMMAND openenclave::oeedger8r ${CMAKE_SOURCE_DIR}/enclave/emain.edl --search-path
-          ${OE_INCLUDEDIR} --search-path ${OE_INCLUDEDIR}/openenclave/edl/sgx)
 
-add_library(emain enclave/emain.cpp emain_t.c)
-target_include_directories(emain PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-target_link_libraries(emain PRIVATE openenclave::oe_includes)
-
-add_executable(enclave emain_t.c)
+add_executable(enclave enclave/main.c)
 # target_include_directories(enclave PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 add_dependencies(enclave marbletestlib)
 add_dependencies(enclave marblelib)
 
 target_link_libraries(enclave
-  emain
+  openenclave::ertmeshentry
   openenclave::oeenclave
   openenclave::oehostepoll
   openenclave::oehostfs
   openenclave::oehostsock
   ${CMAKE_BINARY_DIR}/libmarbletest.a
-  crypto
   openenclave::ertlibc
   openenclave::oecustomfs
  )
@@ -68,7 +57,3 @@ add_custom_command(
 
 add_custom_target(sign ALL DEPENDS enclave.signed)
 
-# Build the host
-add_executable(marble enclave/host.cpp emain_u.c)
-target_include_directories(marble PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-target_link_libraries(marble openenclave::oehost)

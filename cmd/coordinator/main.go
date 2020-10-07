@@ -23,25 +23,9 @@ func mountData(path string) {
 	C.mountData((*C.char)(unsafe.Pointer(&[]byte(path)[0])))
 }
 
-func coordinatormain(cwd, config string) {
-	cfg := struct {
-		MeshServerAddr   string
-		ClientServerAddr string
-		DataPath         string
-	}{
-		"localhost:25554",
-		"localhost:25555",
-		"/coordinator/data",
-	}
-
-	if config != "" {
-		if err := json.Unmarshal([]byte(config), &cfg); err != nil {
-			panic(err)
-		}
-	}
-	// mount data dir
-	mountData(cfg.DataPath) // mounts DataPath to /marble/data
-
+func coordinatormain() {
+	log.SetPrefix("[Coordinator]")
+	log.Println("starting coordinator")
 	// initialize coordinator
 	validator := ertvalidator.NewERTValidator()
 	issuer := ertvalidator.NewERTIssuer()
