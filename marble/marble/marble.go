@@ -81,8 +81,10 @@ func PreMainMock() error {
 	return err
 }
 
-func preMain(cert *x509.Certificate, privk ed25519.PrivateKey, issuer quote.Issuer) (*rpc.Parameters, error) {
+	log.SetPrefix("[PreMain] ")
+	log.Println("starting PreMain")
 	// get env variables
+	log.Println("fetching env variables")
 	coordAddr := util.MustGetenv(config.EdgCoordinatorAddr)
 	marbleType := util.MustGetenv(config.EdgMarbleType)
 	marbleDNSNamesString := util.MustGetenv(config.EdgMarbleDNSNames)
@@ -90,38 +92,44 @@ func preMain(cert *x509.Certificate, privk ed25519.PrivateKey, issuer quote.Issu
 	uuidFile := util.MustGetenv(config.EdgMarbleUUIDFile)
 
 	// load TLS Credentials
+	log.Println("loading TLS Credentials")
 	tlsCredentials, err := util.LoadTLSCredentials(cert, privk)
 	if err != nil {
 		return nil, err
 	}
 
 	// check if we have a uuid stored in the fs (means we are restarted)
-	existingUUID, err := readUUID(uuidFile)
+	log.Println("loading UUID")
 	if err != nil {
 		return nil, err
 	}
 	// generate new UUID if not present
 	var marbleUUID uuid.UUID
 	if existingUUID == nil {
+		log.Println("UUID not found. Generating a new UUID")
 		marbleUUID = uuid.New()
 	} else {
 		marbleUUID = *existingUUID
+		log.Println("found UUID:", marbleUUID.String())
 	}
 	uuidStr := marbleUUID.String()
 
 	// generate CSR
+	log.Println("generating CSR")
 	csr, err := util.GenerateCSR(marbleDNSNames, privk)
 	if err != nil {
 		return nil, err
 	}
 
 	// generate Quote
+	log.Println("generating quote")
 	if issuer == nil {
 		// default
 		issuer = ertvalidator.NewERTIssuer()
 	}
 	quote, err := issuer.Issue(cert.Raw)
 	if err != nil {
+		log.Println("failed to get quote. Proceeding in simulation mode")
 		// If we run in SimulationMode we get an error here
 		// For testing purpose we do not want to just fail here
 		// Instead we store an empty quote that will only be accepted if the coordinator also runs in SimulationMode

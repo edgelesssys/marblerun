@@ -3,14 +3,20 @@ package server
 import (
 	"crypto/tls"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
+	"os"
 
 	"github.com/edgelesssys/coordinator/coordinator/core"
 	"github.com/edgelesssys/coordinator/coordinator/rpc"
+	"github.com/gorilla/handlers"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
+	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -41,7 +47,26 @@ func RunMarbleServer(core *core.Core, addr string, addrChan chan string, errChan
 		ClientAuth: tls.RequireAnyClientCert,
 	}
 	creds := credentials.NewTLS(&tlsConfig)
-	grpcServer := grpc.NewServer(grpc.Creds(creds))
+
+	// logging
+	zapLogger, _ := zap.NewDevelopment()
+	defer zapLogger.Sync() // flushes buffer, if any
+
+	// Make sure that log statements internal to gRPC library are logged using the zapLogger as well.
+	grpc_zap.ReplaceGrpcLoggerV2(zapLogger)
+
+	grpcServer := grpc.NewServer(
+		grpc.Creds(creds),
+		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
+			grpc_ctxtags.StreamServerInterceptor(),
+			grpc_zap.StreamServerInterceptor(zapLogger),
+		)),
+		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
+			grpc_ctxtags.UnaryServerInterceptor(),
+			grpc_zap.UnaryServerInterceptor(zapLogger),
+		)),
+	)
+
 	rpc.RegisterMarbleServer(grpcServer, core)
 	socket, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -128,13 +153,14 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 
 // RunClientServer runs a HTTP server serving mux. provisionally
 func RunClientServer(mux *http.ServeMux, address string, tlsConfig *tls.Config) {
+	loggedRouter := handlers.LoggingHandler(os.Stdout, mux)
 	server := http.Server{
 		Addr:      address,
-		Handler:   mux,
+		Handler:   loggedRouter,
 		TLSConfig: tlsConfig,
 	}
-	fmt.Println("start client server at ", address)
-	fmt.Println(server.ListenAndServeTLS("", ""))
+	log.Println("starting https server at ", address)
+	log.Println(server.ListenAndServeTLS("", ""))
 }
 
 type malformedRequest struct {

@@ -83,5 +83,4 @@ func TestManifest(t *testing.T) {
 	}
 	assert.Equal(http.StatusBadRequest, resp.StatusCode)
 	assert.Equal("server is not in expected state\n", string(b))
-
 }
