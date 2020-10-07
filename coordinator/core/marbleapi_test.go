@@ -3,20 +3,17 @@ package core
 import (
 	"context"
 	"crypto/ed25519"
-	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/json"
 	"encoding/pem"
-	"math"
-	"net"
 	"testing"
 	"time"
 
 	"github.com/edgelesssys/coordinator/coordinator/quote"
 	"github.com/edgelesssys/coordinator/coordinator/rpc"
 	"github.com/edgelesssys/coordinator/test"
+	"github.com/edgelesssys/coordinator/util"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/credentials"
@@ -86,7 +83,7 @@ type marbleSpawner struct {
 
 func (ms marbleSpawner) newMarble(coreServer *Core, marbleType string, infraName string, shouldSucceed bool) {
 	// create certificate and CSR
-	certTLS, cert, csr, err := generateMarbleCredentials()
+	certTLS, cert, csr, _, err := util.GenerateMarbleCredentials()
 	ms.assert.Nil(err)
 	ms.assert.NotNil(cert)
 	ms.assert.NotNil(csr)
@@ -191,56 +188,4 @@ func (ms marbleSpawner) newMarble(coreServer *Core, marbleType string, infraName
 	_, err = newCert.Verify(opts)
 	ms.assert.Nil(err, "failed to verify new certificate: %v", err)
 
-}
-
-func generateMarbleCredentials() (certTLS *x509.Certificate, cert []byte, csr []byte, err error) {
-	const orgName string = "Edgeless Systems GmbH"
-	pubk, privk, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		return
-	}
-	// create self-signed certificate for use in initial TLS connection
-	notBefore := time.Now()
-	notAfter := notBefore.Add(math.MaxInt64)
-
-	serialNumber, err := generateSerial()
-	if err != nil {
-		return
-	}
-	templateCert := x509.Certificate{
-		SerialNumber: serialNumber,
-		Subject: pkix.Name{
-			Organization: []string{orgName},
-		},
-		NotBefore:   notBefore,
-		NotAfter:    notAfter,
-		DNSNames:    []string{"localhost", "*.foobar.net", "*.example.org"},
-		IPAddresses: []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
-
-		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyAgreement,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
-		BasicConstraintsValid: true,
-		IsCA:                  false,
-	}
-	cert, err = x509.CreateCertificate(rand.Reader, &templateCert, &templateCert, pubk, privk)
-	if err != nil {
-		return
-	}
-
-	certTLS, err = x509.ParseCertificate(cert)
-	if err != nil {
-		return
-	}
-
-	// create CSR
-	templateCSR := x509.CertificateRequest{
-		Subject: pkix.Name{
-			Organization: []string{orgName},
-		},
-		PublicKey:   pubk,
-		DNSNames:    []string{"localhost", "*.foobar.net", "*.example.org"},
-		IPAddresses: []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
-	}
-	csr, err = x509.CreateCertificateRequest(rand.Reader, &templateCSR, privk)
-	return
 }

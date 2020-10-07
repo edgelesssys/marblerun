@@ -146,7 +146,7 @@ func (c *Core) generateCertFromCSR(csrReq []byte, pubk ed25519.PublicKey, marble
 		NotBefore:    notBefore,
 		NotAfter:     notAfter,
 
-		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyAgreement,
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign | x509.KeyUsageKeyAgreement,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 		BasicConstraintsValid: false,
 		IsCA:                  false,
