@@ -14,91 +14,15 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/edgelesssys/coordinator/coordinator/config"
 	"github.com/edgelesssys/coordinator/coordinator/core"
+	mConfig "github.com/edgelesssys/coordinator/marble/config"
 	"github.com/stretchr/testify/assert"
 )
-
-// TODO: Use correct values here
-const manifestJSON string = `{
-	"Packages": {
-		"backend": {
-			"Debug": true,
-			"SecurityVersion": 1,
-			"ProductID": [3]
-		},
-		"frontend": {
-			"Debug": true,
-			"SecurityVersion": 2,
-			"ProductID": [3]
-		}
-	},
-	"Infrastructures": {
-		"Azure": {
-			"QESVN": 2,
-			"PCESVN": 3,
-			"CPUSVN": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
-			"RootCA": [3,3,3]
-		}
-	},
-	"Marbles": {
-		"test_marble_server": {
-			"Package": "backend",
-			"Parameters": {
-				"Files": {
-					"/tmp/defg.txt": "foo",
-					"/tmp/jkl.mno": "bar"
-				},
-				"Argv": [
-					"serve"
-				],
-				"Env": {
-					"IS_FIRST": "true",
-					"ROOT_CA": "$$root_ca",
-					"SEAL_KEY": "$$seal_key",
-					"MARBLE_CERT": "$$marble_cert",
-					"MARBLE_KEY": "$$marble_key"
-			}
-			}
-		},
-		"test_marble_client": {
-			"Package": "backend",
-			"Parameters": {
-				"Files": {
-					"/tmp/defg.txt": "foo",
-					"/tmp/jkl.mno": "bar"
-				},
-				"Env": {
-					"IS_FIRST": "true",
-					"ROOT_CA": "$$root_ca",
-					"SEAL_KEY": "$$seal_key",
-					"MARBLE_CERT": "$$marble_cert",
-					"MARBLE_KEY": "$$marble_key"
-			}
-			}
-		},
-		"bad_marble": {
-			"Package": "frontend",
-			"Parameters": {
-				"Files": {
-					"/tmp/defg.txt": "foo",
-					"/tmp/jkl.mno": "bar"
-				},
-				"Env": {
-					"ROOT_CA": "$$root_ca",
-					"SEAL_KEY": "$$seal_key",
-					"MARBLE_CERT": "$$marble_cert",
-					"MARBLE_KEY": "$$marble_key"
-			}
-		}
-		}
-	},
-	"Clients": {
-		"owner": [9,9,9]
-	}
-}`
 
 var coordinatorExe = flag.String("c", "", "Coordinator executable")
 var marbleExe = flag.String("m", "", "Marble executable")
@@ -124,7 +48,7 @@ func TestMain(m *testing.M) {
 		log.Fatalln(err)
 	}
 
-	if err := json.Unmarshal([]byte(manifestJSON), &manifest); err != nil {
+	if err := json.Unmarshal([]byte(IntegrationManifestJSON), &manifest); err != nil {
 		log.Fatalln(err)
 	}
 
@@ -350,7 +274,7 @@ func TestClientAPI(t *testing.T) {
 	resp.Body.Close()
 
 	//set Manifest
-	resp, err = client.Post(clientAPIURL.String(), "application/json", bytes.NewBuffer([]byte(manifestJSON)))
+	resp, err = client.Post(clientAPIURL.String(), "application/json", bytes.NewBuffer([]byte(IntegrationManifestJSON)))
 
 	assert.Nil(err)
 	assert.Equal(http.StatusOK, resp.StatusCode)
@@ -369,7 +293,7 @@ func TestClientAPI(t *testing.T) {
 	assert.NotContains(string(buffer), "{\"ManifestSignature\":null}")
 
 	//try set manifest again
-	resp, err = client.Post(clientAPIURL.String(), "application/json", bytes.NewBuffer([]byte(manifestJSON)))
+	resp, err = client.Post(clientAPIURL.String(), "application/json", bytes.NewBuffer([]byte(IntegrationManifestJSON)))
 	assert.Nil(err)
 	assert.Equal(http.StatusBadRequest, resp.StatusCode)
 	resp.Body.Close()
@@ -393,13 +317,13 @@ func createCoordinatorConfig(dnsNames string) coordinatorConfig {
 	cfg := coordinatorConfig{MeshServerAddr: marbleServerAddr, ClientServerAddr: clientServerAddr, DNSNames: dnsNames, SealDir: tempDir}
 
 	return cfg
-	}
+}
 
 func cleanupCoordinatorConfig(cfg coordinatorConfig) {
 	if err := os.RemoveAll(cfg.SealDir); err != nil {
 		panic(err)
 	}
-	}
+}
 
 func makeEnv(key, value string) string {
 	return fmt.Sprintf("%v=%v", key, value)
@@ -424,7 +348,7 @@ func startCoordinator(cfg coordinatorConfig) *os.Process {
 		makeEnv(config.EdgCoordinatorDNSNames, cfg.DNSNames),
 		makeEnv(config.EdgCoordinatorSealDir, cfg.SealDir),
 		simFlag,
-}
+	}
 	output := make(chan []byte)
 	go func() {
 		out, _ := cmd.CombinedOutput()
@@ -511,7 +435,7 @@ func createMarbleConfig(coordinatorAddr, marbleType, marbleDNSNames string) marb
 		panic(err)
 	}
 	return cfg
-	}
+}
 
 func cleanupMarbleConfig(cfg marbleConfig) {
 	if err := os.RemoveAll(cfg.DataPath); err != nil {
@@ -539,7 +463,7 @@ func startMarble(cfg marbleConfig) *exec.Cmd {
 		makeEnv(mConfig.EdgMarbleDNSNames, cfg.DNSNames),
 		makeEnv(mConfig.EdgMarbleUUIDFile, uuidFile),
 		simFlag,
-}
+	}
 	if err := cmd.Start(); err != nil {
 		panic(err)
 	}
