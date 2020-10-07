@@ -2,7 +2,8 @@ package core
 
 import (
 	"context"
-	"crypto/ed25519"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
@@ -26,7 +27,7 @@ import (
 type Core struct {
 	cert        *x509.Certificate
 	quote       []byte
-	privk       ed25519.PrivateKey
+	privk       *ecdsa.PrivateKey
 	sealer      Sealer
 	manifest    Manifest
 	rawManifest []byte
@@ -49,7 +50,7 @@ const (
 
 // sealedState represents the state information, required for persistence, that gets sealed to the filesystem
 type sealedState struct {
-	Privk          ed25519.PrivateKey
+	Privk          []byte
 	RawManifest    []byte
 	RawCert        []byte
 	State          state
@@ -140,7 +141,7 @@ func (c *Core) GetTLSCertificate() (*tls.Certificate, error) {
 	return tlsCertFromDER(c.cert.Raw, c.privk), nil
 }
 
-func (c *Core) loadState(orgName string, dnsNames []string) (*x509.Certificate, ed25519.PrivateKey, error) {
+func (c *Core) loadState(orgName string, dnsNames []string) (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	stateRaw, err := c.sealer.Unseal()
 	if err != nil {
 		return nil, nil, err
@@ -164,15 +165,24 @@ func (c *Core) loadState(orgName string, dnsNames []string) (*x509.Certificate, 
 	if err != nil {
 		return nil, nil, err
 	}
+	privk, err := x509.ParseECPrivateKey(loadedState.Privk)
+	if err != nil {
+		return nil, nil, err
+	}
 	c.state = loadedState.State
 	c.activations = loadedState.ActivationsMap
-	return cert, loadedState.Privk, err
+	return cert, privk, err
 }
 
 func (c *Core) sealState() error {
+	// marshal private key
+	x509Encoded, err := x509.MarshalECPrivateKey(c.privk)
+	if err != nil {
+		return err
+	}
 	// seal with manifest set
 	state := sealedState{
-		Privk:          c.privk,
+		Privk:          x509Encoded,
 		RawManifest:    c.rawManifest,
 		RawCert:        c.cert.Raw,
 		State:          c.state,
@@ -190,17 +200,18 @@ func generateSerial() (*big.Int, error) {
 	return rand.Int(rand.Reader, serialNumberLimit)
 }
 
-func (c *Core) generateCert(orgName string, dnsNames []string) (*x509.Certificate, ed25519.PrivateKey, error) {
+func (c *Core) generateCert(orgName string, dnsNames []string) (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	defer c.mux.Unlock()
 	if err := c.requireState(uninitialized); err != nil {
 		return nil, nil, err
 	}
 
 	// code (including generateSerial()) adapted from golang.org/src/crypto/tls/generate_cert.go
-	pubk, privk, err := ed25519.GenerateKey(rand.Reader)
+	privk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, nil, err
 	}
+	pubk := privk.PublicKey
 	notBefore := time.Now()
 	notAfter := notBefore.Add(math.MaxInt64)
 
@@ -228,7 +239,7 @@ func (c *Core) generateCert(orgName string, dnsNames []string) (*x509.Certificat
 		IsCA:                  true,
 	}
 
-	certRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, pubk, privk)
+	certRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, &pubk, privk)
 	if err != nil {
 		return nil, nil, err
 	}

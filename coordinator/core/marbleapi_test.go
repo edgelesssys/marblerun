@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"crypto/ed25519"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -167,8 +166,7 @@ func (ms marbleSpawner) newMarble(coreServer *Core, marbleType string, infraName
 	ms.assert.Equal(certTLS.DNSNames, newCert.DNSNames)
 	ms.assert.Equal(certTLS.IPAddresses, newCert.IPAddresses)
 	// Check Signature
-	pubk := coreServer.cert.PublicKey.(ed25519.PublicKey)
-	ms.assert.True(ed25519.Verify(pubk, newCert.RawTBSCertificate, newCert.Signature))
+	ms.assert.Nil(coreServer.cert.CheckSignature(newCert.SignatureAlgorithm, newCert.RawTBSCertificate, newCert.Signature))
 	// Check cert-chain
 	pemRootCA := resp.GetParameters().Env["ROOT_CA"]
 	ms.assert.NotNil(pemRootCA)
