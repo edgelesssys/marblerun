@@ -57,3 +57,10 @@ add_custom_command(
 
 add_custom_target(sign ALL DEPENDS enclave.signed)
 
+# Create config for remote attestation
+add_custom_command(
+  OUTPUT config.json
+  COMMAND $(CMAKE_SOURCE_DIR)/../tools/create_config.py -e $(CMAKE_BINARY_DIR)/enclave.signed -o $(CMAKE_BINARY_DIR)/config.json
+)
+
+add_custom_target(config ALL DEPENDS config.json)
