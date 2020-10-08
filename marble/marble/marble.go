@@ -2,7 +2,7 @@ package marble
 
 import (
 	"context"
-	"crypto/ed25519"
+	"crypto/ecdsa"
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
@@ -51,7 +51,7 @@ func readUUID(appFs afero.Fs, filename string) (*uuid.UUID, error) {
 	return &marbleUUID, nil
 }
 
-func genCert() (*x509.Certificate, ed25519.PrivateKey, error) {
+func genCert() (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	// generate certificate
 	marbleDNSNamesString := util.MustGetenv(config.EdgMarbleDNSNames)
 	marbleDNSNames := strings.Split(marbleDNSNamesString, ",")
@@ -85,7 +85,7 @@ func PreMainMock() error {
 	return err
 }
 
-func preMain(cert *x509.Certificate, privk ed25519.PrivateKey, issuer quote.Issuer, appFs afero.Fs) (*rpc.Parameters, error) {
+func preMain(cert *x509.Certificate, privk *ecdsa.PrivateKey, issuer quote.Issuer, appFs afero.Fs) (*rpc.Parameters, error) {
 	log.SetPrefix("[PreMain] ")
 	log.Println("starting PreMain")
 	// get env variables

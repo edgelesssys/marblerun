@@ -2,7 +2,8 @@ package core
 
 import (
 	"context"
-	"crypto/ed25519"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
@@ -43,10 +44,11 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 		return nil, err
 	}
 	// generate key-pair for marble
-	pubk, privk, err := ed25519.GenerateKey(rand.Reader)
+	privk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, err
 	}
+	pubk := privk.PublicKey
 	encodedPrivKey, err := x509.MarshalPKCS8PrivateKey(privk)
 	if err != nil {
 		return nil, err
@@ -58,7 +60,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 		return nil, err
 	}
 	// Derive key
-	hkdf := hkdf.New(sha256.New, uuidBytes, c.privk.Seed(), nil)
+	hkdf := hkdf.New(sha256.New, uuidBytes, c.privk.D.Bytes(), nil)
 	sealKey := make([]byte, 32)
 	if _, err := io.ReadFull(hkdf, sealKey); err != nil {
 		return nil, err
@@ -121,7 +123,7 @@ func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, quote []byte
 }
 
 // generateCertFromCSR signs the CSR from marble attempting to register
-func (c *Core) generateCertFromCSR(csrReq []byte, pubk ed25519.PublicKey, marbleType string, marbleUUID string) ([]byte, error) {
+func (c *Core) generateCertFromCSR(csrReq []byte, pubk ecdsa.PublicKey, marbleType string, marbleUUID string) ([]byte, error) {
 	// parse and verify CSR
 	csr, err := x509.ParseCertificateRequest(csrReq)
 	if err != nil {
@@ -154,7 +156,7 @@ func (c *Core) generateCertFromCSR(csrReq []byte, pubk ed25519.PublicKey, marble
 		DNSNames:              csr.DNSNames,
 		IPAddresses:           csr.IPAddresses,
 	}
-	certRaw, err := x509.CreateCertificate(rand.Reader, &template, c.cert, pubk, c.privk)
+	certRaw, err := x509.CreateCertificate(rand.Reader, &template, c.cert, &pubk, c.privk)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to issue certificate")
 	}
