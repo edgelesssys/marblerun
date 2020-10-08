@@ -3,6 +3,8 @@ package test
 import (
 	"bytes"
 	"crypto/tls"
+	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -24,8 +26,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var coordinatorExe = flag.String("c", "", "Coordinator executable")
-var marbleExe = flag.String("m", "", "Marble executable")
+var coordinatorDir = flag.String("c", "", "Coordinator build dir")
+var marbleDir = flag.String("m", "", "Marble build dir")
 var simulationMode = flag.Bool("s", false, "Execute test in simulation mode (without real quoting)")
 var noenclave = flag.Bool("noenclave", false, "Do not run with erthost")
 var marbleServerAddr, clientServerAddr string
@@ -33,24 +35,25 @@ var manifest core.Manifest
 
 func TestMain(m *testing.M) {
 	flag.Parse()
-	if *coordinatorExe == "" {
+	if *coordinatorDir == "" {
 		log.Fatalln("You must provide the path of the coordinator executable using th -c flag.")
 	}
 
-	if *marbleExe == "" {
+	if *marbleDir == "" {
 		log.Fatalln("You must provide the path of the marble executable using th -m flag.")
 	}
 
-	if _, err := os.Stat(*coordinatorExe); err != nil {
+	if _, err := os.Stat(*coordinatorDir); err != nil {
 		log.Fatalln(err)
 	}
-	if _, err := os.Stat(*marbleExe); err != nil {
+	if _, err := os.Stat(*marbleDir); err != nil {
 		log.Fatalln(err)
 	}
 
 	if err := json.Unmarshal([]byte(IntegrationManifestJSON), &manifest); err != nil {
 		log.Fatalln(err)
 	}
+	updateManifest()
 
 	// get unused ports
 	var listenerMarbleAPI, listenerClientAPI net.Listener
@@ -60,6 +63,37 @@ func TestMain(m *testing.M) {
 	listenerClientAPI.Close()
 	log.Printf("Got marbleServerAddr: %v and clientServerAddr: %v\n", marbleServerAddr, clientServerAddr)
 	os.Exit(m.Run())
+}
+
+func updateManifest() {
+	config, err := ioutil.ReadFile(filepath.Join(*marbleDir, "config.json"))
+	if err != nil {
+		panic(err)
+	}
+	var cfg struct {
+		SecurityVersion uint
+		UniqueID        string
+		SignerID        string
+		ProductID       uint16
+	}
+	if err := json.Unmarshal(config, &cfg); err != nil {
+		panic(err)
+	}
+
+	decode := func(hexStr string) []byte {
+		b, err := hex.DecodeString(hexStr)
+		if err != nil {
+			panic(err)
+		}
+		return b
+	}
+	pkg := manifest.Packages["backend"]
+	pkg.UniqueID = decode(cfg.UniqueID)
+	pkg.SignerID = decode(cfg.SignerID)
+	pkg.SecurityVersion = &cfg.SecurityVersion
+	pkg.ProductID = make([]byte, 2)
+	binary.LittleEndian.PutUint16(pkg.ProductID, cfg.ProductID)
+	manifest.Packages["backend"] = pkg
 }
 
 func getListenerAndAddr() (net.Listener, string) {
@@ -274,7 +308,11 @@ func TestClientAPI(t *testing.T) {
 	resp.Body.Close()
 
 	//set Manifest
-	resp, err = client.Post(clientAPIURL.String(), "application/json", bytes.NewBuffer([]byte(IntegrationManifestJSON)))
+	manifestRaw, err := json.Marshal(manifest)
+	if err != nil {
+		panic(err)
+	}
+	resp, err = client.Post(clientAPIURL.String(), "application/json", bytes.NewBuffer(manifestRaw))
 
 	assert.Nil(err)
 	assert.Equal(http.StatusOK, resp.StatusCode)
@@ -293,7 +331,7 @@ func TestClientAPI(t *testing.T) {
 	assert.NotContains(string(buffer), "{\"ManifestSignature\":null}")
 
 	//try set manifest again
-	resp, err = client.Post(clientAPIURL.String(), "application/json", bytes.NewBuffer([]byte(IntegrationManifestJSON)))
+	resp, err = client.Post(clientAPIURL.String(), "application/json", bytes.NewBuffer(manifestRaw))
 	assert.Nil(err)
 	assert.Equal(http.StatusBadRequest, resp.StatusCode)
 	resp.Body.Close()
@@ -332,9 +370,9 @@ func makeEnv(key, value string) string {
 func startCoordinator(cfg coordinatorConfig) *os.Process {
 	var cmd *exec.Cmd
 	if *noenclave {
-		cmd = exec.Command(*coordinatorExe)
+		cmd = exec.Command(filepath.Join(*coordinatorDir, "coordinator-noenclave"))
 	} else {
-		cmd = exec.Command("erthost", *coordinatorExe)
+		cmd = exec.Command("erthost", filepath.Join(*coordinatorDir, "enclave.signed"))
 	}
 	var simFlag string
 	if *simulationMode {
@@ -446,9 +484,9 @@ func cleanupMarbleConfig(cfg marbleConfig) {
 func startMarble(cfg marbleConfig) *exec.Cmd {
 	var cmd *exec.Cmd
 	if *noenclave {
-		cmd = exec.Command(*marbleExe)
+		cmd = exec.Command(filepath.Join(*marbleDir, "marble-test-noenclave"))
 	} else {
-		cmd = exec.Command("erthost", *marbleExe)
+		cmd = exec.Command("erthost", filepath.Join(*marbleDir, "enclave.signed"))
 	}
 	var simFlag string
 	if *simulationMode {
