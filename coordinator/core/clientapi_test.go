@@ -64,6 +64,19 @@ func TestSetManifest(t *testing.T) {
 	err = c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
 	assert.Nil(err, "SetManifest should succed after failed tries")
 	assert.Equal(*manifest, c.manifest, "Manifest should be set correctly")
+
+	//todo try setting manifest with malformed content, but propper json
+	c, _ = mustSetup()
+	//get any element of the map
+	for _, marble := range manifest.Marbles {
+		marble.Package = "foo"
+		manifest.Marbles["bar"] = marble
+		break
+	}
+	modRawManifest, _ := json.Marshal(manifest)
+	err = c.SetManifest(context.TODO(), modRawManifest)
+	assert.Equal("Manifest does not contain marble package foo", err.Error())
+
 }
 
 func TestGetCertQuote(t *testing.T) {
