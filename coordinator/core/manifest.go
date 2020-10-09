@@ -1,6 +1,9 @@
 package core
 
 import (
+	"context"
+	"errors"
+
 	"github.com/edgelesssys/coordinator/coordinator/quote"
 	"github.com/edgelesssys/coordinator/coordinator/rpc"
 )
@@ -34,4 +37,24 @@ type Marble struct {
 	Package        string
 	MaxActivations uint
 	Parameters     rpc.Parameters
+}
+
+//Check if manifest is consistent
+func (manifest Manifest) Check(ctx context.Context) error {
+	if len(manifest.Packages) <= 0 {
+		return errors.New("No allowed packages defined")
+	}
+	if len(manifest.Marbles) <= 0 {
+		return errors.New("No allowed marbles defined")
+	}
+	if len(manifest.Infrastructures) <= 0 {
+		return errors.New("No allowed infrastructures defined")
+	}
+	for _, marble := range manifest.Marbles {
+		_, ok := manifest.Packages[marble.Package]
+		if ok != true {
+			return errors.New("Manifest does not contain marble package " + marble.Package)
+		}
+	}
+	return nil
 }
