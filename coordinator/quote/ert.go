@@ -2,6 +2,7 @@ package quote
 
 import (
 	"bytes"
+	"encoding/hex"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -12,9 +13,9 @@ type PackageProperties struct {
 	// Debug Flag of the Attributes
 	Debug bool
 	// Hash of the enclave
-	UniqueID []byte
+	UniqueID string
 	// Hash of the enclave signer's public key
-	SignerID []byte
+	SignerID string
 	// Product ID of the package
 	ProductID []byte
 	// Security version number of the package
@@ -40,10 +41,10 @@ func (required PackageProperties) IsCompliant(given PackageProperties) bool {
 	if required.Debug != given.Debug {
 		return false
 	}
-	if len(required.UniqueID) > 0 && !bytes.Equal(required.UniqueID, given.UniqueID) {
+	if len(required.UniqueID) > 0 && !compareHexString(required.UniqueID, given.UniqueID) {
 		return false
 	}
-	if len(required.SignerID) > 0 && !bytes.Equal(required.SignerID, given.SignerID) {
+	if len(required.SignerID) > 0 && !compareHexString(required.SignerID, given.SignerID) {
 		return false
 	}
 	if len(required.ProductID) > 0 && !bytes.Equal(required.ProductID, given.ProductID[:len(required.ProductID)]) {
@@ -59,4 +60,16 @@ func (required PackageProperties) IsCompliant(given PackageProperties) bool {
 func (required InfrastructureProperties) IsCompliant(given InfrastructureProperties) bool {
 	// TODO: implement proper logic including SVN comparison
 	return cmp.Equal(required, given)
+}
+
+func compareHexString(required string, given string) bool {
+	req, err := hex.DecodeString(required)
+	if err != nil {
+		panic(err)
+	}
+	giv, err := hex.DecodeString(given)
+	if err != nil {
+		panic(err)
+	}
+	return bytes.Equal(req, giv)
 }

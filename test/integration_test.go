@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/binary"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -80,16 +79,9 @@ func updateManifest() {
 		panic(err)
 	}
 
-	decode := func(hexStr string) []byte {
-		b, err := hex.DecodeString(hexStr)
-		if err != nil {
-			panic(err)
-		}
-		return b
-	}
 	pkg := manifest.Packages["backend"]
-	pkg.UniqueID = decode(cfg.UniqueID)
-	pkg.SignerID = decode(cfg.SignerID)
+	pkg.UniqueID = cfg.UniqueID
+	pkg.SignerID = cfg.SignerID
 	pkg.SecurityVersion = &cfg.SecurityVersion
 	pkg.ProductID = make([]byte, 2)
 	binary.LittleEndian.PutUint16(pkg.ProductID, cfg.ProductID)

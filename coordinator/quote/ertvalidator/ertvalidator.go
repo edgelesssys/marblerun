@@ -3,6 +3,7 @@ package ertvalidator
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 
 	"github.com/edgelesssys/coordinator/coordinator/quote"
@@ -34,8 +35,8 @@ func (m *ERTValidator) Validate(givenQuote []byte, cert []byte, pp quote.Package
 
 	// Verify PackageProperties
 	reportedProps := quote.PackageProperties{
-		UniqueID:        report.UniqueID,
-		SignerID:        report.SignerID,
+		UniqueID:        hex.EncodeToString(report.UniqueID),
+		SignerID:        hex.EncodeToString(report.SignerID),
 		Debug:           report.Debug,
 		ProductID:       report.ProductID,
 		SecurityVersion: &report.SecurityVersion,
