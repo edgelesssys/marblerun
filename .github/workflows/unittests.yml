@@ -2,9 +2,9 @@ name: Unit Tests
 
 on:
   push:
-    branches: [ master ]
+    branches: [ feat/buildartifact ]
   pull_request:
-    branches: [ master ]
+    branches: [ feat/buildartifact ]
 
 jobs:
   run:
@@ -20,6 +20,7 @@ jobs:
       uses: actions/checkout@v2
       with:
         path: coordinator
+        ref: master
 
     - name: Test core
       run: ertgo test 
@@ -32,3 +33,33 @@ jobs:
     - name: Test marble
       run: ertgo test 
       working-directory: coordinator/marble/marble
+      
+    - run: |
+        mkdir coordinator/build assets
+        SHA=$(echo ${{ github.sha }} | cut -c1-8)
+        echo ::set-env name=GITSHA::$SHA
+
+    - name: Build
+      run: |
+        cmake .. && make
+        mv enclave.signed coordinator-noenclave config.json public.pem private.pem ../../assets/
+      working-directory: coordinator/build
+
+    - name: Delete old release assets
+      uses: mknejp/delete-release-assets@v1
+      with:
+        token: ${{ github.token }}
+        tag: wip@${{ github.ref }}
+        fail-if-no-assets: false
+        fail-if-no-release: false
+        assets: '*'
+
+    - uses: meeDamian/github-release@2.0
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        name: wip(${{ env.GITSHA }})@${{ github.ref }}
+        tag: wip@${{ github.ref }}
+        gzip: false
+        allow_override: true
+        files: assets/*
+      
