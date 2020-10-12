@@ -38,7 +38,7 @@ func (c *Core) GetCertQuote(ctx context.Context) (string, []byte, error) {
 	if err != nil {
 		return "", nil, err
 	}
-	pemCert := pem.EncodeToMemory(&pem.Block{Type: "Certificate", Bytes: cert.Raw})
+	pemCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
 	if len(pemCert) <= 0 {
 		return "", nil, errors.New("pem.EncodeToMemory failed")
 	}
