@@ -22,17 +22,21 @@ const SealKeyPlaceholder string = "$$seal_key"
 
 // Manifest defines the rules of a mesh.
 type Manifest struct {
-	// Allowed enclave packages
+	// Packages contains the allowed enclaves and their properties.
 	Packages map[string]quote.PackageProperties
-	// Allowed infrastructures
+	// Infrastructures contains the allowed infrastructure providers and their properties.
 	Infrastructures map[string]quote.InfrastructureProperties
-	// Allowed marble configurations
+	// Marbles contains the allowed services with their corresponding enclave and configuration parameters.
 	Marbles map[string]Marble
-	// Authorized client x509 certificates
+	// Clients contains TLS certificates for authenticating clients that use the ClientAPI.
 	Clients map[string][]byte
 }
 
-// Marble describes a type of a marble
+// Marble describes a service in the mesh that should be handled and verified by the Coordinator
+//
+// Package references one of the allowed enclaves in the manifest.
+// MaxActivations allows to limit the number of marbles of a kind.
+// Parameters contains lists for files, environment variables and commandline arguments that should be passed to the application. Placeholder variables are supported for specific assets of the marble's activation process.
 type Marble struct {
 	Package        string
 	MaxActivations uint
