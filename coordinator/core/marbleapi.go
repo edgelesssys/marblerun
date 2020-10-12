@@ -149,9 +149,9 @@ func (c *Core) generateCertFromCSR(csrReq []byte, pubk ecdsa.PublicKey, marbleTy
 		NotBefore:    notBefore,
 		NotAfter:     notAfter,
 
-		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign | x509.KeyUsageKeyAgreement,
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyAgreement,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
-		BasicConstraintsValid: false,
+		BasicConstraintsValid: true,
 		IsCA:                  false,
 		DNSNames:              csr.DNSNames,
 		IPAddresses:           csr.IPAddresses,

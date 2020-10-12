@@ -63,7 +63,7 @@ func GenerateCert(DNSNames []string, IPAddrs []net.IP, isCA bool) (*x509.Certifi
 		DNSNames:     DNSNames,
 		IPAddresses:  IPAddrs,
 
-		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign | x509.KeyUsageKeyAgreement,
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyAgreement,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 		BasicConstraintsValid: true,
 		IsCA:                  isCA,
