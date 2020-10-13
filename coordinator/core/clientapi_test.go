@@ -77,7 +77,7 @@ func TestGetCertQuote(t *testing.T) {
 	c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
 	_, _, err = c.GetCertQuote(context.TODO())
 	assert.Nil(err, "GetCertQuote should not fail (with manifest)")
-	assert.Contains(cert, "-----BEGIN Certificate-----", "simple format check")
+	assert.Contains(cert, "-----BEGIN CERTIFICATE-----", "simple format check")
 	//todo check quote
 
 }
