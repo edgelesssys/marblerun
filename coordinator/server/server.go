@@ -2,6 +2,7 @@ package server
 
 import (
 	"crypto/tls"
+	"encoding/hex"
 	"encoding/json"
 	"io"
 	"io/ioutil"
@@ -29,7 +30,7 @@ type statusResp struct {
 	Status string
 }
 type manifestSignatureResp struct {
-	ManifestSignature []byte
+	ManifestSignature string
 }
 
 // RunMarbleServer starts a gRPC with the given Coordinator core.
@@ -107,7 +108,7 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 		switch r.Method {
 		case http.MethodGet:
 			signature := cc.GetManifestSignature(r.Context())
-			strct := manifestSignatureResp{signature}
+			strct := manifestSignatureResp{hex.EncodeToString(signature)}
 			jsn, err := json.Marshal(strct)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)

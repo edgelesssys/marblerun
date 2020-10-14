@@ -295,7 +295,7 @@ func TestClientAPI(t *testing.T) {
 
 	assert.Nil(err, err)
 	assert.Equal(eof, readErr)
-	assert.Contains(string(buffer), "{\"ManifestSignature\":null}")
+	assert.Contains(string(buffer), "{\"ManifestSignature\":\"\"}\x00\x00")
 	assert.Equal(http.StatusOK, resp.StatusCode, "status != ok")
 	resp.Body.Close()
 
