@@ -19,17 +19,17 @@ type ClientCore interface {
 // SetManifest sets the manifest, once and for all
 func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) error {
 	defer c.mux.Unlock()
-	var tempManifest Manifest
 	if err := c.requireState(acceptingManifest); err != nil {
 		return err
 	}
-	if err := json.Unmarshal(rawManifest, &tempManifest); err != nil {
+	var manifest Manifest
+	if err := json.Unmarshal(rawManifest, &manifest); err != nil {
 		return err
 	}
-	if err := tempManifest.Check(ctx); err != nil {
+	if err := manifest.Check(ctx); err != nil {
 		return err
 	}
-	c.manifest = tempManifest
+	c.manifest = manifest
 	c.rawManifest = rawManifest
 
 	c.advanceState()
