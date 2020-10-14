@@ -22,11 +22,16 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) error {
 	if err := c.requireState(acceptingManifest); err != nil {
 		return err
 	}
-	if err := json.Unmarshal(rawManifest, &c.manifest); err != nil {
+	var manifest Manifest
+	if err := json.Unmarshal(rawManifest, &manifest); err != nil {
 		return err
 	}
+	if err := manifest.Check(ctx); err != nil {
+		return err
+	}
+	c.manifest = manifest
 	c.rawManifest = rawManifest
-	// TODO: sanitize manifest AB#166
+
 	c.advanceState()
 	c.sealState()
 	return nil
