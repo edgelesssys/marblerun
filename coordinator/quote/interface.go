@@ -1,3 +1,4 @@
+// Package quote provides the quoting functionialty for remote attestation on both Coordinator and Marble site.
 package quote
 
 // Validator validates quotes

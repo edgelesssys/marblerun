@@ -21,7 +21,14 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// Activate activates a marble (implements the MarbleServer interface)
+// Activate implements the MarbleAPI function to authenticate a marble (implements the MarbleServer interface)
+//
+// Verifies the marble's integritiy and subsequently provides the marble with a certificate for authentication and application-specific parameters as defined in the Coordinator's manifest.
+//
+// req needs to contain a MarbleType present in the Coordinator's manifest and a CSR with the Subject and DNSNames set with desired values.
+//
+// Returns a signed certificate-key-pair and the application's parameters if the authentication was successful.
+// Returns an error if the authenitcation failed.
 func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.ActivationResp, error) {
 	log.Println("activation request for type", req.MarbleType)
 	defer c.mux.Unlock()
@@ -71,7 +78,6 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 		return nil, err
 	}
 
-	// TODO Replace placeholders in Manifest
 	pemRootCA := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: c.cert.Raw})
 	pemMarbleCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certRaw})
 	pemMarbleKey := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: encodedPrivKey})
@@ -84,7 +90,6 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 		Parameters: &params,
 	}
 
-	// TODO: scan files for certificate placeholders like "$$root_ca" and replace those
 	log.Printf("Successfully activated new Marble of type '%v: %v'\n", req.GetMarbleType(), marbleUUID.String())
 	c.activations[req.GetMarbleType()]++
 	return resp, nil
@@ -164,6 +169,7 @@ func (c *Core) generateCertFromCSR(csrReq []byte, pubk ecdsa.PublicKey, marbleTy
 	return certRaw, nil
 }
 
+// customizeParameters replaces the placeholders in the manifest's parameters with the actual values
 func customizeParameters(params rpc.Parameters, rootCA []byte, marbleCert []byte, marbleKey []byte, sealKey []byte) rpc.Parameters {
 	customParams := rpc.Parameters{
 		Argv:  params.Argv,

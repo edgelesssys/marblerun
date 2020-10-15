@@ -1,3 +1,4 @@
+// Package core provides the core functionality for the Coordinator object including state transition, APIs for marbles and clients, handling of manifests and the sealing functionalities.
 package core
 
 import (
@@ -92,7 +93,7 @@ func NewCore(orgName string, dnsNames []string, qv quote.Validator, qi quote.Iss
 		log.Println("failed to get quote. Proceeding in simulation mode")
 		// If we run in SimulationMode we get an error here
 		// For testing purpose we do not want to just fail here
-		// Instead we store an empty quote that will make it transparent to the client that the network is not secure
+		// Instead we store an empty quote that will make it transparent to the client that the integrity of the mesh can not be guaranteed.
 		c.quote = []byte{}
 	} else {
 		c.quote = quote
@@ -110,7 +111,7 @@ func (c *Core) GetQuote(ctx context.Context) ([]byte, error) {
 	return c.quote, nil
 }
 
-// InSimulationMode returns true if we operate in OE_SIMULATION mode an the network is not secure
+// InSimulationMode returns true if we operate in OE_SIMULATION mode
 func (c *Core) InSimulationMode() bool {
 	return len(c.quote) == 0
 }

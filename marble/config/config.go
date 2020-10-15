@@ -1,3 +1,4 @@
+// Package config defines the environment variables expected by the Marble for configuration settings.
 package config
 
 // EdgCoordinatorAddr is the marble's addr to connect to the coordinator via gRPC

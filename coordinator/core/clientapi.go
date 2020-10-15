@@ -17,6 +17,8 @@ type ClientCore interface {
 }
 
 // SetManifest sets the manifest, once and for all
+//
+// rawManifest is the manifest of type Manifest in JSON format.
 func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) error {
 	defer c.mux.Unlock()
 	if err := c.requireState(acceptingManifest); err != nil {
@@ -38,6 +40,8 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) error {
 }
 
 // GetCertQuote gets the Coordinators certificate and corresponding quote (containing the cert)
+//
+// Returns the a remote attestation quote of its own certificate alongside this certificate that allows to verify the Coordinator's integrity and authentication for use of the ClientAPI.
 func (c *Core) GetCertQuote(ctx context.Context) (string, []byte, error) {
 	cert, err := c.getCert(ctx)
 	if err != nil {
@@ -52,6 +56,8 @@ func (c *Core) GetCertQuote(ctx context.Context) (string, []byte, error) {
 }
 
 // GetManifestSignature returns the hash of the manifest
+//
+// Returns a SHA256 hash of the active manifest.
 func (c *Core) GetManifestSignature(ctx context.Context) []byte {
 	if c.state == uninitialized || c.state == acceptingManifest {
 		return nil
@@ -60,7 +66,7 @@ func (c *Core) GetManifestSignature(ctx context.Context) []byte {
 	return hash[:]
 }
 
-// GetStatus IS A DUMMY IMPLEMENTATION. TODO
+// GetStatus is not implemented. It will return status information about the state of the mesh in the future.
 func (c *Core) GetStatus(ctx context.Context) (status string, err error) {
 	status, err = c.getStatus(ctx)
 	if err != nil {

@@ -1,3 +1,4 @@
+// Package marble contains the logic invoked before the applications actual main-function, that authenticates to the coordinator and pulls configurations and secrets which are subsequently passed to the application.
 package marble
 
 import (
@@ -59,7 +60,11 @@ func genCert() (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	return util.GenerateCert(marbleDNSNames, ipAddrs, false)
 }
 
-// PreMain is supposed to run before the App's actual main and authenticate with the Coordinator
+// PreMain runs before the App's actual main routine and authenticates with the Coordinator
+//
+// It obtains a quote from the CPU and authenticates itself to the Coordinator through remote attestation.
+// After successful authentication PreMain will set the files, environment variables and commandline arguments according to the manifest.
+// Finally it will mount the host file system under '/edg/hostfs' before returning execution to the actual application.
 func PreMain() error {
 	cert, privk, err := genCert()
 	if err != nil {
@@ -73,7 +78,7 @@ func PreMain() error {
 	return err
 }
 
-// PreMainMock is similar to PreMain but mocks the quoting and file handler interfaces
+// PreMainMock mocks the quoting and file system handling in the PreMain routine for testing.
 func PreMainMock() error {
 	// generate certificate
 	cert, privk, err := genCert()

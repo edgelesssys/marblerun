@@ -1,3 +1,4 @@
+// Package config defines the environment variables expected by the Coordinator for configuration settings.
 package config
 
 // EdgMeshServerAddr is the coordinator's address for the gRPC server to listen on
