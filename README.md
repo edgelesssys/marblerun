@@ -27,9 +27,9 @@ Key features of Edgeless Mesh are:
 
 ## Quickstart and documentation
 
-You can deploy your confidential computing application with Mesh with ease. See the [Getting Started Guide]() for how.
+You can deploy your confidential computing application with Mesh with ease. See the [Getting Started Guide](TODO) for how.
 
-FOr more comprehensive documentation, start with the [Mesh docs]()
+For more comprehensive documentation, start with the [Mesh docs](TODO)
 
 ## Roadmap
 
