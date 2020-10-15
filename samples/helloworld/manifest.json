@@ -1,0 +1,22 @@
+{
+    "Packages": {
+        "world": {
+            "UniqueID": "<replace with mrenclave obtained by `oesign dump -e enclave.signed`>",
+            "ProductID": [
+                1
+            ],
+            "SecurityVersion": 1
+        }
+    },
+    "Marbles": {
+        "hello": {
+            "Package": "world",
+            "Parameters": {
+                "Argv": [
+                    "foo",
+                    "bar"
+                ]
+            }
+        }
+    }
+}
