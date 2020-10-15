@@ -1,5 +1,7 @@
-Edgeless Mesh
-===
+# Edgeless Mesh
+
+
+![logo](docs/assets/logo_text.png)
 
 [![Actions Status](https://github.com/edgelesssys/coordinator/workflows/Unit%20Tests/badge.svg)](https://github.com/edgelesssys/coordinator/actions)
 
@@ -14,30 +16,43 @@ To keep things simple, Edgeless Mesh acts as certificate authority and issues on
 Edgeless Mesh is the service mesh for the age of confidential computing.
 
 Key features of Edgeless Mesh are:
-* Authentication and integrity verification of services
-* Distribution of secrets, configurations, certificates and keys
+
+* Authentication and integrity verification of microservices
+* Provisioning of certificates, configurations, and application artifacts
 * Remote attestation for the confidentiallity and integrity over the whole mesh network.
 
 ## Overview
-![overview](assets/overview.svg)
+
+![overview](docs/assets/overview.svg)
+
+## Quickstart and documentation
+
+You can deploy your confidential computing application with Mesh with ease. See the [Getting Started Guide]() for how.
+
+FOr more comprehensive documentation, start with the [Mesh docs]()
 
 ## Roadmap
+
 Future development and visionary features for Edgeless Mesh:
+
 * Authentication for the ClientAPI of Edgeless Mesh
+* Support for LKL/Graphene
 * Distribution of the Control Plane to mitigate against a single point of failure
 
-
 ## Build
+
 To build the Coordinator control plane:
-```
+
+```bash
 mkdir build
 cd build
 cmake ..
-make 
+make
 ```
 
 To build the data plane libraries and test applications:
-```
+
+```bash
 cd marble
 mkdir build
 cd build
@@ -45,22 +60,33 @@ cmake ..
 make
 ```
 
-### Test
-#### SGX
-```
+### Test your build
+
+#### With SGX-DCAP Attestation
+
+```bash
 go test ./test/ -v --args -c ../build/ -m ../marble/build/
 ```
-#### Simulation
-```
+
+#### With SGX-Simulation Mode
+
+```bash
 go test ./test/ -v --args -c ../build/ -m ../marble/build/ -s
 ```
-#### NoEnclave
-```
+
+#### Without SGX-Enclaves
+
+```bash
 go test ./test/ -v --args -c ../build/ -m ../marble/build/ -s -noenclave
 ```
 
-## Hello World
+## Examples
+
+### Hello World
+
 TODO
 
-## Emojivoto Demo
+### Confidential Emoji Voting
+
 We have evolved the [emojivoto](https://github.com/edgelesssys/emojivoto) microservice demo into a confidential computing application.
+
