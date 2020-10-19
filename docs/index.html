@@ -12,12 +12,40 @@
   <div id="app"></div>
   <script>
     window.$docsify = {
-      name: '',
-      repo: '',
+      name: (
+         '<img'
+         + '  src="./assets/ES_Symbol_black.svg"'
+         + '  width="80"'
+         + '/>'
+       ),
+      nameLink: 'https://www.edgeless.systems/',
+      repo: 'edgelesssys/coordinator',
       loadSidebar: true,
+      search: {
+        noData: {
+          '/de-de/': 'Keine Ergebnisse!',
+          '/zh-cn/': '没有结果!',
+          '/': 'No results!'
+        },
+        paths: 'auto',
+        placeholder: {
+          '/de-de/': 'Suche',
+          '/zh-cn/': '搜索',
+          '/': 'Search'
+        }
+      },
       relativePath: true,
+      themeColor: '#D44FEA',
+      topMargin: 400,
+      auto2top: true,
     }
   </script>
   <script src="//cdn.jsdelivr.net/npm/docsify/lib/docsify.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/docsify-pagination/dist/docsify-pagination.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/search.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/prismjs@1/components/prism-bash.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/prismjs@1/components/prism-json.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/prismjs@1/components/prism-go.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/prismjs@1/components/prism-python.min.js"></script>
 </body>
 </html>

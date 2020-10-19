@@ -1,11 +1,11 @@
 # Set Manifest
 
 The manifest is a JSON document that defines which services span the mesh and how they should be configured.
-It further defines what Infrastructre providers are allowed.
+It further defines what Infrastructure providers are allowed.
 You can set a Manifest through EdgelessMesh's Client REST-API.
-The endoint for all Manifest operations is `/manifest`.
+The endpoint for all Manifest operations is `/manifest`.
 
-See the following Manifest for example (manifest.json):
+See the following manifest for example (manifest.jso
 
 ```json
 {
@@ -89,9 +89,9 @@ See the following Manifest for example (manifest.json):
 }
 ```
 
-For setting the manifest, we first need to establish trust to the EdgelessMesh coordinator.
+For setting the manifest, we first need to establish trust in the EdgelessMesh coordinator.
 Therefore, we perform a remote attestation step.
-Assuming you've deployed our coordinator image from: `ghcr.io/edgelesssys/coordinator:latest`:
+Assuming you've deployed our coordinator image from `ghcr.io/edgelesssys/coordinator:latest`:
 
 1. Pull the UniqueID and SignerID values for this image:
 

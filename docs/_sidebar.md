@@ -1,12 +1,13 @@
 <!-- docs/_sidebard.md -->
 
+- [Introduction](README.md)
+
 - Getting started
 
   - [Quick start](quickstart.md)
   - [Confidential Computing](confidential-computing.md)
   - [Confidential Services Mesh](service-mesh.md)
   - [Setup](setup.md)
-
 
 - Features
 
@@ -24,6 +25,5 @@
 
   - [Hello World](helloworld.md)
   - [Confidential Emoji Voting](emojivoto.md)
-
 
 - [Changelog](changelog.md)
