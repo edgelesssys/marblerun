@@ -16,8 +16,8 @@
 
 - Tasks
 
-  - [Adding Your Service](add-service.md)
   - [Setting a Manifest](set-manifest.md)
+  - [Adding a Service](add-service.md)
   - [Client-Side verification](verification.md)
 
 - Examples
