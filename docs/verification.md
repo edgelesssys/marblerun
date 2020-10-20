@@ -1,12 +1,12 @@
 # Client-Side Verification
 
-An important feature of EdgelessMesh is providing the ability to verifying the confidentiality and integrity of the whole application on the client-side.
+An important feature of Edgeless Mesh is providing the ability to verifying the confidentiality and integrity of the whole application on the client-side.
 To that end, we provide a simple REST-API that clients can use before interacting with the application.
 
 ## Establishing Trust
 
 The first step is to establish trust with the whole microservice mesh.
-Therefore, EdgelessMesh exposes the `/quote` endpoint that returns a quote and a root certificate for the whole mesh.
+Therefore, Edgeless Mesh exposes the `/quote` endpoint that returns a quote and a root certificate for the whole mesh.
 Verifying the quote can be done by manually, but to ease the process we provide the Edgeless Remote Attestation tools ([era](https://github.com/edgelesssys/era)) for this purpose:
 
 ```bash
@@ -31,7 +31,7 @@ After successful verification, you'll have the trusted root certificate `mesh.cr
 ## Verifing the Manifest
 
 Establishing trust with the service mesh allows you to verify the deployed manifest in the second step.
-To that end, EdgelessMesh exposes the endpoint `/manifest`.
+To that end, Edgeless Mesh exposes the endpoint `/manifest`.
 Using curl you can get the manifest's signature aka its sha256 hash:
 
 ```bash

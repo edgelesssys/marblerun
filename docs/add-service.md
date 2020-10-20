@@ -2,12 +2,12 @@
 
 Adding a service to your application requires two steps:
 
-1. Building your service together with EdgelessMesh to inject our *Marble* data plane.
+1. Building your service together with Edgeless Mesh to inject our *Marble* data plane.
 2. Adding the service to the manifest so it will be recognized and managed by the *Coordinator* control plane.
 
-## Building your service with EdgelessMesh
+## Building your service with Edgeless Mesh
 
-We distinguish two cases when building your confidential application with EdgelessMesh:
+We distinguish two cases when building your confidential application with Edgeless Mesh:
 
 1. Your service is written in Go
     * You need to build your project together with our *Marble* code
@@ -34,7 +34,7 @@ The manifest contains a section with the information used to authenticate each s
 ```
 
 These values correspond directly to values provided in a remote attestation quote from Intel SGX.
-EdgelessMesh provides a tool to extract these values from a signed enclave.
+Edgeless Mesh provides a tool to extract these values from a signed enclave.
 You can find this tool in [tools/create_config.py](https://github.com/edgelesssys/coordinator/blob/master/tools/create_config.py):
 
 ```bash

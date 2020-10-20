@@ -24,7 +24,7 @@ In terms of the microservice architecture, the service and its sidecar proxy for
 That means communications between them can be neglected and the sidecar is entirely transparent to its service.
 Confidential applications require a more careful evaluation of the implications the service mesh layer has on the application's security properties.
 
-EdgelessMesh implements a confidential service mesh by injecting the data-plane logic directly into the service's secure enclave.
+Edgeless Mesh implements a confidential service mesh by injecting the data-plane logic directly into the service's secure enclave.
 That way we can ensure the confidentiality and integrity of communications from end-to-end between confidential services.
 A sidecar proxy could only ensure the confidentiality of data between the proxy endpoints but would expose data in the communication from sidecar to service.
 
