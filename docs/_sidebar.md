@@ -7,7 +7,7 @@
   - [Quick start](quickstart.md)
   - [Confidential Computing](confidential-computing.md)
   - [Confidential Services Mesh](service-mesh.md)
-  - [Setup](setup.md)
+  - [Overview](overview.md)
 
 - Features
 
