@@ -1,6 +1,9 @@
 # Remote Attestation
 
-Remote attestation enables a host to verify it is running a certain piece of software on certain trusted hardware. 
-Our Coordinator uses this to verify any marble before integrating it into the mesh. 
-It can and should also be used by any client to verify that the Coordinator is running a valid instance on hardware the client trusts.
-For more technical information see https://eprint.iacr.org/2016/086.pdf chapter 5.8
+Remote attestation is a fundamental problem for a distributed confidential application.
+To keep things simple, Edgeless Mesh acts as certificate authority and issues one concise remote attestation statement for your whole distributed app. 
+This can be used by anyone to verify the integrity of your distributed app.
+
+To that end, the Coordinator provides a Client REST-API endpoint that allows any client to verify the topology of the distributed app adheres to the deployed manifest.
+As part of the remote attestation statement the client also receives the root certificate of the Coordinator CA.
+This allows any client to establish trust to the Coordinator and consequentially to all services in the mesh.
