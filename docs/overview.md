@@ -5,6 +5,8 @@ The *Coordinator* needs to be deployed once in your cluster and the *Marble* lay
 Edgeless Mesh is configured with a simple JSON document called the *Manifest*.
 It specifies the topology of the distributed app, the infrastructure properties, and provides configuration parameters for each service.
 
+![overview](assets/mesh_overview.svg)
+
 ## Manifest
 
 The manifest is a simple JSON file specifying three asset groups: *Packages*, *Infrastructures*, and *Marbles*:
@@ -136,7 +138,7 @@ The Coordinator can be configured with several environment variables:
 
 ### Client API
 
-The Client API is designed as a HTTP-REST interface.
+The Client API is designed as an HTTP-REST interface.
 The API currently contains two endpoints:
 
 * `/manifest`: For deploying and verifying the Manifest
@@ -179,7 +181,9 @@ The API currently contains two endpoints:
 
 The Marbles represent the data plane in Edgeless Mesh.
 They communicate with the Coordinator through gRPC.
-For making a confidential service an Edgeless Mesh *Marble* the Marble code needs to be injected into the service's secure enclave. See [Add a Service](add-service.md) for more information on how to build a Marble.
+For making a confidential service an Edgeless Mesh *Marble* the Marble code needs to be injected into the service's secure enclave.
+
+See [Add a Service](add-service.md) for more information on how to build a Marble.
 
 A Marble can be configured with several environment variables:
 

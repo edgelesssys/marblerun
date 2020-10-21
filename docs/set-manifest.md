@@ -1,4 +1,4 @@
-# Set Manifest
+# Set a Manifest
 
 The manifest is a JSON document that defines which services span the mesh and how they should be configured.
 It further defines what Infrastructure providers are allowed.
