@@ -5,9 +5,9 @@ package test
 import (
 	"bytes"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/binary"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -25,6 +25,8 @@ import (
 	"github.com/edgelesssys/coordinator/coordinator/core"
 	mConfig "github.com/edgelesssys/coordinator/marble/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
 )
 
 var coordinatorDir = flag.String("c", "", "Coordinator build dir")
@@ -33,6 +35,7 @@ var simulationMode = flag.Bool("s", false, "Execute test in simulation mode (wit
 var noenclave = flag.Bool("noenclave", false, "Do not run with erthost")
 var meshServerAddr, clientServerAddr string
 var manifest core.Manifest
+var transportSkipVerify = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 
 func TestMain(m *testing.M) {
 	flag.Parse()
@@ -263,75 +266,39 @@ func waitForServer() error {
 
 func TestClientAPI(t *testing.T) {
 	assert := assert.New(t)
-	eof := errors.New("EOF")
+	require := require.New(t)
 
 	// start Coordinator
 	cfg := newCoordinatorConfig()
 	defer cfg.cleanup()
 	coordinatorProc := startCoordinator(cfg)
-	assert.NotNil(coordinatorProc, "could not start coordinator")
+	require.NotNil(coordinatorProc, "could not start coordinator")
 	defer coordinatorProc.Kill()
 
-	//create client
-	tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
-	client := http.Client{Transport: tr}
-	clientAPIURL := url.URL{
-		Scheme: "https",
-		Host:   clientServerAddr,
-		Path:   "quote",
-	}
-
-	//test get quote
+	// get certificate
+	client := http.Client{Transport: transportSkipVerify}
+	clientAPIURL := url.URL{Scheme: "https", Host: clientServerAddr, Path: "quote"}
 	resp, err := client.Get(clientAPIURL.String())
-	assert.Nil(err, err)
-	assert.Equal(http.StatusOK, resp.StatusCode, "get quote failed")
+	require.NoError(err)
+	require.Equal(http.StatusOK, resp.StatusCode)
+	quote, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
+	require.NoError(err)
+	cert := gjson.Get(string(quote), "Cert").String()
+	require.NotEmpty(cert)
 
-	//test manifest
+	// test with certificate
+	pool := x509.NewCertPool()
+	require.True(pool.AppendCertsFromPEM([]byte(cert)))
+	client = http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{RootCAs: pool}}}
 	clientAPIURL.Path = "manifest"
-
-	//try read before set
-	buffer := make([]byte, 1024)
 	resp, err = client.Get(clientAPIURL.String())
-	_, readErr := resp.Body.Read(buffer)
-
-	assert.Nil(err, err)
-	assert.Equal(eof, readErr)
-	assert.Contains(string(buffer), "{\"ManifestSignature\":\"\"}\x00\x00")
-	assert.Equal(http.StatusOK, resp.StatusCode, "status != ok")
+	require.NoError(err)
+	require.Equal(http.StatusOK, resp.StatusCode)
+	manifest, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
-
-	//set Manifest
-	manifestRaw, err := json.Marshal(manifest)
-	if err != nil {
-		panic(err)
-	}
-	resp, err = client.Post(clientAPIURL.String(), "application/json", bytes.NewBuffer(manifestRaw))
-
-	assert.Nil(err)
-	assert.Equal(http.StatusOK, resp.StatusCode)
-	resp.Body.Close()
-
-	//read after set
-	resp, err = client.Get(clientAPIURL.String())
-
-	assert.Nil(err)
-	assert.Equal(http.StatusOK, resp.StatusCode)
-
-	_, readErr = resp.Body.Read(buffer)
-	resp.Body.Close()
-
-	assert.Equal(eof, readErr, readErr)
-	assert.NotContains(string(buffer), "{\"ManifestSignature\":null}")
-
-	//try set manifest again
-	resp, err = client.Post(clientAPIURL.String(), "application/json", bytes.NewBuffer(manifestRaw))
-	assert.Nil(err)
-	assert.Equal(http.StatusBadRequest, resp.StatusCode)
-	resp.Body.Close()
-
-	//todo test status AB#121
-
+	require.NoError(err)
+	assert.JSONEq(`{"ManifestSignature":""}`, string(manifest))
 }
 
 type coordinatorConfig struct {
@@ -383,10 +350,7 @@ func startCoordinator(cfg coordinatorConfig) *os.Process {
 		output <- out
 	}()
 
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	client := http.Client{Transport: tr}
+	client := http.Client{Transport: transportSkipVerify}
 	url := url.URL{Scheme: "https", Host: clientServerAddr, Path: "quote"}
 
 	log.Println("Coordinator starting ...")
@@ -413,10 +377,7 @@ func startCoordinator(cfg coordinatorConfig) *os.Process {
 
 func setManifest(manifest core.Manifest) error {
 	// Use ClientAPI to set Manifest
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	client := http.Client{Transport: tr}
+	client := http.Client{Transport: transportSkipVerify}
 	clientAPIURL := url.URL{
 		Scheme: "https",
 		Host:   clientServerAddr,
