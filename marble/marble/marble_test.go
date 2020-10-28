@@ -1,253 +1,148 @@
 package marble
 
 import (
-	"context"
 	"crypto/x509"
-	"encoding/json"
-	"encoding/pem"
-	"flag"
-	"fmt"
-	"io/ioutil"
-	"net"
+	"errors"
 	"os"
-	"strings"
 	"testing"
-	"time"
 
-	"github.com/edgelesssys/coordinator/coordinator/core"
 	"github.com/edgelesssys/coordinator/coordinator/quote"
-	"github.com/edgelesssys/coordinator/coordinator/server"
+	"github.com/edgelesssys/coordinator/coordinator/rpc"
 	"github.com/edgelesssys/coordinator/marble/config"
-	"github.com/edgelesssys/coordinator/test"
-	"github.com/edgelesssys/coordinator/util"
 	"github.com/google/uuid"
 	"github.com/spf13/afero"
-
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/credentials"
 )
 
-const coordinatorCommonName string = "Coordinator" // TODO: core does not export this, for now just use it hardcoded
-
-const uuidFile string = "uuid"
-
-var sealKey []byte
-
-func TestLogic(t *testing.T) {
+func TestPreMain(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 
-	// parse manifest
-	var manifest core.Manifest
-	err := json.Unmarshal([]byte(test.ManifestJSON), &manifest)
-	assert.Nil(err, err)
-	validator := quote.NewMockValidator()
+	// The test will modify os.Args, restore it afterwards.
+	argsBackup := os.Args
+	defer func() { os.Args = argsBackup }()
+
+	// These are returned by the activate mock function and will be set to different values to test different scenarios.
+	var parameters *rpc.Parameters
+	var activateError error
+
+	// Mocks the coordinator.
+	activate := func(req *rpc.ActivationReq, coordAddr string, tlsCredentials credentials.TransportCredentials) (*rpc.Parameters, error) {
+		assert.Equal("addr", coordAddr)
+		assert.NotNil(tlsCredentials)
+		assert.Equal("type", req.MarbleType)
+		assert.NotEmpty(req.Quote)
+		_, err := uuid.Parse(req.UUID)
+		assert.NoError(err)
+
+		csr, err := x509.ParseCertificateRequest(req.CSR)
+		require.NoError(err)
+		assert.NoError(csr.CheckSignature())
+		assert.Equal([]string{"dns1", "dns2"}, csr.DNSNames)
+
+		return parameters, activateError
+	}
+
 	issuer := quote.NewMockIssuer()
 
-	// create core and run gRPC server
-	sealer := core.NewMockSealer()
-	coordinator, err := core.NewCore("Edgeless Systems GmbH", []string{"localhost"}, validator, issuer, sealer)
-	assert.NotNil(coordinator, "coordinator empty")
-	assert.Nil(err, err)
+	require.NoError(os.Setenv(config.EdgCoordinatorAddr, "addr"))
+	require.NoError(os.Setenv(config.EdgMarbleType, "type"))
+	require.NoError(os.Setenv(config.EdgMarbleUUIDFile, "uuidfile"))
+	require.NoError(os.Setenv(config.EdgMarbleDNSNames, "dns1,dns2"))
 
-	coordinator.SetManifest(context.TODO(), []byte(test.ManifestJSON))
+	// Actual tests follow.
 
-	// run marble server
-	var grpcAddr string
-	addrChan := make(chan string)
-	errChan := make(chan error)
-	marbleServerAddr := flag.String("ip", "localhost:0", "")
-	go server.RunMarbleServer(coordinator, *marbleServerAddr, addrChan, errChan)
-	select {
-	case err = <-errChan:
-		fmt.Println("Failed to start gRPC server", err)
-	case grpcAddr = <-addrChan:
-		fmt.Println("start mesh server at", grpcAddr)
+	{
+		parameters = &rpc.Parameters{}
+		activateError = nil
+
+		hostfs := afero.NewMemMapFs()
+		enclavefs := afero.NewMemMapFs()
+		require.NoError(preMain(issuer, activate, hostfs, enclavefs))
+
+		savedUUID, err := afero.ReadFile(hostfs, "uuidfile")
+		assert.NoError(err)
+		assert.Len(savedUUID, len(uuid.UUID{}))
+
+		assert.Equal([]string{"./marble"}, os.Args)
 	}
+	{
+		parameters = &rpc.Parameters{}
+		activateError = errors.New("test")
 
-	// create MockFileHandler
-	appFs := afero.NewMemMapFs()
+		os.Args = []string{"not modified"}
 
-	spawner := marbleSpawner{
-		assert:     assert,
-		issuer:     issuer,
-		validator:  validator,
-		manifest:   manifest,
-		serverAddr: grpcAddr,
-		appFs:      appFs,
+		hostfs := afero.NewMemMapFs()
+		enclavefs := afero.NewMemMapFs()
+		require.Error(preMain(issuer, activate, hostfs, enclavefs))
+
+		_, err := afero.ReadFile(hostfs, "uuidfile")
+		assert.Error(err)
+
+		assert.Equal([]string{"not modified"}, os.Args)
 	}
-	// activate first backend
-	spawner.newMarble("backend_first", "Azure", false, true)
-
-	// try to activate another first backend
-	spawner.newMarble("backend_first", "Azure", false, false)
-
-	// activate 10 other backend
-	pickInfra := func(i int) string {
-		if i&1 == 0 {
-			return "Azure"
+	{
+		parameters = &rpc.Parameters{
+			Files: map[string]string{
+				"path1": "data1",
+				"path2": "data2",
+			},
+			Env: map[string]string{
+				"EDG_TEST_1": "env1",
+				"EDG_TEST_2": "env2",
+			},
+			Argv: []string{"arg0", "arg1"},
 		}
-		return "Alibaba"
+		activateError = nil
+
+		require.NoError(os.Unsetenv("EDG_TEST_1"))
+		require.NoError(os.Unsetenv("EDG_TEST_2"))
+
+		hostfs := afero.NewMemMapFs()
+		enclavefs := afero.NewMemMapFs()
+		require.NoError(preMain(issuer, activate, hostfs, enclavefs))
+
+		savedUUID, err := afero.ReadFile(hostfs, "uuidfile")
+		assert.NoError(err)
+		assert.Len(savedUUID, len(uuid.UUID{}))
+
+		data, err := afero.ReadFile(enclavefs, "path1")
+		assert.NoError(err)
+		assert.Equal([]byte("data1"), data)
+		data, err = afero.ReadFile(enclavefs, "path2")
+		assert.NoError(err)
+		assert.Equal([]byte("data2"), data)
+
+		assert.Equal("env1", os.Getenv("EDG_TEST_1"))
+		assert.Equal("env2", os.Getenv("EDG_TEST_2"))
+
+		assert.Equal([]string{"arg0", "arg1"}, os.Args)
 	}
-	pickUUID := func(i int) bool {
-		return i&1 != 0
+	{
+		// parameters as before
+		activateError = errors.New("test")
+
+		os.Args = []string{"not modified"}
+		require.NoError(os.Unsetenv("EDG_TEST_1"))
+		require.NoError(os.Unsetenv("EDG_TEST_2"))
+
+		hostfs := afero.NewMemMapFs()
+		enclavefs := afero.NewMemMapFs()
+		require.Error(preMain(issuer, activate, hostfs, enclavefs))
+
+		_, err := afero.ReadFile(hostfs, "uuidfile")
+		assert.Error(err)
+
+		_, err = afero.ReadFile(enclavefs, "path1")
+		assert.Error(err)
+		_, err = afero.ReadFile(enclavefs, "path2")
+		assert.Error(err)
+
+		assert.Equal("", os.Getenv("EDG_TEST_1"))
+		assert.Equal("", os.Getenv("EDG_TEST_2"))
+
+		assert.Equal([]string{"not modified"}, os.Args)
 	}
-	for i := 0; i < 10; i++ {
-		spawner.newMarble("backend_other", pickInfra(i), pickUUID(i), true)
-	}
-
-	// activate 10 frontend
-	for i := 0; i < 10; i++ {
-		spawner.newMarble("frontend", pickInfra(i), pickUUID(i), true)
-	}
-
-}
-
-type marbleSpawner struct {
-	manifest   core.Manifest
-	validator  *quote.MockValidator
-	issuer     quote.Issuer
-	serverAddr string
-	assert     *assert.Assertions
-	appFs      afero.Fs
-}
-
-func (ms marbleSpawner) newMarble(marbleType string, infraName string, reuseUUID bool, shouldSucceed bool) {
-	// set env vars
-	err := os.Setenv(config.EdgCoordinatorAddr, ms.serverAddr)
-	ms.assert.Nil(err, "failed to set env variable: %v", err)
-	err = os.Setenv(config.EdgMarbleType, marbleType)
-	ms.assert.Nil(err, "failed to set env variable: %v", err)
-	err = os.Setenv(config.EdgMarbleDNSNames, "backend_service,backend,localhost")
-	ms.assert.Nil(err, "failed to set env variable: %v", err)
-
-	if !reuseUUID {
-		ms.appFs.RemoveAll(uuidFile)
-	}
-	err = os.Setenv(config.EdgMarbleUUIDFile, uuidFile)
-	ms.assert.Nil(err, "failed to set env variable: %v", err)
-
-	// create mock args for preMain
-	issuer := quote.NewMockIssuer()
-	dnsNames := []string{"localhost"}
-	ipAddrs := []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback}
-	cert, privk, err := util.GenerateCert(dnsNames, ipAddrs, false)
-	ms.assert.Nil(err, "failed to generate cert: %v", err)
-	quote, err := issuer.Issue(cert.Raw)
-	ms.assert.Nil(err, "failed to generate quote: %v", err)
-
-	// store quote in validator
-	marble, ok := ms.manifest.Marbles[marbleType]
-	ms.assert.True(ok, "marbleType '%v' does not exist", marbleType)
-	pkg, ok := ms.manifest.Packages[marble.Package]
-	ms.assert.True(ok, "Package '%v' does not exist", marble.Package)
-	infra, ok := ms.manifest.Infrastructures[infraName]
-	ms.assert.True(ok, "Infrastructure '%v' does not exist", infraName)
-	ms.validator.AddValidQuote(quote, cert.Raw, pkg, infra)
-
-	dummyMain := func(argc int, argv []string, env []string) int {
-		// check argv
-		ms.assert.Equal(len(marble.Parameters.Argv), argc)
-		ms.assert.Equal(marble.Parameters.Argv, argv)
-
-		// check env
-		for key, value := range marble.Parameters.Env {
-			readValue := util.MustGetenv(key)
-			if !strings.Contains(value, "$$") {
-				ms.assert.Equal(value, readValue, "%v env var differs from manifest", key)
-			}
-		}
-
-		// check files
-		for path, data := range marble.Parameters.Files {
-			defer os.RemoveAll(path)
-			readContent, err := ioutil.ReadFile(path)
-			ms.assert.Nil(err, "error reading file %v: %v", path, err)
-			if !strings.Contains(data, "$$") {
-				ms.assert.Equal(data, string(readContent), "content of file %v differs from manifest", path)
-			}
-
-		}
-		// Validate SealKey
-		pemSealKey := util.MustGetenv("SEAL_KEY")
-		ms.assert.NotNil(pemSealKey)
-		p, _ := pem.Decode([]byte(pemSealKey))
-		ms.assert.NotNil(p)
-
-		// Validate Marble Key
-		pemMarbleKey := util.MustGetenv("MARBLE_KEY")
-		ms.assert.NotNil(pemMarbleKey)
-		p, _ = pem.Decode([]byte(pemMarbleKey))
-		ms.assert.NotNil(p)
-
-		// Validate Cert
-		pemCert := util.MustGetenv("MARBLE_CERT")
-		ms.assert.NotNil(pemCert)
-		p, _ = pem.Decode([]byte(pemCert))
-		ms.assert.NotNil(p)
-		newCert, err := x509.ParseCertificate(p.Bytes)
-		ms.assert.Nil(err)
-		// Check cert-chain
-		pemRootCA := util.MustGetenv("ROOT_CA")
-		ms.assert.NotNil(pemRootCA)
-		p, _ = pem.Decode([]byte(pemRootCA))
-		ms.assert.NotNil(p)
-		rootCA, err := x509.ParseCertificate(p.Bytes)
-		ms.assert.Nil(err, "cannot parse rootCA: %v", err)
-		roots := x509.NewCertPool()
-		roots.AddCert(rootCA)
-		opts := x509.VerifyOptions{
-			Roots:         roots,
-			CurrentTime:   time.Now(),
-			DNSName:       "localhost",
-			Intermediates: x509.NewCertPool(),
-			KeyUsages:     newCert.ExtKeyUsage,
-		}
-		_, err = newCert.Verify(opts)
-		ms.assert.Nil(err, "failed to verify new certificate: %v", err)
-
-		receivedSealKey := []byte(util.MustGetenv("SEAL_KEY"))
-		if reuseUUID {
-			// check if we get back the same seal key
-			ms.assert.Equal(sealKey, receivedSealKey)
-		} else {
-			// check that the seal key is different
-			ms.assert.NotEqual(sealKey, receivedSealKey)
-		}
-		// store seal key
-		sealKey = receivedSealKey
-		return 0
-	}
-
-	// call preMain
-	params, err := preMain(cert, privk, issuer, ms.appFs)
-	if !shouldSucceed {
-		ms.assert.NotNil(err, err)
-		ms.assert.Nil(params, "expected empty params, but got %v", params)
-		return
-	}
-	ms.assert.Nil(err, "preMain failed: %v", err)
-	ms.assert.NotNil(params, "got empty params: %v", params)
-
-	ms.assert.Equal(marble.Parameters.Argv, params.Argv, "expected equal: '%v' - '%v'", marble.Parameters.Argv, params.Argv)
-
-	pemCert := params.Env["MARBLE_CERT"]
-	p, _ := pem.Decode([]byte(pemCert))
-	ms.assert.NotNil(p)
-	newCert, err := x509.ParseCertificate(p.Bytes)
-	ms.assert.Nil(err)
-
-	ms.assert.Equal(newCert.Issuer.CommonName, coordinatorCommonName, "expected equal: '%v' - '%v'", newCert.Issuer.CommonName, coordinatorCommonName)
-	ms.assert.Equal(newCert.Subject.Organization[0], newCert.Issuer.Organization[0], "expected equal: '%v' - '%v'", newCert.Subject.Organization[0], newCert.Issuer.Organization[0])
-
-	uuidBytes, err := afero.ReadFile(ms.appFs, uuidFile)
-	ms.assert.Nil(err, "error reading uuidFile: %v", err)
-	marbleUUID, err := uuid.NewUUID()
-	ms.assert.Nil(err, "error creating UUID: %v", err)
-	err = marbleUUID.UnmarshalBinary(uuidBytes)
-	ms.assert.Nil(err, "error unmarshaling UUID: %v", err)
-	ms.assert.Equal(marbleUUID.String(), newCert.Subject.CommonName)
-
-	// call dummyMain
-	ret := dummyMain(len(os.Args), os.Args, os.Environ())
-	ms.assert.Equal(0, ret, "dummyMain returned status code != 0: %v", ret)
-
 }
