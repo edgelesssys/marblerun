@@ -5,7 +5,7 @@ To build both the host and enclave parts:
 mkdir build
 cd build
 cmake ..
-make 
+make
 ```
 
 To build the marble-dummy host and enclave parts for testing:
@@ -22,17 +22,21 @@ make
 OE_SIMULATION=1 ./coordinator
 ```
 ## Test
+### Unit Tests
+```
+go test -race ./...
+```
 ### SGX2
 ```
-go test ./test/ -v --args -c ../build/ -m ../marble/build/
+go test ./test/ -v -tags integration --args -c ../build/ -m ../marble/build/
 ```
 ### Simulation
 ```
-go test ./test/ -v --args -c ../build/ -m ../marble/build/ -s
+go test ./test/ -v -tags integration --args -c ../build/ -m ../marble/build/ -s
 ```
 ### NoEnclave
 ```
-go test ./test/ -v --args -c ../build/ -m ../marble/build/ -s -noenclave
+go test ./test/ -v -tags integration --args -c ../build/ -m ../marble/build/ -s -noenclave
 ```
 
 # Protobuf

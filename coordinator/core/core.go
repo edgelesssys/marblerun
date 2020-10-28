@@ -128,13 +128,6 @@ func (c *Core) InSimulationMode() bool {
 	return len(c.quote) == 0
 }
 
-func (c *Core) getCert(ctx context.Context) (*x509.Certificate, error) {
-	if c.state == uninitialized {
-		return nil, errors.New("don't have a cert yet")
-	}
-	return c.cert, nil
-}
-
 // GetTLSConfig gets the core's TLS configuration
 func (c *Core) GetTLSConfig() (*tls.Config, error) {
 	cert, err := c.GetTLSCertificate()

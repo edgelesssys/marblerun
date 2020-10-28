@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"errors"
+	"sync"
 )
 
 type entry struct {
@@ -14,18 +15,22 @@ type entry struct {
 
 // MockValidator is a mockup quote validator
 type MockValidator struct {
+	mutex sync.Mutex
 	valid map[string]entry
 }
 
+// NewMockValidator returns a new MockValidator object
 func NewMockValidator() *MockValidator {
 	return &MockValidator{
-		make(map[string]entry),
+		valid: make(map[string]entry),
 	}
 }
 
 // Validate implements the Validator interface
 func (m *MockValidator) Validate(quote []byte, message []byte, pp PackageProperties, ip InfrastructureProperties) error {
+	m.mutex.Lock()
 	entry, found := m.valid[string(quote)]
+	m.mutex.Unlock()
 	if !found {
 		return errors.New("wrong quote")
 	}
@@ -43,12 +48,15 @@ func (m *MockValidator) Validate(quote []byte, message []byte, pp PackagePropert
 
 // AddValidQuote adds a valid quote
 func (m *MockValidator) AddValidQuote(quote []byte, message []byte, pp PackageProperties, ip InfrastructureProperties) {
+	m.mutex.Lock()
 	m.valid[string(quote)] = entry{message, pp, ip}
+	m.mutex.Unlock()
 }
 
 // MockIssuer is a mockup quote issuer
 type MockIssuer struct{}
 
+// NewMockIssuer returns a new MockIssuer object
 func NewMockIssuer() *MockIssuer {
 	return &MockIssuer{}
 }

@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"strings"
+	"sync"
 	"testing"
 
 	"github.com/edgelesssys/coordinator/coordinator/core"
@@ -69,4 +71,45 @@ func TestManifest(t *testing.T) {
 	}
 	assert.Equal(http.StatusBadRequest, resp.StatusCode)
 	assert.Equal("server is not in expected state\n", string(b))
+}
+
+func TestConcurrent(t *testing.T) {
+	// This test is used to detect data races when run with -race
+
+	assert := assert.New(t)
+
+	mux := CreateServeMux(core.NewCoreWithMocks())
+	var wg sync.WaitGroup
+
+	getQuote := func() {
+		req := httptest.NewRequest(http.MethodGet, "/quote", nil)
+		resp := httptest.NewRecorder()
+		mux.ServeHTTP(resp, req)
+		assert.Equal(http.StatusOK, resp.Code)
+		wg.Done()
+	}
+
+	getManifest := func() {
+		req := httptest.NewRequest(http.MethodGet, "/manifest", nil)
+		resp := httptest.NewRecorder()
+		mux.ServeHTTP(resp, req)
+		assert.Equal(http.StatusOK, resp.Code)
+		wg.Done()
+	}
+
+	postManifest := func() {
+		req := httptest.NewRequest(http.MethodPost, "/manifest", strings.NewReader(test.ManifestJSON))
+		resp := httptest.NewRecorder()
+		mux.ServeHTTP(resp, req)
+		wg.Done()
+	}
+
+	wg.Add(6)
+	go getQuote()
+	go getQuote()
+	go getManifest()
+	go getManifest()
+	go postManifest()
+	go postManifest()
+	wg.Wait()
 }
