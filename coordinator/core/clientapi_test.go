@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/edgelesssys/coordinator/coordinator/quote"
 	"github.com/edgelesssys/coordinator/test"
 	"github.com/stretchr/testify/assert"
 )
@@ -17,16 +16,9 @@ func mustSetup() (*Core, *Manifest) {
 	if err != nil {
 		panic(err)
 	}
-
-	validator := quote.NewMockValidator()
-	issuer := quote.NewMockIssuer()
-	sealer := NewMockSealer()
-	c, err := NewCore("edgeless", []string{"localhost"}, validator, issuer, sealer)
-	if err != nil {
-		panic(err)
-	}
-	return c, &manifest
+	return NewCoreWithMocks(), &manifest
 }
+
 func TestGetManifestSignature(t *testing.T) {
 	assert := assert.New(t)
 
