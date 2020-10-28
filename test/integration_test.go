@@ -121,11 +121,12 @@ func TestTest(t *testing.T) {
 
 	marbleCfg := newMarbleConfig(meshServerAddr, "test_marble_client", "localhost")
 	defer marbleCfg.cleanup()
-	assert.Nil(startMarble(marbleCfg).Process.Kill())
+	assert.False(startMarbleClient(marbleCfg))
 }
 
 func TestMarbleAPI(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 
 	// start Coordinator
 	log.Println("Starting a coordinator enclave")
@@ -150,27 +151,29 @@ func TestMarbleAPI(t *testing.T) {
 	log.Println("Starting a Server-Marble")
 	serverCfg := newMarbleConfig(meshServerAddr, "test_marble_server", "server,backend,localhost")
 	defer serverCfg.cleanup()
-	serverCmd := runMarble(assert, serverCfg, true, false)
-	defer serverCmd.Process.Kill()
-	err = waitForServer()
+	serverProc := startMarbleServer(serverCfg)
+	require.NotNil(serverProc, "failed to start server-marble")
+	defer serverProc.Kill()
+
 	// start clients
 	log.Println("Starting a bunch of Client-Marbles")
-	assert.Nil(err, "failed to start server-marble: %v", err)
 	clientCfg := newMarbleConfig(meshServerAddr, "test_marble_client", "client,frontend,localhost")
 	defer clientCfg.cleanup()
-	_ = runMarble(assert, clientCfg, true, true)
-	_ = runMarble(assert, clientCfg, true, true)
+	assert.True(startMarbleClient(clientCfg))
+	assert.True(startMarbleClient(clientCfg))
 	if !*simulationMode {
 		// start bad marbles (would be accepted if we run in SimulationMode)
 		badCfg := newMarbleConfig(meshServerAddr, "bad_marble", "bad,localhost")
 		defer badCfg.cleanup()
-		_ = runMarble(assert, badCfg, false, true)
-		_ = runMarble(assert, badCfg, false, true)
+		assert.False(startMarbleClient(badCfg))
+		assert.False(startMarbleClient(badCfg))
 	}
 }
 
 func TestRestart(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
+
 	log.Println("Testing the restart capabilities")
 	// start Coordinator
 	log.Println("Starting a coordinator enclave")
@@ -186,16 +189,16 @@ func TestRestart(t *testing.T) {
 	log.Println("Starting a Server-Marble")
 	serverCfg := newMarbleConfig(meshServerAddr, "test_marble_server", "server,backend,localhost")
 	defer serverCfg.cleanup()
-	serverCmd := runMarble(assert, serverCfg, true, false)
-	defer serverCmd.Process.Kill()
-	err = waitForServer()
+	serverProc := startMarbleServer(serverCfg)
+	require.NotNil(serverProc, "failed to start server-marble")
+	defer serverProc.Kill()
+
 	// start clients
 	log.Println("Starting a bunch of Client-Marbles")
-	assert.Nil(err, "failed to start server-marble: %v", err)
 	clientCfg := newMarbleConfig(meshServerAddr, "test_marble_client", "client,frontend,localhost")
 	defer clientCfg.cleanup()
-	_ = runMarble(assert, clientCfg, true, true)
-	_ = runMarble(assert, clientCfg, true, true)
+	assert.True(startMarbleClient(clientCfg))
+	assert.True(startMarbleClient(clientCfg))
 
 	// simulate restart of coordinator
 	log.Println("Simulating a restart of the coordinator enclave...")
@@ -215,53 +218,8 @@ func TestRestart(t *testing.T) {
 
 	// start a bunch of client marbles and assert they still work with old server marble
 	log.Println("Starting a bunch of Client-Marbles, which should still authenticate successfully with the Server-Marble")
-	_ = runMarble(assert, clientCfg, true, true)
-	_ = runMarble(assert, clientCfg, true, true)
-}
-
-func runMarble(assert *assert.Assertions, marbleCfg marbleConfig, shouldSucceed bool, terminates bool) *exec.Cmd {
-	log.Println("Starting marble")
-	marbleCmd := startMarble(marbleCfg)
-	assert.NotNil(marbleCmd)
-
-	if !terminates {
-		return marbleCmd
-	}
-
-	// Check that Marble Authenticated successfully
-	err := marbleCmd.Wait()
-	if !shouldSucceed {
-		assert.NotNil(err, "expected Wait to fail because of return value != 0, but got not error")
-		assert.NotNil(marbleCmd.ProcessState)
-		exitCode := marbleCmd.ProcessState.ExitCode()
-		assert.NotEqual(0, exitCode, "expected marble authentication to fail, but got exit code: %v", exitCode)
-		return marbleCmd
-	}
-	assert.Nil(err, "error while waiting for marble process: %v", err)
-	assert.NotNil(marbleCmd.ProcessState, "empty ProcessState after Wait")
-	exitCode := marbleCmd.ProcessState.ExitCode()
-	assert.Equal(0, exitCode, "marble authentication failed. exit code: %v", exitCode)
-	if exitCode == 0 {
-		log.Println("Marble authenticated successfully and terminated.")
-	}
-	return marbleCmd
-}
-
-func waitForServer() error {
-	log.Println("Waiting for server...")
-	timeout := time.Second * 5
-	var err error
-	for i := 0; i < 20; i++ {
-		var conn net.Conn
-		conn, err = net.DialTimeout("tcp", net.JoinHostPort("localhost", "8080"), timeout)
-		if err == nil {
-			conn.Close()
-			log.Println("Server started")
-			return nil
-		}
-		time.Sleep(1 * time.Second)
-	}
-	return fmt.Errorf("connection error: %v", err)
+	assert.True(startMarbleClient(clientCfg))
+	assert.True(startMarbleClient(clientCfg))
 }
 
 func TestClientAPI(t *testing.T) {
@@ -344,11 +302,7 @@ func startCoordinator(cfg coordinatorConfig) *os.Process {
 		makeEnv(config.SealDir, cfg.sealDir),
 		simFlag,
 	}
-	output := make(chan []byte)
-	go func() {
-		out, _ := cmd.CombinedOutput()
-		output <- out
-	}()
+	output := startCommand(cmd)
 
 	client := http.Client{Transport: transportSkipVerify}
 	url := url.URL{Scheme: "https", Host: clientServerAddr, Path: "quote"}
@@ -359,7 +313,7 @@ func startCoordinator(cfg coordinatorConfig) *os.Process {
 		select {
 		case out := <-output:
 			// process died
-			log.Println(string(out))
+			log.Println(out)
 			return nil
 		default:
 		}
@@ -373,6 +327,21 @@ func startCoordinator(cfg coordinatorConfig) *os.Process {
 			return cmd.Process
 		}
 	}
+}
+
+func startCommand(cmd *exec.Cmd) chan string {
+	output := make(chan string)
+	go func() {
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			if _, ok := err.(*exec.ExitError); !ok {
+				output <- err.Error()
+				return
+			}
+		}
+		output <- string(out)
+	}()
+	return output
 }
 
 func setManifest(manifest core.Manifest) error {
@@ -431,7 +400,7 @@ func (c marbleConfig) cleanup() {
 	}
 }
 
-func startMarble(cfg marbleConfig) *exec.Cmd {
+func getMarbleCmd(cfg marbleConfig) *exec.Cmd {
 	var cmd *exec.Cmd
 	if *noenclave {
 		cmd = exec.Command(filepath.Join(*marbleDir, "marble-test-noenclave"))
@@ -452,10 +421,43 @@ func startMarble(cfg marbleConfig) *exec.Cmd {
 		makeEnv(mConfig.UUIDFile, uuidFile),
 		simFlag,
 	}
-	if err := cmd.Start(); err != nil {
-		panic(err)
+	return cmd
+}
+
+func startMarbleServer(cfg marbleConfig) *os.Process {
+	cmd := getMarbleCmd(cfg)
+	output := startCommand(cmd)
+
+	log.Println("Waiting for server...")
+	timeout := time.Second * 5
+	for {
+		time.Sleep(100 * time.Millisecond)
+		select {
+		case out := <-output:
+			// process died
+			log.Println(out)
+			return nil
+		default:
+		}
+		conn, err := net.DialTimeout("tcp", net.JoinHostPort("localhost", "8080"), timeout)
+		if err == nil {
+			conn.Close()
+			log.Println("Server started")
+			return cmd.Process
+		}
+	}
+	return nil
+}
+
+func startMarbleClient(cfg marbleConfig) bool {
+	out, err := getMarbleCmd(cfg).CombinedOutput()
+	if err == nil {
+		return true
 	}
 
-	log.Println("Marble started")
-	return cmd
+	if _, ok := err.(*exec.ExitError); ok {
+		return false
+	}
+
+	panic(err.Error() + "\n" + string(out))
 }
