@@ -6,7 +6,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -85,31 +84,21 @@ func generateCertificate() (*x509.Certificate, *ecdsa.PrivateKey, error) {
 // After successful authentication PreMain will set the files, environment variables and commandline arguments according to the manifest.
 // Finally it will mount the host file system under '/edg/hostfs' before returning execution to the actual application.
 func PreMain() error {
-	cert, privk, err := generateCertificate()
-	if err != nil {
-		return err
-	}
-	appFs := afero.NewBasePathFs(afero.NewOsFs(), filepath.Join(filepath.FromSlash("/edg"), "hostfs"))
+	hostfs := afero.NewBasePathFs(afero.NewOsFs(), filepath.Join(filepath.FromSlash("/edg"), "hostfs"))
 	if err := syscall.Mount("/", "/", "edg_memfs", 0, ""); err != nil {
 		return err
 	}
-	_, err = preMain(cert, privk, ertvalidator.NewERTIssuer(), appFs)
-	return err
+	enclavefs := afero.NewOsFs()
+	return preMain(ertvalidator.NewERTIssuer(), activateRPC, hostfs, enclavefs)
 }
 
 // PreMainMock mocks the quoting and file system handling in the PreMain routine for testing.
 func PreMainMock() error {
-	// generate certificate
-	cert, privk, err := generateCertificate()
-	if err != nil {
-		return err
-	}
-	appFs := afero.NewOsFs()
-	_, err = preMain(cert, privk, quote.NewFailIssuer(), appFs)
-	return err
+	hostfs := afero.NewOsFs()
+	return preMain(quote.NewFailIssuer(), activateRPC, hostfs, hostfs)
 }
 
-func preMain(cert *x509.Certificate, privk *ecdsa.PrivateKey, issuer quote.Issuer, appFs afero.Fs) (*rpc.Parameters, error) {
+func preMain(issuer quote.Issuer, activate activateFunc, hostfs, enclavefs afero.Fs) error {
 	prefixBackup := log.Prefix()
 	defer log.SetPrefix(prefixBackup)
 	log.SetPrefix("[PreMain] ")
@@ -123,24 +112,29 @@ func preMain(cert *x509.Certificate, privk *ecdsa.PrivateKey, issuer quote.Issue
 	marbleDNSNames := strings.Split(marbleDNSNamesString, ",")
 	uuidFile := util.MustGetenv(config.EdgMarbleUUIDFile)
 
+	cert, privk, err := generateCertificate()
+	if err != nil {
+		return err
+	}
+
 	// Load TLS Credentials with InsecureSkipVerify enabled. (The coordinator verifies the marble, but not the other way round.)
 	log.Println("loading TLS Credentials")
 	tlsCredentials, err := util.LoadGRPCTLSCredentials(cert, privk, true)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// load or generate UUID
-	marbleUUID, err := getUUID(appFs, uuidFile)
+	marbleUUID, err := getUUID(hostfs, uuidFile)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// generate CSR
 	log.Println("generating CSR")
 	csr, err := util.GenerateCSR(marbleDNSNames, privk)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// generate Quote
@@ -168,24 +162,26 @@ func preMain(cert *x509.Certificate, privk *ecdsa.PrivateKey, issuer quote.Issue
 	log.Println("activating marble of type", marbleType)
 	params, err := activate(req, coordAddr, tlsCredentials)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// store UUID to file
 	log.Println("storing UUID")
-	if err := storeUUID(appFs, marbleUUID, uuidFile); err != nil {
-		return nil, err
+	if err := storeUUID(hostfs, marbleUUID, uuidFile); err != nil {
+		return err
 	}
 
-	if err := applyParameters(params); err != nil {
-		return nil, err
+	if err := applyParameters(params, enclavefs); err != nil {
+		return err
 	}
 
 	log.Println("done with PreMain")
-	return params, nil
+	return nil
 }
 
-func activate(req *rpc.ActivationReq, coordAddr string, tlsCredentials credentials.TransportCredentials) (*rpc.Parameters, error) {
+type activateFunc func(req *rpc.ActivationReq, coordAddr string, tlsCredentials credentials.TransportCredentials) (*rpc.Parameters, error)
+
+func activateRPC(req *rpc.ActivationReq, coordAddr string, tlsCredentials credentials.TransportCredentials) (*rpc.Parameters, error) {
 	connection, err := grpc.Dial(coordAddr, grpc.WithTransportCredentials(tlsCredentials))
 	if err != nil {
 		return nil, err
@@ -201,14 +197,14 @@ func activate(req *rpc.ActivationReq, coordAddr string, tlsCredentials credentia
 	return activationResp.GetParameters(), nil
 }
 
-func applyParameters(params *rpc.Parameters) error {
+func applyParameters(params *rpc.Parameters, fs afero.Fs) error {
 	// Store files in file system
 	log.Println("creating files from manifest")
 	for path, data := range params.Files {
-		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		if err := fs.MkdirAll(filepath.Dir(path), 0700); err != nil {
 			return err
 		}
-		if err := ioutil.WriteFile(path, []byte(data), 0600); err != nil {
+		if err := afero.WriteFile(fs, path, []byte(data), 0600); err != nil {
 			return err
 		}
 	}
@@ -222,7 +218,11 @@ func applyParameters(params *rpc.Parameters) error {
 	}
 
 	// Set Args
-	os.Args = params.Argv
+	if len(params.Argv) > 0 {
+		os.Args = params.Argv
+	} else {
+		os.Args = []string{"./marble"}
+	}
 
 	return nil
 }
