@@ -1,12 +1,11 @@
+// +build enclave
+
 package main
 
-// #cgo LDFLAGS: -Wl,-unresolved-symbols=ignore-in-object-files
-// void mountData(const char* path);
 import "C"
 
 import (
 	"os"
-	"unsafe"
 
 	"github.com/edgelesssys/coordinator/marble/marble"
 )
@@ -15,11 +14,6 @@ var cargs []*C.char
 
 //export invokemain
 func invokemain() { main() }
-func main()       {}
-
-func mountData(path string) {
-	C.mountData((*C.char)(unsafe.Pointer(&[]byte(path)[0])))
-}
 
 //export ert_meshentry_premain
 func ert_meshentry_premain(argc *C.int, argv ***C.char) {
