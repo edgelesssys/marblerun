@@ -19,9 +19,9 @@ oesign dump -e enclave.signed | grep mrenclave
 ```
 and set it as `UniqueID` in `manifest.json`.
 
-After you have started a Coordinator instance with `EDG_MESH_SERVER_ADDR=localhost:2001` and initialized it with the manifest, you can run your application:
+After you have started a Coordinator instance with `EDG_COORDINATOR_MESH_ADDR=localhost:2001` and initialized it with the manifest, you can run your application:
 ```sh
-EDG_COORDINATOR_ADDR=localhost:2001 EDG_MARBLE_TYPE=hello EDG_MARBLE_UUID_FILE=$PWD/uuid EDG_MARBLE_DNS_NAMES=localhost erthost enclave.signed
+EDG_MARBLE_COORDINATOR_ADDR=localhost:2001 EDG_MARBLE_TYPE=hello EDG_MARBLE_UUID_FILE=$PWD/uuid EDG_MARBLE_DNS_NAMES=localhost erthost enclave.signed
 ```
 
 This app will then serve HTTP on port 8080:

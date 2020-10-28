@@ -47,10 +47,10 @@ func TestPreMain(t *testing.T) {
 
 	issuer := quote.NewMockIssuer()
 
-	require.NoError(os.Setenv(config.EdgCoordinatorAddr, "addr"))
-	require.NoError(os.Setenv(config.EdgMarbleType, "type"))
-	require.NoError(os.Setenv(config.EdgMarbleUUIDFile, "uuidfile"))
-	require.NoError(os.Setenv(config.EdgMarbleDNSNames, "dns1,dns2"))
+	require.NoError(os.Setenv(config.CoordinatorAddr, "addr"))
+	require.NoError(os.Setenv(config.Type, "type"))
+	require.NoError(os.Setenv(config.UUIDFile, "uuidfile"))
+	require.NoError(os.Setenv(config.DNSNames, "dns1,dns2"))
 
 	// Actual tests follow.
 
