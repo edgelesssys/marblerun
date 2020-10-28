@@ -10,26 +10,21 @@ if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Debug)
 endif ()
 
-add_custom_target(marblelib
-  ertgo build -buildmode=c-archive
-  -o libmarble.a
-  ${CMAKE_SOURCE_DIR}/cmd/marble
-)
-
 add_custom_target(marbletestlib
-  ertgo build -buildmode=c-archive
+  ertgo build -buildmode=c-archive -tags enclave
   -o libmarbletest.a
   ${CMAKE_SOURCE_DIR}/cmd/marble-test
 )
 
 add_custom_target(marble-noenclave ALL
-  go build ${CMAKE_SOURCE_DIR}/cmd/marble-test-noenclave)
+  go build
+  -o marble-test-noenclave
+  ${CMAKE_SOURCE_DIR}/cmd/marble-test)
 
 
 add_executable(enclave enclave/main.c)
 # target_include_directories(enclave PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 add_dependencies(enclave marbletestlib)
-add_dependencies(enclave marblelib)
 
 target_link_libraries(enclave
   openenclave::ertmeshentry
