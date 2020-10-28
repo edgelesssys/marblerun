@@ -13,13 +13,15 @@ if (NOT CMAKE_BUILD_TYPE)
 endif ()
 
 add_custom_target(coordinatorlib
-  ertgo build -buildmode=c-archive
+  ertgo build -buildmode=c-archive -tags enclave
   -o libcoordinator.a
   ${CMAKE_SOURCE_DIR}/cmd/coordinator
 )
 
 add_custom_target(coordinator-noenclave ALL
-  go build ${CMAKE_SOURCE_DIR}/cmd/coordinator-noenclave)
+  go build
+  -o coordinator-noenclave
+  ${CMAKE_SOURCE_DIR}/cmd/coordinator)
 
 add_executable(enclave enclave/main.c)
 target_include_directories(enclave PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
