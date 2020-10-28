@@ -1,14 +1,14 @@
 // Package config defines the environment variables expected by the Coordinator for configuration settings.
 package config
 
-// EdgMeshServerAddr is the coordinator's address for the gRPC server to listen on
-const EdgMeshServerAddr string = "EDG_MESH_SERVER_ADDR"
+// MeshAddr is the coordinator's address for the gRPC server to listen on
+const MeshAddr = "EDG_COORDINATOR_MESH_ADDR"
 
-// EdgClientServerAddr is the coordinator's address for the HTTP-REST server to listen on
-const EdgClientServerAddr string = "EDG_CLIENT_SERVER_ADDR"
+// ClientAddr is the coordinator's address for the HTTP-REST server to listen on
+const ClientAddr = "EDG_COORDINATOR_CLIENT_ADDR"
 
-// EdgCoordinatorDNSNames are the alternative dns names for the coordinator's certificate
-const EdgCoordinatorDNSNames string = "EDG_COORDINATOR_DNS_NAMES"
+// DNSNames are the alternative dns names for the coordinator's certificate
+const DNSNames = "EDG_COORDINATOR_DNS_NAMES"
 
-// EdgCoordinatorSealDir is the coordinator's file location to store the sealed state
-const EdgCoordinatorSealDir string = "EDG_COORDINATOR_SEAL_DIR"
+// SealDir is the coordinator's file location to store the sealed state
+const SealDir = "EDG_COORDINATOR_SEAL_DIR"

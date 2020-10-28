@@ -19,12 +19,12 @@ func run(validator quote.Validator, issuer quote.Issuer, sealKey []byte, sealDir
 
 	// fetching env vars
 	log.Println("fetching env variables")
-	sealDir := util.MustGetenv(config.EdgCoordinatorSealDir)
+	sealDir := util.MustGetenv(config.SealDir)
 	sealDir = filepath.Join(sealDirPrefix, sealDir)
-	dnsNamesString := util.MustGetenv(config.EdgCoordinatorDNSNames)
+	dnsNamesString := util.MustGetenv(config.DNSNames)
 	dnsNames := strings.Split(dnsNamesString, ",")
-	clientServerAddr := util.MustGetenv(config.EdgClientServerAddr)
-	meshServerAddr := util.MustGetenv(config.EdgMeshServerAddr)
+	clientServerAddr := util.MustGetenv(config.ClientAddr)
+	meshServerAddr := util.MustGetenv(config.MeshAddr)
 
 	// creating core
 	log.Println("creating the Core object")

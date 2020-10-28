@@ -375,10 +375,10 @@ func startCoordinator(cfg coordinatorConfig) *os.Process {
 		simFlag = makeEnv("OE_SIMULATION", "0")
 	}
 	cmd.Env = []string{
-		makeEnv(config.EdgMeshServerAddr, cfg.MeshServerAddr),
-		makeEnv(config.EdgClientServerAddr, cfg.ClientServerAddr),
-		makeEnv(config.EdgCoordinatorDNSNames, cfg.DNSNames),
-		makeEnv(config.EdgCoordinatorSealDir, cfg.SealDir),
+		makeEnv(config.MeshAddr, cfg.MeshServerAddr),
+		makeEnv(config.ClientAddr, cfg.ClientServerAddr),
+		makeEnv(config.DNSNames, cfg.DNSNames),
+		makeEnv(config.SealDir, cfg.SealDir),
 		simFlag,
 	}
 	output := make(chan []byte)
@@ -490,10 +490,10 @@ func startMarble(cfg marbleConfig) *exec.Cmd {
 	}
 	uuidFile := filepath.Join(cfg.DataPath, "uuid")
 	cmd.Env = []string{
-		makeEnv(mConfig.EdgCoordinatorAddr, cfg.CoordinatorAddr),
-		makeEnv(mConfig.EdgMarbleType, cfg.MarbleType),
-		makeEnv(mConfig.EdgMarbleDNSNames, cfg.DNSNames),
-		makeEnv(mConfig.EdgMarbleUUIDFile, uuidFile),
+		makeEnv(mConfig.CoordinatorAddr, cfg.CoordinatorAddr),
+		makeEnv(mConfig.Type, cfg.MarbleType),
+		makeEnv(mConfig.DNSNames, cfg.DNSNames),
+		makeEnv(mConfig.UUIDFile, uuidFile),
 		simFlag,
 	}
 	if err := cmd.Start(); err != nil {
