@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"sync"
 	"testing"
 	"time"
 
@@ -36,23 +37,24 @@ func TestMarbleAPI(t *testing.T) {
 	assert.Nil(err)
 
 	spawner := marbleSpawner{
-		assert:    assert,
-		issuer:    issuer,
-		validator: validator,
-		manifest:  manifest,
+		assert:     assert,
+		issuer:     issuer,
+		validator:  validator,
+		manifest:   manifest,
+		coreServer: coreServer,
 	}
 
 	// try to activate first backend marble prematurely before manifest is set
-	spawner.newMarble(coreServer, "backend_first", "Azure", false)
+	spawner.newMarble("backend_first", "Azure", false)
 
 	// set manifest
 	assert.Nil(coreServer.SetManifest(context.TODO(), []byte(test.ManifestJSON)))
 
 	// activate first backend
-	spawner.newMarble(coreServer, "backend_first", "Azure", true)
+	spawner.newMarble("backend_first", "Azure", true)
 
 	// try to activate another first backend
-	spawner.newMarble(coreServer, "backend_first", "Azure", false)
+	spawner.newMarble("backend_first", "Azure", false)
 
 	// activate 10 other backend
 	pickInfra := func(i int) string {
@@ -63,24 +65,27 @@ func TestMarbleAPI(t *testing.T) {
 		}
 	}
 	for i := 0; i < 10; i++ {
-		spawner.newMarble(coreServer, "backend_other", pickInfra(i), true)
+		spawner.newMarbleAsync("backend_other", pickInfra(i), true)
 	}
 
 	// activate 10 frontend
 	for i := 0; i < 10; i++ {
-		spawner.newMarble(coreServer, "frontend", pickInfra(i), true)
+		spawner.newMarbleAsync("frontend", pickInfra(i), true)
 	}
+
+	spawner.wg.Wait()
 }
 
 type marbleSpawner struct {
 	manifest   Manifest
 	validator  *quote.MockValidator
 	issuer     quote.Issuer
-	serverAddr string
+	coreServer *Core
 	assert     *assert.Assertions
+	wg         sync.WaitGroup
 }
 
-func (ms marbleSpawner) newMarble(coreServer *Core, marbleType string, infraName string, shouldSucceed bool) {
+func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSucceed bool) {
 	// create certificate and CSR
 	certTLS, cert, csr, _, err := util.GenerateMarbleCredentials()
 	ms.assert.Nil(err)
@@ -109,7 +114,7 @@ func (ms marbleSpawner) newMarble(coreServer *Core, marbleType string, infraName
 		AuthInfo: tlsInfo,
 	})
 
-	resp, err := coreServer.Activate(ctx, &rpc.ActivationReq{
+	resp, err := ms.coreServer.Activate(ctx, &rpc.ActivationReq{
 		CSR:        csr,
 		MarbleType: marbleType,
 		Quote:      quote,
@@ -166,7 +171,7 @@ func (ms marbleSpawner) newMarble(coreServer *Core, marbleType string, infraName
 	ms.assert.Equal(certTLS.DNSNames, newCert.DNSNames)
 	ms.assert.Equal(certTLS.IPAddresses, newCert.IPAddresses)
 	// Check Signature
-	ms.assert.Nil(coreServer.cert.CheckSignature(newCert.SignatureAlgorithm, newCert.RawTBSCertificate, newCert.Signature))
+	ms.assert.Nil(ms.coreServer.cert.CheckSignature(newCert.SignatureAlgorithm, newCert.RawTBSCertificate, newCert.Signature))
 	// Check cert-chain
 	pemRootCA := resp.GetParameters().Env["ROOT_CA"]
 	ms.assert.NotNil(pemRootCA)
@@ -185,5 +190,12 @@ func (ms marbleSpawner) newMarble(coreServer *Core, marbleType string, infraName
 	}
 	_, err = newCert.Verify(opts)
 	ms.assert.Nil(err, "failed to verify new certificate: %v", err)
+}
 
+func (ms *marbleSpawner) newMarbleAsync(marbleType string, infraName string, shouldSucceed bool) {
+	ms.wg.Add(1)
+	go func() {
+		ms.newMarble(marbleType, infraName, shouldSucceed)
+		ms.wg.Done()
+	}()
 }

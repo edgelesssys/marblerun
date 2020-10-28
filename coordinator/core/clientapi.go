@@ -43,11 +43,7 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) error {
 //
 // Returns the a remote attestation quote of its own certificate alongside this certificate that allows to verify the Coordinator's integrity and authentication for use of the ClientAPI.
 func (c *Core) GetCertQuote(ctx context.Context) (string, []byte, error) {
-	cert, err := c.getCert(ctx)
-	if err != nil {
-		return "", nil, err
-	}
-	pemCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
+	pemCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: c.cert.Raw})
 	if len(pemCert) <= 0 {
 		return "", nil, errors.New("pem.EncodeToMemory failed")
 	}
@@ -59,10 +55,13 @@ func (c *Core) GetCertQuote(ctx context.Context) (string, []byte, error) {
 //
 // Returns a SHA256 hash of the active manifest.
 func (c *Core) GetManifestSignature(ctx context.Context) []byte {
-	if c.state == uninitialized || c.state == acceptingManifest {
+	c.mux.Lock()
+	rawManifest := c.rawManifest
+	c.mux.Unlock()
+	if rawManifest == nil {
 		return nil
 	}
-	hash := sha256.Sum256(c.rawManifest)
+	hash := sha256.Sum256(rawManifest)
 	return hash[:]
 }
 
