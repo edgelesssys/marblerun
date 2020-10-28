@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/edgelesssys/coordinator/coordinator/config"
@@ -12,18 +13,14 @@ import (
 	"github.com/edgelesssys/coordinator/util"
 )
 
-func main() {
+func run(validator quote.Validator, issuer quote.Issuer, sealKey []byte, sealDirPrefix string) {
 	log.SetPrefix("[Coordinator] ")
 	log.Println("starting coordinator")
-	// initialize coordinator
-	log.Println("initializing")
-	validator := quote.NewFailValidator()
-	issuer := quote.NewFailIssuer()
-	sealKey := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
 
 	// fetching env vars
 	log.Println("fetching env variables")
 	sealDir := util.MustGetenv(config.EdgCoordinatorSealDir)
+	sealDir = filepath.Join(sealDirPrefix, sealDir)
 	dnsNamesString := util.MustGetenv(config.EdgCoordinatorDNSNames)
 	dnsNames := strings.Split(dnsNamesString, ",")
 	clientServerAddr := util.MustGetenv(config.EdgClientServerAddr)
