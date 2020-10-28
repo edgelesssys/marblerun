@@ -22,6 +22,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/spf13/afero"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 // storeUUID stores the uuid to the fs
@@ -52,8 +53,26 @@ func readUUID(appFs afero.Fs, filename string) (*uuid.UUID, error) {
 	return &marbleUUID, nil
 }
 
-func genCert() (*x509.Certificate, *ecdsa.PrivateKey, error) {
-	// generate certificate
+// getUUID loads or generates the uuid
+func getUUID(appFs afero.Fs, uuidFile string) (uuid.UUID, error) {
+	// check if we have a uuid stored in the fs (means we are restarted)
+	log.Println("loading UUID")
+	existingUUID, err := readUUID(appFs, uuidFile)
+	if err != nil {
+		return uuid.UUID{}, err
+	}
+
+	// generate new UUID if not present
+	if existingUUID == nil {
+		log.Println("UUID not found. Generating a new UUID")
+		return uuid.New(), nil
+	}
+
+	log.Println("found UUID:", existingUUID.String())
+	return *existingUUID, nil
+}
+
+func generateCertificate() (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	marbleDNSNamesString := util.MustGetenv(config.EdgMarbleDNSNames)
 	marbleDNSNames := strings.Split(marbleDNSNamesString, ",")
 	ipAddrs := []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback}
@@ -66,7 +85,7 @@ func genCert() (*x509.Certificate, *ecdsa.PrivateKey, error) {
 // After successful authentication PreMain will set the files, environment variables and commandline arguments according to the manifest.
 // Finally it will mount the host file system under '/edg/hostfs' before returning execution to the actual application.
 func PreMain() error {
-	cert, privk, err := genCert()
+	cert, privk, err := generateCertificate()
 	if err != nil {
 		return err
 	}
@@ -81,7 +100,7 @@ func PreMain() error {
 // PreMainMock mocks the quoting and file system handling in the PreMain routine for testing.
 func PreMainMock() error {
 	// generate certificate
-	cert, privk, err := genCert()
+	cert, privk, err := generateCertificate()
 	if err != nil {
 		return err
 	}
@@ -91,8 +110,11 @@ func PreMainMock() error {
 }
 
 func preMain(cert *x509.Certificate, privk *ecdsa.PrivateKey, issuer quote.Issuer, appFs afero.Fs) (*rpc.Parameters, error) {
+	prefixBackup := log.Prefix()
+	defer log.SetPrefix(prefixBackup)
 	log.SetPrefix("[PreMain] ")
 	log.Println("starting PreMain")
+
 	// get env variables
 	log.Println("fetching env variables")
 	coordAddr := util.MustGetenv(config.EdgCoordinatorAddr)
@@ -101,29 +123,18 @@ func preMain(cert *x509.Certificate, privk *ecdsa.PrivateKey, issuer quote.Issue
 	marbleDNSNames := strings.Split(marbleDNSNamesString, ",")
 	uuidFile := util.MustGetenv(config.EdgMarbleUUIDFile)
 
-	// load TLS Credentials
+	// Load TLS Credentials with InsecureSkipVerify enabled. (The coordinator verifies the marble, but not the other way round.)
 	log.Println("loading TLS Credentials")
-	tlsCredentials, err := util.LoadTLSCredentials(cert, privk)
+	tlsCredentials, err := util.LoadGRPCTLSCredentials(cert, privk, true)
 	if err != nil {
 		return nil, err
 	}
 
-	// check if we have a uuid stored in the fs (means we are restarted)
-	log.Println("loading UUID")
-	existingUUID, err := readUUID(appFs, uuidFile)
+	// load or generate UUID
+	marbleUUID, err := getUUID(appFs, uuidFile)
 	if err != nil {
 		return nil, err
 	}
-	// generate new UUID if not present
-	var marbleUUID uuid.UUID
-	if existingUUID == nil {
-		log.Println("UUID not found. Generating a new UUID")
-		marbleUUID = uuid.New()
-	} else {
-		marbleUUID = *existingUUID
-		log.Println("found UUID:", marbleUUID.String())
-	}
-	uuidStr := marbleUUID.String()
 
 	// generate CSR
 	log.Println("generating CSR")
@@ -147,24 +158,15 @@ func preMain(cert *x509.Certificate, privk *ecdsa.PrivateKey, issuer quote.Issue
 		quote = []byte{}
 	}
 
-	// initiate grpc connection to Coordinator
-	cc, err := grpc.Dial(coordAddr, grpc.WithTransportCredentials(tlsCredentials))
-
-	if err != nil {
-		return nil, err
-	}
-	defer cc.Close()
-
 	// authenticate with Coordinator
 	req := &rpc.ActivationReq{
 		CSR:        csr.Raw,
 		MarbleType: marbleType,
 		Quote:      quote,
-		UUID:       uuidStr,
+		UUID:       marbleUUID.String(),
 	}
-	c := rpc.NewMarbleClient(cc)
 	log.Println("activating marble of type", marbleType)
-	activationResp, err := c.Activate(context.Background(), req)
+	params, err := activate(req, coordAddr, tlsCredentials)
 	if err != nil {
 		return nil, err
 	}
@@ -175,18 +177,39 @@ func preMain(cert *x509.Certificate, privk *ecdsa.PrivateKey, issuer quote.Issue
 		return nil, err
 	}
 
-	// get params
-	params := activationResp.GetParameters()
+	if err := applyParameters(params); err != nil {
+		return nil, err
+	}
 
+	log.Println("done with PreMain")
+	return params, nil
+}
+
+func activate(req *rpc.ActivationReq, coordAddr string, tlsCredentials credentials.TransportCredentials) (*rpc.Parameters, error) {
+	connection, err := grpc.Dial(coordAddr, grpc.WithTransportCredentials(tlsCredentials))
+	if err != nil {
+		return nil, err
+	}
+	defer connection.Close()
+
+	client := rpc.NewMarbleClient(connection)
+	activationResp, err := client.Activate(context.Background(), req)
+	if err != nil {
+		return nil, err
+	}
+
+	return activationResp.GetParameters(), nil
+}
+
+func applyParameters(params *rpc.Parameters) error {
 	// Store files in file system
 	log.Println("creating files from manifest")
 	for path, data := range params.Files {
-		// edg_memfs does not support creating directories yet
-		// if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
-		// 	return nil, err
-		// }
+		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+			return err
+		}
 		if err := ioutil.WriteFile(path, []byte(data), 0600); err != nil {
-			return nil, err
+			return err
 		}
 	}
 
@@ -194,13 +217,12 @@ func preMain(cert *x509.Certificate, privk *ecdsa.PrivateKey, issuer quote.Issue
 	log.Println("setting env vars from manifest")
 	for key, value := range params.Env {
 		if err := os.Setenv(key, value); err != nil {
-			return nil, err
+			return err
 		}
 	}
 
 	// Set Args
 	os.Args = params.Argv
 
-	log.Println("done with PreMain")
-	return params, nil
+	return nil
 }

@@ -22,6 +22,7 @@ import (
 	"google.golang.org/grpc/peer"
 
 	"github.com/edgelesssys/coordinator/coordinator/quote"
+	"github.com/edgelesssys/coordinator/util"
 )
 
 // Core implements the core logic of the Coordinator
@@ -139,7 +140,7 @@ func (c *Core) GetTLSCertificate() (*tls.Certificate, error) {
 	if c.state == uninitialized {
 		return nil, errors.New("don't have a cert yet")
 	}
-	return tlsCertFromDER(c.cert.Raw, c.privk), nil
+	return util.TLSCertFromDER(c.cert.Raw, c.privk), nil
 }
 
 func (c *Core) loadState(orgName string, dnsNames []string) (*x509.Certificate, *ecdsa.PrivateKey, error) {
@@ -268,9 +269,6 @@ func getClientTLSCert(ctx context.Context) *x509.Certificate {
 	return tlsInfo.State.PeerCertificates[0]
 }
 
-func tlsCertFromDER(certDER []byte, privk interface{}) *tls.Certificate {
-	return &tls.Certificate{Certificate: [][]byte{certDER}, PrivateKey: privk}
-}
 func (c *Core) getStatus(ctx context.Context) (string, error) {
 	return "this is a test status", nil
 	//return nil, errors.New("getStatus is not yet implemented")
