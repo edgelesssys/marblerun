@@ -31,7 +31,7 @@ var coordinatorDir = flag.String("c", "", "Coordinator build dir")
 var marbleDir = flag.String("m", "", "Marble build dir")
 var simulationMode = flag.Bool("s", false, "Execute test in simulation mode (without real quoting)")
 var noenclave = flag.Bool("noenclave", false, "Do not run with erthost")
-var marbleServerAddr, clientServerAddr string
+var meshServerAddr, clientServerAddr string
 var manifest core.Manifest
 
 func TestMain(m *testing.M) {
@@ -57,12 +57,12 @@ func TestMain(m *testing.M) {
 	updateManifest()
 
 	// get unused ports
-	var listenerMarbleAPI, listenerClientAPI net.Listener
-	listenerMarbleAPI, marbleServerAddr = getListenerAndAddr()
+	var listenerMeshAPI, listenerClientAPI net.Listener
+	listenerMeshAPI, meshServerAddr = getListenerAndAddr()
 	listenerClientAPI, clientServerAddr = getListenerAndAddr()
-	listenerMarbleAPI.Close()
+	listenerMeshAPI.Close()
 	listenerClientAPI.Close()
-	log.Printf("Got marbleServerAddr: %v and clientServerAddr: %v\n", marbleServerAddr, clientServerAddr)
+	log.Printf("Got meshServerAddr: %v and clientServerAddr: %v\n", meshServerAddr, clientServerAddr)
 	os.Exit(m.Run())
 }
 
@@ -112,12 +112,12 @@ func getListenerAndAddr() (net.Listener, string) {
 func TestTest(t *testing.T) {
 	assert := assert.New(t)
 
-	cfgFilename := createCoordinatorConfig("localhost")
-	defer cleanupCoordinatorConfig(cfgFilename)
-	assert.Nil(startCoordinator(cfgFilename).Kill())
+	cfg := newCoordinatorConfig()
+	defer cfg.cleanup()
+	assert.Nil(startCoordinator(cfg).Kill())
 
-	marbleCfg := createMarbleConfig(marbleServerAddr, "test_marble_client", "localhost")
-	defer cleanupMarbleConfig(marbleCfg)
+	marbleCfg := newMarbleConfig(meshServerAddr, "test_marble_client", "localhost")
+	defer marbleCfg.cleanup()
 	assert.Nil(startMarble(marbleCfg).Process.Kill())
 }
 
@@ -126,9 +126,9 @@ func TestMarbleAPI(t *testing.T) {
 
 	// start Coordinator
 	log.Println("Starting a coordinator enclave")
-	cfgFilename := createCoordinatorConfig("localhost")
-	defer cleanupCoordinatorConfig(cfgFilename)
-	coordinatorProc := startCoordinator(cfgFilename)
+	cfg := newCoordinatorConfig()
+	defer cfg.cleanup()
+	coordinatorProc := startCoordinator(cfg)
 	assert.NotNil(coordinatorProc)
 	defer coordinatorProc.Kill()
 
@@ -145,22 +145,22 @@ func TestMarbleAPI(t *testing.T) {
 
 	// start server
 	log.Println("Starting a Server-Marble")
-	serverCfg := createMarbleConfig(marbleServerAddr, "test_marble_server", "server,backend,localhost")
-	defer cleanupMarbleConfig(serverCfg)
+	serverCfg := newMarbleConfig(meshServerAddr, "test_marble_server", "server,backend,localhost")
+	defer serverCfg.cleanup()
 	serverCmd := runMarble(assert, serverCfg, true, false)
 	defer serverCmd.Process.Kill()
 	err = waitForServer()
 	// start clients
 	log.Println("Starting a bunch of Client-Marbles")
 	assert.Nil(err, "failed to start server-marble: %v", err)
-	clientCfg := createMarbleConfig(marbleServerAddr, "test_marble_client", "client,frontend,localhost")
-	defer cleanupMarbleConfig(clientCfg)
+	clientCfg := newMarbleConfig(meshServerAddr, "test_marble_client", "client,frontend,localhost")
+	defer clientCfg.cleanup()
 	_ = runMarble(assert, clientCfg, true, true)
 	_ = runMarble(assert, clientCfg, true, true)
 	if !*simulationMode {
 		// start bad marbles (would be accepted if we run in SimulationMode)
-		badCfg := createMarbleConfig(marbleServerAddr, "bad_marble", "bad,localhost")
-		defer cleanupMarbleConfig(badCfg)
+		badCfg := newMarbleConfig(meshServerAddr, "bad_marble", "bad,localhost")
+		defer badCfg.cleanup()
 		_ = runMarble(assert, badCfg, false, true)
 		_ = runMarble(assert, badCfg, false, true)
 	}
@@ -171,9 +171,9 @@ func TestRestart(t *testing.T) {
 	log.Println("Testing the restart capabilities")
 	// start Coordinator
 	log.Println("Starting a coordinator enclave")
-	cfgFilename := createCoordinatorConfig("localhost")
-	defer cleanupCoordinatorConfig(cfgFilename)
-	coordinatorProc := startCoordinator(cfgFilename)
+	cfg := newCoordinatorConfig()
+	defer cfg.cleanup()
+	coordinatorProc := startCoordinator(cfg)
 	assert.NotNil(coordinatorProc)
 	// set Manifest
 	log.Println("Setting the Manifest")
@@ -181,16 +181,16 @@ func TestRestart(t *testing.T) {
 	assert.Nil(err, "failed to set Manifest: %v", err)
 	// start server
 	log.Println("Starting a Server-Marble")
-	serverCfg := createMarbleConfig(marbleServerAddr, "test_marble_server", "server,backend,localhost")
-	defer cleanupMarbleConfig(serverCfg)
+	serverCfg := newMarbleConfig(meshServerAddr, "test_marble_server", "server,backend,localhost")
+	defer serverCfg.cleanup()
 	serverCmd := runMarble(assert, serverCfg, true, false)
 	defer serverCmd.Process.Kill()
 	err = waitForServer()
 	// start clients
 	log.Println("Starting a bunch of Client-Marbles")
 	assert.Nil(err, "failed to start server-marble: %v", err)
-	clientCfg := createMarbleConfig(marbleServerAddr, "test_marble_client", "client,frontend,localhost")
-	defer cleanupMarbleConfig(clientCfg)
+	clientCfg := newMarbleConfig(meshServerAddr, "test_marble_client", "client,frontend,localhost")
+	defer clientCfg.cleanup()
 	_ = runMarble(assert, clientCfg, true, true)
 	_ = runMarble(assert, clientCfg, true, true)
 
@@ -201,7 +201,7 @@ func TestRestart(t *testing.T) {
 		panic(err)
 	}
 	log.Println("Restarting the old instance")
-	coordinatorProc = startCoordinator(cfgFilename)
+	coordinatorProc = startCoordinator(cfg)
 	assert.NotNil(coordinatorProc)
 	defer coordinatorProc.Kill()
 
@@ -266,9 +266,9 @@ func TestClientAPI(t *testing.T) {
 	eof := errors.New("EOF")
 
 	// start Coordinator
-	cfgFilename := createCoordinatorConfig("localhost")
-	defer cleanupCoordinatorConfig(cfgFilename)
-	coordinatorProc := startCoordinator(cfgFilename)
+	cfg := newCoordinatorConfig()
+	defer cfg.cleanup()
+	coordinatorProc := startCoordinator(cfg)
 	assert.NotNil(coordinatorProc, "could not start coordinator")
 	defer coordinatorProc.Kill()
 
@@ -335,24 +335,20 @@ func TestClientAPI(t *testing.T) {
 }
 
 type coordinatorConfig struct {
-	MeshServerAddr   string
-	ClientServerAddr string
-	DNSNames         string
-	SealDir          string
+	dnsNames string
+	sealDir  string
 }
 
-func createCoordinatorConfig(dnsNames string) coordinatorConfig {
-	tempDir, err := ioutil.TempDir("/tmp", "edg_coordinator_*")
+func newCoordinatorConfig() coordinatorConfig {
+	sealDir, err := ioutil.TempDir("", "")
 	if err != nil {
 		panic(err)
 	}
-	cfg := coordinatorConfig{MeshServerAddr: marbleServerAddr, ClientServerAddr: clientServerAddr, DNSNames: dnsNames, SealDir: tempDir}
-
-	return cfg
+	return coordinatorConfig{dnsNames: "localhost", sealDir: sealDir}
 }
 
-func cleanupCoordinatorConfig(cfg coordinatorConfig) {
-	if err := os.RemoveAll(cfg.SealDir); err != nil {
+func (c coordinatorConfig) cleanup() {
+	if err := os.RemoveAll(c.sealDir); err != nil {
 		panic(err)
 	}
 }
@@ -375,10 +371,10 @@ func startCoordinator(cfg coordinatorConfig) *os.Process {
 		simFlag = makeEnv("OE_SIMULATION", "0")
 	}
 	cmd.Env = []string{
-		makeEnv(config.MeshAddr, cfg.MeshServerAddr),
-		makeEnv(config.ClientAddr, cfg.ClientServerAddr),
-		makeEnv(config.DNSNames, cfg.DNSNames),
-		makeEnv(config.SealDir, cfg.SealDir),
+		makeEnv(config.MeshAddr, meshServerAddr),
+		makeEnv(config.ClientAddr, clientServerAddr),
+		makeEnv(config.DNSNames, cfg.dnsNames),
+		makeEnv(config.SealDir, cfg.sealDir),
 		simFlag,
 	}
 	output := make(chan []byte)
@@ -449,28 +445,27 @@ func setManifest(manifest core.Manifest) error {
 }
 
 type marbleConfig struct {
-	CoordinatorAddr string
-	MarbleType      string
-	DNSNames        string
-	DataPath        string
+	coordinatorAddr string
+	marbleType      string
+	dnsNames        string
+	dataDir         string
 }
 
-func createMarbleConfig(coordinatorAddr, marbleType, marbleDNSNames string) marbleConfig {
-	cfg := marbleConfig{
-		CoordinatorAddr: coordinatorAddr,
-		MarbleType:      marbleType,
-		DNSNames:        marbleDNSNames,
-	}
-	var err error
-	cfg.DataPath, err = ioutil.TempDir("", "")
+func newMarbleConfig(coordinatorAddr, marbleType, dnsNames string) marbleConfig {
+	dataDir, err := ioutil.TempDir("", "")
 	if err != nil {
 		panic(err)
 	}
-	return cfg
+	return marbleConfig{
+		coordinatorAddr: coordinatorAddr,
+		marbleType:      marbleType,
+		dnsNames:        dnsNames,
+		dataDir:         dataDir,
+	}
 }
 
-func cleanupMarbleConfig(cfg marbleConfig) {
-	if err := os.RemoveAll(cfg.DataPath); err != nil {
+func (c marbleConfig) cleanup() {
+	if err := os.RemoveAll(c.dataDir); err != nil {
 		panic(err)
 	}
 }
@@ -488,11 +483,11 @@ func startMarble(cfg marbleConfig) *exec.Cmd {
 	} else {
 		simFlag = makeEnv("OE_SIMULATION", "0")
 	}
-	uuidFile := filepath.Join(cfg.DataPath, "uuid")
+	uuidFile := filepath.Join(cfg.dataDir, "uuid")
 	cmd.Env = []string{
-		makeEnv(mConfig.CoordinatorAddr, cfg.CoordinatorAddr),
-		makeEnv(mConfig.Type, cfg.MarbleType),
-		makeEnv(mConfig.DNSNames, cfg.DNSNames),
+		makeEnv(mConfig.CoordinatorAddr, cfg.coordinatorAddr),
+		makeEnv(mConfig.Type, cfg.marbleType),
+		makeEnv(mConfig.DNSNames, cfg.dnsNames),
 		makeEnv(mConfig.UUIDFile, uuidFile),
 		simFlag,
 	}
