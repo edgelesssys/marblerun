@@ -8,22 +8,14 @@ import (
 	"testing"
 
 	"github.com/edgelesssys/coordinator/coordinator/core"
-	"github.com/edgelesssys/coordinator/coordinator/quote"
 	"github.com/edgelesssys/coordinator/test"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestQuote(t *testing.T) {
 	assert := assert.New(t)
-	validator := quote.NewMockValidator()
-	issuer := quote.NewMockIssuer()
-	sealer := core.NewMockSealer()
-	c, err := core.NewCore("edgeless", []string{"localhost"}, validator, issuer, sealer)
-	if err != nil {
-		panic(err)
-	}
 
-	mux := CreateServeMux(c)
+	mux := CreateServeMux(core.NewCoreWithMocks())
 
 	req := httptest.NewRequest(http.MethodGet, "/quote", nil)
 	w := httptest.NewRecorder()
@@ -35,14 +27,8 @@ func TestQuote(t *testing.T) {
 
 func TestManifest(t *testing.T) {
 	assert := assert.New(t)
-	validator := quote.NewMockValidator()
-	issuer := quote.NewMockIssuer()
-	sealer := core.NewMockSealer()
-	c, err := core.NewCore("edgeless", []string{"localhost"}, validator, issuer, sealer)
-	if err != nil {
-		panic(err)
-	}
 
+	c := core.NewCoreWithMocks()
 	mux := CreateServeMux(c)
 
 	//set manifest

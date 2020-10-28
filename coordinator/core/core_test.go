@@ -13,12 +13,7 @@ import (
 func TestCore(t *testing.T) {
 	assert := assert.New(t)
 
-	validator := quote.NewMockValidator()
-	issuer := quote.NewMockIssuer()
-	sealer := NewMockSealer()
-	c, err := NewCore("edgeless", []string{"localhost"}, validator, issuer, sealer)
-	assert.NotNil(c)
-	assert.Nil(err)
+	c := NewCoreWithMocks()
 	assert.Equal(acceptingManifest, c.state)
 	assert.Equal([]string{"edgeless"}, c.cert.Subject.Organization)
 	assert.Equal(coordinatorName, c.cert.Subject.CommonName)

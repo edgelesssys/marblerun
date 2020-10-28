@@ -111,6 +111,18 @@ func (c *Core) GetQuote(ctx context.Context) ([]byte, error) {
 	return c.quote, nil
 }
 
+// NewCoreWithMocks creates a new core object with quote and seal mocks for testing.
+func NewCoreWithMocks() *Core {
+	validator := quote.NewMockValidator()
+	issuer := quote.NewMockIssuer()
+	sealer := &MockSealer{}
+	core, err := NewCore("edgeless", []string{"localhost"}, validator, issuer, sealer)
+	if err != nil {
+		panic(err)
+	}
+	return core
+}
+
 // InSimulationMode returns true if we operate in OE_SIMULATION mode
 func (c *Core) InSimulationMode() bool {
 	return len(c.quote) == 0
