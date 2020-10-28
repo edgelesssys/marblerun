@@ -3,74 +3,29 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/edgelesssys/coordinator/util"
 )
 
 func main() {
 	isServer := len(os.Args) > 0 && os.Args[0] == "serve"
-	tlsCertPem, tlsCertRaw, err := parsePemFromEnv("MARBLE_CERT")
-	if err != nil {
-		log.Fatalf("failed to get TLS Certificate: %v", err)
-	}
-	_, rootCARaw, err := parsePemFromEnv("ROOT_CA")
-	if err != nil {
-		log.Fatalf("failed to get root CA: %v", err)
-	}
-	_, privkRaw, err := parsePemFromEnv("MARBLE_KEY")
-	if err != nil {
-		log.Fatalf("failed to get private key: %v", err)
-	}
-	_, _, err = parsePemFromEnv("SEAL_KEY")
-	if err != nil {
-		log.Fatalf("failed to get seal key: %v", err)
-	}
-
-	// Verify certificate chain
-	roots := x509.NewCertPool()
-	if !roots.AppendCertsFromPEM(rootCARaw) {
-		log.Fatal("authentication error")
-	}
-	opts := x509.VerifyOptions{
-		Roots:         roots,
-		CurrentTime:   time.Now(),
-		DNSName:       "localhost",
-		Intermediates: x509.NewCertPool(),
-	}
-	tlsCert, err := x509.ParseCertificate(tlsCertPem.Bytes)
-	if err != nil {
-		log.Fatal("authentication error")
-	}
-	_, err = tlsCert.Verify(opts)
-	if err != nil {
-		log.Fatalf("failed to verify certificate chain: %v", err)
-	}
+	cert := []byte(util.MustGetenv("MARBLE_CERT"))
+	rootCA := []byte(util.MustGetenv("ROOT_CA"))
+	privk := []byte(util.MustGetenv("MARBLE_KEY"))
 
 	// Run actual server-client application
 	if isServer {
-		runServer(tlsCertRaw, privkRaw, rootCARaw)
+		runServer(cert, privk, rootCA)
 		return
 	}
-	err = runClient(tlsCertRaw, privkRaw, rootCARaw)
+	err := runClient(cert, privk, rootCA)
 	if err != nil {
 		log.Fatalf("failed to make connection to server: %v", err)
 	}
-}
-
-func parsePemFromEnv(certName string) (*pem.Block, []byte, error) {
-	certRaw := util.MustGetenv(certName)
-	certPem, _ := pem.Decode([]byte(certRaw))
-	if certPem == nil {
-		return nil, nil, fmt.Errorf("could not decode certificate in PEM format")
-	}
-
-	return certPem, []byte(certRaw), nil
 }
 
 func runServer(certRaw []byte, keyRaw []byte, rootCARaw []byte) {
