@@ -7,7 +7,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"fmt"
 	"math"
 	"math/big"
 	"net"
@@ -102,24 +101,17 @@ func generateSerial() (*big.Int, error) {
 	return rand.Int(rand.Reader, serialNumberLimit)
 }
 
-// LoadTLSCredentials returns a TLS configuration based on cert and privk
-func LoadTLSCredentials(cert *x509.Certificate, privk *ecdsa.PrivateKey) (credentials.TransportCredentials, error) {
-	clientCert, err := getTLSCertificate(cert, privk)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get Marble self-signed x509 certificate")
-	}
+// LoadGRPCTLSCredentials returns a TLS configuration based on cert and privk
+func LoadGRPCTLSCredentials(cert *x509.Certificate, privk *ecdsa.PrivateKey, insecureSkipVerify bool) (credentials.TransportCredentials, error) {
+	clientCert := TLSCertFromDER(cert.Raw, privk)
 	tlsConfig := &tls.Config{
 		Certificates:       []tls.Certificate{*clientCert},
-		InsecureSkipVerify: true,
+		InsecureSkipVerify: insecureSkipVerify,
 	}
 	return credentials.NewTLS(tlsConfig), nil
 }
 
-// getTLSCertificate creates a TLS certificate for the Marbles self-signed x509 certificate
-func getTLSCertificate(cert *x509.Certificate, privk *ecdsa.PrivateKey) (*tls.Certificate, error) {
-	return tlsCertFromDER(cert.Raw, privk), nil
-}
-
-func tlsCertFromDER(certDER []byte, privk interface{}) *tls.Certificate {
+// TLSCertFromDER converts a DER certificate to a TLS certificate.
+func TLSCertFromDER(certDER []byte, privk interface{}) *tls.Certificate {
 	return &tls.Certificate{Certificate: [][]byte{certDER}, PrivateKey: privk}
 }
