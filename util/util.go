@@ -1,16 +1,30 @@
 package util
 
 import (
-	"fmt"
+	"crypto/sha256"
+	"io"
+	"log"
 	"net"
 	"os"
+
+	"golang.org/x/crypto/hkdf"
 )
+
+// DeriveKey derives a key from a secret.
+func DeriveKey(secret, salt []byte) ([]byte, error) {
+	hkdf := hkdf.New(sha256.New, secret, salt, nil)
+	key := make([]byte, 32)
+	if _, err := io.ReadFull(hkdf, key); err != nil {
+		return nil, err
+	}
+	return key, nil
+}
 
 // MustGetenv returns the environment variable `name` if it exists or panics otherwise
 func MustGetenv(name string) string {
 	value := os.Getenv(name)
 	if len(value) == 0 {
-		panic(fmt.Errorf("environment variable not set: %v", name))
+		log.Fatalln("environment variable not set:", name)
 	}
 	return value
 }
