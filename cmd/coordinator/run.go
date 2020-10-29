@@ -32,7 +32,7 @@ func run(validator quote.Validator, issuer quote.Issuer, sealKey []byte, sealDir
 		panic(err)
 	}
 	sealer := core.NewAESGCMSealer(sealDir, sealKey)
-	core, err := core.NewCore("Coordinator", dnsNames, validator, issuer, sealer)
+	core, err := core.NewCore(dnsNames, validator, issuer, sealer)
 	if err != nil {
 		panic(err)
 	}

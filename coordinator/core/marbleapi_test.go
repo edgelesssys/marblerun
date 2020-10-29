@@ -33,7 +33,7 @@ func TestActivate(t *testing.T) {
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
 	sealer := &MockSealer{}
-	coreServer, err := NewCore("edgeless", []string{"localhost"}, validator, issuer, sealer)
+	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, sealer)
 	require.NoError(err)
 	require.NotNil(coreServer)
 

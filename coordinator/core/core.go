@@ -73,7 +73,7 @@ func (c *Core) advanceState() {
 }
 
 // NewCore creates and initializes a new Core object
-func NewCore(orgName string, dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer Sealer) (*Core, error) {
+func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer Sealer) (*Core, error) {
 	c := &Core{
 		state:       stateUninitialized,
 		activations: make(map[string]uint),
@@ -83,7 +83,7 @@ func NewCore(orgName string, dnsNames []string, qv quote.Validator, qi quote.Iss
 	}
 
 	log.Println("loading state")
-	cert, privk, err := c.loadState(orgName, dnsNames)
+	cert, privk, err := c.loadState(dnsNames)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +110,7 @@ func NewCoreWithMocks() *Core {
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
 	sealer := &MockSealer{}
-	core, err := NewCore("edgeless", []string{"localhost"}, validator, issuer, sealer)
+	core, err := NewCore([]string{"localhost"}, validator, issuer, sealer)
 	if err != nil {
 		panic(err)
 	}
@@ -141,7 +141,7 @@ func (c *Core) GetTLSCertificate() (*tls.Certificate, error) {
 	return util.TLSCertFromDER(c.cert.Raw, c.privk), nil
 }
 
-func (c *Core) loadState(orgName string, dnsNames []string) (*x509.Certificate, *ecdsa.PrivateKey, error) {
+func (c *Core) loadState(dnsNames []string) (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	stateRaw, err := c.sealer.Unseal()
 	if err != nil {
 		return nil, nil, err
@@ -149,7 +149,7 @@ func (c *Core) loadState(orgName string, dnsNames []string) (*x509.Certificate, 
 	// generate new state if there isn't something in the fs yet
 	if len(stateRaw) == 0 {
 		log.Println("No sealed state found. Proceeding with new state.")
-		return c.generateCert(orgName, dnsNames)
+		return c.generateCert(dnsNames)
 	}
 
 	// load state
@@ -197,7 +197,7 @@ func (c *Core) sealState() error {
 	return c.sealer.Seal(stateRaw)
 }
 
-func (c *Core) generateCert(orgName string, dnsNames []string) (*x509.Certificate, *ecdsa.PrivateKey, error) {
+func (c *Core) generateCert(dnsNames []string) (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	defer c.mux.Unlock()
 	if err := c.requireState(stateUninitialized); err != nil {
 		return nil, nil, err
@@ -221,8 +221,7 @@ func (c *Core) generateCert(orgName string, dnsNames []string) (*x509.Certificat
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
-			Organization: []string{orgName},
-			CommonName:   CoordinatorName,
+			CommonName: CoordinatorName,
 		},
 		DNSNames:    dnsNames,
 		IPAddresses: []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},

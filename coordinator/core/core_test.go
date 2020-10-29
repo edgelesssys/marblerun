@@ -15,7 +15,6 @@ func TestCore(t *testing.T) {
 
 	c := NewCoreWithMocks()
 	assert.Equal(stateAcceptingManifest, c.state)
-	assert.Equal([]string{"edgeless"}, c.cert.Subject.Organization)
 	assert.Equal(CoordinatorName, c.cert.Subject.CommonName)
 
 	cert, err := c.GetTLSCertificate()
@@ -43,7 +42,7 @@ func TestSeal(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 	sealer := &MockSealer{}
 
-	c, err := NewCore("edgeless", []string{"localhost"}, validator, issuer, sealer)
+	c, err := NewCore([]string{"localhost"}, validator, issuer, sealer)
 	require.NoError(err)
 
 	// Set manifest. This will seal the state.
@@ -55,7 +54,7 @@ func TestSeal(t *testing.T) {
 	signature := c.GetManifestSignature(context.TODO())
 
 	// Check sealing with a new core initialized with the sealed state.
-	c2, err := NewCore("edgeless", []string{"localhost"}, validator, issuer, sealer)
+	c2, err := NewCore([]string{"localhost"}, validator, issuer, sealer)
 	require.NoError(err)
 	assert.Equal(stateAcceptingMarbles, c2.state)
 
