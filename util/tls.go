@@ -18,30 +18,31 @@ import (
 // OrgName is the Edgeless org name for cetificates
 const OrgName string = "Edgeless Systems GmbH"
 
-// GenerateMarbleCredentials returns dummy Marble TLS credentials for testing
-func GenerateMarbleCredentials() (certTLS *x509.Certificate, certRaw []byte, csrRaw []byte, privk *ecdsa.PrivateKey, err error) {
+// MustGenerateTestMarbleCredentials returns dummy Marble TLS credentials for testing
+func MustGenerateTestMarbleCredentials() (cert *x509.Certificate, csrRaw []byte, privk *ecdsa.PrivateKey) {
 	dnsNames := []string{"localhost", "*.foobar.net", "*.example.org"}
 	ipAddrs := []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback}
 
-	certTLS, privk, err = GenerateCert(dnsNames, ipAddrs, false)
+	cert, privk, err := GenerateCert(dnsNames, ipAddrs, false)
 	if err != nil {
-		return
+		panic(err)
 	}
-	certRaw = certTLS.Raw
 
 	csr, err := GenerateCSR(dnsNames, privk)
+	if err != nil {
+		panic(err)
+	}
 	csrRaw = csr.Raw
 	return
 }
 
 // GenerateCert generates a new self-signed certificate associated key-pair
-func GenerateCert(DNSNames []string, IPAddrs []net.IP, isCA bool) (*x509.Certificate, *ecdsa.PrivateKey, error) {
-	// code (including generateSerial()) adapted from golang.org/src/crypto/tls/generate_cert.go
+func GenerateCert(dnsNames []string, ipAddrs []net.IP, isCA bool) (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	privk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, nil, err
 	}
-	pubk := &privk.PublicKey
+
 	notBefore := time.Now()
 	notAfter := notBefore.Add(math.MaxInt64)
 
@@ -59,8 +60,8 @@ func GenerateCert(DNSNames []string, IPAddrs []net.IP, isCA bool) (*x509.Certifi
 		SerialNumber: serialNumber,
 		NotBefore:    notBefore,
 		NotAfter:     notAfter,
-		DNSNames:     DNSNames,
-		IPAddresses:  IPAddrs,
+		DNSNames:     dnsNames,
+		IPAddresses:  ipAddrs,
 
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyAgreement,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
@@ -68,7 +69,7 @@ func GenerateCert(DNSNames []string, IPAddrs []net.IP, isCA bool) (*x509.Certifi
 		IsCA:                  isCA,
 	}
 
-	certRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, pubk, privk)
+	certRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, &privk.PublicKey, privk)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -80,9 +81,9 @@ func GenerateCert(DNSNames []string, IPAddrs []net.IP, isCA bool) (*x509.Certifi
 }
 
 // GenerateCSR generates a new CSR for the given DNSNames and private key
-func GenerateCSR(DNSNames []string, privk *ecdsa.PrivateKey) (*x509.CertificateRequest, error) {
+func GenerateCSR(dnsNames []string, privk *ecdsa.PrivateKey) (*x509.CertificateRequest, error) {
 	template := x509.CertificateRequest{
-		DNSNames:    DNSNames,
+		DNSNames:    dnsNames,
 		IPAddresses: []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
 	}
 	csrRaw, err := x509.CreateCertificateRequest(rand.Reader, &template, privk)
