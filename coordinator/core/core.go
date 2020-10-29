@@ -13,16 +13,14 @@ import (
 	"errors"
 	"log"
 	"math"
-	"math/big"
 	"net"
 	"sync"
 	"time"
 
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/peer"
-
 	"github.com/edgelesssys/coordinator/coordinator/quote"
 	"github.com/edgelesssys/coordinator/util"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/peer"
 )
 
 // Core implements the core logic of the Coordinator
@@ -203,11 +201,6 @@ func (c *Core) sealState() error {
 	return c.sealer.Seal(stateRaw)
 }
 
-func generateSerial() (*big.Int, error) {
-	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
-	return rand.Int(rand.Reader, serialNumberLimit)
-}
-
 func (c *Core) generateCert(orgName string, dnsNames []string) (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	defer c.mux.Unlock()
 	if err := c.requireState(stateUninitialized); err != nil {
@@ -223,7 +216,7 @@ func (c *Core) generateCert(orgName string, dnsNames []string) (*x509.Certificat
 	notBefore := time.Now()
 	notAfter := notBefore.Add(math.MaxInt64)
 
-	serialNumber, err := generateSerial()
+	serialNumber, err := util.GenerateCertificateSerialNumber()
 	if err != nil {
 		return nil, nil, err
 	}
