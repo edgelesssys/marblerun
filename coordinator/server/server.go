@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"encoding/hex"
 	"encoding/json"
-	"io"
 	"io/ioutil"
 	"log"
 	"net"
@@ -51,7 +50,11 @@ func RunMarbleServer(core *core.Core, addr string, addrChan chan string, errChan
 	creds := credentials.NewTLS(&tlsConfig)
 
 	// logging
-	zapLogger, _ := zap.NewDevelopment()
+	zapLogger, err := zap.NewDevelopment()
+	if err != nil {
+		errChan <- err
+		return
+	}
 	defer zapLogger.Sync() // flushes buffer, if any
 
 	// Make sure that log statements internal to gRPC library are logged using the zapLogger as well.
@@ -82,7 +85,7 @@ func RunMarbleServer(core *core.Core, addr string, addrChan chan string, errChan
 	}
 }
 
-// CreateServeMux creates a mux that serves the client API. provisionally
+// CreateServeMux creates a mux that serves the client API.
 func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 	mux := http.NewServeMux()
 
@@ -94,28 +97,17 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			strct := statusResp{status}
-			jsn, err := json.Marshal(strct)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			w.Write(jsn)
+			writeJSON(w, statusResp{status})
 		default:
 			http.Error(w, "", http.StatusMethodNotAllowed)
 		}
 	})
+
 	mux.HandleFunc("/manifest", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			signature := cc.GetManifestSignature(r.Context())
-			strct := manifestSignatureResp{hex.EncodeToString(signature)}
-			jsn, err := json.Marshal(strct)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			io.WriteString(w, string(jsn))
+			writeJSON(w, manifestSignatureResp{hex.EncodeToString(signature)})
 		case http.MethodPost:
 			manifest, err := ioutil.ReadAll(r.Body)
 			if err != nil {
@@ -130,6 +122,7 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 			http.Error(w, "", http.StatusMethodNotAllowed)
 		}
 	})
+
 	mux.HandleFunc("/quote", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
@@ -138,13 +131,7 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			strct := certQuoteResp{cert, quote}
-			jsn, err := json.Marshal(strct)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			w.Write(jsn)
+			writeJSON(w, certQuoteResp{cert, quote})
 		default:
 			http.Error(w, "", http.StatusMethodNotAllowed)
 		}
@@ -153,7 +140,13 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 	return mux
 }
 
-// RunClientServer runs a HTTP server serving mux. provisionally
+func writeJSON(w http.ResponseWriter, v interface{}) {
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+// RunClientServer runs a HTTP server serving mux.
 func RunClientServer(mux *http.ServeMux, address string, tlsConfig *tls.Config) {
 	loggedRouter := handlers.LoggingHandler(os.Stdout, mux)
 	server := http.Server{
@@ -161,15 +154,6 @@ func RunClientServer(mux *http.ServeMux, address string, tlsConfig *tls.Config) 
 		Handler:   loggedRouter,
 		TLSConfig: tlsConfig,
 	}
-	log.Println("starting https server at ", address)
+	log.Println("starting client https server at", address)
 	log.Println(server.ListenAndServeTLS("", ""))
-}
-
-type malformedRequest struct {
-	status int
-	msg    string
-}
-
-func (mr *malformedRequest) Error() string {
-	return mr.msg
 }

@@ -1,13 +1,13 @@
 package core
 
 import (
+	"context"
 	"crypto/sha256"
 	"testing"
 
 	"github.com/edgelesssys/coordinator/coordinator/quote"
 	"github.com/edgelesssys/coordinator/test"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/context"
 )
 
 func TestCore(t *testing.T) {
@@ -16,12 +16,7 @@ func TestCore(t *testing.T) {
 	c := NewCoreWithMocks()
 	assert.Equal(stateAcceptingManifest, c.state)
 	assert.Equal([]string{"edgeless"}, c.cert.Subject.Organization)
-	assert.Equal(coordinatorName, c.cert.Subject.CommonName)
-
-	// get quote
-	quote, err := c.GetQuote(context.TODO())
-	assert.NotNil(quote)
-	assert.Nil(err)
+	assert.Equal(CoordinatorName, c.cert.Subject.CommonName)
 
 	// get TLS certificate
 	cert, err := c.GetTLSCertificate()
@@ -48,7 +43,7 @@ func TestSeal(t *testing.T) {
 
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
-	sealer := NewMockSealer()
+	sealer := &MockSealer{}
 
 	// create Core
 	c, err := NewCore("edgeless", []string{"localhost"}, validator, issuer, sealer)
@@ -56,10 +51,6 @@ func TestSeal(t *testing.T) {
 	assert.Nil(err)
 	// set manifest
 	assert.Nil(c.SetManifest(context.TODO(), []byte(test.ManifestJSON)))
-	// get quote
-	quote, err := c.GetQuote(context.TODO())
-	assert.NotNil(quote)
-	assert.Nil(err)
 	// get TLS certificate
 	cert, err := c.GetTLSCertificate()
 	assert.NotNil(cert)
@@ -74,11 +65,6 @@ func TestSeal(t *testing.T) {
 	assert.NotNil(c2)
 	assert.Nil(err)
 	assert.Equal(stateAcceptingMarbles, c2.state)
-
-	quote2, err := c2.GetQuote(context.TODO())
-	assert.NotNil(quote2)
-	assert.Nil(err)
-	assert.Equal(quote, quote2)
 
 	cert2, err := c2.GetTLSCertificate()
 	assert.NotNil(cert2)

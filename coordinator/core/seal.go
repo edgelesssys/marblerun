@@ -4,7 +4,6 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -20,17 +19,22 @@ type Sealer interface {
 
 // AESGCMSealer implements the Sealer interface using AES-GCM for confidentiallity and authentication
 type AESGCMSealer struct {
-	SealDir string
-	SealKey []byte
+	sealDir string
+	sealKey []byte
 }
 
 // NewAESGCMSealer creates and initializes a new AESGCMSealer object
 func NewAESGCMSealer(sealDir string, sealKey []byte) *AESGCMSealer {
-	return &AESGCMSealer{SealDir: sealDir, SealKey: sealKey}
+	return &AESGCMSealer{sealDir: sealDir, sealKey: sealKey}
 }
 
 // Unseal reads and decrypts stored information from the fs
 func (s *AESGCMSealer) Unseal() ([]byte, error) {
+	aesgcm, err := s.getCipher()
+	if err != nil {
+		return nil, err
+	}
+
 	// load from fs
 	sealedData, err := ioutil.ReadFile(s.getFname())
 	if os.IsNotExist(err) {
@@ -40,17 +44,7 @@ func (s *AESGCMSealer) Unseal() ([]byte, error) {
 	}
 
 	// decrypt
-	block, err := aes.NewCipher(s.SealKey)
-	if err != nil {
-		return nil, err
-	}
-
-	aesgcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, err
-	}
 	nonce, encData := sealedData[:aesgcm.NonceSize()], sealedData[aesgcm.NonceSize():]
-
 	data, err := aesgcm.Open(nil, nonce, encData, nil)
 	if err != nil {
 		return nil, err
@@ -61,19 +55,14 @@ func (s *AESGCMSealer) Unseal() ([]byte, error) {
 
 // Seal encrypts and stores information to the fs
 func (s *AESGCMSealer) Seal(data []byte) error {
+	aesgcm, err := s.getCipher()
+	if err != nil {
+		return err
+	}
+
 	// encrypt
-	block, err := aes.NewCipher(s.SealKey)
-	if err != nil {
-		return err
-	}
-
-	aesgcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return err
-	}
-
 	nonce := make([]byte, aesgcm.NonceSize())
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+	if _, err := rand.Read(nonce); err != nil {
 		return err
 	}
 	encData := aesgcm.Seal(nil, nonce, data, nil)
@@ -83,17 +72,20 @@ func (s *AESGCMSealer) Seal(data []byte) error {
 }
 
 func (s *AESGCMSealer) getFname() string {
-	return filepath.Join(s.SealDir, defaultSealFname)
+	return filepath.Join(s.sealDir, defaultSealFname)
+}
+
+func (s *AESGCMSealer) getCipher() (cipher.AEAD, error) {
+	block, err := aes.NewCipher(s.sealKey)
+	if err != nil {
+		return nil, err
+	}
+	return cipher.NewGCM(block)
 }
 
 // MockSealer is a mockup sealer
 type MockSealer struct {
 	data []byte
-}
-
-// NewMockSealer creates and initializes a new MockSealer object
-func NewMockSealer() *MockSealer {
-	return &MockSealer{}
 }
 
 // Unseal implements the Sealer interface

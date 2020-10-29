@@ -40,21 +40,20 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	if tlsCert == nil {
 		return nil, status.Error(codes.Unauthenticated, "couldn't get marble TLS certificate")
 	}
-
 	if err := c.verifyManifestRequirement(tlsCert, req.GetQuote(), req.GetMarbleType()); err != nil {
 		return nil, err
 	}
-	uuidStr := req.GetUUID()
-	marbleUUID, err := uuid.Parse(uuidStr)
+
+	marbleUUID, err := uuid.Parse(req.GetUUID())
 	if err != nil {
 		return nil, err
 	}
+
 	// generate key-pair for marble
 	privk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, err
 	}
-	pubk := privk.PublicKey
 	encodedPrivKey, err := x509.MarshalPKCS8PrivateKey(privk)
 	if err != nil {
 		return nil, err
@@ -70,7 +69,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 		return nil, err
 	}
 
-	certRaw, err := c.generateCertFromCSR(req.GetCSR(), pubk, req.GetMarbleType(), marbleUUID.String())
+	certRaw, err := c.generateCertFromCSR(req.GetCSR(), privk.PublicKey, req.GetMarbleType(), marbleUUID.String())
 	if err != nil {
 		return nil, err
 	}
@@ -95,16 +94,18 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 
 // verifyManifestRequirement verifies marble attempting to register with respect to manifest
 func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, quote []byte, marbleType string) error {
-	marble, marbleExists := c.manifest.Marbles[marbleType]
-	if !marbleExists {
+	marble, ok := c.manifest.Marbles[marbleType]
+	if !ok {
 		return status.Error(codes.InvalidArgument, "unknown marble type requested")
 	}
 
-	pkg, pkgExists := c.manifest.Packages[marble.Package]
-	if !pkgExists {
+	pkg, ok := c.manifest.Packages[marble.Package]
+	if !ok {
+		// can't happen
 		return status.Error(codes.Internal, "undefined package")
 	}
-	if !c.InSimulationMode() {
+
+	if !c.inSimulationMode() {
 		infraMatch := false
 		for _, infra := range c.manifest.Infrastructures {
 			if c.qv.Validate(quote, tlsCert.Raw, pkg, infra) == nil {
@@ -160,6 +161,7 @@ func (c *Core) generateCertFromCSR(csrReq []byte, pubk ecdsa.PublicKey, marbleTy
 		DNSNames:              csr.DNSNames,
 		IPAddresses:           csr.IPAddresses,
 	}
+
 	certRaw, err := x509.CreateCertificate(rand.Reader, &template, c.cert, &pubk, c.privk)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to issue certificate")

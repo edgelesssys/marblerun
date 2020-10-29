@@ -1,5 +1,6 @@
 package test
 
+// ManifestJSON is a test manifest
 const ManifestJSON string = `{
 	"Packages": {
 		"backend": {
@@ -80,7 +81,7 @@ const ManifestJSON string = `{
 	}
 }`
 
-// TODO: Use correct values here
+// IntegrationManifestJSON is a test manifest
 const IntegrationManifestJSON string = `{
 	"Packages": {
 		"backend": {
@@ -107,8 +108,8 @@ const IntegrationManifestJSON string = `{
 			"Package": "backend",
 			"Parameters": {
 				"Files": {
-					"/tmp/defg.txt": "foo",
-					"/tmp/jkl.mno": "bar"
+					"/tmp/coordinator_test/defg.txt": "foo",
+					"/tmp/coordinator_test/jkl.mno": "bar"
 				},
 				"Argv": [
 					"./marble",
@@ -127,8 +128,8 @@ const IntegrationManifestJSON string = `{
 			"Package": "backend",
 			"Parameters": {
 				"Files": {
-					"/tmp/defg.txt": "foo",
-					"/tmp/jkl.mno": "bar"
+					"/tmp/coordinator_test/defg.txt": "foo",
+					"/tmp/coordinator_test/jkl.mno": "bar"
 				},
 				"Env": {
 					"IS_FIRST": "true",
@@ -143,8 +144,8 @@ const IntegrationManifestJSON string = `{
 			"Package": "frontend",
 			"Parameters": {
 				"Files": {
-					"/tmp/defg.txt": "foo",
-					"/tmp/jkl.mno": "bar"
+					"/tmp/coordinator_test/defg.txt": "foo",
+					"/tmp/coordinator_test/jkl.mno": "bar"
 				},
 				"Env": {
 					"ROOT_CA": "$$root_ca",
