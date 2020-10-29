@@ -87,7 +87,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 
 	// write response
 	resp := &rpc.ActivationResp{
-		Parameters: &params,
+		Parameters: params,
 	}
 
 	log.Printf("Successfully activated new Marble of type '%v: %v'\n", req.GetMarbleType(), marbleUUID.String())
@@ -170,7 +170,7 @@ func (c *Core) generateCertFromCSR(csrReq []byte, pubk ecdsa.PublicKey, marbleTy
 }
 
 // customizeParameters replaces the placeholders in the manifest's parameters with the actual values
-func customizeParameters(params rpc.Parameters, rootCA []byte, marbleCert []byte, marbleKey []byte, sealKey []byte) rpc.Parameters {
+func customizeParameters(params *rpc.Parameters, rootCA []byte, marbleCert []byte, marbleKey []byte, sealKey []byte) *rpc.Parameters {
 	customParams := rpc.Parameters{
 		Argv:  params.Argv,
 		Files: make(map[string]string),
@@ -191,5 +191,5 @@ func customizeParameters(params rpc.Parameters, rootCA []byte, marbleCert []byte
 		customParams.Env[name] = newData
 	}
 
-	return customParams
+	return &customParams
 }

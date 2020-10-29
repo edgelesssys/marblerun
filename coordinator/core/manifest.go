@@ -40,7 +40,7 @@ type Manifest struct {
 type Marble struct {
 	Package        string
 	MaxActivations uint
-	Parameters     rpc.Parameters
+	Parameters     *rpc.Parameters
 }
 
 //Check if manifest is consistent
