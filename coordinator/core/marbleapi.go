@@ -177,10 +177,10 @@ func customizeParameters(params *rpc.Parameters, rootCA []byte, marbleCert []byt
 		Env:   make(map[string]string),
 	}
 	// replace placeholders in files
-	r := strings.NewReplacer(RootCAPlaceholder, string(rootCA),
-		MarbleCertPlaceholder, string(marbleCert),
-		MarbleKeyPlaceholder, string(marbleKey),
-		SealKeyPlaceholder, string(sealKey))
+	r := strings.NewReplacer(rootCAPlaceholder, string(rootCA),
+		marbleCertPlaceholder, string(marbleCert),
+		marbleKeyPlaceholder, string(marbleKey),
+		sealKeyPlaceholder, string(sealKey))
 	for path, data := range params.Files {
 		newData := r.Replace(data)
 		customParams.Files[path] = newData
