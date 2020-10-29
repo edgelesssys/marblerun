@@ -1,6 +1,3 @@
-# Copyright (c) Edgeless Systems GmbH.
-# Licensed under the MIT License.
-
 cmake_minimum_required(VERSION 3.11)
 find_package(OpenEnclave CONFIG REQUIRED)
 set(CMAKE_CXX_STANDARD 17)
