@@ -5,18 +5,16 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
-	"io"
 	"log"
 	"math"
 	"strings"
 	"time"
 
 	"github.com/edgelesssys/coordinator/coordinator/rpc"
+	"github.com/edgelesssys/coordinator/util"
 	"github.com/google/uuid"
-	"golang.org/x/crypto/hkdf"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -61,15 +59,13 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 		return nil, err
 	}
 
-	// Derive sealing key using HKDF and return it to marble
+	// Derive sealing key for marble
 	uuidBytes, err := marbleUUID.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
-	// Derive key
-	hkdf := hkdf.New(sha256.New, uuidBytes, c.privk.D.Bytes(), nil)
-	sealKey := make([]byte, 32)
-	if _, err := io.ReadFull(hkdf, sealKey); err != nil {
+	sealKey, err := util.DeriveKey(c.privk.D.Bytes(), uuidBytes)
+	if err != nil {
 		return nil, err
 	}
 
