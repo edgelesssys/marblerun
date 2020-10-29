@@ -2,7 +2,7 @@ package quote
 
 import (
 	"bytes"
-	"encoding/hex"
+	"strings"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -37,14 +37,13 @@ type InfrastructureProperties struct {
 
 // IsCompliant checks if the given package properties comply with the requirements
 func (required PackageProperties) IsCompliant(given PackageProperties) bool {
-	// TODO: implement proper logic including SVN comparison
 	if required.Debug != given.Debug {
 		return false
 	}
-	if len(required.UniqueID) > 0 && !compareHexString(required.UniqueID, given.UniqueID) {
+	if len(required.UniqueID) > 0 && !strings.EqualFold(required.UniqueID, given.UniqueID) {
 		return false
 	}
-	if len(required.SignerID) > 0 && !compareHexString(required.SignerID, given.SignerID) {
+	if len(required.SignerID) > 0 && !strings.EqualFold(required.SignerID, given.SignerID) {
 		return false
 	}
 	if len(required.ProductID) > 0 && !bytes.Equal(required.ProductID, given.ProductID[:len(required.ProductID)]) {
@@ -60,16 +59,4 @@ func (required PackageProperties) IsCompliant(given PackageProperties) bool {
 func (required InfrastructureProperties) IsCompliant(given InfrastructureProperties) bool {
 	// TODO: implement proper logic including SVN comparison
 	return cmp.Equal(required, given)
-}
-
-func compareHexString(required string, given string) bool {
-	req, err := hex.DecodeString(required)
-	if err != nil {
-		panic(err)
-	}
-	giv, err := hex.DecodeString(given)
-	if err != nil {
-		panic(err)
-	}
-	return bytes.Equal(req, giv)
 }

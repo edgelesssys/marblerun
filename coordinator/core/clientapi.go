@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"log"
 )
 
 // ClientCore provides the core functionality for the client. It can be used by e.g. a http server
@@ -36,7 +37,9 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) error {
 	c.rawManifest = rawManifest
 
 	c.advanceState()
-	c.sealState()
+	if err := c.sealState(); err != nil {
+		log.Println(err)
+	}
 	return nil
 }
 
@@ -74,5 +77,4 @@ func (c *Core) GetStatus(ctx context.Context) (status string, err error) {
 	}
 
 	return status, nil
-
 }

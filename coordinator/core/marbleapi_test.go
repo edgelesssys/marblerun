@@ -21,7 +21,7 @@ import (
 	"google.golang.org/grpc/peer"
 )
 
-func TestMarbleAPI(t *testing.T) {
+func TestActivate(t *testing.T) {
 	assert := assert.New(t)
 
 	// parse manifest
@@ -32,7 +32,7 @@ func TestMarbleAPI(t *testing.T) {
 	// create core
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
-	sealer := NewMockSealer()
+	sealer := &MockSealer{}
 	coreServer, err := NewCore("edgeless", []string{"localhost"}, validator, issuer, sealer)
 	assert.NotNil(coreServer)
 	assert.Nil(err)
@@ -61,9 +61,8 @@ func TestMarbleAPI(t *testing.T) {
 	pickInfra := func(i int) string {
 		if i&1 == 0 {
 			return "Azure"
-		} else {
-			return "Alibaba"
 		}
+		return "Alibaba"
 	}
 	for i := 0; i < 10; i++ {
 		spawner.newMarbleAsync("backend_other", pickInfra(i), true)
