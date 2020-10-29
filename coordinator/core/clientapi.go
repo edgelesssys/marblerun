@@ -21,9 +21,10 @@ type ClientCore interface {
 // rawManifest is the manifest of type Manifest in JSON format.
 func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) error {
 	defer c.mux.Unlock()
-	if err := c.requireState(acceptingManifest); err != nil {
+	if err := c.requireState(stateAcceptingManifest); err != nil {
 		return err
 	}
+
 	var manifest Manifest
 	if err := json.Unmarshal(rawManifest, &manifest); err != nil {
 		return err
