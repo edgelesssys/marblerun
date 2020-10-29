@@ -23,7 +23,7 @@ import (
 
 	"github.com/edgelesssys/coordinator/coordinator/config"
 	"github.com/edgelesssys/coordinator/coordinator/core"
-	mConfig "github.com/edgelesssys/coordinator/marble/config"
+	mconfig "github.com/edgelesssys/coordinator/marble/config"
 	"github.com/edgelesssys/coordinator/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -37,15 +37,15 @@ var noenclave = flag.Bool("noenclave", false, "Do not run with erthost")
 var meshServerAddr, clientServerAddr, marbleTestAddr string
 var manifest core.Manifest
 var transportSkipVerify = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+var simFlag string
 
 func TestMain(m *testing.M) {
 	flag.Parse()
 	if *coordinatorDir == "" {
-		log.Fatalln("You must provide the path of the coordinator executable using th -c flag.")
+		log.Fatalln("You must provide the path of the coordinator build directory using th -c flag.")
 	}
-
 	if *marbleDir == "" {
-		log.Fatalln("You must provide the path of the marble executable using th -m flag.")
+		log.Fatalln("You must provide the path of the marble build directory using th -m flag.")
 	}
 
 	if _, err := os.Stat(*coordinatorDir); err != nil {
@@ -53,6 +53,12 @@ func TestMain(m *testing.M) {
 	}
 	if _, err := os.Stat(*marbleDir); err != nil {
 		log.Fatalln(err)
+	}
+
+	if *simulationMode {
+		simFlag = makeEnv("OE_SIMULATION", "1")
+	} else {
+		simFlag = makeEnv("OE_SIMULATION", "0")
 	}
 
 	if err := json.Unmarshal([]byte(IntegrationManifestJSON), &manifest); err != nil {
@@ -119,19 +125,12 @@ func TestMarbleAPI(t *testing.T) {
 	cfg := newCoordinatorConfig()
 	defer cfg.cleanup()
 	coordinatorProc := startCoordinator(cfg)
-	assert.NotNil(coordinatorProc)
+	require.NotNil(coordinatorProc)
 	defer coordinatorProc.Kill()
 
 	// set Manifest
 	log.Println("Setting the Manifest")
-	err := setManifest(manifest)
-	assert.Nil(err, "failed to set Manifest: %v", err)
-
-	// wait for me
-	// marbleCfg := createMarbleConfig(marbleServerAddr, "test_marble_server", "test_marble_server")
-	// log.Printf("config; %v", marbleCfg)
-	// log.Printf("coordinator Addr: %v", marbleServerAddr)
-	// time.Sleep(10000000 * time.Second)
+	require.NoError(setManifest(manifest), "failed to set Manifest")
 
 	// start server
 	log.Println("Starting a Server-Marble")
@@ -147,7 +146,7 @@ func TestMarbleAPI(t *testing.T) {
 	defer clientCfg.cleanup()
 	assert.True(startMarbleClient(clientCfg))
 	assert.True(startMarbleClient(clientCfg))
-	if !*simulationMode {
+	if !*simulationMode && !*noenclave {
 		// start bad marbles (would be accepted if we run in SimulationMode)
 		badCfg := newMarbleConfig(meshServerAddr, "bad_marble", "bad,localhost")
 		defer badCfg.cleanup()
@@ -166,11 +165,12 @@ func TestRestart(t *testing.T) {
 	cfg := newCoordinatorConfig()
 	defer cfg.cleanup()
 	coordinatorProc := startCoordinator(cfg)
-	assert.NotNil(coordinatorProc)
+	require.NotNil(coordinatorProc)
+
 	// set Manifest
 	log.Println("Setting the Manifest")
-	err := setManifest(manifest)
-	assert.Nil(err, "failed to set Manifest: %v", err)
+	require.NoError(setManifest(manifest), "failed to set Manifest")
+
 	// start server
 	log.Println("Starting a Server-Marble")
 	serverCfg := newMarbleConfig(meshServerAddr, "test_marble_server", "server,backend,localhost")
@@ -189,18 +189,15 @@ func TestRestart(t *testing.T) {
 	// simulate restart of coordinator
 	log.Println("Simulating a restart of the coordinator enclave...")
 	log.Println("Killing the old instance")
-	if err := coordinatorProc.Kill(); err != nil {
-		panic(err)
-	}
+	require.NoError(coordinatorProc.Kill())
 	log.Println("Restarting the old instance")
 	coordinatorProc = startCoordinator(cfg)
-	assert.NotNil(coordinatorProc)
+	require.NotNil(coordinatorProc)
 	defer coordinatorProc.Kill()
 
 	// try do malicious update of manifest
 	log.Println("Trying to set a new Manifest, which should already be set")
-	err = setManifest(manifest)
-	assert.NotNil(err, "expected updating of manifest to fail, but succeeded")
+	assert.Error(setManifest(manifest), "expected updating of manifest to fail, but succeeded")
 
 	// start a bunch of client marbles and assert they still work with old server marble
 	log.Println("Starting a bunch of Client-Marbles, which should still authenticate successfully with the Server-Marble")
@@ -275,12 +272,6 @@ func startCoordinator(cfg coordinatorConfig) *os.Process {
 	} else {
 		cmd = exec.Command("erthost", filepath.Join(*coordinatorDir, "enclave.signed"))
 	}
-	var simFlag string
-	if *simulationMode {
-		simFlag = makeEnv("OE_SIMULATION", "1")
-	} else {
-		simFlag = makeEnv("OE_SIMULATION", "0")
-	}
 	cmd.Env = []string{
 		makeEnv(config.MeshAddr, meshServerAddr),
 		makeEnv(config.ClientAddr, clientServerAddr),
@@ -344,20 +335,21 @@ func setManifest(manifest core.Manifest) error {
 		panic(err)
 	}
 
-	resp, err := client.Post(clientAPIURL.String(), "application/json", bytes.NewBuffer([]byte(manifestRaw)))
+	resp, err := client.Post(clientAPIURL.String(), "application/json", bytes.NewReader(manifestRaw))
 	if err != nil {
 		panic(err)
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusOK {
+		return nil
+	}
+
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		panic(err)
 	}
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("expected %v, but /manifest returned %v: %v", http.StatusOK, resp.Status, string(body))
-	}
-	return nil
+	return fmt.Errorf("expected %v, but /manifest returned %v: %v", http.StatusOK, resp.Status, string(body))
 }
 
 type marbleConfig struct {
@@ -393,18 +385,12 @@ func getMarbleCmd(cfg marbleConfig) *exec.Cmd {
 	} else {
 		cmd = exec.Command("erthost", filepath.Join(*marbleDir, "enclave.signed"))
 	}
-	var simFlag string
-	if *simulationMode {
-		simFlag = makeEnv("OE_SIMULATION", "1")
-	} else {
-		simFlag = makeEnv("OE_SIMULATION", "0")
-	}
 	uuidFile := filepath.Join(cfg.dataDir, "uuid")
 	cmd.Env = []string{
-		makeEnv(mConfig.CoordinatorAddr, cfg.coordinatorAddr),
-		makeEnv(mConfig.Type, cfg.marbleType),
-		makeEnv(mConfig.DNSNames, cfg.dnsNames),
-		makeEnv(mConfig.UUIDFile, uuidFile),
+		makeEnv(mconfig.CoordinatorAddr, cfg.coordinatorAddr),
+		makeEnv(mconfig.Type, cfg.marbleType),
+		makeEnv(mconfig.DNSNames, cfg.dnsNames),
+		makeEnv(mconfig.UUIDFile, uuidFile),
 		makeEnv("EDG_TEST_ADDR", marbleTestAddr),
 		simFlag,
 	}
