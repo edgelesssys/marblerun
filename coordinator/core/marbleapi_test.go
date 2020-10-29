@@ -86,14 +86,10 @@ type marbleSpawner struct {
 }
 
 func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSucceed bool) {
-	// create certificate and CSR
-	certTLS, cert, csr, _, err := util.GenerateMarbleCredentials()
-	ms.assert.Nil(err)
-	ms.assert.NotNil(cert)
-	ms.assert.NotNil(csr)
+	cert, csr, _ := util.MustGenerateTestMarbleCredentials()
 
 	// create mock quote using values from the manifest
-	quote, err := ms.issuer.Issue(cert)
+	quote, err := ms.issuer.Issue(cert.Raw)
 	ms.assert.NotNil(quote)
 	ms.assert.Nil(err)
 	marble, ok := ms.manifest.Marbles[marbleType]
@@ -102,11 +98,11 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	ms.assert.True(ok)
 	infra, ok := ms.manifest.Infrastructures[infraName]
 	ms.assert.True(ok)
-	ms.validator.AddValidQuote(quote, cert, pkg, infra)
+	ms.validator.AddValidQuote(quote, cert.Raw, pkg, infra)
 
 	tlsInfo := credentials.TLSInfo{
 		State: tls.ConnectionState{
-			PeerCertificates: []*x509.Certificate{certTLS},
+			PeerCertificates: []*x509.Certificate{cert},
 		},
 	}
 
@@ -164,12 +160,12 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	_, err = uuid.Parse(newCert.Subject.CommonName)
 	ms.assert.Nil(err, "cert.Subject.CommonName is not a valid UUID: %v", err)
 	// Check KeyUusage:
-	ms.assert.Equal(certTLS.KeyUsage, newCert.KeyUsage)
+	ms.assert.Equal(cert.KeyUsage, newCert.KeyUsage)
 	// Check ExtKeyUsage
-	ms.assert.Equal(certTLS.ExtKeyUsage, newCert.ExtKeyUsage)
+	ms.assert.Equal(cert.ExtKeyUsage, newCert.ExtKeyUsage)
 	// Check DNSNames
-	ms.assert.Equal(certTLS.DNSNames, newCert.DNSNames)
-	ms.assert.Equal(certTLS.IPAddresses, newCert.IPAddresses)
+	ms.assert.Equal(cert.DNSNames, newCert.DNSNames)
+	ms.assert.Equal(cert.IPAddresses, newCert.IPAddresses)
 	// Check Signature
 	ms.assert.Nil(ms.coreServer.cert.CheckSignature(newCert.SignatureAlgorithm, newCert.RawTBSCertificate, newCert.Signature))
 	// Check cert-chain
