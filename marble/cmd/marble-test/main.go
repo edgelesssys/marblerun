@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 
 	"github.com/edgelesssys/coordinator/util"
@@ -15,6 +16,7 @@ func main() {
 	cert := []byte(util.MustGetenv("MARBLE_CERT"))
 	rootCA := []byte(util.MustGetenv("ROOT_CA"))
 	privk := []byte(util.MustGetenv("MARBLE_KEY"))
+	addr := util.MustGetenv("EDG_TEST_ADDR")
 
 	roots := x509.NewCertPool()
 	if !roots.AppendCertsFromPEM(rootCA) {
@@ -27,16 +29,16 @@ func main() {
 	}
 
 	if len(os.Args) > 1 && os.Args[1] == "serve" {
-		runServer(tlsCert, roots)
+		runServer(addr, tlsCert, roots)
 		return
 	}
 
-	runClient(tlsCert, roots)
+	runClient(addr, tlsCert, roots)
 }
 
-func runServer(tlsCert tls.Certificate, roots *x509.CertPool) {
+func runServer(addr string, tlsCert tls.Certificate, roots *x509.CertPool) {
 	srv := &http.Server{
-		Addr: "localhost:8080",
+		Addr: addr,
 		TLSConfig: &tls.Config{
 			ClientCAs:    roots,
 			Certificates: []tls.Certificate{tlsCert},
@@ -54,12 +56,13 @@ func runServer(tlsCert tls.Certificate, roots *x509.CertPool) {
 	log.Fatal(srv.ListenAndServeTLS("", ""))
 }
 
-func runClient(tlsCert tls.Certificate, roots *x509.CertPool) error {
+func runClient(addr string, tlsCert tls.Certificate, roots *x509.CertPool) error {
 	client := http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{
 		RootCAs:      roots,
 		Certificates: []tls.Certificate{tlsCert},
 	}}}
-	resp, err := client.Get("https://localhost:8080/")
+	url := url.URL{Scheme: "https", Host: addr}
+	resp, err := client.Get(url.String())
 	if err != nil {
 		log.Fatal(err)
 	}
