@@ -6,6 +6,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/pem"
 	"log"
 	"math"
@@ -74,12 +75,13 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 		return nil, err
 	}
 
+	// customize marble's parameters
 	pemRootCA := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: c.cert.Raw})
 	pemMarbleCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certRaw})
 	pemMarbleKey := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: encodedPrivKey})
-	pemSealKey := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: sealKey})
+	strSealKey := hex.EncodeToString(sealKey)
 	marble := c.manifest.Marbles[req.GetMarbleType()] // existence has been checked in verifyManifestRequirement
-	params := customizeParameters(marble.Parameters, pemRootCA, pemMarbleCert, pemMarbleKey, pemSealKey)
+	params := customizeParameters(marble.Parameters, pemRootCA, pemMarbleCert, pemMarbleKey, strSealKey)
 
 	// write response
 	resp := &rpc.ActivationResp{
@@ -167,7 +169,7 @@ func (c *Core) generateCertFromCSR(csrReq []byte, pubk ecdsa.PublicKey, marbleTy
 }
 
 // customizeParameters replaces the placeholders in the manifest's parameters with the actual values
-func customizeParameters(params *rpc.Parameters, rootCA []byte, marbleCert []byte, marbleKey []byte, sealKey []byte) *rpc.Parameters {
+func customizeParameters(params *rpc.Parameters, rootCA []byte, marbleCert []byte, marbleKey []byte, sealKey string) *rpc.Parameters {
 	customParams := rpc.Parameters{
 		Argv:  params.Argv,
 		Files: make(map[string]string),
@@ -177,7 +179,7 @@ func customizeParameters(params *rpc.Parameters, rootCA []byte, marbleCert []byt
 	r := strings.NewReplacer(rootCAPlaceholder, string(rootCA),
 		marbleCertPlaceholder, string(marbleCert),
 		marbleKeyPlaceholder, string(marbleKey),
-		sealKeyPlaceholder, string(sealKey))
+		sealKeyPlaceholder, sealKey)
 	for path, data := range params.Files {
 		newData := r.Replace(data)
 		customParams.Files[path] = newData

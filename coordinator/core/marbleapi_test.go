@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"sync"
@@ -137,10 +138,9 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	}
 
 	// Validate SealKey
-	pemSealKey := resp.GetParameters().Env["SEAL_KEY"]
-	ms.assert.NotNil(pemSealKey)
-	p, _ := pem.Decode([]byte(pemSealKey))
-	ms.assert.NotNil(p)
+	sealKey, err := hex.DecodeString(params.Env["SEAL_KEY"])
+	ms.assert.NoError(err)
+	ms.assert.Len(sealKey, 32)
 
 	// Validate Marble Key
 	pemMarbleKey := resp.GetParameters().Env["MARBLE_KEY"]
