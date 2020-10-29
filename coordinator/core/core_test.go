@@ -14,7 +14,7 @@ func TestCore(t *testing.T) {
 	assert := assert.New(t)
 
 	c := NewCoreWithMocks()
-	assert.Equal(acceptingManifest, c.state)
+	assert.Equal(stateAcceptingManifest, c.state)
 	assert.Equal([]string{"edgeless"}, c.cert.Subject.Organization)
 	assert.Equal(coordinatorName, c.cert.Subject.CommonName)
 
@@ -73,7 +73,7 @@ func TestSeal(t *testing.T) {
 	c2, err := NewCore("edgeless", []string{"localhost"}, validator, issuer, sealer)
 	assert.NotNil(c2)
 	assert.Nil(err)
-	assert.Equal(acceptingMarbles, c2.state)
+	assert.Equal(stateAcceptingMarbles, c2.state)
 
 	quote2, err := c2.GetQuote(context.TODO())
 	assert.NotNil(quote2)

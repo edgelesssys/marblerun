@@ -44,10 +44,9 @@ type Core struct {
 type state int
 
 const (
-	uninitialized state = iota
-	acceptingManifest
-	acceptingMarbles
-	closed
+	stateUninitialized state = iota
+	stateAcceptingManifest
+	stateAcceptingMarbles
 )
 
 // sealedState represents the state information, required for persistence, that gets sealed to the filesystem
@@ -77,17 +76,19 @@ func (c *Core) advanceState() {
 // NewCore creates and initializes a new Core object
 func NewCore(orgName string, dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer Sealer) (*Core, error) {
 	c := &Core{
-		state:       uninitialized,
+		state:       stateUninitialized,
 		activations: make(map[string]uint),
 		qv:          qv,
 		qi:          qi,
 		sealer:      sealer,
 	}
+
 	log.Println("loading state")
 	cert, privk, err := c.loadState(orgName, dnsNames)
 	if err != nil {
 		return nil, err
 	}
+
 	log.Println("generating quote")
 	quote, err := c.qi.Issue(cert.Raw)
 	if err != nil {
@@ -142,7 +143,7 @@ func (c *Core) GetTLSConfig() (*tls.Config, error) {
 
 // GetTLSCertificate creates a TLS certificate for the Coordinators self-signed x509 certificate
 func (c *Core) GetTLSCertificate() (*tls.Certificate, error) {
-	if c.state == uninitialized {
+	if c.state == stateUninitialized {
 		return nil, errors.New("don't have a cert yet")
 	}
 	return util.TLSCertFromDER(c.cert.Raw, c.privk), nil
@@ -209,7 +210,7 @@ func generateSerial() (*big.Int, error) {
 
 func (c *Core) generateCert(orgName string, dnsNames []string) (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	defer c.mux.Unlock()
-	if err := c.requireState(uninitialized); err != nil {
+	if err := c.requireState(stateUninitialized); err != nil {
 		return nil, nil, err
 	}
 

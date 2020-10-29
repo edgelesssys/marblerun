@@ -32,7 +32,7 @@ import (
 func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.ActivationResp, error) {
 	log.Println("activation request for type", req.MarbleType)
 	defer c.mux.Unlock()
-	if err := c.requireState(acceptingMarbles); err != nil {
+	if err := c.requireState(stateAcceptingMarbles); err != nil {
 		return nil, status.Error(codes.FailedPrecondition, "cannot accept marbles in current state")
 	}
 
