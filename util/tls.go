@@ -45,7 +45,7 @@ func GenerateCert(DNSNames []string, IPAddrs []net.IP, isCA bool) (*x509.Certifi
 	notBefore := time.Now()
 	notAfter := notBefore.Add(math.MaxInt64)
 
-	serialNumber, err := generateSerial()
+	serialNumber, err := GenerateCertificateSerialNumber()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -96,7 +96,8 @@ func GenerateCSR(DNSNames []string, privk *ecdsa.PrivateKey) (*x509.CertificateR
 	return csr, nil
 }
 
-func generateSerial() (*big.Int, error) {
+// GenerateCertificateSerialNumber generates a random serial number for an X.509 certificate.
+func GenerateCertificateSerialNumber() (*big.Int, error) {
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	return rand.Int(rand.Reader, serialNumberLimit)
 }

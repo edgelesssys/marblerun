@@ -133,7 +133,8 @@ func (c *Core) generateCertFromCSR(csrReq []byte, pubk ecdsa.PublicKey, marbleTy
 	if csr.CheckSignature() != nil {
 		return nil, status.Error(codes.InvalidArgument, "signature over CSR is invalid")
 	}
-	serialNumber, err := generateSerial()
+
+	serialNumber, err := util.GenerateCertificateSerialNumber()
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to generate serial")
 	}
