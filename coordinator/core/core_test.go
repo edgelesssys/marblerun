@@ -2,12 +2,12 @@ package core
 
 import (
 	"context"
-	"crypto/sha256"
 	"testing"
 
 	"github.com/edgelesssys/coordinator/coordinator/quote"
 	"github.com/edgelesssys/coordinator/test"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCore(t *testing.T) {
@@ -18,62 +18,53 @@ func TestCore(t *testing.T) {
 	assert.Equal([]string{"edgeless"}, c.cert.Subject.Organization)
 	assert.Equal(CoordinatorName, c.cert.Subject.CommonName)
 
-	// get TLS certificate
 	cert, err := c.GetTLSCertificate()
+	assert.NoError(err)
 	assert.NotNil(cert)
-	assert.Nil(err)
 
-	//get TLS config
 	config, err := c.GetTLSConfig()
+	assert.NoError(err)
 	assert.NotNil(config)
-	assert.Nil(err)
 
+	manifest := []byte(test.ManifestJSON)
 	// try to set broken manifest
-	assert.NotNil(c.SetManifest(context.TODO(), []byte(test.ManifestJSON)[:len(test.ManifestJSON)-1]))
-
+	assert.Error(c.SetManifest(context.TODO(), manifest[:len(manifest)-1]))
 	// set manifest
-	assert.Nil(c.SetManifest(context.TODO(), []byte(test.ManifestJSON)))
-
+	assert.NoError(c.SetManifest(context.TODO(), manifest))
 	// set manifest a second time
-	assert.NotNil(c.SetManifest(context.TODO(), []byte(test.ManifestJSON)))
+	assert.Error(c.SetManifest(context.TODO(), manifest))
 }
 
 func TestSeal(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
 	sealer := &MockSealer{}
 
-	// create Core
 	c, err := NewCore("edgeless", []string{"localhost"}, validator, issuer, sealer)
-	assert.NotNil(c)
-	assert.Nil(err)
-	// set manifest
-	assert.Nil(c.SetManifest(context.TODO(), []byte(test.ManifestJSON)))
-	// get TLS certificate
-	cert, err := c.GetTLSCertificate()
-	assert.NotNil(cert)
-	assert.Nil(err)
-	//get Manifest Signature
-	signature := c.GetManifestSignature(context.TODO())
-	hash := sha256.Sum256(c.rawManifest)
-	assert.Equal(hash[:], signature, "manifest signature is not correct")
+	require.NoError(err)
 
-	// check sealing
+	// Set manifest. This will seal the state.
+	require.NoError(c.SetManifest(context.TODO(), []byte(test.ManifestJSON)))
+
+	// Get certificate and signature.
+	cert, err := c.GetTLSCertificate()
+	assert.NoError(err)
+	signature := c.GetManifestSignature(context.TODO())
+
+	// Check sealing with a new core initialized with the sealed state.
 	c2, err := NewCore("edgeless", []string{"localhost"}, validator, issuer, sealer)
-	assert.NotNil(c2)
-	assert.Nil(err)
+	require.NoError(err)
 	assert.Equal(stateAcceptingMarbles, c2.state)
 
 	cert2, err := c2.GetTLSCertificate()
-	assert.NotNil(cert2)
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.Equal(cert, cert2)
 
-	assert.NotNil(c2.SetManifest(context.TODO(), []byte(test.ManifestJSON)))
+	assert.Error(c2.SetManifest(context.TODO(), []byte(test.ManifestJSON)))
 
 	signature2 := c.GetManifestSignature(context.TODO())
 	assert.Equal(signature, signature2, "manifest signature differs after restart")
-
 }

@@ -9,7 +9,6 @@ import (
 	"encoding/pem"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/edgelesssys/coordinator/coordinator/quote"
 	"github.com/edgelesssys/coordinator/coordinator/rpc"
@@ -17,25 +16,26 @@ import (
 	"github.com/edgelesssys/coordinator/util"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
 )
 
 func TestActivate(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 
 	// parse manifest
 	var manifest Manifest
-	err := json.Unmarshal([]byte(test.ManifestJSON), &manifest)
-	assert.Nil(err)
+	require.NoError(json.Unmarshal([]byte(test.ManifestJSON), &manifest))
 
 	// create core
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
 	sealer := &MockSealer{}
 	coreServer, err := NewCore("edgeless", []string{"localhost"}, validator, issuer, sealer)
-	assert.NotNil(coreServer)
-	assert.Nil(err)
+	require.NoError(err)
+	require.NotNil(coreServer)
 
 	spawner := marbleSpawner{
 		assert:     assert,
@@ -49,7 +49,7 @@ func TestActivate(t *testing.T) {
 	spawner.newMarble("backend_first", "Azure", false)
 
 	// set manifest
-	assert.Nil(coreServer.SetManifest(context.TODO(), []byte(test.ManifestJSON)))
+	require.NoError(coreServer.SetManifest(context.TODO(), []byte(test.ManifestJSON)))
 
 	// activate first backend
 	spawner.newMarble("backend_first", "Azure", true)
@@ -118,11 +118,11 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	})
 
 	if !shouldSucceed {
-		ms.assert.NotNil(err)
+		ms.assert.Error(err)
 		ms.assert.Nil(resp)
 		return
 	}
-	ms.assert.Nil(err, "Activate failed: %v", err)
+	ms.assert.NoError(err, "Activate failed: %v", err)
 	ms.assert.NotNil(resp)
 
 	// Validate response
@@ -142,22 +142,18 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	ms.assert.Len(sealKey, 32)
 
 	// Validate Marble Key
-	pemMarbleKey := resp.GetParameters().Env["MARBLE_KEY"]
-	ms.assert.NotNil(pemMarbleKey)
-	p, _ = pem.Decode([]byte(pemMarbleKey))
+	p, _ := pem.Decode([]byte(params.Env["MARBLE_KEY"]))
 	ms.assert.NotNil(p)
 
 	// Validate Cert
-	pemCert := resp.GetParameters().Env["MARBLE_CERT"]
-	ms.assert.NotNil(pemCert)
-	p, _ = pem.Decode([]byte(pemCert))
+	p, _ = pem.Decode([]byte(params.Env["MARBLE_CERT"]))
 	ms.assert.NotNil(p)
 	newCert, err := x509.ParseCertificate(p.Bytes)
-	ms.assert.Nil(err)
-	ms.assert.Equal(coordinatorName, newCert.Issuer.CommonName)
+	ms.assert.NoError(err)
+	ms.assert.Equal(CoordinatorName, newCert.Issuer.CommonName)
 	// Check CommonName
 	_, err = uuid.Parse(newCert.Subject.CommonName)
-	ms.assert.Nil(err, "cert.Subject.CommonName is not a valid UUID: %v", err)
+	ms.assert.NoError(err, "cert.Subject.CommonName is not a valid UUID: %v", err)
 	// Check KeyUusage:
 	ms.assert.Equal(cert.KeyUsage, newCert.KeyUsage)
 	// Check ExtKeyUsage
@@ -166,25 +162,18 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	ms.assert.Equal(cert.DNSNames, newCert.DNSNames)
 	ms.assert.Equal(cert.IPAddresses, newCert.IPAddresses)
 	// Check Signature
-	ms.assert.Nil(ms.coreServer.cert.CheckSignature(newCert.SignatureAlgorithm, newCert.RawTBSCertificate, newCert.Signature))
+	ms.assert.NoError(ms.coreServer.cert.CheckSignature(newCert.SignatureAlgorithm, newCert.RawTBSCertificate, newCert.Signature))
+
 	// Check cert-chain
-	pemRootCA := resp.GetParameters().Env["ROOT_CA"]
-	ms.assert.NotNil(pemRootCA)
-	p, _ = pem.Decode([]byte(pemRootCA))
-	ms.assert.NotNil(p)
-	rootCA, err := x509.ParseCertificate(p.Bytes)
-	ms.assert.Nil(err, "cannot parse rootCA: %v", err)
 	roots := x509.NewCertPool()
-	roots.AddCert(rootCA)
+	ms.assert.True(roots.AppendCertsFromPEM([]byte(params.Env["ROOT_CA"])), "cannot parse rootCA")
 	opts := x509.VerifyOptions{
-		Roots:         roots,
-		CurrentTime:   time.Now(),
-		DNSName:       "localhost",
-		Intermediates: x509.NewCertPool(),
-		KeyUsages:     newCert.ExtKeyUsage,
+		Roots:     roots,
+		DNSName:   "localhost",
+		KeyUsages: newCert.ExtKeyUsage,
 	}
 	_, err = newCert.Verify(opts)
-	ms.assert.Nil(err, "failed to verify new certificate: %v", err)
+	ms.assert.NoError(err, "failed to verify new certificate: %v", err)
 }
 
 func (ms *marbleSpawner) newMarbleAsync(marbleType string, infraName string, shouldSucceed bool) {

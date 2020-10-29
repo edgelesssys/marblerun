@@ -24,13 +24,11 @@ func TestGetManifestSignature(t *testing.T) {
 
 	c, _ := mustSetup()
 
-	err := c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
-	assert.Nil(err)
+	assert.NoError(c.SetManifest(context.TODO(), []byte(test.ManifestJSON)))
 
 	sig := c.GetManifestSignature(context.TODO())
 	expectedHash := sha256.Sum256([]byte(test.ManifestJSON))
 	assert.Equal(expectedHash[:], sig)
-
 }
 
 func TestSetManifest(t *testing.T) {
@@ -39,36 +37,35 @@ func TestSetManifest(t *testing.T) {
 	c, manifest := mustSetup()
 	err := c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
 
-	assert.Nil(err, "SetManifest should succed on first try")
+	assert.NoError(err, "SetManifest should succed on first try")
 	assert.Equal(*manifest, c.manifest, "Manifest should be set correctly")
 	err = c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
-	assert.NotNil(err, "SetManifest should fail on the second try")
+	assert.Error(err, "SetManifest should fail on the second try")
 	assert.Equal(*manifest, c.manifest, "Manifest should still be set correctly")
 	err = c.SetManifest(context.TODO(), []byte(test.ManifestJSON)[:len(test.ManifestJSON)-1])
-	assert.NotNil(err, "SetManifest should fail on broken json")
+	assert.Error(err, "SetManifest should fail on broken json")
 	assert.Equal(*manifest, c.manifest, "Manifest should still be set correctly")
 
-	//use new core
+	// use new core
 	c, _ = mustSetup()
-	assert.NotNil(c.SetManifest(context.TODO(), []byte(test.ManifestJSON)[:len(test.ManifestJSON)-1]), "SetManifest should fail on broken json")
+	assert.Error(c.SetManifest(context.TODO(), []byte(test.ManifestJSON)[:len(test.ManifestJSON)-1]), "SetManifest should fail on broken json")
 	c, _ = mustSetup()
-	assert.NotNil(c.SetManifest(context.TODO(), []byte("")), "empty string should not be accepted")
-	err = c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
-	assert.Nil(err, "SetManifest should succed after failed tries")
+	assert.Error(c.SetManifest(context.TODO(), []byte("")), "empty string should not be accepted")
+	assert.NoError(c.SetManifest(context.TODO(), []byte(test.ManifestJSON)), "SetManifest should succed after failed tries")
 	assert.Equal(*manifest, c.manifest, "Manifest should be set correctly")
 
-	//try setting manifest with unallowed marble package, but propper json
+	// try setting manifest with unallowed marble package, but proper json
 	c, _ = mustSetup()
-	//get any element of the map
+	// get any element of the map
 	for _, marble := range manifest.Marbles {
 		marble.Package = "foo"
 		manifest.Marbles["bar"] = marble
 		break
 	}
-	modRawManifest, _ := json.Marshal(manifest)
+	modRawManifest, err := json.Marshal(manifest)
+	assert.NoError(err)
 	err = c.SetManifest(context.TODO(), modRawManifest)
-	assert.Equal("Manifest does not contain marble package foo", err.Error())
-
+	assert.Equal("manifest does not contain marble package foo", err.Error())
 }
 
 func TestGetCertQuote(t *testing.T) {
@@ -77,12 +74,11 @@ func TestGetCertQuote(t *testing.T) {
 	c, _ := mustSetup()
 
 	cert, _, err := c.GetCertQuote(context.TODO())
-	assert.Nil(err, "GetCertQuote should not fail (without manifest)")
+	assert.NoError(err, "GetCertQuote should not fail (without manifest)")
+	assert.Contains(cert, "-----BEGIN CERTIFICATE-----", "simple format check")
 
 	c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
 	_, _, err = c.GetCertQuote(context.TODO())
-	assert.Nil(err, "GetCertQuote should not fail (with manifest)")
-	assert.Contains(cert, "-----BEGIN CERTIFICATE-----", "simple format check")
+	assert.NoError(err, "GetCertQuote should not fail (with manifest)")
 	//todo check quote
-
 }
