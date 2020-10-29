@@ -24,6 +24,7 @@ import (
 	"github.com/edgelesssys/coordinator/coordinator/config"
 	"github.com/edgelesssys/coordinator/coordinator/core"
 	mConfig "github.com/edgelesssys/coordinator/marble/config"
+	"github.com/edgelesssys/coordinator/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
@@ -33,7 +34,7 @@ var coordinatorDir = flag.String("c", "", "Coordinator build dir")
 var marbleDir = flag.String("m", "", "Marble build dir")
 var simulationMode = flag.Bool("s", false, "Execute test in simulation mode (without real quoting)")
 var noenclave = flag.Bool("noenclave", false, "Do not run with erthost")
-var meshServerAddr, clientServerAddr string
+var meshServerAddr, clientServerAddr, marbleTestAddr string
 var manifest core.Manifest
 var transportSkipVerify = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 
@@ -60,12 +61,15 @@ func TestMain(m *testing.M) {
 	updateManifest()
 
 	// get unused ports
-	var listenerMeshAPI, listenerClientAPI net.Listener
-	listenerMeshAPI, meshServerAddr = getListenerAndAddr()
-	listenerClientAPI, clientServerAddr = getListenerAndAddr()
+	var listenerMeshAPI, listenerClientAPI, listenerTestMarble net.Listener
+	listenerMeshAPI, meshServerAddr = util.MustGetLocalListenerAndAddr()
+	listenerClientAPI, clientServerAddr = util.MustGetLocalListenerAndAddr()
+	listenerTestMarble, marbleTestAddr = util.MustGetLocalListenerAndAddr()
 	listenerMeshAPI.Close()
 	listenerClientAPI.Close()
+	listenerTestMarble.Close()
 	log.Printf("Got meshServerAddr: %v and clientServerAddr: %v\n", meshServerAddr, clientServerAddr)
+
 	os.Exit(m.Run())
 }
 
@@ -91,24 +95,6 @@ func updateManifest() {
 	pkg.ProductID = make([]byte, 2)
 	binary.LittleEndian.PutUint16(pkg.ProductID, cfg.ProductID)
 	manifest.Packages["backend"] = pkg
-}
-
-func getListenerAndAddr() (net.Listener, string) {
-	const localhost = "localhost:"
-
-	listener, err := net.Listen("tcp", localhost)
-	if err != nil {
-		panic(err)
-	}
-
-	addr := listener.Addr().String()
-
-	// addr contains IP address, we want hostname
-	_, port, err := net.SplitHostPort(addr)
-	if err != nil {
-		panic(err)
-	}
-	return listener, localhost + port
 }
 
 // sanity test of the integration test environment
@@ -419,6 +405,7 @@ func getMarbleCmd(cfg marbleConfig) *exec.Cmd {
 		makeEnv(mConfig.Type, cfg.marbleType),
 		makeEnv(mConfig.DNSNames, cfg.dnsNames),
 		makeEnv(mConfig.UUIDFile, uuidFile),
+		makeEnv("EDG_TEST_ADDR", marbleTestAddr),
 		simFlag,
 	}
 	return cmd
@@ -439,7 +426,7 @@ func startMarbleServer(cfg marbleConfig) *os.Process {
 			return nil
 		default:
 		}
-		conn, err := net.DialTimeout("tcp", net.JoinHostPort("localhost", "8080"), timeout)
+		conn, err := net.DialTimeout("tcp", marbleTestAddr, timeout)
 		if err == nil {
 			conn.Close()
 			log.Println("Server started")
