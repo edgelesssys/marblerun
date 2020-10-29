@@ -15,8 +15,7 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-// OrgName is the Edgeless org name for cetificates
-const OrgName string = "Edgeless Systems GmbH"
+const marbleName string = "Edgeless Mesh Marble"
 
 // MustGenerateTestMarbleCredentials returns dummy Marble TLS credentials for testing
 func MustGenerateTestMarbleCredentials() (cert *x509.Certificate, csrRaw []byte, privk *ecdsa.PrivateKey) {
@@ -55,7 +54,7 @@ func GenerateCert(dnsNames []string, ipAddrs []net.IP, isCA bool) (*x509.Certifi
 	// Do we need x509.KeyUsageKeyEncipherment?
 	template := x509.Certificate{
 		Subject: pkix.Name{
-			Organization: []string{OrgName},
+			CommonName: marbleName,
 		},
 		SerialNumber: serialNumber,
 		NotBefore:    notBefore,
