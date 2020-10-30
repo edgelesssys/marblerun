@@ -1,11 +1,10 @@
 # Edgeless Mesh
 
-
 ![logo](docs/assets/mesh_text.png)
 
 [![Actions Status](https://github.com/edgelesssys/coordinator/workflows/Unit%20Tests/badge.svg)](https://github.com/edgelesssys/coordinator/actions)
 
-[Edgeless Mesh](https://www.edgeless.systems/) is a framework for creating distributed confidential computing apps. Build your confidential microservices with [Edgeless RT](https://github.com/edgelesssys/edgelessrt), distribute them with Kubernetes on an SGX-enabled cluster, and let Edgeless Mesh take care of the rest. Deploy end-to-end secure and verifiable AI pipelines or crunch on sensitive big data in the cloud. Confidential computing at scale has never been easier. 
+[Edgeless Mesh](https://www.edgeless.systems/) is a framework for creating distributed confidential-computing apps. Build your confidential microservices with [Edgeless RT](https://github.com/edgelesssys/edgelessrt), distribute them with Kubernetes on an SGX-enabled cluster, and let Edgeless Mesh take care of the rest. Deploy end-to-end secure and verifiable AI pipelines or crunch on sensitive big data in the cloud. Confidential computing at scale has never been easier. 
 
 Edgeless Mesh guarantees that the topology of your distributed app adheres to a manifest specified in simple JSON. Edgeless Mesh verifies the integrity of services, bootstraps them, and sets up encrypted connections between them.
 
@@ -27,9 +26,8 @@ Edgeless Mesh is the service mesh for the age of confidential computing.
 
 ## Quickstart and documentation
 
-You can deploy your confidential computing application with Mesh with ease. See the [Getting Started Guide](TODO) for how.
-
-For more comprehensive documentation, start with the [docs](TODO)
+See the [Getting Started Guide](TODO) to set up a distributed confidential-computing app in a few simple steps. 
+For more comprehensive documentation, start with the [docs](TODO).
 
 ## Build
 
