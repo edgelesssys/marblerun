@@ -1,3 +1,6 @@
+// Copyright (c) Edgeless Systems GmbH.
+// Licensed under the MIT License.
+
 // Package core provides the core functionality for the Coordinator object including state transition, APIs for marbles and clients, handling of manifests and the sealing functionalities.
 package core
 

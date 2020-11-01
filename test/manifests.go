@@ -1,3 +1,6 @@
+// Copyright (c) Edgeless Systems GmbH.
+// Licensed under the MIT License.
+
 package test
 
 // ManifestJSON is a test manifest

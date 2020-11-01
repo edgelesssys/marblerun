@@ -1,3 +1,6 @@
+// Copyright (c) Edgeless Systems GmbH.
+// Licensed under the MIT License.
+
 // Package config defines the environment variables expected by the Marble for configuration settings.
 package config
 

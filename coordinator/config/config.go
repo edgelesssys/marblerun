@@ -1,3 +1,6 @@
+// Copyright (c) Edgeless Systems GmbH.
+// Licensed under the MIT License.
+
 // Package config defines the environment variables expected by the Coordinator for configuration settings.
 package config
 

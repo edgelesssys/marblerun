@@ -1,3 +1,6 @@
+// Copyright (c) Edgeless Systems GmbH.
+// Licensed under the MIT License.
+
 // Package server contains the ClientAPI HTTP-REST and MarbleAPI gRPC server.
 package server
 
