@@ -30,8 +30,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-var coordinatorDir = flag.String("c", "", "Coordinator build dir")
-var marbleDir = flag.String("m", "", "Marble build dir")
+var buildDir = flag.String("b", "", "build dir")
 var simulationMode = flag.Bool("s", false, "Execute test in simulation mode (without real quoting)")
 var noenclave = flag.Bool("noenclave", false, "Do not run with erthost")
 var meshServerAddr, clientServerAddr, marbleTestAddr string
@@ -41,17 +40,10 @@ var simFlag string
 
 func TestMain(m *testing.M) {
 	flag.Parse()
-	if *coordinatorDir == "" {
-		log.Fatalln("You must provide the path of the coordinator build directory using th -c flag.")
+	if *buildDir == "" {
+		log.Fatalln("You must provide the path of the build directory using th -b flag.")
 	}
-	if *marbleDir == "" {
-		log.Fatalln("You must provide the path of the marble build directory using th -m flag.")
-	}
-
-	if _, err := os.Stat(*coordinatorDir); err != nil {
-		log.Fatalln(err)
-	}
-	if _, err := os.Stat(*marbleDir); err != nil {
+	if _, err := os.Stat(*buildDir); err != nil {
 		log.Fatalln(err)
 	}
 
@@ -80,7 +72,7 @@ func TestMain(m *testing.M) {
 }
 
 func updateManifest() {
-	config, err := ioutil.ReadFile(filepath.Join(*marbleDir, "config.json"))
+	config, err := ioutil.ReadFile(filepath.Join(*buildDir, "marble-test-config.json"))
 	if err != nil {
 		panic(err)
 	}
@@ -268,9 +260,9 @@ func makeEnv(key, value string) string {
 func startCoordinator(cfg coordinatorConfig) *os.Process {
 	var cmd *exec.Cmd
 	if *noenclave {
-		cmd = exec.Command(filepath.Join(*coordinatorDir, "coordinator-noenclave"))
+		cmd = exec.Command(filepath.Join(*buildDir, "coordinator-noenclave"))
 	} else {
-		cmd = exec.Command("erthost", filepath.Join(*coordinatorDir, "enclave.signed"))
+		cmd = exec.Command("erthost", filepath.Join(*buildDir, "coordinator-enclave.signed"))
 	}
 	cmd.Env = []string{
 		makeEnv(config.MeshAddr, meshServerAddr),
@@ -381,9 +373,9 @@ func (c marbleConfig) cleanup() {
 func getMarbleCmd(cfg marbleConfig) *exec.Cmd {
 	var cmd *exec.Cmd
 	if *noenclave {
-		cmd = exec.Command(filepath.Join(*marbleDir, "marble-test-noenclave"))
+		cmd = exec.Command(filepath.Join(*buildDir, "marble-test-noenclave"))
 	} else {
-		cmd = exec.Command("erthost", filepath.Join(*marbleDir, "enclave.signed"))
+		cmd = exec.Command("erthost", filepath.Join(*buildDir, "marble-test-enclave.signed"))
 	}
 	uuidFile := filepath.Join(cfg.dataDir, "uuid")
 	cmd.Env = []string{

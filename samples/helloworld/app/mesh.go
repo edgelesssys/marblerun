@@ -5,7 +5,7 @@ import "C"
 import (
 	"os"
 
-	"github.com/edgelesssys/coordinator/marble/marble"
+	"github.com/edgelesssys/coordinator/marble/premain"
 )
 
 var cargs []*C.char
@@ -15,7 +15,7 @@ func invokemain() { main() }
 
 //export ert_meshentry_premain
 func ert_meshentry_premain(argc *C.int, argv ***C.char) {
-	if err := marble.PreMain(); err != nil {
+	if err := premain.PreMain(); err != nil {
 		panic(err)
 	}
 

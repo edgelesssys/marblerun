@@ -2,14 +2,14 @@ name: Unit Tests
 
 on:
   push:
-    branches: [ feat/buildartifact ]
+    branches: [ master ]
   pull_request:
-    branches: [ feat/buildartifact ]
+    branches: [ master ]
 
 jobs:
   run:
     runs-on: ubuntu-latest
-    container: 
+    container:
       image: ghcr.io/edgelesssys/edgelessrt-private:latest
       credentials:
         username: ${{ secrets.CI_GITHUB_PACKAGES_READ }}
@@ -20,20 +20,11 @@ jobs:
       uses: actions/checkout@v2
       with:
         path: coordinator
-        ref: master
 
-    - name: Test core
-      run: ertgo test 
-      working-directory: coordinator/coordinator/core
+    - name: Test
+      run: ertgo test ./...
+      working-directory: coordinator
 
-    - name: Test server
-      run: ertgo test 
-      working-directory: coordinator/coordinator/server
-
-    - name: Test marble
-      run: ertgo test 
-      working-directory: coordinator/marble/marble
-      
     - run: |
         mkdir coordinator/build assets
         SHA=$(echo ${{ github.sha }} | cut -c1-8)
@@ -42,7 +33,7 @@ jobs:
     - name: Build
       run: |
         cmake .. && make
-        mv enclave.signed coordinator-noenclave config.json public.pem private.pem ../../assets/
+        mv coordinator-enclave.signed coordinator-noenclave coordinator-config.json public.pem private.pem ../../assets/
       working-directory: coordinator/build
 
     - name: Delete old release assets
@@ -62,4 +53,3 @@ jobs:
         gzip: false
         allow_override: true
         files: assets/*
-      
