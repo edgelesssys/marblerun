@@ -1,7 +1,7 @@
 // Copyright (c) Edgeless Systems GmbH.
 // Licensed under the MIT License.
 
-package marble
+package premain
 
 import (
 	"crypto/x509"
