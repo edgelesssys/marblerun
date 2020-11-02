@@ -2,7 +2,9 @@
 
 ![logo](docs/assets/mesh_text.png)
 
-[![Actions Status](https://github.com/edgelesssys/coordinator/workflows/Unit%20Tests/badge.svg)](https://github.com/edgelesssys/coordinator/actions)
+[![GitHub Actions Status][github-actions-badge]][github-actions]
+[![GitHub license][license-badge]](LICENSE)
+[![Go Report Card][go-report-card-badge]][go-report-card]
 
 [Edgeless Mesh](https://www.edgeless.systems/) is a framework for creating distributed confidential-computing apps. Build your confidential microservices with [Edgeless RT](https://github.com/edgelesssys/edgelessrt), distribute them with Kubernetes on an SGX-enabled cluster, and let Edgeless Mesh take care of the rest. Deploy end-to-end secure and verifiable AI pipelines or crunch on sensitive big data in the cloud. Confidential computing at scale has never been easier. 
 
@@ -101,3 +103,11 @@ Planned features include:
 * Support for [Graphene](https://github.com/oscarlab/graphene), [SGX-LKL](https://github.com/lsds/sgx-lkl), and potentially other SGX software frameworks
 * Distribution of the Control Plane to mitigate against a single point of failure
 
+
+
+<!-- refs -->
+[github-actions]: https://github.com/edgelesssys/coordinator/actions
+[github-actions-badge]: https://github.com/edgelesssys/coordinator/workflows/Unit%20Tests/badge.svg
+[go-report-card]: https://goreportcard.com/report/github.com/edgelesssys/mesh
+[go-report-card-badge]: https://goreportcard.com/badge/github.com/edgelesssys/mesh
+[license-badge]: https://img.shields.io/github/license/edgelesssys/mesh.svg
