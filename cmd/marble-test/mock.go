@@ -5,10 +5,10 @@
 
 package main
 
-import "github.com/edgelesssys/coordinator/marble/marble"
+import "github.com/edgelesssys/coordinator/marble/premain"
 
 func init() {
-	if err := marble.PreMainMock(); err != nil {
+	if err := premain.PreMainMock(); err != nil {
 		panic(err)
 	}
 }

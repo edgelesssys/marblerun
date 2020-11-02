@@ -1,8 +1,8 @@
 // Copyright (c) Edgeless Systems GmbH.
 // Licensed under the MIT License.
 
-// Package marble contains the logic invoked before the applications actual main-function, that authenticates to the coordinator and pulls configurations and secrets which are subsequently passed to the application.
-package marble
+// Package premain contains the logic invoked before the applications actual main-function, that authenticates to the coordinator and pulls configurations and secrets which are subsequently passed to the application.
+package premain
 
 import (
 	"context"
