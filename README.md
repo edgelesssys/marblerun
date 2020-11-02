@@ -6,7 +6,9 @@
 [![GitHub license][license-badge]](LICENSE)
 [![Go Report Card][go-report-card-badge]][go-report-card]
 
-[Edgeless Mesh](https://www.edgeless.systems/) is a framework for creating distributed confidential-computing apps. Build your confidential microservices with [Edgeless RT](https://github.com/edgelesssys/edgelessrt), distribute them with Kubernetes on an SGX-enabled cluster, and let Edgeless Mesh take care of the rest. Deploy end-to-end secure and verifiable AI pipelines or crunch on sensitive big data in the cloud. Confidential computing at scale has never been easier. 
+[Edgeless Mesh](https://www.edgeless.systems/) is a framework for creating distributed confidential-computing apps.
+
+Build your confidential microservices with [Edgeless RT][edgelessrt], distribute them with Kubernetes on an SGX-enabled cluster, and let Edgeless Mesh take care of the rest. Deploy end-to-end secure and verifiable AI pipelines or crunch on sensitive big data in the cloud. Confidential computing at scale has never been easier.
 
 Edgeless Mesh guarantees that the topology of your distributed app adheres to a manifest specified in simple JSON. Edgeless Mesh verifies the integrity of services, bootstraps them, and sets up encrypted connections between them.
 
@@ -16,13 +18,13 @@ To keep things simple, Edgeless Mesh acts as certificate authority and issues on
 
 Edgeless Mesh is the service mesh for the age of confidential computing.
 
-## Key features
+### Key features
 
-* Authentication and integrity verification of microservices
-* Provisioning of certificates, configurations, and application artifacts
-* Remote attestation for the confidentiallity and integrity over the whole cluster.
+:lock: Authentication and integrity verification of microservices
 
-## Overview
+:package: Provisioning of certificates, configurations, and application artifacts
+
+:globe_with_meridians: Remote attestation for the confidentiallity and integrity over the whole cluster.
 
 ![overview](docs/assets/overview.svg)
 
@@ -31,58 +33,14 @@ Edgeless Mesh is the service mesh for the age of confidential computing.
 See the [Getting Started Guide](TODO) to set up a distributed confidential-computing app in a few simple steps. 
 For more comprehensive documentation, start with the [docs](TODO).
 
-## Build
+## Working in this repo
 
-To build the Coordinator control plane:
+[`BUILD.md`](BUILD.md) includes general information on how to work in this repo.
 
-```bash
-mkdir build
-cd build
-cmake ..
-make
-```
+## Get involved
 
-To build the data plane libraries and test applications:
-
-```bash
-cd marble
-mkdir build
-cd build
-cmake ..
-make
-```
-
-## Run
-
-```bash
-OE_SIMULATION=1 ./coordinator
-```
-
-## Test
-
-### Unit Tests
-
-```bash
-go test -race ./...
-```
-
-### With SGX-DCAP attestation on enabled hardware (e.g., in Azure)
-
-```bash
-go test ./test/ -v -tags integration --args -c ../build/ -m ../marble/build/
-```
-
-### With SGX simulation mode
-
-```bash
-go test ./test/ -v -tags integration --args -c ../build/ -m ../marble/build/ -s
-```
-
-### Without SGX
-
-```bash
-go test ./test/ -v -tags integration --args -c ../build/ -m ../marble/build/ -s -noenclave
-```
+* Follow [@EdgelessSystems][twitter] on Twitter.
+* Join our [Slack][slack]
 
 ## Examples
 
@@ -95,19 +53,25 @@ We have two basic examples on how to build confidential applications with Edgele
 
 ### Confidential Emoji Voting
 
-The popular [Linkerd](https://linkerd.io) service mesh uses the simple and fun scalable *emojivoto* app as the default demo. You can find our confidential variant [here](https://github.com/edgelesssys/emojivoto). Your emoji votes have never been safer!
-## Roadmap
+The popular [Linkerd][linkerd] service mesh uses the simple and fun scalable *emojivoto* app as the default demo. You can find our confidential variant [here][emojivoto]. Your emoji votes have never been safer!
+
+## Roadmap 	:rocket:
 
 Planned features include:
 
-* Support for [Graphene](https://github.com/oscarlab/graphene), [SGX-LKL](https://github.com/lsds/sgx-lkl), and potentially other SGX software frameworks
+* Support for [Graphene][graphene], [SGX-LKL][sgx-lkl], and potentially other SGX software frameworks
 * Distribution of the Control Plane to mitigate against a single point of failure
 
-
-
 <!-- refs -->
+[edgelessrt]: https://github.com/edgelesssys/edgelessrt
+[emojivoto]: https://github.com/edgelesssys/emojivoto
 [github-actions]: https://github.com/edgelesssys/coordinator/actions
 [github-actions-badge]: https://github.com/edgelesssys/coordinator/workflows/Unit%20Tests/badge.svg
 [go-report-card]: https://goreportcard.com/report/github.com/edgelesssys/mesh
 [go-report-card-badge]: https://goreportcard.com/badge/github.com/edgelesssys/mesh
+[graphene]: https://github.com/oscarlab/graphene
 [license-badge]: https://img.shields.io/github/license/edgelesssys/mesh.svg
+[linkerd]: https://linkerd.io
+[sgx-lkl]: https://github.com/lsds/sgx-lkl
+[slack]: http://edgelessmesh.slack.com
+[twitter]: https://twitter.com/EdgelessSystems
