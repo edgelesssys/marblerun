@@ -14,7 +14,6 @@ import (
 	"github.com/edgelesssys/coordinator/coordinator/quote"
 	"github.com/edgelesssys/coordinator/coordinator/server"
 	"github.com/edgelesssys/coordinator/util"
-	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	"go.uber.org/zap"
 )
 
@@ -36,9 +35,6 @@ func run(validator quote.Validator, issuer quote.Issuer, sealKey []byte, sealDir
 		return
 	}
 	defer zapLogger.Sync() // flushes buffer, if any
-
-	// Make sure that log statements internal to gRPC library are logged using the zapLogger as well.
-	grpc_zap.ReplaceGrpcLoggerV2(zapLogger)
 
 	zapLogger.Info("starting coordinator")
 
