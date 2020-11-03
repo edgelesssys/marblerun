@@ -11,15 +11,22 @@ import (
 
 	"github.com/edgelesssys/coordinator/test"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 )
 
 func mustSetup() (*Core, *Manifest) {
-	var manifest Manifest
-	err := json.Unmarshal([]byte(test.ManifestJSON), &manifest)
+	// setup mock zaplogger which can be passed to Core
+	zapLogger, err := zap.NewDevelopment()
 	if err != nil {
 		panic(err)
 	}
-	return NewCoreWithMocks(), &manifest
+	defer zapLogger.Sync()
+
+	var manifest Manifest
+	if err := json.Unmarshal([]byte(test.ManifestJSON), &manifest); err != nil {
+		panic(err)
+	}
+	return NewCoreWithMocks(zapLogger), &manifest
 }
 
 func TestGetManifestSignature(t *testing.T) {

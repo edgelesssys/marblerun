@@ -11,12 +11,17 @@ import (
 	"github.com/edgelesssys/coordinator/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestCore(t *testing.T) {
+	// setup mock zaplogger which can be passed to Core
+	zapLogger, err := zap.NewDevelopment()
+	defer zapLogger.Sync()
+
 	assert := assert.New(t)
 
-	c := NewCoreWithMocks()
+	c := NewCoreWithMocks(zapLogger)
 	assert.Equal(stateAcceptingManifest, c.state)
 	assert.Equal(CoordinatorName, c.cert.Subject.CommonName)
 
@@ -38,6 +43,13 @@ func TestCore(t *testing.T) {
 }
 
 func TestSeal(t *testing.T) {
+	// setup mock zaplogger which can be passed to Core
+	zapLogger, err := zap.NewDevelopment()
+	if err != nil {
+		panic(err)
+	}
+	defer zapLogger.Sync()
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -45,7 +57,7 @@ func TestSeal(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 	sealer := &MockSealer{}
 
-	c, err := NewCore([]string{"localhost"}, validator, issuer, sealer)
+	c, err := NewCore([]string{"localhost"}, validator, issuer, sealer, zapLogger)
 	require.NoError(err)
 
 	// Set manifest. This will seal the state.
@@ -57,7 +69,7 @@ func TestSeal(t *testing.T) {
 	signature := c.GetManifestSignature(context.TODO())
 
 	// Check sealing with a new core initialized with the sealed state.
-	c2, err := NewCore([]string{"localhost"}, validator, issuer, sealer)
+	c2, err := NewCore([]string{"localhost"}, validator, issuer, sealer, zapLogger)
 	require.NoError(err)
 	assert.Equal(stateAcceptingMarbles, c2.state)
 
