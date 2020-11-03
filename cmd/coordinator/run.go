@@ -20,8 +20,17 @@ import (
 
 func run(validator quote.Validator, issuer quote.Issuer, sealKey []byte, sealDirPrefix string) {
 	// Setup logging with Zap Logger
+	var zapLogger *zap.Logger
+	var err error
+
 	// Development Logger shows a stacktrace for warnings & errors, Production Logger only for errors
-	zapLogger, err := zap.NewDevelopment()
+	devMode := os.Getenv(config.DevMode)
+	if devMode == "1" {
+		zapLogger, err = zap.NewDevelopment()
+	} else {
+		zapLogger, err = zap.NewProduction()
+	}
+
 	if err != nil {
 		log.Fatal(err)
 		return
