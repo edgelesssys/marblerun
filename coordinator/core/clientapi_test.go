@@ -23,8 +23,7 @@ func mustSetup() (*Core, *Manifest) {
 	defer zapLogger.Sync()
 
 	var manifest Manifest
-	err = json.Unmarshal([]byte(test.ManifestJSON), &manifest)
-	if err != nil {
+	if err := json.Unmarshal([]byte(test.ManifestJSON), &manifest); err != nil {
 		panic(err)
 	}
 	return NewCoreWithMocks(zapLogger), &manifest
