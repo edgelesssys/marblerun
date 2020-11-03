@@ -28,7 +28,7 @@ jobs:
     - run: |
         mkdir coordinator/build assets
         SHA=$(echo ${{ github.sha }} | cut -c1-8)
-        echo ::set-env name=GITSHA::$SHA
+        echo "GITSHA=$SHA" >> $GITHUB_ENV
 
     - name: Build
       run: |
