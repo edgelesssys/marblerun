@@ -8,7 +8,6 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
-	"log"
 	"math"
 	"strings"
 	"time"
@@ -16,6 +15,7 @@ import (
 	"github.com/edgelesssys/coordinator/coordinator/rpc"
 	"github.com/edgelesssys/coordinator/util"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -29,7 +29,7 @@ import (
 // Returns a signed certificate-key-pair and the application's parameters if the authentication was successful.
 // Returns an error if the authenitcation failed.
 func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.ActivationResp, error) {
-	log.Println("activation request for type", req.MarbleType)
+	c.zaplogger.Info("Received activation request", zap.String("MarbleType", req.MarbleType))
 	defer c.mux.Unlock()
 	if err := c.requireState(stateAcceptingMarbles); err != nil {
 		return nil, status.Error(codes.FailedPrecondition, "cannot accept marbles in current state")
@@ -87,7 +87,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 		Parameters: params,
 	}
 
-	log.Printf("Successfully activated new Marble of type '%v: %v'\n", req.GetMarbleType(), marbleUUID.String())
+	c.zaplogger.Info("Successfully activated new Marble", zap.String("MarbleType", req.MarbleType), zap.String("UUID", marbleUUID.String()))
 	c.activations[req.GetMarbleType()]++
 	return resp, nil
 }

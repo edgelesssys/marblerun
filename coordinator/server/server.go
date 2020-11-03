@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -36,7 +35,7 @@ type manifestSignatureResp struct {
 // RunMarbleServer starts a gRPC with the given Coordinator core.
 // `address` is the desired TCP address like "localhost:0".
 // The effective TCP address is returned via `addrChan`.
-func RunMarbleServer(core *core.Core, addr string, addrChan chan string, errChan chan error) {
+func RunMarbleServer(core *core.Core, addr string, addrChan chan string, errChan chan error, zapLogger *zap.Logger) {
 	cert, err := core.GetTLSCertificate()
 	if err != nil {
 		errChan <- err
@@ -48,14 +47,6 @@ func RunMarbleServer(core *core.Core, addr string, addrChan chan string, errChan
 		ClientAuth: tls.RequireAnyClientCert,
 	}
 	creds := credentials.NewTLS(&tlsConfig)
-
-	// logging
-	zapLogger, err := zap.NewDevelopment()
-	if err != nil {
-		errChan <- err
-		return
-	}
-	defer zapLogger.Sync() // flushes buffer, if any
 
 	// Make sure that log statements internal to gRPC library are logged using the zapLogger as well.
 	grpc_zap.ReplaceGrpcLoggerV2(zapLogger)
@@ -147,13 +138,14 @@ func writeJSON(w http.ResponseWriter, v interface{}) {
 }
 
 // RunClientServer runs a HTTP server serving mux.
-func RunClientServer(mux *http.ServeMux, address string, tlsConfig *tls.Config) {
+func RunClientServer(mux *http.ServeMux, address string, tlsConfig *tls.Config, zapLogger *zap.Logger) {
 	loggedRouter := handlers.LoggingHandler(os.Stdout, mux)
 	server := http.Server{
 		Addr:      address,
 		Handler:   loggedRouter,
 		TLSConfig: tlsConfig,
 	}
-	log.Println("starting client https server at", address)
-	log.Println(server.ListenAndServeTLS("", ""))
+	zapLogger.Info("starting client https server", zap.String("address", address))
+	err := server.ListenAndServeTLS("", "")
+	zapLogger.Warn(err.Error())
 }

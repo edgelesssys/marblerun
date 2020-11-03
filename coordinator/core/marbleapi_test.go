@@ -17,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
 )
@@ -29,11 +30,18 @@ func TestActivate(t *testing.T) {
 	var manifest Manifest
 	require.NoError(json.Unmarshal([]byte(test.ManifestJSON), &manifest))
 
+	// setup mock zaplogger which can be passed to Core
+	zapLogger, err := zap.NewDevelopment()
+	if err != nil {
+		panic(err)
+	}
+	defer zapLogger.Sync()
+
 	// create core
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
 	sealer := &MockSealer{}
-	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, sealer)
+	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, sealer, zapLogger)
 	require.NoError(err)
 	require.NotNil(coreServer)
 

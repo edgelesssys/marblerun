@@ -11,7 +11,6 @@ import (
 	"crypto/x509/pkix"
 	"encoding/json"
 	"errors"
-	"log"
 	"math"
 	"net"
 	"sync"
@@ -19,6 +18,7 @@ import (
 
 	"github.com/edgelesssys/coordinator/coordinator/quote"
 	"github.com/edgelesssys/coordinator/util"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
 )
@@ -36,6 +36,7 @@ type Core struct {
 	qi          quote.Issuer
 	activations map[string]uint
 	mux         sync.Mutex
+	zaplogger   zap.Logger
 }
 
 // The sequence of states a Coordinator may be in
@@ -73,25 +74,26 @@ func (c *Core) advanceState() {
 }
 
 // NewCore creates and initializes a new Core object
-func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer Sealer) (*Core, error) {
+func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer Sealer, zapLogger *zap.Logger) (*Core, error) {
 	c := &Core{
 		state:       stateUninitialized,
 		activations: make(map[string]uint),
 		qv:          qv,
 		qi:          qi,
 		sealer:      sealer,
+		zaplogger:   *zapLogger,
 	}
 
-	log.Println("loading state")
+	zapLogger.Info("loading state")
 	cert, privk, err := c.loadState(dnsNames)
 	if err != nil {
 		return nil, err
 	}
 
-	log.Println("generating quote")
+	zapLogger.Info("generating quote")
 	quote, err := c.qi.Issue(cert.Raw)
 	if err != nil {
-		log.Println("Failed to get quote. Proceeding in simulation mode.")
+		zapLogger.Warn("Failed to get quote. Proceeding in simulation mode.")
 		// If we run in SimulationMode we get an error here
 		// For testing purpose we do not want to just fail here
 		// Instead we store an empty quote that will make it transparent to the client that the integrity of the mesh can not be guaranteed.
@@ -106,11 +108,11 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer Seal
 }
 
 // NewCoreWithMocks creates a new core object with quote and seal mocks for testing.
-func NewCoreWithMocks() *Core {
+func NewCoreWithMocks(zapLogger *zap.Logger) *Core {
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
 	sealer := &MockSealer{}
-	core, err := NewCore([]string{"localhost"}, validator, issuer, sealer)
+	core, err := NewCore([]string{"localhost"}, validator, issuer, sealer, zapLogger)
 	if err != nil {
 		panic(err)
 	}
@@ -148,12 +150,12 @@ func (c *Core) loadState(dnsNames []string) (*x509.Certificate, *ecdsa.PrivateKe
 	}
 	// generate new state if there isn't something in the fs yet
 	if len(stateRaw) == 0 {
-		log.Println("No sealed state found. Proceeding with new state.")
+		c.zaplogger.Info("No sealed state found. Proceeding with new state.")
 		return c.generateCert(dnsNames)
 	}
 
 	// load state
-	log.Println("applying sealed state")
+	c.zaplogger.Info("applying sealed state")
 	var loadedState sealedState
 	if err := json.Unmarshal(stateRaw, &loadedState); err != nil {
 		return nil, nil, err

@@ -12,3 +12,6 @@ const DNSNames = "EDG_COORDINATOR_DNS_NAMES"
 
 // SealDir is the coordinator's file location to store the sealed state
 const SealDir = "EDG_COORDINATOR_SEAL_DIR"
+
+// DevMode enables more verbose logging
+const DevMode = "EDG_COORDINATOR_DEV_MODE"

@@ -6,7 +6,8 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
-	"log"
+
+	"go.uber.org/zap"
 )
 
 // ClientCore provides the core functionality for the client. It can be used by e.g. a http server
@@ -38,7 +39,7 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) error {
 
 	c.advanceState()
 	if err := c.sealState(); err != nil {
-		log.Println(err)
+		c.zaplogger.Error("sealState failed", zap.Error(err))
 	}
 	return nil
 }
