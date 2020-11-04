@@ -1,9 +1,9 @@
 
-# Edgeless Mesh Build and Development Guide
+# Build and Development Guide
 
 ## Repo layout
 
-Edgeless Mesh is written entirely in Go and build on top of Edgeless RT that is written in C++.
+Edgeless Mesh is written entirely in Go and builds on Edgeless RT, which is written largely in C/C++.
 
 ### Control Plane
 
@@ -21,7 +21,7 @@ Edgeless Mesh is written entirely in Go and build on top of Edgeless RT that is 
 
 ## Build
 
-Build the coordinator control plane and marble test applications:
+Build the coordinator control plane and marble test applications.
 
 ```bash
 mkdir build
@@ -102,7 +102,7 @@ curl --silent -k -X POST -H  "Content-Type: application/json" --data-binary @man
 
 ### Run the marbles
 
-Run a simple client-server application.
+Run a simple application.
 
 * Server:
     Run the server service in a new terminal:

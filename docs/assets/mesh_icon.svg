@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="279"
+   height="279"
+   viewBox="0 0 279 279"
+   fill="none"
+   version="1.1"
+   id="svg17"
+   sodipodi:docname="mesh_no_lock.svg"
+   inkscape:version="1.0.1 (3bc2e813f5, 2020-09-07)">
+  <metadata
+     id="metadata21">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="2482"
+     inkscape:window-height="1411"
+     id="namedview19"
+     showgrid="false"
+     inkscape:zoom="3.6129032"
+     inkscape:cx="139.5"
+     inkscape:cy="139.5"
+     inkscape:window-x="69"
+     inkscape:window-y="-9"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg17" />
+  <g
+     opacity="0.3"
+     clip-path="url(#clip0)"
+     id="g4">
+    <path
+       d="M278.403 94.65L239.058 55.305L194.165 100.198L178.888 84.9205L223.781 40.0278L184.35 0.597412L139.458 45.49L94.6503 0.597412L55.3052 39.9425L100.198 84.8351L84.9207 100.112L39.9427 55.305L0.597656 94.65L45.4903 139.543L0.597656 184.35L39.9427 223.695L84.8354 178.802L100.113 194.08L55.2199 238.972L94.5649 278.317L139.458 233.425L184.35 278.317L223.695 238.972L178.803 194.08L194.08 178.802L238.972 223.695L278.317 184.35L233.425 139.457L278.403 94.65ZM139.543 154.82L124.266 139.543L139.543 124.266L154.82 139.543L139.543 154.82Z"
+       stroke="#8195A6"
+       stroke-miterlimit="10"
+       id="path2" />
+  </g>
+  <path
+     d="M210.219 114.906L189.929 94.377L166.778 117.8L158.899 109.829L182.05 86.406L161.76 65.8772L138.609 89.3005L115.458 65.8772L95.1684 86.406L118.319 109.829L110.441 117.8L87.29 94.377L67 114.906L90.1509 138.329L67 161.752L87.29 182.281L110.353 158.813L118.275 166.829L95.1244 190.252L115.414 210.781L138.565 187.358L161.716 210.781L182.006 190.252L158.855 166.829L166.734 158.858L189.885 182.281L210.175 161.752L187.024 138.329L210.219 114.906ZM138.565 146.256L130.687 138.285L138.565 130.313L146.444 138.285L138.565 146.256Z"
+     fill="#00010D"
+     id="path6" />
+  <defs
+     id="defs15">
+    <clipPath
+       id="clip0">
+      <rect
+         width="279"
+         height="279"
+         fill="white"
+         id="rect12" />
+    </clipPath>
+  </defs>
+</svg>

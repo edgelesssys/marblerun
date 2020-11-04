@@ -1,32 +1,28 @@
 # Edgeless Mesh
 
-![logo](docs/assets/mesh_text.png)
+![logo](docs/assets/mesh_logo.svg)
 
 [![GitHub Actions Status][github-actions-badge]][github-actions]
 [![GitHub license][license-badge]](LICENSE)
 [![Go Report Card][go-report-card-badge]][go-report-card]
 
-[Edgeless Mesh](https://www.edgeless.systems/) is a framework for creating distributed confidential-computing apps.
+Edgeless Mesh is a framework for creating distributed confidential-computing apps.
 
-Build your confidential microservices with [Edgeless RT][edgelessrt], distribute them with Kubernetes on an SGX-enabled cluster, and let Edgeless Mesh take care of the rest. Deploy end-to-end secure and verifiable AI pipelines or crunch on sensitive big data in the cloud. Confidential computing at scale has never been easier.
+Build your confidential microservices with [Edgeless RT][edgelessrt], distribute them with Kubernetes on an SGX-enabled cluster, and let Mesh take care of the rest. Deploy end-to-end secure and verifiable AI pipelines or crunch on sensitive big data in the cloud. Confidential computing at scale has never been easier.
 
-Edgeless Mesh guarantees that the topology of your distributed app adheres to a manifest specified in simple JSON. Edgeless Mesh verifies the integrity of services, bootstraps them, and sets up encrypted connections between them.
+Mesh guarantees that the topology of your distributed app adheres to a manifest specified in simple JSON. Mesh verifies the integrity of services, bootstraps them, and sets up encrypted connections between them. If a node fails, Mesh will seamlessly substitute it with respect to the rules defined in the manifest.  
 
-If a node fails, Edgeless Mesh will seamlessly substitute it with respect to the rules defined in the manifest.  
-
-To keep things simple, Edgeless Mesh acts as certificate authority and issues one concise remote attestation statement for your whole distributed app. This can be used by anyone to verify the integrity of your distributed app. 
-
-Edgeless Mesh is the service mesh for the age of confidential computing.
+To keep things simple, Mesh issues one concise remote attestation statement for your whole distributed app. This can be used by anyone to verify the integrity of your distributed app. 
 
 ### Key features
 
-:lock: Authentication and integrity verification of microservices
+* Authentication and integrity verification of microservices :lock:
+* Provisioning of certificates, configurations, and application artifacts :package: 
+* Remote attestation for the confidentiallity and integrity over the whole cluster :globe_with_meridians:
 
-:package: Provisioning of certificates, configurations, and application artifacts
+### Overview
 
-:globe_with_meridians: Remote attestation for the confidentiallity and integrity over the whole cluster.
-
-![overview](docs/assets/overview.svg)
+<img src="docs/assets/overview.svg" alt="overview" width="600"/>
 
 ## Quickstart and documentation
 
@@ -46,16 +42,16 @@ For more comprehensive documentation, start with the [docs](TODO).
 
 ### Hello World
 
-We have two basic examples on how to build confidential applications with Edgeless Mesh.
+We have two basic examples on how to build confidential applications with Mesh.
 
-* See [helloworld](../samples/helloworld/README.md) for how integrate Edgeless Mesh with your Golang application.
-* See [helloc++](../samples/helloc++/README.md) for how integrate Edgeless Mesh with your C++ application.
+* See [helloworld](../samples/helloworld/README.md) for how integrate Mesh with your Golang application.
+* See [helloc++](../samples/helloc++/README.md) for how integrate Mesh with your C++ application.
 
 ### Confidential Emoji Voting
 
 The popular [Linkerd][linkerd] service mesh uses the simple and fun scalable *emojivoto* app as the default demo. You can find our confidential variant [here][emojivoto]. Your emoji votes have never been safer!
 
-## Roadmap 	:rocket:
+## Roadmap :rocket:
 
 Planned features include:
 
@@ -73,5 +69,5 @@ Planned features include:
 [license-badge]: https://img.shields.io/github/license/edgelesssys/mesh.svg
 [linkerd]: https://linkerd.io
 [sgx-lkl]: https://github.com/lsds/sgx-lkl
-[slack]: http://edgelessmesh.slack.com
+[slack]: https://join.slack.com/t/confidentialcloud/shared_invite/zt-ix8nzzr6-vVNb6IM76Ab8z9a_5NMJnQ
 [twitter]: https://twitter.com/EdgelessSystems

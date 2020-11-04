@@ -1,4 +1,4 @@
-# Add a Service
+# Add a service
 
 Adding a service to your application requires two steps:
 

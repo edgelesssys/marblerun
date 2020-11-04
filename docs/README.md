@@ -1,25 +1,23 @@
-# Edgeless Mesh
+# Introduction
 
-![logo](assets/mesh_text.png)
+![logo](assets/mesh_logo.svg)
 
-[Edgeless Mesh](https://www.edgeless.systems/) is a framework for creating distributed confidential-computing apps.
+Edgeless Mesh is a framework for creating distributed confidential-computing apps.
 
-Build your confidential microservices with [Edgeless RT][edgelessrt], distribute them with Kubernetes on an SGX-enabled cluster, and let Edgeless Mesh take care of the rest. Deploy end-to-end secure and verifiable AI pipelines or crunch on sensitive big data in the cloud. Confidential computing at scale has never been easier.
+Build your confidential microservices with [Edgeless RT][edgelessrt], distribute them with Kubernetes on an SGX-enabled cluster, and let Mesh take care of the rest. Deploy end-to-end secure and verifiable AI pipelines or crunch on sensitive big data in the cloud. Confidential computing at scale has never been easier.
 
-Edgeless Mesh guarantees that the topology of your distributed app adheres to a manifest specified in simple JSON. Edgeless Mesh verifies the integrity of services, bootstraps them, and sets up encrypted connections between them.
+Mesh guarantees that the topology of your distributed app adheres to a manifest specified in simple JSON. Mesh verifies the integrity of services, bootstraps them, and sets up encrypted connections between them. If a node fails, Mesh will seamlessly substitute it with respect to the rules defined in the manifest.  
 
-If a node fails, Edgeless Mesh will seamlessly substitute it with respect to the rules defined in the manifest.  
+To keep things simple, Mesh issues one concise remote attestation statement for your whole distributed app. This can be used by anyone to verify the integrity of your distributed app.
 
-To keep things simple, Edgeless Mesh acts as certificate authority and issues one concise remote attestation statement for your whole distributed app. This can be used by anyone to verify the integrity of your distributed app.
+## Key features
 
-Edgeless Mesh is the service mesh for the age of confidential computing.
+* Authentication and integrity verification of microservices :lock:
+* Provisioning of certificates, configurations, and application artifacts :package: 
+* Remote attestation for the confidentiallity and integrity over the whole cluster :globe_with_meridians:
 
-Key features of Edgeless Mesh are:
+## Overview
 
-:lock: Authentication and integrity verification of microservices
+The following gives a high-level overview of a Mesh-controlled cluster.
 
-:package: Provisioning of certificates, configurations, and application artifacts
-
-:globe_with_meridians: Remote attestation for the confidentiallity and integrity over the whole cluster.
-
-![overview](assets/overview.svg)
+<img src="assets/overview.svg" alt="overview" width="600"/>

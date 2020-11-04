@@ -1,33 +1,31 @@
 # Quickstart
 
 ## Step 0: Setup
-Before we can do anything, we need to ensure you have access to a Kubernetes cluster, and a functioning kubectl command on your local machine. (One easy option is to run Kubernetes on your local machine. We suggest [Docker Desktop](https://www.docker.com/products/docker-desktop) or [Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/), but [there are many options](https://kubernetes.io/docs/setup/).)
+Set up a Kubernetes cluster and install `kubectl`. One easy option is to run Kubernetes on your local machine, using [MicroK8s](https://microk8s.io/docs) or [Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/).
 
-When ready, make sure you're running a recent version of Kubernetes with:
-
-```bash
-kubectl version --short
-```
+Install [Helm](https://helm.sh/docs/intro/install/) ("the package manager for Kubernetes"). 
 
 ## Step 1: Install Coordinator onto the cluster
 
-Deploy with [helm](https://helm.sh/docs/intro/install/)
+Add Mesh's chart repository to Helm.
 
 ```bash
-helm repo add edg-mesh https://helm.edgeless.systems/stable
+helm repo add edgeless https://helm.edgeless.systems
 helm repo update
 ```
 
-* If your deploying on a cluster with nodes that support SGX1+FLC (e.g. AKS or minikube + Azure Standard_DC*s)
+Install the Mesh Coordinator using Helm.
+
+* For a cluster with SGX support:
 
   ```bash
-  helm install  edg-mesh-coordinator edg-mesh/coordinator --create-namespace edg-mesh
+  helm install edg-mesh-coordinator edgeless/coordinator --create-namespace edg-mesh
   ```
 
-* Otherwise
+* For a cluster without SGX support:
 
   ```bash
-  helm install edg-mesh-coordinator edg-mesh/coordinator --create-namespace edg-mesh --set coordinator.resources=null --set coordinator.OE_SIMULATION=1 --set tolerations=null
+  helm install edg-mesh-coordinator edgeless/coordinator --create-namespace edg-mesh --set coordinator.resources=null --set coordinator.OE_SIMULATION=1 --set tolerations=null
   ```
 
 ## Step 2: Pull the demo application
@@ -36,8 +34,7 @@ helm repo update
 git clone https://github.com/edgelesssys/emojivoto.git && cd emojivoto
 ```
 
-
-## Step 3: Establish Trust to the Coordinator
+## Step 3: Initialize and verify the Coordinator
 
 1. Pull the configuration and build the manifest
 

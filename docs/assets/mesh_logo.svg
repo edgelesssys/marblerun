@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="455.19254"
+   height="120.67857"
+   viewBox="0 0 455.19254 120.67857"
+   fill="none"
+   version="1.1"
+   id="svg17"
+   sodipodi:docname="mesh_no_lock.svg"
+   inkscape:version="1.0.1 (3bc2e813f5, 2020-09-07)">
+  <metadata
+     id="metadata21">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="2482"
+     inkscape:window-height="1411"
+     id="namedview19"
+     showgrid="false"
+     inkscape:zoom="1.8064516"
+     inkscape:cx="124.84496"
+     inkscape:cy="12.034627"
+     inkscape:window-x="69"
+     inkscape:window-y="-9"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg17" />
+  <g
+     opacity="0.3"
+     clip-path="url(#clip0)"
+     id="g4"
+     transform="scale(0.43253968)">
+    <path
+       d="M 278.403,94.65 239.058,55.305 194.165,100.198 178.888,84.9205 223.781,40.0278 184.35,0.597412 139.458,45.49 94.6503,0.597412 55.3052,39.9425 100.198,84.8351 84.9207,100.112 39.9427,55.305 0.597656,94.65 45.4903,139.543 0.597656,184.35 39.9427,223.695 l 44.8927,-44.893 15.2776,15.278 -44.8931,44.892 39.345,39.345 44.8931,-44.892 44.892,44.892 39.345,-39.345 -44.892,-44.892 15.277,-15.278 44.892,44.893 39.345,-39.345 -44.892,-44.893 z m -138.86,60.17 -15.277,-15.277 15.277,-15.277 15.277,15.277 z"
+       stroke="#8195a6"
+       stroke-miterlimit="10"
+       id="path2"
+       style="stroke:#8195a6;stroke-width:2.15703;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1" />
+  </g>
+  <path
+     d="M 90.92806,49.701405 82.15183,40.821798 72.13811,50.953175 68.73012,47.505401 78.74385,37.374024 69.96762,28.494504 59.95389,38.62601 49.94017,28.494504 l -8.77606,8.87952 10.01356,10.131377 -3.40755,3.447774 -10.01373,-10.131377 -8.77623,8.879607 10.01368,10.131377 -10.01368,10.131376 8.77623,8.879602 9.97566,-10.150835 3.42658,3.467238 -10.01355,10.131377 8.77605,8.8796 10.01373,-10.13137 10.01373,10.13137 8.77623,-8.8796 L 68.7111,72.160163 72.11907,68.712389 82.1328,78.84376 90.90902,69.964158 80.8953,59.832782 Z m -30.9932,13.560119 -3.40755,-3.447774 3.40755,-3.448206 3.40799,3.448206 z"
+     fill="#00010d"
+     id="path6"
+     style="stroke-width:0.432539" />
+  <defs
+     id="defs15">
+    <rect
+       x="296.70706"
+       y="66.152367"
+       width="392.60843"
+       height="56.757942"
+       id="rect25" />
+    <clipPath
+       id="clip0">
+      <rect
+         width="279"
+         height="279"
+         fill="#ffffff"
+         id="rect12"
+         x="0"
+         y="0" />
+    </clipPath>
+  </defs>
+  <text
+     xml:space="preserve"
+     id="text23"
+     style="font-style:normal;font-weight:normal;font-size:40px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;white-space:pre;shape-inside:url(#rect25);fill:#000000;fill-opacity:1;stroke:none;"
+     transform="translate(-147.80357,-27.125)"><tspan
+       x="296.70703"
+       y="102.64556"><tspan
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;font-family:Roboto;-inkscape-font-specification:'Roboto, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">EDGELESS </tspan><tspan
+         style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:40px;font-family:Roboto;-inkscape-font-specification:'Roboto, Light';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#8195a6;fill-opacity:1">MESH</tspan></tspan></text>
+</svg>
