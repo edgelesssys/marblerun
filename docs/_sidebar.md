@@ -17,6 +17,7 @@
 
 - Tasks
 
+  - [Deploy Mesh to your cluster](deploy.md)
   - [Setting a Manifest](set-manifest.md)
   - [Adding a Service](add-service.md)
   - [Client-Side verification](verification.md)
