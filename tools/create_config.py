@@ -21,7 +21,7 @@ def parseSignInfo(info):
     m = re.findall(r"product_id=(\d+)", info)
     if len(m) <= 0:
         raise Exception("Couldn't find product_id in signature info")
-    config["ProductID"] = int(m[0])
+    config["ProductID"] = [int(m[0])]
 
     m = re.findall(r"mrenclave=([abcdef\d]+)", info)
     if len(m) <= 0:
