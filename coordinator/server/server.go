@@ -35,6 +35,10 @@ type manifestSignatureResp struct {
 	ManifestSignature string
 }
 
+type recoveryData struct {
+	EncryptionKey string
+}
+
 // RunMarbleServer starts a gRPC with the given Coordinator core.
 // `address` is the desired TCP address like "localhost:0".
 // The effective TCP address is returned via `addrChan`.
@@ -111,6 +115,8 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 			if err := cc.SetManifest(r.Context(), manifest); err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
+			} else {
+				writeJSON(w, recoveryData{cc.GetRecoveryData(r.Context())})
 			}
 		default:
 			http.Error(w, "", http.StatusMethodNotAllowed)

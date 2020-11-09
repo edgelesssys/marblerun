@@ -9,6 +9,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -28,18 +29,20 @@ import (
 
 // Core implements the core logic of the Coordinator
 type Core struct {
-	cert        *x509.Certificate
-	quote       []byte
-	privk       *ecdsa.PrivateKey
-	sealer      Sealer
-	manifest    Manifest
-	rawManifest []byte
-	state       state
-	qv          quote.Validator
-	qi          quote.Issuer
-	activations map[string]uint
-	mux         sync.Mutex
-	zaplogger   *zap.Logger
+	cert         *x509.Certificate
+	quote        []byte
+	privk        *ecdsa.PrivateKey
+	sealer       Sealer
+	manifest     Manifest
+	recoveryk    *rsa.PublicKey
+	recoveryData []byte
+	rawManifest  []byte
+	state        state
+	qv           quote.Validator
+	qi           quote.Issuer
+	activations  map[string]uint
+	mux          sync.Mutex
+	zaplogger    *zap.Logger
 }
 
 // The sequence of states a Coordinator may be in
@@ -186,11 +189,11 @@ func (c *Core) loadState(dnsNames []string) (*x509.Certificate, *ecdsa.PrivateKe
 	return cert, privk, err
 }
 
-func (c *Core) sealState() error {
+func (c *Core) sealState() ([]byte, error) {
 	// marshal private key
 	x509Encoded, err := x509.MarshalECPrivateKey(c.privk)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// seal with manifest set
 	state := sealedState{
@@ -202,7 +205,7 @@ func (c *Core) sealState() error {
 	}
 	stateRaw, err := json.Marshal(state)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	return c.sealer.Seal(stateRaw)
 }

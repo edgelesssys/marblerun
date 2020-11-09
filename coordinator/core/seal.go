@@ -17,7 +17,7 @@ const defaultSealedKeyFname string = "sealed_key"
 
 // Sealer is an interface for the Core object to seal information to the filesystem for persistence
 type Sealer interface {
-	Seal(data []byte) error
+	Seal(data []byte) ([]byte, error)
 	Unseal() ([]byte, error)
 }
 
@@ -84,12 +84,12 @@ func (s *AESGCMSealer) Unseal() ([]byte, error) {
 }
 
 // Seal encrypts and stores information to the fs
-func (s *AESGCMSealer) Seal(data []byte) error {
+func (s *AESGCMSealer) Seal(data []byte) ([]byte, error) {
 	// If we don't have a AES key to encrypt the state, generate one
 	if s.encryptionKey == nil {
 		key, err := s.generateRecoveryKey()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		s.encryptionKey = key
 	}
@@ -97,37 +97,41 @@ func (s *AESGCMSealer) Seal(data []byte) error {
 	// Create cipher object with the encryption key
 	aesgcm_encryptionkey, err := s.getCipher(s.encryptionKey)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// encrypt
 	nonce := make([]byte, aesgcm_encryptionkey.NonceSize())
 	if _, err := rand.Read(nonce); err != nil {
-		return err
+		return nil, err
 	}
 	encData := aesgcm_encryptionkey.Seal(nil, nonce, data, nil)
 
 	// store to fs
 	ioutil.WriteFile(s.getFname(), append(nonce, encData...), 0600)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Create cipher object with the seal key
 	aesgcm_sealkey, err := s.getCipher(s.sealKey)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Encrypt the encryption key with the seal key
 	keyDataNonce := make([]byte, aesgcm_sealkey.NonceSize())
 	if _, err := rand.Read(keyDataNonce); err != nil {
-		return err
+		return nil, err
 	}
 	encKeyData := aesgcm_sealkey.Seal(nil, keyDataNonce, s.encryptionKey, nil)
 
 	// Write the sealed encryption key to disk
-	return ioutil.WriteFile(s.getSealedKeyFname(), append(keyDataNonce, encKeyData...), 0600)
+	if err = ioutil.WriteFile(s.getSealedKeyFname(), append(keyDataNonce, encKeyData...), 0600); err != nil {
+		return nil, err
+	}
+
+	return s.encryptionKey, nil
 }
 
 func (s *AESGCMSealer) getFname() string {
@@ -168,7 +172,7 @@ func (s *MockSealer) Unseal() ([]byte, error) {
 }
 
 // Seal implements the Sealer interface
-func (s *MockSealer) Seal(data []byte) error {
+func (s *MockSealer) Seal(data []byte) ([]byte, error) {
 	s.data = data
-	return nil
+	return nil, nil
 }
