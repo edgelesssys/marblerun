@@ -86,8 +86,7 @@ func (s *AESGCMSealer) Seal(data []byte) ([]byte, error) {
 	encData := aesgcm_encryptionkey.Seal(nil, nonce, data, nil)
 
 	// store to fs
-	ioutil.WriteFile(s.getFname(), append(nonce, encData...), 0600)
-	if err != nil {
+	if err := ioutil.WriteFile(s.getFname(), append(nonce, encData...), 0600); err != nil {
 		return nil, err
 	}
 
@@ -166,7 +165,7 @@ func (s *AESGCMSealer) generateEncryptionKey() error {
 
 	s.encryptionKey = encryptionKey
 
-	return err
+	return nil
 }
 
 // MockSealer is a mockup sealer
