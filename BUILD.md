@@ -54,7 +54,7 @@ Here is an example that has only the `SecurityVersion` and `ProductID` set:
 	"Packages": {
 		"backend": {
 			"SecurityVersion": 1,
-			"ProductID": [3]
+			"ProductID": 3
 		}
 	},
 	"Infrastructures": {
@@ -150,4 +150,12 @@ go test ./test/ -v -tags integration --args -b ../build/ -s
 
 ```bash
 go test ./test/ -v -tags integration --args -b ../build/ -s -noenclave
+```
+
+### Dockerimage
+
+You can build the docker image by providing a signing key:
+
+```bash
+docker buildx build --secret id=repoaccess,src=<path to .netrc> --secret id=signingkey,src=<path to private.pem> --target release --tag ghcr.io/edgelesssys/coordinator:latest .
 ```

@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/binary"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -80,7 +79,7 @@ func updateManifest() {
 		SecurityVersion uint
 		UniqueID        string
 		SignerID        string
-		ProductID       []uint64
+		ProductID       uint64
 	}
 	if err := json.Unmarshal(config, &cfg); err != nil {
 		panic(err)
@@ -90,8 +89,7 @@ func updateManifest() {
 	pkg.UniqueID = cfg.UniqueID
 	pkg.SignerID = cfg.SignerID
 	pkg.SecurityVersion = &cfg.SecurityVersion
-	pkg.ProductID = make([]byte, 8)
-	binary.LittleEndian.PutUint64(pkg.ProductID, cfg.ProductID[0])
+	pkg.ProductID = &cfg.ProductID
 	manifest.Packages["backend"] = pkg
 }
 
