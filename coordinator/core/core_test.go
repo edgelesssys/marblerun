@@ -15,13 +15,9 @@ import (
 )
 
 func TestCore(t *testing.T) {
-	// setup mock zaplogger which can be passed to Core
-	zapLogger, err := zap.NewDevelopment()
-	defer zapLogger.Sync()
-
 	assert := assert.New(t)
 
-	c := NewCoreWithMocks(zapLogger)
+	c := NewCoreWithMocks()
 	assert.Equal(stateAcceptingManifest, c.state)
 	assert.Equal(CoordinatorName, c.cert.Subject.CommonName)
 

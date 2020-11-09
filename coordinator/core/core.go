@@ -111,7 +111,12 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer Seal
 }
 
 // NewCoreWithMocks creates a new core object with quote and seal mocks for testing.
-func NewCoreWithMocks(zapLogger *zap.Logger) *Core {
+func NewCoreWithMocks() *Core {
+	zapLogger, err := zap.NewDevelopment()
+	if err != nil {
+		panic(err)
+	}
+
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
 	sealer := &MockSealer{}
