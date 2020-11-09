@@ -35,6 +35,7 @@ type manifestSignatureResp struct {
 	ManifestSignature string
 }
 
+// Contains RSA-encrypted AES state sealing key with public key specified by user in manifest
 type recoveryData struct {
 	EncryptionKey string
 }
