@@ -66,24 +66,15 @@ func TestManifest(t *testing.T) {
 }
 
 func TestManifestWithRecoveryKey(t *testing.T) {
-	// setup mock zaplogger which can be passed to Core
-	zapLogger, err := zap.NewDevelopment()
-	if err != nil {
-		panic(err)
-	}
-	defer zapLogger.Sync()
-
-	// assert := assert.New(t)
 	require := require.New(t)
 
-	c := core.NewCoreWithMocks(zapLogger)
+	c := core.NewCoreWithMocks()
 	mux := CreateServeMux(c)
 
 	// set manifest
 	req := httptest.NewRequest(http.MethodPost, "/manifest", strings.NewReader(test.ManifestJSONWithRecoveryKey))
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
-	t.Log(resp.Body.String())
 	require.Equal(http.StatusOK, resp.Code)
 
 	// Decode JSON response from server

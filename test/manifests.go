@@ -92,7 +92,7 @@ const ManifestJSONWithRecoveryKey string = `{
 		},
 		"frontend": {
 			"SignerID": "1f1e1d1c1b1a191817161514131211100f0e0d0c0b0a09080706050403020100",
-			"ProductID": [44],
+			"ProductID": 44,
 			"SecurityVersion": 3,
 			"Debug": true
 		}
