@@ -4,7 +4,6 @@
 package quote
 
 import (
-	"bytes"
 	"strings"
 
 	"github.com/google/go-cmp/cmp"
@@ -20,7 +19,7 @@ type PackageProperties struct {
 	// Hash of the enclave signer's public key
 	SignerID string
 	// Product ID of the package
-	ProductID []byte
+	ProductID *uint64
 	// Security version number of the package
 	SecurityVersion *uint
 }
@@ -49,7 +48,7 @@ func (required PackageProperties) IsCompliant(given PackageProperties) bool {
 	if len(required.SignerID) > 0 && !strings.EqualFold(required.SignerID, given.SignerID) {
 		return false
 	}
-	if len(required.ProductID) > 0 && !bytes.Equal(required.ProductID, given.ProductID[:len(required.ProductID)]) {
+	if required.ProductID != nil && *required.ProductID != *given.ProductID {
 		return false
 	}
 	if required.SecurityVersion != nil && *required.SecurityVersion > *given.SecurityVersion {

@@ -13,13 +13,13 @@ See the following manifest for example (manifest.jso
 		"backend": {
 			"UniqueID": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
             "SignerID": "c0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffee",
-            "ProductID": [1337],
+            "ProductID": 1337,
             "SecurityVersion": 1,
 			"Debug": false
 		},
 		"frontend": {
 			"UniqueID": "1f1e1d1c1b1a191817161514131211100f0e0d0c0b0a09080706050403020100",
-			"ProductID": [42],
+			"ProductID": 42,
 			"SecurityVersion": 3,
 			"Debug": true
 		}

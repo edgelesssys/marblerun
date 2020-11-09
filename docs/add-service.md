@@ -26,7 +26,7 @@ The manifest contains a section with the information used to authenticate each s
 		"backend": {
 			"UniqueID": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
             "SignerID": "c0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffee",
-            "ProductID": [1337],
+            "ProductID": 1337,
             "SecurityVersion": 1,
 			"Debug": false
 		},
@@ -46,9 +46,7 @@ You'll see something like this:
 ```json
 {
     "SecurityVersion": 1,
-    "ProductID": [
-        3
-    ],
+    "ProductID": 3
     "UniqueID": "6b2822ac2585040d4b9397675d54977a71ef292ab5b3c0a6acceca26074ae585",
     "SignerID": "5826218dbe96de0d7b3b1ccf70ece51457e71e886a3d4c1f18b27576d22cdc74"
 }
@@ -61,7 +59,7 @@ You can add this directly to your `manifest.json` file like so:
 		"backend": {
 			"UniqueID": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
             "SignerID": "c0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffee",
-            "ProductID": [1337],
+            "ProductID": 1337,
             "SecurityVersion": 1,
 			"Debug": false
 		},

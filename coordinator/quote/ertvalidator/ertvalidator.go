@@ -6,6 +6,7 @@ package ertvalidator
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 
@@ -37,11 +38,12 @@ func (m *ERTValidator) Validate(givenQuote []byte, cert []byte, pp quote.Package
 	}
 
 	// Verify PackageProperties
+	productID := binary.LittleEndian.Uint64(report.ProductID)
 	reportedProps := quote.PackageProperties{
 		UniqueID:        hex.EncodeToString(report.UniqueID),
 		SignerID:        hex.EncodeToString(report.SignerID),
 		Debug:           report.Debug,
-		ProductID:       report.ProductID,
+		ProductID:       &productID,
 		SecurityVersion: &report.SecurityVersion,
 	}
 	if !pp.IsCompliant(reportedProps) {
