@@ -66,6 +66,7 @@ func TestManifest(t *testing.T) {
 }
 
 func TestManifestWithRecoveryKey(t *testing.T) {
+	assert := assert.New(t)
 	require := require.New(t)
 
 	c := core.NewCoreWithMocks()
@@ -77,20 +78,21 @@ func TestManifestWithRecoveryKey(t *testing.T) {
 	mux.ServeHTTP(resp, req)
 	require.Equal(http.StatusOK, resp.Code)
 
+	// Check response format
+	expectedRecoveryData := c.GetRecoveryData(context.TODO())
+	assert.JSONEq(`{"EncryptionKey":"`+expectedRecoveryData+`"}`, resp.Body.String())
+
 	// Decode JSON response from server
 	var b64EncryptedRecoveryData recoveryData
 	json.Unmarshal(resp.Body.Bytes(), &b64EncryptedRecoveryData)
 	encryptedRecoveryData, err := base64.StdEncoding.DecodeString(b64EncryptedRecoveryData.EncryptionKey)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(err)
 
 	// Decrypt recovery data and see if it matches the key used by the mock sealer
 	block, _ := pem.Decode([]byte(test.RecoveryKeyPrivateKey))
 	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(err)
+
 	recoveryData, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, privateKey, encryptedRecoveryData, nil)
 	require.EqualValues(recoveryData, []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15})
 }
