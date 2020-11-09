@@ -36,7 +36,7 @@ type Core struct {
 	qi          quote.Issuer
 	activations map[string]uint
 	mux         sync.Mutex
-	zaplogger   zap.Logger
+	zaplogger   *zap.Logger
 }
 
 // The sequence of states a Coordinator may be in
@@ -81,7 +81,7 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer Seal
 		qv:          qv,
 		qi:          qi,
 		sealer:      sealer,
-		zaplogger:   *zapLogger,
+		zaplogger:   zapLogger,
 	}
 
 	zapLogger.Info("loading state")

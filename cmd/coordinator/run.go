@@ -29,7 +29,6 @@ func run(validator quote.Validator, issuer quote.Issuer, sealKey []byte, sealDir
 
 	if err != nil {
 		log.Fatal(err)
-		return
 	}
 	defer zapLogger.Sync() // flushes buffer, if any
 

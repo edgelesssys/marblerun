@@ -32,9 +32,7 @@ func TestActivate(t *testing.T) {
 
 	// setup mock zaplogger which can be passed to Core
 	zapLogger, err := zap.NewDevelopment()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(err)
 	defer zapLogger.Sync()
 
 	// create core
