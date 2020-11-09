@@ -16,19 +16,12 @@ import (
 	"github.com/edgelesssys/coordinator/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
 )
 
 func TestQuote(t *testing.T) {
-	zapLogger, err := zap.NewDevelopment()
-	if err != nil {
-		panic(err)
-	}
-	defer zapLogger.Sync()
-
 	assert := assert.New(t)
 
-	mux := CreateServeMux(core.NewCoreWithMocks(zapLogger))
+	mux := CreateServeMux(core.NewCoreWithMocks())
 
 	req := httptest.NewRequest(http.MethodGet, "/quote", nil)
 	resp := httptest.NewRecorder()
@@ -37,17 +30,10 @@ func TestQuote(t *testing.T) {
 }
 
 func TestManifest(t *testing.T) {
-	// setup mock zaplogger which can be passed to Core
-	zapLogger, err := zap.NewDevelopment()
-	if err != nil {
-		panic(err)
-	}
-	defer zapLogger.Sync()
-
 	assert := assert.New(t)
 	require := require.New(t)
 
-	c := core.NewCoreWithMocks(zapLogger)
+	c := core.NewCoreWithMocks()
 	mux := CreateServeMux(c)
 
 	// set manifest
@@ -74,15 +60,10 @@ func TestManifest(t *testing.T) {
 
 func TestConcurrent(t *testing.T) {
 	// This test is used to detect data races when run with -race
-	zapLogger, err := zap.NewDevelopment()
-	if err != nil {
-		panic(err)
-	}
-	defer zapLogger.Sync()
 
 	assert := assert.New(t)
 
-	mux := CreateServeMux(core.NewCoreWithMocks(zapLogger))
+	mux := CreateServeMux(core.NewCoreWithMocks())
 	var wg sync.WaitGroup
 
 	getQuote := func() {
