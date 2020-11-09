@@ -45,34 +45,25 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) error {
 	c.manifest = manifest
 	c.rawManifest = rawManifest
 
-	// NOTE: Encode RecoveryKey like this: https://gist.github.com/thomaslarsen/bc742bcd958896458d8006bdadf7d102
-	if manifest.RecoveryKey == "" {
-		c.zaplogger.Debug("No Recovery Key found in manifest. Should not return the state key.")
-	} else if manifest.RecoveryKey != "" {
-		c.zaplogger.Debug(manifest.RecoveryKey)
-		c.zaplogger.Debug("Found Recovery Key in Manifest!")
-		// Retrieve RSA public key for potential key recovery
+	// Retrieve RSA public key for potential key recovery
+	if manifest.RecoveryKey != "" {
 		block, _ := pem.Decode([]byte(manifest.RecoveryKey))
 
 		if block == nil || block.Type != "PUBLIC KEY" {
-			c.zaplogger.Debug("Found a recovery key, but it's not a public key.")
+			c.zaplogger.Warn("Manifest supplied a key which does not appear to be a public key. Will not return recovery data.")
 		} else {
 			pub, err := x509.ParsePKIXPublicKey(block.Bytes)
 			if err != nil {
-				c.zaplogger.Debug("Could not ParsePKIXPublicKey!", zap.Error(err))
-			}
-
-			c.zaplogger.Debug("Successfully parsed public key.")
-
-			switch pub.(type) {
-			case *rsa.PublicKey:
-				c.zaplogger.Debug("Public Key is a RSA key.")
-				c.recoveryk = pub.(*rsa.PublicKey)
-			default:
-				c.zaplogger.Debug("Public Key is NOT a RSA key.")
+				c.zaplogger.Error("Could not parse public key!", zap.Error(err))
+			} else {
+				switch pub.(type) {
+				case *rsa.PublicKey:
+					c.recoveryk = pub.(*rsa.PublicKey)
+				default:
+					c.zaplogger.Error("Public Key is NOT a RSA key. Will not return recovery data.")
+				}
 			}
 		}
-
 	}
 
 	c.advanceState()
@@ -82,12 +73,10 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) error {
 	}
 
 	if c.recoveryk != nil {
-		c.zaplogger.Debug("Recovery key is not nil.")
 		c.recoveryData, err = rsa.EncryptOAEP(sha256.New(), rand.Reader, c.recoveryk, encryptionKey, nil)
 		if err != nil {
 			c.zaplogger.Error("Creation of recovery data failed.", zap.Error(err))
 		}
-		c.zaplogger.Debug("Encrypted encryption key with RSA:", zap.Binary("recoveryData", c.recoveryData))
 	}
 
 	return nil
