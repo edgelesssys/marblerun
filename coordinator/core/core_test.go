@@ -39,15 +39,13 @@ func TestCore(t *testing.T) {
 }
 
 func TestSeal(t *testing.T) {
-	// setup mock zaplogger which can be passed to Core
-	zapLogger, err := zap.NewDevelopment()
-	if err != nil {
-		panic(err)
-	}
-	defer zapLogger.Sync()
-
 	assert := assert.New(t)
 	require := require.New(t)
+
+	// setup mock zaplogger which can be passed to Core
+	zapLogger, err := zap.NewDevelopment()
+	require.NoError(err)
+	defer zapLogger.Sync()
 
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
