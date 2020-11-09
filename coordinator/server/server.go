@@ -117,7 +117,11 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			} else {
-				writeJSON(w, recoveryData{cc.GetRecoveryData(r.Context())})
+				// If a recovery key has been set, include recovery data as response. If not, leave response empty.
+				encodedRecoveryData := cc.GetRecoveryData(r.Context())
+				if encodedRecoveryData != "" {
+					writeJSON(w, recoveryData{encodedRecoveryData})
+				}
 			}
 		default:
 			http.Error(w, "", http.StatusMethodNotAllowed)
