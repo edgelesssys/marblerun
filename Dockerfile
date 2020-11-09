@@ -6,7 +6,8 @@ RUN --mount=type=secret,id=repoaccess,dst=/root/.netrc,required=true git clone h
 FROM ghcr.io/edgelesssys/edgelessrt-private:latest AS build
 COPY --from=pull /coordinator /coordinator
 WORKDIR /coordinator/build
-RUN cmake .. && make
+RUN cmake ..
+RUN --mount=type=secret,id=signingkey,dst=/coordinator/build/private.pem,required=true make
 
 FROM ghcr.io/edgelesssys/edgelessrt-private:deploy AS release
 LABEL description="EdgelessCoordinator"
