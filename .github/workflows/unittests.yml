@@ -10,10 +10,7 @@ jobs:
   run:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/edgelesssys/edgelessrt-private:latest
-      credentials:
-        username: ${{ secrets.CI_GITHUB_PACKAGES_READ }}
-        password: ${{ secrets.CI_GITHUB_PACKAGES_READ }}
+      image: ghcr.io/edgelesssys/edgelessrt-dev:ci
 
     steps:
     - name: Checkout
@@ -22,7 +19,7 @@ jobs:
         path: coordinator
 
     - name: Test
-      run: ertgo test ./...
+      run: ertgo test -race ./...
       working-directory: coordinator
 
     - run: |
@@ -33,5 +30,9 @@ jobs:
     - name: Build
       run: |
         cmake .. && make
-        mv coordinator-enclave.signed coordinator-noenclave coordinator-config.json public.pem private.pem ../../assets/
+        cp coordinator-enclave.signed coordinator-noenclave coordinator-config.json public.pem private.pem ../../assets/
       working-directory: coordinator/build
+
+    - name: Integration test
+      run: ertgo test -tags integration -b ../build -s
+      working-directory: coordinator/test
