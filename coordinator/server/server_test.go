@@ -8,11 +8,9 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
-	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
-	"encoding/pem"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -79,17 +77,14 @@ func TestManifestWithRecoveryKey(t *testing.T) {
 
 	// Decode JSON response from server
 	var b64EncryptedRecoveryData recoveryData
-	json.Unmarshal(resp.Body.Bytes(), &b64EncryptedRecoveryData)
+	require.NoError(json.Unmarshal(resp.Body.Bytes(), &b64EncryptedRecoveryData))
 	encryptedRecoveryData, err := base64.StdEncoding.DecodeString(b64EncryptedRecoveryData.EncryptionKey)
 	require.NoError(err)
 
 	// Decrypt recovery data and see if it matches the key used by the mock sealer
-	block, _ := pem.Decode([]byte(test.RecoveryKeyPrivateKey))
-	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	recoveryData, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, test.RecoveryPrivateKey, encryptedRecoveryData, nil)
 	require.NoError(err)
-
-	recoveryData, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, privateKey, encryptedRecoveryData, nil)
-	require.EqualValues(recoveryData, []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15})
+	require.EqualValues([]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, recoveryData)
 }
 
 func TestConcurrent(t *testing.T) {
