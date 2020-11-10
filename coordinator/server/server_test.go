@@ -66,7 +66,6 @@ func TestManifest(t *testing.T) {
 }
 
 func TestManifestWithRecoveryKey(t *testing.T) {
-	assert := assert.New(t)
 	require := require.New(t)
 
 	c := core.NewCoreWithMocks()
@@ -77,10 +76,6 @@ func TestManifestWithRecoveryKey(t *testing.T) {
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
 	require.Equal(http.StatusOK, resp.Code)
-
-	// Check response format
-	expectedRecoveryData := c.GetRecoveryData(context.TODO())
-	assert.JSONEq(`{"EncryptionKey":"`+expectedRecoveryData+`"}`, resp.Body.String())
 
 	// Decode JSON response from server
 	var b64EncryptedRecoveryData recoveryData

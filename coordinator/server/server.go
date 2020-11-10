@@ -6,6 +6,7 @@ package server
 
 import (
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"io/ioutil"
@@ -113,15 +114,15 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			if err := cc.SetManifest(r.Context(), manifest); err != nil {
+			recoveryDataBytes, err := cc.SetManifest(r.Context(), manifest)
+			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
-			} else {
-				// If a recovery key has been set, include recovery data as response. If not, leave response empty.
-				encodedRecoveryData := cc.GetRecoveryData(r.Context())
-				if encodedRecoveryData != "" {
-					writeJSON(w, recoveryData{encodedRecoveryData})
-				}
+			}
+			// If a recovery key has been set, include recovery data as response. If not, leave response empty.
+			if recoveryDataBytes != nil {
+				encodedRecoveryData := base64.StdEncoding.EncodeToString(recoveryDataBytes)
+				writeJSON(w, recoveryData{encodedRecoveryData})
 			}
 		default:
 			http.Error(w, "", http.StatusMethodNotAllowed)

@@ -31,11 +31,14 @@ func TestCore(t *testing.T) {
 
 	manifest := []byte(test.ManifestJSON)
 	// try to set broken manifest
-	assert.Error(c.SetManifest(context.TODO(), manifest[:len(manifest)-1]))
+	_, err = c.SetManifest(context.TODO(), manifest[:len(manifest)-1])
+	assert.Error(err)
 	// set manifest
-	assert.NoError(c.SetManifest(context.TODO(), manifest))
+	_, err = c.SetManifest(context.TODO(), manifest)
+	assert.NoError(err)
 	// set manifest a second time
-	assert.Error(c.SetManifest(context.TODO(), manifest))
+	_, err = c.SetManifest(context.TODO(), manifest)
+	assert.Error(err)
 }
 
 func TestSeal(t *testing.T) {
@@ -55,7 +58,8 @@ func TestSeal(t *testing.T) {
 	require.NoError(err)
 
 	// Set manifest. This will seal the state.
-	require.NoError(c.SetManifest(context.TODO(), []byte(test.ManifestJSON)))
+	_, err = c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
+	require.NoError(err)
 
 	// Get certificate and signature.
 	cert, err := c.GetTLSCertificate()
@@ -71,7 +75,8 @@ func TestSeal(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(cert, cert2)
 
-	assert.Error(c2.SetManifest(context.TODO(), []byte(test.ManifestJSON)))
+	_, err = c2.SetManifest(context.TODO(), []byte(test.ManifestJSON))
+	assert.Error(err)
 
 	signature2 := c.GetManifestSignature(context.TODO())
 	assert.Equal(signature, signature2, "manifest signature differs after restart")

@@ -9,7 +9,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -29,20 +28,18 @@ import (
 
 // Core implements the core logic of the Coordinator
 type Core struct {
-	cert         *x509.Certificate
-	quote        []byte
-	privk        *ecdsa.PrivateKey
-	sealer       Sealer
-	manifest     Manifest
-	recoveryk    *rsa.PublicKey
-	recoveryData []byte
-	rawManifest  []byte
-	state        state
-	qv           quote.Validator
-	qi           quote.Issuer
-	activations  map[string]uint
-	mux          sync.Mutex
-	zaplogger    *zap.Logger
+	cert        *x509.Certificate
+	quote       []byte
+	privk       *ecdsa.PrivateKey
+	sealer      Sealer
+	manifest    Manifest
+	rawManifest []byte
+	state       state
+	qv          quote.Validator
+	qi          quote.Issuer
+	activations map[string]uint
+	mux         sync.Mutex
+	zaplogger   *zap.Logger
 }
 
 // The sequence of states a Coordinator may be in

@@ -9,7 +9,6 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
-	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -19,50 +18,51 @@ import (
 
 // ClientCore provides the core functionality for the client. It can be used by e.g. a http server
 type ClientCore interface {
-	SetManifest(ctx context.Context, rawManifest []byte) error
+	SetManifest(ctx context.Context, rawManifest []byte) (recoveryDataBytes []byte, err error)
 	GetCertQuote(ctx context.Context) (cert string, certQuote []byte, err error)
 	GetManifestSignature(ctx context.Context) (manifestSignature []byte)
 	GetStatus(ctx context.Context) (status string, err error)
-	GetRecoveryData(ctx context.Context) (encodedRecoveryData string)
 }
 
 // SetManifest sets the manifest, once and for all
 //
 // rawManifest is the manifest of type Manifest in JSON format.
-func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) error {
+func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) ([]byte, error) {
 	defer c.mux.Unlock()
 	if err := c.requireState(stateAcceptingManifest); err != nil {
-		return err
+		return nil, err
 	}
 
 	var manifest Manifest
 	if err := json.Unmarshal(rawManifest, &manifest); err != nil {
-		return err
+		return nil, err
 	}
 	if err := manifest.Check(ctx); err != nil {
-		return err
+		return nil, err
 	}
 	c.manifest = manifest
 	c.rawManifest = rawManifest
+
+	var recoveryk *rsa.PublicKey
+	var recoveryData []byte
 
 	// Retrieve RSA public key for potential key recovery
 	if manifest.RecoveryKey != "" {
 		block, _ := pem.Decode([]byte(manifest.RecoveryKey))
 
 		if block == nil || block.Type != "PUBLIC KEY" {
-			c.zaplogger.Warn("Manifest supplied a key which does not appear to be a public key. Will not return recovery data.")
-		} else {
-			pub, err := x509.ParsePKIXPublicKey(block.Bytes)
-			if err != nil {
-				c.zaplogger.Error("Could not parse public key!", zap.Error(err))
-			} else {
-				switch pub.(type) {
-				case *rsa.PublicKey:
-					c.recoveryk = pub.(*rsa.PublicKey)
-				default:
-					c.zaplogger.Error("Public Key is NOT a RSA key. Will not return recovery data.")
-				}
-			}
+			c.zaplogger.Error("Manifest supplied a key which does not appear to be a public key.")
+			return nil, errors.New("Invalid public key in manifest.")
+		}
+		pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+		if err != nil {
+			c.zaplogger.Error("Could not parse public key specified in manifest.", zap.Error(err))
+			return nil, err
+		}
+		var ok bool
+		if recoveryk, ok = pub.(*rsa.PublicKey); !ok {
+			c.zaplogger.Error("Public Key specified in manifest is not a RSA public key.")
+			return nil, errors.New("Unsupported type of public key.")
 		}
 	}
 
@@ -72,14 +72,15 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) error {
 		c.zaplogger.Error("sealState failed", zap.Error(err))
 	}
 
-	if c.recoveryk != nil {
-		c.recoveryData, err = rsa.EncryptOAEP(sha256.New(), rand.Reader, c.recoveryk, encryptionKey, nil)
+	if recoveryk != nil {
+		recoveryData, err = rsa.EncryptOAEP(sha256.New(), rand.Reader, recoveryk, encryptionKey, nil)
 		if err != nil {
 			c.zaplogger.Error("Creation of recovery data failed.", zap.Error(err))
+			return nil, err
 		}
 	}
 
-	return nil
+	return recoveryData, nil
 }
 
 // GetCertQuote gets the Coordinators certificate and corresponding quote (containing the cert)
@@ -106,11 +107,6 @@ func (c *Core) GetManifestSignature(ctx context.Context) []byte {
 	}
 	hash := sha256.Sum256(rawManifest)
 	return hash[:]
-}
-
-// GetRecoveryData returns the RSA-encrypted AES-encryption key used for saving the state on disk, in case any RSA public key was set as the recovery key in the manifest
-func (c *Core) GetRecoveryData(ctx context.Context) string {
-	return base64.StdEncoding.EncodeToString(c.recoveryData)
 }
 
 // GetStatus is not implemented. It will return status information about the state of the mesh in the future.
