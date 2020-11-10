@@ -1,20 +1,20 @@
 # Quickstart
 
 ## Step 0: Setup
-Set up a Kubernetes cluster and install `kubectl`. One easy option is to run Kubernetes on your local machine, using [MicroK8s](https://microk8s.io/docs) or [Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/).
+Set up a Kubernetes cluster and install `kubectl`. One easy way to get start is to run Kubernetes on your local machine using [Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/).
 
-Install [Helm](https://helm.sh/docs/intro/install/) ("the package manager for Kubernetes"). 
+Please also install [Helm](https://helm.sh/docs/intro/install/) ("the package manager for Kubernetes"). 
 
 ## Step 1: Install Coordinator onto the cluster
 
-Add Mesh's chart repository to Helm.
+Add the Edgeless Systems chart repository to Helm.
 
 ```bash
 helm repo add edgeless https://helm.edgeless.systems
 helm repo update
 ```
 
-Install the Mesh Coordinator using Helm.
+Install Marblerun's *Coordinator* using Helm.
 
 * For a cluster with SGX support:
 
