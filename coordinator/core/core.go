@@ -156,9 +156,16 @@ func (c *Core) GetTLSCertificate() (*tls.Certificate, error) {
 
 func (c *Core) loadState(dnsNames []string) (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	stateRaw, err := c.sealer.Unseal()
-	if err != nil {
+
+	// If dnsNames is nil, the function call has likely been invoked by the /recover API. If it is not nil, it is likely the coordinator starting up and we shall generate a new state by default.
+	if err != nil && dnsNames == nil {
+		c.zaplogger.Error("Failed to decrypt sealed state. Use the /recover API endpoint to load another decrypted recovery key.")
 		return nil, nil, err
+	} else if err != nil {
+		c.zaplogger.Error("Failed to decrypt sealed state. Processing with a new state. Use the /recover API endpoint to load an old state, or submit a new manifest to overwrite the old state. Look up the documentation for more information on how to proceed.")
+		return c.generateCert(dnsNames)
 	}
+
 	// generate new state if there isn't something in the fs yet
 	if len(stateRaw) == 0 {
 		c.zaplogger.Info("No sealed state found. Proceeding with new state.")

@@ -146,6 +146,23 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 		}
 	})
 
+	mux.HandleFunc("/recover", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			key, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			if err = cc.SetEncryptionKey(r.Context(), key); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		default:
+			http.Error(w, "", http.StatusMethodNotAllowed)
+		}
+	})
+
 	return mux
 }
 

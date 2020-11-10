@@ -25,6 +25,7 @@ type ClientCore interface {
 	GetCertQuote(ctx context.Context) (cert string, certQuote []byte, err error)
 	GetManifestSignature(ctx context.Context) (manifestSignature []byte)
 	GetStatus(ctx context.Context) (status string, err error)
+	SetEncryptionKey(ctx context.Context, encryptionKey []byte) error
 }
 
 // SetManifest sets the manifest, once and for all
@@ -109,6 +110,25 @@ func (c *Core) GetManifestSignature(ctx context.Context) []byte {
 	}
 	hash := sha256.Sum256(rawManifest)
 	return hash[:]
+}
+
+// SetEncryptionKey sets an encryption key (ideally decrypted from the recovery data) and tries to unseal and load a saved state again.
+func (c *Core) SetEncryptionKey(ctx context.Context, encryptionKey []byte) error {
+	defer c.mux.Unlock()
+	if err := c.requireState(stateAcceptingManifest); err != nil {
+		return err
+	}
+	c.sealer.SetEncryptionKey(encryptionKey)
+
+	cert, privk, err := c.loadState(nil)
+	if err != nil {
+		return err
+	}
+
+	c.cert = cert
+	c.privk = privk
+
+	return nil
 }
 
 // GetStatus is not implemented. It will return status information about the state of the mesh in the future.

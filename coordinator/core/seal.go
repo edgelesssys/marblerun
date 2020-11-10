@@ -22,6 +22,7 @@ const sealedKeyFname string = "sealed_key"
 type Sealer interface {
 	Seal(data []byte) ([]byte, error)
 	Unseal() ([]byte, error)
+	SetEncryptionKey(key []byte) error
 }
 
 // AESGCMSealer implements the Sealer interface using AES-GCM for confidentiallity and authentication
@@ -118,7 +119,11 @@ func (s *AESGCMSealer) generateEncryptionKey() error {
 		return err
 	}
 
-	// Encrypt randomly generated encryption key with seal key
+	return s.SetEncryptionKey(encryptionKey)
+}
+
+func (s *AESGCMSealer) SetEncryptionKey(encryptionKey []byte) error {
+	// Encrypt encryption key with seal key
 	encryptedKeyData, err := encrypt(encryptionKey, s.sealKey)
 	if err != nil {
 		return err
@@ -194,4 +199,9 @@ func (s *MockSealer) Unseal() ([]byte, error) {
 func (s *MockSealer) Seal(data []byte) ([]byte, error) {
 	s.data = data
 	return []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, nil
+}
+
+// SetEncryptionKey implements the Sealer interface
+func (s *MockSealer) SetEncryptionKey(key []byte) error {
+	return nil
 }
