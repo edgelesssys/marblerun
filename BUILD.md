@@ -3,7 +3,7 @@
 
 ## Repo layout
 
-Edgeless Mesh is written entirely in Go and builds on Edgeless RT, which is written largely in C/C++.
+Marblerun is written entirely in Go and builds on Edgeless RT, which is written largely in C/C++.
 
 ### Control Plane
 
@@ -12,14 +12,16 @@ Edgeless Mesh is written entirely in Go and builds on Edgeless RT, which is writ
     * [`core`](coordinator/core): Provides the gRPC API for marbles and HTTP-REST API for clients
     * [`quote`](coordinator/quote): Provides remote attestation quotes
     * [`rpc`](coordinator/rpc): Protobuf definitions for the control plane <-> data plane communication.
-    * [`rpc`](coordinator/rpc): Provides the gRPC and HTTP server
+    * [`server`](coordinator/server): Provides the gRPC and HTTP server
 
 ### Data Plane
 
-* [`marble`](marble): The data- plane code written in Go
+* [`marble`](marble): The data plane code written in Go
 * [`libertmeshpremain`](libertmeshpremain): Provides a pre-main routine written in Go for linking against non-Go applications.
 
 ## Build
+
+*Prerequisite*: [Edgeless RT](https://github.com/edgelesssys/edgelessrt) is installed and sourced.
 
 Build the coordinator control plane and marble test applications.
 
@@ -30,7 +32,7 @@ cmake ..
 make
 ```
 
-For build and installing the libertmeshpremain library (required for services not written in Go) see the [`libertmeshpremain build instructions`](libertmeshpremain/README.md).
+For building and installing the libertmeshpremain library (required for services not written in Go) see the [`libertmeshpremain build instructions`](libertmeshpremain/README.md).
 
 ## Run
 
@@ -40,7 +42,7 @@ For build and installing the libertmeshpremain library (required for services no
 EDG_COORDINATOR_MESH_ADDR=localhost:2001 EDG_COORDINATOR_CLIENT_ADDR=localhost:4433 EDG_COORDINATOR_DNS_NAMES=localhost EDG_COORDINATOR_SEAL_DIR=$PWD OE_SIMULATION=1 erthost build/coordinator-enclave.signed
 ```
 
-*Note*: the coordinator's state is sealed to `$PWD/sealed_state`. If you want a fresh restart remove this file first: `rm $PWD/sealed_state`.
+*Note*: the coordinator's state is sealed to `$PWD/sealed_data`. If you want a fresh restart remove this file first: `rm $PWD/sealed_data`.
 
 ### Create a manifest
 
@@ -54,7 +56,7 @@ Here is an example that has only the `SecurityVersion` and `ProductID` set:
 	"Packages": {
 		"backend": {
 			"SecurityVersion": 1,
-			"ProductID": 3
+			"ProductID": 1
 		}
 	},
 	"Infrastructures": {
@@ -97,7 +99,7 @@ Here is an example that has only the `SecurityVersion` and `ProductID` set:
 Save it in a file called `manifest.json` and upload it to the coordinator with curl in another terminal:
 
 ```bash
-curl --silent -k -X POST -H  "Content-Type: application/json" --data-binary @manifest.json "https://localhost:4433/manifest"
+curl -k --data-binary @manifest.json https://localhost:4433/manifest
 ```
 
 ### Run the marbles
@@ -137,25 +139,26 @@ go test -race ./...
 ### With SGX-DCAP attestation on enabled hardware (e.g., in Azure)
 
 ```bash
-go test ./test/ -v -tags integration --args -b ../build/
+go test -v -tags integration ./test -b ../build
 ```
 
 ### With SGX simulation mode
 
 ```bash
-go test ./test/ -v -tags integration --args -b ../build/ -s
+go test -v -tags integration ./test -b ../build -s
 ```
 
 ### Without SGX
 
 ```bash
-go test ./test/ -v -tags integration --args -b ../build/ -s -noenclave
+go test -v -tags integration ./test -b ../build -noenclave
 ```
 
-### Dockerimage
+## Docker image
 
 You can build the docker image by providing a signing key:
 
 ```bash
-docker buildx build --secret id=repoaccess,src=<path to .netrc> --secret id=signingkey,src=<path to private.pem> --target release --tag ghcr.io/edgelesssys/coordinator:latest .
+openssl genrsa -out private.pem -3 3072
+docker buildx build --secret id=repoaccess,src=<path to .netrc> --secret id=signingkey,src=private.pem --target release --tag ghcr.io/edgelesssys/coordinator .
 ```
