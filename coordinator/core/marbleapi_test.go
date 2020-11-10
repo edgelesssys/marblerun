@@ -55,7 +55,8 @@ func TestActivate(t *testing.T) {
 	spawner.newMarble("backend_first", "Azure", false)
 
 	// set manifest
-	require.NoError(coreServer.SetManifest(context.TODO(), []byte(test.ManifestJSON)))
+	_, err = coreServer.SetManifest(context.TODO(), []byte(test.ManifestJSON))
+	require.NoError(err)
 
 	// activate first backend
 	spawner.newMarble("backend_first", "Azure", true)

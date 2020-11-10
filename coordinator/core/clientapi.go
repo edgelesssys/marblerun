@@ -2,7 +2,10 @@ package core
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -12,7 +15,7 @@ import (
 
 // ClientCore provides the core functionality for the client. It can be used by e.g. a http server
 type ClientCore interface {
-	SetManifest(ctx context.Context, rawManifest []byte) error
+	SetManifest(ctx context.Context, rawManifest []byte) (recoveryDataBytes []byte, err error)
 	GetCertQuote(ctx context.Context) (cert string, certQuote []byte, err error)
 	GetManifestSignature(ctx context.Context) (manifestSignature []byte)
 	GetStatus(ctx context.Context) (status string, err error)
@@ -21,27 +24,59 @@ type ClientCore interface {
 // SetManifest sets the manifest, once and for all
 //
 // rawManifest is the manifest of type Manifest in JSON format.
-func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) error {
+func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) ([]byte, error) {
 	defer c.mux.Unlock()
 	if err := c.requireState(stateAcceptingManifest); err != nil {
-		return err
+		return nil, err
 	}
 
 	var manifest Manifest
 	if err := json.Unmarshal(rawManifest, &manifest); err != nil {
-		return err
+		return nil, err
 	}
 	if err := manifest.Check(ctx); err != nil {
-		return err
+		return nil, err
 	}
+
+	var recoveryk *rsa.PublicKey
+
+	// Retrieve RSA public key for potential key recovery
+	if manifest.RecoveryKey != "" {
+		block, _ := pem.Decode([]byte(manifest.RecoveryKey))
+
+		if block == nil || block.Type != "PUBLIC KEY" {
+			c.zaplogger.Error("Manifest supplied a key which does not appear to be a public key.")
+			return nil, errors.New("invalid public key in manifest")
+		}
+		pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+		if err != nil {
+			c.zaplogger.Error("Could not parse public key specified in manifest.", zap.Error(err))
+			return nil, err
+		}
+		var ok bool
+		if recoveryk, ok = pub.(*rsa.PublicKey); !ok {
+			c.zaplogger.Error("Public Key specified in manifest is not a RSA public key.")
+			return nil, errors.New("unsupported type of public key")
+		}
+	}
+
 	c.manifest = manifest
 	c.rawManifest = rawManifest
-
 	c.advanceState()
-	if err := c.sealState(); err != nil {
+	encryptionKey, err := c.sealState()
+	if err != nil {
 		c.zaplogger.Error("sealState failed", zap.Error(err))
 	}
-	return nil
+
+	var recoveryData []byte
+	if recoveryk != nil {
+		recoveryData, err = rsa.EncryptOAEP(sha256.New(), rand.Reader, recoveryk, encryptionKey, nil)
+		if err != nil {
+			c.zaplogger.Error("Creation of recovery data failed.", zap.Error(err))
+		}
+	}
+
+	return recoveryData, nil
 }
 
 // GetCertQuote gets the Coordinators certificate and corresponding quote (containing the cert)

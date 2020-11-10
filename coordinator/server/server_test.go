@@ -2,7 +2,12 @@ package server
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -53,6 +58,30 @@ func TestManifest(t *testing.T) {
 	resp = httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
 	require.Equal(http.StatusBadRequest, resp.Code)
+}
+
+func TestManifestWithRecoveryKey(t *testing.T) {
+	require := require.New(t)
+
+	c := core.NewCoreWithMocks()
+	mux := CreateServeMux(c)
+
+	// set manifest
+	req := httptest.NewRequest(http.MethodPost, "/manifest", strings.NewReader(test.ManifestJSONWithRecoveryKey))
+	resp := httptest.NewRecorder()
+	mux.ServeHTTP(resp, req)
+	require.Equal(http.StatusOK, resp.Code)
+
+	// Decode JSON response from server
+	var b64EncryptedRecoveryData recoveryData
+	require.NoError(json.Unmarshal(resp.Body.Bytes(), &b64EncryptedRecoveryData))
+	encryptedRecoveryData, err := base64.StdEncoding.DecodeString(b64EncryptedRecoveryData.EncryptionKey)
+	require.NoError(err)
+
+	// Decrypt recovery data and see if it matches the key used by the mock sealer
+	recoveryData, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, test.RecoveryPrivateKey, encryptedRecoveryData, nil)
+	require.NoError(err)
+	require.EqualValues([]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, recoveryData)
 }
 
 func TestConcurrent(t *testing.T) {

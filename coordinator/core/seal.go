@@ -9,18 +9,20 @@ import (
 	"path/filepath"
 )
 
-const defaultSealFname string = "sealed_data"
+const sealedDataFname string = "sealed_data"
+const sealedKeyFname string = "sealed_key"
 
 // Sealer is an interface for the Core object to seal information to the filesystem for persistence
 type Sealer interface {
-	Seal(data []byte) error
+	Seal(data []byte) ([]byte, error)
 	Unseal() ([]byte, error)
 }
 
 // AESGCMSealer implements the Sealer interface using AES-GCM for confidentiallity and authentication
 type AESGCMSealer struct {
-	sealDir string
-	sealKey []byte
+	sealDir       string
+	sealKey       []byte
+	encryptionKey []byte
 }
 
 // NewAESGCMSealer creates and initializes a new AESGCMSealer object
@@ -30,57 +32,146 @@ func NewAESGCMSealer(sealDir string, sealKey []byte) *AESGCMSealer {
 
 // Unseal reads and decrypts stored information from the fs
 func (s *AESGCMSealer) Unseal() ([]byte, error) {
-	aesgcm, err := s.getCipher()
-	if err != nil {
-		return nil, err
-	}
-
 	// load from fs
-	sealedData, err := ioutil.ReadFile(s.getFname())
+	sealedData, err := ioutil.ReadFile(s.getFname(sealedDataFname))
+
 	if os.IsNotExist(err) {
 		return nil, nil
 	} else if err != nil {
 		return nil, err
 	}
 
-	// decrypt
-	nonce, encData := sealedData[:aesgcm.NonceSize()], sealedData[aesgcm.NonceSize():]
-	data, err := aesgcm.Open(nil, nonce, encData, nil)
+	// Decrypt generated encryption key with seal key, if needed
+	if err = s.unsealEncryptionKey(); err != nil {
+		return nil, err
+	}
+
+	// Decrypt data with the unsealed encryption key and return it
+	return decrypt(sealedData, s.encryptionKey)
+}
+
+// Seal encrypts and stores information to the fs
+func (s *AESGCMSealer) Seal(data []byte) ([]byte, error) {
+	// If we don't have an AES key to encrypt the state, generate one
+	if err := s.unsealEncryptionKey(); err != nil {
+		if !os.IsNotExist(err) {
+			return nil, err
+		}
+		if err := s.generateEncryptionKey(); err != nil {
+			return nil, err
+		}
+	}
+
+	// Encrypt data to seal with generated encryption key
+	encryptedData, err := encrypt(data, s.encryptionKey)
 	if err != nil {
 		return nil, err
 	}
 
-	return data, nil
+	// store to fs
+	if err := ioutil.WriteFile(s.getFname(sealedDataFname), encryptedData, 0600); err != nil {
+		return nil, err
+	}
+
+	return s.encryptionKey, nil
 }
 
-// Seal encrypts and stores information to the fs
-func (s *AESGCMSealer) Seal(data []byte) error {
-	aesgcm, err := s.getCipher()
+func (s *AESGCMSealer) getFname(basename string) string {
+	return filepath.Join(s.sealDir, basename)
+}
+
+func (s *AESGCMSealer) unsealEncryptionKey() error {
+	if s.encryptionKey != nil {
+		return nil
+	}
+
+	// Read from fs
+	sealedKeyData, err := ioutil.ReadFile(s.getFname(sealedKeyFname))
 	if err != nil {
 		return err
 	}
 
-	// encrypt
-	nonce := make([]byte, aesgcm.NonceSize())
-	if _, err := rand.Read(nonce); err != nil {
+	// Decrypt stored encryption key with seal key
+	encryptionKey, err := decrypt(sealedKeyData, s.sealKey)
+	if err != nil {
 		return err
 	}
-	encData := aesgcm.Seal(nil, nonce, data, nil)
 
-	// store to fs
-	return ioutil.WriteFile(s.getFname(), append(nonce, encData...), 0600)
+	// Restore encryption key
+	s.encryptionKey = encryptionKey
+
+	return nil
 }
 
-func (s *AESGCMSealer) getFname() string {
-	return filepath.Join(s.sealDir, defaultSealFname)
+// Generate random 128 Bit (16 Byte) key to encrypt the state
+func (s *AESGCMSealer) generateEncryptionKey() error {
+	encryptionKey := make([]byte, 16)
+
+	_, err := rand.Read(encryptionKey)
+	if err != nil {
+		return err
+	}
+
+	// Encrypt randomly generated encryption key with seal key
+	encryptedKeyData, err := encrypt(encryptionKey, s.sealKey)
+	if err != nil {
+		return err
+	}
+
+	// Write the sealed encryption key to disk
+	if err = ioutil.WriteFile(s.getFname(sealedKeyFname), encryptedKeyData, 0600); err != nil {
+		return err
+	}
+
+	s.encryptionKey = encryptionKey
+
+	return nil
 }
 
-func (s *AESGCMSealer) getCipher() (cipher.AEAD, error) {
-	block, err := aes.NewCipher(s.sealKey)
+func getCipher(key []byte) (cipher.AEAD, error) {
+	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
 	}
 	return cipher.NewGCM(block)
+}
+
+func encrypt(plaintext []byte, key []byte) ([]byte, error) {
+	// Create cipher object with the given key
+	aesgcm, err := getCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	// Generate nonce
+	nonce := make([]byte, aesgcm.NonceSize())
+	if _, err := rand.Read(nonce); err != nil {
+		return nil, err
+	}
+
+	// Encrypt data
+	ciphertext := aesgcm.Seal(nil, nonce, plaintext, nil)
+
+	return append(nonce, ciphertext...), nil
+}
+
+func decrypt(ciphertext []byte, key []byte) ([]byte, error) {
+	// Create cipher object with the given key
+	aesgcm, err := getCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	// Split ciphertext into nonce & actual data
+	nonce, encryptedData := ciphertext[:aesgcm.NonceSize()], ciphertext[aesgcm.NonceSize():]
+
+	// Decrypt data
+	plaintext, err := aesgcm.Open(nil, nonce, encryptedData, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return plaintext, nil
 }
 
 // MockSealer is a mockup sealer
@@ -94,7 +185,7 @@ func (s *MockSealer) Unseal() ([]byte, error) {
 }
 
 // Seal implements the Sealer interface
-func (s *MockSealer) Seal(data []byte) error {
+func (s *MockSealer) Seal(data []byte) ([]byte, error) {
 	s.data = data
-	return nil
+	return []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, nil
 }
