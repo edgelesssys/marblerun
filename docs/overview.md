@@ -29,14 +29,13 @@ For each confidential container you want to run in your cluster, you need to add
     "Packages": {
         "backend": {
             "UniqueID": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
-            "SignerID": "c0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffee",
-            "ProductID": [42],
+            "ProductID": 42,
             "SecurityVersion": 1,
             "Debug": false
         },
         "frontend": {
-            "UniqueID": "1f1e1d1c1b1a191817161514131211100f0e0d0c0b0a09080706050403020100",
-            "ProductID": [43],
+            "SignerID": "c0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffee",
+            "ProductID": 43,
             "SecurityVersion": 3,
             "Debug": true
         }
@@ -45,7 +44,7 @@ For each confidential container you want to run in your cluster, you need to add
 
 ### Manifest:Marbles
 
-Marbles represent the actual services in your mesh. They are defined in the *Marbles* section. Each marble corresponds to a *Package* and defines a set of optional *Parameters*: 
+Marbles represent the actual services in your mesh. They are defined in the *Marbles* section. Each marble corresponds to a *Package* and defines a set of optional *Parameters*:
 
 * Files: Files and their contents
 * Env: Environment variables
@@ -97,7 +96,7 @@ These *Parameters* are passed from the *Coordinator* to secure enclaves after su
 
 ### Manifest:Infrastructures
 
-Future versions of Marblerun will allow you to define certain trusted infrastructures and harware configurations under *Infrastructures*. 
+Future versions of Marblerun will allow you to define certain trusted infrastructures and harware configurations under *Infrastructures*.
 
 ## Coordinator
 
@@ -119,20 +118,20 @@ The API currently contains two endpoints:
     * Example for setting the manifest:
 
         ```bash
-        curl --silent --cacert marblerun.crt -X POST -H  "Content-Type: application/json" --data-binary @manifest.json "https://$MARBLERUN/manifest"
+        curl --cacert marblerun.crt --data-binary @manifest.json "https://$MARBLERUN/manifest"
         ```
 
     * Example for verifying the deployed manifest
 
         ```bash
-        curl --silent --cacert marblerun.crt "https://$MARBLERUN/manifest" | jq '.ManifestSignature' --raw-output
+        curl --cacert marblerun.crt "https://$MARBLERUN/manifest" | jq '.ManifestSignature' --raw-output
         ```
 
 * `/quote`: For retrieving a remote attestation quote over the whole cluster and the root certificate
     * Example for retrieving a quote
 
         ```bash
-        curl --silent -k "https://$MARBLERUN/quote"
+        curl -k "https://$MARBLERUN/quote"
         ```
 
     * We provide a tool to automatically verify the quote and output the trusted certificate:
@@ -154,7 +153,7 @@ Marbles represent the data plane in Marblerun and run your actual application co
 
 Marbles can be configured with several environment variables.
 
-* `EDG_COORDINATOR_ADDR`: The Coordinator's address
+* `EDG_MARBLE_COORDINATOR_ADDR`: The Coordinator's address
 * `EDG_MARBLE_TYPE`: The Marble's Package
 * `EDG_MARBLE_DNS_NAMES`: The DNS names in the Marble's Certificate
 * `EDG_MARBLE_UUID_FILE`: The file path for storing the Marble's UUID, needed for restart persistence.

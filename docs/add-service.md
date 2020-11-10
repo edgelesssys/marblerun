@@ -2,19 +2,19 @@
 
 Adding a service to your application requires two steps:
 
-1. Building your service together with Edgeless Mesh to inject our *Marble* data plane.
+1. Building your service together with Marblerun to inject our *Marble* data plane.
 2. Adding the service to the manifest so it will be recognized and managed by the *Coordinator* control plane.
 
-## Building your service with Edgeless Mesh
+## Building your service with Marblerun
 
-We distinguish two cases when building your confidential application with Edgeless Mesh:
+We distinguish two cases when building your confidential application with Marblerun:
 
 1. Your service is written in Go
     * You need to build your project together with our *Marble* code
     * We have an example on how to do this [here](https://github.com/edgelesssys/coordinator/blob/master/samples/helloworld/README.md)
 
 1. Your service is written in any other language that can be compiled to binary code (e.g. C++)
-    * You need link your code against our *Marble* library
+    * You need to link your code against our *Marble* library
     * We have an example on how to do this [here](https://github.com/edgelesssys/coordinator/blob/master/samples/helloc%2B%2B/README.md)
 
 ## Adding your service to the Manifest
@@ -34,7 +34,7 @@ The manifest contains a section with the information used to authenticate each s
 ```
 
 These values correspond directly to values provided in a remote attestation quote from Intel SGX.
-Edgeless Mesh provides a tool to extract these values from a signed enclave.
+Marblerun provides a tool to extract these values from a signed enclave.
 You can find this tool in [tools/create_config.py](https://github.com/edgelesssys/coordinator/blob/master/tools/create_config.py):
 
 ```bash
@@ -65,9 +65,7 @@ You can add this directly to your `manifest.json` file like so:
 		},
         "frontend": {
             "SecurityVersion": 1,
-            "ProductID": [
-                3
-            ],
+            "ProductID": 3,
             "UniqueID": "6b2822ac2585040d4b9397675d54977a71ef292ab5b3c0a6acceca26074ae585",
             "SignerID": "5826218dbe96de0d7b3b1ccf70ece51457e71e886a3d4c1f18b27576d22cdc74"
         }
@@ -75,8 +73,8 @@ You can add this directly to your `manifest.json` file like so:
 ```
 
 When you start your service, you need to pass in a couple of configuration parameters through environment variables.
-Make sure that you match the service's name in the manifest with the `EDG_MARBLE_TYPE` (Coordinator was started with `EDG_MESH_SERVER_ADDR=localhost:2001`):
+Make sure that you match the service's name in the manifest with the `EDG_MARBLE_TYPE` (Coordinator was started with `EDG_COORDINATOR_MESH_ADDR=localhost:2001`):
 
 ```bash
-EDG_COORDINATOR_ADDR=localhost:2001 EDG_MARBLE_TYPE=frontend EDG_MARBLE_UUID_FILE=$PWD/uuid DG_MARBLE_DNS_NAMES=localhost erthost enclave.signed
+EDG_MARBLE_COORDINATOR_ADDR=localhost:2001 EDG_MARBLE_TYPE=frontend EDG_MARBLE_UUID_FILE=$PWD/uuid EDG_MARBLE_DNS_NAMES=localhost erthost enclave.signed
 ```

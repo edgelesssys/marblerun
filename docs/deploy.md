@@ -1,13 +1,13 @@
-# Deploy Mesh to your cluster
+# Deploy Marblerun to your cluster
 
 ## Before you begin
 
 This article assumes that you have an existing AKS cluster. If you need an AKS cluster, see the AKS quickstart [using the Azure CLI](https://docs.microsoft.com/en-us/azure/aks/kubernetes-walkthrough) or using the [Azure portal](https://docs.microsoft.com/en-us/azure/aks/kubernetes-walkthrough-portal).
-Alternatively, you can deploy with [minikube](https://minikube.sigs.k8s.io/docs/start/)
+Alternatively, you can deploy with [minikube](https://minikube.sigs.k8s.io/docs/start/).
 
-This article uses [Helm 3](https://helm.sh/) to install Edgeless Mesh. Make sure that you are using the latest release of Helm and have access to the Edgeless Mesh Helm repositories. For upgrade instructions, see the [Helm install docs](https://docs.helm.sh/using_helm/#installing-helm). For more information on configuring and using Helm, see [Install applications with Helm in Azure Kubernetes Service (AKS)](https://docs.microsoft.com/en-us/azure/aks/kubernetes-helm).
+This article uses [Helm 3](https://helm.sh/) to install Marblerun. Make sure that you are using the latest release of Helm and have access to the Marblerun Helm repositories. For upgrade instructions, see the [Helm install docs](https://docs.helm.sh/using_helm/#installing-helm). For more information on configuring and using Helm, see [Install applications with Helm in Azure Kubernetes Service (AKS)](https://docs.microsoft.com/en-us/azure/aks/kubernetes-helm).
 
-## Adding Edgeless Mesh's Helm repository
+## Adding Marblerun's Helm repository
 
 ```bash
 helm repo add edgeless https://helm.edgeless.systems

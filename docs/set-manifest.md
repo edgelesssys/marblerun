@@ -2,7 +2,7 @@
 
 The manifest is a JSON document that defines which services span the mesh and how they should be configured.
 It further defines what Infrastructure providers are allowed.
-You can set a Manifest through Edgeless Mesh's Client REST-API.
+You can set a Manifest through Marblerun's Client REST-API.
 The endpoint for all Manifest operations is `/manifest`.
 
 See the following manifest for example (manifest.jso
@@ -12,13 +12,12 @@ See the following manifest for example (manifest.jso
 	"Packages": {
 		"backend": {
 			"UniqueID": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
-            "SignerID": "c0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffee",
             "ProductID": 1337,
             "SecurityVersion": 1,
 			"Debug": false
 		},
 		"frontend": {
-			"UniqueID": "1f1e1d1c1b1a191817161514131211100f0e0d0c0b0a09080706050403020100",
+            "SignerID": "c0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffee",
 			"ProductID": 42,
 			"SecurityVersion": 3,
 			"Debug": true
@@ -89,9 +88,9 @@ See the following manifest for example (manifest.jso
 }
 ```
 
-For setting the manifest, we first need to establish trust in the Edgeless Mesh coordinator.
+For setting the manifest, we first need to establish trust in the Marblerun coordinator.
 Therefore, we perform a remote attestation step.
-Assuming you've deployed our coordinator image from `ghcr.io/edgelesssys/coordinator:latest`:
+Assuming you've deployed our coordinator image from `ghcr.io/edgelesssys/coordinator`:
 
 1. Pull the UniqueID and SignerID values for this image:
 
@@ -108,5 +107,5 @@ Assuming you've deployed our coordinator image from `ghcr.io/edgelesssys/coordin
 1. Now that we have established trust, we can set the manifest through the Client API:
 
     ```bash
-    curl --silent --cacert marblerun.crt -X POST -H  "Content-Type: application/json" --data-binary @manifest.json "https://$MARBLERUN/manifest"
+    curl --cacert marblerun.crt --data-binary @manifest.json "https://$MARBLERUN/manifest"
     ```

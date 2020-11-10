@@ -1,12 +1,12 @@
 # Client-Side Verification
 
-An important feature of Edgeless Mesh is providing the ability to verifying the confidentiality and integrity of the whole application on the client-side.
+An important feature of Marblerun is providing the ability to verifying the confidentiality and integrity of the whole application on the client-side.
 To that end, we provide a simple REST-API that clients can use before interacting with the application.
 
 ## Establishing Trust
 
 The first step is to establish trust with the whole microservice mesh.
-Therefore, Edgeless Mesh exposes the `/quote` endpoint that returns a quote and a root certificate for the whole mesh.
+Therefore, Marblerun exposes the `/quote` endpoint that returns a quote and a root certificate for the whole mesh.
 Verifying the quote can be done by manually, but to ease the process we provide the Edgeless Remote Attestation tools ([era](https://github.com/edgelesssys/era)) for this purpose:
 
 ```bash
@@ -16,7 +16,7 @@ era -c coordinator-era.json -h $MARBLERUN -o marblerun.crt
 
 era requires the Coordinator's UniqueID and SignerID (or MRENCLAVE and MRSIGNER in SGX terms) to verify the quote.
 In production, these would be generated when building *Coordinator* and distributed to your clients.
-For testing, we have published a Coordinator image at `ghcr.io/edgelesssys/coordinator:latest`.
+For testing, we have published a Coordinator image at `ghcr.io/edgelesssys/coordinator`.
 You can pull the corresponding `coordinator-era.json` file from our release page:
 
 ```bash
@@ -28,15 +28,15 @@ After successful verification, you'll have the trusted root certificate `marbler
 ## Verifing the Manifest
 
 Establishing trust with the service mesh allows you to verify the deployed manifest in the second step.
-To that end, Edgeless Mesh exposes the endpoint `/manifest`.
+To that end, Marblerun exposes the endpoint `/manifest`.
 Using curl you can get the manifest's signature aka its sha256 hash:
 
 ```bash
-curl --silent --cacert marblerun.crt "https://$MARBLERUN/manifest" | jq '.ManifestSignature' --raw-output
+curl --cacert marblerun.crt "https://$MARBLERUN/manifest" | jq '.ManifestSignature' --raw-output
 ```
 
 Compare this against your local version of the manifest:
 
 ```bash
-sha256sum ./manifest.json
+sha256sum manifest.json
 ```
