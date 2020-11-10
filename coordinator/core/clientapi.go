@@ -40,11 +40,8 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) ([]byte, err
 	if err := manifest.Check(ctx); err != nil {
 		return nil, err
 	}
-	c.manifest = manifest
-	c.rawManifest = rawManifest
 
 	var recoveryk *rsa.PublicKey
-	var recoveryData []byte
 
 	// Retrieve RSA public key for potential key recovery
 	if manifest.RecoveryKey != "" {
@@ -66,17 +63,19 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) ([]byte, err
 		}
 	}
 
+	c.manifest = manifest
+	c.rawManifest = rawManifest
 	c.advanceState()
 	encryptionKey, err := c.sealState()
 	if err != nil {
 		c.zaplogger.Error("sealState failed", zap.Error(err))
 	}
 
+	var recoveryData []byte
 	if recoveryk != nil {
 		recoveryData, err = rsa.EncryptOAEP(sha256.New(), rand.Reader, recoveryk, encryptionKey, nil)
 		if err != nil {
 			c.zaplogger.Error("Creation of recovery data failed.", zap.Error(err))
-			return nil, err
 		}
 	}
 

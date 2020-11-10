@@ -128,7 +128,7 @@ var ManifestJSONWithRecoveryKey string = `{
 	"Clients": {
 		"owner": [9,9,9]
 	},
-	"RecoveryKey": "` + strings.Replace(string(RecoveryPublicKey), "\n", "\\n", -1) + `"
+	"RecoveryKey": "` + strings.ReplaceAll(string(RecoveryPublicKey), "\n", "\\n") + `"
 }`
 
 // IntegrationManifestJSON is a test manifest
@@ -214,17 +214,15 @@ const IntegrationManifestJSON string = `{
 func generateTestRecoveryKey() (publicKeyPem []byte, privateKey *rsa.PrivateKey) {
 	key, err := rsa.GenerateKey(rand.Reader, 3096)
 	if err != nil {
-		return nil, nil
+		panic(err)
 	}
 
-	publicKey := key.PublicKey
-
-	pkixPublicKey, err := x509.MarshalPKIXPublicKey(&publicKey)
+	pkixPublicKey, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
 	if err != nil {
-		return nil, nil
+		panic(err)
 	}
 
-	var publicKeyBlock = &pem.Block{
+	publicKeyBlock := &pem.Block{
 		Type:  "PUBLIC KEY",
 		Bytes: pkixPublicKey,
 	}
