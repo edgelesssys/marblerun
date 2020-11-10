@@ -1,9 +1,9 @@
 # helloworld sample
-This sample shows how to build a confidential Go application and run it in Mesh. This should serve as a blueprint for making existing applications Mesh-ready or creating new ones. Detailed instructions for setting up Mesh are omitted for brevity. Please refer to the [documentation]() for that.
+This sample shows how to build a confidential Go application and run it in Marblerun. This should serve as a blueprint for making existing applications Marblerun-ready or creating new ones. Detailed instructions for setting up Marblerun are omitted for brevity. Please refer to the [documentation]() for that.
 
 The directory `app` contains the application code:
 * `hello.go` constitutes the actual program.
-* `mesh.go` takes care of contacting the Mesh Coordinator and applying the received configuration. To make a Go app Mesh-ready, place this file in its main package.
+* `mesh.go` takes care of contacting the Marblerun Coordinator and applying the received configuration. To make a Go app Marblerun-ready, place this file in its main package.
 
 You can build the sample as follows:
 ```sh

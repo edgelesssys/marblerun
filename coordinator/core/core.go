@@ -61,7 +61,7 @@ type sealedState struct {
 }
 
 // CoordinatorName is the name of the Coordinator. It is used as CN of the root certificate.
-const CoordinatorName string = "Edgeless Mesh Coordinator"
+const CoordinatorName string = "Marblerun Coordinator"
 
 // Needs to be paired with `defer c.mux.Unlock()`
 func (c *Core) requireState(state state) error {

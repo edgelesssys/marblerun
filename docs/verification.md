@@ -11,22 +11,19 @@ Verifying the quote can be done by manually, but to ease the process we provide 
 
 ```bash
 go install github.com/edgelesssys/era/cmd/era
-era -c mesh.config -h $EDG_COORDINATOR_ADDR -o mesh.crt
+era -c coordinator-era.json -h $MARBLERUN -o marblerun.crt
 ```
 
 era requires the Coordinator's UniqueID and SignerID (or MRENCLAVE and MRSIGNER in SGX terms) to verify the quote.
 In production, these would be generated when building *Coordinator* and distributed to your clients.
 For testing, we have published a Coordinator image at `ghcr.io/edgelesssys/coordinator:latest`.
-You can pull the corresponding `mesh.config` file from our release page:
+You can pull the corresponding `coordinator-era.json` file from our release page:
 
 ```bash
-    curl -s https://api.github.com/repos/edgelesssys/coordinator/releases/latest \
-    | grep "mesh.config" \
-    | cut -d '"' -f 4 \
-    | wget -qi -
+    wget https://github.com/edgelesssys/coordinator/releases/latest/download/coordinator-era.json
 ```
 
-After successful verification, you'll have the trusted root certificate `mesh.crt` to use with your application.
+After successful verification, you'll have the trusted root certificate `marblerun.crt` to use with your application.
 
 ## Verifing the Manifest
 
@@ -35,7 +32,7 @@ To that end, Edgeless Mesh exposes the endpoint `/manifest`.
 Using curl you can get the manifest's signature aka its sha256 hash:
 
 ```bash
-curl --silent --cacert mesh.crt "https://$EDG_COORDINATOR_ADDR/manifest" | jq '.ManifestSignature' --raw-output
+curl --silent --cacert marblerun.crt "https://$MARBLERUN/manifest" | jq '.ManifestSignature' --raw-output
 ```
 
 Compare this against your local version of the manifest:

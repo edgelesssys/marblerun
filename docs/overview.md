@@ -105,8 +105,8 @@ The *Coordinator* represents the control plane in Marblerun.
 It communnicates with the data plane through gRPC and provides an HTTP-REST interface on the client side.
 The *Coordinator* can be configured with several environment variables:
 
-* `EDG_MESH_SERVER_ADDR`: The listener address for the gRPC server
-* `EDG_CLIENT_SERVER_ADDR`: The listener address for the HTTP server
+* `EDG_COORDINATOR_MESH_ADDR`: The listener address for the gRPC server
+* `EDG_COORDINATOR_CLIENT_ADDR`: The listener address for the HTTP server
 * `EDG_COORDINATOR_DNS_NAMES`: The DNS names for the cluster's root certificate
 * `EDG_COORDINATOR_SEAL_DIR`: The file path for storing sealed data
 
@@ -119,36 +119,33 @@ The API currently contains two endpoints:
     * Example for setting the manifest:
 
         ```bash
-        curl --silent --cacert mesh.crt -X POST -H  "Content-Type: application/json" --data-binary @manifest.json "https://$EDG_COORDINATOR_ADDR/manifest"
+        curl --silent --cacert marblerun.crt -X POST -H  "Content-Type: application/json" --data-binary @manifest.json "https://$MARBLERUN/manifest"
         ```
 
     * Example for verifying the deployed manifest
 
         ```bash
-        curl --silent --cacert mesh.crt "https://$EDG_COORDINATOR_ADDR/manifest" | jq '.ManifestSignature' --raw-output
+        curl --silent --cacert marblerun.crt "https://$MARBLERUN/manifest" | jq '.ManifestSignature' --raw-output
         ```
 
 * `/quote`: For retrieving a remote attestation quote over the whole cluster and the root certificate
     * Example for retrieving a quote
 
         ```bash
-        curl --silent -k "https://$EDG_COORDINATOR_ADDR/quote"
+        curl --silent -k "https://$MARBLERUN/quote"
         ```
 
     * We provide a tool to automatically verify the quote and output the trusted certificate:
 
         ```bash
         go install github.com/edgelesssys/era/cmd/era
-        era -c mesh.config -h $EDG_COORDINATOR_ADDR -o mesh.crt
+        era -c coordinator-era.json -h $MARBLERUN -o marblerun.crt
         ```
 
-        * Note that `mesh.config` contains the *Packages* information for the Coordinator. For our testing image this can be pulled from our GitHub releases:
+        * Note that `coordinator-era.json` contains the *Packages* information for the Coordinator. For our testing image this can be pulled from our GitHub releases:
 
         ```bash
-        curl -s https://api.github.com/repos/edgelesssys/coordinator/releases/latest \
-        | grep "mesh.config" \
-        | cut -d '"' -f 4 \
-        | wget -qi -
+        wget https://github.com/edgelesssys/coordinator/releases/latest/download/coordinator-era.json
         ```
 
 ## Marbles

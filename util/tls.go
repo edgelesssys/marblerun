@@ -18,7 +18,7 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-const marbleName string = "Edgeless Mesh Marble"
+const marbleName string = "Marblerun Marble"
 
 // MustGenerateTestMarbleCredentials returns dummy Marble TLS credentials for testing
 func MustGenerateTestMarbleCredentials() (cert *x509.Certificate, csrRaw []byte, privk *ecdsa.PrivateKey) {

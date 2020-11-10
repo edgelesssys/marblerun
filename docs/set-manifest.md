@@ -96,20 +96,17 @@ Assuming you've deployed our coordinator image from `ghcr.io/edgelesssys/coordin
 1. Pull the UniqueID and SignerID values for this image:
 
     ```bash
-    curl -s https://api.github.com/repos/edgelesssys/coordinator/releases/latest \
-    | grep "mesh.config" \
-    | cut -d '"' -f 4 \
-    | wget -qi -
+    wget https://github.com/edgelesssys/coordinator/releases/latest/download/coordinator-era.json
     ```
 
 1. Use the Edgeless Remote Attesation tool to verify the Mesh's quote and get a trusted certificate:
 
     ```bash
-    era -c mesh.config -h <coordinator_addr> -o mesh.crt
+    era -c coordinator-era.json -h $MARBLERUN -o marblerun.crt
     ```
 
 1. Now that we have established trust, we can set the manifest through the Client API:
 
     ```bash
-    curl --silent --cacert mesh.crt -X POST -H  "Content-Type: application/json" --data-binary @manifest.json "https://<coordinator_addr>/manifest"
+    curl --silent --cacert marblerun.crt -X POST -H  "Content-Type: application/json" --data-binary @manifest.json "https://$MARBLERUN/manifest"
     ```
