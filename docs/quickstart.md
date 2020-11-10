@@ -15,18 +15,30 @@ helm repo update
 ```
 
 Install the Mesh Coordinator using Helm.
+Update the hostname with your cluster's FQDN or use localhost for local testing.
 
 * For a cluster with SGX support:
 
-  ```bash
-  helm install edg-mesh-coordinator edgeless/coordinator --create-namespace edg-mesh
-  ```
+    ```bash
+    helm install edg-mesh-coordinator edgeless/coordinator \
+        --create-namespace \
+        -n edg-mesh \
+        --set global.pullSecret=regcred \
+        --set coordinator.hostname=mycluster.uksouth.cloudapp.azure.com
+    ```
 
 * For a cluster without SGX support:
 
-  ```bash
-  helm install edg-mesh-coordinator edgeless/coordinator --create-namespace edg-mesh --set coordinator.resources=null --set coordinator.OE_SIMULATION=1 --set tolerations=null
-  ```
+    ```bash
+    helm install edg-mesh-coordinator edgeless/coordinator \
+        --create-namespace \
+        -n edg-mesh \
+        --set coordinator.resources=null \
+        --set coordinator.simulation=1 \
+        --set tolerations=null \
+        --set global.pullSecret=regcred \
+        --set coordinator.hostname=mycluster.uksouth.cloudapp.azure.com
+    ```
 
 ## Step 2: Pull the demo application
 
@@ -39,14 +51,18 @@ git clone https://github.com/edgelesssys/emojivoto.git && cd emojivoto
 1. Pull the configuration and build the manifest
 
     ```bash
-    tools/pull_manifest.sh
+    wget https://github.com/edgelesssys/coordinator/releases/latest/download/coordinator-era.json
     ```
 
 1. Get the Coordinator's address and set the DNS
 
-    ```bash
-    . tools/configure_dns.sh
-    ```
+    * If you're running on AKS:
+        * Check our docs on [how to set the DNS for the Client-API](TODO)
+    * If you're running on minikube
+
+        ```bash
+        . tools/configure_dns.sh
+        ```
 
 1. Install the Edgeless Remote Attestation Tool
     1. Check [requirements](https://github.com/edgelesssys/era#requirements)
@@ -87,13 +103,13 @@ curl --silent --cacert mesh.crt -X POST -H  "Content-Type: application/json" --d
 
 ## Step 6: Watch it run
 
-```bash
-minikube -n emojivoto service web-svc
-#Optional
-sudo kubectl -n emojivoto port-forward svc/web-svc 443:443 --address 0.0.0.0
-```
+* If your running on minikube
 
-* Browse to [https://localhost:30001](https://localhost:30001) or [https://localhost](https://localhost) depending on your port-forwarding choice above.
+    ```bash
+    sudo kubectl -n emojivoto port-forward svc/web-svc 443:443 --address 0.0.0.0
+    ```
+
+* Browse to [https://localhost](https://localhost) or https://your-clusters-fqdn:25555 depending on your type of deployment.
 
 * Notes on DNS: If your running emojivoto on a remote machine you can add the machine's DNS name to the emojivoto certificate (e.g. `emojivoto.example.org`):
 
@@ -116,6 +132,3 @@ sudo kubectl -n emojivoto port-forward svc/web-svc 443:443 --address 0.0.0.0
         ```bash
         helm upgrade -f ./kubernetes/nosgx_values.yaml emojivoto ./kubernetes -n emojivoto
         ```
-
-Browse to `localhost:443`.
-Optionally, you can import the trusted root certificate `mesh.crt` in your browser.
