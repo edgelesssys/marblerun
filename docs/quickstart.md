@@ -7,22 +7,22 @@ Install [Helm](https://helm.sh/docs/intro/install/) ("the package manager for Ku
 
 ## Step 1: Install Coordinator onto the cluster
 
-Add Mesh's chart repository to Helm.
+Add the Edgeless chart repository to Helm.
 
 ```bash
 helm repo add edgeless https://helm.edgeless.systems
 helm repo update
 ```
 
-Install the Mesh Coordinator using Helm.
+Install the Marblerun-Coordinator using Helm.
 Update the hostname with your cluster's FQDN or use localhost for local testing.
 
 * For a cluster with SGX support:
 
     ```bash
-    helm install edg-mesh-coordinator edgeless/coordinator \
+    helm install marblerun-coordinator edgeless/marblerun-coordinator \
         --create-namespace \
-        -n edg-mesh \
+        -n marblerun \
         --set global.pullSecret=regcred \
         --set coordinator.hostname=mycluster.uksouth.cloudapp.azure.com
     ```
@@ -30,9 +30,9 @@ Update the hostname with your cluster's FQDN or use localhost for local testing.
 * For a cluster without SGX support:
 
     ```bash
-    helm install edg-mesh-coordinator edgeless/coordinator \
+    helm install marblerun-coordinator edgeless/marblerun-coordinator \
         --create-namespace \
-        -n edg-mesh \
+        -n marblerun \
         --set coordinator.resources=null \
         --set coordinator.simulation=1 \
         --set tolerations=null \
@@ -48,7 +48,7 @@ git clone https://github.com/edgelesssys/emojivoto.git && cd emojivoto
 
 ## Step 3: Initialize and verify the Coordinator
 
-1. Pull the configuration and build the manifest
+1. Pull the remote attestation configuration
 
     ```bash
     wget https://github.com/edgelesssys/coordinator/releases/latest/download/coordinator-era.json
@@ -58,33 +58,39 @@ git clone https://github.com/edgelesssys/emojivoto.git && cd emojivoto
 
     * If you're running on AKS:
         * Check our docs on [how to set the DNS for the Client-API](TODO)
+
+            ```bash
+            export MARBLERUN=mycluster.uksouth.cloudapp.azure.com
+            ```
+
     * If you're running on minikube
 
         ```bash
-        . tools/configure_dns.sh
+        kubectl -n marblerun port-forward svc/coordinator-client-api 25555:25555 --address localhost >/dev/null &
+        export MARBLERUN=localhost:25555
         ```
 
 1. Install the Edgeless Remote Attestation Tool
     1. Check [requirements](https://github.com/edgelesssys/era#requirements)
     2. See [install](https://github.com/edgelesssys/era#install)
 
-1. Verify the Quote and get the Mesh's Root-Certificate
+1. Verify the Quote and get the Coordinator's Root-Certificate
     * If you're running on a cluster with nodes that support SGX1+FLC
 
         ```bash
-        era -c mesh.config -h $EDG_COORDINATOR_ADDR -o mesh.crt
+        era -c coordinator-era.json -h $MARBLERUN -o marblerun.crt
         ```
 
     * Otherwise
 
         ```bash
-        era -skip-quote -c mesh.config -h $EDG_COORDINATOR_ADDR -o mesh.crt
+        era -skip-quote -c coordinator-era.json -h $MARBLERUN -o marblerun.crt
         ```
 
 ## Step 4: Set the Manifest
 
 ```bash
-curl --silent --cacert mesh.crt -X POST -H  "Content-Type: application/json" --data-binary @tools/manifest.json "https://$EDG_COORDINATOR_SVC/manifest"
+curl --silent --cacert marblerun.crt -X POST -H  "Content-Type: application/json" --data-binary @tools/manifest.json "https://$MARBLERUN/manifest"
 ```
 
 ## Step 5: Deploy the demo application
@@ -115,7 +121,7 @@ curl --silent --cacert mesh.crt -X POST -H  "Content-Type: application/json" --d
 
   * Open the `kubernetes/sgx_values.yaml` or `kubernetes/nosgx_values.yaml` file depending on your type of deployment
 
-  * Add your DNS name to the `hosts` field: 
+  * Add your DNS name to the `hosts` field:
 
     * `hosts: "emojivoto.example.org,localhost,web-svc,web-svc.emojivoto,web-svc.emojivoto.svc.cluster.local"`
 

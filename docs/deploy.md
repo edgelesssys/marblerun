@@ -21,7 +21,7 @@ helm repo update
     Update the hostname with your cluster's FQDN.
 
     ```bash
-    helm install  edg-mesh-coordinator edgeless/coordinator --create-namespace --namespace edg-mesh --set coordinator.hostname=mycluster.uksouth.cloudapp.azure.com
+    helm install  marblerun-coordinator edgeless/marblerun-coordinator --create-namespace --namespace marblerun --set coordinator.hostname=mycluster.uksouth.cloudapp.azure.com
     ```
 
 * Otherwise
@@ -29,7 +29,7 @@ helm repo update
     Update the hostname with your cluster's FQDN.
 
     ```bash
-    helm install edg-mesh-coordinator edgeless/coordinator --create-namespace --namespace edg-mesh --set coordinator.resources=null --set coordinator.simulation=1 --set tolerations=null --set coordinator.hostname=mycluster.uksouth.cloudapp.azure.com
+    helm install marblerun-coordinator edgeless/marblerun-coordinator --create-namespace --namespace marblerun --set coordinator.resources=null --set coordinator.simulation=1 --set tolerations=null --set coordinator.hostname=mycluster.uksouth.cloudapp.azure.com
     ```
 
 ## DNS for the Client-API on Azure Kubernetes Service (AKS)
@@ -43,7 +43,7 @@ This explains how to configure the DNS for the Edgless Mesh Client-API when runn
 IP="MY_EXTERNAL_IP"
 
 # Name to associate with public IP address
-DNSNAME="edg-mesh"
+DNSNAME="marblerun"
 
 # Get the resource-id of the public ip
 PUBLICIPID=$(az network public-ip list --query "[?ipAddress!=null]|[?contains(ipAddress, '$IP')].[id]" --output tsv)
@@ -60,5 +60,5 @@ az network public-ip show --ids $PUBLICIPID --query "[dnsSettings.fqdn]" --outpu
 Use curl to test that the DNS was configured correctly. Update the hostname with the DNS name you created.
 
 ```bash
-curl -k https://edg-mesh.uksouth.cloudapp.azure.com/status
+curl -k https://marblerun.uksouth.cloudapp.azure.com/status
 ```
