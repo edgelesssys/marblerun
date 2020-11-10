@@ -1,4 +1,4 @@
-# Edgeless Mesh
+# Marblerun
 
 ![logo](docs/assets/mr_logo.svg)
 
@@ -10,14 +10,14 @@ Marblerun (or Edgeless MR) is a framework for creating distributed confidential-
 
 Build your confidential microservices with [Edgeless RT][edgelessrt], distribute them with Kubernetes on an SGX-enabled cluster, and let Marblerun take care of the rest. Deploy end-to-end secure and verifiable AI pipelines or crunch on sensitive big data in the cloud. Confidential computing at scale has never been easier.
 
-Marblerun guarantees that the topology of your distributed app adheres to a manifest specified in simple JSON. Marblerun verifies the integrity of services, bootstraps them, and sets up encrypted connections between them. If a node fails, Marblerun will seamlessly substitute it with respect to the rules defined in the manifest.  
+Marblerun guarantees that the topology of your distributed app adheres to a manifest specified in simple JSON. Marblerun verifies the integrity of services, bootstraps them, and sets up encrypted connections between them. If a node fails, Marblerun will seamlessly substitute it with respect to the rules defined in the manifest.
 
 To keep things simple, Marblerun issues one concise remote attestation statement for your whole distributed app. This can be used by anyone to verify the integrity of your distributed app.
 
 ### Key features
 
 * Authentication and integrity verification of microservices :lock:
-* Provisioning of certificates, configurations, and application artifacts :package: 
+* Provisioning of certificates, configurations, and application artifacts :package:
 * Remote attestation for the confidentiallity and integrity over the whole cluster :globe_with_meridians:
 
 ### Overview
@@ -26,7 +26,7 @@ To keep things simple, Marblerun issues one concise remote attestation statement
 
 ## Quickstart and documentation
 
-See the [Getting Started Guide](TODO) to set up a distributed confidential-computing app in a few simple steps. 
+See the [Getting Started Guide](TODO) to set up a distributed confidential-computing app in a few simple steps.
 For more comprehensive documentation, start with the [docs](TODO).
 
 ## Working in this repo
@@ -42,10 +42,10 @@ For more comprehensive documentation, start with the [docs](TODO).
 
 ### Hello World
 
-We have two basic examples on how to build confidential applications with Mesh.
+We have two basic examples on how to build confidential applications with Marblerun.
 
-* See [helloworld](../samples/helloworld/README.md) for how integrate Mesh with your Golang application.
-* See [helloc++](../samples/helloc++/README.md) for how integrate Mesh with your C++ application.
+* See [helloworld](samples/helloworld) for how integrate Marblerun with your Golang application.
+* See [helloc++](samples/helloc++) for how integrate Marblerun with your C++ application.
 
 ### Confidential Emoji Voting
 
