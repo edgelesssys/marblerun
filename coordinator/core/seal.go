@@ -66,13 +66,13 @@ func (s *AESGCMSealer) Seal(data []byte) ([]byte, error) {
 	}
 
 	// Encrypt data to seal with generated encryption key
-	nonce, encryptedData, err := encrypt(data, s.encryptionKey)
+	encryptedData, err := encrypt(data, s.encryptionKey)
 	if err != nil {
 		return nil, err
 	}
 
 	// store to fs
-	if err := ioutil.WriteFile(s.getFname(sealedDataFname), append(nonce, encryptedData...), 0600); err != nil {
+	if err := ioutil.WriteFile(s.getFname(sealedDataFname), encryptedData, 0600); err != nil {
 		return nil, err
 	}
 
@@ -116,13 +116,13 @@ func (s *AESGCMSealer) generateEncryptionKey() error {
 	}
 
 	// Encrypt randomly generated encryption key with seal key
-	nonce, encryptedKeyData, err := encrypt(encryptionKey, s.sealKey)
+	encryptedKeyData, err := encrypt(encryptionKey, s.sealKey)
 	if err != nil {
 		return err
 	}
 
 	// Write the sealed encryption key to disk
-	if err = ioutil.WriteFile(s.getFname(sealedKeyFname), append(nonce, encryptedKeyData...), 0600); err != nil {
+	if err = ioutil.WriteFile(s.getFname(sealedKeyFname), encryptedKeyData, 0600); err != nil {
 		return err
 	}
 
@@ -139,23 +139,23 @@ func getCipher(key []byte) (cipher.AEAD, error) {
 	return cipher.NewGCM(block)
 }
 
-func encrypt(plaintext []byte, key []byte) ([]byte, []byte, error) {
+func encrypt(plaintext []byte, key []byte) ([]byte, error) {
 	// Create cipher object with the given key
 	aesgcm, err := getCipher(key)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// Generate nonce
 	nonce := make([]byte, aesgcm.NonceSize())
 	if _, err := rand.Read(nonce); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// Encrypt data
 	ciphertext := aesgcm.Seal(nil, nonce, plaintext, nil)
 
-	return nonce, ciphertext, nil
+	return append(nonce, ciphertext...), nil
 }
 
 func decrypt(ciphertext []byte, key []byte) ([]byte, error) {

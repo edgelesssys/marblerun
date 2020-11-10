@@ -49,7 +49,7 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) ([]byte, err
 
 		if block == nil || block.Type != "PUBLIC KEY" {
 			c.zaplogger.Error("Manifest supplied a key which does not appear to be a public key.")
-			return nil, errors.New("Invalid public key in manifest.")
+			return nil, errors.New("invalid public key in manifest")
 		}
 		pub, err := x509.ParsePKIXPublicKey(block.Bytes)
 		if err != nil {
@@ -59,7 +59,7 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) ([]byte, err
 		var ok bool
 		if recoveryk, ok = pub.(*rsa.PublicKey); !ok {
 			c.zaplogger.Error("Public Key specified in manifest is not a RSA public key.")
-			return nil, errors.New("Unsupported type of public key.")
+			return nil, errors.New("unsupported type of public key")
 		}
 	}
 
