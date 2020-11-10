@@ -29,6 +29,8 @@ type Manifest struct {
 	Marbles map[string]Marble
 	// Clients contains TLS certificates for authenticating clients that use the ClientAPI.
 	Clients map[string][]byte
+	// Recovery holds a RSA public key to encrypt the state encryption key, which gets returned over the Client API when setting a manifest.
+	RecoveryKey string
 }
 
 // Marble describes a service in the mesh that should be handled and verified by the Coordinator

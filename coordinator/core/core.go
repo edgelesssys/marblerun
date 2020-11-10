@@ -186,11 +186,11 @@ func (c *Core) loadState(dnsNames []string) (*x509.Certificate, *ecdsa.PrivateKe
 	return cert, privk, err
 }
 
-func (c *Core) sealState() error {
+func (c *Core) sealState() ([]byte, error) {
 	// marshal private key
 	x509Encoded, err := x509.MarshalECPrivateKey(c.privk)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// seal with manifest set
 	state := sealedState{
@@ -202,7 +202,7 @@ func (c *Core) sealState() error {
 	}
 	stateRaw, err := json.Marshal(state)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	return c.sealer.Seal(stateRaw)
 }

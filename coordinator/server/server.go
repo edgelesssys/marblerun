@@ -6,6 +6,7 @@ package server
 
 import (
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"io/ioutil"
@@ -33,6 +34,11 @@ type statusResp struct {
 }
 type manifestSignatureResp struct {
 	ManifestSignature string
+}
+
+// Contains RSA-encrypted AES state sealing key with public key specified by user in manifest
+type recoveryData struct {
+	EncryptionKey string
 }
 
 // RunMarbleServer starts a gRPC with the given Coordinator core.
@@ -108,9 +114,15 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			if err := cc.SetManifest(r.Context(), manifest); err != nil {
+			recoveryDataBytes, err := cc.SetManifest(r.Context(), manifest)
+			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
+			}
+			// If a recovery key has been set, include recovery data as response. If not, leave response empty.
+			if recoveryDataBytes != nil {
+				encodedRecoveryData := base64.StdEncoding.EncodeToString(recoveryDataBytes)
+				writeJSON(w, recoveryData{encodedRecoveryData})
 			}
 		default:
 			http.Error(w, "", http.StatusMethodNotAllowed)
