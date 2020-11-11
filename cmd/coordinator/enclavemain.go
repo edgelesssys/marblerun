@@ -5,8 +5,8 @@ package main
 import (
 	"path/filepath"
 
-	"github.com/edgelesssys/coordinator/coordinator/quote/ertvalidator"
 	"github.com/edgelesssys/ertgolib/ertenclave"
+	"github.com/edgelesssys/marblerun/coordinator/quote/ertvalidator"
 )
 
 func main() {

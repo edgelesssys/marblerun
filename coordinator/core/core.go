@@ -16,8 +16,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/edgelesssys/coordinator/coordinator/quote"
-	"github.com/edgelesssys/coordinator/util"
+	"github.com/edgelesssys/marblerun/coordinator/quote"
+	"github.com/edgelesssys/marblerun/util"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"

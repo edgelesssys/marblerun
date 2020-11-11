@@ -144,7 +144,7 @@ The API currently contains two endpoints:
         * Note that `coordinator-era.json` contains the *Packages* information for the Coordinator. For our testing image this can be pulled from our GitHub releases:
 
         ```bash
-        wget https://github.com/edgelesssys/coordinator/releases/latest/download/coordinator-era.json
+        wget https://github.com/edgelesssys/marblerun/releases/latest/download/coordinator-era.json
         ```
 
 ## Marbles

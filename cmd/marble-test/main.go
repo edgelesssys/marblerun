@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/edgelesssys/coordinator/util"
+	"github.com/edgelesssys/marblerun/util"
 )
 
 func main() {

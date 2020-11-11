@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/edgelesssys/coordinator/coordinator/quote"
-	"github.com/edgelesssys/coordinator/coordinator/rpc"
+	"github.com/edgelesssys/marblerun/coordinator/quote"
+	"github.com/edgelesssys/marblerun/coordinator/rpc"
 )
 
 // Manifest placeholder variables

@@ -6,9 +6,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/edgelesssys/coordinator/coordinator/quote"
-	"github.com/edgelesssys/coordinator/coordinator/rpc"
-	"github.com/edgelesssys/coordinator/marble/config"
+	"github.com/edgelesssys/marblerun/coordinator/quote"
+	"github.com/edgelesssys/marblerun/coordinator/rpc"
+	"github.com/edgelesssys/marblerun/marble/config"
 	"github.com/google/uuid"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"

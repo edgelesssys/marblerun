@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/edgelesssys/coordinator/coordinator/rpc"
-	"github.com/edgelesssys/coordinator/util"
+	"github.com/edgelesssys/marblerun/coordinator/rpc"
+	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"

@@ -11,8 +11,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/edgelesssys/coordinator/coordinator/core"
-	"github.com/edgelesssys/coordinator/coordinator/rpc"
+	"github.com/edgelesssys/marblerun/coordinator/core"
+	"github.com/edgelesssys/marblerun/coordinator/rpc"
 	"github.com/gorilla/handlers"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"

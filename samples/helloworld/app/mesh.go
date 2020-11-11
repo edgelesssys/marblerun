@@ -5,7 +5,7 @@ import "C"
 import (
 	"os"
 
-	"github.com/edgelesssys/coordinator/marble/premain"
+	"github.com/edgelesssys/marblerun/marble/premain"
 )
 
 var cargs []*C.char
