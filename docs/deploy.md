@@ -16,21 +16,27 @@ helm repo update
 
 ## Installing the chart
 
-* If your deploying on a cluster with nodes that support SGX1+FLC (e.g. AKS or minikube + Azure Standard_DC*s)
+Update the hostname with your cluster's FQDN.
 
-    Update the hostname with your cluster's FQDN.
-
-    ```bash
-    helm install  marblerun-coordinator edgeless/marblerun-coordinator --create-namespace --namespace marblerun --set coordinator.hostname=mycluster.uksouth.cloudapp.azure.com
-    ```
-
-* Otherwise
-
-    Update the hostname with your cluster's FQDN.
+* For a cluster with SGX support:
 
     ```bash
-    helm install marblerun-coordinator edgeless/marblerun-coordinator --create-namespace --namespace marblerun --set coordinator.resources=null --set coordinator.simulation=1 --set tolerations=null --set coordinator.hostname=mycluster.uksouth.cloudapp.azure.com
+    helm install marblerun-coordinator edgeless/marblerun-coordinator \
+        --create-namespace \
+        -n marblerun \
+        --set coordinator.hostname=mycluster.uksouth.cloudapp.azure.com
     ```
+
+* For a cluster without SGX support:
+
+    ```bash
+    helm install marblerun-coordinator edgeless/marblerun-coordinator \
+        --create-namespace \
+        -n marblerun \
+        --set coordinator.resources=null \
+        --set coordinator.simulation=1 \
+        --set tolerations=null \
+        --set coordinator.hostname=mycluster.uksouth.cloudapp.azure.com
 
 ## DNS for the Client-API on Azure Kubernetes Service (AKS)
 

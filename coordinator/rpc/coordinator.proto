@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package rpc;
-option go_package = "github.com/edgelesssys/coordinator/rpc";
+option go_package = "github.com/edgelesssys/marblerun/rpc";
 
 service Marble {
   // Activate activates a marble in the mesh.

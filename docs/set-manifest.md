@@ -95,7 +95,7 @@ Assuming you've deployed our coordinator image from `ghcr.io/edgelesssys/coordin
 1. Pull the UniqueID and SignerID values for this image:
 
     ```bash
-    wget https://github.com/edgelesssys/coordinator/releases/latest/download/coordinator-era.json
+    wget https://github.com/edgelesssys/marblerun/releases/latest/download/coordinator-era.json
     ```
 
 1. Use the Edgeless Remote Attesation tool to verify the Mesh's quote and get a trusted certificate:

@@ -11,11 +11,11 @@ We distinguish two cases when building your confidential application with Marble
 
 1. Your service is written in Go
     * You need to build your project together with our *Marble* code
-    * We have an example on how to do this [here](https://github.com/edgelesssys/coordinator/blob/master/samples/helloworld/README.md)
+    * We have an example on how to do this [here](https://github.com/edgelesssys/marblerun/blob/master/samples/helloworld/README.md)
 
 1. Your service is written in any other language that can be compiled to binary code (e.g. C++)
     * You need to link your code against our *Marble* library
-    * We have an example on how to do this [here](https://github.com/edgelesssys/coordinator/blob/master/samples/helloc%2B%2B/README.md)
+    * We have an example on how to do this [here](https://github.com/edgelesssys/marblerun/blob/master/samples/helloc%2B%2B/README.md)
 
 ## Adding your service to the Manifest
 
@@ -35,7 +35,7 @@ The manifest contains a section with the information used to authenticate each s
 
 These values correspond directly to values provided in a remote attestation quote from Intel SGX.
 Marblerun provides a tool to extract these values from a signed enclave.
-You can find this tool in [tools/create_config.py](https://github.com/edgelesssys/coordinator/blob/master/tools/create_config.py):
+You can find this tool in [tools/create_config.py](https://github.com/edgelesssys/marblerun/blob/master/tools/create_config.py):
 
 ```bash
 tools/create_config.py -e enclave.signed

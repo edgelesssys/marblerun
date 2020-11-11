@@ -17,8 +17,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/edgelesssys/coordinator/coordinator/core"
-	"github.com/edgelesssys/coordinator/test"
+	"github.com/edgelesssys/marblerun/coordinator/core"
+	"github.com/edgelesssys/marblerun/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

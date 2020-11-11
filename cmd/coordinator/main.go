@@ -5,7 +5,7 @@
 
 package main
 
-import "github.com/edgelesssys/coordinator/coordinator/quote"
+import "github.com/edgelesssys/marblerun/coordinator/quote"
 
 func main() {
 	validator := quote.NewFailValidator()
