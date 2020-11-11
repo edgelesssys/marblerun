@@ -14,13 +14,13 @@
    y="0px"
    viewBox="0 0 535.54822 203.2"
    xml:space="preserve"
-   sodipodi:docname="marblerun.svg"
+   sodipodi:docname="marblerun_alt.svg"
    inkscape:version="1.0.1 (3bc2e813f5, 2020-09-07)"
    width="535.54822"
    height="203.2"><metadata
    id="metadata74"><rdf:RDF><cc:Work
        rdf:about=""><dc:format>image/svg+xml</dc:format><dc:type
-         rdf:resource="http://purl.org/dc/dcmitype/StillImage" /><dc:title /></cc:Work></rdf:RDF></metadata><defs
+         rdf:resource="http://purl.org/dc/dcmitype/StillImage" /><dc:title></dc:title></cc:Work></rdf:RDF></metadata><defs
    id="defs72"><rect
      x="147.85077"
      y="72.939712"
@@ -65,7 +65,7 @@
    inkscape:window-x="69"
    inkscape:window-y="-9"
    inkscape:window-maximized="1"
-   inkscape:current-layer="g49" />
+   inkscape:current-layer="Layer_1" />
 <style
    type="text/css"
    id="style2">
@@ -231,7 +231,7 @@
    id="text869"
    style="fill:black;fill-opacity:1;line-height:1.25;stroke:none;font-family:sans-serif;font-style:normal;font-weight:normal;font-size:40px;white-space:pre;shape-inside:url(#rect871);" /><text
    xml:space="preserve"
-   style="font-style:normal;font-weight:normal;font-size:40px;line-height:1.25;font-family:sans-serif;fill:#000000;fill-opacity:1;stroke:none"
+   style="font-style:normal;font-weight:normal;font-size:40px;line-height:1.25;font-family:sans-serif;fill:#000000;fill-opacity:1;stroke:none;"
    x="142.92241"
    y="119.26629"
    id="text877"><tspan
@@ -242,5 +242,5 @@
      style="letter-spacing:11px;fill:#00010d;fill-opacity:1"><tspan
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;font-family:Roboto;-inkscape-font-specification:'Roboto, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal"
        id="tspan881">MARBLE</tspan><tspan
-       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;font-family:Roboto;-inkscape-font-specification:'Roboto, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#8195a6;fill-opacity:1"
+       style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:40px;font-family:Roboto;-inkscape-font-specification:'Roboto, Light';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#00010d;fill-opacity:1"
        id="tspan879">RUN</tspan></tspan></text></svg>
