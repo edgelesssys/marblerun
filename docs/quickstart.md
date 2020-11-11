@@ -109,11 +109,25 @@ curl --silent --cacert marblerun.crt -X POST -H  "Content-Type: application/json
 
 ## Step 6: Watch it run
 
-* If your running on minikube
+* If you're running on AKS
+    * You need to expose the `web-svc` in the `emojivoto` namespace. This works similar to [how we expose the client-API](TODO)
+    * Get the public IP with: `kubectl -n emojivoto get svc web-svc -o wide`
+    * If you're using ingress/gateway-controllers make sure you enable [SNI-passthrough](TODO)
+* If you're running on minikube
 
     ```bash
     sudo kubectl -n emojivoto port-forward svc/web-svc 443:443 --address 0.0.0.0
     ```
+
+* Install Marblerun-Certificate in your browser
+    * **Warning** Be careful when adding certificates to your browser. We only do this temporarly for the sake of this demo. Make sure you don't use your browser for other activities in the meanwhile and remove the certificate afterwards.
+    * Chrome:
+        * Go to <chrome://settings/security>
+        * Go to `"Manage certificates" > "Import..."`
+        * Follow the "Certificate Import Wizard" and import the `marblerun.crt` of the previous step as a "Personal" certificate
+    * Firefox:
+        * Go to `Tools > Options > Advanced > Certificates: View Certificates`
+        * Go to `Import...` and select the `marblerun.crt` of the previous step
 
 * Browse to [https://localhost](https://localhost) or https://your-clusters-fqdn:25555 depending on your type of deployment.
 
