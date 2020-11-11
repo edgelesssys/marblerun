@@ -1,6 +1,6 @@
 # Infrastructure Validation
 
-Edgeless Mesh allows you to define several VM types you want to whitelist for your application to run on. This way you can make sure that when you deploy your application to a cluster with VM of type A, nobody can substitute one of the nodes with a VM of type B.
+Marblerun allows you to define several VM types you want to whitelist for your application to run on. This way you can make sure that when you deploy your application to a cluster with VM of type A, nobody can substitute one of the nodes with a VM of type B.
 
 The incentive is that an update of the Trusted Computing components as the CPU, Provisioning Certificate Enclave, or Quoting Enclave might contain security relevant changes.
 In the deployment of your application you want to make sure that it only runs on the latest up to date versions.

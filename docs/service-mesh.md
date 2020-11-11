@@ -1,32 +1,27 @@
 # Confidential Service Mesh
 
-A service mesh is a dedicated infrastructure layer for facilitating service-to-service communications between microservices.
-In the world of confidential computing, we are talking about confidential microservices.
-On top of the usual features that come with a service mesh, a confidential microservice architecture has additional challenges that a confidential service mesh needs to address:
+A service mesh is an infrastructure layer for managing, observing, and securing communications in a container-based cluster. In the Kubernetes world, [Istio](https://istio.io), [HashiCorp Consul](https://www.consul.io/), and [Linkerd](https://linkerd.io/) are the most popular general-purpose service meshes.
 
-* How to authenticated services to each other using remote attestation?
-* How to authenticate a microservice architecture to the outside world with remote attestation?
-    * How to do remote attestation with a distributed application?
-    * How to do remote attestation with heterogeneous hardware in a cluster?
-    * How to provide authentication between clients and the application on the trusted computing base.
-* How to seal data that services can be restarted and migrated on different nodes?
+When we started looking into the concept of *confidential microservices*, we realized that there are additional challenges and requirements for service meshes in the conext of confidential computing.
 
-In short, a confidential microservice should implement an infrastructure layer that enables a confidential microservice application to be used, managed, and deployed with the ease of a confidential monolith.
+* How to make an entire cluster or distributed app verifiable in a meaningful way from the outside?
+* How to establish secure connections to a distributed app based on this?
+* How to establish secure connections between services within a cluster based on remote attestation?
+* How to securely and safely restart and migrate services between nodes?
 
-## Implementation
+Ultimately, a *confidential service mesh* should enable *distributed confidential apps* that can be used, managed, and deployed with the ease of a *confidential monolith*.
 
-Most general-purpose service meshes are implemented using a sidecar proxy.
-These proxies intercept and control all inbound and outbound network communication between microservices in the service mesh.
-They are often referred to as the data plane, in relation to the so-called control plane.
-The control plane manages and configures proxies to route traffic, enforce policies, and collect telemetry.
+## Approach
 
-In terms of the microservice architecture, the service and its sidecar proxy form a single atomic instance.
-That means communications between them can be neglected and the sidecar is entirely transparent to its service.
-Confidential applications require a more careful evaluation of the implications the service mesh layer has on the application's security properties.
+Most general-purpose service meshes are implemented using so-called *sidecars*. The most prevalent sidecar is probably [Envoy](https://www.envoyproxy.io/).
+In essence, sidecars are network proxies that are injected into *pods* running application containers. Sidecars observe, control, and often encrypt the network communication between application containers. Sidecars are often referred to as the data plane, in relation to the so-called control plane.
+The control plane manages and configures the sidecars to route traffic, enforce policies, and collect stats.
 
-Edgeless Mesh implements a confidential service mesh by injecting the data-plane logic directly into the service's secure enclave.
-That way we can ensure the confidentiality and integrity of communications from end-to-end between confidential services.
-A sidecar proxy could only ensure the confidentiality of data between the proxy endpoints but would expose data in the communication from sidecar to service.
+Security-wise, conventional service meshes focus on protecting data in transit between application containers.
+In contrast, distributed confidential apps require a more comprehensive approach and careful consideration of security implications.
 
-Edgeless Mesh guarantees that the topology of your distributed app adheres to a manifest specified in simple JSON. Edgeless Mesh verifies the integrity of services, bootstraps them, and sets up encrypted connections between them.
-To keep things simple, Edgeless Mesh acts as certificate authority and issues one concise remote attestation statement for your whole distributed app. This can be used by anyone to verify the integrity of your distributed app. 
+In summary, Marblerun takes the following approach.
+
+* Instead of relying on separate sidecars, Marblerun injects the data-plane logic directly into the application logic running inside secure enclaves. Through this tight coupling, secure connections always terminate inside secure enclaves. We refer to containers running such enclaves as *marbles*.
+* Before bootstrapping marbles, Marblerun verifies their integrity using Intel SGX remote attestation primitives. This way, Marblerun is able to guarantee that the topology of a  distributed confidential app adheres to the cluster's effective *manifest*. Such a manifest is defined in simple JSON and is set once.
+* Marblerun acts as certificate authority for all marble-based services and issues one concise remote attestation statement for the entire cluster. This can be used by anyone to verify the integrity of a distributed confidential app.

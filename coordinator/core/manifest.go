@@ -49,9 +49,9 @@ func (m Manifest) Check(ctx context.Context) error {
 	if len(m.Marbles) <= 0 {
 		return errors.New("no allowed marbles defined")
 	}
-	if len(m.Infrastructures) <= 0 {
-		return errors.New("no allowed infrastructures defined")
-	}
+	// if len(m.Infrastructures) <= 0 {
+	// 	return errors.New("no allowed infrastructures defined")
+	// }
 	for _, marble := range m.Marbles {
 		if _, ok := m.Packages[marble.Package]; !ok {
 			return errors.New("manifest does not contain marble package " + marble.Package)
