@@ -13,7 +13,7 @@ Verifying the quote can be done by manually, but to ease the process we provide 
 # If you have EdgelessRT installed
 go install github.com/edgelesssys/era/cmd/era
 # Or use the binary release
-wget https://github.com/edgelesssys/era/releases/latest/download/era && cp era .local/bin
+wget -O .local/bin/era https://github.com/edgelesssys/era/releases/latest/download/era
 # Run era
 era -c coordinator-era.json -h $MARBLERUN -o marblerun.crt
 ```
