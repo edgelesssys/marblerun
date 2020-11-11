@@ -6,7 +6,7 @@
 
   - [Quick start](quickstart.md)
   - [Confidential Computing](confidential-computing.md)
-  - [Confidential Services Mesh](service-mesh.md)
+  - [Confidential Service Mesh](service-mesh.md)
   - [Overview](overview.md)
 
 - Features
@@ -17,7 +17,7 @@
 
 - Tasks
 
-  - [Deploy Mesh to your cluster](deploy.md)
+  - [Deploy Marblerun to your cluster](deploy.md)
   - [Setting a Manifest](set-manifest.md)
   - [Adding a Service](add-service.md)
   - [Client-Side verification](verification.md)
