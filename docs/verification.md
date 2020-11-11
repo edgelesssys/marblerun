@@ -24,7 +24,7 @@ For testing, we have published a Coordinator image at `ghcr.io/edgelesssys/coord
 You can pull the corresponding `coordinator-era.json` file from our release page:
 
 ```bash
-    wget https://github.com/edgelesssys/coordinator/releases/latest/download/coordinator-era.json
+    wget https://github.com/edgelesssys/marblerun/releases/latest/download/coordinator-era.json
 ```
 
 After successful verification, you'll have the trusted root certificate `marblerun.crt` to use with your application.

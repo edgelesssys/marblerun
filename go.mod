@@ -1,4 +1,4 @@
-module github.com/edgelesssys/coordinator
+module github.com/edgelesssys/marblerun
 
 go 1.14
 

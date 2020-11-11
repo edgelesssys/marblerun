@@ -10,8 +10,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/edgelesssys/coordinator/coordinator/quote"
 	"github.com/edgelesssys/ertgolib/ertenclave"
+	"github.com/edgelesssys/marblerun/coordinator/quote"
 )
 
 // ERTValidator is a Quote validatior based on EdgelessRT

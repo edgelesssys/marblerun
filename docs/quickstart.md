@@ -51,7 +51,7 @@ git clone https://github.com/edgelesssys/emojivoto.git && cd emojivoto
 1. Pull the remote attestation configuration
 
     ```bash
-    wget https://github.com/edgelesssys/coordinator/releases/latest/download/coordinator-era.json
+    wget https://github.com/edgelesssys/marblerun/releases/latest/download/coordinator-era.json
     ```
 
 1. Get the Coordinator's address and set the DNS

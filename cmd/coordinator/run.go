@@ -9,11 +9,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/edgelesssys/coordinator/coordinator/config"
-	"github.com/edgelesssys/coordinator/coordinator/core"
-	"github.com/edgelesssys/coordinator/coordinator/quote"
-	"github.com/edgelesssys/coordinator/coordinator/server"
-	"github.com/edgelesssys/coordinator/util"
+	"github.com/edgelesssys/marblerun/coordinator/config"
+	"github.com/edgelesssys/marblerun/coordinator/core"
+	"github.com/edgelesssys/marblerun/coordinator/quote"
+	"github.com/edgelesssys/marblerun/coordinator/server"
+	"github.com/edgelesssys/marblerun/util"
 	"go.uber.org/zap"
 )
 

@@ -61,8 +61,8 @@ Planned features include:
 <!-- refs -->
 [edgelessrt]: https://github.com/edgelesssys/edgelessrt
 [emojivoto]: https://github.com/edgelesssys/emojivoto
-[github-actions]: https://github.com/edgelesssys/coordinator/actions
-[github-actions-badge]: https://github.com/edgelesssys/coordinator/workflows/Unit%20Tests/badge.svg
+[github-actions]: https://github.com/edgelesssys/marblerun/actions
+[github-actions-badge]: https://github.com/edgelesssys/marblerun/workflows/Unit%20Tests/badge.svg
 [go-report-card]: https://goreportcard.com/report/github.com/edgelesssys/mesh
 [go-report-card-badge]: https://goreportcard.com/badge/github.com/edgelesssys/mesh
 [graphene]: https://github.com/oscarlab/graphene

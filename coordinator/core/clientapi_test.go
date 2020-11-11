@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/edgelesssys/coordinator/test"
+	"github.com/edgelesssys/marblerun/test"
 	"github.com/stretchr/testify/assert"
 )
 
