@@ -38,9 +38,9 @@ Update the hostname with your cluster's FQDN.
         --set tolerations=null \
         --set coordinator.hostname=mycluster.uksouth.cloudapp.azure.com
 
-## DNS for the Client-API on Azure Kubernetes Service (AKS)
+## DNS for the client API on Azure Kubernetes Service (AKS)
 
-This explains how to configure the DNS for the Edgless Mesh Client-API when running on a AKS cluster.
+This explains how to configure the DNS for the Edgeless Mesh Client-API when running on an AKS cluster.
 
 ### Configure FQDN for the coordinators' IP address
 
@@ -48,7 +48,7 @@ This explains how to configure the DNS for the Edgless Mesh Client-API when runn
 # Public IP address of your coordinator-client-api service
 IP="MY_EXTERNAL_IP"
 
-# Name to associate with public IP address
+# Name to associate with the public IP address
 DNSNAME="marblerun"
 
 # Get the resource-id of the public ip
@@ -74,4 +74,4 @@ curl -k https://marblerun.uksouth.cloudapp.azure.com:25555/status
 If you're using an ingress-controller or gateway for managing access to the marblerun-coordinator make sure you're enabling SNI for your TLS connections.
 
 * For the NGINX ingress controller add the [`nginx.ingress.kubernetes.io/ssl-passthrough`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#ssl-passthrough) annotation.
-* For Istio Gatways set the [tls-mode PASSTHROUGH](https://istio.io/latest/docs/tasks/traffic-management/ingress/ingress-sni-passthrough/#configure-an-ingress-gateway)
+* For Istio Gateways set the [tls-mode PASSTHROUGH](https://istio.io/latest/docs/tasks/traffic-management/ingress/ingress-sni-passthrough/#configure-an-ingress-gateway)

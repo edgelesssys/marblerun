@@ -1,11 +1,11 @@
 # Quickstart
 
 ## Step 0: Setup
-Set up a Kubernetes cluster and install `kubectl`. One easy way to get start is to run Kubernetes on your local machine using [Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/).
+Set up a Kubernetes cluster and install `kubectl`. One easy way to get started is to run Kubernetes on your local machine using [Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/).
 
 Please also install [Helm](https://helm.sh/docs/intro/install/) ("the package manager for Kubernetes"). 
 
-## Step 1: Install Coordinator onto the cluster
+## Step 1: Install the Coordinator onto the cluster
 
 Add the Edgeless Systems chart repository to Helm.
 
@@ -14,7 +14,7 @@ helm repo add edgeless https://helm.edgeless.systems
 helm repo update
 ```
 
-Install Marblerun's *Coordinator* using Helm.
+Install Marblerun's Coordinator using Helm.
 Update the hostname with your cluster's FQDN or use localhost for local testing.
 
 * For a cluster with SGX support:
@@ -95,7 +95,7 @@ curl --silent --cacert marblerun.crt -X POST -H  "Content-Type: application/json
 
 ## Step 5: Deploy the demo application
 
-* If your deploying on a cluster with nodes that support SGX1+FLC (e.g. AKS or minikube + Azure Standard_DC*s)
+* If you're deploying on a cluster with nodes that support SGX1+FLC (e.g. AKS or minikube + Azure Standard_DC*s)
 
   ```bash
   helm install -f ./kubernetes/sgx_values.yaml emojivoto ./kubernetes -n emojivoto
@@ -120,7 +120,7 @@ curl --silent --cacert marblerun.crt -X POST -H  "Content-Type: application/json
     ```
 
 * Install Marblerun-Certificate in your browser
-    * **Warning** Be careful when adding certificates to your browser. We only do this temporarly for the sake of this demo. Make sure you don't use your browser for other activities in the meanwhile and remove the certificate afterwards.
+    * **Warning** Be careful when adding certificates to your browser. We only do this temporarily for the sake of this demo. Make sure you don't use your browser for other activities in the meanwhile and remove the certificate afterward.
     * Chrome:
         * Go to <chrome://settings/security>
         * Go to `"Manage certificates" > "Import..."`
