@@ -2,9 +2,7 @@ name: Unit Tests
 
 on:
   push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
+    branches: [ feat/nightlybuild ]
 
 jobs:
   run:
@@ -36,3 +34,10 @@ jobs:
     - name: Integration test
       run: ertgo test -tags integration -b ../build -s
       working-directory: coordinator/test
+
+    - name: query deployment repo for nightly build
+      run: |
+        curl -X POST -H "Accept:application/vnd.github.v3+json" \
+        -H "Authorization:token ${{ secrets.CI_GITHUB_REPOSITORY }}" \
+        -d '{"event_type":"nightly-build", "client_payload":{"repository":"marblerun", "imagename":"marblerun","target":"release"}}' \
+        https://api.github.com/repos/edgelesssys/deployment/dispatches
