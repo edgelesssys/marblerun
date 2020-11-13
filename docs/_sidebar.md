@@ -12,6 +12,8 @@
 - Features
 
   - [Attestation](attestation.md)
+  - [Recovery](recovery.md)
+  - [Planned features](planned-features.md)
 
 - Tasks
 
