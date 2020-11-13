@@ -9,7 +9,7 @@
   - [Confidential service mesh](service-mesh.md)
   - [Overview](overview.md)
 
-- Features
+- Concepts
 
   - [Attestation](attestation.md)
   - [Recovery](recovery.md)
