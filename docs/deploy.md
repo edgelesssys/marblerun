@@ -38,7 +38,7 @@ Update the hostname with your cluster's FQDN.
         --set tolerations=null \
         --set coordinator.hostname=mycluster.uksouth.cloudapp.azure.com
 
-## DNS for the Client-API on Azure Kubernetes Service (AKS)
+## DNS for the client API on Azure Kubernetes Service (AKS)
 
 This explains how to configure the DNS for the Edgless Mesh Client-API when running on a AKS cluster.
 

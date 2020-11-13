@@ -1,4 +1,4 @@
-# Confidential Service Mesh
+# Confidential service mesh
 
 A service mesh is an infrastructure layer for managing, observing, and securing communications in a container-based cluster. In the Kubernetes world, [Istio](https://istio.io), [HashiCorp Consul](https://www.consul.io/), and [Linkerd](https://linkerd.io/) are the most popular general-purpose service meshes.
 

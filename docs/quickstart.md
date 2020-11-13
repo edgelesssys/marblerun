@@ -5,7 +5,7 @@ Set up a Kubernetes cluster and install `kubectl`. One easy way to get start is 
 
 Please also install [Helm](https://helm.sh/docs/intro/install/) ("the package manager for Kubernetes"). 
 
-## Step 1: Install Coordinator onto the cluster
+## Step 1: Install the Coordinator onto the cluster
 
 Add the Edgeless Systems chart repository to Helm.
 

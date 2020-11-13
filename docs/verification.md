@@ -1,9 +1,9 @@
-# Client-Side Verification
+# Client-side verification
 
 An important feature of Marblerun is providing the ability to verifying the confidentiality and integrity of the whole application on the client-side.
 To that end, we provide a simple REST-API that clients can use before interacting with the application.
 
-## Establishing Trust
+## Establishing trust
 
 The first step is to establish trust with the whole microservice mesh.
 Therefore, Marblerun exposes the `/quote` endpoint that returns a quote and a root certificate for the whole mesh.
@@ -29,7 +29,7 @@ You can pull the corresponding `coordinator-era.json` file from our release page
 
 After successful verification, you'll have the trusted root certificate `marblerun.crt` to use with your application.
 
-## Verifing the Manifest
+## Verifing the manifest
 
 Establishing trust with the service mesh allows you to verify the deployed manifest in the second step.
 To that end, Marblerun exposes the endpoint `/manifest`.
