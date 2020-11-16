@@ -7,7 +7,7 @@ To that end, we provide a simple REST-API that clients can use before interactin
 
 The first step is to establish trust with the whole microservice mesh.
 Therefore, Marblerun exposes the `/quote` endpoint that returns a quote and a root certificate for the whole mesh.
-Verifying the quote can be done by manually, but to ease the process we provide the Edgeless Remote Attestation tools ([era](https://github.com/edgelesssys/era)) for this purpose:
+Verifying the quote can be done manually, but to ease the process we provide the Edgeless Remote Attestation tools ([era](https://github.com/edgelesssys/era)) for this purpose:
 
 ```bash
 # If you have EdgelessRT installed

@@ -55,7 +55,7 @@ These *Parameters* are passed from the *Coordinator* to secure enclaves after su
 * `$$root_ca`: The root certificate of the cluster issued by the *Coordinator*; it can be used to verify the certificates of all marbles in the cluster.
 * `$$marble_cert`: The marble's certificate; issued by the *Coordinator* and used for marble-to-marble and marble-to-client authentication
 * `$$marble_key`: The private key corresponding to `$$marble_cert`
-* `$$seal_key`: A symmetric 128-bit encryption key that can be used for sealing data to disk in a host-independent way; if a marble is scheduled or restarted on new host, this "virtual sealing key" will still allow for unsealing data from the disk even though the host's actual sealing key might have changed.
+* `$$seal_key`: A 128-bit symmetric encryption key that can be used for sealing data to disk in a host-independent way; if a marble is scheduled or restarted on a new host, this "virtual sealing key" will still allow for unsealing data from the disk even though the host's actual sealing key might have changed.
 
 ```json
     "Marbles": {
@@ -96,12 +96,12 @@ These *Parameters* are passed from the *Coordinator* to secure enclaves after su
 
 ### Manifest:Infrastructures
 
-Future versions of Marblerun will allow you to define certain trusted infrastructures and harware configurations under *Infrastructures*.
+Future versions of Marblerun will allow you to define certain trusted infrastructures and hardware configurations under *Infrastructures*.
 
 ## Coordinator
 
 The *Coordinator* represents the control plane in Marblerun.
-It communnicates with the data plane through gRPC and provides an HTTP-REST interface on the client side.
+It communicates with the data plane through gRPC and provides an HTTP-REST interface on the client-side.
 The *Coordinator* can be configured with several environment variables:
 
 * `EDG_COORDINATOR_MESH_ADDR`: The listener address for the gRPC server
