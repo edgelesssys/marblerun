@@ -33,8 +33,11 @@ type ClientCore interface {
 // rawManifest is the manifest of type Manifest in JSON format.
 func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) ([]byte, error) {
 	defer c.mux.Unlock()
-	if err := c.requireState(stateAcceptingManifest); err != nil {
-		return nil, err
+	if err := c.requireState(stateRecovery); err != nil {
+		c.mux.Unlock()
+		if err := c.requireState(stateAcceptingManifest); err != nil {
+			return nil, err
+		}
 	}
 
 	var manifest Manifest
@@ -73,7 +76,7 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) ([]byte, err
 	// Generate a new encryption key for a new manifest, as the old one might be broken
 	c.sealer.GenerateNewEncryptionKey()
 
-	c.advanceState()
+	c.state = stateAcceptingMarbles
 	encryptionKey, err := c.sealState()
 	if err != nil {
 		c.zaplogger.Error("sealState failed", zap.Error(err))
@@ -119,7 +122,7 @@ func (c *Core) GetManifestSignature(ctx context.Context) []byte {
 // SetEncryptionKey sets an encryption key (ideally decrypted from the recovery data) and tries to unseal and load a saved state again.
 func (c *Core) SetEncryptionKey(ctx context.Context, encryptionKey []byte) error {
 	defer c.mux.Unlock()
-	if err := c.requireState(stateAcceptingManifest); err != nil {
+	if err := c.requireState(stateRecovery); err != nil {
 		return err
 	}
 	c.sealer.SetEncryptionKey(encryptionKey)

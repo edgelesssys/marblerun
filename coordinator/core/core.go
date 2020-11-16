@@ -49,7 +49,8 @@ type Core struct {
 type state int
 
 const (
-	stateUninitialized state = iota
+	stateRecovery state = iota - 1
+	stateUninitialized
 	stateAcceptingManifest
 	stateAcceptingMarbles
 )
@@ -73,10 +74,6 @@ func (c *Core) requireState(state state) error {
 		return errors.New("server is not in expected state")
 	}
 	return nil
-}
-
-func (c *Core) advanceState() {
-	c.state++
 }
 
 // NewCore creates and initializes a new Core object
@@ -160,9 +157,11 @@ func (c *Core) loadState(dnsNames []string) (*x509.Certificate, *ecdsa.PrivateKe
 	// If dnsNames is nil, the function call has likely been invoked by the /recover API. If it is not nil, it is likely the coordinator starting up and we shall generate a new state by default.
 	if err != nil && dnsNames == nil {
 		c.zaplogger.Error("Failed to decrypt sealed state. Use the /recover API endpoint to load another decrypted recovery key.")
+		c.state = stateRecovery
 		return nil, nil, err
 	} else if err != nil {
 		c.zaplogger.Error("Failed to decrypt sealed state. Processing with a new state. Use the /recover API endpoint to load an old state, or submit a new manifest to overwrite the old state. Look up the documentation for more information on how to proceed.")
+		c.state = stateRecovery
 		return c.generateCert(dnsNames)
 	}
 
@@ -222,8 +221,11 @@ func (c *Core) sealState() ([]byte, error) {
 
 func (c *Core) generateCert(dnsNames []string) (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	defer c.mux.Unlock()
-	if err := c.requireState(stateUninitialized); err != nil {
-		return nil, nil, err
+	if err := c.requireState(stateRecovery); err != nil {
+		c.mux.Unlock()
+		if err := c.requireState(stateUninitialized); err != nil {
+			return nil, nil, err
+		}
 	}
 
 	privk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -266,7 +268,10 @@ func (c *Core) generateCert(dnsNames []string) (*x509.Certificate, *ecdsa.Privat
 		return nil, nil, err
 	}
 
-	c.advanceState()
+	if c.state == stateUninitialized {
+		c.state = stateAcceptingManifest
+	}
+
 	return cert, privk, nil
 }
 
