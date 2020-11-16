@@ -288,6 +288,22 @@ func getClientTLSCert(ctx context.Context) *x509.Certificate {
 	return tlsInfo.State.PeerCertificates[0]
 }
 
-func (c *Core) getStatus(ctx context.Context) (string, error) {
-	return "this is a test status", nil
+func (c *Core) getStatus(ctx context.Context) (int, string, error) {
+	statusCode := int(c.state)
+	var status string
+
+	switch c.state {
+	case -1:
+		status = "Coordinator is in recovery mode. Either upload a key to unseal the saved state, or set a new manifest. For more information on how to proceed, consult the documentation."
+	case 0:
+		status = "Coordinator is uninitialized."
+	case 1:
+		status = "Coordinator is ready to accept a manifest."
+	case 2:
+		status = "Coordinator is running correctly and ready to accept marbles."
+	default:
+		return -1000, "Cannot determine coordinator status.", errors.New("cannot determine coordinator status")
+	}
+
+	return statusCode, status, nil
 }

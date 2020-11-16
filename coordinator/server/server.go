@@ -33,6 +33,7 @@ type certQuoteResp struct {
 	Quote []byte
 }
 type statusResp struct {
+	Code   int
 	Status string
 }
 type manifestSignatureResp struct {
@@ -95,12 +96,12 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 	mux.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			status, err := cc.GetStatus(r.Context())
+			statusCode, status, err := cc.GetStatus(r.Context())
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			writeJSON(w, statusResp{status})
+			writeJSON(w, statusResp{statusCode, status})
 		default:
 			http.Error(w, "", http.StatusMethodNotAllowed)
 		}

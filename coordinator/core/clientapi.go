@@ -24,7 +24,7 @@ type ClientCore interface {
 	SetManifest(ctx context.Context, rawManifest []byte) (recoveryDataBytes []byte, err error)
 	GetCertQuote(ctx context.Context) (cert string, certQuote []byte, err error)
 	GetManifestSignature(ctx context.Context) (manifestSignature []byte)
-	GetStatus(ctx context.Context) (status string, err error)
+	GetStatus(ctx context.Context) (statusCode int, status string, err error)
 	SetEncryptionKey(ctx context.Context, encryptionKey []byte) error
 }
 
@@ -139,11 +139,11 @@ func (c *Core) SetEncryptionKey(ctx context.Context, encryptionKey []byte) error
 }
 
 // GetStatus is not implemented. It will return status information about the state of the mesh in the future.
-func (c *Core) GetStatus(ctx context.Context) (status string, err error) {
-	status, err = c.getStatus(ctx)
+func (c *Core) GetStatus(ctx context.Context) (statusCode int, status string, err error) {
+	statusCode, status, err = c.getStatus(ctx)
 	if err != nil {
-		return "", err
+		return -1000, "Cannot determine server status", err
 	}
 
-	return status, nil
+	return statusCode, status, nil
 }
