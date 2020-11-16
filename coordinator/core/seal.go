@@ -23,6 +23,7 @@ const sealedKeyFname string = "sealed_key"
 type Sealer interface {
 	Seal(data []byte) ([]byte, error)
 	Unseal() ([]byte, error)
+	GenerateNewEncryptionKey() error
 	SetEncryptionKey(key []byte) error
 }
 
@@ -65,7 +66,7 @@ func (s *AESGCMSealer) Seal(data []byte) ([]byte, error) {
 		if !os.IsNotExist(err) {
 			return nil, err
 		}
-		if err := s.generateEncryptionKey(); err != nil {
+		if err := s.GenerateNewEncryptionKey(); err != nil {
 			return nil, err
 		}
 	}
@@ -111,8 +112,8 @@ func (s *AESGCMSealer) unsealEncryptionKey() error {
 	return nil
 }
 
-// Generate random 128 Bit (16 Byte) key to encrypt the state
-func (s *AESGCMSealer) generateEncryptionKey() error {
+// GenerateNewEncryptionKey generates a random 128 Bit (16 Byte) key to encrypt the state
+func (s *AESGCMSealer) GenerateNewEncryptionKey() error {
 	encryptionKey := make([]byte, 16)
 
 	_, err := rand.Read(encryptionKey)
@@ -212,5 +213,10 @@ func (s *MockSealer) Seal(data []byte) ([]byte, error) {
 
 // SetEncryptionKey implements the Sealer interface
 func (s *MockSealer) SetEncryptionKey(key []byte) error {
+	return nil
+}
+
+// GenerateNewEncryptionKey implements the Sealer interface
+func (s *MockSealer) GenerateNewEncryptionKey() error {
 	return nil
 }

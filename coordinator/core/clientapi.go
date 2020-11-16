@@ -69,6 +69,10 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) ([]byte, err
 
 	c.manifest = manifest
 	c.rawManifest = rawManifest
+
+	// Generate a new encryption key for a new manifest, as the old one might be broken
+	c.sealer.GenerateNewEncryptionKey()
+
 	c.advanceState()
 	encryptionKey, err := c.sealState()
 	if err != nil {
