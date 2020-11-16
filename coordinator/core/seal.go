@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 const sealedDataFname string = "sealed_data"
@@ -122,7 +123,15 @@ func (s *AESGCMSealer) generateEncryptionKey() error {
 	return s.SetEncryptionKey(encryptionKey)
 }
 
+// SetEncryptionKey sets or restores an encryption key
 func (s *AESGCMSealer) SetEncryptionKey(encryptionKey []byte) error {
+	// If there already is an existing key file stored on disk, save it
+	if sealedKeyData, err := ioutil.ReadFile(s.getFname(sealedKeyFname)); err == nil {
+		t := time.Now()
+		newFileName := s.getFname(sealedKeyFname) + "_" + t.Format("20060102150405") + ".bak"
+		ioutil.WriteFile(newFileName, sealedKeyData, 0600)
+	}
+
 	// Encrypt encryption key with seal key
 	encryptedKeyData, err := encrypt(encryptionKey, s.sealKey)
 	if err != nil {
