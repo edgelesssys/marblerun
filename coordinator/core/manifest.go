@@ -18,14 +18,6 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
 )
 
-// Manifest placeholder variables
-const (
-	rootCAPlaceholder     = "$$root_ca"
-	marbleCertPlaceholder = "$$marble_cert"
-	marbleKeyPlaceholder  = "$$marble_key"
-	sealKeyPlaceholder    = "$$seal_key"
-)
-
 // Manifest defines the rules of a mesh.
 type Manifest struct {
 	// Packages contains the allowed enclaves and their properties.
