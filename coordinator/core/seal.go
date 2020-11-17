@@ -204,12 +204,13 @@ func decrypt(ciphertext []byte, key []byte) ([]byte, error) {
 
 // MockSealer is a mockup sealer
 type MockSealer struct {
-	data []byte
+	data        []byte
+	unsealError error
 }
 
 // Unseal implements the Sealer interface
 func (s *MockSealer) Unseal() ([]byte, error) {
-	return s.data, nil
+	return s.data, s.unsealError
 }
 
 // Seal implements the Sealer interface

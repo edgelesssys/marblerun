@@ -25,7 +25,7 @@ type ClientCore interface {
 	GetCertQuote(ctx context.Context) (cert string, certQuote []byte, err error)
 	GetManifestSignature(ctx context.Context) (manifestSignature []byte)
 	GetStatus(ctx context.Context) (statusCode int, status string, err error)
-	SetEncryptionKey(ctx context.Context, encryptionKey []byte) error
+	Recover(ctx context.Context, encryptionKey []byte) error
 }
 
 // SetManifest sets the manifest, once and for all
@@ -116,8 +116,8 @@ func (c *Core) GetManifestSignature(ctx context.Context) []byte {
 	return hash[:]
 }
 
-// SetEncryptionKey sets an encryption key (ideally decrypted from the recovery data) and tries to unseal and load a saved state again.
-func (c *Core) SetEncryptionKey(ctx context.Context, encryptionKey []byte) error {
+// Recover sets an encryption key (ideally decrypted from the recovery data) and tries to unseal and load a saved state again.
+func (c *Core) Recover(ctx context.Context, encryptionKey []byte) error {
 	defer c.mux.Unlock()
 	if err := c.requireState(stateRecovery); err != nil {
 		return err

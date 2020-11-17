@@ -155,7 +155,7 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			if err = cc.SetEncryptionKey(r.Context(), key); err != nil {
+			if err = cc.Recover(r.Context(), key); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
