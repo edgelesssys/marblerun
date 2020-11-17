@@ -14,7 +14,7 @@ helm repo add edgeless https://helm.edgeless.systems
 helm repo update
 ```
 
-Install Marblerun's *Coordinator* using Helm.
+Install Marblerun's Coordinator using Helm.
 Update the hostname with your cluster's FQDN or use localhost for local testing.
 
 * For a cluster with SGX support:

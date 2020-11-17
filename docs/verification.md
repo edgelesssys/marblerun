@@ -19,7 +19,7 @@ era -c coordinator-era.json -h $MARBLERUN -o marblerun.crt
 ```
 
 era requires the Coordinator's UniqueID and SignerID (or MRENCLAVE and MRSIGNER in SGX terms) to verify the quote.
-In production, these would be generated when building *Coordinator* and distributed to your clients.
+In production, these would be generated when building Coordinator and distributed to your clients.
 For testing, we have published a Coordinator image at `ghcr.io/edgelesssys/coordinator`.
 You can pull the corresponding `coordinator-era.json` file from our release page:
 

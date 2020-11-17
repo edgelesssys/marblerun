@@ -1,7 +1,7 @@
 # Overview
 
 Logically, Marblerun consists of two parts, the control plane called *Coordinator* and the data plane called *Marbles*.
-The *Coordinator* needs to be deployed once in your cluster and the *Marble* layer needs to be integrated with each service.
+The Coordinator needs to be deployed once in your cluster and the Marble layer needs to be integrated with each service.
 Marblerun is configured with a simple JSON document called the *Manifest*.
 It specifies the topology of the distributed app, the infrastructure properties, and provides configuration parameters for each service.
 
@@ -50,10 +50,10 @@ Marbles represent the actual services in your mesh. They are defined in the *Mar
 * Env: Environment variables
 * Argv: Command line arguments
 
-These *Parameters* are passed from the *Coordinator* to secure enclaves after successful initial remote attestation. *Parameters* can contain the following placeholders:
+These *Parameters* are passed from the Coordinator to secure enclaves after successful initial remote attestation. *Parameters* can contain the following placeholders:
 
-* `$$root_ca`: The root certificate of the cluster issued by the *Coordinator*; it can be used to verify the certificates of all marbles in the cluster.
-* `$$marble_cert`: The marble's certificate; issued by the *Coordinator* and used for marble-to-marble and marble-to-client authentication
+* `$$root_ca`: The root certificate of the cluster issued by the Coordinator; it can be used to verify the certificates of all marbles in the cluster.
+* `$$marble_cert`: The marble's certificate; issued by the Coordinator and used for marble-to-marble and marble-to-client authentication
 * `$$marble_key`: The private key corresponding to `$$marble_cert`
 * `$$seal_key`: A 128-bit symmetric encryption key that can be used for sealing data to disk in a host-independent way; if a marble is scheduled or restarted on a new host, this "virtual sealing key" will still allow for unsealing data from the disk even though the host's actual sealing key might have changed.
 
@@ -100,9 +100,9 @@ Future versions of Marblerun will allow you to define certain trusted infrastruc
 
 ## Coordinator
 
-The *Coordinator* represents the control plane in Marblerun.
+The Coordinator represents the control plane in Marblerun.
 It communicates with the data plane through gRPC and provides an HTTP-REST interface on the client-side.
-The *Coordinator* can be configured with several environment variables:
+The Coordinator can be configured with several environment variables:
 
 * `EDG_COORDINATOR_MESH_ADDR`: The listener address for the gRPC server
 * `EDG_COORDINATOR_CLIENT_ADDR`: The listener address for the HTTP server
@@ -149,7 +149,7 @@ The API currently contains two endpoints:
 
 ## Marbles
 
-Marbles represent the data plane in Marblerun and run your actual application code in secure enclaves within otherwise normal Docker containers. Marbles communicate with the *Coordinator* via gRPC over TLS. See the [Add a Service](add-service.md) section on how to build a marble.
+Marbles represent the data plane in Marblerun and run your actual application code in secure enclaves within otherwise normal Docker containers. Marbles communicate with the Coordinator via gRPC over TLS. See the [Add a Service](add-service.md) section on how to build a marble.
 
 Marbles can be configured with several environment variables.
 
