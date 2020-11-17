@@ -277,7 +277,7 @@ func TestRecoveryRestoreKey(t *testing.T) {
 	require.NoError(coordinatorProc.Kill())
 
 	// Garble encryption key to trigger recovery state
-	log.Println("Garbeling sealed key...")
+	log.Println("Purposely corrupt sealed key to trigger recovery state...")
 	pathToKeyFile := filepath.Join(cfg.sealDir, core.SealedKeyFname)
 	sealedKeyData, err := ioutil.ReadFile(pathToKeyFile)
 	require.NoError(err)
@@ -361,7 +361,7 @@ func TestRecoveryReset(t *testing.T) {
 	require.NoError(coordinatorProc.Kill())
 
 	// Garble encryption key to trigger recovery state
-	log.Println("Garbeling sealed key...")
+	log.Println("Purposely corrupt sealed key to trigger recovery state...")
 	pathToKeyFile := filepath.Join(cfg.sealDir, core.SealedKeyFname)
 	sealedKeyData, err := ioutil.ReadFile(pathToKeyFile)
 	require.NoError(err)
