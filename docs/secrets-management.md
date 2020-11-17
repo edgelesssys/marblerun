@@ -4,7 +4,7 @@ Two of the *Coordinator*'s central duties are the generation and the management 
 
 * [Virtual sealing keys](#virtual-sealing-keys)
 * [Shared symmetric keys](#shared-symmetric-keys)
-* [Private keys for TLS](#private-keys-for-tls)
+* [TLS credentials](#tls-private-keys)
 
 All of these secrets are handed to marbles via placeholders in the manifest as is described [here](set-manifest.md).
 
@@ -24,4 +24,6 @@ While virtual sealing keys are used by individual marbles, Marblerun also allows
 
 As with virtual sealing keys, care has to be taken to not repeat nonces between marbles when using shared keys with AES-GCM or similar encryption algorithms.  
 
-## Private keys for TLS
+## TLS credentials
+
+The Coordinator will generate a private TLS key for each new marble and issue a corresponding X.509 certificate. Both are injected via the `$$marble_key` and `$$marble_cert` placeholders in the manifest, respectively. Marbles use these TLS credentials for communicating internally and externally. External clients can verify a marble's certificate with respect to the Coordinator's certificate. 
