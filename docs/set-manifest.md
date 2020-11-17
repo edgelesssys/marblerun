@@ -12,7 +12,7 @@ See the following manifest for example (manifest.jso
     "Packages": {
         "backend": {
             "UniqueID": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
-            "ProductID": 1337,
+            "ProductID": 43,
             "SecurityVersion": 1,
             "Debug": false
         },
@@ -21,20 +21,6 @@ See the following manifest for example (manifest.jso
             "ProductID": 42,
             "SecurityVersion": 3,
             "Debug": true
-        }
-    },
-    "Infrastructures": {
-        "Azure": {
-            "QESVN": 2,
-            "PCESVN": 3,
-            "CPUSVN": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
-            "RootCA": [3,3,3]
-        },
-        "Alibaba": {
-            "QESVN": 2,
-            "PCESVN": 4,
-            "CPUSVN": [15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0],
-            "RootCA": [4,4,4]
         }
     },
     "Marbles": {

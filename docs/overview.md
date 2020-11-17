@@ -1,6 +1,6 @@
 # Overview
 
-Marblerun consists of two logic parts, the control plane called *Coordinator* and the data plane called *Marbles*.
+Logically, Marblerun consists of two parts, the control plane called *Coordinator* and the data plane called *Marbles*.
 The *Coordinator* needs to be deployed once in your cluster and the *Marble* layer needs to be integrated with each service.
 Marblerun is configured with a simple JSON document called the *Manifest*.
 It specifies the topology of the distributed app, the infrastructure properties, and provides configuration parameters for each service.

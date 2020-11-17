@@ -9,10 +9,11 @@
   - [Confidential service mesh](service-mesh.md)
   - [Overview](overview.md)
 
-- Concepts
+- Features and concepts
 
   - [Attestation](attestation.md)
   - [Recovery](recovery.md)
+  - [Secrets management](secrets-management.md)
   - [Planned features](planned-features.md)
 
 - Tasks
