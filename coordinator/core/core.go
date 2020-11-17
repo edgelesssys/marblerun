@@ -297,7 +297,6 @@ func getClientTLSCert(ctx context.Context) *x509.Certificate {
 }
 
 func (c *Core) getStatus(ctx context.Context) (int, string, error) {
-	statusCode := int(c.state)
 	var status string
 
 	switch c.state {
@@ -308,8 +307,8 @@ func (c *Core) getStatus(ctx context.Context) (int, string, error) {
 	case stateAcceptingMarbles:
 		status = "Coordinator is running correctly and ready to accept marbles."
 	default:
-		return -1000, "Cannot determine coordinator status.", errors.New("cannot determine coordinator status")
+		return -1, "Cannot determine coordinator status.", errors.New("cannot determine coordinator status")
 	}
 
-	return statusCode, status, nil
+	return int(c.state), status, nil
 }

@@ -67,11 +67,13 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) ([]byte, err
 		}
 	}
 
+	// Generate a new encryption key for a new manifest, as the old one might be broken
+	if err := c.sealer.GenerateNewEncryptionKey(); err != nil {
+		return nil, err
+	}
+
 	c.manifest = manifest
 	c.rawManifest = rawManifest
-
-	// Generate a new encryption key for a new manifest, as the old one might be broken
-	c.sealer.GenerateNewEncryptionKey()
 
 	c.advanceState(stateAcceptingMarbles)
 	encryptionKey, err := c.sealState()
@@ -122,7 +124,10 @@ func (c *Core) Recover(ctx context.Context, encryptionKey []byte) error {
 	if err := c.requireState(stateRecovery); err != nil {
 		return err
 	}
-	c.sealer.SetEncryptionKey(encryptionKey)
+
+	if err := c.sealer.SetEncryptionKey(encryptionKey); err != nil {
+		return err
+	}
 
 	cert, privk, err := c.loadState()
 	if err != nil {
@@ -135,12 +140,11 @@ func (c *Core) Recover(ctx context.Context, encryptionKey []byte) error {
 	return nil
 }
 
-// GetStatus is not implemented. It will return status information about the state of the mesh in the future.
+// GetStatus returns status information about the state of the mesh.
 func (c *Core) GetStatus(ctx context.Context) (statusCode int, status string, err error) {
-	statusCode, status, err = c.getStatus(ctx)
 	if err != nil {
 		return -1000, "Cannot determine server status", err
 	}
 
-	return statusCode, status, nil
+	return c.getStatus(ctx)
 }

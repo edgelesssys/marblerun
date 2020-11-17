@@ -32,7 +32,6 @@ import (
 
 	"github.com/edgelesssys/marblerun/coordinator/config"
 	"github.com/edgelesssys/marblerun/coordinator/core"
-	"github.com/edgelesssys/marblerun/coordinator/server"
 	mconfig "github.com/edgelesssys/marblerun/marble/config"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/stretchr/testify/assert"
@@ -281,7 +280,7 @@ func TestRecoveryRestoreKey(t *testing.T) {
 	pathToKeyFile := filepath.Join(cfg.sealDir, core.SealedKeyFname)
 	sealedKeyData, err := ioutil.ReadFile(pathToKeyFile)
 	require.NoError(err)
-	sealedKeyData[0] = sealedKeyData[0] ^ byte(0x42)
+	sealedKeyData[0] ^= byte(0x42)
 	require.NoError(ioutil.WriteFile(pathToKeyFile, sealedKeyData, 0600))
 
 	// Restart server, we should be in recovery mode
@@ -294,12 +293,11 @@ func TestRecoveryRestoreKey(t *testing.T) {
 	log.Println("Checking status...")
 	statusResponse, err := getStatus()
 	require.NoError(err)
-	assert.Contains(statusResponse, "{\"Code\":1,")
+	assert.EqualValues(1, gjson.Get(statusResponse, "Code").Int(), "Server is not in recovery state, but should be.")
 
 	// Decode & Decrypt recovery data from when we set the manifest
-	var recoveryDataUnmarshalled server.RecoveryDataResp
-	require.NoError(json.Unmarshal(recoveryResponse, &recoveryDataUnmarshalled), "Failed to unmarshal JSON response containing the recovery data.")
-	recoveryDataEncrypted, err := base64.StdEncoding.DecodeString(recoveryDataUnmarshalled.EncryptionKey)
+	key := gjson.Get(string(recoveryResponse), "EncryptionKey").String()
+	recoveryDataEncrypted, err := base64.StdEncoding.DecodeString(key)
 	require.NoError(err, "Failed to base64 decode recovery data.")
 	recoveryKey, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, RecoveryPrivateKey, recoveryDataEncrypted, nil)
 	require.NoError(err, "Failed to RSA OAEP decrypt the recovery data.")
@@ -309,7 +307,7 @@ func TestRecoveryRestoreKey(t *testing.T) {
 	log.Println("Performed recovery, now checking status again...")
 	statusResponse, err = getStatus()
 	require.NoError(err)
-	assert.Contains(statusResponse, "{\"Code\":3,", "Server is in wrong status after recovery.")
+	assert.EqualValues(3, gjson.Get(statusResponse, "Code").Int(), "Server is in wrong status after recovery.")
 
 	// Simulate restart of coordinator
 	log.Println("Simulating a restart of the coordinator enclave...")
@@ -326,7 +324,7 @@ func TestRecoveryRestoreKey(t *testing.T) {
 	log.Println("Restarted instance, now let's see if the state can be restored again successfully.")
 	statusResponse, err = getStatus()
 	require.NoError(err)
-	assert.Contains(statusResponse, "{\"Code\":3,", "Server is in wrong status after recovery.")
+	assert.EqualValues(3, gjson.Get(statusResponse, "Code").Int(), "Server is in wrong status after recovery.")
 }
 
 func TestRecoveryReset(t *testing.T) {
@@ -378,7 +376,7 @@ func TestRecoveryReset(t *testing.T) {
 	log.Println("Checking status...")
 	statusResponse, err := getStatus()
 	require.NoError(err)
-	assert.Contains(statusResponse, "{\"Code\":1,")
+	assert.EqualValues(1, gjson.Get(statusResponse, "Code").Int(), "Server is not in recovery state, but should be.")
 
 	// Set manifest again
 	log.Println("Setting the Manifest")
@@ -389,7 +387,7 @@ func TestRecoveryReset(t *testing.T) {
 	log.Println("Check if the manifest was accepted and we are ready to accept Marbles")
 	statusResponse, err = getStatus()
 	require.NoError(err)
-	assert.Contains(statusResponse, "{\"Code\":3,", "Server is in wrong status after recovery.")
+	assert.EqualValues(3, gjson.Get(statusResponse, "Code").Int(), "Server is in wrong status after recovery.")
 
 	// simulate restart of coordinator
 	log.Println("Simulating a restart of the coordinator enclave...")
@@ -406,7 +404,7 @@ func TestRecoveryReset(t *testing.T) {
 	log.Println("Restarted instance, now let's see if the new state can be decrypted successfully...")
 	statusResponse, err = getStatus()
 	require.NoError(err)
-	assert.Contains(statusResponse, "{\"Code\":3,", "Server is in wrong status after recovery.")
+	assert.EqualValues(3, gjson.Get(statusResponse, "Code").Int(), "Server is in wrong status after recovery.")
 }
 
 type coordinatorConfig struct {
@@ -509,13 +507,12 @@ func setManifest(manifest core.Manifest) ([]byte, error) {
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("expected %v, but /manifest returned %v: %v", http.StatusOK, resp.Status, string(body))
-	}
-
-	if err != nil {
-		panic(err)
 	}
 
 	return body, nil
@@ -536,13 +533,12 @@ func setRecover(recoveryKey []byte) error {
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("expected %v, but /recover returned %v: %v", http.StatusOK, resp.Status, string(body))
-	}
-
-	if err != nil {
-		panic(err)
 	}
 
 	return nil
@@ -562,12 +558,12 @@ func getStatus() (string, error) {
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("expected %v, but /status returned %v: %v", http.StatusOK, resp.Status, string(body))
-	}
-
 	if err != nil {
 		panic(err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("expected %v, but /status returned %v: %v", http.StatusOK, resp.Status, string(body))
 	}
 
 	return string(body), nil

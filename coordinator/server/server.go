@@ -41,7 +41,7 @@ type manifestSignatureResp struct {
 }
 
 // Contains RSA-encrypted AES state sealing key with public key specified by user in manifest
-type RecoveryDataResp struct {
+type recoveryDataResp struct {
 	EncryptionKey string
 }
 
@@ -126,7 +126,7 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 			// If a recovery key has been set, include recovery data as response. If not, leave response empty.
 			if recoveryDataBytes != nil {
 				encodedRecoveryData := base64.StdEncoding.EncodeToString(recoveryDataBytes)
-				writeJSON(w, RecoveryDataResp{encodedRecoveryData})
+				writeJSON(w, recoveryDataResp{encodedRecoveryData})
 			}
 		default:
 			http.Error(w, "", http.StatusMethodNotAllowed)
