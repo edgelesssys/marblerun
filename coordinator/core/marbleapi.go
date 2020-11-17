@@ -25,10 +25,14 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type marbleSecretStruct struct {
+type marbleSecretsStruct struct {
 	RootCA     Secret
 	MarbleCert Secret
 	SealKey    Secret
+}
+
+type marbleSecretsWrapper struct {
+	Marblerun marbleSecretsStruct
 }
 
 // Activate implements the MarbleAPI function to authenticate a marble (implements the MarbleServer interface)
@@ -103,14 +107,18 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 		Private: sealKey,
 	}
 
-	marbleSecrets := marbleSecretStruct{
+	marbleSecrets := marbleSecretsStruct{
 		RootCA:     pemRootCAObject,
 		MarbleCert: pemMarbleCertObject,
 		SealKey:    strSealKeyObject,
 	}
 
+	marbleSecretsWrapped := marbleSecretsWrapper{
+		Marblerun: marbleSecrets,
+	}
+
 	marble := c.manifest.Marbles[req.GetMarbleType()] // existence has been checked in verifyManifestRequirement
-	params, err := customizeParameters(marble.Parameters, marbleSecrets)
+	params, err := customizeParameters(marble.Parameters, marbleSecretsWrapped)
 	if err != nil {
 		c.zaplogger.Error("Could not customize parameters.", zap.Error(err))
 	}
@@ -204,7 +212,7 @@ func (c *Core) generateCertFromCSR(csrReq []byte, pubk ecdsa.PublicKey, marbleTy
 }
 
 // customizeParameters replaces the placeholders in the manifest's parameters with the actual values
-func customizeParameters(params *rpc.Parameters, marbleSecrets marbleSecretStruct) (*rpc.Parameters, error) {
+func customizeParameters(params *rpc.Parameters, marbleSecretsWrapped marbleSecretsWrapper) (*rpc.Parameters, error) {
 	customParams := rpc.Parameters{
 		Argv:  params.Argv,
 		Files: make(map[string]string),
@@ -220,7 +228,7 @@ func customizeParameters(params *rpc.Parameters, marbleSecrets marbleSecretStruc
 		}
 
 		templateResult.Reset()
-		if err := tpl.Execute(&templateResult, marbleSecrets); err != nil {
+		if err := tpl.Execute(&templateResult, marbleSecretsWrapped); err != nil {
 			return nil, err
 		}
 
@@ -234,7 +242,7 @@ func customizeParameters(params *rpc.Parameters, marbleSecrets marbleSecretStruc
 		}
 
 		templateResult.Reset()
-		if err := tpl.Execute(&templateResult, marbleSecrets); err != nil {
+		if err := tpl.Execute(&templateResult, marbleSecretsWrapped); err != nil {
 			return nil, err
 		}
 
