@@ -270,6 +270,19 @@ func TestRecoveryRestoreKey(t *testing.T) {
 	require.NotNil(serverProc, "failed to start server-marble")
 	defer serverProc.Kill()
 
+	// get certificate
+	log.Println("Save certificate before we try to recover.")
+	client := http.Client{Transport: transportSkipVerify}
+	clientAPIURL := url.URL{Scheme: "https", Host: clientServerAddr, Path: "quote"}
+	resp, err := client.Get(clientAPIURL.String())
+	require.NoError(err)
+	require.Equal(http.StatusOK, resp.StatusCode)
+	quote, err := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	require.NoError(err)
+	cert := gjson.Get(string(quote), "Cert").String()
+	require.NotEmpty(cert)
+
 	// simulate restart of coordinator
 	log.Println("Simulating a restart of the coordinator enclave...")
 	log.Println("Killing the old instance")
@@ -309,6 +322,16 @@ func TestRecoveryRestoreKey(t *testing.T) {
 	require.NoError(err)
 	assert.EqualValues(3, gjson.Get(statusResponse, "Code").Int(), "Server is in wrong status after recovery.")
 
+	// Test with certificate
+	log.Println("Verifying certificate after recovery, without a restart.")
+	pool := x509.NewCertPool()
+	require.True(pool.AppendCertsFromPEM([]byte(cert)))
+	client = http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{RootCAs: pool}}}
+	clientAPIURL.Path = "status"
+	resp, err = client.Get(clientAPIURL.String())
+	require.NoError(err)
+	require.Equal(http.StatusOK, resp.StatusCode)
+
 	// Simulate restart of coordinator
 	log.Println("Simulating a restart of the coordinator enclave...")
 	log.Println("Killing the old instance")
@@ -325,6 +348,16 @@ func TestRecoveryRestoreKey(t *testing.T) {
 	statusResponse, err = getStatus()
 	require.NoError(err)
 	assert.EqualValues(3, gjson.Get(statusResponse, "Code").Int(), "Server is in wrong status after recovery.")
+
+	// test with certificate
+	log.Println("Verifying certificate after restart.")
+	pool = x509.NewCertPool()
+	require.True(pool.AppendCertsFromPEM([]byte(cert)))
+	client = http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{RootCAs: pool}}}
+	clientAPIURL.Path = "status"
+	resp, err = client.Get(clientAPIURL.String())
+	require.NoError(err)
+	require.Equal(http.StatusOK, resp.StatusCode)
 }
 
 func TestRecoveryReset(t *testing.T) {
