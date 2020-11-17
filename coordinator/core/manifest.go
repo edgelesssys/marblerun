@@ -8,7 +8,11 @@ package core
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/hex"
+	"encoding/pem"
 	"errors"
+	"text/template"
 
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
@@ -45,6 +49,52 @@ type Marble struct {
 	// Parameters contains lists for files, environment variables and commandline arguments that should be passed to the application.
 	// Placeholder variables are supported for specific assets of the marble's activation process.
 	Parameters *rpc.Parameters
+}
+
+// Secret describes a structure for storing certificates and keys, which can be used in combination with the go templating engine.
+
+// PrivateKey is a wrapper for a binary private key, which we need for type differentiation in the PEM encoding function
+type PrivateKey []byte
+
+// PublicKey is a wrapper for a binary public key, which we need for type differentiation in the PEM encoding function
+type PublicKey []byte
+
+// Secret defines a structure for storing certificates & encryption keys
+type Secret struct {
+	Name    string
+	Private PrivateKey
+	Public  PublicKey
+}
+
+func encodeSecretDataToPem(data interface{}) string {
+	var pemData []byte
+
+	switch x := data.(type) {
+	case PublicKey:
+		pemData = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: x})
+	case PrivateKey:
+		pemData = pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: x})
+	}
+
+	return string(pemData)
+}
+
+func encodeSecretDataToHex(data []byte) string {
+	return hex.EncodeToString(data)
+}
+
+func encodeSecretDataToRaw(data []byte) []byte {
+	return data
+}
+func encodeSecretDataToBase64(data []byte) string {
+	return base64.StdEncoding.EncodeToString(data)
+}
+
+var manifestTemplateFuncMap = template.FuncMap{
+	"pem":    encodeSecretDataToPem,
+	"hex":    encodeSecretDataToHex,
+	"raw":    encodeSecretDataToRaw,
+	"base64": encodeSecretDataToBase64,
 }
 
 // Check checks if the manifest is consistent.
