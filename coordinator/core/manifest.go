@@ -7,6 +7,7 @@
 package core
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/hex"
@@ -56,6 +57,14 @@ type Secret struct {
 	Name    string
 	Private PrivateKey
 	Public  PublicKey
+}
+
+// Key defines a shortcut to clarify a reference to symmetric keys in templates.
+func (s Secret) Key() []byte {
+	if bytes.Equal(s.Public, s.Private) {
+		return s.Private
+	}
+	return nil
 }
 
 func encodeSecretDataToPem(data interface{}) string {

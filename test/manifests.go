@@ -56,7 +56,7 @@ const ManifestJSON string = `{
 				"Env": {
 					"IS_FIRST": "true",
 					"ROOT_CA": "{{ pem .Marblerun.RootCA.Public }}",
-					"SEAL_KEY": "{{ hex .Marblerun.SealKey.Private }}",
+					"SEAL_KEY": "{{ hex .Marblerun.SealKey.Key }}",
 					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Public }}",
 					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}"
 				},
@@ -71,7 +71,7 @@ const ManifestJSON string = `{
 			"Parameters": {
 				"Env": {
 					"ROOT_CA": "{{ pem .Marblerun.RootCA.Public }}",
-					"SEAL_KEY": "{{ hex .Marblerun.SealKey.Private }}",
+					"SEAL_KEY": "{{ hex .Marblerun.SealKey.Key }}",
 					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Public }}",
 					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}"
 				},
@@ -85,7 +85,7 @@ const ManifestJSON string = `{
 			"Parameters": {
 				"Env": {
 					"ROOT_CA": "{{ pem .Marblerun.RootCA.Public }}",
-					"SEAL_KEY": "{{ hex .Marblerun.SealKey.Private }}",
+					"SEAL_KEY": "{{ hex .Marblerun.SealKey.Key }}",
 					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Public }}",
 					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}"
 				}
@@ -120,8 +120,8 @@ var ManifestJSONWithRecoveryKey string = `{
 			"Package": "frontend",
 			"Parameters": {
 				"Env": {
-					"ROOT_CA": "{{ pem .Marblerun.RootCA.public }}",
-					"SEAL_KEY": "{{ hex .Marblerun.SealKey.private }}",
+					"ROOT_CA": "{{ pem .Marblerun.RootCA.Public }}",
+					"SEAL_KEY": "{{ hex .Marblerun.SealKey.Key }}",
 					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Public }}",
 					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}"
 				}
@@ -171,7 +171,7 @@ var IntegrationManifestJSON string = `{
 				"Env": {
 					"IS_FIRST": "true",
 					"ROOT_CA": "{{ pem .Marblerun.RootCA.Public }}",
-					"SEAL_KEY": "{{ hex .Marblerun.SealKey.Private }}",
+					"SEAL_KEY": "{{ hex .Marblerun.SealKey.Key }}",
 					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Public }}",
 					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}"
 			}
@@ -187,7 +187,7 @@ var IntegrationManifestJSON string = `{
 				"Env": {
 					"IS_FIRST": "true",
 					"ROOT_CA": "{{ pem .Marblerun.RootCA.Public }}",
-					"SEAL_KEY": "{{ hex .Marblerun.SealKey.Private }}",
+					"SEAL_KEY": "{{ hex .Marblerun.SealKey.Key }}",
 					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Public }}",
 					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}"
 			}
@@ -202,7 +202,7 @@ var IntegrationManifestJSON string = `{
 				},
 				"Env": {
 					"ROOT_CA": "{{ pem .Marblerun.RootCA.Public }}",
-					"SEAL_KEY": "{{ hex .Marblerun.SealKey.Private }}",
+					"SEAL_KEY": "{{ hex .Marblerun.SealKey.Key }}",
 					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Public }}",
 					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}"
 			}
