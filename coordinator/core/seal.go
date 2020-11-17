@@ -16,8 +16,11 @@ import (
 	"time"
 )
 
-const sealedDataFname string = "sealed_data"
-const sealedKeyFname string = "sealed_key"
+// SealedDataFname contains the file name in which the state is sealed on disk in seal_dir
+const SealedDataFname string = "sealed_data"
+
+// SealedKeyFname contains the file name in which the key is sealed with the seal key on disk in seal_dir
+const SealedKeyFname string = "sealed_key"
 
 // Sealer is an interface for the Core object to seal information to the filesystem for persistence
 type Sealer interface {
@@ -42,7 +45,7 @@ func NewAESGCMSealer(sealDir string, sealKey []byte) *AESGCMSealer {
 // Unseal reads and decrypts stored information from the fs
 func (s *AESGCMSealer) Unseal() ([]byte, error) {
 	// load from fs
-	sealedData, err := ioutil.ReadFile(s.getFname(sealedDataFname))
+	sealedData, err := ioutil.ReadFile(s.getFname(SealedDataFname))
 
 	if os.IsNotExist(err) {
 		return nil, nil
@@ -78,7 +81,7 @@ func (s *AESGCMSealer) Seal(data []byte) ([]byte, error) {
 	}
 
 	// store to fs
-	if err := ioutil.WriteFile(s.getFname(sealedDataFname), encryptedData, 0600); err != nil {
+	if err := ioutil.WriteFile(s.getFname(SealedDataFname), encryptedData, 0600); err != nil {
 		return nil, err
 	}
 
@@ -95,7 +98,7 @@ func (s *AESGCMSealer) unsealEncryptionKey() error {
 	}
 
 	// Read from fs
-	sealedKeyData, err := ioutil.ReadFile(s.getFname(sealedKeyFname))
+	sealedKeyData, err := ioutil.ReadFile(s.getFname(SealedKeyFname))
 	if err != nil {
 		return err
 	}
@@ -127,9 +130,9 @@ func (s *AESGCMSealer) GenerateNewEncryptionKey() error {
 // SetEncryptionKey sets or restores an encryption key
 func (s *AESGCMSealer) SetEncryptionKey(encryptionKey []byte) error {
 	// If there already is an existing key file stored on disk, save it
-	if sealedKeyData, err := ioutil.ReadFile(s.getFname(sealedKeyFname)); err == nil {
+	if sealedKeyData, err := ioutil.ReadFile(s.getFname(SealedKeyFname)); err == nil {
 		t := time.Now()
-		newFileName := s.getFname(sealedKeyFname) + "_" + t.Format("20060102150405") + ".bak"
+		newFileName := s.getFname(SealedKeyFname) + "_" + t.Format("20060102150405") + ".bak"
 		ioutil.WriteFile(newFileName, sealedKeyData, 0600)
 	}
 
@@ -140,7 +143,7 @@ func (s *AESGCMSealer) SetEncryptionKey(encryptionKey []byte) error {
 	}
 
 	// Write the sealed encryption key to disk
-	if err = ioutil.WriteFile(s.getFname(sealedKeyFname), encryptedKeyData, 0600); err != nil {
+	if err = ioutil.WriteFile(s.getFname(SealedKeyFname), encryptedKeyData, 0600); err != nil {
 		return err
 	}
 

@@ -135,7 +135,7 @@ var ManifestJSONWithRecoveryKey string = `{
 }`
 
 // IntegrationManifestJSON is a test manifest
-const IntegrationManifestJSON string = `{
+var IntegrationManifestJSON string = `{
 	"Packages": {
 		"backend": {
 			"Debug": true,
@@ -211,7 +211,8 @@ const IntegrationManifestJSON string = `{
 	},
 	"Clients": {
 		"owner": [9,9,9]
-	}
+	},
+	"RecoveryKey": "` + strings.ReplaceAll(string(RecoveryPublicKey), "\n", "\\n") + `"
 }`
 
 func generateTestRecoveryKey() (publicKeyPem []byte, privateKey *rsa.PrivateKey) {
