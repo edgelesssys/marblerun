@@ -22,6 +22,8 @@
   - [Setting a manifest](set-manifest.md)
   - [Adding a service](add-service.md)
   - [Client-side verification](verification.md)
+  - [Deployment updates](updates.md)
+  - [Monitoring and logging](monitoring.md)
 
 - Examples
 
