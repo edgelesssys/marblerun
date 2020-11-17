@@ -13,6 +13,9 @@ const MeshAddr = "EDG_COORDINATOR_MESH_ADDR"
 // ClientAddr is the coordinator's address for the HTTP-REST server to listen on
 const ClientAddr = "EDG_COORDINATOR_CLIENT_ADDR"
 
+// PromAddr is the coordinator's address for the prometheus endpoint server to listen on
+const PromAddr = "EDG_COORDINATOR_PROMETHEUS_ADDR"
+
 // DNSNames are the alternative dns names for the coordinator's certificate
 const DNSNames = "EDG_COORDINATOR_DNS_NAMES"
 

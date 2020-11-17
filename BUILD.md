@@ -39,7 +39,7 @@ For building and installing the libertmeshpremain library (required for services
 ### Run the Coordinator
 
 ```bash
-EDG_COORDINATOR_MESH_ADDR=localhost:2001 EDG_COORDINATOR_CLIENT_ADDR=localhost:4433 EDG_COORDINATOR_DNS_NAMES=localhost EDG_COORDINATOR_SEAL_DIR=$PWD OE_SIMULATION=1 erthost build/coordinator-enclave.signed
+EDG_COORDINATOR_MESH_ADDR=localhost:2001 EDG_COORDINATOR_CLIENT_ADDR=localhost:4433 EDG_COORDINATOR_DNS_NAMES=localhost EDG_COORDINATOR_SEAL_DIR=$PWD EDG_COORDINATOR_PROMETHEUS_ADDR=localhost:8081 OE_SIMULATION=1 erthost build/coordinator-enclave.signed
 ```
 
 *Note*: the Coordinator's state is sealed to `$PWD/sealed_data`. If you want a fresh restart remove this file first: `rm $PWD/sealed_data`.
