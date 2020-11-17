@@ -33,11 +33,8 @@ type ClientCore interface {
 // rawManifest is the manifest of type Manifest in JSON format.
 func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) ([]byte, error) {
 	defer c.mux.Unlock()
-	if err := c.requireState(stateRecovery); err != nil {
-		c.mux.Unlock()
-		if err := c.requireState(stateAcceptingManifest); err != nil {
-			return nil, err
-		}
+	if err := c.requireState(stateAcceptingManifest, stateRecovery); err != nil {
+		return nil, err
 	}
 
 	var manifest Manifest
@@ -76,7 +73,7 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) ([]byte, err
 	// Generate a new encryption key for a new manifest, as the old one might be broken
 	c.sealer.GenerateNewEncryptionKey()
 
-	c.state = stateAcceptingMarbles
+	c.advanceState(stateAcceptingMarbles)
 	encryptionKey, err := c.sealState()
 	if err != nil {
 		c.zaplogger.Error("sealState failed", zap.Error(err))
@@ -127,7 +124,7 @@ func (c *Core) SetEncryptionKey(ctx context.Context, encryptionKey []byte) error
 	}
 	c.sealer.SetEncryptionKey(encryptionKey)
 
-	cert, privk, err := c.loadState(nil)
+	cert, privk, err := c.loadState()
 	if err != nil {
 		return err
 	}

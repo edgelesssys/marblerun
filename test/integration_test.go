@@ -290,11 +290,11 @@ func TestRecoveryRestoreKey(t *testing.T) {
 	require.NotNil(coordinatorProc)
 	defer coordinatorProc.Kill()
 
-	// Query status API, check if status response begins with Code -1 (recovery state)
+	// Query status API, check if status response begins with Code 1 (recovery state)
 	log.Println("Checking status...")
 	statusResponse, err := getStatus()
 	require.NoError(err)
-	assert.Contains(statusResponse, "{\"Code\":-1,")
+	assert.Contains(statusResponse, "{\"Code\":1,")
 
 	// Decode & Decrypt recovery data from when we set the manifest
 	var recoveryDataUnmarshalled server.RecoveryDataResp
@@ -309,7 +309,7 @@ func TestRecoveryRestoreKey(t *testing.T) {
 	log.Println("Performed recovery, now checking status again...")
 	statusResponse, err = getStatus()
 	require.NoError(err)
-	assert.Contains(statusResponse, "{\"Code\":2,", "Server is in wrong status after recovery.")
+	assert.Contains(statusResponse, "{\"Code\":3,", "Server is in wrong status after recovery.")
 
 	// Simulate restart of coordinator
 	log.Println("Simulating a restart of the coordinator enclave...")
@@ -326,7 +326,7 @@ func TestRecoveryRestoreKey(t *testing.T) {
 	log.Println("Restarted instance, now let's see if the state can be restored again successfully.")
 	statusResponse, err = getStatus()
 	require.NoError(err)
-	assert.Contains(statusResponse, "{\"Code\":2,", "Server is in wrong status after recovery.")
+	assert.Contains(statusResponse, "{\"Code\":3,", "Server is in wrong status after recovery.")
 }
 
 func TestRecoveryReset(t *testing.T) {
@@ -374,11 +374,11 @@ func TestRecoveryReset(t *testing.T) {
 	require.NotNil(coordinatorProc)
 	defer coordinatorProc.Kill()
 
-	// Query status API, check if status response begins with Code -1 (recovery state)
+	// Query status API, check if status response begins with Code 1 (recovery state)
 	log.Println("Checking status...")
 	statusResponse, err := getStatus()
 	require.NoError(err)
-	assert.Contains(statusResponse, "{\"Code\":-1,")
+	assert.Contains(statusResponse, "{\"Code\":1,")
 
 	// Set manifest again
 	log.Println("Setting the Manifest")
@@ -389,7 +389,7 @@ func TestRecoveryReset(t *testing.T) {
 	log.Println("Check if the manifest was accepted and we are ready to accept Marbles")
 	statusResponse, err = getStatus()
 	require.NoError(err)
-	assert.Contains(statusResponse, "{\"Code\":2,", "Server is in wrong status after recovery.")
+	assert.Contains(statusResponse, "{\"Code\":3,", "Server is in wrong status after recovery.")
 
 	// simulate restart of coordinator
 	log.Println("Simulating a restart of the coordinator enclave...")
@@ -406,7 +406,7 @@ func TestRecoveryReset(t *testing.T) {
 	log.Println("Restarted instance, now let's see if the new state can be decrypted successfully...")
 	statusResponse, err = getStatus()
 	require.NoError(err)
-	assert.Contains(statusResponse, "{\"Code\":2,", "Server is in wrong status after recovery.")
+	assert.Contains(statusResponse, "{\"Code\":3,", "Server is in wrong status after recovery.")
 }
 
 type coordinatorConfig struct {

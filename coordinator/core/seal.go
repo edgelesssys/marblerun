@@ -10,6 +10,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -21,6 +22,9 @@ const SealedDataFname string = "sealed_data"
 
 // SealedKeyFname contains the file name in which the key is sealed with the seal key on disk in seal_dir
 const SealedKeyFname string = "sealed_key"
+
+// ErrEncryptionKey occurs if unsealing the encryption key failed.
+var ErrEncryptionKey = errors.New("cannot unseal encryption key")
 
 // Sealer is an interface for the Core object to seal information to the filesystem for persistence
 type Sealer interface {
@@ -55,7 +59,7 @@ func (s *AESGCMSealer) Unseal() ([]byte, error) {
 
 	// Decrypt generated encryption key with seal key, if needed
 	if err = s.unsealEncryptionKey(); err != nil {
-		return nil, err
+		return nil, ErrEncryptionKey
 	}
 
 	// Decrypt data with the unsealed encryption key and return it
