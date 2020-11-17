@@ -1,4 +1,4 @@
-# Hello World
+# Hello world
 
 We have two basic examples of how to build confidential applications with Marblerun.
 
