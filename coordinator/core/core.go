@@ -167,9 +167,6 @@ func (c *Core) loadState(dnsNames []string) (*x509.Certificate, *ecdsa.PrivateKe
 	}
 
 	// set Core to loaded state
-	if err := json.Unmarshal(loadedState.RawManifest, &c.manifest); err != nil {
-		return nil, nil, err
-	}
 	cert, err := x509.ParseCertificate(loadedState.RawCert)
 	if err != nil {
 		return nil, nil, err
@@ -178,6 +175,12 @@ func (c *Core) loadState(dnsNames []string) (*x509.Certificate, *ecdsa.PrivateKe
 	if err != nil {
 		return nil, nil, err
 	}
+
+	if err := json.Unmarshal(loadedState.RawManifest, &c.manifest); err != nil {
+		return nil, nil, err
+	}
+	c.rawManifest = loadedState.RawManifest
+
 	c.state = loadedState.State
 	c.activations = loadedState.Activations
 	return cert, privk, err
