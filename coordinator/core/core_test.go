@@ -78,6 +78,6 @@ func TestSeal(t *testing.T) {
 	_, err = c2.SetManifest(context.TODO(), []byte(test.ManifestJSON))
 	assert.Error(err)
 
-	signature2 := c.GetManifestSignature(context.TODO())
+	signature2 := c2.GetManifestSignature(context.TODO())
 	assert.Equal(signature, signature2, "manifest signature differs after restart")
 }
