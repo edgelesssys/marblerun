@@ -42,7 +42,7 @@ Update the hostname with your cluster's FQDN.
 
 This explains how to configure the DNS for the Edgeless Mesh Client-API when running on an AKS cluster.
 
-### Configure FQDN for the coordinators' IP address
+### Configure FQDN for the Coordinator's IP address
 
 ```bash
 # Public IP address of your coordinator-client-api service

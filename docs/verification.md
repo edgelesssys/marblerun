@@ -29,17 +29,17 @@ You can pull the corresponding `coordinator-era.json` file from our release page
 
 After successful verification, you'll have the trusted root certificate `marblerun.crt` to use with your application.
 
-## Verifing the manifest
+## Verifing the Manifest
 
-Establishing trust with the service mesh allows you to verify the deployed manifest in the second step.
+Establishing trust with the service mesh allows you to verify the deployed Manifest in the second step.
 To that end, Marblerun exposes the endpoint `/manifest`.
-Using curl you can get the manifest's signature aka its sha256 hash:
+Using curl you can get the Manifest's signature aka its sha256 hash:
 
 ```bash
 curl --cacert marblerun.crt "https://$MARBLERUN/manifest" | jq '.ManifestSignature' --raw-output
 ```
 
-Compare this against your local version of the manifest:
+Compare this against your local version of the Manifest:
 
 ```bash
 sha256sum manifest.json

@@ -3,7 +3,7 @@
 Adding a service to your application requires two steps:
 
 1. Building your service together with Marblerun to inject our Marble data plane.
-2. Adding the service to the manifest so it will be recognized and managed by the Coordinator control plane.
+2. Adding the service to the Manifest so it will be recognized and managed by the Coordinator control plane.
 
 ## Building your service with Marblerun
 
@@ -19,7 +19,7 @@ We distinguish two cases when building your confidential application with Marble
 
 ## Adding your service to the Manifest
 
-The manifest contains a section with the information used to authenticate each service in the mesh:
+The Manifest contains a section with the information used to authenticate each service in the mesh:
 
 ```json
 	"Packages": {
@@ -73,7 +73,7 @@ You can add this directly to your `manifest.json` file like so:
 ```
 
 When you start your service, you need to pass in a couple of configuration parameters through environment variables.
-Make sure that you match the service's name in the manifest with the `EDG_MARBLE_TYPE` (Coordinator was started with `EDG_COORDINATOR_MESH_ADDR=localhost:2001`):
+Make sure that you match the service's name in the Manifest with the `EDG_MARBLE_TYPE` (Coordinator was started with `EDG_COORDINATOR_MESH_ADDR=localhost:2001`):
 
 ```bash
 EDG_MARBLE_COORDINATOR_ADDR=localhost:2001 EDG_MARBLE_TYPE=frontend EDG_MARBLE_UUID_FILE=$PWD/uuid EDG_MARBLE_DNS_NAMES=localhost erthost enclave.signed

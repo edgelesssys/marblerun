@@ -4,9 +4,9 @@ As of now, the monitoring capabilities of Marblerun are basic. For status inform
 It returns the following information.
 
 - **0 recovery mode**: Found a sealed state of an old seal key. Waiting for user input on [`/recover`](recovery.md).
-- **1 uninitialized**: Fresh start, initializing the coordinator.
+- **1 uninitialized**: Fresh start, initializing the Coordinator.
 - **2 waiting for a manifest**: Waiting for user input on [`/manifest`](set-manifest.md)
-- **3 accepting marbles**: Accepting marbles through the [Marble API](add-service.md)
+- **3 accepting marbles**: Accepting Marbles through the [Marble API](add-service.md)
 
 More details about the Coordinator can be retrieved through its log as follows.
 

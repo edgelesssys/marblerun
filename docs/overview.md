@@ -9,7 +9,7 @@ It specifies the topology of the distributed app, the infrastructure properties,
 
 ## Manifest
 
-The manifest is a simple JSON file specifying three asset groups: *Packages*, *Infrastructures*, and *Marbles*:
+The Manifest is a simple JSON file specifying three asset groups: *Packages*, *Infrastructures*, and *Marbles*:
 
 ### Manifest:Packages
 
@@ -23,7 +23,7 @@ It contains the secure enclave's measurements and associated properties:
 * **Debug**: A flag indicating whether your enclave should be run in debug mode
 
 You can use any combination of these values depending on how you want to identify the image.
-For each confidential container you want to run in your cluster, you need to add an entry in the *Packages* section of the manifest.
+For each confidential container you want to run in your cluster, you need to add an entry in the *Packages* section of the Manifest.
 
 ```json
     "Packages": {
@@ -44,7 +44,7 @@ For each confidential container you want to run in your cluster, you need to add
 
 ### Manifest:Marbles
 
-Marbles represent the actual services in your mesh. They are defined in the *Marbles* section. Each marble corresponds to a *Package* and defines a set of optional *Parameters*:
+Marbles represent the actual services in your mesh. They are defined in the *Marbles* section. Each Marble corresponds to a *Package* and defines a set of optional *Parameters*:
 
 * Files: Files and their contents
 * Env: Environment variables
@@ -52,10 +52,10 @@ Marbles represent the actual services in your mesh. They are defined in the *Mar
 
 These *Parameters* are passed from the Coordinator to secure enclaves after successful initial remote attestation. *Parameters* can contain the following placeholders:
 
-* `$$root_ca`: The root certificate of the cluster issued by the Coordinator; it can be used to verify the certificates of all marbles in the cluster.
-* `$$marble_cert`: The marble's certificate; issued by the Coordinator and used for marble-to-marble and marble-to-client authentication
+* `$$root_ca`: The root certificate of the cluster issued by the Coordinator; it can be used to verify the certificates of all Marbles in the cluster.
+* `$$marble_cert`: The Marble's certificate; issued by the Coordinator and used for Marble-to-Marble and Marble-to-client authentication
 * `$$marble_key`: The private key corresponding to `$$marble_cert`
-* `$$seal_key`: A 128-bit symmetric encryption key that can be used for sealing data to disk in a host-independent way; if a marble is scheduled or restarted on a new host, this "virtual sealing key" will still allow for unsealing data from the disk even though the host's actual sealing key might have changed.
+* `$$seal_key`: A 128-bit symmetric encryption key that can be used for sealing data to disk in a host-independent way; if a Marble is scheduled or restarted on a new host, this "virtual sealing key" will still allow for unsealing data from the disk even though the host's actual sealing key might have changed.
 
 ```json
     "Marbles": {
@@ -114,14 +114,14 @@ The Coordinator can be configured with several environment variables:
 The Client API is designed as an HTTP-REST interface.
 The API currently contains two endpoints:
 
-* `/manifest`: For deploying and verifying the manifest
-    * Example for setting the manifest:
+* `/manifest`: For deploying and verifying the Manifest
+    * Example for setting the Manifest:
 
         ```bash
         curl --cacert marblerun.crt --data-binary @manifest.json "https://$MARBLERUN/manifest"
         ```
 
-    * Example for verifying the deployed manifest
+    * Example for verifying the deployed Manifest
 
         ```bash
         curl --cacert marblerun.crt "https://$MARBLERUN/manifest" | jq '.ManifestSignature' --raw-output
@@ -149,7 +149,7 @@ The API currently contains two endpoints:
 
 ## Marbles
 
-Marbles represent the data plane in Marblerun and run your actual application code in secure enclaves within otherwise normal Docker containers. Marbles communicate with the Coordinator via gRPC over TLS. See the [Add a Service](add-service.md) section on how to build a marble.
+Marbles represent the data plane in Marblerun and run your actual application code in secure enclaves within otherwise normal Docker containers. Marbles communicate with the Coordinator via gRPC over TLS. See the [Add a Service](add-service.md) section on how to build a Marble.
 
 Marbles can be configured with several environment variables.
 
