@@ -9,7 +9,7 @@ Marblerun is written entirely in Go and builds on Edgeless RT, which is written 
 
 * [`coordinator`](coordinator):
     * [`config`](coordinator/config): Environment variables for configuration
-    * [`core`](coordinator/core): Provides the gRPC API for marbles and HTTP-REST API for clients
+    * [`core`](coordinator/core): Provides the gRPC API for Marbles and HTTP-REST API for clients
     * [`quote`](coordinator/quote): Provides remote attestation quotes
     * [`rpc`](coordinator/rpc): Protobuf definitions for the control plane <-> data plane communication.
     * [`server`](coordinator/server): Provides the gRPC and HTTP server
@@ -36,17 +36,17 @@ For building and installing the libertmeshpremain library (required for services
 
 ## Run
 
-### Run the coordinator
+### Run the Coordinator
 
 ```bash
 EDG_COORDINATOR_MESH_ADDR=localhost:2001 EDG_COORDINATOR_CLIENT_ADDR=localhost:4433 EDG_COORDINATOR_DNS_NAMES=localhost EDG_COORDINATOR_SEAL_DIR=$PWD OE_SIMULATION=1 erthost build/coordinator-enclave.signed
 ```
 
-*Note*: the coordinator's state is sealed to `$PWD/sealed_data`. If you want a fresh restart remove this file first: `rm $PWD/sealed_data`.
+*Note*: the Coordinator's state is sealed to `$PWD/sealed_data`. If you want a fresh restart remove this file first: `rm $PWD/sealed_data`.
 
-### Create a manifest
+### Create a Manifest
 
-See the [`how to add a service`](TODO) documentation for more information on how to create a manifest.
+See the [`how to add a service`](TODO) documentation for more information on how to create a Manifest.
 You can find the enclave's specific values (MRENCLAVE, MRSIGNER, etc.) in `build/marble-test-config.json`
 
 Here is an example that has only the `SecurityVersion` and `ProductID` set:
@@ -96,13 +96,13 @@ Here is an example that has only the `SecurityVersion` and `ProductID` set:
 }
 ```
 
-Save it in a file called `manifest.json` and upload it to the coordinator with curl in another terminal:
+Save it in a file called `manifest.json` and upload it to the Coordinator with curl in another terminal:
 
 ```bash
 curl -k --data-binary @manifest.json https://localhost:4433/manifest
 ```
 
-### Run the marbles
+### Run the Marbles
 
 Run a simple application.
 

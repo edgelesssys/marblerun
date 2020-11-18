@@ -19,7 +19,7 @@
 - Tasks
 
   - [Deploy Marblerun to your cluster](deploy.md)
-  - [Setting a manifest](set-manifest.md)
+  - [Setting a Manifest](set-manifest.md)
   - [Adding a service](add-service.md)
   - [Client-side verification](verification.md)
   - [Deployment updates](updates.md)

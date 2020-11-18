@@ -1,11 +1,11 @@
-# Setting a manifest
+# Setting a Manifest
 
-The manifest is a JSON document that defines which services span the mesh and how they should be configured.
+The Manifest is a JSON document that defines which services span the mesh and how they should be configured.
 It further defines what Infrastructure providers are allowed.
 You can set a Manifest through Marblerun's Client REST-API.
 The endpoint for all Manifest operations is `/manifest`.
 
-See the following manifest for example (manifest.jso
+See the following Manifest for example (`manifest.json`).
 
 ```json
 {
@@ -74,9 +74,9 @@ See the following manifest for example (manifest.jso
 }
 ```
 
-For setting the manifest, we first need to establish trust in the Marblerun coordinator.
+For setting the Manifest, we first need to establish trust in the Coordinator.
 Therefore, we perform a remote attestation step.
-Assuming you've deployed our coordinator image from `ghcr.io/edgelesssys/coordinator`:
+Assuming you've deployed our Coordinator image from `ghcr.io/edgelesssys/coordinator`:
 
 1. Pull the UniqueID and SignerID values for this image:
 
@@ -84,13 +84,13 @@ Assuming you've deployed our coordinator image from `ghcr.io/edgelesssys/coordin
     wget https://github.com/edgelesssys/marblerun/releases/latest/download/coordinator-era.json
     ```
 
-1. Use the Edgeless Remote Attestation tool to verify the Mesh's quote and get a trusted certificate:
+2. Use the Edgeless Remote Attestation tool to verify the Mesh's quote and get a trusted certificate:
 
     ```bash
     era -c coordinator-era.json -h $MARBLERUN -o marblerun.crt
     ```
 
-1. Now that we have established trust, we can set the manifest through the Client API:
+3. Now that we have established trust, we can set the Manifest through the Client API:
 
     ```bash
     curl --cacert marblerun.crt --data-binary @manifest.json "https://$MARBLERUN/manifest"
