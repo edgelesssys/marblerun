@@ -1,6 +1,6 @@
 # Marblerun
 
-![logo](docs/assets/mr_logo.svg)
+![logo](assets/mr_logo.svg)
 
 [![GitHub Actions Status][github-actions-badge]][github-actions]
 [![GitHub license][license-badge]](LICENSE)
@@ -22,12 +22,12 @@ To keep things simple, Marblerun issues one concise remote attestation statement
 
 ### Overview
 
-<img src="docs/assets/overview.svg" alt="overview" width="600"/>
+<img src="assets/overview.svg" alt="overview" width="600"/>
 
 ## Quickstart and documentation
 
-See the [Getting Started Guide](TODO) to set up a distributed confidential-computing app in a few simple steps.
-For more comprehensive documentation, start with the [docs](TODO).
+See the [Getting Started Guide][getting-started] to set up a distributed confidential-computing app in a few simple steps.
+For more comprehensive documentation, start with the [docs][docs].
 
 ## Working in this repo
 
@@ -59,8 +59,10 @@ Planned features include:
 * Distribution of the Control Plane to mitigate against a single point of failure
 
 <!-- refs -->
+[docs]: https://marblerun.sh/docs/introduction/
 [edgelessrt]: https://github.com/edgelesssys/edgelessrt
 [emojivoto]: https://github.com/edgelesssys/emojivoto
+[getting-started]: https://marblerun.sh/docs/getting-started/quickstart/
 [github-actions]: https://github.com/edgelesssys/marblerun/actions
 [github-actions-badge]: https://github.com/edgelesssys/marblerun/workflows/Unit%20Tests/badge.svg
 [go-report-card]: https://goreportcard.com/report/github.com/edgelesssys/marblerun
