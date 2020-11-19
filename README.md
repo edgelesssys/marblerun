@@ -68,7 +68,7 @@ Planned features include:
 [go-report-card]: https://goreportcard.com/report/github.com/edgelesssys/marblerun
 [go-report-card-badge]: https://goreportcard.com/badge/github.com/edgelesssys/marblerun
 [graphene]: https://github.com/oscarlab/graphene
-[license-badge]: https://img.shields.io/github/license/edgelesssys/mesh.svg
+[license-badge]: https://img.shields.io/github/license/edgelesssys/marblerun
 [linkerd]: https://linkerd.io
 [sgx-lkl]: https://github.com/lsds/sgx-lkl
 [slack]: https://join.slack.com/t/confidentialcloud/shared_invite/zt-ix8nzzr6-vVNb6IM76Ab8z9a_5NMJnQ
