@@ -160,5 +160,5 @@ You can build the docker image by providing a signing key:
 
 ```bash
 openssl genrsa -out private.pem -3 3072
-docker buildx build --secret id=repoaccess,src=<path to .netrc> --secret id=signingkey,src=private.pem --target release --tag ghcr.io/edgelesssys/coordinator .
+docker buildx build --secret id=signingkey,src=private.pem --target release --tag ghcr.io/edgelesssys/coordinator .
 ```

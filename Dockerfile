@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:experimental
 
 FROM alpine/git:latest AS pull
-RUN --mount=type=secret,id=repoaccess,dst=/root/.netrc,required=true git clone https://github.com/edgelesssys/marblerun.git /coordinator
+RUN git clone https://github.com/edgelesssys/marblerun.git /coordinator
 
 FROM ghcr.io/edgelesssys/edgelessrt-dev AS build
 COPY --from=pull /coordinator /coordinator
