@@ -5,10 +5,10 @@
 [![GitHub Actions Status][github-actions-badge]][github-actions]
 [![GitHub license][license-badge]](LICENSE)
 [![Go Report Card][go-report-card-badge]][go-report-card]
-[![PkgGoDev][go-pkg]](go-pkg)
+[![PkgGoDev][go-pkg-badge]][go-pkg]
 
 
-Marblerun is a framework for creating distributed confidential-computing apps.
+[Marblerun][marblerunsh] is a framework for creating distributed confidential-computing apps.
 
 Build your confidential microservices with [Edgeless RT][edgelessrt], distribute them with Kubernetes on an SGX-enabled cluster, and let Marblerun take care of the rest. Deploy end-to-end secure and verifiable AI pipelines or crunch on sensitive big data in the cloud. Confidential computing at scale has never been easier.
 
@@ -68,12 +68,14 @@ Planned features include:
 [getting-started]: https://marblerun.sh/docs/getting-started/quickstart/
 [github-actions]: https://github.com/edgelesssys/marblerun/actions
 [github-actions-badge]: https://github.com/edgelesssys/marblerun/workflows/Unit%20Tests/badge.svg
-[go-pkg]: https://pkg.go.dev/badge/github.com/edgelesssys/marblerun
+[go-pkg]: https://pkg.go.dev/github.com/edgelesssys/marblerun
+[go-pkg-badge]: https://pkg.go.dev/badge/github.com/edgelesssys/marblerun
 [go-report-card]: https://goreportcard.com/report/github.com/edgelesssys/marblerun
 [go-report-card-badge]: https://goreportcard.com/badge/github.com/edgelesssys/marblerun
 [graphene]: https://github.com/oscarlab/graphene
 [license-badge]: https://img.shields.io/github/license/edgelesssys/marblerun
 [linkerd]: https://linkerd.io
+[marblerunsh]: https://marblerun.sh
 [sgx-lkl]: https://github.com/lsds/sgx-lkl
 [slack]: https://join.slack.com/t/confidentialcloud/shared_invite/zt-ix8nzzr6-vVNb6IM76Ab8z9a_5NMJnQ
 [twitter]: https://twitter.com/EdgelessSystems
