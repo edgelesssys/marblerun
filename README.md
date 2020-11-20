@@ -5,6 +5,7 @@
 [![GitHub Actions Status][github-actions-badge]][github-actions]
 [![GitHub license][license-badge]](LICENSE)
 [![Go Report Card][go-report-card-badge]][go-report-card]
+[![PkgGoDev][go-pkg]](go-pkg)
 
 
 Marblerun (or Edgeless MR) is a framework for creating distributed confidential-computing apps.
@@ -66,6 +67,7 @@ Planned features include:
 [getting-started]: https://marblerun.sh/docs/getting-started/quickstart/
 [github-actions]: https://github.com/edgelesssys/marblerun/actions
 [github-actions-badge]: https://github.com/edgelesssys/marblerun/workflows/Unit%20Tests/badge.svg
+[go-pkg]: https://pkg.go.dev/badge/github.com/edgelesssys/marblerun
 [go-report-card]: https://goreportcard.com/report/github.com/edgelesssys/marblerun
 [go-report-card-badge]: https://goreportcard.com/badge/github.com/edgelesssys/marblerun
 [graphene]: https://github.com/oscarlab/graphene
