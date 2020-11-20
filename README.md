@@ -8,7 +8,7 @@
 [![PkgGoDev][go-pkg]](go-pkg)
 
 
-Marblerun (or Edgeless MR) is a framework for creating distributed confidential-computing apps.
+Marblerun is a framework for creating distributed confidential-computing apps.
 
 Build your confidential microservices with [Edgeless RT][edgelessrt], distribute them with Kubernetes on an SGX-enabled cluster, and let Marblerun take care of the rest. Deploy end-to-end secure and verifiable AI pipelines or crunch on sensitive big data in the cloud. Confidential computing at scale has never been easier.
 
@@ -18,9 +18,10 @@ To keep things simple, Marblerun issues one concise remote attestation statement
 
 ### Key features
 
-* Authentication and integrity verification of microservices :lock:
-* Provisioning of certificates, configurations, and application artifacts :package:
-* Remote attestation for the confidentiallity and integrity over the whole cluster :globe_with_meridians:
+* Authentication and integrity verification of microservices wrt. the Manifest :lock:
+* Secrets management for microservices :key:
+* Provisioning of certificates, configurations, and parameters :package:
+* Remote attestation of the entire cluster :globe_with_meridians:
 
 ### Overview
 
