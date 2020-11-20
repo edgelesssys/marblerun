@@ -46,7 +46,7 @@ EDG_COORDINATOR_MESH_ADDR=localhost:2001 EDG_COORDINATOR_CLIENT_ADDR=localhost:4
 
 ### Create a Manifest
 
-See the [`how to add a service`](TODO) documentation for more information on how to create a Manifest.
+See the [`how to add a service`](https://marblerun.sh/docs/tasks/add-service/) documentation for more information on how to create a Manifest.
 You can find the enclave's specific values (MRENCLAVE, MRSIGNER, etc.) in `build/marble-test-config.json`
 
 Here is an example that has only the `SecurityVersion` and `ProductID` set:

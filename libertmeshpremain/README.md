@@ -11,4 +11,4 @@ sudo make install
 ```
 
 ## Use
-See the [helloc++ sample](../samples/helloc++/README.md).
+See the [helloc++ sample](../samples/helloc++).
