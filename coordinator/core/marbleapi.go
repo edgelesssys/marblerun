@@ -33,7 +33,7 @@ import (
 // req needs to contain a MarbleType present in the Coordinator's manifest and a CSR with the Subject and DNSNames set with desired values.
 //
 // Returns a signed certificate-key-pair and the application's parameters if the authentication was successful.
-// Returns an error if the authenitcation failed.
+// Returns an error if the authentication failed.
 func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.ActivationResp, error) {
 	c.zaplogger.Info("Received activation request", zap.String("MarbleType", req.MarbleType))
 	defer c.mux.Unlock()
