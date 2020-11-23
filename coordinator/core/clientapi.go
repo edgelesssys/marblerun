@@ -137,17 +137,7 @@ func (c *Core) Recover(ctx context.Context, encryptionKey []byte) error {
 	c.cert = cert
 	c.privk = privk
 
-	c.zaplogger.Info("regenerating quote")
-	quote, err := c.qi.Issue(cert.Raw)
-	if err != nil {
-		c.zaplogger.Warn("Failed to get quote. Proceeding in simulation mode.")
-		// If we run in SimulationMode we get an error here
-		// For testing purpose we do not want to just fail here
-		// Instead we store an empty quote that will make it transparent to the client that the integrity of the mesh can not be guaranteed.
-		c.quote = []byte{}
-	} else {
-		c.quote = quote
-	}
+	c.quote, err = c.generateQuote()
 
 	return nil
 }
