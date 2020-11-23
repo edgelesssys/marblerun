@@ -24,7 +24,8 @@ type ClientCore interface {
 	SetManifest(ctx context.Context, rawManifest []byte) (recoveryDataBytes []byte, err error)
 	GetCertQuote(ctx context.Context) (cert string, certQuote []byte, err error)
 	GetManifestSignature(ctx context.Context) (manifestSignature []byte)
-	GetStatus(ctx context.Context) (status string, err error)
+	GetStatus(ctx context.Context) (statusCode int, status string, err error)
+	Recover(ctx context.Context, encryptionKey []byte) error
 }
 
 // SetManifest sets the manifest, once and for all
@@ -32,7 +33,7 @@ type ClientCore interface {
 // rawManifest is the manifest of type Manifest in JSON format.
 func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) ([]byte, error) {
 	defer c.mux.Unlock()
-	if err := c.requireState(stateAcceptingManifest); err != nil {
+	if err := c.requireState(stateAcceptingManifest, stateRecovery); err != nil {
 		return nil, err
 	}
 
@@ -66,9 +67,15 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) ([]byte, err
 		}
 	}
 
+	// Generate a new encryption key for a new manifest, as the old one might be broken
+	if err := c.sealer.GenerateNewEncryptionKey(); err != nil {
+		return nil, err
+	}
+
 	c.manifest = manifest
 	c.rawManifest = rawManifest
-	c.advanceState()
+
+	c.advanceState(stateAcceptingMarbles)
 	encryptionKey, err := c.sealState()
 	if err != nil {
 		c.zaplogger.Error("sealState failed", zap.Error(err))
@@ -111,12 +118,31 @@ func (c *Core) GetManifestSignature(ctx context.Context) []byte {
 	return hash[:]
 }
 
-// GetStatus is not implemented. It will return status information about the state of the mesh in the future.
-func (c *Core) GetStatus(ctx context.Context) (status string, err error) {
-	status, err = c.getStatus(ctx)
-	if err != nil {
-		return "", err
+// Recover sets an encryption key (ideally decrypted from the recovery data) and tries to unseal and load a saved state again.
+func (c *Core) Recover(ctx context.Context, encryptionKey []byte) error {
+	defer c.mux.Unlock()
+	if err := c.requireState(stateRecovery); err != nil {
+		return err
 	}
 
-	return status, nil
+	if err := c.sealer.SetEncryptionKey(encryptionKey); err != nil {
+		return err
+	}
+
+	cert, privk, err := c.loadState()
+	if err != nil {
+		return err
+	}
+
+	c.cert = cert
+	c.privk = privk
+
+	c.quote = c.generateQuote()
+
+	return nil
+}
+
+// GetStatus returns status information about the state of the mesh.
+func (c *Core) GetStatus(ctx context.Context) (statusCode int, status string, err error) {
+	return c.getStatus(ctx)
 }

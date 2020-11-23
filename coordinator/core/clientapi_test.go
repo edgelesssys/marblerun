@@ -92,3 +92,21 @@ func TestGetCertQuote(t *testing.T) {
 	assert.NoError(err, "GetCertQuote should not fail (with manifest)")
 	//todo check quote
 }
+
+func TestGetStatus(t *testing.T) {
+	assert := assert.New(t)
+	c, _ := mustSetup()
+
+	// Server should be ready to accept a manifest after initializing a mock core
+	statusCode, status, err := c.GetStatus(context.TODO())
+	assert.NoError(err, "GetStatus failed")
+	assert.EqualValues(stateAcceptingManifest, statusCode, "We should be ready to accept a manifest now, but GetStatus does tell us we don't.")
+	assert.NotEmpty(status, "Status string was empty, but should not.")
+
+	// Set a manifest, state should change
+	_, err = c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
+	statusCode, status, err = c.GetStatus(context.TODO())
+	assert.NoError(err, "GetStatus failed")
+	assert.EqualValues(stateAcceptingMarbles, statusCode, "We should be ready to accept Marbles now, but GetStatus does tell us we don't.")
+	assert.NotEmpty(status, "Status string was empty, but should not.")
+}
