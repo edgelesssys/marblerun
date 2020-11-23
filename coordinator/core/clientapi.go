@@ -137,16 +137,12 @@ func (c *Core) Recover(ctx context.Context, encryptionKey []byte) error {
 	c.cert = cert
 	c.privk = privk
 
-	c.quote, err = c.generateQuote()
+	c.quote = c.generateQuote()
 
 	return nil
 }
 
 // GetStatus returns status information about the state of the mesh.
 func (c *Core) GetStatus(ctx context.Context) (statusCode int, status string, err error) {
-	if err != nil {
-		return -1000, "Cannot determine server status", err
-	}
-
 	return c.getStatus(ctx)
 }

@@ -121,7 +121,7 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer Seal
 
 	c.cert = cert
 	c.privk = privk
-	c.quote, err = c.generateQuote()
+	c.quote = c.generateQuote()
 
 	return c, nil
 }
@@ -269,7 +269,7 @@ func (c *Core) generateCert(dnsNames []string) (*x509.Certificate, *ecdsa.Privat
 	return cert, privk, nil
 }
 
-func (c *Core) generateQuote() ([]byte, error) {
+func (c *Core) generateQuote() []byte {
 	c.zaplogger.Info("generating quote")
 	quote, err := c.qi.Issue(c.cert.Raw)
 	if err != nil {
@@ -277,9 +277,9 @@ func (c *Core) generateQuote() ([]byte, error) {
 		// If we run in SimulationMode we get an error here
 		// For testing purpose we do not want to just fail here
 		// Instead we store an empty quote that will make it transparent to the client that the integrity of the mesh can not be guaranteed.
-		return []byte{}, err
+		return []byte{}
 	}
-	return quote, nil
+	return quote
 }
 
 func getClientTLSCert(ctx context.Context) *x509.Certificate {

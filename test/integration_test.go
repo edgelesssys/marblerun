@@ -330,6 +330,7 @@ func TestRecoveryRestoreKey(t *testing.T) {
 	clientAPIURL.Path = "status"
 	resp, err = client.Get(clientAPIURL.String())
 	require.NoError(err)
+	resp.Body.Close()
 	require.Equal(http.StatusOK, resp.StatusCode)
 
 	// Simulate restart of coordinator
@@ -351,12 +352,9 @@ func TestRecoveryRestoreKey(t *testing.T) {
 
 	// test with certificate
 	log.Println("Verifying certificate after restart.")
-	pool = x509.NewCertPool()
-	require.True(pool.AppendCertsFromPEM([]byte(cert)))
-	client = http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{RootCAs: pool}}}
-	clientAPIURL.Path = "status"
 	resp, err = client.Get(clientAPIURL.String())
 	require.NoError(err)
+	resp.Body.Close()
 	require.Equal(http.StatusOK, resp.StatusCode)
 }
 
