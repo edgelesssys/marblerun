@@ -160,17 +160,13 @@ func (c *Core) inSimulationMode() bool {
 
 // GetTLSConfig gets the core's TLS configuration
 func (c *Core) GetTLSConfig() (*tls.Config, error) {
-	cert, err := c.GetTLSCertificate()
-	if err != nil {
-		return nil, err
-	}
 	return &tls.Config{
-		Certificates: []tls.Certificate{*cert},
+		GetCertificate: c.GetTLSCertificate,
 	}, nil
 }
 
 // GetTLSCertificate creates a TLS certificate for the Coordinators self-signed x509 certificate
-func (c *Core) GetTLSCertificate() (*tls.Certificate, error) {
+func (c *Core) GetTLSCertificate(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
 	if c.state == stateUninitialized {
 		return nil, errors.New("don't have a cert yet")
 	}
