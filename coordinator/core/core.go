@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"math"
 	"net"
 	"sync"
@@ -38,6 +39,7 @@ type Core struct {
 	sealer      Sealer
 	manifest    Manifest
 	rawManifest []byte
+	secrets     map[string]Secret
 	state       state
 	qv          quote.Validator
 	qi          quote.Issuer
@@ -62,6 +64,7 @@ type sealedState struct {
 	Privk       []byte
 	RawManifest []byte
 	RawCert     []byte
+	Secrets     map[string]Secret
 	State       state
 	Activations map[string]uint
 }
@@ -196,6 +199,9 @@ func (c *Core) loadState() (*x509.Certificate, *ecdsa.PrivateKey, error) {
 
 	c.state = loadedState.State
 	c.activations = loadedState.Activations
+	c.secrets = loadedState.Secrets
+	log.Println("Restoring secrets")
+	log.Println(c.secrets)
 	return cert, privk, err
 }
 
@@ -211,6 +217,7 @@ func (c *Core) sealState() ([]byte, error) {
 		RawManifest: c.rawManifest,
 		RawCert:     c.cert.Raw,
 		State:       c.state,
+		Secrets:     c.secrets,
 		Activations: c.activations,
 	}
 	stateRaw, err := json.Marshal(state)
@@ -310,4 +317,45 @@ func (c *Core) getStatus(ctx context.Context) (int, string, error) {
 	}
 
 	return int(c.state), status, nil
+}
+
+func (c *Core) generateSecrets(ctx context.Context, secrets map[string]Secret) (map[string]Secret, error) {
+	// Create a new map so we do not overwrite the entries in the manifest
+	newSecrets := make(map[string]Secret)
+
+	// Generate secrets
+	for name, secret := range secrets {
+		// Raw = Symmetric Key
+		switch secret.Type {
+		case "raw":
+			c.zaplogger.Info("Generating secret", zap.String("name", name), zap.String("type", secret.Type))
+			// Generate a random key of specified size
+			generatedValue := make([]byte, secret.Size)
+
+			if secret.Size == 0 {
+				return nil, errors.New("received the instruction to generate an empty secret")
+			}
+
+			_, err := rand.Read(generatedValue)
+			if err != nil {
+				return nil, err
+			}
+
+			// Get secret object from manifest, create a copy, modify it and put in in the new map so we do not overwrite the manifest entires
+			unfilledSecret := secrets[name]
+			filledSecret := newSecrets[name]
+
+			filledSecret = unfilledSecret
+			filledSecret.Private = generatedValue
+			filledSecret.Public = generatedValue
+
+			newSecrets[name] = filledSecret
+
+		// Everything else so far is not supported
+		default:
+			c.zaplogger.Error("This type of secret is not supported.", zap.String("name", name), zap.String("type", secret.Type))
+		}
+	}
+
+	return newSecrets, nil
 }

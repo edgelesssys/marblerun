@@ -58,7 +58,10 @@ const ManifestJSON string = `{
 					"ROOT_CA": "{{ pem .Marblerun.RootCA.Public }}",
 					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
 					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Public }}",
-					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}"
+					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}",
+					"TEST_SECRET_RAW": "{{ raw .Secrets.testsecret_raw }}",
+					"TEST_SECRET_HEX": "{{ hex .Secrets.testsecret_raw }}",
+					"TEST_SECRET_BASE64": "{{ base64 .Secrets.testsecret_raw }}"
 				},
 				"Argv": [
 					"--first",
@@ -94,7 +97,17 @@ const ManifestJSON string = `{
 	},
 	"Clients": {
 		"owner": [9,9,9]
-	}
+	},
+	"Secrets": {
+        "testsecret_raw": {
+            "size": 16,
+            "type": "raw"
+		},
+		"testsecret_cert": {
+			"size": 2048,
+			"type": "cert"
+		}
+    }
 }`
 
 // ManifestJSONWithRecoveryKey is a test manifest with a dynamically generated RSA key

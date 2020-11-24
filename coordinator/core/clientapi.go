@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"log"
 
 	"go.uber.org/zap"
 )
@@ -42,6 +43,13 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) ([]byte, err
 		return nil, err
 	}
 	if err := manifest.Check(ctx); err != nil {
+		return nil, err
+	}
+
+	// Generate secrets specified in manifest
+	secrets, err := c.generateSecrets(ctx, manifest.Secrets)
+	if err != nil {
+		c.zaplogger.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
 		return nil, err
 	}
 
@@ -74,6 +82,9 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) ([]byte, err
 
 	c.manifest = manifest
 	c.rawManifest = rawManifest
+	log.Println("Saving secrets in core")
+	c.secrets = secrets
+	log.Println(c.secrets)
 
 	c.advanceState(stateAcceptingMarbles)
 	encryptionKey, err := c.sealState()
