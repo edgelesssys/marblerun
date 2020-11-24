@@ -102,10 +102,6 @@ const ManifestJSON string = `{
         "testsecret_raw": {
             "size": 16,
             "type": "raw"
-		},
-		"testsecret_cert": {
-			"size": 2048,
-			"type": "cert"
 		}
     }
 }`

@@ -328,7 +328,7 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]Secret) (
 		// Raw = Symmetric Key
 		switch secret.Type {
 		case "raw":
-			c.zaplogger.Info("Generating secret", zap.String("name", name), zap.String("type", secret.Type))
+			c.zaplogger.Info("generating secret", zap.String("name", name), zap.String("type", secret.Type))
 			// Generate a random key of specified size
 			generatedValue := make([]byte, secret.Size)
 
@@ -353,7 +353,7 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]Secret) (
 
 		// Everything else so far is not supported
 		default:
-			c.zaplogger.Error("This type of secret is not supported.", zap.String("name", name), zap.String("type", secret.Type))
+			return nil, fmt.Errorf("unsupported secret of type %s", secret.Type)
 		}
 	}
 
