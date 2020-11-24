@@ -99,11 +99,11 @@ const ManifestJSON string = `{
 		"owner": [9,9,9]
 	},
 	"Secrets": {
-        "testsecret_raw": {
-            "size": 16,
-            "type": "raw"
+		"testsecret_raw": {
+			"size": 16,
+			"type": "raw"
 		}
-    }
+	}
 }`
 
 // ManifestJSONWithRecoveryKey is a test manifest with a dynamically generated RSA key
