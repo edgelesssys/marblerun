@@ -77,16 +77,16 @@ func encodeSecretDataToHex(data interface{}) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return hex.EncodeToString(raw), nil
+	return hex.EncodeToString([]byte(raw)), nil
 }
-func encodeSecretDataToRaw(data interface{}) ([]byte, error) {
+func encodeSecretDataToRaw(data interface{}) (string, error) {
 	if bytes, ok := data.([]byte); ok {
-		return bytes, nil
+		return string(bytes), nil
 	}
 	if secret, ok := data.(Secret); ok {
-		return secret.Public, nil
+		return string(secret.Public), nil
 	}
-	return nil, errors.New("invalid secret type")
+	return "", errors.New("invalid secret type")
 }
 
 func encodeSecretDataToBase64(data interface{}) (string, error) {
@@ -94,7 +94,7 @@ func encodeSecretDataToBase64(data interface{}) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return base64.StdEncoding.EncodeToString(raw), nil
+	return base64.StdEncoding.EncodeToString([]byte(raw)), nil
 }
 
 var manifestTemplateFuncMap = template.FuncMap{
