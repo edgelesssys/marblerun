@@ -7,15 +7,14 @@
 package core
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
-	"encoding/hex"
-	"encoding/pem"
 	"math"
-	"strings"
+	"text/template"
 	"time"
 
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
@@ -25,6 +24,17 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+type reservedSecrets struct {
+	RootCA     Secret
+	MarbleCert Secret
+	SealKey    Secret
+}
+
+// Defines the "Marblerun" prefix when mentioned in a manifest
+type reservedSecretsWrapper struct {
+	Marblerun reservedSecrets
+}
 
 // Activate implements the MarbleAPI function to authenticate a marble (implements the MarbleServer interface)
 //
@@ -81,12 +91,18 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	}
 
 	// customize marble's parameters
-	pemRootCA := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: c.cert.Raw})
-	pemMarbleCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certRaw})
-	pemMarbleKey := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: encodedPrivKey})
-	strSealKey := hex.EncodeToString(sealKey)
+	authSecrets := reservedSecrets{
+		RootCA:     Secret{Public: c.cert.Raw},
+		MarbleCert: Secret{Public: certRaw, Private: encodedPrivKey},
+		SealKey:    Secret{Public: sealKey, Private: sealKey},
+	}
+
 	marble := c.manifest.Marbles[req.GetMarbleType()] // existence has been checked in verifyManifestRequirement
-	params := customizeParameters(marble.Parameters, pemRootCA, pemMarbleCert, pemMarbleKey, strSealKey)
+	params, err := customizeParameters(marble.Parameters, authSecrets)
+	if err != nil {
+		c.zaplogger.Error("Could not customize parameters.", zap.Error(err))
+		return nil, err
+	}
 
 	// write response
 	resp := &rpc.ActivationResp{
@@ -177,26 +193,51 @@ func (c *Core) generateCertFromCSR(csrReq []byte, pubk ecdsa.PublicKey, marbleTy
 }
 
 // customizeParameters replaces the placeholders in the manifest's parameters with the actual values
-func customizeParameters(params *rpc.Parameters, rootCA []byte, marbleCert []byte, marbleKey []byte, sealKey string) *rpc.Parameters {
+func customizeParameters(params *rpc.Parameters, specialSecrets reservedSecrets) (*rpc.Parameters, error) {
 	customParams := rpc.Parameters{
 		Argv:  params.Argv,
 		Files: make(map[string]string),
 		Env:   make(map[string]string),
 	}
+
+	// Wrap the authentication secrets to have the "Marblerun" prefix in front of them when mentioned in a manifest
+	authSecretsWrapped := reservedSecretsWrapper{
+		Marblerun: specialSecrets,
+	}
+
 	// replace placeholders in files
-	r := strings.NewReplacer(rootCAPlaceholder, string(rootCA),
-		marbleCertPlaceholder, string(marbleCert),
-		marbleKeyPlaceholder, string(marbleKey),
-		sealKeyPlaceholder, sealKey)
 	for path, data := range params.Files {
-		newData := r.Replace(data)
-		customParams.Files[path] = newData
+		newValue, err := parseReservedSecrets(data, authSecretsWrapped)
+		if err != nil {
+			return nil, err
+		}
+
+		customParams.Files[path] = newValue
 	}
 
 	for name, data := range params.Env {
-		newData := r.Replace(data)
-		customParams.Env[name] = newData
+		newValue, err := parseReservedSecrets(data, authSecretsWrapped)
+		if err != nil {
+			return nil, err
+		}
+
+		customParams.Env[name] = newValue
 	}
 
-	return &customParams
+	return &customParams, nil
+}
+
+func parseReservedSecrets(data string, authSecretsWrapped reservedSecretsWrapper) (string, error) {
+	var templateResult bytes.Buffer
+
+	tpl, err := template.New("data").Funcs(manifestTemplateFuncMap).Parse(data)
+	if err != nil {
+		return "", err
+	}
+
+	if err := tpl.Execute(&templateResult, authSecretsWrapped); err != nil {
+		return "", err
+	}
+
+	return templateResult.String(), nil
 }

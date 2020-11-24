@@ -8,18 +8,14 @@ package core
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/hex"
+	"encoding/pem"
 	"errors"
+	"text/template"
 
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
-)
-
-// Manifest placeholder variables
-const (
-	rootCAPlaceholder     = "$$root_ca"
-	marbleCertPlaceholder = "$$marble_cert"
-	marbleKeyPlaceholder  = "$$marble_key"
-	sealKeyPlaceholder    = "$$seal_key"
 )
 
 // Manifest defines the rules of a mesh.
@@ -45,6 +41,67 @@ type Marble struct {
 	// Parameters contains lists for files, environment variables and commandline arguments that should be passed to the application.
 	// Placeholder variables are supported for specific assets of the marble's activation process.
 	Parameters *rpc.Parameters
+}
+
+// Secret describes a structure for storing certificates and keys, which can be used in combination with the go templating engine.
+
+// PrivateKey is a wrapper for a binary private key, which we need for type differentiation in the PEM encoding function
+type PrivateKey []byte
+
+// PublicKey is a wrapper for a binary public key, which we need for type differentiation in the PEM encoding function
+type PublicKey []byte
+
+// Secret defines a structure for storing certificates & encryption keys
+type Secret struct {
+	Private PrivateKey
+	Public  PublicKey
+}
+
+func encodeSecretDataToPem(data interface{}) (string, error) {
+	var pemData []byte
+
+	switch x := data.(type) {
+	case PublicKey:
+		pemData = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: x})
+	case PrivateKey:
+		pemData = pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: x})
+	default:
+		return "", errors.New("invalid secret type")
+	}
+
+	return string(pemData), nil
+}
+
+func encodeSecretDataToHex(data interface{}) (string, error) {
+	raw, err := encodeSecretDataToRaw(data)
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString([]byte(raw)), nil
+}
+func encodeSecretDataToRaw(data interface{}) (string, error) {
+	if bytes, ok := data.([]byte); ok {
+		return string(bytes), nil
+	}
+	if secret, ok := data.(Secret); ok {
+		return string(secret.Public), nil
+	}
+	return "", errors.New("invalid secret type")
+}
+
+func encodeSecretDataToBase64(data interface{}) (string, error) {
+	raw, err := encodeSecretDataToRaw(data)
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString([]byte(raw)), nil
+}
+
+var manifestTemplateFuncMap = template.FuncMap{
+	"pem":    encodeSecretDataToPem,
+	"hex":    encodeSecretDataToHex,
+	"raw":    encodeSecretDataToRaw,
+	"base64": encodeSecretDataToBase64,
 }
 
 // Check checks if the manifest is consistent.
