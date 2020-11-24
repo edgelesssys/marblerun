@@ -15,7 +15,6 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
-	"log"
 
 	"go.uber.org/zap"
 )
@@ -82,9 +81,7 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) ([]byte, err
 
 	c.manifest = manifest
 	c.rawManifest = rawManifest
-	log.Println("Saving secrets in core")
 	c.secrets = secrets
-	log.Println(c.secrets)
 
 	c.advanceState(stateAcceptingMarbles)
 	encryptionKey, err := c.sealState()

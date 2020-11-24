@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"math"
 	"net"
 	"sync"
@@ -200,8 +199,6 @@ func (c *Core) loadState() (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	c.state = loadedState.State
 	c.activations = loadedState.Activations
 	c.secrets = loadedState.Secrets
-	log.Println("Restoring secrets")
-	log.Println(c.secrets)
 	return cert, privk, err
 }
 

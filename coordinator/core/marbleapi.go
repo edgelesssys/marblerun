@@ -13,7 +13,6 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
-	"log"
 	"math"
 	"text/template"
 	"time"
@@ -233,8 +232,6 @@ func customizeParameters(params *rpc.Parameters, specialSecrets reservedSecrets,
 func parseSecrets(data string, secretsWrapped secretsWrapper) (string, error) {
 	var templateResult bytes.Buffer
 
-	log.Println("parseSecrets Entry: " + data)
-
 	tpl, err := template.New("data").Funcs(manifestTemplateFuncMap).Parse(data)
 	if err != nil {
 		return "", err
@@ -243,8 +240,6 @@ func parseSecrets(data string, secretsWrapped secretsWrapper) (string, error) {
 	if err := tpl.Execute(&templateResult, secretsWrapped); err != nil {
 		return "", err
 	}
-
-	log.Println("parseSecrets Exit: " + templateResult.String())
 
 	return templateResult.String(), nil
 }
