@@ -196,3 +196,70 @@ func (ms *marbleSpawner) newMarbleAsync(marbleType string, infraName string, sho
 		ms.wg.Done()
 	}()
 }
+
+func TestParseSecrets(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	testSecrets := map[string]Secret{
+		"mysecret":          {Type: "raw", Size: 16, Public: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, Private: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}},
+		"anothercoolsecret": {Type: "raw", Size: 8, Public: []byte{7, 6, 5, 4, 3, 2, 1, 0}, Private: []byte{7, 6, 5, 4, 3, 2, 1, 0}},
+	}
+
+	testReservedSecrets := reservedSecrets{
+		RootCA:     Secret{Type: "cert", Public: []byte{0, 0, 42}, Private: []byte{0, 0, 7}},
+		MarbleCert: Secret{Type: "cert", Public: []byte{42, 0, 0}, Private: []byte{7, 0, 0}},
+		SealKey:    Secret{Type: "raw", Public: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, Private: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}},
+	}
+
+	testWrappedSecrets := secretsWrapper{
+		Marblerun: testReservedSecrets,
+		Secrets:   testSecrets,
+	}
+
+	// Test all formats, pem should fail for raw/symmetric secrets
+	parsedSecret, err := parseSecrets("{{ raw .Secrets.mysecret }}", testWrappedSecrets)
+	require.NoError(err)
+	assert.EqualValues(testSecrets["mysecret"].Public, []byte(parsedSecret))
+
+	parsedSecret, err = parseSecrets("{{ hex .Secrets.mysecret }}", testWrappedSecrets)
+	require.NoError(err)
+	assert.EqualValues("000102030405060708090a0b0c0d0e0f", parsedSecret)
+
+	_, err = parseSecrets("{{ pem .Secrets.mysecret }}", testWrappedSecrets)
+	assert.Error(err)
+
+	parsedSecret, err = parseSecrets("{{ base64 .Secrets.mysecret }}", testWrappedSecrets)
+	require.NoError(err)
+	assert.EqualValues("AAECAwQFBgcICQoLDA0ODw==", parsedSecret)
+
+	// Test if we can access a second secret
+	parsedSecret, err = parseSecrets("{{ raw .Secrets.anothercoolsecret }}", testWrappedSecrets)
+	require.NoError(err)
+	assert.EqualValues(testSecrets["anothercoolsecret"].Public, []byte(parsedSecret))
+
+	// Test all the reserved placeholder secrets
+	expectedResult := "-----BEGIN CERTIFICATE-----\nAAAq\n-----END CERTIFICATE-----\n"
+	parsedSecret, err = parseSecrets("{{ pem .Marblerun.RootCA.Public }}", testWrappedSecrets)
+	require.NoError(err)
+	assert.EqualValues(expectedResult, parsedSecret)
+
+	expectedResult = "-----BEGIN CERTIFICATE-----\nKgAA\n-----END CERTIFICATE-----\n"
+	parsedSecret, err = parseSecrets("{{ pem .Marblerun.MarbleCert.Public }}", testWrappedSecrets)
+	require.NoError(err)
+	assert.EqualValues(expectedResult, parsedSecret)
+
+	expectedResult = "-----BEGIN PRIVATE KEY-----\nBwAA\n-----END PRIVATE KEY-----\n"
+
+	parsedSecret, err = parseSecrets("{{ pem .Marblerun.MarbleCert.Private }}", testWrappedSecrets)
+	require.NoError(err)
+	assert.EqualValues(expectedResult, parsedSecret)
+
+	parsedSecret, err = parseSecrets("{{ hex .Marblerun.SealKey }}", testWrappedSecrets)
+	require.NoError(err)
+	assert.EqualValues("000102030405060708090a0b0c0d0e0f", parsedSecret)
+
+	// We should get an error if we try to get a non-existing secret
+	_, err = parseSecrets("{{ hex .Secrets.idontexist }}", testWrappedSecrets)
+	assert.Error(err)
+}

@@ -123,3 +123,38 @@ func TestRecover(t *testing.T) {
 	assert.NoError(c2.Recover(context.TODO(), key))
 	assert.Equal(stateAcceptingMarbles, c2.state)
 }
+
+func TestGenerateSecrets(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	// Some secret maps which should represent secret entries from an unmarshaled JSON manifest
+	secretsToGenerate := map[string]Secret{
+		"rawTest1": {Type: "raw", Size: 16},
+		"rawTest2": {Type: "raw", Size: 32},
+	}
+
+	secretsNoSize := map[string]Secret{
+		"noSize": {Type: "raw"},
+	}
+
+	secretsInvalidType := map[string]Secret{
+		"unknownType": {Type: "crap"},
+	}
+
+	c := NewCoreWithMocks()
+
+	// This should return valid secrets
+	generatedSecrets, err := c.generateSecrets(context.TODO(), secretsToGenerate)
+	require.NoError(err)
+	assert.NotEmpty(generatedSecrets["rawTest1"].Public)
+	assert.NotEmpty(generatedSecrets["rawTest2"].Public)
+
+	// If no size is specified, the function should fail
+	_, err = c.generateSecrets(context.TODO(), secretsNoSize)
+	assert.Error(err)
+
+	// Also, it should fail if we try to generate a secret with an unknown type
+	_, err = c.generateSecrets(context.TODO(), secretsInvalidType)
+	assert.Error(err)
+}
