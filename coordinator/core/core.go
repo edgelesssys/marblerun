@@ -325,7 +325,7 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]Secret) (
 		// Raw = Symmetric Key
 		switch secret.Type {
 		case "raw":
-			c.zaplogger.Info("generating secret", zap.String("name", name), zap.String("type", secret.Type))
+			c.zaplogger.Info("generating secret", zap.String("name", name), zap.String("type", secret.Type), zap.Int("size", secret.Size))
 			// Generate a random key of specified size
 			generatedValue := make([]byte, secret.Size)
 
