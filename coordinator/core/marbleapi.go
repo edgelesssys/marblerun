@@ -25,14 +25,15 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type marbleSecretsStruct struct {
+type reservedSecrets struct {
 	RootCA     Secret
 	MarbleCert Secret
 	SealKey    Secret
 }
 
-type marbleSecretsWrapper struct {
-	Marblerun marbleSecretsStruct
+// Defines the "Marblerun" prefix when mentioned in a manifest
+type reservedSecretsWrapper struct {
+	Marblerun reservedSecrets
 }
 
 // Activate implements the MarbleAPI function to authenticate a marble (implements the MarbleServer interface)
@@ -90,37 +91,17 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	}
 
 	// customize marble's parameters
-	pemRootCAObject := Secret{
-		Name:   "rootCA",
-		Public: c.cert.Raw,
-	}
-
-	pemMarbleCertObject := Secret{
-		Name:    "marbleCert",
-		Public:  certRaw,
-		Private: encodedPrivKey,
-	}
-
-	strSealKeyObject := Secret{
-		Name:    "sealKey",
-		Public:  sealKey,
-		Private: sealKey,
-	}
-
-	marbleSecrets := marbleSecretsStruct{
-		RootCA:     pemRootCAObject,
-		MarbleCert: pemMarbleCertObject,
-		SealKey:    strSealKeyObject,
-	}
-
-	marbleSecretsWrapped := marbleSecretsWrapper{
-		Marblerun: marbleSecrets,
+	authSecrets := reservedSecrets{
+		RootCA:     Secret{Public: c.cert.Raw},
+		MarbleCert: Secret{Public: certRaw, Private: encodedPrivKey},
+		SealKey:    Secret{Public: sealKey, Private: sealKey},
 	}
 
 	marble := c.manifest.Marbles[req.GetMarbleType()] // existence has been checked in verifyManifestRequirement
-	params, err := customizeParameters(marble.Parameters, marbleSecretsWrapped)
+	params, err := customizeParameters(marble.Parameters, authSecrets)
 	if err != nil {
 		c.zaplogger.Error("Could not customize parameters.", zap.Error(err))
+		return nil, err
 	}
 
 	// write response
@@ -212,42 +193,51 @@ func (c *Core) generateCertFromCSR(csrReq []byte, pubk ecdsa.PublicKey, marbleTy
 }
 
 // customizeParameters replaces the placeholders in the manifest's parameters with the actual values
-func customizeParameters(params *rpc.Parameters, marbleSecretsWrapped marbleSecretsWrapper) (*rpc.Parameters, error) {
+func customizeParameters(params *rpc.Parameters, specialSecrets reservedSecrets) (*rpc.Parameters, error) {
 	customParams := rpc.Parameters{
 		Argv:  params.Argv,
 		Files: make(map[string]string),
 		Env:   make(map[string]string),
 	}
 
-	var templateResult bytes.Buffer
+	// Wrap the authentication secrets to have the "Marblerun" prefix in front of them when mentioned in a manifest
+	authSecretsWrapped := reservedSecretsWrapper{
+		Marblerun: specialSecrets,
+	}
+
 	// replace placeholders in files
 	for path, data := range params.Files {
-		tpl, err := template.New("data").Funcs(manifestTemplateFuncMap).Parse(data)
+		newValue, err := parseReservedSecrets(data, authSecretsWrapped)
 		if err != nil {
 			return nil, err
 		}
 
-		templateResult.Reset()
-		if err := tpl.Execute(&templateResult, marbleSecretsWrapped); err != nil {
-			return nil, err
-		}
-
-		customParams.Files[path] = templateResult.String()
+		customParams.Files[path] = newValue
 	}
 
 	for name, data := range params.Env {
-		tpl, err := template.New("data").Funcs(manifestTemplateFuncMap).Parse(data)
+		newValue, err := parseReservedSecrets(data, authSecretsWrapped)
 		if err != nil {
 			return nil, err
 		}
 
-		templateResult.Reset()
-		if err := tpl.Execute(&templateResult, marbleSecretsWrapped); err != nil {
-			return nil, err
-		}
-
-		customParams.Env[name] = templateResult.String()
+		customParams.Env[name] = newValue
 	}
 
 	return &customParams, nil
+}
+
+func parseReservedSecrets(data string, authSecretsWrapped reservedSecretsWrapper) (string, error) {
+	var templateResult bytes.Buffer
+
+	tpl, err := template.New("data").Funcs(manifestTemplateFuncMap).Parse(data)
+	if err != nil {
+		return "", err
+	}
+
+	if err := tpl.Execute(&templateResult, authSecretsWrapped); err != nil {
+		return "", err
+	}
+
+	return templateResult.String(), nil
 }

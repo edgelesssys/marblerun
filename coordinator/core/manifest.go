@@ -7,7 +7,6 @@
 package core
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/hex"
@@ -54,20 +53,11 @@ type PublicKey []byte
 
 // Secret defines a structure for storing certificates & encryption keys
 type Secret struct {
-	Name    string
 	Private PrivateKey
 	Public  PublicKey
 }
 
-// Key defines a shortcut to clarify a reference to symmetric keys in templates.
-func (s Secret) Key() []byte {
-	if bytes.Equal(s.Public, s.Private) {
-		return s.Private
-	}
-	return nil
-}
-
-func encodeSecretDataToPem(data interface{}) string {
+func encodeSecretDataToPem(data interface{}) (string, error) {
 	var pemData []byte
 
 	switch x := data.(type) {
@@ -75,20 +65,36 @@ func encodeSecretDataToPem(data interface{}) string {
 		pemData = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: x})
 	case PrivateKey:
 		pemData = pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: x})
+	default:
+		return "", errors.New("invalid secret type")
 	}
 
-	return string(pemData)
+	return string(pemData), nil
 }
 
-func encodeSecretDataToHex(data []byte) string {
-	return hex.EncodeToString(data)
+func encodeSecretDataToHex(data interface{}) (string, error) {
+	raw, err := encodeSecretDataToRaw(data)
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(raw), nil
+}
+func encodeSecretDataToRaw(data interface{}) ([]byte, error) {
+	if bytes, ok := data.([]byte); ok {
+		return bytes, nil
+	}
+	if secret, ok := data.(Secret); ok {
+		return secret.Public, nil
+	}
+	return nil, errors.New("invalid secret type")
 }
 
-func encodeSecretDataToRaw(data []byte) []byte {
-	return data
-}
-func encodeSecretDataToBase64(data []byte) string {
-	return base64.StdEncoding.EncodeToString(data)
+func encodeSecretDataToBase64(data interface{}) (string, error) {
+	raw, err := encodeSecretDataToRaw(data)
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(raw), nil
 }
 
 var manifestTemplateFuncMap = template.FuncMap{
