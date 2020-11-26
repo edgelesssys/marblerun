@@ -2,11 +2,11 @@ name: Unit Tests
 
 on:
   push:
-    branches: [ feat/nightlybuild ]
+  pull_request:
 
 jobs:
-  run:
-    runs-on: ubuntu-latest
+  test:
+    runs-on: ubuntu-18.04
     container:
       image: ghcr.io/edgelesssys/edgelessrt-dev:ci
 
@@ -14,30 +14,51 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
       with:
-        path: coordinator
+        path: marblerun
 
     - name: Test
       run: ertgo test -race ./...
-      working-directory: coordinator
+      working-directory: marblerun
 
-    - run: |
-        mkdir coordinator/build assets
+    - name: Setup
+      run: |
+        mkdir marblerun/build assets
         SHA=$(echo ${{ github.sha }} | cut -c1-8)
         echo "GITSHA=$SHA" >> $GITHUB_ENV
 
     - name: Build
       run: |
         cmake .. && make
-        cp coordinator-enclave.signed coordinator-noenclave coordinator-config.json public.pem private.pem ../../assets/
-      working-directory: coordinator/build
+      working-directory: marblerun/build
 
     - name: Integration test
       run: ertgo test -tags integration -b ../build -s
-      working-directory: coordinator/test
+      working-directory: marblerun/test
 
-    - name: query deployment repo for nightly build
-      run: |
-        curl -X POST -H "Accept:application/vnd.github.v3+json" \
-        -H "Authorization:token ${{ secrets.CI_GITHUB_REPOSITORY }}" \
-        -d '{"event_type":"nightly-build", "client_payload":{"repository":"marblerun", "imagename":"marblerun","target":"release"}}' \
-        https://api.github.com/repos/edgelesssys/deployment/dispatches
+    - name: Build artifact
+      uses: actions/upload-artifact@v2
+      if: github.ref != 'refs/heads/master'
+      with:
+        name: marblerun
+        path: |
+          marblerun/build/coordinator-enclave.signed
+          marblerun/build/coordinator-noenclave
+          marblerun/build/coordinator-config.json
+          marblerun/build/marble-test-enclave.signed
+          marblerun/build/marble-test-noenclave
+          marblerun/build/marble-test-config.json
+          marblerun/build/public.pem
+
+    - name: Deploy marblerun
+      if: github.ref == 'refs/heads/master' &&
+          github.event_name == 'push'
+      uses: peter-evans/repository-dispatch@v1
+      with:
+        token: ${{ secrets.CI_GITHUB_REPOSITORY }}
+        repository: edgelesssys/deployment
+        event-type: docker-build
+        client-payload: '{"repository": "marblerun",
+                          "type": "sign",
+                          "imagename": "marblerun",
+                          "tag": "nightly",
+                          "target": "release"}'
