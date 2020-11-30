@@ -69,8 +69,10 @@ func encodeSecretDataToPem(data interface{}) (string, error) {
 	var pemData []byte
 
 	switch x := data.(type) {
+	case *x509.Certificate:
+		pemData = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: x.Raw})
 	case PublicKey:
-		pemData = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: x})
+		pemData = pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: x})
 	case PrivateKey:
 		pemData = pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: x})
 	default:

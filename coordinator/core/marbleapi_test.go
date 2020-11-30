@@ -246,12 +246,12 @@ func TestParseSecrets(t *testing.T) {
 	assert.EqualValues(testSecrets["anothercoolsecret"].Public, []byte(parsedSecret))
 
 	// Test all the reserved placeholder secrets
-	expectedResult := "-----BEGIN CERTIFICATE-----\nAAAq\n-----END CERTIFICATE-----\n"
+	expectedResult := "-----BEGIN PUBLIC KEY-----\nAAAq\n-----END PUBLIC KEY-----\n"
 	parsedSecret, err = parseSecrets("{{ pem .Marblerun.RootCA.Public }}", testWrappedSecrets)
 	require.NoError(err)
 	assert.EqualValues(expectedResult, parsedSecret)
 
-	expectedResult = "-----BEGIN CERTIFICATE-----\nKgAA\n-----END CERTIFICATE-----\n"
+	expectedResult = "-----BEGIN PUBLIC KEY-----\nKgAA\n-----END PUBLIC KEY-----\n"
 	parsedSecret, err = parseSecrets("{{ pem .Marblerun.MarbleCert.Public }}", testWrappedSecrets)
 	require.NoError(err)
 	assert.EqualValues(expectedResult, parsedSecret)

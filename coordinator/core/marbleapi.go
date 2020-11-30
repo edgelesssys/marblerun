@@ -75,6 +75,10 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	if err != nil {
 		return nil, err
 	}
+	encodedPubKey, err := x509.MarshalPKIXPublicKey(&privk.PublicKey)
+	if err != nil {
+		return nil, err
+	}
 
 	// Derive sealing key for marble
 	uuidBytes, err := marbleUUID.MarshalBinary()
@@ -91,10 +95,15 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 		return nil, err
 	}
 
+	marbleCert, err := x509.ParseCertificate(certRaw)
+	if err != nil {
+		return nil, err
+	}
+
 	// customize marble's parameters
 	authSecrets := reservedSecrets{
-		RootCA:     Secret{Public: c.cert.Raw},
-		MarbleCert: Secret{Public: certRaw, Private: encodedPrivKey},
+		RootCA:     Secret{Cert: c.cert},
+		MarbleCert: Secret{Cert: marbleCert, Public: encodedPubKey, Private: encodedPrivKey},
 		SealKey:    Secret{Public: sealKey, Private: sealKey},
 	}
 

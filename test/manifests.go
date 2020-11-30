@@ -55,9 +55,9 @@ const ManifestJSON string = `{
 				},
 				"Env": {
 					"IS_FIRST": "true",
-					"ROOT_CA": "{{ pem .Marblerun.RootCA.Public }}",
+					"ROOT_CA": "{{ pem .Marblerun.RootCA.Cert }}",
 					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
-					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Public }}",
+					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Cert }}",
 					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}",
 					"TEST_SECRET_RAW": "{{ raw .Secrets.testsecret_raw }}"
 				},
@@ -71,9 +71,9 @@ const ManifestJSON string = `{
 			"Package": "backend",
 			"Parameters": {
 				"Env": {
-					"ROOT_CA": "{{ pem .Marblerun.RootCA.Public }}",
+					"ROOT_CA": "{{ pem .Marblerun.RootCA.Cert }}",
 					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
-					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Public }}",
+					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Cert }}",
 					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}"
 				},
 				"Argv": [
@@ -85,9 +85,9 @@ const ManifestJSON string = `{
 			"Package": "frontend",
 			"Parameters": {
 				"Env": {
-					"ROOT_CA": "{{ pem .Marblerun.RootCA.Public }}",
+					"ROOT_CA": "{{ pem .Marblerun.RootCA.Cert }}",
 					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
-					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Public }}",
+					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Cert }}",
 					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}"
 				}
 			}
@@ -127,9 +127,9 @@ var ManifestJSONWithRecoveryKey string = `{
 			"Package": "frontend",
 			"Parameters": {
 				"Env": {
-					"ROOT_CA": "{{ pem .Marblerun.RootCA.Public }}",
+					"ROOT_CA": "{{ pem .Marblerun.RootCA.Cert }}",
 					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
-					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Public }}",
+					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Cert }}",
 					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}"
 				}
 			}
@@ -177,9 +177,9 @@ var IntegrationManifestJSON string = `{
 				],
 				"Env": {
 					"IS_FIRST": "true",
-					"ROOT_CA": "{{ pem .Marblerun.RootCA.Public }}",
+					"ROOT_CA": "{{ pem .Marblerun.RootCA.Cert }}",
 					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
-					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Public }}",
+					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Cert }}",
 					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}"
 			}
 			}
@@ -193,9 +193,9 @@ var IntegrationManifestJSON string = `{
 				},
 				"Env": {
 					"IS_FIRST": "true",
-					"ROOT_CA": "{{ pem .Marblerun.RootCA.Public }}",
+					"ROOT_CA": "{{ pem .Marblerun.RootCA.Cert }}",
 					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
-					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Public }}",
+					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Cert }}",
 					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}"
 			}
 			}
@@ -208,9 +208,9 @@ var IntegrationManifestJSON string = `{
 					"/tmp/coordinator_test/jkl.mno": "bar"
 				},
 				"Env": {
-					"ROOT_CA": "{{ pem .Marblerun.RootCA.Public }}",
+					"ROOT_CA": "{{ pem .Marblerun.RootCA.Cert }}",
 					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
-					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Public }}",
+					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Cert }}",
 					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}"
 			}
 		}
