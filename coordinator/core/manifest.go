@@ -8,6 +8,7 @@ package core
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/pem"
@@ -55,10 +56,13 @@ type PublicKey []byte
 
 // Secret defines a structure for storing certificates & encryption keys
 type Secret struct {
-	Type    string
-	Size    uint
-	Private PrivateKey
-	Public  PublicKey
+	Type        string
+	Size        uint
+	Cert        *x509.Certificate `json:",omitempty"`
+	CertEncoded string
+	ValidFor    string
+	Private     PrivateKey
+	Public      PublicKey
 }
 
 func encodeSecretDataToPem(data interface{}) (string, error) {
