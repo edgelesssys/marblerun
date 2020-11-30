@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/big"
 	"net"
 	"sync"
 	"time"
@@ -417,7 +418,8 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]Secret) (
 			c.zaplogger.Info("generating Ed25519 certificate as secret", zap.String("name", name), zap.String("type", secret.Type), zap.Uint("size", secret.Size))
 
 			if secret.Size != 256 {
-				return nil, fmt.Errorf("ed25519 needs to specify size 256. supplied: %d", secret.Size)
+				c.zaplogger.Warn("ed25519 needs to specify size 256. Will automatically set to 256", zap.Uint("supplied_size", secret.Size))
+				secret.Size = 256
 			}
 
 			filledSecret := secrets[name]
@@ -506,7 +508,14 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]Secret) (
 
 func (c *Core) generateCertificateForSecret(secret Secret, key interface{}) (*x509.Certificate, error) {
 	// Load given information from manifest as template
-	template := secret.Cert
+	var template *x509.Certificate
+	var err error
+
+	if secret.Cert != nil {
+		template = secret.Cert
+	} else {
+		template = &x509.Certificate{}
+	}
 
 	// Define or overwrite some values for sane standards
 	if template.DNSNames == nil {
@@ -524,6 +533,13 @@ func (c *Core) generateCertificateForSecret(secret Secret, key interface{}) (*x5
 	if template.Subject.CommonName == "" {
 		template.Subject.CommonName = "Marblerun Generated Certificate"
 	}
+	if template.SerialNumber == nil {
+		template.SerialNumber, err = rand.Int(rand.Reader, big.NewInt(999999999999999999))
+		if err != nil {
+			c.zaplogger.Error("No serial number supplied; random number generation failed.", zap.Error(err))
+			return nil, err
+		}
+	}
 
 	template.IsCA = false
 	template.Issuer = c.cert.Subject
@@ -539,7 +555,6 @@ func (c *Core) generateCertificateForSecret(secret Secret, key interface{}) (*x5
 
 	// Generate certificate with given public key
 	var secretCertRaw []byte
-	var err error
 
 	// We have to use a switch case here to define the type of the key
 	// Also, ed25519 adresses the key differently
