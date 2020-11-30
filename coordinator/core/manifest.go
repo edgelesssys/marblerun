@@ -60,7 +60,7 @@ type Secret struct {
 	Size        uint
 	Cert        *x509.Certificate `json:",omitempty"`
 	CertEncoded string
-	ValidFor    string
+	ValidFor    uint
 	Private     PrivateKey
 	Public      PublicKey
 }

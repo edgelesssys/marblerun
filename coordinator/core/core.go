@@ -512,7 +512,15 @@ func (c *Core) generateCertificateForSecret(secret Secret, key interface{}) (*x5
 	template.IPAddresses = c.cert.IPAddresses
 	template.IsCA = false
 	template.NotBefore = time.Now()
-	template.NotAfter = time.Now().Add(time.Hour * 24 * 365)
+
+	if secret.ValidFor != 0 {
+		template.NotAfter = time.Now().Add(time.Hour * 24 * time.Duration(secret.ValidFor))
+	} else {
+		template.NotAfter = time.Now().Add(time.Hour * 24 * 365)
+	}
+
+	template.KeyUsage = x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign
+	template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}
 
 	var secretCertRaw []byte
 	var err error
