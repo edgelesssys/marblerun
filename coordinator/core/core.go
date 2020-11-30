@@ -505,26 +505,44 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]Secret) (
 }
 
 func (c *Core) generateCertificateForSecret(secret Secret, key interface{}) (*x509.Certificate, error) {
-	// Specify x509 certificate data
+	// Load given information from manifest as template
 	template := secret.Cert
 
-	template.DNSNames = c.cert.DNSNames
-	template.IPAddresses = c.cert.IPAddresses
+	// Define or overwrite some values for sane standards
+	if template.DNSNames == nil {
+		template.DNSNames = c.cert.DNSNames
+	}
+	if template.IPAddresses == nil {
+		template.IPAddresses = c.cert.IPAddresses
+	}
+	if template.KeyUsage == 0 {
+		template.KeyUsage = x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign
+	}
+	if template.ExtKeyUsage == nil {
+		template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}
+	}
+	if template.Subject.CommonName == "" {
+		template.Subject.CommonName = "Marblerun Generated Certificate"
+	}
+
 	template.IsCA = false
+	template.Issuer = c.cert.Subject
+	template.BasicConstraintsValid = true
 	template.NotBefore = time.Now()
 
+	// User can specify a duration in days, otherwise it's one year by default
 	if secret.ValidFor != 0 {
 		template.NotAfter = time.Now().Add(time.Hour * 24 * time.Duration(secret.ValidFor))
 	} else {
 		template.NotAfter = time.Now().Add(time.Hour * 24 * 365)
 	}
 
-	template.KeyUsage = x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign
-	template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}
-
+	// Generate certificate with given public key
 	var secretCertRaw []byte
 	var err error
 
+	// We have to use a switch case here to define the type of the key
+	// Also, ed25519 adresses the key differently
 	switch keyWithType := key.(type) {
 	case rsa.PublicKey:
 		secretCertRaw, err = x509.CreateCertificate(rand.Reader, template, c.cert, &keyWithType, c.privk)
