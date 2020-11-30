@@ -32,8 +32,9 @@ type reservedSecrets struct {
 }
 
 // Defines the "Marblerun" prefix when mentioned in a manifest
-type reservedSecretsWrapper struct {
+type secretsWrapper struct {
 	Marblerun reservedSecrets
+	Secrets   map[string]Secret
 }
 
 // Activate implements the MarbleAPI function to authenticate a marble (implements the MarbleServer interface)
@@ -98,7 +99,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	}
 
 	marble := c.manifest.Marbles[req.GetMarbleType()] // existence has been checked in verifyManifestRequirement
-	params, err := customizeParameters(marble.Parameters, authSecrets)
+	params, err := customizeParameters(marble.Parameters, authSecrets, c.secrets)
 	if err != nil {
 		c.zaplogger.Error("Could not customize parameters.", zap.Error(err))
 		return nil, err
@@ -193,7 +194,7 @@ func (c *Core) generateCertFromCSR(csrReq []byte, pubk ecdsa.PublicKey, marbleTy
 }
 
 // customizeParameters replaces the placeholders in the manifest's parameters with the actual values
-func customizeParameters(params *rpc.Parameters, specialSecrets reservedSecrets) (*rpc.Parameters, error) {
+func customizeParameters(params *rpc.Parameters, specialSecrets reservedSecrets, userSecrets map[string]Secret) (*rpc.Parameters, error) {
 	customParams := rpc.Parameters{
 		Argv:  params.Argv,
 		Files: make(map[string]string),
@@ -201,13 +202,14 @@ func customizeParameters(params *rpc.Parameters, specialSecrets reservedSecrets)
 	}
 
 	// Wrap the authentication secrets to have the "Marblerun" prefix in front of them when mentioned in a manifest
-	authSecretsWrapped := reservedSecretsWrapper{
+	secretsWrapped := secretsWrapper{
 		Marblerun: specialSecrets,
+		Secrets:   userSecrets,
 	}
 
 	// replace placeholders in files
 	for path, data := range params.Files {
-		newValue, err := parseReservedSecrets(data, authSecretsWrapped)
+		newValue, err := parseSecrets(data, secretsWrapped)
 		if err != nil {
 			return nil, err
 		}
@@ -216,7 +218,7 @@ func customizeParameters(params *rpc.Parameters, specialSecrets reservedSecrets)
 	}
 
 	for name, data := range params.Env {
-		newValue, err := parseReservedSecrets(data, authSecretsWrapped)
+		newValue, err := parseSecrets(data, secretsWrapped)
 		if err != nil {
 			return nil, err
 		}
@@ -227,7 +229,7 @@ func customizeParameters(params *rpc.Parameters, specialSecrets reservedSecrets)
 	return &customParams, nil
 }
 
-func parseReservedSecrets(data string, authSecretsWrapped reservedSecretsWrapper) (string, error) {
+func parseSecrets(data string, secretsWrapped secretsWrapper) (string, error) {
 	var templateResult bytes.Buffer
 
 	tpl, err := template.New("data").Funcs(manifestTemplateFuncMap).Parse(data)
@@ -235,7 +237,7 @@ func parseReservedSecrets(data string, authSecretsWrapped reservedSecretsWrapper
 		return "", err
 	}
 
-	if err := tpl.Execute(&templateResult, authSecretsWrapped); err != nil {
+	if err := tpl.Execute(&templateResult, secretsWrapped); err != nil {
 		return "", err
 	}
 

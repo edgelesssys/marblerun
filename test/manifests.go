@@ -58,7 +58,8 @@ const ManifestJSON string = `{
 					"ROOT_CA": "{{ pem .Marblerun.RootCA.Public }}",
 					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
 					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Public }}",
-					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}"
+					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}",
+					"TEST_SECRET_RAW": "{{ raw .Secrets.testsecret_raw }}"
 				},
 				"Argv": [
 					"--first",
@@ -94,6 +95,12 @@ const ManifestJSON string = `{
 	},
 	"Clients": {
 		"owner": [9,9,9]
+	},
+	"Secrets": {
+		"testsecret_raw": {
+			"size": 128,
+			"type": "raw"
+		}
 	}
 }`
 

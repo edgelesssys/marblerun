@@ -45,6 +45,13 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) ([]byte, err
 		return nil, err
 	}
 
+	// Generate secrets specified in manifest
+	secrets, err := c.generateSecrets(ctx, manifest.Secrets)
+	if err != nil {
+		c.zaplogger.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
+		return nil, err
+	}
+
 	var recoveryk *rsa.PublicKey
 
 	// Retrieve RSA public key for potential key recovery
@@ -74,6 +81,7 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) ([]byte, err
 
 	c.manifest = manifest
 	c.rawManifest = rawManifest
+	c.secrets = secrets
 
 	c.advanceState(stateAcceptingMarbles)
 	encryptionKey, err := c.sealState()
