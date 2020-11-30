@@ -100,6 +100,18 @@ const ManifestJSON string = `{
 		"testsecret_raw": {
 			"size": 128,
 			"type": "raw"
+		},
+		"testsecret_cert": {
+			"size": 2048,
+			"type": "cert-rsa",
+			"Cert": {
+				"SerialNumber": 42,
+				"Subject": {
+					"SerialNumber": "42",
+					"CommonName": "Marblerun Unit Test"
+				},
+			"validfor": 7
+			}
 		}
 	}
 }`
