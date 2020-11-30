@@ -361,7 +361,7 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]Secret) (
 	// Generate secrets
 	for name, secret := range secrets {
 		// Check secret size
-		if secret.Size == 0 || secret.Size%8 != 0 {
+		if secret.Size == 0 {
 			return nil, fmt.Errorf("invalid secret size: %v", name)
 		}
 

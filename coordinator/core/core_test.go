@@ -140,7 +140,10 @@ func TestGenerateSecrets(t *testing.T) {
 		"rawTest2":                {Type: "raw", Size: 256},
 		"cert-rsa-test":           {Type: "cert-rsa", Size: 2048, ValidFor: 365},
 		"cert-ed25519-test":       {Type: "cert-ed25519", Size: 256},
-		"cert-ecdsa-test":         {Type: "cert-ecdsa", Size: 256, ValidFor: 14},
+		"cert-ecdsa224-test":      {Type: "cert-ecdsa", Size: 224, ValidFor: 14},
+		"cert-ecdsa256-test":      {Type: "cert-ecdsa", Size: 256, ValidFor: 14},
+		"cert-ecdsa384-test":      {Type: "cert-ecdsa", Size: 384, ValidFor: 14},
+		"cert-ecdsa521-test":      {Type: "cert-ecdsa", Size: 521, ValidFor: 14},
 		"cert-rsa-specified-test": {Type: "cert-rsa", Size: 2048, Cert: &x509.Certificate{}},
 	}
 
