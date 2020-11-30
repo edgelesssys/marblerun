@@ -81,6 +81,11 @@ func TestSeal(t *testing.T) {
 	_, err = c2.SetManifest(context.TODO(), []byte(test.ManifestJSON))
 	assert.Error(err)
 
+	// Check if the secret specified in the test manifest is unsealed correctly
+	assert.IsType(Secret{}, c.secrets["testsecret_raw"])
+	assert.Len(c.secrets["testsecret_raw"].Public, 16)
+	assert.Len(c.secrets["testsecret_raw"].Private, 16)
+
 	signature2 := c2.GetManifestSignature(context.TODO())
 	assert.Equal(signature, signature2, "manifest signature differs after restart")
 }
@@ -130,8 +135,8 @@ func TestGenerateSecrets(t *testing.T) {
 
 	// Some secret maps which should represent secret entries from an unmarshaled JSON manifest
 	secretsToGenerate := map[string]Secret{
-		"rawTest1": {Type: "raw", Size: 16},
-		"rawTest2": {Type: "raw", Size: 32},
+		"rawTest1": {Type: "raw", Size: 128},
+		"rawTest2": {Type: "raw", Size: 256},
 	}
 
 	secretsNoSize := map[string]Secret{
@@ -142,13 +147,26 @@ func TestGenerateSecrets(t *testing.T) {
 		"unknownType": {Type: "crap"},
 	}
 
+	secretsEmptyMap := map[string]Secret{}
+
 	c := NewCoreWithMocks()
 
 	// This should return valid secrets
 	generatedSecrets, err := c.generateSecrets(context.TODO(), secretsToGenerate)
 	require.NoError(err)
-	assert.NotEmpty(generatedSecrets["rawTest1"].Public)
-	assert.NotEmpty(generatedSecrets["rawTest2"].Public)
+	// Check if rawTest1 has 128 Bits/16 Bytes and rawTest2 256 Bits/8 Bytes
+	assert.Len(generatedSecrets["rawTest1"].Public, 16)
+	assert.Len(generatedSecrets["rawTest2"].Public, 32)
+
+	// Check if we get an empty secret map as output for an empty map as input
+	generatedSecrets, err = c.generateSecrets(context.TODO(), secretsEmptyMap)
+	assert.IsType(map[string]Secret{}, generatedSecrets)
+	assert.Len(generatedSecrets, 0)
+
+	// Check if we get an empty secret map as output for nil
+	generatedSecrets, err = c.generateSecrets(context.TODO(), nil)
+	assert.IsType(map[string]Secret{}, generatedSecrets)
+	assert.Len(generatedSecrets, 0)
 
 	// If no size is specified, the function should fail
 	_, err = c.generateSecrets(context.TODO(), secretsNoSize)

@@ -177,6 +177,13 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	// Check Signature
 	ms.assert.NoError(ms.coreServer.cert.CheckSignature(newCert.SignatureAlgorithm, newCert.RawTBSCertificate, newCert.Signature))
 
+	// Validate generated secret (only specified in backend_first)
+	if marbleType == "backend_first" {
+		ms.assert.Len(params.Env["TEST_SECRET_RAW"], 16)
+	} else {
+		ms.assert.Empty(params.Env["TEST_SECRET_RAW"])
+	}
+
 	// Check cert-chain
 	roots := x509.NewCertPool()
 	ms.assert.True(roots.AppendCertsFromPEM([]byte(params.Env["ROOT_CA"])), "cannot parse rootCA")

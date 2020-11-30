@@ -59,9 +59,7 @@ const ManifestJSON string = `{
 					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
 					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Public }}",
 					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}",
-					"TEST_SECRET_RAW": "{{ raw .Secrets.testsecret_raw }}",
-					"TEST_SECRET_HEX": "{{ hex .Secrets.testsecret_raw }}",
-					"TEST_SECRET_BASE64": "{{ base64 .Secrets.testsecret_raw }}"
+					"TEST_SECRET_RAW": "{{ raw .Secrets.testsecret_raw }}"
 				},
 				"Argv": [
 					"--first",
@@ -100,7 +98,7 @@ const ManifestJSON string = `{
 	},
 	"Secrets": {
 		"testsecret_raw": {
-			"size": 16,
+			"size": 128,
 			"type": "raw"
 		}
 	}

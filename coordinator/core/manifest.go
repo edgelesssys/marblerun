@@ -56,7 +56,7 @@ type PublicKey []byte
 // Secret defines a structure for storing certificates & encryption keys
 type Secret struct {
 	Type    string
-	Size    int
+	Size    uint
 	Private PrivateKey
 	Public  PublicKey
 }

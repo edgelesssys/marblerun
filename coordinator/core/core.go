@@ -325,24 +325,20 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]Secret) (
 		// Raw = Symmetric Key
 		switch secret.Type {
 		case "raw":
-			c.zaplogger.Info("generating secret", zap.String("name", name), zap.String("type", secret.Type), zap.Int("size", secret.Size))
-			// Generate a random key of specified size
-			generatedValue := make([]byte, secret.Size)
-
-			if secret.Size == 0 {
-				return nil, errors.New("received the instruction to generate an empty secret")
+			c.zaplogger.Info("generating secret", zap.String("name", name), zap.String("type", secret.Type), zap.Uint("size", secret.Size))
+			// Generate a random key of specified size in bits
+			if secret.Size == 0 || secret.Size%8 != 0 {
+				return nil, fmt.Errorf("invalid secret size: %v", name)
 			}
 
+			generatedValue := make([]byte, secret.Size/8)
 			_, err := rand.Read(generatedValue)
 			if err != nil {
 				return nil, err
 			}
 
 			// Get secret object from manifest, create a copy, modify it and put in in the new map so we do not overwrite the manifest entires
-			unfilledSecret := secrets[name]
-			filledSecret := newSecrets[name]
-
-			filledSecret = unfilledSecret
+			filledSecret := secrets[name]
 			filledSecret.Private = generatedValue
 			filledSecret.Public = generatedValue
 
