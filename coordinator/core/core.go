@@ -210,7 +210,7 @@ func (c *Core) loadState() (*x509.Certificate, *ecdsa.PrivateKey, error) {
 			if err != nil {
 				return nil, nil, err
 			}
-			secretObject.Cert = parsedCertificate
+			secretObject.Cert = *parsedCertificate
 			loadedState.Secrets[name] = secretObject
 		}
 	}
@@ -493,16 +493,12 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]Secret) (
 	return newSecrets, nil
 }
 
-func (c *Core) generateCertificateForSecret(secret Secret, key interface{}) (*x509.Certificate, error) {
+func (c *Core) generateCertificateForSecret(secret Secret, key interface{}) (x509.Certificate, error) {
 	// Load given information from manifest as template
 	var template *x509.Certificate
 	var err error
 
-	if secret.Cert != nil {
-		template = secret.Cert
-	} else {
-		template = &x509.Certificate{}
-	}
+	template = &secret.Cert
 
 	// Define or overwrite some values for sane standards
 	if template.DNSNames == nil {
@@ -524,7 +520,7 @@ func (c *Core) generateCertificateForSecret(secret Secret, key interface{}) (*x5
 		template.SerialNumber, err = rand.Int(rand.Reader, big.NewInt(999999999999999999))
 		if err != nil {
 			c.zaplogger.Error("No serial number supplied; random number generation failed.", zap.Error(err))
-			return nil, err
+			return x509.Certificate{}, err
 		}
 	}
 
@@ -553,19 +549,19 @@ func (c *Core) generateCertificateForSecret(secret Secret, key interface{}) (*x5
 	case ecdsa.PublicKey:
 		secretCertRaw, err = x509.CreateCertificate(rand.Reader, template, c.cert, &keyWithType, c.privk)
 	default:
-		return nil, fmt.Errorf("unsupported key format: %T", key)
+		return x509.Certificate{}, fmt.Errorf("unsupported key format: %T", key)
 	}
 
 	if err != nil {
 		c.zaplogger.Error("Failed to generate X.509 certificate", zap.Error(err))
-		return nil, err
+		return x509.Certificate{}, err
 	}
 
 	cert, err := x509.ParseCertificate(secretCertRaw)
 	if err != nil {
 		c.zaplogger.Error("Failed to parse newly generated X.509 certificate", zap.Error(err))
-		return nil, err
+		return x509.Certificate{}, err
 	}
 
-	return cert, nil
+	return *cert, nil
 }

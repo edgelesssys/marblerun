@@ -144,7 +144,7 @@ func TestGenerateSecrets(t *testing.T) {
 		"cert-ecdsa256-test":      {Type: "cert-ecdsa", Size: 256, ValidFor: 14},
 		"cert-ecdsa384-test":      {Type: "cert-ecdsa", Size: 384, ValidFor: 14},
 		"cert-ecdsa521-test":      {Type: "cert-ecdsa", Size: 521, ValidFor: 14},
-		"cert-rsa-specified-test": {Type: "cert-rsa", Size: 2048, Cert: &x509.Certificate{}},
+		"cert-rsa-specified-test": {Type: "cert-rsa", Size: 2048, Cert: x509.Certificate{}},
 	}
 
 	secretsNoSize := map[string]Secret{
@@ -173,9 +173,9 @@ func TestGenerateSecrets(t *testing.T) {
 	// Check if rawTest1 has 128 Bits/16 Bytes and rawTest2 256 Bits/8 Bytes
 	assert.Len(generatedSecrets["rawTest1"].Public, 16)
 	assert.Len(generatedSecrets["rawTest2"].Public, 32)
-	assert.IsType(&x509.Certificate{}, generatedSecrets["cert-rsa-test"].Cert)
-	assert.IsType(&x509.Certificate{}, generatedSecrets["cert-ed25519-test"].Cert)
-	assert.IsType(&x509.Certificate{}, generatedSecrets["cert-ecdsa-test"].Cert)
+	assert.IsType(x509.Certificate{}, generatedSecrets["cert-rsa-test"].Cert)
+	assert.IsType(x509.Certificate{}, generatedSecrets["cert-ed25519-test"].Cert)
+	assert.IsType(x509.Certificate{}, generatedSecrets["cert-ecdsa-test"].Cert)
 
 	// Check if we get an empty secret map as output for an empty map as input
 	generatedSecrets, err = c.generateSecrets(context.TODO(), secretsEmptyMap)

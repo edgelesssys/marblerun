@@ -59,7 +59,7 @@ type PublicKey []byte
 type Secret struct {
 	Type        string
 	Size        uint
-	Cert        *x509.Certificate `json:",omitempty"`
+	Cert        x509.Certificate `json:",omitempty"`
 	CertEncoded string
 	ValidFor    uint
 	Private     PrivateKey
@@ -93,7 +93,7 @@ func encodeSecretDataToPem(data interface{}) (string, error) {
 	var pemData []byte
 
 	switch x := data.(type) {
-	case *x509.Certificate:
+	case x509.Certificate:
 		pemData = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: x.Raw})
 	case PublicKey:
 		pemData = pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: x})
