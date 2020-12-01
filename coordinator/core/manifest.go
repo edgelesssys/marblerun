@@ -18,6 +18,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
+	"github.com/google/uuid"
 )
 
 // Manifest defines the rules of a mesh.
@@ -30,7 +31,7 @@ type Manifest struct {
 	Marbles map[string]Marble
 	// Clients contains TLS certificates for authenticating clients that use the ClientAPI.
 	Clients map[string][]byte
-	// Secrets holds user-specified secrets, which should be generated and later on stored in the core.
+	// Secrets holds user-specified secrets, which should be generated and later on stored in a marble (if not shared) or in the core (if shared).
 	Secrets map[string]Secret
 	// Recovery holds a RSA public key to encrypt the state encryption key, which gets returned over the Client API when setting a manifest.
 	RecoveryKey string
@@ -59,6 +60,8 @@ type PublicKey []byte
 type Secret struct {
 	Type     string
 	Size     uint
+	Shared   bool
+	UUID     uuid.UUID `json:"-"`
 	Cert     Certificate
 	ValidFor uint
 	Private  PrivateKey

@@ -100,15 +100,32 @@ const ManifestJSON string = `{
 	"Secrets": {
 		"testsecret_raw": {
 			"Size": 128,
+			"Shared": true,
 			"Type": "raw"
 		},
-		"testsecret_cert": {
+		"testsecret_raw_nonshared": {
+			"Size": 256,
+			"Type": "raw"
+		},
+		"testsecret_cert_nonshared": {
 			"Size": 2048,
 			"Type": "cert-rsa",
 			"Cert": {
 				"SerialNumber": 42,
 				"Subject": {
 					"SerialNumber": "42",
+					"CommonName": "Marblerun Unit Test"
+				}
+			},
+			"ValidFor": 7
+		},
+		"testsecret_cert": {
+			"Shared": true,
+			"Type": "cert-ed25519",
+			"Cert": {
+				"SerialNumber": 1337,
+				"Subject": {
+					"SerialNumber": "1337",
 					"CommonName": "Marblerun Unit Test"
 				}
 			},

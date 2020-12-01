@@ -85,7 +85,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	if err != nil {
 		return nil, err
 	}
-	sealKey, err := util.DeriveKey(c.privk.D.Bytes(), uuidBytes)
+	sealKey, err := util.DeriveKey(c.privk.D.Bytes(), uuidBytes, 32)
 	if err != nil {
 		return nil, err
 	}
@@ -107,8 +107,29 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 		SealKey:    Secret{Public: sealKey, Private: sealKey},
 	}
 
+	// Generate unique (= per marble) secrets
+	uniqueSecrets := make(map[string]Secret)
+	for k, v := range c.manifest.Secrets {
+		if v.Shared == false {
+			v.UUID = marbleUUID
+			uniqueSecrets[k] = v
+		}
+	}
+	secrets, err := c.generateSecrets(ctx, uniqueSecrets)
+	if err != nil {
+		c.zaplogger.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
+		return nil, err
+	}
+
+	// Union unique secrets with shared secrets
+	for k, v := range c.secrets {
+		if v.Shared == true {
+			secrets[k] = v
+		}
+	}
+
 	marble := c.manifest.Marbles[req.GetMarbleType()] // existence has been checked in verifyManifestRequirement
-	params, err := customizeParameters(marble.Parameters, authSecrets, c.secrets)
+	params, err := customizeParameters(marble.Parameters, authSecrets, secrets)
 	if err != nil {
 		c.zaplogger.Error("Could not customize parameters.", zap.Error(err))
 		return nil, err
