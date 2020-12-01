@@ -512,6 +512,7 @@ func (c *Core) generateCertificateForSecret(secret Secret, privKey crypto.Privat
 
 	// Assemble secret object
 	secret.Cert = *cert
+	secret.CertEncoded = string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw}))
 	secret.Private, err = x509.MarshalPKCS8PrivateKey(privKey)
 	if err != nil {
 		c.zaplogger.Error("Failed to marshal private key to secret object", zap.Error(err))

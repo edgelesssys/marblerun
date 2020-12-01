@@ -77,6 +77,12 @@ func (s Secret) MarshalJSON() ([]byte, error) {
 		Public      PublicKey
 	}
 
+	// Convert certificate object to PEM when marshalling to JSON (e.g. sealing the state)
+	if s.Cert.Raw != nil {
+		pemData := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: s.Cert.Raw})
+		s.CertEncoded = string(pemData)
+	}
+
 	secretWithoutCert := SecretWithoutCert{
 		Type:        s.Type,
 		Size:        s.Size,

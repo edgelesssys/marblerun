@@ -83,9 +83,7 @@ func TestSeal(t *testing.T) {
 	assert.Error(err)
 
 	// Check if the secret specified in the test manifest is unsealed correctly
-	assert.IsType(Secret{}, c.secrets["testsecret_raw"])
-	assert.Len(c.secrets["testsecret_raw"].Public, 16)
-	assert.Len(c.secrets["testsecret_raw"].Private, 16)
+	assert.Equal(c.secrets, c2.secrets)
 
 	signature2 := c2.GetManifestSignature(context.TODO())
 	assert.Equal(signature, signature2, "manifest signature differs after restart")
@@ -173,9 +171,13 @@ func TestGenerateSecrets(t *testing.T) {
 	// Check if rawTest1 has 128 Bits/16 Bytes and rawTest2 256 Bits/8 Bytes
 	assert.Len(generatedSecrets["rawTest1"].Public, 16)
 	assert.Len(generatedSecrets["rawTest2"].Public, 32)
-	assert.IsType(x509.Certificate{}, generatedSecrets["cert-rsa-test"].Cert)
-	assert.IsType(x509.Certificate{}, generatedSecrets["cert-ed25519-test"].Cert)
-	assert.IsType(x509.Certificate{}, generatedSecrets["cert-ecdsa-test"].Cert)
+	assert.NotNil(generatedSecrets["cert-rsa-test"].Cert.Raw)
+	assert.NotNil(generatedSecrets["cert-ed25519-test"].Cert.Raw)
+	assert.NotNil(generatedSecrets["cert-ecdsa224-test"].Cert.Raw)
+	assert.NotNil(generatedSecrets["cert-ecdsa256-test"].Cert.Raw)
+	assert.NotNil(generatedSecrets["cert-ecdsa384-test"].Cert.Raw)
+	assert.NotNil(generatedSecrets["cert-ecdsa521-test"].Cert.Raw)
+	assert.NotNil(generatedSecrets["cert-rsa-specified-test"].Cert.Raw)
 
 	// Check if we get an empty secret map as output for an empty map as input
 	generatedSecrets, err = c.generateSecrets(context.TODO(), secretsEmptyMap)
