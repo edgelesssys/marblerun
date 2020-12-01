@@ -60,7 +60,8 @@ const ManifestJSON string = `{
 					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Cert }}",
 					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}",
 					"TEST_SECRET_RAW": "{{ raw .Secrets.testsecret_raw }}",
-					"TEST_SECRET_CERT": "{{ pem .Secrets.testsecret_cert.Cert }}"
+					"TEST_SECRET_CERT": "{{ pem .Secrets.testsecret_cert.Cert }}",
+					"TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.testsecret_cert_nonshared.Cert }}"
 				},
 				"Argv": [
 					"--first",
@@ -75,7 +76,9 @@ const ManifestJSON string = `{
 					"ROOT_CA": "{{ pem .Marblerun.RootCA.Cert }}",
 					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
 					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Cert }}",
-					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}"
+					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}",
+					"TEST_SECRET_CERT": "{{ pem .Secrets.testsecret_cert.Cert }}",
+					"TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.testsecret_cert_nonshared.Cert }}"
 				},
 				"Argv": [
 					"serve"

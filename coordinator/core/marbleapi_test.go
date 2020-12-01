@@ -32,6 +32,12 @@ import (
 	"google.golang.org/grpc/peer"
 )
 
+// Used to check if shared secrets are the same and non-shared secrets are indeed unique
+var backendFirstSharedCert x509.Certificate
+var backendFirstUniqueCert x509.Certificate
+var backendOtherSharedCert x509.Certificate
+var backendOtherUniqueCert x509.Certificate
+
 func TestActivate(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
@@ -91,6 +97,10 @@ func TestActivate(t *testing.T) {
 	}
 
 	spawner.wg.Wait()
+
+	// Check if non-shared secret with the same name is indeed not the same in different marbles
+	assert.EqualValues(backendFirstSharedCert, backendOtherSharedCert, "Shared secrets were different across different marbles, but were supposed to be the same.")
+	assert.NotEqualValues(backendFirstUniqueCert, backendOtherUniqueCert, "Non-shared secrets were the same across different marbles, but were supposed to be unique.")
 }
 
 type marbleSpawner struct {
@@ -199,18 +209,56 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	_, err = newCert.Verify(opts)
 	ms.assert.NoError(err, "failed to verify new certificate: %v", err)
 
+	// Shared & non-shared secret checks
 	if marbleType == "backend_first" {
-		// Validate generated secret certificate
+		// Validate generated shared secret certificate
 		p, _ = pem.Decode([]byte(params.Env["TEST_SECRET_CERT"]))
 		ms.assert.NotNil(p)
-		secretCert, err := x509.ParseCertificate(p.Bytes)
+		secretCertShared, err := x509.ParseCertificate(p.Bytes)
+		ms.assert.NotNil(p)
 		ms.assert.NoError(err)
-		_, err = secretCert.Verify(opts)
+		_, err = secretCertShared.Verify(opts)
 		ms.assert.NoError(err, "failed to verify secret certificate with root CA: %v", err)
+		backendFirstSharedCert = *secretCertShared
 
 		// Check if our certificate does actually expire 7 days, as specified, after it was generated
-		expectedNotBefore := secretCert.NotAfter.AddDate(0, 0, -7)
-		ms.assert.EqualValues(expectedNotBefore, secretCert.NotBefore)
+		expectedNotBefore := secretCertShared.NotAfter.AddDate(0, 0, -7)
+		ms.assert.EqualValues(expectedNotBefore, secretCertShared.NotBefore)
+
+		// Validate generated non-shared secret certificate
+		p, _ = pem.Decode([]byte(params.Env["TEST_SECRET_PRIVATE_CERT"]))
+		ms.assert.NotNil(p)
+		secretCertNonShared, err := x509.ParseCertificate(p.Bytes)
+		ms.assert.NotNil(p)
+		ms.assert.NoError(err)
+		_, err = secretCertNonShared.Verify(opts)
+		ms.assert.NoError(err, "failed to verify secret certificate with root CA: %v", err)
+		backendFirstUniqueCert = *secretCertNonShared
+
+		// Check if our certificate does actually expire 7 days, as specified, after it was generated
+		expectedNotBefore = secretCertNonShared.NotAfter.AddDate(0, 0, -7)
+		ms.assert.EqualValues(expectedNotBefore, secretCertNonShared.NotBefore)
+
+	} else if marbleType == "backend_other" {
+		// Validate generated shared secret certificate
+		p, _ = pem.Decode([]byte(params.Env["TEST_SECRET_CERT"]))
+		ms.assert.NotNil(p)
+		secretCertShared, err := x509.ParseCertificate(p.Bytes)
+		ms.assert.NotNil(p)
+		ms.assert.NoError(err)
+		_, err = secretCertShared.Verify(opts)
+		ms.assert.NoError(err, "failed to verify secret certificate with root CA: %v", err)
+		backendOtherSharedCert = *secretCertShared
+
+		// Validate generated non-shared secret certificate
+		p, _ = pem.Decode([]byte(params.Env["TEST_SECRET_PRIVATE_CERT"]))
+		ms.assert.NotNil(p)
+		secretCertNonShared, err := x509.ParseCertificate(p.Bytes)
+		ms.assert.NotNil(p)
+		ms.assert.NoError(err)
+		_, err = secretCertNonShared.Verify(opts)
+		ms.assert.NoError(err, "failed to verify secret certificate with root CA: %v", err)
+		backendOtherUniqueCert = *secretCertNonShared
 	}
 }
 
