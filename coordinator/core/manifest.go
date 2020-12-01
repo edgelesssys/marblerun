@@ -11,6 +11,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"text/template"
@@ -63,6 +64,29 @@ type Secret struct {
 	ValidFor    uint
 	Private     PrivateKey
 	Public      PublicKey
+}
+
+// MarshalJSON defines a custom marshaller which does not export a x509.Certificate object, otherwise we will be running into bugs due to JSON marshalled BitInts
+func (s Secret) MarshalJSON() ([]byte, error) {
+	type SecretWithoutCert struct {
+		Type        string
+		Size        uint
+		CertEncoded string
+		ValidFor    uint
+		Private     PrivateKey
+		Public      PublicKey
+	}
+
+	secretWithoutCert := SecretWithoutCert{
+		Type:        s.Type,
+		Size:        s.Size,
+		CertEncoded: s.CertEncoded,
+		ValidFor:    s.ValidFor,
+		Private:     s.Private,
+		Public:      s.Public,
+	}
+
+	return json.Marshal(secretWithoutCert)
 }
 
 func encodeSecretDataToPem(data interface{}) (string, error) {

@@ -233,27 +233,13 @@ func (c *Core) sealState() ([]byte, error) {
 		return nil, err
 	}
 
-	// Encode secret certificates to PEM to avoid JSON unmarshal errors due to BigInt
-	modifiedSecrets := make(map[string]Secret)
-	for name, secret := range c.secrets {
-		secretObject := c.secrets[name]
-		cert := secret.Cert
-
-		if cert != nil {
-			pemData := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
-			secretObject.CertEncoded = string(pemData)
-			secretObject.Cert = nil
-		}
-		modifiedSecrets[name] = secretObject
-	}
-
 	// seal with manifest set
 	state := sealedState{
 		Privk:       x509Encoded,
 		RawManifest: c.rawManifest,
 		RawCert:     c.cert.Raw,
 		State:       c.state,
-		Secrets:     modifiedSecrets,
+		Secrets:     c.secrets,
 		Activations: c.activations,
 	}
 	stateRaw, err := json.Marshal(state)
