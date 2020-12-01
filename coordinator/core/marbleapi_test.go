@@ -204,10 +204,13 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 		p, _ = pem.Decode([]byte(params.Env["TEST_SECRET_CERT"]))
 		ms.assert.NotNil(p)
 		secretCert, err := x509.ParseCertificate(p.Bytes)
-		ms.assert.NotNil(p)
 		ms.assert.NoError(err)
 		_, err = secretCert.Verify(opts)
 		ms.assert.NoError(err, "failed to verify secret certificate with root CA: %v", err)
+
+		// Check if our certificate does actually expire 7 days, as specified, after it was generated
+		expectedNotBefore := secretCert.NotAfter.AddDate(0, 0, -7)
+		ms.assert.EqualValues(expectedNotBefore, secretCert.NotBefore)
 	}
 }
 
@@ -224,18 +227,12 @@ func TestParseSecrets(t *testing.T) {
 	require := require.New(t)
 
 	// Generate keys
-	key, err := rsa.GenerateKey(rand.Reader, int(2048))
-	if err != nil {
-		panic(err)
-	}
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(err)
 	privKey, err := x509.MarshalPKCS8PrivateKey(key)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(err)
 	pubKey, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(err)
 
 	// Create some demo certificate
 	template := x509.Certificate{
@@ -295,7 +292,7 @@ func TestParseSecrets(t *testing.T) {
 	assert.Contains(parsedSecret, "-----BEGIN CERTIFICATE-----\n")
 
 	p, _ := pem.Decode([]byte(parsedSecret))
-	assert.NotNil(p)
+	require.NotNil(p)
 	parsedCertificate, err := x509.ParseCertificate(p.Bytes)
 	require.NoError(err)
 	assert.EqualValues(testCert, parsedCertificate)

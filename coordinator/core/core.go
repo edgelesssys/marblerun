@@ -481,7 +481,7 @@ func (c *Core) generateCertificateForSecret(secret Secret, privKey crypto.Privat
 	if secret.ValidFor == 0 {
 		secret.ValidFor = 365
 	}
-	template.NotAfter = time.Now().Add(time.Hour * 24 * time.Duration(secret.ValidFor))
+	template.NotAfter = time.Now().AddDate(0, 0, int(secret.ValidFor))
 
 	// Generate certificate with given public key
 	var secretCertRaw []byte
