@@ -139,7 +139,7 @@ func TestGenerateSecrets(t *testing.T) {
 		"rawTest1":                {Type: "raw", Size: 128},
 		"rawTest2":                {Type: "raw", Size: 256},
 		"cert-rsa-test":           {Type: "cert-rsa", Size: 2048, ValidFor: 365},
-		"cert-ed25519-test":       {Type: "cert-ed25519", Size: 256},
+		"cert-ed25519-test":       {Type: "cert-ed25519"},
 		"cert-ecdsa224-test":      {Type: "cert-ecdsa", Size: 224, ValidFor: 14},
 		"cert-ecdsa256-test":      {Type: "cert-ecdsa", Size: 256, ValidFor: 14},
 		"cert-ecdsa384-test":      {Type: "cert-ecdsa", Size: 384, ValidFor: 14},
@@ -195,9 +195,9 @@ func TestGenerateSecrets(t *testing.T) {
 	_, err = c.generateSecrets(context.TODO(), secretsInvalidType)
 	assert.Error(err)
 
-	// If Ed25519 key size is not 256, we should not fail as we automatically fix the size
+	// If Ed25519 key size is specified, we should fail
 	_, err = c.generateSecrets(context.TODO(), secretsEd25519WrongKeySize)
-	assert.NoError(err)
+	assert.Error(err)
 
 	// However, for ECDSA we fail as we can have multiple curves
 	_, err = c.generateSecrets(context.TODO(), secretsECDSAWrongKeySize)

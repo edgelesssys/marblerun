@@ -9,6 +9,7 @@ package core
 
 import (
 	"context"
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
@@ -22,8 +23,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"math/big"
-	"net"
 	"sync"
 	"time"
 
@@ -197,7 +196,6 @@ func (c *Core) loadState() (*x509.Certificate, *ecdsa.PrivateKey, error) {
 
 	// Decode secret certificates from PEM
 	for name, secret := range loadedState.Secrets {
-		secretObject := loadedState.Secrets[name]
 		certPem := secret.CertEncoded
 
 		if certPem != "" {
@@ -210,8 +208,8 @@ func (c *Core) loadState() (*x509.Certificate, *ecdsa.PrivateKey, error) {
 			if err != nil {
 				return nil, nil, err
 			}
-			secretObject.Cert = *parsedCertificate
-			loadedState.Secrets[name] = secretObject
+			secret.Cert = *parsedCertificate
+			loadedState.Secrets[name] = secret
 		}
 	}
 
@@ -276,7 +274,7 @@ func (c *Core) generateCert(dnsNames []string) (*x509.Certificate, *ecdsa.Privat
 			CommonName: CoordinatorName,
 		},
 		DNSNames:    dnsNames,
-		IPAddresses: []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
+		IPAddresses: util.DefaultCertificateIPAddresses,
 		NotBefore:   notBefore,
 		NotAfter:    notAfter,
 
@@ -347,15 +345,14 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]Secret) (
 
 	// Generate secrets
 	for name, secret := range secrets {
-		// Check secret size
-		if secret.Size == 0 {
-			return nil, fmt.Errorf("invalid secret size: %v", name)
-		}
-
+		c.zaplogger.Info("generating secret", zap.String("name", name), zap.String("type", secret.Type), zap.Uint("size", secret.Size))
 		switch secret.Type {
 		// Raw = Symmetric Key
 		case "raw":
-			c.zaplogger.Info("generating raw secret", zap.String("name", name), zap.String("type", secret.Type), zap.Uint("size", secret.Size))
+			// Check secret size
+			if secret.Size == 0 {
+				return nil, fmt.Errorf("invalid secret size: %v", name)
+			}
 
 			generatedValue := make([]byte, secret.Size/8)
 			_, err := rand.Read(generatedValue)
@@ -364,16 +361,16 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]Secret) (
 			}
 
 			// Get secret object from manifest, create a copy, modify it and put in in the new map so we do not overwrite the manifest entires
-			filledSecret := secrets[name]
-			filledSecret.Private = generatedValue
-			filledSecret.Public = generatedValue
+			secret.Private = generatedValue
+			secret.Public = generatedValue
 
-			newSecrets[name] = filledSecret
+			newSecrets[name] = secret
 
 		case "cert-rsa":
-			c.zaplogger.Info("generating RSA certificate as secret", zap.String("name", name), zap.String("type", secret.Type), zap.Uint("size", secret.Size))
-
-			filledSecret := secrets[name]
+			// Check secret size
+			if secret.Size == 0 {
+				return nil, fmt.Errorf("invalid secret size: %v", name)
+			}
 
 			// Generate keys
 			privKey, err := rsa.GenerateKey(rand.Reader, int(secret.Size))
@@ -381,35 +378,17 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]Secret) (
 				c.zaplogger.Error("Failed to generate RSA key", zap.Error(err))
 				return nil, err
 			}
-			filledSecret.Private, err = x509.MarshalPKCS8PrivateKey(privKey)
-			if err != nil {
-				c.zaplogger.Error("Failed to marshal RSA private key to secret object", zap.Error(err))
-				return nil, err
-			}
-			filledSecret.Public, err = x509.MarshalPKIXPublicKey(&privKey.PublicKey)
-			if err != nil {
-				c.zaplogger.Error("Failed to marshal RSA public key to secret object", zap.Error(err))
-				return nil, err
-			}
 
 			// Generate certificate
-			filledSecret.Cert, err = c.generateCertificateForSecret(secret, privKey.PublicKey)
+			newSecrets[name], err = c.generateCertificateForSecret(secret, privKey, &privKey.PublicKey)
 			if err != nil {
 				return nil, err
 			}
 
-			// Write to map
-			newSecrets[name] = filledSecret
-
 		case "cert-ed25519":
-			c.zaplogger.Info("generating Ed25519 certificate as secret", zap.String("name", name), zap.String("type", secret.Type), zap.Uint("size", secret.Size))
-
-			if secret.Size != 256 {
-				c.zaplogger.Warn("ed25519 needs to specify size 256. Will automatically set to 256", zap.Uint("supplied_size", secret.Size))
-				secret.Size = 256
+			if secret.Size != 0 {
+				return nil, fmt.Errorf("invalid secret size for cert-ed25519, none is expected. given: %v", name)
 			}
-
-			filledSecret := secrets[name]
 
 			// Generate keys
 			pubKey, privKey, err := ed25519.GenerateKey(rand.Reader)
@@ -417,29 +396,14 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]Secret) (
 				c.zaplogger.Error("Failed to generate ed25519 key", zap.Error(err))
 				return nil, err
 			}
-			filledSecret.Private, err = x509.MarshalPKCS8PrivateKey(privKey)
-			if err != nil {
-				c.zaplogger.Error("Failed to marshal ed25519 private key to secret object", zap.Error(err))
-				return nil, err
-			}
-			filledSecret.Public, err = x509.MarshalPKIXPublicKey(pubKey)
-			if err != nil {
-				c.zaplogger.Error("Failed to marshal ed25519 public key to secret object", zap.Error(err))
-				return nil, err
-			}
 
 			// Generate certificate
-			filledSecret.Cert, err = c.generateCertificateForSecret(secret, pubKey)
+			newSecrets[name], err = c.generateCertificateForSecret(secret, privKey, pubKey)
 			if err != nil {
 				return nil, err
 			}
 
-			// Write to map
-			newSecrets[name] = filledSecret
-
 		case "cert-ecdsa":
-			c.zaplogger.Info("generating ECDSA certificate as secret", zap.String("name", name), zap.String("type", secret.Type), zap.Uint("size", secret.Size))
-
 			var curve elliptic.Curve
 
 			switch secret.Size {
@@ -456,35 +420,19 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]Secret) (
 				return nil, fmt.Errorf("unsupported size %d: does not map to a supported curve", secret.Size)
 			}
 
-			filledSecret := secrets[name]
-
 			// Generate keys
 			privKey, err := ecdsa.GenerateKey(curve, rand.Reader)
 			if err != nil {
 				c.zaplogger.Error("Failed to generate ECSDA key", zap.Error(err))
 				return nil, err
 			}
-			filledSecret.Private, err = x509.MarshalPKCS8PrivateKey(privKey)
-			if err != nil {
-				c.zaplogger.Error("Failed to marshal ECDSA private key to secret object", zap.Error(err))
-				return nil, err
-			}
-			filledSecret.Public, err = x509.MarshalPKIXPublicKey(&privKey.PublicKey)
-			if err != nil {
-				c.zaplogger.Error("Failed to marshal ECDSA public key to secret object", zap.Error(err))
-				return nil, err
-			}
 
 			// Generate certificate
-			filledSecret.Cert, err = c.generateCertificateForSecret(secret, privKey.PublicKey)
+			newSecrets[name], err = c.generateCertificateForSecret(secret, privKey, &privKey.PublicKey)
 			if err != nil {
 				return nil, err
 			}
 
-			// Write to map
-			newSecrets[name] = filledSecret
-
-		// Everything else so far is not supported
 		default:
 			return nil, fmt.Errorf("unsupported secret of type %s", secret.Type)
 		}
@@ -493,19 +441,19 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]Secret) (
 	return newSecrets, nil
 }
 
-func (c *Core) generateCertificateForSecret(secret Secret, key interface{}) (x509.Certificate, error) {
+func (c *Core) generateCertificateForSecret(secret Secret, privKey crypto.PrivateKey, pubKey crypto.PublicKey) (Secret, error) {
 	// Load given information from manifest as template
-	var template *x509.Certificate
+	var template x509.Certificate
 	var err error
 
-	template = &secret.Cert
+	template = secret.Cert
 
 	// Define or overwrite some values for sane standards
 	if template.DNSNames == nil {
-		template.DNSNames = c.cert.DNSNames
+		template.DNSNames = []string{"localhost"}
 	}
 	if template.IPAddresses == nil {
-		template.IPAddresses = c.cert.IPAddresses
+		template.IPAddresses = util.DefaultCertificateIPAddresses
 	}
 	if template.KeyUsage == 0 {
 		template.KeyUsage = x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign
@@ -517,10 +465,10 @@ func (c *Core) generateCertificateForSecret(secret Secret, key interface{}) (x50
 		template.Subject.CommonName = "Marblerun Generated Certificate"
 	}
 	if template.SerialNumber == nil {
-		template.SerialNumber, err = rand.Int(rand.Reader, big.NewInt(999999999999999999))
+		template.SerialNumber, err = util.GenerateCertificateSerialNumber()
 		if err != nil {
 			c.zaplogger.Error("No serial number supplied; random number generation failed.", zap.Error(err))
-			return x509.Certificate{}, err
+			return Secret{}, err
 		}
 	}
 
@@ -530,38 +478,50 @@ func (c *Core) generateCertificateForSecret(secret Secret, key interface{}) (x50
 	template.NotBefore = time.Now()
 
 	// User can specify a duration in days, otherwise it's one year by default
-	if secret.ValidFor != 0 {
-		template.NotAfter = time.Now().Add(time.Hour * 24 * time.Duration(secret.ValidFor))
-	} else {
-		template.NotAfter = time.Now().Add(time.Hour * 24 * 365)
+	if secret.ValidFor == 0 {
+		secret.ValidFor = 365
 	}
+	template.NotAfter = time.Now().Add(time.Hour * 24 * time.Duration(secret.ValidFor))
 
 	// Generate certificate with given public key
 	var secretCertRaw []byte
 
 	// We have to use a switch case here to define the type of the key
 	// Also, ed25519 adresses the key differently
-	switch keyWithType := key.(type) {
-	case rsa.PublicKey:
-		secretCertRaw, err = x509.CreateCertificate(rand.Reader, template, c.cert, &keyWithType, c.privk)
+	switch keyWithType := pubKey.(type) {
+	case *rsa.PublicKey:
+		secretCertRaw, err = x509.CreateCertificate(rand.Reader, &template, c.cert, keyWithType, c.privk)
 	case ed25519.PublicKey:
-		secretCertRaw, err = x509.CreateCertificate(rand.Reader, template, c.cert, keyWithType, c.privk)
-	case ecdsa.PublicKey:
-		secretCertRaw, err = x509.CreateCertificate(rand.Reader, template, c.cert, &keyWithType, c.privk)
+		secretCertRaw, err = x509.CreateCertificate(rand.Reader, &template, c.cert, keyWithType, c.privk)
+	case *ecdsa.PublicKey:
+		secretCertRaw, err = x509.CreateCertificate(rand.Reader, &template, c.cert, keyWithType, c.privk)
 	default:
-		return x509.Certificate{}, fmt.Errorf("unsupported key format: %T", key)
+		return Secret{}, fmt.Errorf("unsupported key format: %T", pubKey)
 	}
 
 	if err != nil {
 		c.zaplogger.Error("Failed to generate X.509 certificate", zap.Error(err))
-		return x509.Certificate{}, err
+		return Secret{}, err
 	}
 
 	cert, err := x509.ParseCertificate(secretCertRaw)
 	if err != nil {
 		c.zaplogger.Error("Failed to parse newly generated X.509 certificate", zap.Error(err))
-		return x509.Certificate{}, err
+		return Secret{}, err
 	}
 
-	return *cert, nil
+	// Assemble secret object
+	secret.Cert = *cert
+	secret.Private, err = x509.MarshalPKCS8PrivateKey(privKey)
+	if err != nil {
+		c.zaplogger.Error("Failed to marshal private key to secret object", zap.Error(err))
+		return Secret{}, err
+	}
+	secret.Public, err = x509.MarshalPKIXPublicKey(pubKey)
+	if err != nil {
+		c.zaplogger.Error("Failed to marshal public key to secret object", zap.Error(err))
+		return Secret{}, err
+	}
+
+	return secret, nil
 }

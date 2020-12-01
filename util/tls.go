@@ -26,7 +26,7 @@ const marbleName string = "Marblerun Marble"
 // MustGenerateTestMarbleCredentials returns dummy Marble TLS credentials for testing
 func MustGenerateTestMarbleCredentials() (cert *x509.Certificate, csrRaw []byte, privk *ecdsa.PrivateKey) {
 	dnsNames := []string{"localhost", "*.foobar.net", "*.example.org"}
-	ipAddrs := []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback}
+	ipAddrs := DefaultCertificateIPAddresses
 
 	cert, privk, err := GenerateCert(dnsNames, ipAddrs, false)
 	if err != nil {
@@ -89,7 +89,7 @@ func GenerateCert(dnsNames []string, ipAddrs []net.IP, isCA bool) (*x509.Certifi
 func GenerateCSR(dnsNames []string, privk *ecdsa.PrivateKey) (*x509.CertificateRequest, error) {
 	template := x509.CertificateRequest{
 		DNSNames:    dnsNames,
-		IPAddresses: []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
+		IPAddresses: DefaultCertificateIPAddresses,
 	}
 	csrRaw, err := x509.CreateCertificateRequest(rand.Reader, &template, privk)
 	if err != nil {
