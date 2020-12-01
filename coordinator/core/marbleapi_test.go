@@ -198,6 +198,17 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	}
 	_, err = newCert.Verify(opts)
 	ms.assert.NoError(err, "failed to verify new certificate: %v", err)
+
+	if marbleType == "backend_first" {
+		// Validate generated secret certificate
+		p, _ = pem.Decode([]byte(params.Env["TEST_SECRET_CERT"]))
+		ms.assert.NotNil(p)
+		secretCert, err := x509.ParseCertificate(p.Bytes)
+		ms.assert.NotNil(p)
+		ms.assert.NoError(err)
+		_, err = secretCert.Verify(opts)
+		ms.assert.NoError(err, "failed to verify secret certificate with root CA: %v", err)
+	}
 }
 
 func (ms *marbleSpawner) newMarbleAsync(marbleType string, infraName string, shouldSucceed bool) {
