@@ -1,5 +1,7 @@
 # Marblerun
 
+[![Join the chat at https://gitter.im/edgeless-systems/Marblerun](https://badges.gitter.im/edgeless-systems/Marblerun.svg)](https://gitter.im/edgeless-systems/Marblerun?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 ![logo](assets/mr_logo.svg)
 
 [![GitHub Actions Status][github-actions-badge]][github-actions]
