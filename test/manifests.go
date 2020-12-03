@@ -55,10 +55,11 @@ const ManifestJSON string = `{
 				},
 				"Env": {
 					"IS_FIRST": "true",
-					"ROOT_CA": "$$root_ca",
-					"SEAL_KEY": "$$seal_key",
-					"MARBLE_CERT": "$$marble_cert",
-					"MARBLE_KEY": "$$marble_key"
+					"ROOT_CA": "{{ pem .Marblerun.RootCA.Public }}",
+					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
+					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Public }}",
+					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}",
+					"TEST_SECRET_RAW": "{{ raw .Secrets.testsecret_raw }}"
 				},
 				"Argv": [
 					"--first",
@@ -70,10 +71,10 @@ const ManifestJSON string = `{
 			"Package": "backend",
 			"Parameters": {
 				"Env": {
-					"ROOT_CA": "$$root_ca",
-					"SEAL_KEY": "$$seal_key",
-					"MARBLE_CERT": "$$marble_cert",
-					"MARBLE_KEY": "$$marble_key"
+					"ROOT_CA": "{{ pem .Marblerun.RootCA.Public }}",
+					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
+					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Public }}",
+					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}"
 				},
 				"Argv": [
 					"serve"
@@ -84,16 +85,22 @@ const ManifestJSON string = `{
 			"Package": "frontend",
 			"Parameters": {
 				"Env": {
-					"ROOT_CA": "$$root_ca",
-					"SEAL_KEY": "$$seal_key",
-					"MARBLE_CERT": "$$marble_cert",
-					"MARBLE_KEY": "$$marble_key"
+					"ROOT_CA": "{{ pem .Marblerun.RootCA.Public }}",
+					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
+					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Public }}",
+					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}"
 				}
 			}
 		}
 	},
 	"Clients": {
 		"owner": [9,9,9]
+	},
+	"Secrets": {
+		"testsecret_raw": {
+			"size": 128,
+			"type": "raw"
+		}
 	}
 }`
 
@@ -120,10 +127,10 @@ var ManifestJSONWithRecoveryKey string = `{
 			"Package": "frontend",
 			"Parameters": {
 				"Env": {
-					"ROOT_CA": "$$root_ca",
-					"SEAL_KEY": "$$seal_key",
-					"MARBLE_CERT": "$$marble_cert",
-					"MARBLE_KEY": "$$marble_key"
+					"ROOT_CA": "{{ pem .Marblerun.RootCA.Public }}",
+					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
+					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Public }}",
+					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}"
 				}
 			}
 		}
@@ -135,7 +142,7 @@ var ManifestJSONWithRecoveryKey string = `{
 }`
 
 // IntegrationManifestJSON is a test manifest
-const IntegrationManifestJSON string = `{
+var IntegrationManifestJSON string = `{
 	"Packages": {
 		"backend": {
 			"Debug": true,
@@ -170,10 +177,10 @@ const IntegrationManifestJSON string = `{
 				],
 				"Env": {
 					"IS_FIRST": "true",
-					"ROOT_CA": "$$root_ca",
-					"SEAL_KEY": "$$seal_key",
-					"MARBLE_CERT": "$$marble_cert",
-					"MARBLE_KEY": "$$marble_key"
+					"ROOT_CA": "{{ pem .Marblerun.RootCA.Public }}",
+					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
+					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Public }}",
+					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}"
 			}
 			}
 		},
@@ -186,10 +193,10 @@ const IntegrationManifestJSON string = `{
 				},
 				"Env": {
 					"IS_FIRST": "true",
-					"ROOT_CA": "$$root_ca",
-					"SEAL_KEY": "$$seal_key",
-					"MARBLE_CERT": "$$marble_cert",
-					"MARBLE_KEY": "$$marble_key"
+					"ROOT_CA": "{{ pem .Marblerun.RootCA.Public }}",
+					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
+					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Public }}",
+					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}"
 			}
 			}
 		},
@@ -201,17 +208,18 @@ const IntegrationManifestJSON string = `{
 					"/tmp/coordinator_test/jkl.mno": "bar"
 				},
 				"Env": {
-					"ROOT_CA": "$$root_ca",
-					"SEAL_KEY": "$$seal_key",
-					"MARBLE_CERT": "$$marble_cert",
-					"MARBLE_KEY": "$$marble_key"
+					"ROOT_CA": "{{ pem .Marblerun.RootCA.Public }}",
+					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
+					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Public }}",
+					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}"
 			}
 		}
 		}
 	},
 	"Clients": {
 		"owner": [9,9,9]
-	}
+	},
+	"RecoveryKey": "` + strings.ReplaceAll(string(RecoveryPublicKey), "\n", "\\n") + `"
 }`
 
 func generateTestRecoveryKey() (publicKeyPem []byte, privateKey *rsa.PrivateKey) {

@@ -17,6 +17,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"net"
 	"sync"
@@ -37,6 +38,7 @@ type Core struct {
 	sealer      Sealer
 	manifest    Manifest
 	rawManifest []byte
+	secrets     map[string]Secret
 	state       state
 	qv          quote.Validator
 	qi          quote.Issuer
@@ -50,8 +52,10 @@ type state int
 
 const (
 	stateUninitialized state = iota
+	stateRecovery
 	stateAcceptingManifest
 	stateAcceptingMarbles
+	stateMax
 )
 
 // sealedState represents the state information, required for persistence, that gets sealed to the filesystem
@@ -59,6 +63,7 @@ type sealedState struct {
 	Privk       []byte
 	RawManifest []byte
 	RawCert     []byte
+	Secrets     map[string]Secret
 	State       state
 	Activations map[string]uint
 }
@@ -67,16 +72,21 @@ type sealedState struct {
 const CoordinatorName string = "Marblerun Coordinator"
 
 // Needs to be paired with `defer c.mux.Unlock()`
-func (c *Core) requireState(state state) error {
+func (c *Core) requireState(states ...state) error {
 	c.mux.Lock()
-	if c.state != state {
-		return errors.New("server is not in expected state")
+	for _, s := range states {
+		if s == c.state {
+			return nil
+		}
 	}
-	return nil
+	return errors.New("server is not in expected state")
 }
 
-func (c *Core) advanceState() {
-	c.state++
+func (c *Core) advanceState(newState state) {
+	if !(c.state < newState && newState < stateMax) {
+		panic(fmt.Errorf("cannot advance from %d to %d", c.state, newState))
+	}
+	c.state = newState
 }
 
 // NewCore creates and initializes a new Core object
@@ -91,25 +101,30 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer Seal
 	}
 
 	zapLogger.Info("loading state")
-	cert, privk, err := c.loadState(dnsNames)
+	cert, privk, err := c.loadState()
 	if err != nil {
-		return nil, err
-	}
-
-	zapLogger.Info("generating quote")
-	quote, err := c.qi.Issue(cert.Raw)
-	if err != nil {
-		zapLogger.Warn("Failed to get quote. Proceeding in simulation mode.")
-		// If we run in SimulationMode we get an error here
-		// For testing purpose we do not want to just fail here
-		// Instead we store an empty quote that will make it transparent to the client that the integrity of the mesh can not be guaranteed.
-		c.quote = []byte{}
-	} else {
-		c.quote = quote
+		if err != ErrEncryptionKey {
+			return nil, err
+		}
+		c.zaplogger.Error("Failed to decrypt sealed state. Processing with a new state. Use the /recover API endpoint to load an old state, or submit a new manifest to overwrite the old state. Look up the documentation for more information on how to proceed.")
+		cert, privk, err = c.generateCert(dnsNames)
+		if err != nil {
+			return nil, err
+		}
+		c.advanceState(stateRecovery)
+	} else if cert == nil {
+		c.zaplogger.Info("No sealed state found. Proceeding with new state.")
+		cert, privk, err = c.generateCert(dnsNames)
+		if err != nil {
+			return nil, err
+		}
+		c.advanceState(stateAcceptingManifest)
 	}
 
 	c.cert = cert
 	c.privk = privk
+	c.quote = c.generateQuote()
+
 	return c, nil
 }
 
@@ -137,32 +152,26 @@ func (c *Core) inSimulationMode() bool {
 
 // GetTLSConfig gets the core's TLS configuration
 func (c *Core) GetTLSConfig() (*tls.Config, error) {
-	cert, err := c.GetTLSCertificate()
-	if err != nil {
-		return nil, err
-	}
 	return &tls.Config{
-		Certificates: []tls.Certificate{*cert},
+		GetCertificate: c.GetTLSCertificate,
 	}, nil
 }
 
 // GetTLSCertificate creates a TLS certificate for the Coordinators self-signed x509 certificate
-func (c *Core) GetTLSCertificate() (*tls.Certificate, error) {
+func (c *Core) GetTLSCertificate(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
 	if c.state == stateUninitialized {
 		return nil, errors.New("don't have a cert yet")
 	}
 	return util.TLSCertFromDER(c.cert.Raw, c.privk), nil
 }
 
-func (c *Core) loadState(dnsNames []string) (*x509.Certificate, *ecdsa.PrivateKey, error) {
+func (c *Core) loadState() (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	stateRaw, err := c.sealer.Unseal()
 	if err != nil {
 		return nil, nil, err
 	}
-	// generate new state if there isn't something in the fs yet
 	if len(stateRaw) == 0 {
-		c.zaplogger.Info("No sealed state found. Proceeding with new state.")
-		return c.generateCert(dnsNames)
+		return nil, nil, nil
 	}
 
 	// load state
@@ -189,6 +198,7 @@ func (c *Core) loadState(dnsNames []string) (*x509.Certificate, *ecdsa.PrivateKe
 
 	c.state = loadedState.State
 	c.activations = loadedState.Activations
+	c.secrets = loadedState.Secrets
 	return cert, privk, err
 }
 
@@ -204,6 +214,7 @@ func (c *Core) sealState() ([]byte, error) {
 		RawManifest: c.rawManifest,
 		RawCert:     c.cert.Raw,
 		State:       c.state,
+		Secrets:     c.secrets,
 		Activations: c.activations,
 	}
 	stateRaw, err := json.Marshal(state)
@@ -259,8 +270,20 @@ func (c *Core) generateCert(dnsNames []string) (*x509.Certificate, *ecdsa.Privat
 		return nil, nil, err
 	}
 
-	c.advanceState()
 	return cert, privk, nil
+}
+
+func (c *Core) generateQuote() []byte {
+	c.zaplogger.Info("generating quote")
+	quote, err := c.qi.Issue(c.cert.Raw)
+	if err != nil {
+		c.zaplogger.Warn("Failed to get quote. Proceeding in simulation mode.")
+		// If we run in SimulationMode we get an error here
+		// For testing purpose we do not want to just fail here
+		// Instead we store an empty quote that will make it transparent to the client that the integrity of the mesh can not be guaranteed.
+		return []byte{}
+	}
+	return quote
 }
 
 func getClientTLSCert(ctx context.Context) *x509.Certificate {
@@ -276,6 +299,56 @@ func getClientTLSCert(ctx context.Context) *x509.Certificate {
 	return tlsInfo.State.PeerCertificates[0]
 }
 
-func (c *Core) getStatus(ctx context.Context) (string, error) {
-	return "this is a test status", nil
+func (c *Core) getStatus(ctx context.Context) (int, string, error) {
+	var status string
+
+	switch c.state {
+	case stateRecovery:
+		status = "Coordinator is in recovery mode. Either upload a key to unseal the saved state, or set a new manifest. For more information on how to proceed, consult the documentation."
+	case stateAcceptingManifest:
+		status = "Coordinator is ready to accept a manifest."
+	case stateAcceptingMarbles:
+		status = "Coordinator is running correctly and ready to accept marbles."
+	default:
+		return -1, "Cannot determine coordinator status.", errors.New("cannot determine coordinator status")
+	}
+
+	return int(c.state), status, nil
+}
+
+func (c *Core) generateSecrets(ctx context.Context, secrets map[string]Secret) (map[string]Secret, error) {
+	// Create a new map so we do not overwrite the entries in the manifest
+	newSecrets := make(map[string]Secret)
+
+	// Generate secrets
+	for name, secret := range secrets {
+		// Raw = Symmetric Key
+		switch secret.Type {
+		case "raw":
+			c.zaplogger.Info("generating secret", zap.String("name", name), zap.String("type", secret.Type), zap.Uint("size", secret.Size))
+			// Generate a random key of specified size in bits
+			if secret.Size == 0 || secret.Size%8 != 0 {
+				return nil, fmt.Errorf("invalid secret size: %v", name)
+			}
+
+			generatedValue := make([]byte, secret.Size/8)
+			_, err := rand.Read(generatedValue)
+			if err != nil {
+				return nil, err
+			}
+
+			// Get secret object from manifest, create a copy, modify it and put in in the new map so we do not overwrite the manifest entires
+			filledSecret := secrets[name]
+			filledSecret.Private = generatedValue
+			filledSecret.Public = generatedValue
+
+			newSecrets[name] = filledSecret
+
+		// Everything else so far is not supported
+		default:
+			return nil, fmt.Errorf("unsupported secret of type %s", secret.Type)
+		}
+	}
+
+	return newSecrets, nil
 }

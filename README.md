@@ -5,15 +5,12 @@
 [![GitHub Actions Status][github-actions-badge]][github-actions]
 [![GitHub license][license-badge]](LICENSE)
 [![Go Report Card][go-report-card-badge]][go-report-card]
-[![PkgGoDev][go-pkg]](go-pkg)
+[![PkgGoDev][go-pkg-badge]][go-pkg]
 [![Join the chat at https://gitter.im/edgeless-systems/Marblerun](https://badges.gitter.im/edgeless-systems/Marblerun.svg)](https://gitter.im/edgeless-systems/Marblerun?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
+[Marblerun][marblerunsh] is a framework for creating distributed confidential-computing apps.
 
-Marblerun is a framework for creating distributed confidential-computing apps.
-
-Build your confidential microservices with [Edgeless RT][edgelessrt], distribute them with Kubernetes on an SGX-enabled cluster, and let Marblerun take care of the rest. Deploy end-to-end secure and verifiable AI pipelines or crunch on sensitive big data in the cloud. Confidential computing at scale has never been easier.
-
-Marblerun guarantees that the topology of your distributed app adheres to a Manifest specified in simple JSON. Marblerun verifies the integrity of services, bootstraps them, and sets up encrypted connections between them. If a node fails, Marblerun will seamlessly substitute it with respect to the rules defined in the Manifest.
+Build your confidential microservices with [Edgeless RT][edgelessrt], distribute them with Kubernetes on an SGX-enabled cluster, and let Marblerun take care of the rest. Deploy end-to-end secure and verifiable AI pipelines or crunch on sensitive big data in the cloud. Confidential computing at scale has never been easier. Marblerun guarantees that the topology of your distributed app adheres to a Manifest specified in simple JSON. Marblerun verifies the integrity of services, bootstraps them, and sets up encrypted connections between them. If a node fails, Marblerun will seamlessly substitute it with respect to the rules defined in the Manifest.
 
 To keep things simple, Marblerun issues one concise remote attestation statement for your whole distributed app. This can be used by anyone to verify the integrity of your distributed app.
 
@@ -69,12 +66,14 @@ Planned features include:
 [getting-started]: https://marblerun.sh/docs/getting-started/quickstart/
 [github-actions]: https://github.com/edgelesssys/marblerun/actions
 [github-actions-badge]: https://github.com/edgelesssys/marblerun/workflows/Unit%20Tests/badge.svg
-[go-pkg]: https://pkg.go.dev/badge/github.com/edgelesssys/marblerun
+[go-pkg]: https://pkg.go.dev/github.com/edgelesssys/marblerun
+[go-pkg-badge]: https://pkg.go.dev/badge/github.com/edgelesssys/marblerun
 [go-report-card]: https://goreportcard.com/report/github.com/edgelesssys/marblerun
 [go-report-card-badge]: https://goreportcard.com/badge/github.com/edgelesssys/marblerun
 [graphene]: https://github.com/oscarlab/graphene
 [license-badge]: https://img.shields.io/github/license/edgelesssys/marblerun
 [linkerd]: https://linkerd.io
+[marblerunsh]: https://marblerun.sh
 [sgx-lkl]: https://github.com/lsds/sgx-lkl
 [slack]: https://join.slack.com/t/confidentialcloud/shared_invite/zt-ix8nzzr6-vVNb6IM76Ab8z9a_5NMJnQ
 [twitter]: https://twitter.com/EdgelessSystems

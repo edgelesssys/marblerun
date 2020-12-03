@@ -33,6 +33,7 @@ type certQuoteResp struct {
 	Quote []byte
 }
 type statusResp struct {
+	Code   int
 	Status string
 }
 type manifestSignatureResp struct {
@@ -40,7 +41,7 @@ type manifestSignatureResp struct {
 }
 
 // Contains RSA-encrypted AES state sealing key with public key specified by user in manifest
-type recoveryData struct {
+type recoveryDataResp struct {
 	EncryptionKey string
 }
 
@@ -48,13 +49,8 @@ type recoveryData struct {
 // `address` is the desired TCP address like "localhost:0".
 // The effective TCP address is returned via `addrChan`.
 func RunMarbleServer(core *core.Core, addr string, addrChan chan string, errChan chan error, zapLogger *zap.Logger) {
-	cert, err := core.GetTLSCertificate()
-	if err != nil {
-		errChan <- err
-		return
-	}
 	tlsConfig := tls.Config{
-		Certificates: []tls.Certificate{*cert},
+		GetCertificate: core.GetTLSCertificate,
 		// NOTE: we'll verify the cert later using the given quote
 		ClientAuth: tls.RequireAnyClientCert,
 	}
@@ -95,12 +91,12 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 	mux.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			status, err := cc.GetStatus(r.Context())
+			statusCode, status, err := cc.GetStatus(r.Context())
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			writeJSON(w, statusResp{status})
+			writeJSON(w, statusResp{statusCode, status})
 		default:
 			http.Error(w, "", http.StatusMethodNotAllowed)
 		}
@@ -125,7 +121,7 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 			// If a recovery key has been set, include recovery data as response. If not, leave response empty.
 			if recoveryDataBytes != nil {
 				encodedRecoveryData := base64.StdEncoding.EncodeToString(recoveryDataBytes)
-				writeJSON(w, recoveryData{encodedRecoveryData})
+				writeJSON(w, recoveryDataResp{encodedRecoveryData})
 			}
 		default:
 			http.Error(w, "", http.StatusMethodNotAllowed)
@@ -141,6 +137,23 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 				return
 			}
 			writeJSON(w, certQuoteResp{cert, quote})
+		default:
+			http.Error(w, "", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/recover", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			key, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			if err = cc.Recover(r.Context(), key); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 		default:
 			http.Error(w, "", http.StatusMethodNotAllowed)
 		}

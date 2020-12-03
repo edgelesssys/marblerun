@@ -48,7 +48,7 @@ add_custom_command(
 add_custom_command(
   OUTPUT coordinator-config.json
   DEPENDS coordinator-enclave.signed
-  COMMAND $(CMAKE_SOURCE_DIR)/tools/create_config.py -e coordinator-enclave.signed -o coordinator-config.json
+  COMMAND openenclave::oesign eradump -e coordinator-enclave.signed > coordinator-config.json
 )
 
 add_custom_target(sign-coordinator ALL DEPENDS coordinator-enclave.signed coordinator-config.json)
@@ -88,7 +88,7 @@ add_custom_command(
 add_custom_command(
   OUTPUT marble-test-config.json
   DEPENDS marble-test-enclave.signed
-  COMMAND $(CMAKE_SOURCE_DIR)/tools/create_config.py -e marble-test-enclave.signed -o marble-test-config.json
+  COMMAND openenclave::oesign eradump -e marble-test-enclave.signed > marble-test-config.json
 )
 
 add_custom_target(sign-marble-test ALL DEPENDS marble-test-enclave.signed marble-test-config.json)

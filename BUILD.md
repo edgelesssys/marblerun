@@ -46,7 +46,7 @@ EDG_COORDINATOR_MESH_ADDR=localhost:2001 EDG_COORDINATOR_CLIENT_ADDR=localhost:4
 
 ### Create a Manifest
 
-See the [`how to add a service`](TODO) documentation for more information on how to create a Manifest.
+See the [`how to add a service`](https://marblerun.sh/docs/tasks/add-service/) documentation for more information on how to create a Manifest.
 You can find the enclave's specific values (MRENCLAVE, MRSIGNER, etc.) in `build/marble-test-config.json`
 
 Here is an example that has only the `SecurityVersion` and `ProductID` set:
@@ -71,10 +71,10 @@ Here is an example that has only the `SecurityVersion` and `ProductID` set:
 					"serve"
 				],
 				"Env": {
-					"ROOT_CA": "$$root_ca",
-					"SEAL_KEY": "$$seal_key",
-					"MARBLE_CERT": "$$marble_cert",
-					"MARBLE_KEY": "$$marble_key"
+					"ROOT_CA": "{{ pem .Marblerun.RootCA.Public }}",
+					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
+					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Public }}",
+					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}"
 				}
 			}
 		},
@@ -85,10 +85,10 @@ Here is an example that has only the `SecurityVersion` and `ProductID` set:
 					"./marble"
 				],
 				"Env": {
-					"ROOT_CA": "$$root_ca",
-					"SEAL_KEY": "$$seal_key",
-					"MARBLE_CERT": "$$marble_cert",
-					"MARBLE_KEY": "$$marble_key"
+					"ROOT_CA": "{{ pem .Marblerun.RootCA.Public }}",
+					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
+					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Public }}",
+					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}"
 				}
 			}
 	    }
