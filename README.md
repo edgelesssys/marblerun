@@ -6,13 +6,13 @@
 [![GitHub license][license-badge]](LICENSE)
 [![Go Report Card][go-report-card-badge]][go-report-card]
 [![PkgGoDev][go-pkg-badge]][go-pkg]
-
+[![Gitter Chat][gitter-badge]][gitter]
 
 [Marblerun][marblerunsh] is a framework for creating distributed confidential-computing apps.
 
-Build your confidential microservices with [Edgeless RT][edgelessrt], distribute them with Kubernetes on an SGX-enabled cluster, and let Marblerun take care of the rest. Deploy end-to-end secure and verifiable AI pipelines or crunch on sensitive big data in the cloud. Confidential computing at scale has never been easier.
+Build your confidential microservices with [Edgeless RT][edgelessrt], distribute them with Kubernetes on an SGX-enabled cluster, and let Marblerun take care of the rest. Deploy end-to-end secure and verifiable AI pipelines or crunch on sensitive big data in the cloud. 
 
-Marblerun guarantees that the topology of your distributed app adheres to a Manifest specified in simple JSON. Marblerun verifies the integrity of services, bootstraps them, and sets up encrypted connections between them. If a node fails, Marblerun will seamlessly substitute it with respect to the rules defined in the Manifest.
+Confidential computing at scale has never been easier. Marblerun guarantees that the topology of your distributed app adheres to a Manifest specified in simple JSON. Marblerun verifies the integrity of services, bootstraps them, and sets up encrypted connections between them. If a node fails, Marblerun will seamlessly substitute it with respect to the rules defined in the Manifest.
 
 To keep things simple, Marblerun issues one concise remote attestation statement for your whole distributed app. This can be used by anyone to verify the integrity of your distributed app.
 
@@ -39,7 +39,7 @@ For more comprehensive documentation, start with the [docs][docs].
 ## Get involved
 
 * Follow [@EdgelessSystems][twitter] on Twitter.
-* Join our [Slack][slack]
+* Chat with us on [Gitter][gitter].
 
 ## Examples
 
@@ -79,3 +79,5 @@ Planned features include:
 [sgx-lkl]: https://github.com/lsds/sgx-lkl
 [slack]: https://join.slack.com/t/confidentialcloud/shared_invite/zt-ix8nzzr6-vVNb6IM76Ab8z9a_5NMJnQ
 [twitter]: https://twitter.com/EdgelessSystems
+[gitter]: https://gitter.im/edgeless-systems/community
+[gitter-badge]: https://badges.gitter.im/edgeless-systems/Marblerun.svg
