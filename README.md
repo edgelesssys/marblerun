@@ -39,7 +39,7 @@ For more comprehensive documentation, start with the [docs][docs].
 ## Get involved
 
 * Follow [@EdgelessSystems][twitter] on Twitter.
-* Join our [Slack][slack]
+* Chat with us on [Gitter][gitter].
 
 ## Examples
 
@@ -79,3 +79,4 @@ Planned features include:
 [sgx-lkl]: https://github.com/lsds/sgx-lkl
 [slack]: https://join.slack.com/t/confidentialcloud/shared_invite/zt-ix8nzzr6-vVNb6IM76Ab8z9a_5NMJnQ
 [twitter]: https://twitter.com/EdgelessSystems
+[gitter]: https://gitter.im/edgeless-systems/community
