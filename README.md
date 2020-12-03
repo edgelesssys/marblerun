@@ -6,7 +6,7 @@
 [![GitHub license][license-badge]](LICENSE)
 [![Go Report Card][go-report-card-badge]][go-report-card]
 [![PkgGoDev][go-pkg-badge]][go-pkg]
-[![Join the chat at https://gitter.im/edgeless-systems/Marblerun](https://badges.gitter.im/edgeless-systems/Marblerun.svg)](https://gitter.im/edgeless-systems/Marblerun?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Gitter Chat][gitter-badge]][gitter]
 
 [Marblerun][marblerunsh] is a framework for creating distributed confidential-computing apps.
 
@@ -80,3 +80,4 @@ Planned features include:
 [slack]: https://join.slack.com/t/confidentialcloud/shared_invite/zt-ix8nzzr6-vVNb6IM76Ab8z9a_5NMJnQ
 [twitter]: https://twitter.com/EdgelessSystems
 [gitter]: https://gitter.im/edgeless-systems/community
+[gitter-badge]: https://badges.gitter.im/edgeless-systems/Marblerun.svg
