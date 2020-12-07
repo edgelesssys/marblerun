@@ -480,7 +480,7 @@ func (c *Core) generateCertificateForSecret(secret Secret, privKey crypto.Privat
 		}
 
 		template.NotAfter = time.Now().AddDate(0, 0, int(secret.ValidFor))
-	} else if !template.NotAfter.IsZero() && secret.ValidFor != 0 {
+	} else if secret.ValidFor != 0 {
 		return Secret{}, errors.New("ambigious certificate validity duration, both NotAfter and ValidFor are specified")
 	}
 

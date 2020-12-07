@@ -119,17 +119,18 @@ func encodeSecretDataToHex(data interface{}) (string, error) {
 	}
 	return hex.EncodeToString([]byte(raw)), nil
 }
+
 func encodeSecretDataToRaw(data interface{}) (string, error) {
-	if bytes, ok := data.([]byte); ok {
-		return string(bytes), nil
-	}
-	if secret, ok := data.(Secret); ok {
+	switch secret := data.(type) {
+	case []byte:
+		return string(secret), nil
+	case Secret:
 		return string(secret.Public), nil
+	case x509.Certificate:
+		return string(secret.Raw), nil
+	default:
+		return "", errors.New("invalid secret type")
 	}
-	if cert, ok := data.(x509.Certificate); ok {
-		return string(cert.Raw), nil
-	}
-	return "", errors.New("invalid secret type")
 }
 
 func encodeSecretDataToBase64(data interface{}) (string, error) {
