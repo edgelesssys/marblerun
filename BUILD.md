@@ -71,9 +71,9 @@ Here is an example that has only the `SecurityVersion` and `ProductID` set:
 					"serve"
 				],
 				"Env": {
-					"ROOT_CA": "{{ pem .Marblerun.RootCA.Public }}",
+					"ROOT_CA": "{{ pem .Marblerun.RootCA.Cert }}",
 					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
-					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Public }}",
+					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Cert }}",
 					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}"
 				}
 			}
@@ -85,9 +85,9 @@ Here is an example that has only the `SecurityVersion` and `ProductID` set:
 					"./marble"
 				],
 				"Env": {
-					"ROOT_CA": "{{ pem .Marblerun.RootCA.Public }}",
+					"ROOT_CA": "{{ pem .Marblerun.RootCA.Cert }}",
 					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
-					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Public }}",
+					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Cert }}",
 					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}"
 				}
 			}

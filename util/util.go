@@ -16,6 +16,9 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
+// DefaultCertificateIPAddresses defines a placeholder value used for automated x509 certificate generation
+var DefaultCertificateIPAddresses = []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback}
+
 // DeriveKey derives a key from a secret.
 func DeriveKey(secret, salt []byte) ([]byte, error) {
 	hkdf := hkdf.New(sha256.New, secret, salt, nil)

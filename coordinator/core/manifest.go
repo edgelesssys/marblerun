@@ -8,8 +8,10 @@ package core
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"text/template"
@@ -55,18 +57,53 @@ type PublicKey []byte
 
 // Secret defines a structure for storing certificates & encryption keys
 type Secret struct {
-	Type    string
-	Size    uint
-	Private PrivateKey
-	Public  PublicKey
+	Type     string
+	Size     uint
+	Cert     Certificate
+	ValidFor uint
+	Private  PrivateKey
+	Public   PublicKey
+}
+
+// Certificate is an x509.Certificate
+type Certificate x509.Certificate
+
+// MarshalJSON implements the json.Marshaler interface.
+func (c Certificate) MarshalJSON() ([]byte, error) {
+	return json.Marshal(c.Raw)
+}
+
+// UnmarshalJSON implements the json.Marshaler interface.
+func (c *Certificate) UnmarshalJSON(data []byte) error {
+	// This function is called either when unmarshalling the manifest or the sealed
+	// state. Thus, data can be a JSON object ({...}) or a JSON string ("...").
+
+	if data[0] != '"' {
+		// Unmarshal the JSON object to an x509.Certificate.
+		return json.Unmarshal(data, (*x509.Certificate)(c))
+	}
+
+	// Unmarshal and parse the raw certificate.
+	var raw []byte
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return nil
+	}
+	cert, err := x509.ParseCertificate(raw)
+	if err != nil {
+		return err
+	}
+	*c = Certificate(*cert)
+	return nil
 }
 
 func encodeSecretDataToPem(data interface{}) (string, error) {
 	var pemData []byte
 
 	switch x := data.(type) {
+	case Certificate:
+		pemData = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: x.Raw})
 	case PublicKey:
-		pemData = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: x})
+		pemData = pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: x})
 	case PrivateKey:
 		pemData = pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: x})
 	default:
@@ -83,14 +120,18 @@ func encodeSecretDataToHex(data interface{}) (string, error) {
 	}
 	return hex.EncodeToString([]byte(raw)), nil
 }
+
 func encodeSecretDataToRaw(data interface{}) (string, error) {
-	if bytes, ok := data.([]byte); ok {
-		return string(bytes), nil
-	}
-	if secret, ok := data.(Secret); ok {
+	switch secret := data.(type) {
+	case []byte:
+		return string(secret), nil
+	case Secret:
 		return string(secret.Public), nil
+	case Certificate:
+		return string(secret.Raw), nil
+	default:
+		return "", errors.New("invalid secret type")
 	}
-	return "", errors.New("invalid secret type")
 }
 
 func encodeSecretDataToBase64(data interface{}) (string, error) {

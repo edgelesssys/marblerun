@@ -8,13 +8,17 @@ package core
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
+	"math/big"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
@@ -194,6 +198,20 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	}
 	_, err = newCert.Verify(opts)
 	ms.assert.NoError(err, "failed to verify new certificate: %v", err)
+
+	if marbleType == "backend_first" {
+		// Validate generated secret certificate
+		p, _ = pem.Decode([]byte(params.Env["TEST_SECRET_CERT"]))
+		ms.assert.NotNil(p)
+		secretCert, err := x509.ParseCertificate(p.Bytes)
+		ms.assert.NoError(err)
+		_, err = secretCert.Verify(opts)
+		ms.assert.NoError(err, "failed to verify secret certificate with root CA: %v", err)
+
+		// Check if our certificate does actually expire 7 days, as specified, after it was generated
+		expectedNotBefore := secretCert.NotAfter.AddDate(0, 0, -7)
+		ms.assert.EqualValues(expectedNotBefore, secretCert.NotBefore)
+	}
 }
 
 func (ms *marbleSpawner) newMarbleAsync(marbleType string, infraName string, shouldSucceed bool) {
@@ -208,15 +226,43 @@ func TestParseSecrets(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
+	// Generate keys
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(err)
+	privKey, err := x509.MarshalPKCS8PrivateKey(key)
+	require.NoError(err)
+	pubKey, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
+	require.NoError(err)
+
+	// Create some demo certificate
+	template := x509.Certificate{
+		SerialNumber: big.NewInt(42),
+		IsCA:         false,
+		NotBefore:    time.Now(),
+		NotAfter:     time.Now().Add(time.Hour * 24 * 365),
+	}
+
+	testCertRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
+	if err != nil {
+		panic(err)
+	}
+
+	testCert, err := x509.ParseCertificate(testCertRaw)
+	if err != nil {
+		panic(err)
+	}
+
+	// Define secrets
 	testSecrets := map[string]Secret{
 		"mysecret":          {Type: "raw", Size: 16, Public: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, Private: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}},
 		"anothercoolsecret": {Type: "raw", Size: 8, Public: []byte{7, 6, 5, 4, 3, 2, 1, 0}, Private: []byte{7, 6, 5, 4, 3, 2, 1, 0}},
+		"testcertificate":   {Type: "cert-rsa", Size: 2048, Cert: Certificate(*testCert), Public: pubKey, Private: privKey},
 	}
 
 	testReservedSecrets := reservedSecrets{
-		RootCA:     Secret{Type: "cert", Public: []byte{0, 0, 42}, Private: []byte{0, 0, 7}},
-		MarbleCert: Secret{Type: "cert", Public: []byte{42, 0, 0}, Private: []byte{7, 0, 0}},
-		SealKey:    Secret{Type: "raw", Public: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, Private: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}},
+		RootCA:     Secret{Public: []byte{0, 0, 42}, Private: []byte{0, 0, 7}},
+		MarbleCert: Secret{Public: []byte{42, 0, 0}, Private: []byte{7, 0, 0}},
+		SealKey:    Secret{Public: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, Private: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}},
 	}
 
 	testWrappedSecrets := secretsWrapper{
@@ -240,18 +286,36 @@ func TestParseSecrets(t *testing.T) {
 	require.NoError(err)
 	assert.EqualValues("AAECAwQFBgcICQoLDA0ODw==", parsedSecret)
 
+	// Check if we can decode a certificate from PEM
+	parsedSecret, err = parseSecrets("{{ pem .Secrets.testcertificate.Cert }}", testWrappedSecrets)
+	require.NoError(err)
+	assert.Contains(parsedSecret, "-----BEGIN CERTIFICATE-----\n")
+
+	p, _ := pem.Decode([]byte(parsedSecret))
+	require.NotNil(p)
+	parsedCertificate, err := x509.ParseCertificate(p.Bytes)
+	require.NoError(err)
+	assert.EqualValues(testCert, parsedCertificate)
+
+	// Check if we can parse a certificate from the outputted raw type
+	parsedSecret, err = parseSecrets("{{ raw .Secrets.testcertificate.Cert }}", testWrappedSecrets)
+	require.NoError(err)
+	parsedCertificate, err = x509.ParseCertificate([]byte(parsedSecret))
+	require.NoError(err)
+	assert.EqualValues(testCert, parsedCertificate)
+
 	// Test if we can access a second secret
 	parsedSecret, err = parseSecrets("{{ raw .Secrets.anothercoolsecret }}", testWrappedSecrets)
 	require.NoError(err)
 	assert.EqualValues(testSecrets["anothercoolsecret"].Public, []byte(parsedSecret))
 
 	// Test all the reserved placeholder secrets
-	expectedResult := "-----BEGIN CERTIFICATE-----\nAAAq\n-----END CERTIFICATE-----\n"
+	expectedResult := "-----BEGIN PUBLIC KEY-----\nAAAq\n-----END PUBLIC KEY-----\n"
 	parsedSecret, err = parseSecrets("{{ pem .Marblerun.RootCA.Public }}", testWrappedSecrets)
 	require.NoError(err)
 	assert.EqualValues(expectedResult, parsedSecret)
 
-	expectedResult = "-----BEGIN CERTIFICATE-----\nKgAA\n-----END CERTIFICATE-----\n"
+	expectedResult = "-----BEGIN PUBLIC KEY-----\nKgAA\n-----END PUBLIC KEY-----\n"
 	parsedSecret, err = parseSecrets("{{ pem .Marblerun.MarbleCert.Public }}", testWrappedSecrets)
 	require.NoError(err)
 	assert.EqualValues(expectedResult, parsedSecret)

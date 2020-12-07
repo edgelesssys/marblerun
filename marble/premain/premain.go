@@ -13,7 +13,6 @@ import (
 	"crypto/x509"
 	"fmt"
 	"log"
-	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -80,7 +79,7 @@ func getUUID(appFs afero.Fs, uuidFile string) (uuid.UUID, error) {
 func generateCertificate() (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	marbleDNSNamesString := util.MustGetenv(config.DNSNames)
 	marbleDNSNames := strings.Split(marbleDNSNamesString, ",")
-	ipAddrs := []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback}
+	ipAddrs := util.DefaultCertificateIPAddresses
 	return util.GenerateCert(marbleDNSNames, ipAddrs, false)
 }
 

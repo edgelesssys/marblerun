@@ -82,9 +82,7 @@ func TestSeal(t *testing.T) {
 	assert.Error(err)
 
 	// Check if the secret specified in the test manifest is unsealed correctly
-	assert.IsType(Secret{}, c.secrets["testsecret_raw"])
-	assert.Len(c.secrets["testsecret_raw"].Public, 16)
-	assert.Len(c.secrets["testsecret_raw"].Private, 16)
+	assert.Equal(c.secrets, c2.secrets)
 
 	signature2 := c2.GetManifestSignature(context.TODO())
 	assert.Equal(signature, signature2, "manifest signature differs after restart")
@@ -135,8 +133,15 @@ func TestGenerateSecrets(t *testing.T) {
 
 	// Some secret maps which should represent secret entries from an unmarshaled JSON manifest
 	secretsToGenerate := map[string]Secret{
-		"rawTest1": {Type: "raw", Size: 128},
-		"rawTest2": {Type: "raw", Size: 256},
+		"rawTest1":                {Type: "raw", Size: 128},
+		"rawTest2":                {Type: "raw", Size: 256},
+		"cert-rsa-test":           {Type: "cert-rsa", Size: 2048, ValidFor: 365},
+		"cert-ed25519-test":       {Type: "cert-ed25519"},
+		"cert-ecdsa224-test":      {Type: "cert-ecdsa", Size: 224, ValidFor: 14},
+		"cert-ecdsa256-test":      {Type: "cert-ecdsa", Size: 256, ValidFor: 14},
+		"cert-ecdsa384-test":      {Type: "cert-ecdsa", Size: 384, ValidFor: 14},
+		"cert-ecdsa521-test":      {Type: "cert-ecdsa", Size: 521, ValidFor: 14},
+		"cert-rsa-specified-test": {Type: "cert-rsa", Size: 2048, Cert: Certificate{}},
 	}
 
 	secretsNoSize := map[string]Secret{
@@ -145,6 +150,14 @@ func TestGenerateSecrets(t *testing.T) {
 
 	secretsInvalidType := map[string]Secret{
 		"unknownType": {Type: "crap"},
+	}
+
+	secretsEd25519WrongKeySize := map[string]Secret{
+		"cert-ed25519-invalidsize": {Type: "cert-ed25519", Size: 384},
+	}
+
+	secretsECDSAWrongKeySize := map[string]Secret{
+		"cert-ecdsa-invalidsize": {Type: "cert-ecdsa", Size: 512},
 	}
 
 	secretsEmptyMap := map[string]Secret{}
@@ -157,6 +170,13 @@ func TestGenerateSecrets(t *testing.T) {
 	// Check if rawTest1 has 128 Bits/16 Bytes and rawTest2 256 Bits/8 Bytes
 	assert.Len(generatedSecrets["rawTest1"].Public, 16)
 	assert.Len(generatedSecrets["rawTest2"].Public, 32)
+	assert.NotNil(generatedSecrets["cert-rsa-test"].Cert.Raw)
+	assert.NotNil(generatedSecrets["cert-ed25519-test"].Cert.Raw)
+	assert.NotNil(generatedSecrets["cert-ecdsa224-test"].Cert.Raw)
+	assert.NotNil(generatedSecrets["cert-ecdsa256-test"].Cert.Raw)
+	assert.NotNil(generatedSecrets["cert-ecdsa384-test"].Cert.Raw)
+	assert.NotNil(generatedSecrets["cert-ecdsa521-test"].Cert.Raw)
+	assert.NotNil(generatedSecrets["cert-rsa-specified-test"].Cert.Raw)
 
 	// Check if we get an empty secret map as output for an empty map as input
 	generatedSecrets, err = c.generateSecrets(context.TODO(), secretsEmptyMap)
@@ -174,5 +194,13 @@ func TestGenerateSecrets(t *testing.T) {
 
 	// Also, it should fail if we try to generate a secret with an unknown type
 	_, err = c.generateSecrets(context.TODO(), secretsInvalidType)
+	assert.Error(err)
+
+	// If Ed25519 key size is specified, we should fail
+	_, err = c.generateSecrets(context.TODO(), secretsEd25519WrongKeySize)
+	assert.Error(err)
+
+	// However, for ECDSA we fail as we can have multiple curves
+	_, err = c.generateSecrets(context.TODO(), secretsECDSAWrongKeySize)
 	assert.Error(err)
 }
