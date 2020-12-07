@@ -126,6 +126,9 @@ func encodeSecretDataToRaw(data interface{}) (string, error) {
 	if secret, ok := data.(Secret); ok {
 		return string(secret.Public), nil
 	}
+	if cert, ok := data.(x509.Certificate); ok {
+		return string(cert.Raw), nil
+	}
 	return "", errors.New("invalid secret type")
 }
 

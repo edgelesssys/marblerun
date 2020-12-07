@@ -297,6 +297,12 @@ func TestParseSecrets(t *testing.T) {
 	require.NoError(err)
 	assert.EqualValues(testCert, parsedCertificate)
 
+	// Check if we can parse a certificate from the outputted raw type
+	parsedSecret, err = parseSecrets("{{ raw .Secrets.testcertificate.Cert }}", testWrappedSecrets)
+	parsedCertificate, err = x509.ParseCertificate([]byte(parsedSecret))
+	require.NoError(err)
+	assert.EqualValues(testCert, parsedCertificate)
+
 	// Test if we can access a second secret
 	parsedSecret, err = parseSecrets("{{ raw .Secrets.anothercoolsecret }}", testWrappedSecrets)
 	require.NoError(err)
