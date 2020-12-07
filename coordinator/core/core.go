@@ -472,11 +472,17 @@ func (c *Core) generateCertificateForSecret(secret Secret, privKey crypto.Privat
 	template.BasicConstraintsValid = true
 	template.NotBefore = time.Now()
 
-	// User can specify a duration in days, otherwise it's one year by default
-	if secret.ValidFor == 0 {
-		secret.ValidFor = 365
+	// If NotAfter is not set, we will use ValidFor for the end of the certificate lifetime. If it set, we will use it (-> do not adjust it, it's already loaded). If both are set, we will throw an error as this will create ambiguity.
+	if template.NotAfter.IsZero() {
+		// User can specify a duration in days, otherwise it's one year by default
+		if secret.ValidFor == 0 {
+			secret.ValidFor = 365
+		}
+
+		template.NotAfter = time.Now().AddDate(0, 0, int(secret.ValidFor))
+	} else if !template.NotAfter.IsZero() && secret.ValidFor != 0 {
+		return Secret{}, errors.New("ambigious certificate validity duration, both NotAfter and ValidFor are specified")
 	}
-	template.NotAfter = time.Now().AddDate(0, 0, int(secret.ValidFor))
 
 	// Generate certificate with given public key
 	secretCertRaw, err := x509.CreateCertificate(rand.Reader, &template, c.cert, pubKey, c.privk)
