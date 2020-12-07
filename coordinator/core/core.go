@@ -350,7 +350,7 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]Secret) (
 		// Raw = Symmetric Key
 		case "raw":
 			// Check secret size
-			if secret.Size == 0 {
+			if secret.Size == 0 || secret.Size%8 != 0 {
 				return nil, fmt.Errorf("invalid secret size: %v", name)
 			}
 
@@ -367,11 +367,6 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]Secret) (
 			newSecrets[name] = secret
 
 		case "cert-rsa":
-			// Check secret size
-			if secret.Size == 0 {
-				return nil, fmt.Errorf("invalid secret size: %v", name)
-			}
-
 			// Generate keys
 			privKey, err := rsa.GenerateKey(rand.Reader, int(secret.Size))
 			if err != nil {
@@ -484,20 +479,7 @@ func (c *Core) generateCertificateForSecret(secret Secret, privKey crypto.Privat
 	template.NotAfter = time.Now().AddDate(0, 0, int(secret.ValidFor))
 
 	// Generate certificate with given public key
-	var secretCertRaw []byte
-
-	// We have to use a switch case here to define the type of the key
-	// Also, ed25519 adresses the key differently
-	switch keyWithType := pubKey.(type) {
-	case *rsa.PublicKey:
-		secretCertRaw, err = x509.CreateCertificate(rand.Reader, &template, c.cert, keyWithType, c.privk)
-	case ed25519.PublicKey:
-		secretCertRaw, err = x509.CreateCertificate(rand.Reader, &template, c.cert, keyWithType, c.privk)
-	case *ecdsa.PublicKey:
-		secretCertRaw, err = x509.CreateCertificate(rand.Reader, &template, c.cert, keyWithType, c.privk)
-	default:
-		return Secret{}, fmt.Errorf("unsupported key format: %T", pubKey)
-	}
+	secretCertRaw, err := x509.CreateCertificate(rand.Reader, &template, c.cert, pubKey, c.privk)
 
 	if err != nil {
 		c.zaplogger.Error("Failed to generate X.509 certificate", zap.Error(err))
