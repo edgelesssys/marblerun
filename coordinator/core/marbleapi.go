@@ -102,8 +102,8 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 
 	// customize marble's parameters
 	authSecrets := reservedSecrets{
-		RootCA:     Secret{Cert: *c.cert},
-		MarbleCert: Secret{Cert: *marbleCert, Public: encodedPubKey, Private: encodedPrivKey},
+		RootCA:     Secret{Cert: Certificate(*c.cert)},
+		MarbleCert: Secret{Cert: Certificate(*marbleCert), Public: encodedPubKey, Private: encodedPrivKey},
 		SealKey:    Secret{Public: sealKey, Private: sealKey},
 	}
 

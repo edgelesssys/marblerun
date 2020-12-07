@@ -19,7 +19,6 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"math"
@@ -192,25 +191,6 @@ func (c *Core) loadState() (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	privk, err := x509.ParseECPrivateKey(loadedState.Privk)
 	if err != nil {
 		return nil, nil, err
-	}
-
-	// Decode secret certificates from PEM
-	for name, secret := range loadedState.Secrets {
-		certPem := secret.CertEncoded
-
-		if certPem != "" {
-			block, _ := pem.Decode([]byte(certPem))
-			if block == nil {
-				c.zaplogger.Error("Could not decode certificate PEM from secret", zap.String("name", name))
-				return nil, nil, errors.New("failed to parse certificate PEM")
-			}
-			parsedCertificate, err := x509.ParseCertificate(block.Bytes)
-			if err != nil {
-				return nil, nil, err
-			}
-			secret.Cert = *parsedCertificate
-			loadedState.Secrets[name] = secret
-		}
 	}
 
 	if err := json.Unmarshal(loadedState.RawManifest, &c.manifest); err != nil {
@@ -438,10 +418,7 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]Secret) (
 
 func (c *Core) generateCertificateForSecret(secret Secret, privKey crypto.PrivateKey, pubKey crypto.PublicKey) (Secret, error) {
 	// Load given information from manifest as template
-	var template x509.Certificate
-	var err error
-
-	template = secret.Cert
+	template := x509.Certificate(secret.Cert)
 
 	// Define or overwrite some values for sane standards
 	if template.DNSNames == nil {
@@ -460,6 +437,7 @@ func (c *Core) generateCertificateForSecret(secret Secret, privKey crypto.Privat
 		template.Subject.CommonName = "Marblerun Generated Certificate"
 	}
 	if template.SerialNumber == nil {
+		var err error
 		template.SerialNumber, err = util.GenerateCertificateSerialNumber()
 		if err != nil {
 			c.zaplogger.Error("No serial number supplied; random number generation failed.", zap.Error(err))
@@ -499,8 +477,7 @@ func (c *Core) generateCertificateForSecret(secret Secret, privKey crypto.Privat
 	}
 
 	// Assemble secret object
-	secret.Cert = *cert
-	secret.CertEncoded = string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw}))
+	secret.Cert = Certificate(*cert)
 	secret.Private, err = x509.MarshalPKCS8PrivateKey(privKey)
 	if err != nil {
 		c.zaplogger.Error("Failed to marshal private key to secret object", zap.Error(err))

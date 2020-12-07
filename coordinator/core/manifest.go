@@ -57,49 +57,50 @@ type PublicKey []byte
 
 // Secret defines a structure for storing certificates & encryption keys
 type Secret struct {
-	Type        string
-	Size        uint
-	Cert        x509.Certificate `json:",omitempty"`
-	CertEncoded string
-	ValidFor    uint
-	Private     PrivateKey
-	Public      PublicKey
+	Type     string
+	Size     uint
+	Cert     Certificate
+	ValidFor uint
+	Private  PrivateKey
+	Public   PublicKey
 }
 
-// MarshalJSON defines a custom marshaller which does not export a x509.Certificate object, otherwise we will be running into bugs due to JSON marshalled BitInts
-func (s Secret) MarshalJSON() ([]byte, error) {
-	type SecretWithoutCert struct {
-		Type        string
-		Size        uint
-		CertEncoded string
-		ValidFor    uint
-		Private     PrivateKey
-		Public      PublicKey
+// Certificate is an x509.Certificate
+type Certificate x509.Certificate
+
+// MarshalJSON implements the json.Marshaler interface.
+func (c Certificate) MarshalJSON() ([]byte, error) {
+	return json.Marshal(c.Raw)
+}
+
+// UnmarshalJSON implements the json.Marshaler interface.
+func (c *Certificate) UnmarshalJSON(data []byte) error {
+	// This function is called either when unmarshalling the manifest or the sealed
+	// state. Thus, data can be a JSON object ({...}) or a JSON string ("...").
+
+	if data[0] != '"' {
+		// Unmarshal the JSON object to an x509.Certificate.
+		return json.Unmarshal(data, (*x509.Certificate)(c))
 	}
 
-	// Convert certificate object to PEM when marshalling to JSON (e.g. sealing the state)
-	if s.Cert.Raw != nil {
-		pemData := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: s.Cert.Raw})
-		s.CertEncoded = string(pemData)
+	// Unmarshal and parse the raw certificate.
+	var raw []byte
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return nil
 	}
-
-	secretWithoutCert := SecretWithoutCert{
-		Type:        s.Type,
-		Size:        s.Size,
-		CertEncoded: s.CertEncoded,
-		ValidFor:    s.ValidFor,
-		Private:     s.Private,
-		Public:      s.Public,
+	cert, err := x509.ParseCertificate(raw)
+	if err != nil {
+		return err
 	}
-
-	return json.Marshal(secretWithoutCert)
+	*c = Certificate(*cert)
+	return nil
 }
 
 func encodeSecretDataToPem(data interface{}) (string, error) {
 	var pemData []byte
 
 	switch x := data.(type) {
-	case x509.Certificate:
+	case Certificate:
 		pemData = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: x.Raw})
 	case PublicKey:
 		pemData = pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: x})
@@ -126,7 +127,7 @@ func encodeSecretDataToRaw(data interface{}) (string, error) {
 		return string(secret), nil
 	case Secret:
 		return string(secret.Public), nil
-	case x509.Certificate:
+	case Certificate:
 		return string(secret.Raw), nil
 	default:
 		return "", errors.New("invalid secret type")

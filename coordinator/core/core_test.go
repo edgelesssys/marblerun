@@ -8,7 +8,6 @@ package core
 
 import (
 	"context"
-	"crypto/x509"
 	"testing"
 
 	"github.com/edgelesssys/marblerun/coordinator/quote"
@@ -142,7 +141,7 @@ func TestGenerateSecrets(t *testing.T) {
 		"cert-ecdsa256-test":      {Type: "cert-ecdsa", Size: 256, ValidFor: 14},
 		"cert-ecdsa384-test":      {Type: "cert-ecdsa", Size: 384, ValidFor: 14},
 		"cert-ecdsa521-test":      {Type: "cert-ecdsa", Size: 521, ValidFor: 14},
-		"cert-rsa-specified-test": {Type: "cert-rsa", Size: 2048, Cert: x509.Certificate{}},
+		"cert-rsa-specified-test": {Type: "cert-rsa", Size: 2048, Cert: Certificate{}},
 	}
 
 	secretsNoSize := map[string]Secret{

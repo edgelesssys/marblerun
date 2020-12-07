@@ -256,7 +256,7 @@ func TestParseSecrets(t *testing.T) {
 	testSecrets := map[string]Secret{
 		"mysecret":          {Type: "raw", Size: 16, Public: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, Private: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}},
 		"anothercoolsecret": {Type: "raw", Size: 8, Public: []byte{7, 6, 5, 4, 3, 2, 1, 0}, Private: []byte{7, 6, 5, 4, 3, 2, 1, 0}},
-		"testcertificate":   {Type: "cert-rsa", Size: 2048, Cert: *testCert, Public: pubKey, Private: privKey},
+		"testcertificate":   {Type: "cert-rsa", Size: 2048, Cert: Certificate(*testCert), Public: pubKey, Private: privKey},
 	}
 
 	testReservedSecrets := reservedSecrets{
@@ -299,6 +299,7 @@ func TestParseSecrets(t *testing.T) {
 
 	// Check if we can parse a certificate from the outputted raw type
 	parsedSecret, err = parseSecrets("{{ raw .Secrets.testcertificate.Cert }}", testWrappedSecrets)
+	require.NoError(err)
 	parsedCertificate, err = x509.ParseCertificate([]byte(parsedSecret))
 	require.NoError(err)
 	assert.EqualValues(testCert, parsedCertificate)
