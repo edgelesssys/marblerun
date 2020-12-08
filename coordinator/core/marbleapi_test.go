@@ -32,12 +32,6 @@ import (
 	"google.golang.org/grpc/peer"
 )
 
-// Used to check if shared secrets are the same and non-shared secrets are indeed unique
-var backendFirstSharedCert x509.Certificate
-var backendFirstUniqueCert x509.Certificate
-var backendOtherSharedCert x509.Certificate
-var backendOtherUniqueCert x509.Certificate
-
 func TestActivate(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
@@ -99,18 +93,22 @@ func TestActivate(t *testing.T) {
 	spawner.wg.Wait()
 
 	// Check if non-shared secret with the same name is indeed not the same in different marbles
-	assert.EqualValues(backendFirstSharedCert, backendOtherSharedCert, "Shared secrets were different across different marbles, but were supposed to be the same.")
-	assert.NotEqualValues(backendFirstUniqueCert, backendOtherUniqueCert, "Non-shared secrets were the same across different marbles, but were supposed to be unique.")
+	assert.EqualValues(spawner.backendFirstSharedCert, spawner.backendOtherSharedCert, "Shared secrets were different across different marbles, but were supposed to be the same.")
+	assert.NotEqualValues(spawner.backendFirstUniqueCert, spawner.backendOtherUniqueCert, "Non-shared secrets were the same across different marbles, but were supposed to be unique.")
 }
 
 type marbleSpawner struct {
-	manifest   Manifest
-	validator  *quote.MockValidator
-	issuer     quote.Issuer
-	coreServer *Core
-	assert     *assert.Assertions
-	wg         sync.WaitGroup
-	mutex      sync.Mutex
+	manifest               Manifest
+	validator              *quote.MockValidator
+	issuer                 quote.Issuer
+	coreServer             *Core
+	assert                 *assert.Assertions
+	wg                     sync.WaitGroup
+	mutex                  sync.Mutex
+	backendFirstSharedCert x509.Certificate
+	backendFirstUniqueCert x509.Certificate
+	backendOtherSharedCert x509.Certificate
+	backendOtherUniqueCert x509.Certificate
 }
 
 func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSucceed bool) {
@@ -213,75 +211,19 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	// Shared & non-shared secret checks
 	if marbleType == "backend_first" {
 		// Validate generated shared secret certificate
-		p, _ = pem.Decode([]byte(params.Env["TEST_SECRET_CERT"]))
-		ms.assert.NotNil(p)
-		secretCertShared, err := x509.ParseCertificate(p.Bytes)
-		ms.assert.NotNil(p)
-		ms.assert.NoError(err)
-		_, err = secretCertShared.Verify(opts)
-		ms.assert.NoError(err, "failed to verify secret certificate with root CA: %v", err)
-
-		// Since we're running async, we could run into a race condition here if the test is adjusted sometime to run multiple times.
-		ms.mutex.Lock()
-		if backendFirstSharedCert.Raw == nil {
-			backendFirstSharedCert = *secretCertShared
-		}
-		ms.mutex.Unlock()
-
-		// Check if our certificate does actually expire 7 days, as specified, after it was generated
-		expectedNotBefore := secretCertShared.NotAfter.AddDate(0, 0, -7)
-		ms.assert.EqualValues(expectedNotBefore, secretCertShared.NotBefore)
-
-		// Validate generated non-shared secret certificate
-		p, _ = pem.Decode([]byte(params.Env["TEST_SECRET_PRIVATE_CERT"]))
-		ms.assert.NotNil(p)
-		secretCertNonShared, err := x509.ParseCertificate(p.Bytes)
-		ms.assert.NotNil(p)
-		ms.assert.NoError(err)
-		_, err = secretCertNonShared.Verify(opts)
-		ms.assert.NoError(err, "failed to verify secret certificate with root CA: %v", err)
-
-		// Since we're running async, we could run into a race condition here if the test is adjusted sometime to run multiple times.
-		ms.mutex.Lock()
-		if backendFirstUniqueCert.Raw == nil {
-			backendFirstUniqueCert = *secretCertNonShared
-		}
-		ms.mutex.Unlock()
-
-		// Check if our certificate does actually expire 7 days, as specified, after it was generated
-		expectedNotBefore = secretCertNonShared.NotAfter.AddDate(0, 0, -7)
-		ms.assert.EqualValues(expectedNotBefore, secretCertNonShared.NotBefore)
+		// backend_first only runs once, so need for a mutex & checks
+		ms.backendFirstSharedCert = ms.verifyCertificateFromEnvironment("TEST_SECRET_CERT", params, opts)
+		ms.backendFirstUniqueCert = ms.verifyCertificateFromEnvironment("TEST_SECRET_PRIVATE_CERT", params, opts)
 
 	} else if marbleType == "backend_other" {
 		// Validate generated shared secret certificate
-		p, _ = pem.Decode([]byte(params.Env["TEST_SECRET_CERT"]))
-		ms.assert.NotNil(p)
-		secretCertShared, err := x509.ParseCertificate(p.Bytes)
-		ms.assert.NotNil(p)
-		ms.assert.NoError(err)
-		_, err = secretCertShared.Verify(opts)
-		ms.assert.NoError(err, "failed to verify secret certificate with root CA: %v", err)
-
-		// Since we're running async and multiple times, let's avoid a race condition here
+		// Since we're running async and multiple times, let's avoid a race condition here and only get the certificate from one instance
 		ms.mutex.Lock()
-		if backendOtherSharedCert.Raw == nil {
-			backendOtherSharedCert = *secretCertShared
+		if ms.backendOtherSharedCert.Raw == nil {
+			ms.backendOtherSharedCert = ms.verifyCertificateFromEnvironment("TEST_SECRET_CERT", params, opts)
 		}
-		ms.mutex.Unlock()
-
-		// Validate generated non-shared secret certificate
-		p, _ = pem.Decode([]byte(params.Env["TEST_SECRET_PRIVATE_CERT"]))
-		ms.assert.NotNil(p)
-		secretCertNonShared, err := x509.ParseCertificate(p.Bytes)
-		ms.assert.NotNil(p)
-		ms.assert.NoError(err)
-		_, err = secretCertNonShared.Verify(opts)
-		ms.assert.NoError(err, "failed to verify secret certificate with root CA: %v", err)
-
-		// Since we're running async and multiple times, let's avoid a race condition here
-		ms.mutex.Lock()
-		if backendOtherUniqueCert.Raw == nil {
-			backendOtherUniqueCert = *secretCertNonShared
+		if ms.backendOtherUniqueCert.Raw == nil {
+			ms.backendOtherUniqueCert = ms.verifyCertificateFromEnvironment("TEST_SECRET_PRIVATE_CERT", params, opts)
 		}
 		ms.mutex.Unlock()
 	}
@@ -293,6 +235,22 @@ func (ms *marbleSpawner) newMarbleAsync(marbleType string, infraName string, sho
 		ms.newMarble(marbleType, infraName, shouldSucceed)
 		ms.wg.Done()
 	}()
+}
+
+func (ms *marbleSpawner) verifyCertificateFromEnvironment(envName string, params *rpc.Parameters, opts x509.VerifyOptions) x509.Certificate {
+	p, _ := pem.Decode([]byte(params.Env[envName]))
+	ms.assert.NotNil(p)
+	certificate, err := x509.ParseCertificate(p.Bytes)
+	ms.assert.NotNil(p)
+	ms.assert.NoError(err)
+	_, err = certificate.Verify(opts)
+	ms.assert.NoError(err, "failed to verify secret certificate with root CA: %v", err)
+
+	// Check if our certificate does actually expire 7 days, as specified, after it was generated
+	expectedNotBefore := certificate.NotAfter.AddDate(0, 0, -7)
+	ms.assert.EqualValues(expectedNotBefore, certificate.NotBefore)
+
+	return *certificate
 }
 
 func TestParseSecrets(t *testing.T) {
