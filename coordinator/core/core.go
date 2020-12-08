@@ -328,9 +328,7 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]Secret, i
 	for name, secret := range secrets {
 
 		// Skip secrets from wrong context
-		if secret.Shared && id != uuid.Nil {
-			continue
-		} else if !secret.Shared && id == uuid.Nil {
+		if secret.Shared != (id == uuid.Nil) {
 			continue
 		}
 

@@ -55,6 +55,7 @@ func TestActivate(t *testing.T) {
 
 	spawner := marbleSpawner{
 		assert:     assert,
+		require:    require,
 		issuer:     issuer,
 		validator:  validator,
 		manifest:   manifest,
@@ -103,6 +104,7 @@ type marbleSpawner struct {
 	issuer                 quote.Issuer
 	coreServer             *Core
 	assert                 *assert.Assertions
+	require                *require.Assertions
 	wg                     sync.WaitGroup
 	mutex                  sync.Mutex
 	backendFirstSharedCert x509.Certificate
@@ -239,10 +241,11 @@ func (ms *marbleSpawner) newMarbleAsync(marbleType string, infraName string, sho
 
 func (ms *marbleSpawner) verifyCertificateFromEnvironment(envName string, params *rpc.Parameters, opts x509.VerifyOptions) x509.Certificate {
 	p, _ := pem.Decode([]byte(params.Env[envName]))
-	ms.assert.NotNil(p)
+	ms.require.NotNil(p)
 	certificate, err := x509.ParseCertificate(p.Bytes)
-	ms.assert.NotNil(p)
-	ms.assert.NoError(err)
+	ms.require.NoError(err)
+
+	// Verify if our certificate was signed correctly by the Coordinator's root CA
 	_, err = certificate.Verify(opts)
 	ms.assert.NoError(err, "failed to verify secret certificate with root CA: %v", err)
 
