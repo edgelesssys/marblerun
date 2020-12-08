@@ -335,9 +335,8 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]Secret) (
 			}
 
 			var generatedValue []byte
-
 			// If a secret is shared, we generate a completely random key. If a secret is constrained to a marble, we derive a key from the core's private key.
-			if secret.Shared == true {
+			if secret.Shared {
 				generatedValue = make([]byte, secret.Size/8)
 				_, err := rand.Read(generatedValue)
 				if err != nil {
@@ -345,11 +344,9 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]Secret) (
 				}
 			} else {
 				salt := secret.UUID.String() + name
-				secretKeyDerive, err := x509.MarshalPKCS8PrivateKey(c.privk)
-				if err != nil {
-					return nil, err
-				}
-				generatedValue, err = util.DeriveKey(secretKeyDerive, []byte(salt), (secret.Size / 8))
+				secretKeyDerive := c.privk.D.Bytes()
+				var err error
+				generatedValue, err = util.DeriveKey(secretKeyDerive, []byte(salt), secret.Size/8)
 				if err != nil {
 					return nil, err
 				}

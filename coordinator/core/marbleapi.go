@@ -123,9 +123,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 
 	// Union unique secrets with shared secrets
 	for k, v := range c.secrets {
-		if v.Shared == true {
-			secrets[k] = v
-		}
+		secrets[k] = v
 	}
 
 	marble := c.manifest.Marbles[req.GetMarbleType()] // existence has been checked in verifyManifestRequirement
