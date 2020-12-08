@@ -18,7 +18,6 @@ import (
 
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
-	"github.com/google/uuid"
 )
 
 // Manifest defines the rules of a mesh.
@@ -61,7 +60,6 @@ type Secret struct {
 	Type     string
 	Size     uint
 	Shared   bool
-	UUID     uuid.UUID `json:"-"`
 	Cert     Certificate
 	ValidFor uint
 	Private  PrivateKey

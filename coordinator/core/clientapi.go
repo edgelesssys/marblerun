@@ -16,6 +16,7 @@ import (
 	"encoding/pem"
 	"errors"
 
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
@@ -45,16 +46,8 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) ([]byte, err
 		return nil, err
 	}
 
-	// Load shared secrets from manifest into a new map
-	sharedSecrets := make(map[string]Secret)
-	for k, v := range manifest.Secrets {
-		if v.Shared == true {
-			sharedSecrets[k] = v
-		}
-	}
-
 	// Generate shared secrets specified in manifest
-	secrets, err := c.generateSecrets(ctx, sharedSecrets)
+	secrets, err := c.generateSecrets(ctx, manifest.Secrets, uuid.Nil)
 	if err != nil {
 		c.zaplogger.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
 		return nil, err
