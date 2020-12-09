@@ -55,6 +55,7 @@ func TestActivate(t *testing.T) {
 
 	spawner := marbleSpawner{
 		assert:     assert,
+		require:    require,
 		issuer:     issuer,
 		validator:  validator,
 		manifest:   manifest,
@@ -91,15 +92,25 @@ func TestActivate(t *testing.T) {
 	}
 
 	spawner.wg.Wait()
+
+	// Check if non-shared secret with the same name is indeed not the same in different marbles
+	assert.EqualValues(spawner.backendFirstSharedCert, spawner.backendOtherSharedCert, "Shared secrets were different across different marbles, but were supposed to be the same.")
+	assert.NotEqualValues(spawner.backendFirstUniqueCert, spawner.backendOtherUniqueCert, "Non-shared secrets were the same across different marbles, but were supposed to be unique.")
 }
 
 type marbleSpawner struct {
-	manifest   Manifest
-	validator  *quote.MockValidator
-	issuer     quote.Issuer
-	coreServer *Core
-	assert     *assert.Assertions
-	wg         sync.WaitGroup
+	manifest               Manifest
+	validator              *quote.MockValidator
+	issuer                 quote.Issuer
+	coreServer             *Core
+	assert                 *assert.Assertions
+	require                *require.Assertions
+	wg                     sync.WaitGroup
+	mutex                  sync.Mutex
+	backendFirstSharedCert x509.Certificate
+	backendFirstUniqueCert x509.Certificate
+	backendOtherSharedCert x509.Certificate
+	backendOtherUniqueCert x509.Certificate
 }
 
 func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSucceed bool) {
@@ -199,18 +210,24 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	_, err = newCert.Verify(opts)
 	ms.assert.NoError(err, "failed to verify new certificate: %v", err)
 
+	// Shared & non-shared secret checks
 	if marbleType == "backend_first" {
-		// Validate generated secret certificate
-		p, _ = pem.Decode([]byte(params.Env["TEST_SECRET_CERT"]))
-		ms.assert.NotNil(p)
-		secretCert, err := x509.ParseCertificate(p.Bytes)
-		ms.assert.NoError(err)
-		_, err = secretCert.Verify(opts)
-		ms.assert.NoError(err, "failed to verify secret certificate with root CA: %v", err)
+		// Validate generated shared secret certificate
+		// backend_first only runs once, so need for a mutex & checks
+		ms.backendFirstSharedCert = ms.verifyCertificateFromEnvironment("TEST_SECRET_CERT", params, opts)
+		ms.backendFirstUniqueCert = ms.verifyCertificateFromEnvironment("TEST_SECRET_PRIVATE_CERT", params, opts)
 
-		// Check if our certificate does actually expire 7 days, as specified, after it was generated
-		expectedNotBefore := secretCert.NotAfter.AddDate(0, 0, -7)
-		ms.assert.EqualValues(expectedNotBefore, secretCert.NotBefore)
+	} else if marbleType == "backend_other" {
+		// Validate generated shared secret certificate
+		// Since we're running async and multiple times, let's avoid a race condition here and only get the certificate from one instance
+		ms.mutex.Lock()
+		if ms.backendOtherSharedCert.Raw == nil {
+			ms.backendOtherSharedCert = ms.verifyCertificateFromEnvironment("TEST_SECRET_CERT", params, opts)
+		}
+		if ms.backendOtherUniqueCert.Raw == nil {
+			ms.backendOtherUniqueCert = ms.verifyCertificateFromEnvironment("TEST_SECRET_PRIVATE_CERT", params, opts)
+		}
+		ms.mutex.Unlock()
 	}
 }
 
@@ -220,6 +237,23 @@ func (ms *marbleSpawner) newMarbleAsync(marbleType string, infraName string, sho
 		ms.newMarble(marbleType, infraName, shouldSucceed)
 		ms.wg.Done()
 	}()
+}
+
+func (ms *marbleSpawner) verifyCertificateFromEnvironment(envName string, params *rpc.Parameters, opts x509.VerifyOptions) x509.Certificate {
+	p, _ := pem.Decode([]byte(params.Env[envName]))
+	ms.require.NotNil(p)
+	certificate, err := x509.ParseCertificate(p.Bytes)
+	ms.require.NoError(err)
+
+	// Verify if our certificate was signed correctly by the Coordinator's root CA
+	_, err = certificate.Verify(opts)
+	ms.assert.NoError(err, "failed to verify secret certificate with root CA: %v", err)
+
+	// Check if our certificate does actually expire 7 days, as specified, after it was generated
+	expectedNotBefore := certificate.NotAfter.AddDate(0, 0, -7)
+	ms.assert.EqualValues(expectedNotBefore, certificate.NotBefore)
+
+	return *certificate
 }
 
 func TestParseSecrets(t *testing.T) {

@@ -59,8 +59,9 @@ const ManifestJSON string = `{
 					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
 					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Cert }}",
 					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}",
-					"TEST_SECRET_RAW": "{{ raw .Secrets.testsecret_raw }}",
-					"TEST_SECRET_CERT": "{{ pem .Secrets.testsecret_cert.Cert }}"
+					"TEST_SECRET_RAW": "{{ raw .Secrets.raw_shared }}",
+					"TEST_SECRET_CERT": "{{ pem .Secrets.cert_shared.Cert }}",
+					"TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.cert_private.Cert }}"
 				},
 				"Argv": [
 					"--first",
@@ -75,7 +76,9 @@ const ManifestJSON string = `{
 					"ROOT_CA": "{{ pem .Marblerun.RootCA.Cert }}",
 					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
 					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Cert }}",
-					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}"
+					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}",
+					"TEST_SECRET_CERT": "{{ pem .Secrets.cert_shared.Cert }}",
+					"TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.cert_private.Cert }}"
 				},
 				"Argv": [
 					"serve"
@@ -98,17 +101,34 @@ const ManifestJSON string = `{
 		"owner": [9,9,9]
 	},
 	"Secrets": {
-		"testsecret_raw": {
+		"raw_shared": {
 			"Size": 128,
+			"Shared": true,
 			"Type": "raw"
 		},
-		"testsecret_cert": {
+		"raw_private": {
+			"Size": 256,
+			"Type": "raw"
+		},
+		"cert_private": {
 			"Size": 2048,
 			"Type": "cert-rsa",
 			"Cert": {
 				"SerialNumber": 42,
 				"Subject": {
 					"SerialNumber": "42",
+					"CommonName": "Marblerun Unit Test"
+				}
+			},
+			"ValidFor": 7
+		},
+		"cert_shared": {
+			"Shared": true,
+			"Type": "cert-ed25519",
+			"Cert": {
+				"SerialNumber": 1337,
+				"Subject": {
+					"SerialNumber": "1337",
 					"CommonName": "Marblerun Unit Test"
 				}
 			},

@@ -66,49 +66,26 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 		return nil, err
 	}
 
-	// generate key-pair for marble
-	privk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		return nil, err
-	}
-	encodedPrivKey, err := x509.MarshalPKCS8PrivateKey(privk)
-	if err != nil {
-		return nil, err
-	}
-	encodedPubKey, err := x509.MarshalPKIXPublicKey(&privk.PublicKey)
+	// Generate marble authentication secrets
+	authSecrets, err := c.generateMarbleAuthSecrets(req, marbleUUID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Derive sealing key for marble
-	uuidBytes, err := marbleUUID.MarshalBinary()
+	// Generate user-defined unique (= per marble) secrets
+	secrets, err := c.generateSecrets(ctx, c.manifest.Secrets, marbleUUID)
 	if err != nil {
-		return nil, err
-	}
-	sealKey, err := util.DeriveKey(c.privk.D.Bytes(), uuidBytes)
-	if err != nil {
+		c.zaplogger.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
 		return nil, err
 	}
 
-	certRaw, err := c.generateCertFromCSR(req.GetCSR(), privk.PublicKey, req.GetMarbleType(), marbleUUID.String())
-	if err != nil {
-		return nil, err
-	}
-
-	marbleCert, err := x509.ParseCertificate(certRaw)
-	if err != nil {
-		return nil, err
-	}
-
-	// customize marble's parameters
-	authSecrets := reservedSecrets{
-		RootCA:     Secret{Cert: Certificate(*c.cert)},
-		MarbleCert: Secret{Cert: Certificate(*marbleCert), Public: encodedPubKey, Private: encodedPrivKey},
-		SealKey:    Secret{Public: sealKey, Private: sealKey},
+	// Union user-defined unique secrets with user-defined shared secrets
+	for k, v := range c.secrets {
+		secrets[k] = v
 	}
 
 	marble := c.manifest.Marbles[req.GetMarbleType()] // existence has been checked in verifyManifestRequirement
-	params, err := customizeParameters(marble.Parameters, authSecrets, c.secrets)
+	params, err := customizeParameters(marble.Parameters, authSecrets, secrets)
 	if err != nil {
 		c.zaplogger.Error("Could not customize parameters.", zap.Error(err))
 		return nil, err
@@ -251,4 +228,49 @@ func parseSecrets(data string, secretsWrapped secretsWrapper) (string, error) {
 	}
 
 	return templateResult.String(), nil
+}
+
+func (c *Core) generateMarbleAuthSecrets(req *rpc.ActivationReq, marbleUUID uuid.UUID) (reservedSecrets, error) {
+	// generate key-pair for marble
+	privk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return reservedSecrets{}, err
+	}
+	encodedPrivKey, err := x509.MarshalPKCS8PrivateKey(privk)
+	if err != nil {
+		return reservedSecrets{}, err
+	}
+	encodedPubKey, err := x509.MarshalPKIXPublicKey(&privk.PublicKey)
+	if err != nil {
+		return reservedSecrets{}, err
+	}
+
+	// Derive sealing key for marble
+	uuidBytes, err := marbleUUID.MarshalBinary()
+	if err != nil {
+		return reservedSecrets{}, err
+	}
+	sealKey, err := util.DeriveKey(c.privk.D.Bytes(), uuidBytes, 32)
+	if err != nil {
+		return reservedSecrets{}, err
+	}
+
+	certRaw, err := c.generateCertFromCSR(req.GetCSR(), privk.PublicKey, req.GetMarbleType(), marbleUUID.String())
+	if err != nil {
+		return reservedSecrets{}, err
+	}
+
+	marbleCert, err := x509.ParseCertificate(certRaw)
+	if err != nil {
+		return reservedSecrets{}, err
+	}
+
+	// customize marble's parameters
+	authSecrets := reservedSecrets{
+		RootCA:     Secret{Cert: Certificate(*c.cert)},
+		MarbleCert: Secret{Cert: Certificate(*marbleCert), Public: encodedPubKey, Private: encodedPrivKey},
+		SealKey:    Secret{Public: sealKey, Private: sealKey},
+	}
+
+	return authSecrets, nil
 }

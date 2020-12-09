@@ -15,7 +15,7 @@ import (
 
 func TestDeriveKey(t *testing.T) {
 	assert := assert.New(t)
-	key, err := DeriveKey([]byte("secret"), []byte("salt"))
+	key, err := DeriveKey([]byte("secret"), []byte("salt"), 32)
 	assert.NoError(err)
 	assert.Len(key, 32)
 }

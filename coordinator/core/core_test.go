@@ -12,6 +12,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/test"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -133,31 +134,31 @@ func TestGenerateSecrets(t *testing.T) {
 
 	// Some secret maps which should represent secret entries from an unmarshaled JSON manifest
 	secretsToGenerate := map[string]Secret{
-		"rawTest1":                {Type: "raw", Size: 128},
-		"rawTest2":                {Type: "raw", Size: 256},
-		"cert-rsa-test":           {Type: "cert-rsa", Size: 2048, ValidFor: 365},
-		"cert-ed25519-test":       {Type: "cert-ed25519"},
-		"cert-ecdsa224-test":      {Type: "cert-ecdsa", Size: 224, ValidFor: 14},
-		"cert-ecdsa256-test":      {Type: "cert-ecdsa", Size: 256, ValidFor: 14},
-		"cert-ecdsa384-test":      {Type: "cert-ecdsa", Size: 384, ValidFor: 14},
-		"cert-ecdsa521-test":      {Type: "cert-ecdsa", Size: 521, ValidFor: 14},
-		"cert-rsa-specified-test": {Type: "cert-rsa", Size: 2048, Cert: Certificate{}},
+		"rawTest1":                {Type: "raw", Size: 128, Shared: true},
+		"rawTest2":                {Type: "raw", Size: 256, Shared: true},
+		"cert-rsa-test":           {Type: "cert-rsa", Size: 2048, ValidFor: 365, Shared: true},
+		"cert-ed25519-test":       {Type: "cert-ed25519", Shared: true},
+		"cert-ecdsa224-test":      {Type: "cert-ecdsa", Size: 224, ValidFor: 14, Shared: true},
+		"cert-ecdsa256-test":      {Type: "cert-ecdsa", Size: 256, ValidFor: 14, Shared: true},
+		"cert-ecdsa384-test":      {Type: "cert-ecdsa", Size: 384, ValidFor: 14, Shared: true},
+		"cert-ecdsa521-test":      {Type: "cert-ecdsa", Size: 521, ValidFor: 14, Shared: true},
+		"cert-rsa-specified-test": {Type: "cert-rsa", Size: 2048, Cert: Certificate{}, Shared: true},
 	}
 
 	secretsNoSize := map[string]Secret{
-		"noSize": {Type: "raw"},
+		"noSize": {Type: "raw", Shared: true},
 	}
 
 	secretsInvalidType := map[string]Secret{
-		"unknownType": {Type: "crap"},
+		"unknownType": {Type: "crap", Shared: true},
 	}
 
 	secretsEd25519WrongKeySize := map[string]Secret{
-		"cert-ed25519-invalidsize": {Type: "cert-ed25519", Size: 384},
+		"cert-ed25519-invalidsize": {Type: "cert-ed25519", Size: 384, Shared: true},
 	}
 
 	secretsECDSAWrongKeySize := map[string]Secret{
-		"cert-ecdsa-invalidsize": {Type: "cert-ecdsa", Size: 512},
+		"cert-ecdsa-invalidsize": {Type: "cert-ecdsa", Size: 512, Shared: true},
 	}
 
 	secretsEmptyMap := map[string]Secret{}
@@ -165,7 +166,7 @@ func TestGenerateSecrets(t *testing.T) {
 	c := NewCoreWithMocks()
 
 	// This should return valid secrets
-	generatedSecrets, err := c.generateSecrets(context.TODO(), secretsToGenerate)
+	generatedSecrets, err := c.generateSecrets(context.TODO(), secretsToGenerate, uuid.Nil)
 	require.NoError(err)
 	// Check if rawTest1 has 128 Bits/16 Bytes and rawTest2 256 Bits/8 Bytes
 	assert.Len(generatedSecrets["rawTest1"].Public, 16)
@@ -179,28 +180,28 @@ func TestGenerateSecrets(t *testing.T) {
 	assert.NotNil(generatedSecrets["cert-rsa-specified-test"].Cert.Raw)
 
 	// Check if we get an empty secret map as output for an empty map as input
-	generatedSecrets, err = c.generateSecrets(context.TODO(), secretsEmptyMap)
+	generatedSecrets, err = c.generateSecrets(context.TODO(), secretsEmptyMap, uuid.Nil)
 	assert.IsType(map[string]Secret{}, generatedSecrets)
 	assert.Len(generatedSecrets, 0)
 
 	// Check if we get an empty secret map as output for nil
-	generatedSecrets, err = c.generateSecrets(context.TODO(), nil)
+	generatedSecrets, err = c.generateSecrets(context.TODO(), nil, uuid.Nil)
 	assert.IsType(map[string]Secret{}, generatedSecrets)
 	assert.Len(generatedSecrets, 0)
 
 	// If no size is specified, the function should fail
-	_, err = c.generateSecrets(context.TODO(), secretsNoSize)
+	_, err = c.generateSecrets(context.TODO(), secretsNoSize, uuid.Nil)
 	assert.Error(err)
 
 	// Also, it should fail if we try to generate a secret with an unknown type
-	_, err = c.generateSecrets(context.TODO(), secretsInvalidType)
+	_, err = c.generateSecrets(context.TODO(), secretsInvalidType, uuid.Nil)
 	assert.Error(err)
 
 	// If Ed25519 key size is specified, we should fail
-	_, err = c.generateSecrets(context.TODO(), secretsEd25519WrongKeySize)
+	_, err = c.generateSecrets(context.TODO(), secretsEd25519WrongKeySize, uuid.Nil)
 	assert.Error(err)
 
 	// However, for ECDSA we fail as we can have multiple curves
-	_, err = c.generateSecrets(context.TODO(), secretsECDSAWrongKeySize)
+	_, err = c.generateSecrets(context.TODO(), secretsECDSAWrongKeySize, uuid.Nil)
 	assert.Error(err)
 }

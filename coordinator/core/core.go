@@ -27,6 +27,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/util"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
@@ -319,12 +320,18 @@ func (c *Core) getStatus(ctx context.Context) (int, string, error) {
 	return int(c.state), status, nil
 }
 
-func (c *Core) generateSecrets(ctx context.Context, secrets map[string]Secret) (map[string]Secret, error) {
+func (c *Core) generateSecrets(ctx context.Context, secrets map[string]Secret, id uuid.UUID) (map[string]Secret, error) {
 	// Create a new map so we do not overwrite the entries in the manifest
 	newSecrets := make(map[string]Secret)
 
 	// Generate secrets
 	for name, secret := range secrets {
+
+		// Skip secrets from wrong context
+		if secret.Shared != (id == uuid.Nil) {
+			continue
+		}
+
 		c.zaplogger.Info("generating secret", zap.String("name", name), zap.String("type", secret.Type), zap.Uint("size", secret.Size))
 		switch secret.Type {
 		// Raw = Symmetric Key
@@ -334,10 +341,22 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]Secret) (
 				return nil, fmt.Errorf("invalid secret size: %v", name)
 			}
 
-			generatedValue := make([]byte, secret.Size/8)
-			_, err := rand.Read(generatedValue)
-			if err != nil {
-				return nil, err
+			var generatedValue []byte
+			// If a secret is shared, we generate a completely random key. If a secret is constrained to a marble, we derive a key from the core's private key.
+			if secret.Shared {
+				generatedValue = make([]byte, secret.Size/8)
+				_, err := rand.Read(generatedValue)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				salt := id.String() + name
+				secretKeyDerive := c.privk.D.Bytes()
+				var err error
+				generatedValue, err = util.DeriveKey(secretKeyDerive, []byte(salt), secret.Size/8)
+				if err != nil {
+					return nil, err
+				}
 			}
 
 			// Get secret object from manifest, create a copy, modify it and put in in the new map so we do not overwrite the manifest entires
