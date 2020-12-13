@@ -18,9 +18,9 @@ To keep things simple, Marblerun issues one concise remote attestation statement
 
 ### Key features
 
-* Authentication and integrity verification of microservices wrt. the Manifest :lock:
+* Authentication and integrity verification of microservices with respect to a Manifest written in simple JSON :lock:
 * Secrets management for microservices :key:
-* Provisioning of certificates, configurations, and parameters :package:
+* Provisioning of certificates, configurations, and parameters for microservices :package:
 * Remote attestation of the entire cluster :globe_with_meridians:
 
 ### Overview
@@ -30,7 +30,7 @@ To keep things simple, Marblerun issues one concise remote attestation statement
 ## Quickstart and documentation
 
 See the [Getting Started Guide][getting-started] to set up a distributed confidential-computing app in a few simple steps.
-For more comprehensive documentation, start with the [docs][docs].
+See the [documentation][docs] for details.
 
 ## Working in this repo
 
@@ -45,14 +45,14 @@ For more comprehensive documentation, start with the [docs][docs].
 
 ### Hello World
 
-We have two basic examples on how to build confidential applications with Marblerun.
+We provide two basic examples on how to build confidential apps with Marblerun.
 
-* See [helloworld](samples/helloworld) for how integrate Marblerun with your Golang application.
-* See [helloc++](samples/helloc++) for how integrate Marblerun with your C++ application.
+* See [helloworld](samples/helloworld) for an example in Go.
+* See [helloc++](samples/helloc++) for an example in C++.
 
 ### Confidential Emoji Voting
 
-The popular [Linkerd][linkerd] service mesh uses the simple and fun scalable *emojivoto* app as the default demo. You can find our confidential variant [here][emojivoto]. Your emoji votes have never been safer!
+The popular [Linkerd][linkerd] service mesh uses the simple and scalable *emojivoto* app as its default demo. You can find our confidential variant [here][emojivoto]. Your emoji votes have never been more secure! 😉
 
 ## Roadmap :rocket:
 
