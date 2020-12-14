@@ -8,11 +8,17 @@
 
 package main
 
-import "github.com/edgelesssys/marblerun/coordinator/quote"
+import (
+	"github.com/edgelesssys/marblerun/coordinator/config"
+	"github.com/edgelesssys/marblerun/coordinator/core"
+	"github.com/edgelesssys/marblerun/coordinator/quote"
+	"github.com/edgelesssys/marblerun/util"
+)
 
 func main() {
 	validator := quote.NewFailValidator()
 	issuer := quote.NewFailIssuer()
-	sealKey := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
-	run(validator, issuer, sealKey, "")
+	sealDir := util.MustGetenv(config.SealDir)
+	sealer := core.NewNoEnclaveSealer(sealDir)
+	run(validator, issuer, sealDir, sealer)
 }

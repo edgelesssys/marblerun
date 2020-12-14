@@ -30,6 +30,10 @@ jobs:
     - name: Integration test
       run: ertgo test -tags integration -b ../build -s
       working-directory: test
+    
+    - name: Integration test (-noenclave)
+      run: ertgo test -tags integration -b ../build -noenclave
+      working-directory: test
 
     - name: Build artifact
       uses: actions/upload-artifact@v2
