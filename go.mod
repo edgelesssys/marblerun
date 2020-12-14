@@ -9,6 +9,8 @@ require (
 	github.com/google/uuid v1.1.2
 	github.com/gorilla/handlers v1.5.1
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
+	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
+	github.com/prometheus/client_golang v1.8.0
 	github.com/spf13/afero v1.4.1
 	github.com/stretchr/testify v1.6.1
 	github.com/tidwall/gjson v1.6.1

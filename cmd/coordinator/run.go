@@ -47,6 +47,7 @@ func run(validator quote.Validator, issuer quote.Issuer, sealKey []byte, sealDir
 	dnsNames := strings.Split(dnsNamesString, ",")
 	clientServerAddr := util.MustGetenv(config.ClientAddr)
 	meshServerAddr := util.MustGetenv(config.MeshAddr)
+	promServerAddr := os.Getenv(config.PromAddr)
 
 	// creating core
 	zapLogger.Info("creating the Core object")
@@ -57,6 +58,11 @@ func run(validator quote.Validator, issuer quote.Issuer, sealKey []byte, sealDir
 	core, err := core.NewCore(dnsNames, validator, issuer, sealer, zapLogger)
 	if err != nil {
 		panic(err)
+	}
+
+	// start the prometheus server
+	if promServerAddr != "" {
+		go server.RunPrometheusServer(promServerAddr, zapLogger)
 	}
 
 	// start client server

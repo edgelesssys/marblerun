@@ -23,6 +23,8 @@ import (
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -64,10 +66,12 @@ func RunMarbleServer(core *core.Core, addr string, addrChan chan string, errChan
 		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
 			grpc_ctxtags.StreamServerInterceptor(),
 			grpc_zap.StreamServerInterceptor(zapLogger),
+			grpc_prometheus.StreamServerInterceptor,
 		)),
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
 			grpc_ctxtags.UnaryServerInterceptor(),
 			grpc_zap.UnaryServerInterceptor(zapLogger),
+			grpc_prometheus.UnaryServerInterceptor,
 		)),
 	)
 
@@ -178,5 +182,14 @@ func RunClientServer(mux *http.ServeMux, address string, tlsConfig *tls.Config, 
 	}
 	zapLogger.Info("starting client https server", zap.String("address", address))
 	err := server.ListenAndServeTLS("", "")
+	zapLogger.Warn(err.Error())
+}
+
+// RunPrometheusServer runs a HTTP server handling the prometheus metrics endpoint
+func RunPrometheusServer(address string, zapLogger *zap.Logger) {
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.Handler())
+	zapLogger.Info("starting prometheus /metrics endpoint", zap.String("address", address))
+	err := http.ListenAndServe(address, mux)
 	zapLogger.Warn(err.Error())
 }
