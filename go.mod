@@ -3,7 +3,7 @@ module github.com/edgelesssys/marblerun
 go 1.14
 
 require (
-	github.com/edgelesssys/ertgolib v0.1.2-0.20201214150630-a29d75e8c4c3
+	github.com/edgelesssys/ertgolib v0.1.2
 	github.com/golang/protobuf v1.4.3
 	github.com/google/go-cmp v0.5.2
 	github.com/google/uuid v1.1.2

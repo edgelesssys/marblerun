@@ -19,6 +19,6 @@ func main() {
 	validator := quote.NewFailValidator()
 	issuer := quote.NewFailIssuer()
 	sealDir := util.MustGetenv(config.SealDir)
-	sealer := core.NewNoEnclaveSealer(sealDir, []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
+	sealer := core.NewNoEnclaveSealer(sealDir)
 	run(validator, issuer, sealDir, sealer)
 }

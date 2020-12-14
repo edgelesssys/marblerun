@@ -189,7 +189,7 @@ type NoEnclaveSealer struct {
 }
 
 // NewNoEnclaveSealer creates and initializes a new NoEnclaveSealer object
-func NewNoEnclaveSealer(sealDir string, encryptionKey []byte) *NoEnclaveSealer {
+func NewNoEnclaveSealer(sealDir string) *NoEnclaveSealer {
 	return &NoEnclaveSealer{sealDir: sealDir}
 }
 

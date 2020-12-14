@@ -48,7 +48,6 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer 
 
 	// creating core
 	zapLogger.Info("creating the Core object")
-	log.Println(sealDir)
 	if err := os.MkdirAll(sealDir, 0700); err != nil {
 		zapLogger.Fatal("Cannot create or access sealdir. Please check the permissions for the specified path.", zap.Error(err))
 	}
