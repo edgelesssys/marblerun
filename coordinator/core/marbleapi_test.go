@@ -170,11 +170,11 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	ms.assert.Len(sealKey, 32)
 
 	// Validate Marble Key
-	p, _ := pem.Decode([]byte(params.Env["MARBLE_KEY"]))
+	p, _ := pem.Decode([]byte(params.Env["MARBLE_PREDEFINED_PRIVATE_KEY"]))
 	ms.assert.NotNil(p)
 
 	// Validate Cert
-	p, _ = pem.Decode([]byte(params.Env["MARBLE_CERT"]))
+	p, _ = pem.Decode([]byte(params.Env["MARBLE_PREDEFINED_MARBLE_CERT"]))
 	ms.assert.NotNil(p)
 	newCert, err := x509.ParseCertificate(p.Bytes)
 	ms.assert.NoError(err)
@@ -201,7 +201,7 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 
 	// Check cert-chain
 	roots := x509.NewCertPool()
-	ms.assert.True(roots.AppendCertsFromPEM([]byte(params.Env["ROOT_CA"])), "cannot parse rootCA")
+	ms.assert.True(roots.AppendCertsFromPEM([]byte(params.Env["MARBLE_PREDEFINED_ROOT_CA"])), "cannot parse rootCA")
 	opts := x509.VerifyOptions{
 		Roots:     roots,
 		DNSName:   "localhost",

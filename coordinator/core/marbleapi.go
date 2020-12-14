@@ -212,6 +212,24 @@ func customizeParameters(params *rpc.Parameters, specialSecrets reservedSecrets,
 		customParams.Env[name] = newValue
 	}
 
+	// Set as environment variables
+	rootCaPem, err := encodeSecretDataToPem(specialSecrets.RootCA.Cert)
+	if err != nil {
+		return nil, err
+	}
+	marbleCertPem, err := encodeSecretDataToPem(specialSecrets.MarbleCert.Cert)
+	if err != nil {
+		return nil, err
+	}
+	encodedPrivKey, err := encodeSecretDataToPem(specialSecrets.MarbleCert.Private)
+	if err != nil {
+		return nil, err
+	}
+
+	customParams.Env["MARBLE_PREDEFINED_ROOT_CA"] = rootCaPem
+	customParams.Env["MARBLE_PREDEFINED_MARBLE_CERT"] = marbleCertPem
+	customParams.Env["MARBLE_PREDEFINED_PRIVATE_KEY"] = encodedPrivKey
+
 	return &customParams, nil
 }
 
