@@ -20,7 +20,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func run(validator quote.Validator, issuer quote.Issuer, sealKey []byte, sealDirPrefix string) {
+func run(validator quote.Validator, issuer quote.Issuer, sealDirPrefix string) {
 	// Setup logging with Zap Logger
 	var zapLogger *zap.Logger
 	var err error
@@ -54,7 +54,7 @@ func run(validator quote.Validator, issuer quote.Issuer, sealKey []byte, sealDir
 	if err := os.MkdirAll(sealDir, 0700); err != nil {
 		zapLogger.Fatal("Cannot create or access sealdir. Please check the permissions for the specified path.", zap.Error(err))
 	}
-	sealer := core.NewAESGCMSealer(sealDir, sealKey)
+	sealer := core.NewAESGCMSealer(sealDir)
 	core, err := core.NewCore(dnsNames, validator, issuer, sealer, zapLogger)
 	if err != nil {
 		panic(err)

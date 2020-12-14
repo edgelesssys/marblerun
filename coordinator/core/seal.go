@@ -37,13 +37,12 @@ type Sealer interface {
 // AESGCMSealer implements the Sealer interface using AES-GCM for confidentiallity and authentication
 type AESGCMSealer struct {
 	sealDir       string
-	sealKey       []byte
 	encryptionKey []byte
 }
 
 // NewAESGCMSealer creates and initializes a new AESGCMSealer object
-func NewAESGCMSealer(sealDir string, sealKey []byte) *AESGCMSealer {
-	return &AESGCMSealer{sealDir: sealDir, sealKey: sealKey}
+func NewAESGCMSealer(sealDir string) *AESGCMSealer {
+	return &AESGCMSealer{sealDir: sealDir}
 }
 
 // Unseal reads and decrypts stored information from the fs
