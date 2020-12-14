@@ -394,7 +394,7 @@ func TestRecoveryReset(t *testing.T) {
 	pathToKeyFile := filepath.Join(cfg.sealDir, core.SealedKeyFname)
 	sealedKeyData, err := ioutil.ReadFile(pathToKeyFile)
 	require.NoError(err)
-	sealedKeyData[0] = sealedKeyData[0] ^ byte(0x42)
+	sealedKeyData[0] ^= byte(0x42)
 	require.NoError(ioutil.WriteFile(pathToKeyFile, sealedKeyData, 0600))
 
 	// Restart server, we should be in recovery mode

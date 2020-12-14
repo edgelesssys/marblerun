@@ -7,14 +7,14 @@
 package core
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
 	"crypto/rand"
 	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/edgelesssys/ertgolib/ertcrypto"
 )
 
 // SealedDataFname contains the file name in which the state is sealed on disk in seal_dir
@@ -63,7 +63,7 @@ func (s *AESGCMSealer) Unseal() ([]byte, error) {
 	}
 
 	// Decrypt data with the unsealed encryption key and return it
-	return decrypt(sealedData, s.encryptionKey)
+	return ertcrypto.Decrypt(sealedData, s.encryptionKey)
 }
 
 // Seal encrypts and stores information to the fs
@@ -79,7 +79,7 @@ func (s *AESGCMSealer) Seal(data []byte) ([]byte, error) {
 	}
 
 	// Encrypt data to seal with generated encryption key
-	encryptedData, err := encrypt(data, s.encryptionKey)
+	encryptedData, err := ertcrypto.Encrypt(data, s.encryptionKey)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +108,7 @@ func (s *AESGCMSealer) unsealEncryptionKey() error {
 	}
 
 	// Decrypt stored encryption key with seal key
-	encryptionKey, err := decrypt(sealedKeyData, s.sealKey)
+	encryptionKey, err := ertcrypto.Unseal(sealedKeyData)
 	if err != nil {
 		return err
 	}
@@ -141,7 +141,7 @@ func (s *AESGCMSealer) SetEncryptionKey(encryptionKey []byte) error {
 	}
 
 	// Encrypt encryption key with seal key
-	encryptedKeyData, err := encrypt(encryptionKey, s.sealKey)
+	encryptedKeyData, err := ertcrypto.SealWithProductKey(encryptionKey)
 	if err != nil {
 		return err
 	}
@@ -154,52 +154,6 @@ func (s *AESGCMSealer) SetEncryptionKey(encryptionKey []byte) error {
 	s.encryptionKey = encryptionKey
 
 	return nil
-}
-
-func getCipher(key []byte) (cipher.AEAD, error) {
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-	return cipher.NewGCM(block)
-}
-
-func encrypt(plaintext []byte, key []byte) ([]byte, error) {
-	// Create cipher object with the given key
-	aesgcm, err := getCipher(key)
-	if err != nil {
-		return nil, err
-	}
-
-	// Generate nonce
-	nonce := make([]byte, aesgcm.NonceSize())
-	if _, err := rand.Read(nonce); err != nil {
-		return nil, err
-	}
-
-	// Encrypt data
-	ciphertext := aesgcm.Seal(nil, nonce, plaintext, nil)
-
-	return append(nonce, ciphertext...), nil
-}
-
-func decrypt(ciphertext []byte, key []byte) ([]byte, error) {
-	// Create cipher object with the given key
-	aesgcm, err := getCipher(key)
-	if err != nil {
-		return nil, err
-	}
-
-	// Split ciphertext into nonce & actual data
-	nonce, encryptedData := ciphertext[:aesgcm.NonceSize()], ciphertext[aesgcm.NonceSize():]
-
-	// Decrypt data
-	plaintext, err := aesgcm.Open(nil, nonce, encryptedData, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return plaintext, nil
 }
 
 // MockSealer is a mockup sealer
