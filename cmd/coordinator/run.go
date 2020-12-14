@@ -9,7 +9,6 @@ package main
 import (
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/edgelesssys/marblerun/coordinator/config"
@@ -20,7 +19,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func run(validator quote.Validator, issuer quote.Issuer, sealDirPrefix string) {
+func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer core.Sealer) {
 	// Setup logging with Zap Logger
 	var zapLogger *zap.Logger
 	var err error
@@ -41,8 +40,6 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDirPrefix string) {
 	zapLogger.Info("starting coordinator")
 
 	// fetching env vars
-	sealDir := util.MustGetenv(config.SealDir)
-	sealDir = filepath.Join(sealDirPrefix, sealDir)
 	dnsNamesString := util.MustGetenv(config.DNSNames)
 	dnsNames := strings.Split(dnsNamesString, ",")
 	clientServerAddr := util.MustGetenv(config.ClientAddr)
@@ -51,10 +48,10 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDirPrefix string) {
 
 	// creating core
 	zapLogger.Info("creating the Core object")
+	log.Println(sealDir)
 	if err := os.MkdirAll(sealDir, 0700); err != nil {
 		zapLogger.Fatal("Cannot create or access sealdir. Please check the permissions for the specified path.", zap.Error(err))
 	}
-	sealer := core.NewAESGCMSealer(sealDir)
 	core, err := core.NewCore(dnsNames, validator, issuer, sealer, zapLogger)
 	if err != nil {
 		panic(err)

@@ -11,12 +11,18 @@ package main
 import (
 	"path/filepath"
 
+	"github.com/edgelesssys/marblerun/coordinator/config"
+	"github.com/edgelesssys/marblerun/coordinator/core"
 	"github.com/edgelesssys/marblerun/coordinator/quote/ertvalidator"
+	"github.com/edgelesssys/marblerun/util"
 )
 
 func main() {
 	validator := ertvalidator.NewERTValidator()
 	issuer := ertvalidator.NewERTIssuer()
 	sealDirPrefix := filepath.Join(filepath.FromSlash("/edg"), "hostfs")
-	run(validator, issuer, sealDirPrefix)
+	sealDir := util.MustGetenv(config.SealDir)
+	sealDir = filepath.Join(sealDirPrefix, sealDir)
+	sealer := core.NewAESGCMSealer(sealDir)
+	run(validator, issuer, sealDir, sealer)
 }

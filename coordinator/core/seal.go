@@ -181,3 +181,75 @@ func (s *MockSealer) SetEncryptionKey(key []byte) error {
 func (s *MockSealer) GenerateNewEncryptionKey() error {
 	return nil
 }
+
+// NoEnclaveSealer is a sealed for a -noenclave instance and does perform encryption with a fixed key
+type NoEnclaveSealer struct {
+	sealDir       string
+	encryptionKey []byte
+}
+
+// NewNoEnclaveSealer creates and initializes a new NoEnclaveSealer object
+func NewNoEnclaveSealer(sealDir string, encryptionKey []byte) *NoEnclaveSealer {
+	return &NoEnclaveSealer{sealDir: sealDir}
+}
+
+// Seal writes the given data encrypted and the used key as plaintext to the disk
+func (s *NoEnclaveSealer) Seal(data []byte) ([]byte, error) {
+	// Encrypt data
+	sealedData, err := ertcrypto.Encrypt(data, s.encryptionKey)
+	if err != nil {
+		return nil, err
+	}
+
+	// Write encrypted data to disk
+	if err := ioutil.WriteFile(s.getFname(SealedDataFname), sealedData, 0600); err != nil {
+		return nil, err
+	}
+
+	// Write key in plaintext to disk
+	if err := ioutil.WriteFile(s.getFname(SealedKeyFname), s.encryptionKey, 0600); err != nil {
+		return nil, err
+	}
+	return s.encryptionKey, nil
+}
+
+// Unseal reads the plaintext state from disk
+func (s *NoEnclaveSealer) Unseal() ([]byte, error) {
+	// Read sealed data from disk
+	sealedData, err := ioutil.ReadFile(s.getFname(SealedDataFname))
+	if os.IsNotExist(err) {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	// Read key in plaintext from disk
+	keyData, err := ioutil.ReadFile(s.getFname(SealedKeyFname))
+	if err != nil {
+		return nil, err
+	}
+
+	// Decrypt data with key from disk
+	data, err := ertcrypto.Decrypt(sealedData, keyData)
+	if err != nil {
+		return nil, ErrEncryptionKey
+	}
+
+	return data, nil
+}
+
+// SetEncryptionKey implements the Sealer interface
+func (s *NoEnclaveSealer) SetEncryptionKey(key []byte) error {
+	s.encryptionKey = key
+	return ioutil.WriteFile(s.getFname(SealedKeyFname), s.encryptionKey, 0600)
+}
+
+// GenerateNewEncryptionKey implements the Sealer interface
+func (s *NoEnclaveSealer) GenerateNewEncryptionKey() error {
+	s.encryptionKey = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	return nil
+}
+
+func (s *NoEnclaveSealer) getFname(basename string) string {
+	return filepath.Join(s.sealDir, basename)
+}
