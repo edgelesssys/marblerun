@@ -7,7 +7,6 @@
 package main
 
 import (
-	"crypto/tls"
 	"fmt"
 	"log"
 	"net/http"
@@ -21,25 +20,22 @@ import (
 func main() {
 	addr := util.MustGetenv("EDG_TEST_ADDR")
 
-	serverTLSConfig, err := marble.GetServerTLSConfig()
-	if err != nil {
-		panic(err)
-	}
-
-	clientTLSConfig, err := marble.GetClientTLSConfig()
-	if err != nil {
-		panic(err)
-	}
-
 	if len(os.Args) > 1 && os.Args[1] == "serve" {
-		runServer(addr, serverTLSConfig)
+		runServer(addr)
 		return
 	}
 
-	runClient(addr, clientTLSConfig)
+	runClient(addr)
 }
 
-func runServer(addr string, tlsConfig *tls.Config) {
+func runServer(addr string) {
+	// Retrieve server TLS config from ertgolib
+	tlsConfig, err := marble.GetServerTLSConfig()
+	if err != nil {
+		panic(err)
+	}
+
+	// Setup server
 	srv := &http.Server{
 		Addr:      addr,
 		TLSConfig: tlsConfig,
@@ -55,7 +51,14 @@ func runServer(addr string, tlsConfig *tls.Config) {
 	log.Fatal(srv.ListenAndServeTLS("", ""))
 }
 
-func runClient(addr string, tlsConfig *tls.Config) error {
+func runClient(addr string) error {
+	// Retrieve client TLS config from ertgolib
+	tlsConfig, err := marble.GetClientTLSConfig()
+	if err != nil {
+		panic(err)
+	}
+
+	// Setup client
 	client := http.Client{Transport: &http.Transport{TLSClientConfig: tlsConfig}}
 	url := url.URL{Scheme: "https", Host: addr}
 	resp, err := client.Get(url.String())
