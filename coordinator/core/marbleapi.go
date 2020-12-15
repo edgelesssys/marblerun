@@ -17,6 +17,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/edgelesssys/ertgolib/marble"
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
@@ -226,9 +227,9 @@ func customizeParameters(params *rpc.Parameters, specialSecrets reservedSecrets,
 		return nil, err
 	}
 
-	customParams.Env["MARBLE_PREDEFINED_ROOT_CA"] = rootCaPem
-	customParams.Env["MARBLE_PREDEFINED_MARBLE_CERT"] = marbleCertPem
-	customParams.Env["MARBLE_PREDEFINED_PRIVATE_KEY"] = encodedPrivKey
+	customParams.Env[marble.MarbleEnvironmentRootCA] = rootCaPem
+	customParams.Env[marble.MarbleEnvironmentCertificate] = marbleCertPem
+	customParams.Env[marble.MarbleEnvironmentPrivateKey] = encodedPrivKey
 
 	return &customParams, nil
 }

@@ -51,8 +51,8 @@ github.com/dustin/go-humanize v0.0.0-20171111073723-bb3d318650d4/go.mod h1:Htrtb
 github.com/eapache/go-resiliency v1.1.0/go.mod h1:kFI+JgMyC7bLPUVY133qvEBtVayf5mFgVsvEsIPBvNs=
 github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21/go.mod h1:+020luEh2TKB4/GOp8oxxtq0Daoen/Cii55CzbTV6DU=
 github.com/eapache/queue v1.1.0/go.mod h1:6eCeP0CKFpHLu8blIFXhExK/dRa7WDZfr6jVFPTqq+I=
-github.com/edgelesssys/ertgolib v0.1.3-0.20201215075232-c044d27a45a3 h1:BRVrkxH+e6STNfHit8+9VVVN1SNiROuKseuAhthwiE4=
-github.com/edgelesssys/ertgolib v0.1.3-0.20201215075232-c044d27a45a3/go.mod h1:1E8jAgXZp9wyP3n43wCsLCiEGXxjBQ35+uzxUkypBNs=
+github.com/edgelesssys/ertgolib v0.1.3-0.20201215132249-6f978b61cb71 h1:TOHRU388JrDqFW0dBGfTtBtTda68/M0pf4UG9Oauz6E=
+github.com/edgelesssys/ertgolib v0.1.3-0.20201215132249-6f978b61cb71/go.mod h1:1E8jAgXZp9wyP3n43wCsLCiEGXxjBQ35+uzxUkypBNs=
 github.com/edsrzf/mmap-go v1.0.0/go.mod h1:YO35OhQPt3KJa3ryjFM5Bs14WD66h8eGKpfaBNrHW5M=
 github.com/envoyproxy/go-control-plane v0.6.9/go.mod h1:SBwIajubJHhxtWwsL9s8ss4safvEdbitLhGGK48rN6g=
 github.com/envoyproxy/go-control-plane v0.9.0/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
