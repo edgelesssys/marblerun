@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	libMarble "github.com/edgelesssys/ertgolib/marble"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
 	"github.com/edgelesssys/marblerun/test"
@@ -170,11 +171,11 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	ms.assert.Len(sealKey, 32)
 
 	// Validate Marble Key
-	p, _ := pem.Decode([]byte(params.Env["MARBLE_KEY"]))
+	p, _ := pem.Decode([]byte(params.Env[libMarble.MarbleEnvironmentPrivateKey]))
 	ms.assert.NotNil(p)
 
 	// Validate Cert
-	p, _ = pem.Decode([]byte(params.Env["MARBLE_CERT"]))
+	p, _ = pem.Decode([]byte(params.Env[libMarble.MarbleEnvironmentCertificate]))
 	ms.assert.NotNil(p)
 	newCert, err := x509.ParseCertificate(p.Bytes)
 	ms.assert.NoError(err)
@@ -201,7 +202,7 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 
 	// Check cert-chain
 	roots := x509.NewCertPool()
-	ms.assert.True(roots.AppendCertsFromPEM([]byte(params.Env["ROOT_CA"])), "cannot parse rootCA")
+	ms.assert.True(roots.AppendCertsFromPEM([]byte(params.Env[libMarble.MarbleEnvironmentRootCA])), "cannot parse rootCA")
 	opts := x509.VerifyOptions{
 		Roots:     roots,
 		DNSName:   "localhost",

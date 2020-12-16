@@ -7,49 +7,38 @@
 package main
 
 import (
-	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
 
+	"github.com/edgelesssys/ertgolib/marble"
 	"github.com/edgelesssys/marblerun/util"
 )
 
 func main() {
-	cert := []byte(util.MustGetenv("MARBLE_CERT"))
-	rootCA := []byte(util.MustGetenv("ROOT_CA"))
-	privk := []byte(util.MustGetenv("MARBLE_KEY"))
 	addr := util.MustGetenv("EDG_TEST_ADDR")
 
-	roots := x509.NewCertPool()
-	if !roots.AppendCertsFromPEM(rootCA) {
-		log.Fatalf("cannot append rootCa to CertPool")
-	}
-
-	tlsCert, err := tls.X509KeyPair(cert, privk)
-	if err != nil {
-		log.Fatalf("cannot create TLS cert: %v", err)
-	}
-
 	if len(os.Args) > 1 && os.Args[1] == "serve" {
-		runServer(addr, tlsCert, roots)
+		runServer(addr)
 		return
 	}
 
-	runClient(addr, tlsCert, roots)
+	runClient(addr)
 }
 
-func runServer(addr string, tlsCert tls.Certificate, roots *x509.CertPool) {
+func runServer(addr string) {
+	// Retrieve server TLS config from ertgolib
+	tlsConfig, err := marble.GetServerTLSConfig()
+	if err != nil {
+		panic(err)
+	}
+
+	// Setup server
 	srv := &http.Server{
-		Addr: addr,
-		TLSConfig: &tls.Config{
-			ClientCAs:    roots,
-			Certificates: []tls.Certificate{tlsCert},
-			ClientAuth:   tls.RequireAndVerifyClientCert,
-		},
+		Addr:      addr,
+		TLSConfig: tlsConfig,
 	}
 
 	// handle '/' route
@@ -62,11 +51,15 @@ func runServer(addr string, tlsCert tls.Certificate, roots *x509.CertPool) {
 	log.Fatal(srv.ListenAndServeTLS("", ""))
 }
 
-func runClient(addr string, tlsCert tls.Certificate, roots *x509.CertPool) error {
-	client := http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{
-		RootCAs:      roots,
-		Certificates: []tls.Certificate{tlsCert},
-	}}}
+func runClient(addr string) error {
+	// Retrieve client TLS config from ertgolib
+	tlsConfig, err := marble.GetClientTLSConfig()
+	if err != nil {
+		panic(err)
+	}
+
+	// Setup client
+	client := http.Client{Transport: &http.Transport{TLSClientConfig: tlsConfig}}
 	url := url.URL{Scheme: "https", Host: addr}
 	resp, err := client.Get(url.String())
 	if err != nil {

@@ -126,6 +126,10 @@ func encodeSecretDataToRaw(data interface{}) (string, error) {
 	switch secret := data.(type) {
 	case []byte:
 		return string(secret), nil
+	case PrivateKey:
+		return string(secret), nil
+	case PublicKey:
+		return string(secret), nil
 	case Secret:
 		return string(secret.Public), nil
 	case Certificate:
