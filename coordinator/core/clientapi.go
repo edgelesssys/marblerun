@@ -42,7 +42,7 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) ([]byte, err
 	if err := json.Unmarshal(rawManifest, &manifest); err != nil {
 		return nil, err
 	}
-	if err := manifest.Check(ctx); err != nil {
+	if err := manifest.Check(ctx, c.zaplogger); err != nil {
 		return nil, err
 	}
 

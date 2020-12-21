@@ -14,6 +14,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func mustSetup() (*Core, *Manifest) {
@@ -40,6 +41,7 @@ func TestGetManifestSignature(t *testing.T) {
 
 func TestSetManifest(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 
 	c, manifest := mustSetup()
 	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
@@ -73,9 +75,30 @@ func TestSetManifest(t *testing.T) {
 		break
 	}
 	modRawManifest, err := json.Marshal(manifest)
-	assert.NoError(err)
+	require.NoError(err)
 	_, err = c.SetManifest(context.TODO(), modRawManifest)
 	assert.Equal("manifest does not contain marble package foo", err.Error())
+
+	// Try setting manifest with UniqueID + other value set, no debug mode (this should fail)
+	c, manifest = mustSetup()
+
+	backendPackage := manifest.Packages["backend"]
+	backendPackage.SignerID = "some signer"
+	manifest.Packages["backend"] = backendPackage
+
+	modRawManifest, err = json.Marshal(manifest)
+	require.NoError(err)
+	_, err = c.SetManifest(context.TODO(), modRawManifest)
+	assert.Equal("manifest specfies both UniqueID *and* SignerID/ProductID/SecurityVersion", err.Error())
+
+	// Try setting manifest with Unique + other value set, with debug mode (this should pass)
+	backendPackage.Debug = true
+	manifest.Packages["backend"] = backendPackage
+
+	modRawManifest, err = json.Marshal(manifest)
+	require.NoError(err)
+	_, err = c.SetManifest(context.TODO(), modRawManifest)
+	assert.NoError(err)
 }
 
 func TestGetCertQuote(t *testing.T) {

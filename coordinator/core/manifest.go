@@ -18,6 +18,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
+	"go.uber.org/zap"
 )
 
 // Manifest defines the rules of a mesh.
@@ -155,7 +156,7 @@ var manifestTemplateFuncMap = template.FuncMap{
 }
 
 // Check checks if the manifest is consistent.
-func (m Manifest) Check(ctx context.Context) error {
+func (m Manifest) Check(ctx context.Context, zaplogger *zap.Logger) error {
 	if len(m.Packages) <= 0 {
 		return errors.New("no allowed packages defined")
 	}
@@ -166,8 +167,17 @@ func (m Manifest) Check(ctx context.Context) error {
 	// 	return errors.New("no allowed infrastructures defined")
 	// }
 	for _, marble := range m.Marbles {
-		if _, ok := m.Packages[marble.Package]; !ok {
+		singlePackage, ok := m.Packages[marble.Package]
+		if !ok {
 			return errors.New("manifest does not contain marble package " + marble.Package)
+		}
+		// Unless debug mode is enabled, only allow UniqueID *or* the other properties being set, but not both
+		if singlePackage.UniqueID != "" && (singlePackage.SignerID != "" || singlePackage.ProductID != nil || singlePackage.SecurityVersion != nil) {
+			if singlePackage.Debug {
+				zaplogger.Warn("Manifest specifies UniqueID *and* SignerID/ProductID/SecurityVersion. This is not accepted in non-debug mode, please check your configuration.", zap.String("packageName", marble.Package))
+			} else {
+				return errors.New("manifest specfies both UniqueID *and* SignerID/ProductID/SecurityVersion")
+			}
 		}
 	}
 	return nil
