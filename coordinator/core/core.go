@@ -335,7 +335,7 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]Secret, i
 		c.zaplogger.Info("generating secret", zap.String("name", name), zap.String("type", secret.Type), zap.Uint("size", secret.Size))
 		switch secret.Type {
 		// Raw = Symmetric Key
-		case "raw":
+		case "symmetric-key":
 			// Check secret size
 			if secret.Size == 0 || secret.Size%8 != 0 {
 				return nil, fmt.Errorf("invalid secret size: %v", name)

@@ -56,7 +56,7 @@ const ManifestJSON string = `{
 				"Env": {
 					"IS_FIRST": "true",
 					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
-					"TEST_SECRET_RAW": "{{ raw .Secrets.raw_shared }}",
+					"TEST_SECRET_SYMMETRIC_KEY": "{{ raw .Secrets.symmetric_key_shared }}",
 					"TEST_SECRET_CERT": "{{ pem .Secrets.cert_shared.Cert }}",
 					"TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.cert_private.Cert }}"
 				},
@@ -92,14 +92,14 @@ const ManifestJSON string = `{
 		"owner": [9,9,9]
 	},
 	"Secrets": {
-		"raw_shared": {
+		"symmetric_key_shared": {
 			"Size": 128,
 			"Shared": true,
-			"Type": "raw"
+			"Type": "symmetric-key"
 		},
-		"raw_private": {
+		"symmetric_key_private": {
 			"Size": 256,
-			"Type": "raw"
+			"Type": "symmetric-key"
 		},
 		"cert_private": {
 			"Size": 2048,
