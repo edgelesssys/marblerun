@@ -134,8 +134,8 @@ func TestGenerateSecrets(t *testing.T) {
 
 	// Some secret maps which should represent secret entries from an unmarshaled JSON manifest
 	secretsToGenerate := map[string]Secret{
-		"rawTest1":                {Type: "raw", Size: 128, Shared: true},
-		"rawTest2":                {Type: "raw", Size: 256, Shared: true},
+		"rawTest1":                {Type: "symmetric-key", Size: 128, Shared: true},
+		"rawTest2":                {Type: "symmetric-key", Size: 256, Shared: true},
 		"cert-rsa-test":           {Type: "cert-rsa", Size: 2048, ValidFor: 365, Shared: true},
 		"cert-ed25519-test":       {Type: "cert-ed25519", Shared: true},
 		"cert-ecdsa224-test":      {Type: "cert-ecdsa", Size: 224, ValidFor: 14, Shared: true},
@@ -146,7 +146,7 @@ func TestGenerateSecrets(t *testing.T) {
 	}
 
 	secretsNoSize := map[string]Secret{
-		"noSize": {Type: "raw", Shared: true},
+		"noSize": {Type: "symmetric-key", Shared: true},
 	}
 
 	secretsInvalidType := map[string]Secret{

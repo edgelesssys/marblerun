@@ -195,9 +195,9 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 
 	// Validate generated secret (only specified in backend_first)
 	if marbleType == "backend_first" {
-		ms.assert.Len(params.Env["TEST_SECRET_RAW"], 16)
+		ms.assert.Len(params.Env["TEST_SECRET_SYMMETRIC_KEY"], 16)
 	} else {
-		ms.assert.Empty(params.Env["TEST_SECRET_RAW"])
+		ms.assert.Empty(params.Env["TEST_SECRET_SYMMETRIC_KEY"])
 	}
 
 	// Check cert-chain
@@ -289,8 +289,8 @@ func TestParseSecrets(t *testing.T) {
 
 	// Define secrets
 	testSecrets := map[string]Secret{
-		"mysecret":          {Type: "raw", Size: 16, Public: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, Private: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}},
-		"anothercoolsecret": {Type: "raw", Size: 8, Public: []byte{7, 6, 5, 4, 3, 2, 1, 0}, Private: []byte{7, 6, 5, 4, 3, 2, 1, 0}},
+		"mysecret":          {Type: "symmetric-key", Size: 16, Public: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, Private: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}},
+		"anothercoolsecret": {Type: "symmetric-key", Size: 8, Public: []byte{7, 6, 5, 4, 3, 2, 1, 0}, Private: []byte{7, 6, 5, 4, 3, 2, 1, 0}},
 		"testcertificate":   {Type: "cert-rsa", Size: 2048, Cert: Certificate(*testCert), Public: pubKey, Private: privKey},
 	}
 
