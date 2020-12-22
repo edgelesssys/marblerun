@@ -182,27 +182,30 @@ func (m Manifest) Check(ctx context.Context, zaplogger *zap.Logger) error {
 			}
 		} else if singlePackage.UniqueID == "" {
 			if singlePackage.SignerID == "" {
-				if singlePackage.Debug {
-					zaplogger.Warn("Manifest misses value for SignedID. This is not accepted in non-debug mode, please check your configuration.", zap.String("packageName", marble.Package))
-				} else {
-					return fmt.Errorf("manifest misses value for SignerID in package %s", marble.Package)
+				if err := warnOrFailForMissingValue(singlePackage.Debug, "SignerID", marble.Package, zaplogger); err != nil {
+					return err
 				}
 			}
 			if singlePackage.ProductID == nil {
-				if singlePackage.Debug {
-					zaplogger.Warn("Manifest misses value for ProductID. This is not accepted in non-debug mode, please check your configuration.", zap.String("packageName", marble.Package))
-				} else {
-					return fmt.Errorf("manifest misses value for ProductID in package %s", marble.Package)
+				if err := warnOrFailForMissingValue(singlePackage.Debug, "ProductID", marble.Package, zaplogger); err != nil {
+					return err
 				}
 			}
 			if singlePackage.SecurityVersion == nil {
-				if singlePackage.Debug {
-					zaplogger.Warn("Manifest misses value for SecurityVersion. This is not accepted in non-debug mode, please check your configuration.", zap.String("packageName", marble.Package))
-				} else {
-					return fmt.Errorf("manifest misses value for SecurityVersion in package %s", marble.Package)
+				if err := warnOrFailForMissingValue(singlePackage.Debug, "SecurityVersion", marble.Package, zaplogger); err != nil {
+					return err
 				}
 			}
-		} 
+		}
 	}
 	return nil
+}
+
+func warnOrFailForMissingValue(debugMode bool, parameter string, packageName string, zaplogger *zap.Logger) error {
+	if debugMode {
+		zaplogger.Warn("Manifest misses value in package declaration. This is not accepted in non-debug mode, please check your configuration.", zap.String("parameter", parameter), zap.String("packageName", packageName))
+		return nil
+	}
+
+	return fmt.Errorf("manifest misses value for %s in package %s", parameter, packageName)
 }
