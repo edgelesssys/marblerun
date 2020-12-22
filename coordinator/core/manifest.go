@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"text/template"
 
 	"github.com/edgelesssys/marblerun/coordinator/quote"
@@ -171,14 +172,37 @@ func (m Manifest) Check(ctx context.Context, zaplogger *zap.Logger) error {
 		if !ok {
 			return errors.New("manifest does not contain marble package " + marble.Package)
 		}
-		// Unless debug mode is enabled, only allow UniqueID *or* the other properties being set, but not both
+		// Check if package specifies either UniqueID, or values for all, SignerID, ProductID & Security version
+		// Debug mode bypasses this requirement and throws a warning instead
 		if singlePackage.UniqueID != "" && (singlePackage.SignerID != "" || singlePackage.ProductID != nil || singlePackage.SecurityVersion != nil) {
 			if singlePackage.Debug {
 				zaplogger.Warn("Manifest specifies UniqueID *and* SignerID/ProductID/SecurityVersion. This is not accepted in non-debug mode, please check your configuration.", zap.String("packageName", marble.Package))
 			} else {
-				return errors.New("manifest specfies both UniqueID *and* SignerID/ProductID/SecurityVersion")
+				return fmt.Errorf("manifest specfies both UniqueID *and* SignerID/ProductID/SecurityVersion in package %s", marble.Package)
 			}
-		}
+		} else if singlePackage.UniqueID == "" {
+			if singlePackage.SignerID == "" {
+				if singlePackage.Debug {
+					zaplogger.Warn("Manifest misses value for SignedID. This is not accepted in non-debug mode, please check your configuration.", zap.String("packageName", marble.Package))
+				} else {
+					return fmt.Errorf("manifest misses value for SignerID in package %s", marble.Package)
+				}
+			}
+			if singlePackage.ProductID == nil {
+				if singlePackage.Debug {
+					zaplogger.Warn("Manifest misses value for ProductID. This is not accepted in non-debug mode, please check your configuration.", zap.String("packageName", marble.Package))
+				} else {
+					return fmt.Errorf("manifest misses value for ProductID in package %s", marble.Package)
+				}
+			}
+			if singlePackage.SecurityVersion == nil {
+				if singlePackage.Debug {
+					zaplogger.Warn("Manifest misses value for SecurityVersion. This is not accepted in non-debug mode, please check your configuration.", zap.String("packageName", marble.Package))
+				} else {
+					return fmt.Errorf("manifest misses value for SecurityVersion in package %s", marble.Package)
+				}
+			}
+		} 
 	}
 	return nil
 }
