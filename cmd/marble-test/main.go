@@ -30,7 +30,7 @@ func main() {
 
 func runServer(addr string) {
 	// Retrieve server TLS config from ertgolib
-	tlsConfig, err := marble.GetServerTLSConfig()
+	tlsConfig, err := marble.GetTLSConfig(true)
 	if err != nil {
 		panic(err)
 	}
@@ -53,7 +53,7 @@ func runServer(addr string) {
 
 func runClient(addr string) error {
 	// Retrieve client TLS config from ertgolib
-	tlsConfig, err := marble.GetClientTLSConfig()
+	tlsConfig, err := marble.GetTLSConfig(false)
 	if err != nil {
 		panic(err)
 	}
