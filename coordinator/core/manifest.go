@@ -30,6 +30,8 @@ type Manifest struct {
 	Infrastructures map[string]quote.InfrastructureProperties
 	// Marbles contains the allowed services with their corresponding enclave and configuration parameters.
 	Marbles map[string]Marble
+	// Admins contains user-generated TLS client certificates to be used for an administrator to perform manifest updates
+	Admins map[string]string
 	// Clients contains TLS certificates for authenticating clients that use the ClientAPI.
 	Clients map[string][]byte
 	// Secrets holds user-specified secrets, which should be generated and later on stored in a marble (if not shared) or in the core (if shared).
@@ -47,6 +49,11 @@ type Marble struct {
 	// Parameters contains lists for files, environment variables and commandline arguments that should be passed to the application.
 	// Placeholder variables are supported for specific assets of the marble's activation process.
 	Parameters *rpc.Parameters
+}
+
+// UpdateManifest describes a update manifest which can be used to update certain package properties
+type UpdateManifest struct {
+	Packages map[string]quote.PackageProperties
 }
 
 // Secret describes a structure for storing certificates and keys, which can be used in combination with the go templating engine.
@@ -198,6 +205,22 @@ func (m Manifest) Check(ctx context.Context, zaplogger *zap.Logger) error {
 			}
 		}
 	}
+	return nil
+}
+
+// Check checks if the manifest is consistent and only contains supported values.
+func (m UpdateManifest) Check(ctx context.Context) error {
+	if len(m.Packages) <= 0 {
+		return errors.New("no packages defined")
+	}
+
+	// Check if manifest update contains values which we normally should not update
+	for _, singlePackage := range m.Packages {
+		if singlePackage.Debug != false || singlePackage.UniqueID != "" || singlePackage.SignerID != "" || singlePackage.ProductID != nil {
+			return errors.New("update manifest contains unupdatable values")
+		}
+	}
+
 	return nil
 }
 

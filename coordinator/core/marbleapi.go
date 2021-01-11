@@ -115,6 +115,11 @@ func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, quote []byte
 		return status.Error(codes.Internal, "undefined package")
 	}
 
+	// In case the administrator has updated a package, apply the updated security version
+	if _, ok := c.updateManifest.Packages[marble.Package]; ok {
+		pkg.SecurityVersion = c.updateManifest.Packages[marble.Package].SecurityVersion
+	}
+
 	if !c.inSimulationMode() {
 		infraMatch := false
 		for _, infra := range c.manifest.Infrastructures {

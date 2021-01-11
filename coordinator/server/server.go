@@ -163,6 +163,33 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 		}
 	})
 
+	mux.HandleFunc("/update", func(w http.ResponseWriter, r *http.Request) {
+		clientCerts := r.TLS.PeerCertificates
+		verifiedAdmin := cc.VerifyAdmin(r.Context(), clientCerts)
+
+		// Abort if no admin client certificate was provided
+		if verifiedAdmin != true {
+			http.Error(w, "", http.StatusUnauthorized)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodPost:
+			updateManifest, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			err = cc.UpdateManifest(r.Context(), updateManifest)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		default:
+			http.Error(w, "", http.StatusMethodNotAllowed)
+		}
+	})
+
 	return mux
 }
 

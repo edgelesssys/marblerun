@@ -369,3 +369,47 @@ func TestParseSecrets(t *testing.T) {
 	_, err = parseSecrets("{{ hex .Secrets.idontexist }}", testWrappedSecrets)
 	assert.Error(err)
 }
+
+func TestSecurityLevelUpdate(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	// parse manifest
+	var manifest Manifest
+	require.NoError(json.Unmarshal([]byte(test.ManifestJSON), &manifest))
+
+	// setup mock zaplogger which can be passed to Core
+	zapLogger, err := zap.NewDevelopment()
+	require.NoError(err)
+	defer zapLogger.Sync()
+
+	// create core
+	validator := quote.NewMockValidator()
+	issuer := quote.NewMockIssuer()
+	sealer := &MockSealer{}
+	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, sealer, zapLogger)
+	require.NoError(err)
+	require.NotNil(coreServer)
+
+	spawner := marbleSpawner{
+		assert:     assert,
+		require:    require,
+		issuer:     issuer,
+		validator:  validator,
+		manifest:   manifest,
+		coreServer: coreServer,
+	}
+	// set manifest
+	_, err = coreServer.SetManifest(context.TODO(), []byte(test.ManifestJSON))
+	require.NoError(err)
+
+	// try to activate another first backend, should succeed as SecurityLevel matches the definition in the manifest
+	spawner.newMarble("frontend", "Azure", true)
+
+	// update manifest
+	err = coreServer.UpdateManifest(context.TODO(), []byte(test.UpdateManifest))
+	require.NoError(err)
+
+	// try to activate another first backend, should fail as required SecurityLevel is now higher after manifest update
+	spawner.newMarble("frontend", "Azure", false)
+}

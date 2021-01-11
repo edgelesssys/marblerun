@@ -8,9 +8,15 @@ package core
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
+	"math/big"
 	"testing"
+	"time"
 
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/test"
@@ -24,6 +30,34 @@ func mustSetup() (*Core, *Manifest) {
 		panic(err)
 	}
 	return NewCoreWithMocks(), &manifest
+}
+
+func setupTestCerts(key *rsa.PrivateKey) (*x509.Certificate, *x509.Certificate) {
+	// Create some demo certificate
+	template := x509.Certificate{
+		SerialNumber: big.NewInt(1337),
+		IsCA:         false,
+		NotBefore:    time.Now(),
+		NotAfter:     time.Now().Add(time.Hour * 24 * 365),
+	}
+
+	otherTestCertRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
+	if err != nil {
+		panic(err)
+	}
+
+	otherTestCert, err := x509.ParseCertificate(otherTestCertRaw)
+	if err != nil {
+		panic(err)
+	}
+
+	block, _ := pem.Decode([]byte(test.AdminCert))
+	adminTestCert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		panic(err)
+	}
+
+	return adminTestCert, otherTestCert
 }
 
 func TestGetManifestSignature(t *testing.T) {
@@ -186,6 +220,48 @@ func TestGetStatus(t *testing.T) {
 	assert.NoError(err, "GetStatus failed")
 	assert.EqualValues(stateAcceptingMarbles, statusCode, "We should be ready to accept Marbles now, but GetStatus does tell us we don't.")
 	assert.NotEmpty(status, "Status string was empty, but should not.")
+}
+
+func TestVerifyAdmin(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	c, _ := mustSetup()
+
+	adminTestCert, otherTestCert := setupTestCerts(test.RecoveryPrivateKey)
+
+	// Set a manifest containing an admin certificate
+	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSONWithRecoveryKey))
+	require.NoError(err)
+	adminTestCertSlice := make([]*x509.Certificate, 1)
+	otherTestCertSlice := make([]*x509.Certificate, 1)
+
+	// Put certificates in slice, as Go's TLS library passes them in an HTTP request
+	adminTestCertSlice[0] = adminTestCert
+	otherTestCertSlice[0] = otherTestCert
+
+	// Check if the adminTest certificatge is deemed valid (stored in core), and the freshly generated one is deemed false
+	assert.Equal(true, c.VerifyAdmin(context.TODO(), adminTestCertSlice))
+	assert.Equal(false, c.VerifyAdmin(context.TODO(), otherTestCertSlice))
+	assert.Equal(false, c.VerifyAdmin(context.TODO(), nil))
+}
+
+func TestUpdateManifest(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	c, _ := mustSetup()
+
+	// Set manifest (frontend has SecurityVersion 3)
+	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
+	require.NoError(err)
+	oldValue := *c.manifest.Packages["frontend"].SecurityVersion
+
+	// Try to update manifest (frontend's SecurityVersion should rise from 3 to 5)
+	err = c.UpdateManifest(context.TODO(), []byte(test.UpdateManifest))
+	require.NoError(err)
+	newValue := *c.updateManifest.Packages["frontend"].SecurityVersion
+
+	// Check if the value did indeed rise
+	assert.Greater(newValue, oldValue)
 }
 
 func testManifestInvalidDebugCase(c *Core, manifest *Manifest, marblePackage quote.PackageProperties, assert *assert.Assertions, require *require.Assertions) *Core {

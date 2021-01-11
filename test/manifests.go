@@ -11,10 +11,13 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"math/big"
 	"strings"
+	"time"
 )
 
 var RecoveryPublicKey, RecoveryPrivateKey = generateTestRecoveryKey()
+var AdminCert = generateAdminTestCert(RecoveryPrivateKey)
 
 // ManifestJSON is a test manifest
 const ManifestJSON string = `{
@@ -159,6 +162,9 @@ var ManifestJSONWithRecoveryKey string = `{
 	"Clients": {
 		"owner": [9,9,9]
 	},
+	"Admins": {
+		"admin": "` + strings.ReplaceAll(string(AdminCert), "\n", "\\n") + `"
+	},
 	"RecoveryKey": "` + strings.ReplaceAll(string(RecoveryPublicKey), "\n", "\\n") + `"
 }`
 
@@ -251,4 +257,32 @@ func generateTestRecoveryKey() (publicKeyPem []byte, privateKey *rsa.PrivateKey)
 	}
 
 	return pem.EncodeToMemory(publicKeyBlock), key
+}
+
+// UpdateManifest is a test update manifest
+const UpdateManifest = `{
+	"Packages": {
+		"frontend": {
+			"SecurityVersion": 5
+		}
+	}
+}`
+
+func generateAdminTestCert(key *rsa.PrivateKey) string {
+	// Create some demo certificate
+	template := x509.Certificate{
+		SerialNumber: big.NewInt(42),
+		IsCA:         false,
+		NotBefore:    time.Now(),
+		NotAfter:     time.Now().Add(time.Hour * 24 * 365),
+	}
+
+	testCertRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
+	if err != nil {
+		panic(err)
+	}
+
+	pemData := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: testCertRaw})
+
+	return string(pemData)
 }
