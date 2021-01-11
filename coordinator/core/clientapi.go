@@ -27,6 +27,8 @@ type ClientCore interface {
 	GetManifestSignature(ctx context.Context) (manifestSignature []byte)
 	GetStatus(ctx context.Context) (statusCode int, status string, err error)
 	Recover(ctx context.Context, encryptionKey []byte) error
+	VerifyAdmin(ctx context.Context, clientCerts []*x509.Certificate) bool
+	UpdateManifest(ctx context.Context, rawUpdateManifest []byte) error
 }
 
 // SetManifest sets the manifest, once and for all
@@ -83,6 +85,22 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) ([]byte, err
 	c.manifest = manifest
 	c.rawManifest = rawManifest
 	c.secrets = secrets
+
+	// Parse & write X.509 admin certificates to core
+	for _, value := range manifest.Admins {
+		block, _ := pem.Decode([]byte(value))
+		if err != nil {
+			c.zaplogger.Error("Could not decode specified admin client certificate", zap.Error(err))
+			return nil, err
+		}
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			c.zaplogger.Error("Could not parse specified admin client certificate", zap.Error(err))
+			return nil, err
+		}
+
+		c.adminCerts = append(c.adminCerts, cert)
+	}
 
 	c.advanceState(stateAcceptingMarbles)
 	encryptionKey, err := c.sealState()
@@ -154,4 +172,51 @@ func (c *Core) Recover(ctx context.Context, encryptionKey []byte) error {
 // GetStatus returns status information about the state of the mesh.
 func (c *Core) GetStatus(ctx context.Context) (statusCode int, status string, err error) {
 	return c.getStatus(ctx)
+}
+
+// VerifyAdmin checks if a given client certificate matches the admin certificates specified in the manifest
+func (c *Core) VerifyAdmin(ctx context.Context, clientCerts []*x509.Certificate) bool {
+	matchedCertificate := false
+
+	// Check if a supplied client cert matches the supplied ones from the manifest stored in the core
+	// NOTE: We do not use the "correct" X.509 verify here since we do not really care about expiration and chain verification here.
+	for _, suppliedCert := range clientCerts {
+		for _, knownCert := range c.adminCerts {
+			if suppliedCert.Equal(knownCert) {
+				matchedCertificate = true
+				break
+			}
+		}
+	}
+
+	return matchedCertificate
+}
+
+// UpdateManifest allows to update certain package parameters, supplied via a JSON manifest
+func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte) error {
+	defer c.mux.Unlock()
+
+	// Only accept update manifest if we already have a manifest
+	if err := c.requireState(stateAcceptingMarbles); err != nil {
+		return err
+	}
+
+	// Unmarshal & check update manifest
+	var updateManifest UpdateManifest
+	if err := json.Unmarshal(rawUpdateManifest, &updateManifest); err != nil {
+		return err
+	}
+	if err := updateManifest.Check(ctx); err != nil {
+		return err
+	}
+
+	c.updateManifest = updateManifest
+	c.rawUpdateManifest = rawUpdateManifest
+	c.zaplogger.Info("An update manifest overriding package settings from the original manifest was set.")
+	_, err := c.sealState()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

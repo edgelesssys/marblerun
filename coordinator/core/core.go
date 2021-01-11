@@ -35,19 +35,22 @@ import (
 
 // Core implements the core logic of the Coordinator
 type Core struct {
-	cert        *x509.Certificate
-	quote       []byte
-	privk       *ecdsa.PrivateKey
-	sealer      Sealer
-	manifest    Manifest
-	rawManifest []byte
-	secrets     map[string]Secret
-	state       state
-	qv          quote.Validator
-	qi          quote.Issuer
-	activations map[string]uint
-	mux         sync.Mutex
-	zaplogger   *zap.Logger
+	cert              *x509.Certificate
+	adminCerts        []*x509.Certificate
+	quote             []byte
+	privk             *ecdsa.PrivateKey
+	sealer            Sealer
+	manifest          Manifest
+	rawManifest       []byte
+	updateManifest    UpdateManifest
+	rawUpdateManifest []byte
+	secrets           map[string]Secret
+	state             state
+	qv                quote.Validator
+	qi                quote.Issuer
+	activations       map[string]uint
+	mux               sync.Mutex
+	zaplogger         *zap.Logger
 }
 
 // The sequence of states a Coordinator may be in
@@ -63,12 +66,14 @@ const (
 
 // sealedState represents the state information, required for persistence, that gets sealed to the filesystem
 type sealedState struct {
-	Privk       []byte
-	RawManifest []byte
-	RawCert     []byte
-	Secrets     map[string]Secret
-	State       state
-	Activations map[string]uint
+	Privk             []byte
+	RawManifest       []byte
+	RawUpdateManifest []byte
+	RawCert           []byte
+	RawAdminCerts     [][]byte
+	Secrets           map[string]Secret
+	State             state
+	Activations       map[string]uint
 }
 
 // CoordinatorName is the name of the Coordinator. It is used as CN of the root certificate.
@@ -157,6 +162,7 @@ func (c *Core) inSimulationMode() bool {
 func (c *Core) GetTLSConfig() (*tls.Config, error) {
 	return &tls.Config{
 		GetCertificate: c.GetTLSCertificate,
+		ClientAuth:     tls.RequestClientCert,
 	}, nil
 }
 
@@ -194,10 +200,27 @@ func (c *Core) loadState() (*x509.Certificate, *ecdsa.PrivateKey, error) {
 		return nil, nil, err
 	}
 
+	// Populate X.509 Certificates containing user-definable admin certificates
+	for _, value := range loadedState.RawAdminCerts {
+		adminCert, err := x509.ParseCertificate(value)
+		if err != nil {
+			return nil, nil, err
+		}
+		c.adminCerts = append(c.adminCerts, adminCert)
+	}
+
 	if err := json.Unmarshal(loadedState.RawManifest, &c.manifest); err != nil {
 		return nil, nil, err
 	}
 	c.rawManifest = loadedState.RawManifest
+
+	// Load update manifest if one has been set
+	if loadedState.RawUpdateManifest != nil {
+		if err := json.Unmarshal(loadedState.RawUpdateManifest, &c.updateManifest); err != nil {
+			return nil, nil, err
+		}
+		c.rawUpdateManifest = loadedState.RawUpdateManifest
+	}
 
 	c.state = loadedState.State
 	c.activations = loadedState.Activations
@@ -212,14 +235,22 @@ func (c *Core) sealState() ([]byte, error) {
 		return nil, err
 	}
 
+	// Convert X.509 admin client certificates to raw state to seal in the state
+	var rawAdminCerts [][]byte
+	for _, cert := range c.adminCerts {
+		rawAdminCerts = append(rawAdminCerts, cert.Raw)
+	}
+
 	// seal with manifest set
 	state := sealedState{
-		Privk:       x509Encoded,
-		RawManifest: c.rawManifest,
-		RawCert:     c.cert.Raw,
-		State:       c.state,
-		Secrets:     c.secrets,
-		Activations: c.activations,
+		Privk:             x509Encoded,
+		RawManifest:       c.rawManifest,
+		RawUpdateManifest: c.rawUpdateManifest,
+		RawCert:           c.cert.Raw,
+		RawAdminCerts:     rawAdminCerts,
+		State:             c.state,
+		Secrets:           c.secrets,
+		Activations:       c.activations,
 	}
 	stateRaw, err := json.Marshal(state)
 	if err != nil {
