@@ -164,11 +164,8 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 	})
 
 	mux.HandleFunc("/update", func(w http.ResponseWriter, r *http.Request) {
-		clientCerts := r.TLS.PeerCertificates
-		verifiedAdmin := cc.VerifyAdmin(r.Context(), clientCerts)
-
 		// Abort if no admin client certificate was provided
-		if verifiedAdmin != true {
+		if r.TLS == nil || !cc.VerifyAdmin(r.Context(), r.TLS.PeerCertificates) {
 			http.Error(w, "", http.StatusUnauthorized)
 			return
 		}
@@ -182,7 +179,7 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 			}
 			err = cc.UpdateManifest(r.Context(), updateManifest)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
 		default:

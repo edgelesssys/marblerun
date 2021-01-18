@@ -82,25 +82,17 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) ([]byte, err
 		return nil, err
 	}
 
+	// Parse X.509 admin certificates from manifest
+	adminCerts, err := generateAdminCertsFromManifest(manifest.Admins)
+	if err != nil {
+		c.zaplogger.Error("Could not parse specified admin client certificate from supplied manifest", zap.Error(err))
+		return nil, err
+	}
+
 	c.manifest = manifest
 	c.rawManifest = rawManifest
 	c.secrets = secrets
-
-	// Parse & write X.509 admin certificates to core
-	for _, value := range manifest.Admins {
-		block, _ := pem.Decode([]byte(value))
-		if err != nil {
-			c.zaplogger.Error("Could not decode specified admin client certificate", zap.Error(err))
-			return nil, err
-		}
-		cert, err := x509.ParseCertificate(block.Bytes)
-		if err != nil {
-			c.zaplogger.Error("Could not parse specified admin client certificate", zap.Error(err))
-			return nil, err
-		}
-
-		c.adminCerts = append(c.adminCerts, cert)
-	}
+	c.adminCerts = adminCerts
 
 	c.advanceState(stateAcceptingMarbles)
 	encryptionKey, err := c.sealState()
@@ -163,7 +155,6 @@ func (c *Core) Recover(ctx context.Context, encryptionKey []byte) error {
 
 	c.cert = cert
 	c.privk = privk
-
 	c.quote = c.generateQuote()
 
 	return nil
@@ -176,20 +167,17 @@ func (c *Core) GetStatus(ctx context.Context) (statusCode int, status string, er
 
 // VerifyAdmin checks if a given client certificate matches the admin certificates specified in the manifest
 func (c *Core) VerifyAdmin(ctx context.Context, clientCerts []*x509.Certificate) bool {
-	matchedCertificate := false
-
 	// Check if a supplied client cert matches the supplied ones from the manifest stored in the core
 	// NOTE: We do not use the "correct" X.509 verify here since we do not really care about expiration and chain verification here.
 	for _, suppliedCert := range clientCerts {
 		for _, knownCert := range c.adminCerts {
 			if suppliedCert.Equal(knownCert) {
-				matchedCertificate = true
-				break
+				return true
 			}
 		}
 	}
 
-	return matchedCertificate
+	return false
 }
 
 // UpdateManifest allows to update certain package parameters, supplied via a JSON manifest
@@ -202,11 +190,11 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte) err
 	}
 
 	// Unmarshal & check update manifest
-	var updateManifest UpdateManifest
+	var updateManifest Manifest
 	if err := json.Unmarshal(rawUpdateManifest, &updateManifest); err != nil {
 		return err
 	}
-	if err := updateManifest.Check(ctx); err != nil {
+	if err := updateManifest.CheckUpdate(ctx, c.manifest.Packages, c.updateManifest.Packages); err != nil {
 		return err
 	}
 

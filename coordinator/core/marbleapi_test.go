@@ -412,4 +412,14 @@ func TestSecurityLevelUpdate(t *testing.T) {
 
 	// try to activate another first backend, should fail as required SecurityLevel is now higher after manifest update
 	spawner.newMarble("frontend", "Azure", false)
+
+	// Use a new core and test if updated manifest persisted after restart
+	coreServer2, err := NewCore([]string{"localhost"}, validator, issuer, sealer, zapLogger)
+	require.NoError(err)
+	assert.Equal(stateAcceptingMarbles, coreServer2.state)
+	assert.EqualValues(5, *coreServer2.updateManifest.Packages["frontend"].SecurityVersion)
+
+	// This should still fail after a restart, as the update manifest should have been reloaded from the sealed state correctly
+	spawner.coreServer = coreServer2
+	spawner.newMarble("frontend", "Azure", false)
 }

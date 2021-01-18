@@ -51,11 +51,6 @@ type Marble struct {
 	Parameters *rpc.Parameters
 }
 
-// UpdateManifest describes a update manifest which can be used to update certain package properties
-type UpdateManifest struct {
-	Packages map[string]quote.PackageProperties
-}
-
 // Secret describes a structure for storing certificates and keys, which can be used in combination with the go templating engine.
 
 // PrivateKey is a wrapper for a binary private key, which we need for type differentiation in the PEM encoding function
@@ -208,16 +203,44 @@ func (m Manifest) Check(ctx context.Context, zaplogger *zap.Logger) error {
 	return nil
 }
 
-// Check checks if the manifest is consistent and only contains supported values.
-func (m UpdateManifest) Check(ctx context.Context) error {
+// CheckUpdate checks if the manifest is consistent and only contains supported values.
+func (m Manifest) CheckUpdate(ctx context.Context, originalPackages map[string]quote.PackageProperties, alreadyUpdatedPackages map[string]quote.PackageProperties) error {
 	if len(m.Packages) <= 0 {
 		return errors.New("no packages defined")
 	}
 
 	// Check if manifest update contains values which we normally should not update
-	for _, singlePackage := range m.Packages {
+	for packageName, singlePackage := range m.Packages {
+		// Check if the original manifest does even contain the package we want to update
+		if _, ok := originalPackages[packageName]; !ok {
+			return errors.New("update manifest specifies a package which the original manifest does not contain")
+		}
+
+		// Check if singlePackages contains illegal values to update
 		if singlePackage.Debug != false || singlePackage.UniqueID != "" || singlePackage.SignerID != "" || singlePackage.ProductID != nil {
 			return errors.New("update manifest contains unupdatable values")
+		}
+
+		// Check if singlePackages does actually contain a SecurityVersion value
+		if singlePackage.SecurityVersion == nil {
+			return errors.New("update manifest does not specifiy a SecurityVersion to update")
+		}
+
+		// Check based on the original manifest
+		if originalPackages[packageName].SecurityVersion != nil && *singlePackage.SecurityVersion < *originalPackages[packageName].SecurityVersion {
+			return errors.New("update manifest tries to downgrade SecurityVersion of the original manifest")
+		}
+
+		// Checks if we already have an update manifest set, if it does contain the package and if it does, if it actually holds a value for SecurityVersion (which should always be the case, but let's go safe here)
+		for alreadyUpdatedPackageName, alreadyUpdatedPackage := range alreadyUpdatedPackages {
+			// Check if new update manifest contains all package entries which the current one does
+			if _, ok := m.Packages[alreadyUpdatedPackageName]; !ok {
+				return errors.New("update manifest misses package definitions of the currently set update manifest")
+			}
+			// If this is the case, check if the SecurityVersion is equal or higher than defined in the current one. No downgrades allowed
+			if alreadyUpdatedPackage.SecurityVersion != nil && (*singlePackage.SecurityVersion < *alreadyUpdatedPackage.SecurityVersion) {
+				return errors.New("update manifest tries to downgrade SecurityVersion of the currently set updated manifest")
+			}
 		}
 	}
 
