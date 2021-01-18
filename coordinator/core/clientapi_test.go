@@ -8,15 +8,10 @@ package core
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/json"
-	"encoding/pem"
-	"math/big"
 	"testing"
-	"time"
 
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/test"
@@ -30,34 +25,6 @@ func mustSetup() (*Core, *Manifest) {
 		panic(err)
 	}
 	return NewCoreWithMocks(), &manifest
-}
-
-func setupTestCerts(key *rsa.PrivateKey) (*x509.Certificate, *x509.Certificate) {
-	// Create some demo certificate
-	template := x509.Certificate{
-		SerialNumber: big.NewInt(1337),
-		IsCA:         false,
-		NotBefore:    time.Now(),
-		NotAfter:     time.Now().Add(time.Hour * 24 * 365),
-	}
-
-	otherTestCertRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
-	if err != nil {
-		panic(err)
-	}
-
-	otherTestCert, err := x509.ParseCertificate(otherTestCertRaw)
-	if err != nil {
-		panic(err)
-	}
-
-	block, _ := pem.Decode([]byte(test.AdminCert))
-	adminTestCert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		panic(err)
-	}
-
-	return adminTestCert, otherTestCert
 }
 
 func TestGetManifestSignature(t *testing.T) {
@@ -227,22 +194,20 @@ func TestVerifyAdmin(t *testing.T) {
 	require := require.New(t)
 	c, _ := mustSetup()
 
-	adminTestCert, otherTestCert := setupTestCerts(test.RecoveryPrivateKey)
+	adminTestCert, otherTestCert := test.MustSetupTestCerts(test.RecoveryPrivateKey)
 
 	// Set a manifest containing an admin certificate
 	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
-	adminTestCertSlice := make([]*x509.Certificate, 1)
-	otherTestCertSlice := make([]*x509.Certificate, 1)
 
 	// Put certificates in slice, as Go's TLS library passes them in an HTTP request
-	adminTestCertSlice[0] = adminTestCert
-	otherTestCertSlice[0] = otherTestCert
+	adminTestCertSlice := []*x509.Certificate{adminTestCert}
+	otherTestCertSlice := []*x509.Certificate{otherTestCert}
 
 	// Check if the adminTest certificatge is deemed valid (stored in core), and the freshly generated one is deemed false
-	assert.Equal(true, c.VerifyAdmin(context.TODO(), adminTestCertSlice))
-	assert.Equal(false, c.VerifyAdmin(context.TODO(), otherTestCertSlice))
-	assert.Equal(false, c.VerifyAdmin(context.TODO(), nil))
+	assert.True(c.VerifyAdmin(context.TODO(), adminTestCertSlice))
+	assert.False(c.VerifyAdmin(context.TODO(), otherTestCertSlice))
+	assert.False(c.VerifyAdmin(context.TODO(), nil))
 }
 
 func TestUpdateManifest(t *testing.T) {
@@ -250,18 +215,81 @@ func TestUpdateManifest(t *testing.T) {
 	require := require.New(t)
 	c, _ := mustSetup()
 
+	// Good update manifests
 	// Set manifest (frontend has SecurityVersion 3)
 	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
 	require.NoError(err)
-	oldValue := *c.manifest.Packages["frontend"].SecurityVersion
+	assert.EqualValues(3, *c.manifest.Packages["frontend"].SecurityVersion)
 
 	// Try to update manifest (frontend's SecurityVersion should rise from 3 to 5)
 	err = c.UpdateManifest(context.TODO(), []byte(test.UpdateManifest))
 	require.NoError(err)
-	newValue := *c.updateManifest.Packages["frontend"].SecurityVersion
+	assert.EqualValues(5, *c.updateManifest.Packages["frontend"].SecurityVersion)
 
-	// Check if the value did indeed rise
-	assert.Greater(newValue, oldValue)
+	// Test invalid manifests
+	var badUpdateManifest Manifest
+	require.NoError(json.Unmarshal([]byte(test.UpdateManifest), &badUpdateManifest))
+
+	// Add non existing package, should fail
+	badUpdateManifest.Packages["nonExisting"] = badUpdateManifest.Packages["frontend"]
+	badRawManifest, err := json.Marshal(badUpdateManifest)
+	require.NoError(err)
+	err = c.UpdateManifest(context.TODO(), badRawManifest)
+	assert.Error(err)
+
+	delete(badUpdateManifest.Packages, "nonExisting")
+
+	// Test if we cannot enable debug (and thus potentially bypass all these parameters)
+	badModPackage := badUpdateManifest.Packages["frontend"]
+	badModPackage.Debug = true
+	badUpdateManifest.Packages["frontend"] = badModPackage
+	badRawManifest, err = json.Marshal(badUpdateManifest)
+	require.NoError(err)
+	err = c.UpdateManifest(context.TODO(), badRawManifest)
+	assert.Error(err)
+
+	badModPackage.Debug = false
+
+	// Test if no SecurityVersion is defined
+	badModPackage.SecurityVersion = nil
+	badUpdateManifest.Packages["frontend"] = badModPackage
+	badRawManifest, err = json.Marshal(badUpdateManifest)
+	require.NoError(err)
+	err = c.UpdateManifest(context.TODO(), badRawManifest)
+	assert.Error(err)
+
+	// Test if downgrading fails
+	// Alter test update manifest to set the SecurityVersion to '2', which is lower than both, original and update manifest
+	badSecurityVersion := uint(2)
+	badModPackage.SecurityVersion = &badSecurityVersion
+	badUpdateManifest.Packages["frontend"] = badModPackage
+	badRawManifest, err = json.Marshal(badUpdateManifest)
+	require.NoError(err)
+	err = c.UpdateManifest(context.TODO(), badRawManifest)
+	assert.Error(err)
+
+	// Test if downgrading fails
+	// Generate a new manifest with SecurityVersion 4, which is higher than the original manifest, but lower than the currently set update manifest (which encorces level 5)
+	badSecurityVersion = uint(4)
+	badModPackage.SecurityVersion = &badSecurityVersion
+	badUpdateManifest.Packages["frontend"] = badModPackage
+	badRawManifest, err = json.Marshal(badUpdateManifest)
+	require.NoError(err)
+	err = c.UpdateManifest(context.TODO(), badRawManifest)
+	assert.Error(err)
+
+	// Test if removing a package from a currently existing update manifest fails
+	badUpdateManifest.Packages["backend"] = badModPackage
+	delete(badUpdateManifest.Packages, "frontend")
+	badRawManifest, err = json.Marshal(badUpdateManifest)
+	err = c.UpdateManifest(context.TODO(), badRawManifest)
+	assert.Error(err)
+
+	// Test what happens if no packages are defined at all
+	badUpdateManifest.Packages = nil
+	badRawManifest, err = json.Marshal(badUpdateManifest)
+	err = c.UpdateManifest(context.TODO(), badRawManifest)
+	assert.Error(err)
 }
 
 func testManifestInvalidDebugCase(c *Core, manifest *Manifest, marblePackage quote.PackageProperties, assert *assert.Assertions, require *require.Assertions) *Core {

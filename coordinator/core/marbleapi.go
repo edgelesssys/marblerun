@@ -116,8 +116,8 @@ func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, quote []byte
 	}
 
 	// In case the administrator has updated a package, apply the updated security version
-	if _, ok := c.updateManifest.Packages[marble.Package]; ok {
-		pkg.SecurityVersion = c.updateManifest.Packages[marble.Package].SecurityVersion
+	if updpkg, ok := c.updateManifest.Packages[marble.Package]; ok {
+		pkg.SecurityVersion = updpkg.SecurityVersion
 	}
 
 	if !c.inSimulationMode() {

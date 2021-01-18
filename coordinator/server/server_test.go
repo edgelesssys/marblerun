@@ -11,6 +11,8 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -88,6 +90,41 @@ func TestManifestWithRecoveryKey(t *testing.T) {
 	recoveryData, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, test.RecoveryPrivateKey, encryptedRecoveryData, nil)
 	require.NoError(err)
 	require.EqualValues([]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, recoveryData)
+}
+
+func TestUpdate(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	// Setup mock core and set a manifest
+	c := core.NewCoreWithMocks()
+	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSONWithRecoveryKey))
+	require.NoError(err)
+	mux := CreateServeMux(c)
+
+	// Make HTTP update request with no TLS at all, should be unauthenticated
+	req := httptest.NewRequest(http.MethodPost, "/update", strings.NewReader(test.UpdateManifest))
+	resp := httptest.NewRecorder()
+	mux.ServeHTTP(resp, req)
+	assert.Equal(http.StatusUnauthorized, resp.Code)
+
+	// Get certificates to test
+	adminTestCert, otherTestCert := test.MustSetupTestCerts(test.RecoveryPrivateKey)
+	adminTestCertSlice := []*x509.Certificate{adminTestCert}
+	otherTestCertSlice := []*x509.Certificate{otherTestCert}
+
+	// Create mock TLS object and with wrong certificate, should fail
+	req.TLS = &tls.ConnectionState{}
+	req.TLS.PeerCertificates = otherTestCertSlice
+	resp = httptest.NewRecorder()
+	mux.ServeHTTP(resp, req)
+	assert.Equal(http.StatusUnauthorized, resp.Code)
+
+	// Create mock TLS connection with right certificate, should pass
+	req.TLS.PeerCertificates = adminTestCertSlice
+	resp = httptest.NewRecorder()
+	mux.ServeHTTP(resp, req)
+	assert.Equal(http.StatusOK, resp.Code)
 }
 
 func TestConcurrent(t *testing.T) {

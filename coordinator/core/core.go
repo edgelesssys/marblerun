@@ -19,6 +19,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"math"
@@ -42,7 +43,7 @@ type Core struct {
 	sealer            Sealer
 	manifest          Manifest
 	rawManifest       []byte
-	updateManifest    UpdateManifest
+	updateManifest    Manifest
 	rawUpdateManifest []byte
 	secrets           map[string]Secret
 	state             state
@@ -70,7 +71,6 @@ type sealedState struct {
 	RawManifest       []byte
 	RawUpdateManifest []byte
 	RawCert           []byte
-	RawAdminCerts     [][]byte
 	Secrets           map[string]Secret
 	State             state
 	Activations       map[string]uint
@@ -200,19 +200,17 @@ func (c *Core) loadState() (*x509.Certificate, *ecdsa.PrivateKey, error) {
 		return nil, nil, err
 	}
 
-	// Populate X.509 Certificates containing user-definable admin certificates
-	for _, value := range loadedState.RawAdminCerts {
-		adminCert, err := x509.ParseCertificate(value)
-		if err != nil {
-			return nil, nil, err
-		}
-		c.adminCerts = append(c.adminCerts, adminCert)
-	}
-
 	if err := json.Unmarshal(loadedState.RawManifest, &c.manifest); err != nil {
 		return nil, nil, err
 	}
 	c.rawManifest = loadedState.RawManifest
+
+	// Generate and load admin certs from manifest
+	adminCerts, err := generateAdminCertsFromManifest(c.manifest.Admins)
+	if err != nil {
+		c.zaplogger.Error("Could not parse specified admin client certificate from sealed state", zap.Error(err))
+		return nil, nil, err
+	}
 
 	// Load update manifest if one has been set
 	if loadedState.RawUpdateManifest != nil {
@@ -225,6 +223,8 @@ func (c *Core) loadState() (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	c.state = loadedState.State
 	c.activations = loadedState.Activations
 	c.secrets = loadedState.Secrets
+	c.adminCerts = adminCerts
+
 	return cert, privk, err
 }
 
@@ -235,19 +235,12 @@ func (c *Core) sealState() ([]byte, error) {
 		return nil, err
 	}
 
-	// Convert X.509 admin client certificates to raw state to seal in the state
-	var rawAdminCerts [][]byte
-	for _, cert := range c.adminCerts {
-		rawAdminCerts = append(rawAdminCerts, cert.Raw)
-	}
-
 	// seal with manifest set
 	state := sealedState{
 		Privk:             x509Encoded,
 		RawManifest:       c.rawManifest,
 		RawUpdateManifest: c.rawUpdateManifest,
 		RawCert:           c.cert.Raw,
-		RawAdminCerts:     rawAdminCerts,
 		State:             c.state,
 		Secrets:           c.secrets,
 		Activations:       c.activations,
@@ -540,4 +533,20 @@ func (c *Core) generateCertificateForSecret(secret Secret, privKey crypto.Privat
 	}
 
 	return secret, nil
+}
+
+func generateAdminCertsFromManifest(admins map[string]string) ([]*x509.Certificate, error) {
+	// Parse & write X.509 admin certificates from sealed state
+	adminCerts := make([]*x509.Certificate, 0, len(admins))
+	for _, value := range admins {
+		block, _ := pem.Decode([]byte(value))
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return nil, err
+		}
+
+		adminCerts = append(adminCerts, cert)
+	}
+
+	return adminCerts, nil
 }

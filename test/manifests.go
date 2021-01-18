@@ -17,7 +17,9 @@ import (
 )
 
 var RecoveryPublicKey, RecoveryPrivateKey = generateTestRecoveryKey()
-var AdminCert = generateAdminTestCert(RecoveryPrivateKey)
+
+// AdminCert is an automatically generated test certificate used for unit tests for API features needing additional authentication.
+var AdminCert = mustGenerateAdminTestCert(RecoveryPrivateKey)
 
 // ManifestJSON is a test manifest
 const ManifestJSON string = `{
@@ -163,9 +165,9 @@ var ManifestJSONWithRecoveryKey string = `{
 		"owner": [9,9,9]
 	},
 	"Admins": {
-		"admin": "` + strings.ReplaceAll(string(AdminCert), "\n", "\\n") + `"
+		"admin": "` + pemToJSONString(AdminCert) + `"
 	},
-	"RecoveryKey": "` + strings.ReplaceAll(string(RecoveryPublicKey), "\n", "\\n") + `"
+	"RecoveryKey": "` + pemToJSONString(RecoveryPublicKey) + `"
 }`
 
 // IntegrationManifestJSON is a test manifest
@@ -237,7 +239,7 @@ var IntegrationManifestJSON string = `{
 	"Clients": {
 		"owner": [9,9,9]
 	},
-	"RecoveryKey": "` + strings.ReplaceAll(string(RecoveryPublicKey), "\n", "\\n") + `"
+	"RecoveryKey": "` + pemToJSONString(RecoveryPublicKey) + `"
 }`
 
 func generateTestRecoveryKey() (publicKeyPem []byte, privateKey *rsa.PrivateKey) {
@@ -268,7 +270,7 @@ const UpdateManifest = `{
 	}
 }`
 
-func generateAdminTestCert(key *rsa.PrivateKey) string {
+func mustGenerateAdminTestCert(key *rsa.PrivateKey) []byte {
 	// Create some demo certificate
 	template := x509.Certificate{
 		SerialNumber: big.NewInt(42),
@@ -283,6 +285,38 @@ func generateAdminTestCert(key *rsa.PrivateKey) string {
 	}
 
 	pemData := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: testCertRaw})
+	return pemData
+}
 
-	return string(pemData)
+func pemToJSONString(pem []byte) string {
+	return strings.ReplaceAll(string(pem), "\n", "\\n")
+}
+
+// MustSetupTestCerts can be used by other unit tests to test authentication features, in which one certificate matches the generated admin certificate, and the other is just a randomly generated one
+func MustSetupTestCerts(key *rsa.PrivateKey) (*x509.Certificate, *x509.Certificate) {
+	// Create some demo certificate
+	template := x509.Certificate{
+		SerialNumber: big.NewInt(1337),
+		IsCA:         false,
+		NotBefore:    time.Now(),
+		NotAfter:     time.Now().Add(time.Hour * 24 * 365),
+	}
+
+	otherTestCertRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
+	if err != nil {
+		panic(err)
+	}
+
+	otherTestCert, err := x509.ParseCertificate(otherTestCertRaw)
+	if err != nil {
+		panic(err)
+	}
+
+	block, _ := pem.Decode(AdminCert)
+	adminTestCert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		panic(err)
+	}
+
+	return adminTestCert, otherTestCert
 }
