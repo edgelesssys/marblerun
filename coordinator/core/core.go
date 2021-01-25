@@ -175,7 +175,7 @@ func (c *Core) GetTLSCertificate(clientHello *tls.ClientHelloInfo) (*tls.Certifi
 }
 
 func (c *Core) loadState() (*x509.Certificate, *ecdsa.PrivateKey, error) {
-	stateRaw, err := c.sealer.Unseal()
+	_, stateRaw, err := c.sealer.Unseal()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -228,11 +228,11 @@ func (c *Core) loadState() (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	return cert, privk, err
 }
 
-func (c *Core) sealState() ([]byte, error) {
+func (c *Core) sealState() error {
 	// marshal private key
 	x509Encoded, err := x509.MarshalECPrivateKey(c.privk)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// seal with manifest set
@@ -247,9 +247,9 @@ func (c *Core) sealState() ([]byte, error) {
 	}
 	stateRaw, err := json.Marshal(state)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return c.sealer.Seal(stateRaw)
+	return c.sealer.Seal(nil, stateRaw)
 }
 
 func (c *Core) generateCert(dnsNames []string) (*x509.Certificate, *ecdsa.PrivateKey, error) {
