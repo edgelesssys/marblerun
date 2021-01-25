@@ -4,7 +4,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-package core
+package manifest
 
 import (
 	"context"
@@ -36,7 +36,7 @@ type Manifest struct {
 	Clients map[string][]byte
 	// Secrets holds user-specified secrets, which should be generated and later on stored in a marble (if not shared) or in the core (if shared).
 	Secrets map[string]Secret
-	// Recovery holds a RSA public key to encrypt the state encryption key, which gets returned over the Client API when setting a manifest.
+	// RecoveryKey holds a RSA public key to encrypt the state encryption key, which gets returned over the Client API when setting a manifest.
 	RecoveryKey string
 }
 
@@ -51,7 +51,50 @@ type Marble struct {
 	Parameters *rpc.Parameters
 }
 
-// Secret describes a structure for storing certificates and keys, which can be used in combination with the go templating engine.
+// Check checks if the manifest is consistent.
+func (m Manifest) Check(ctx context.Context, zaplogger *zap.Logger) error {
+	if len(m.Packages) <= 0 {
+		return errors.New("no allowed packages defined")
+	}
+	if len(m.Marbles) <= 0 {
+		return errors.New("no allowed marbles defined")
+	}
+	// if len(m.Infrastructures) <= 0 {
+	// 	return errors.New("no allowed infrastructures defined")
+	// }
+	for _, marble := range m.Marbles {
+		singlePackage, ok := m.Packages[marble.Package]
+		if !ok {
+			return errors.New("manifest does not contain marble package " + marble.Package)
+		}
+		// Check if package specifies either UniqueID, or values for all, SignerID, ProductID & Security version
+		// Debug mode bypasses this requirement and throws a warning instead
+		if singlePackage.UniqueID != "" && (singlePackage.SignerID != "" || singlePackage.ProductID != nil || singlePackage.SecurityVersion != nil) {
+			if singlePackage.Debug {
+				zaplogger.Warn("Manifest specifies UniqueID *and* SignerID/ProductID/SecurityVersion. This is not accepted in non-debug mode, please check your configuration.", zap.String("packageName", marble.Package))
+			} else {
+				return fmt.Errorf("manifest specfies both UniqueID *and* SignerID/ProductID/SecurityVersion in package %s", marble.Package)
+			}
+		} else if singlePackage.UniqueID == "" {
+			if singlePackage.SignerID == "" {
+				if err := warnOrFailForMissingValue(singlePackage.Debug, "SignerID", marble.Package, zaplogger); err != nil {
+					return err
+				}
+			}
+			if singlePackage.ProductID == nil {
+				if err := warnOrFailForMissingValue(singlePackage.Debug, "ProductID", marble.Package, zaplogger); err != nil {
+					return err
+				}
+			}
+			if singlePackage.SecurityVersion == nil {
+				if err := warnOrFailForMissingValue(singlePackage.Debug, "SecurityVersion", marble.Package, zaplogger); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
 
 // PrivateKey is a wrapper for a binary private key, which we need for type differentiation in the PEM encoding function
 type PrivateKey []byte
@@ -101,7 +144,8 @@ func (c *Certificate) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func encodeSecretDataToPem(data interface{}) (string, error) {
+// EncodeSecretDataToPem encodes a secret to an appropriate PEM block
+func EncodeSecretDataToPem(data interface{}) (string, error) {
 	var pemData []byte
 
 	switch x := data.(type) {
@@ -118,15 +162,17 @@ func encodeSecretDataToPem(data interface{}) (string, error) {
 	return string(pemData), nil
 }
 
-func encodeSecretDataToHex(data interface{}) (string, error) {
-	raw, err := encodeSecretDataToRaw(data)
+// EncodeSecretDataToHex encodes a secret to a hex string
+func EncodeSecretDataToHex(data interface{}) (string, error) {
+	raw, err := EncodeSecretDataToRaw(data)
 	if err != nil {
 		return "", err
 	}
 	return hex.EncodeToString([]byte(raw)), nil
 }
 
-func encodeSecretDataToRaw(data interface{}) (string, error) {
+// EncodeSecretDataToRaw encodes a secret to a raw byte string
+func EncodeSecretDataToRaw(data interface{}) (string, error) {
 	switch secret := data.(type) {
 	case []byte:
 		return string(secret), nil
@@ -143,64 +189,21 @@ func encodeSecretDataToRaw(data interface{}) (string, error) {
 	}
 }
 
-func encodeSecretDataToBase64(data interface{}) (string, error) {
-	raw, err := encodeSecretDataToRaw(data)
+// EncodeSecretDataToBase64 encodes the byte value of a secret to a Base64 string
+func EncodeSecretDataToBase64(data interface{}) (string, error) {
+	raw, err := EncodeSecretDataToRaw(data)
 	if err != nil {
 		return "", err
 	}
 	return base64.StdEncoding.EncodeToString([]byte(raw)), nil
 }
 
-var manifestTemplateFuncMap = template.FuncMap{
-	"pem":    encodeSecretDataToPem,
-	"hex":    encodeSecretDataToHex,
-	"raw":    encodeSecretDataToRaw,
-	"base64": encodeSecretDataToBase64,
-}
-
-// Check checks if the manifest is consistent.
-func (m Manifest) Check(ctx context.Context, zaplogger *zap.Logger) error {
-	if len(m.Packages) <= 0 {
-		return errors.New("no allowed packages defined")
-	}
-	if len(m.Marbles) <= 0 {
-		return errors.New("no allowed marbles defined")
-	}
-	// if len(m.Infrastructures) <= 0 {
-	// 	return errors.New("no allowed infrastructures defined")
-	// }
-	for _, marble := range m.Marbles {
-		singlePackage, ok := m.Packages[marble.Package]
-		if !ok {
-			return errors.New("manifest does not contain marble package " + marble.Package)
-		}
-		// Check if package specifies either UniqueID, or values for all, SignerID, ProductID & Security version
-		// Debug mode bypasses this requirement and throws a warning instead
-		if singlePackage.UniqueID != "" && (singlePackage.SignerID != "" || singlePackage.ProductID != nil || singlePackage.SecurityVersion != nil) {
-			if singlePackage.Debug {
-				zaplogger.Warn("Manifest specifies UniqueID *and* SignerID/ProductID/SecurityVersion. This is not accepted in non-debug mode, please check your configuration.", zap.String("packageName", marble.Package))
-			} else {
-				return fmt.Errorf("manifest specfies both UniqueID *and* SignerID/ProductID/SecurityVersion in package %s", marble.Package)
-			}
-		} else if singlePackage.UniqueID == "" {
-			if singlePackage.SignerID == "" {
-				if err := warnOrFailForMissingValue(singlePackage.Debug, "SignerID", marble.Package, zaplogger); err != nil {
-					return err
-				}
-			}
-			if singlePackage.ProductID == nil {
-				if err := warnOrFailForMissingValue(singlePackage.Debug, "ProductID", marble.Package, zaplogger); err != nil {
-					return err
-				}
-			}
-			if singlePackage.SecurityVersion == nil {
-				if err := warnOrFailForMissingValue(singlePackage.Debug, "SecurityVersion", marble.Package, zaplogger); err != nil {
-					return err
-				}
-			}
-		}
-	}
-	return nil
+// ManifestTemplateFuncMap defines the functions which can be specified for secrets in the in go template format
+var ManifestTemplateFuncMap = template.FuncMap{
+	"pem":    EncodeSecretDataToPem,
+	"hex":    EncodeSecretDataToHex,
+	"raw":    EncodeSecretDataToRaw,
+	"base64": EncodeSecretDataToBase64,
 }
 
 // CheckUpdate checks if the manifest is consistent and only contains supported values.

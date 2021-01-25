@@ -13,14 +13,15 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func mustSetup() (*Core, *Manifest) {
-	var manifest Manifest
+func mustSetup() (*Core, *manifest.Manifest) {
+	var manifest manifest.Manifest
 	if err := json.Unmarshal([]byte(test.ManifestJSON), &manifest); err != nil {
 		panic(err)
 	}
@@ -227,7 +228,7 @@ func TestUpdateManifest(t *testing.T) {
 	assert.EqualValues(5, *c.updateManifest.Packages["frontend"].SecurityVersion)
 
 	// Test invalid manifests
-	var badUpdateManifest Manifest
+	var badUpdateManifest manifest.Manifest
 	require.NoError(json.Unmarshal([]byte(test.UpdateManifest), &badUpdateManifest))
 
 	// Add non existing package, should fail
@@ -292,7 +293,7 @@ func TestUpdateManifest(t *testing.T) {
 	assert.Error(err)
 }
 
-func testManifestInvalidDebugCase(c *Core, manifest *Manifest, marblePackage quote.PackageProperties, assert *assert.Assertions, require *require.Assertions) *Core {
+func testManifestInvalidDebugCase(c *Core, manifest *manifest.Manifest, marblePackage quote.PackageProperties, assert *assert.Assertions, require *require.Assertions) *Core {
 	marblePackage.Debug = true
 	manifest.Packages["backend"] = marblePackage
 

@@ -10,6 +10,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/google/uuid"
@@ -133,7 +134,7 @@ func TestGenerateSecrets(t *testing.T) {
 	require := require.New(t)
 
 	// Some secret maps which should represent secret entries from an unmarshaled JSON manifest
-	secretsToGenerate := map[string]Secret{
+	secretsToGenerate := map[string]manifest.Secret{
 		"rawTest1":                {Type: "symmetric-key", Size: 128, Shared: true},
 		"rawTest2":                {Type: "symmetric-key", Size: 256, Shared: true},
 		"cert-rsa-test":           {Type: "cert-rsa", Size: 2048, ValidFor: 365, Shared: true},
@@ -142,26 +143,26 @@ func TestGenerateSecrets(t *testing.T) {
 		"cert-ecdsa256-test":      {Type: "cert-ecdsa", Size: 256, ValidFor: 14, Shared: true},
 		"cert-ecdsa384-test":      {Type: "cert-ecdsa", Size: 384, ValidFor: 14, Shared: true},
 		"cert-ecdsa521-test":      {Type: "cert-ecdsa", Size: 521, ValidFor: 14, Shared: true},
-		"cert-rsa-specified-test": {Type: "cert-rsa", Size: 2048, Cert: Certificate{}, Shared: true},
+		"cert-rsa-specified-test": {Type: "cert-rsa", Size: 2048, Cert: manifest.Certificate{}, Shared: true},
 	}
 
-	secretsNoSize := map[string]Secret{
+	secretsNoSize := map[string]manifest.Secret{
 		"noSize": {Type: "symmetric-key", Shared: true},
 	}
 
-	secretsInvalidType := map[string]Secret{
+	secretsInvalidType := map[string]manifest.Secret{
 		"unknownType": {Type: "crap", Shared: true},
 	}
 
-	secretsEd25519WrongKeySize := map[string]Secret{
+	secretsEd25519WrongKeySize := map[string]manifest.Secret{
 		"cert-ed25519-invalidsize": {Type: "cert-ed25519", Size: 384, Shared: true},
 	}
 
-	secretsECDSAWrongKeySize := map[string]Secret{
+	secretsECDSAWrongKeySize := map[string]manifest.Secret{
 		"cert-ecdsa-invalidsize": {Type: "cert-ecdsa", Size: 512, Shared: true},
 	}
 
-	secretsEmptyMap := map[string]Secret{}
+	secretsEmptyMap := map[string]manifest.Secret{}
 
 	c := NewCoreWithMocks()
 
@@ -181,12 +182,12 @@ func TestGenerateSecrets(t *testing.T) {
 
 	// Check if we get an empty secret map as output for an empty map as input
 	generatedSecrets, err = c.generateSecrets(context.TODO(), secretsEmptyMap, uuid.Nil)
-	assert.IsType(map[string]Secret{}, generatedSecrets)
+	assert.IsType(map[string]manifest.Secret{}, generatedSecrets)
 	assert.Len(generatedSecrets, 0)
 
 	// Check if we get an empty secret map as output for nil
 	generatedSecrets, err = c.generateSecrets(context.TODO(), nil, uuid.Nil)
-	assert.IsType(map[string]Secret{}, generatedSecrets)
+	assert.IsType(map[string]manifest.Secret{}, generatedSecrets)
 	assert.Len(generatedSecrets, 0)
 
 	// If no size is specified, the function should fail

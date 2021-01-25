@@ -16,6 +16,7 @@ import (
 	"encoding/pem"
 	"errors"
 
+	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
@@ -40,7 +41,7 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) ([]byte, err
 		return nil, err
 	}
 
-	var manifest Manifest
+	var manifest manifest.Manifest
 	if err := json.Unmarshal(rawManifest, &manifest); err != nil {
 		return nil, err
 	}
@@ -189,7 +190,7 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte) err
 	}
 
 	// Unmarshal & check update manifest
-	var updateManifest Manifest
+	var updateManifest manifest.Manifest
 	if err := json.Unmarshal(rawUpdateManifest, &updateManifest); err != nil {
 		return err
 	}
