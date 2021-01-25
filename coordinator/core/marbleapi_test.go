@@ -21,6 +21,7 @@ import (
 	"time"
 
 	libMarble "github.com/edgelesssys/ertgolib/marble"
+	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
 	"github.com/edgelesssys/marblerun/test"
@@ -38,7 +39,7 @@ func TestActivate(t *testing.T) {
 	require := require.New(t)
 
 	// parse manifest
-	var manifest Manifest
+	var manifest manifest.Manifest
 	require.NoError(json.Unmarshal([]byte(test.ManifestJSON), &manifest))
 
 	// setup mock zaplogger which can be passed to Core
@@ -100,7 +101,7 @@ func TestActivate(t *testing.T) {
 }
 
 type marbleSpawner struct {
-	manifest               Manifest
+	manifest               manifest.Manifest
 	validator              *quote.MockValidator
 	issuer                 quote.Issuer
 	coreServer             *Core
@@ -288,16 +289,16 @@ func TestParseSecrets(t *testing.T) {
 	}
 
 	// Define secrets
-	testSecrets := map[string]Secret{
+	testSecrets := map[string]manifest.Secret{
 		"mysecret":          {Type: "symmetric-key", Size: 16, Public: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, Private: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}},
 		"anothercoolsecret": {Type: "symmetric-key", Size: 8, Public: []byte{7, 6, 5, 4, 3, 2, 1, 0}, Private: []byte{7, 6, 5, 4, 3, 2, 1, 0}},
-		"testcertificate":   {Type: "cert-rsa", Size: 2048, Cert: Certificate(*testCert), Public: pubKey, Private: privKey},
+		"testcertificate":   {Type: "cert-rsa", Size: 2048, Cert: manifest.Certificate(*testCert), Public: pubKey, Private: privKey},
 	}
 
 	testReservedSecrets := reservedSecrets{
-		RootCA:     Secret{Public: []byte{0, 0, 42}, Private: []byte{0, 0, 7}},
-		MarbleCert: Secret{Public: []byte{42, 0, 0}, Private: []byte{7, 0, 0}},
-		SealKey:    Secret{Public: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, Private: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}},
+		RootCA:     manifest.Secret{Public: []byte{0, 0, 42}, Private: []byte{0, 0, 7}},
+		MarbleCert: manifest.Secret{Public: []byte{42, 0, 0}, Private: []byte{7, 0, 0}},
+		SealKey:    manifest.Secret{Public: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, Private: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}},
 	}
 
 	testWrappedSecrets := secretsWrapper{
@@ -375,7 +376,7 @@ func TestSecurityLevelUpdate(t *testing.T) {
 	require := require.New(t)
 
 	// parse manifest
-	var manifest Manifest
+	var manifest manifest.Manifest
 	require.NoError(json.Unmarshal([]byte(test.ManifestJSON), &manifest))
 
 	// setup mock zaplogger which can be passed to Core

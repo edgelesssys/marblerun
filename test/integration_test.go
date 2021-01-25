@@ -33,6 +33,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/coordinator/config"
 	"github.com/edgelesssys/marblerun/coordinator/core"
+	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	mconfig "github.com/edgelesssys/marblerun/marble/config"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/stretchr/testify/assert"
@@ -44,8 +45,8 @@ var buildDir = flag.String("b", "", "build dir")
 var simulationMode = flag.Bool("s", false, "Execute test in simulation mode (without real quoting)")
 var noenclave = flag.Bool("noenclave", false, "Do not run with erthost")
 var meshServerAddr, clientServerAddr, marbleTestAddr string
-var manifest core.Manifest
-var updatedManifest core.Manifest
+var testManifest manifest.Manifest
+var updatedManifest manifest.Manifest
 var transportSkipVerify = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 var simFlag string
 
@@ -64,7 +65,7 @@ func TestMain(m *testing.M) {
 		simFlag = makeEnv("OE_SIMULATION", "0")
 	}
 
-	if err := json.Unmarshal([]byte(IntegrationManifestJSON), &manifest); err != nil {
+	if err := json.Unmarshal([]byte(IntegrationManifestJSON), &testManifest); err != nil {
 		log.Fatalln(err)
 	}
 	if err := json.Unmarshal([]byte(UpdateManifest), &updatedManifest); err != nil {
@@ -100,12 +101,12 @@ func updateManifest() {
 		panic(err)
 	}
 
-	pkg := manifest.Packages["backend"]
+	pkg := testManifest.Packages["backend"]
 	pkg.UniqueID = cfg.UniqueID
 	pkg.SignerID = cfg.SignerID
 	pkg.SecurityVersion = &cfg.SecurityVersion
 	pkg.ProductID = &cfg.ProductID
-	manifest.Packages["backend"] = pkg
+	testManifest.Packages["backend"] = pkg
 
 	// Adjust unit test update manifest to work with the integration test
 	updatedManifest.Packages["backend"] = updatedManifest.Packages["frontend"]
@@ -138,7 +139,7 @@ func TestMarbleAPI(t *testing.T) {
 
 	// set Manifest
 	log.Println("Setting the Manifest")
-	_, err := setManifest(manifest)
+	_, err := setManifest(testManifest)
 	require.NoError(err, "failed to set Manifest")
 
 	// start server
@@ -177,7 +178,7 @@ func TestRestart(t *testing.T) {
 	require.NotNil(coordinatorProc)
 
 	// set Manifest
-	_, err := setManifest(manifest)
+	_, err := setManifest(testManifest)
 	require.NoError(err, "failed to set Manifest")
 
 	// start server
@@ -206,7 +207,7 @@ func TestRestart(t *testing.T) {
 
 	// try do malicious update of manifest
 	log.Println("Trying to set a new Manifest, which should already be set")
-	_, err = setManifest(manifest)
+	_, err = setManifest(testManifest)
 	assert.Error(err, "expected updating of manifest to fail, but succeeded")
 
 	// start a bunch of client marbles and assert they still work with old server marble
@@ -267,7 +268,7 @@ func TestRecoveryRestoreKey(t *testing.T) {
 
 	// set Manifest
 	log.Println("Setting the Manifest")
-	recoveryResponse, err := setManifest(manifest)
+	recoveryResponse, err := setManifest(testManifest)
 	require.NoError(err, "failed to set Manifest")
 
 	// start server
@@ -381,7 +382,7 @@ func TestRecoveryReset(t *testing.T) {
 
 	// set Manifest
 	log.Println("Setting the Manifest")
-	_, err := setManifest(manifest)
+	_, err := setManifest(testManifest)
 	require.NoError(err, "failed to set Manifest")
 
 	// start server
@@ -419,7 +420,7 @@ func TestRecoveryReset(t *testing.T) {
 
 	// Set manifest again
 	log.Println("Setting the Manifest")
-	_, err = setManifest(manifest)
+	_, err = setManifest(testManifest)
 	require.NoError(err, "failed to set Manifest")
 
 	// Check status after setting a new manifest, we should be able
@@ -466,7 +467,7 @@ func TestManifestUpdate(t *testing.T) {
 
 	// set Manifest
 	log.Println("Setting the Manifest")
-	_, err := setManifest(manifest)
+	_, err := setManifest(testManifest)
 	require.NoError(err, "failed to set Manifest")
 
 	// start server
@@ -579,7 +580,7 @@ func startCommand(cmd *exec.Cmd) chan string {
 	return output
 }
 
-func setManifest(manifest core.Manifest) ([]byte, error) {
+func setManifest(manifest manifest.Manifest) ([]byte, error) {
 	// Use ClientAPI to set Manifest
 	client := http.Client{Transport: transportSkipVerify}
 	clientAPIURL := url.URL{
@@ -611,7 +612,7 @@ func setManifest(manifest core.Manifest) ([]byte, error) {
 	return body, nil
 }
 
-func setUpdateManifest(manifest core.Manifest) ([]byte, error) {
+func setUpdateManifest(manifest manifest.Manifest) ([]byte, error) {
 	// Setup requied client certificate for authentication
 	privk, err := x509.MarshalPKCS8PrivateKey(RecoveryPrivateKey)
 	if err != nil {

@@ -26,6 +26,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
@@ -41,11 +42,11 @@ type Core struct {
 	quote             []byte
 	privk             *ecdsa.PrivateKey
 	sealer            Sealer
-	manifest          Manifest
+	manifest          manifest.Manifest
 	rawManifest       []byte
-	updateManifest    Manifest
+	updateManifest    manifest.Manifest
 	rawUpdateManifest []byte
-	secrets           map[string]Secret
+	secrets           map[string]manifest.Secret
 	state             state
 	qv                quote.Validator
 	qi                quote.Issuer
@@ -71,7 +72,7 @@ type sealedState struct {
 	RawManifest       []byte
 	RawUpdateManifest []byte
 	RawCert           []byte
-	Secrets           map[string]Secret
+	Secrets           map[string]manifest.Secret
 	State             state
 	Activations       map[string]uint
 }
@@ -344,9 +345,9 @@ func (c *Core) getStatus(ctx context.Context) (int, string, error) {
 	return int(c.state), status, nil
 }
 
-func (c *Core) generateSecrets(ctx context.Context, secrets map[string]Secret, id uuid.UUID) (map[string]Secret, error) {
+func (c *Core) generateSecrets(ctx context.Context, secrets map[string]manifest.Secret, id uuid.UUID) (map[string]manifest.Secret, error) {
 	// Create a new map so we do not overwrite the entries in the manifest
-	newSecrets := make(map[string]Secret)
+	newSecrets := make(map[string]manifest.Secret)
 
 	// Generate secrets
 	for name, secret := range secrets {
@@ -459,7 +460,7 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]Secret, i
 	return newSecrets, nil
 }
 
-func (c *Core) generateCertificateForSecret(secret Secret, privKey crypto.PrivateKey, pubKey crypto.PublicKey) (Secret, error) {
+func (c *Core) generateCertificateForSecret(secret manifest.Secret, privKey crypto.PrivateKey, pubKey crypto.PublicKey) (manifest.Secret, error) {
 	// Load given information from manifest as template
 	template := x509.Certificate(secret.Cert)
 
@@ -484,7 +485,7 @@ func (c *Core) generateCertificateForSecret(secret Secret, privKey crypto.Privat
 		template.SerialNumber, err = util.GenerateCertificateSerialNumber()
 		if err != nil {
 			c.zaplogger.Error("No serial number supplied; random number generation failed.", zap.Error(err))
-			return Secret{}, err
+			return manifest.Secret{}, err
 		}
 	}
 
@@ -502,7 +503,7 @@ func (c *Core) generateCertificateForSecret(secret Secret, privKey crypto.Privat
 
 		template.NotAfter = time.Now().AddDate(0, 0, int(secret.ValidFor))
 	} else if secret.ValidFor != 0 {
-		return Secret{}, errors.New("ambigious certificate validity duration, both NotAfter and ValidFor are specified")
+		return manifest.Secret{}, errors.New("ambigious certificate validity duration, both NotAfter and ValidFor are specified")
 	}
 
 	// Generate certificate with given public key
@@ -510,26 +511,26 @@ func (c *Core) generateCertificateForSecret(secret Secret, privKey crypto.Privat
 
 	if err != nil {
 		c.zaplogger.Error("Failed to generate X.509 certificate", zap.Error(err))
-		return Secret{}, err
+		return manifest.Secret{}, err
 	}
 
 	cert, err := x509.ParseCertificate(secretCertRaw)
 	if err != nil {
 		c.zaplogger.Error("Failed to parse newly generated X.509 certificate", zap.Error(err))
-		return Secret{}, err
+		return manifest.Secret{}, err
 	}
 
 	// Assemble secret object
-	secret.Cert = Certificate(*cert)
+	secret.Cert = manifest.Certificate(*cert)
 	secret.Private, err = x509.MarshalPKCS8PrivateKey(privKey)
 	if err != nil {
 		c.zaplogger.Error("Failed to marshal private key to secret object", zap.Error(err))
-		return Secret{}, err
+		return manifest.Secret{}, err
 	}
 	secret.Public, err = x509.MarshalPKIXPublicKey(pubKey)
 	if err != nil {
 		c.zaplogger.Error("Failed to marshal public key to secret object", zap.Error(err))
-		return Secret{}, err
+		return manifest.Secret{}, err
 	}
 
 	return secret, nil

@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/edgelesssys/ertgolib/marble"
+	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
@@ -27,15 +28,15 @@ import (
 )
 
 type reservedSecrets struct {
-	RootCA     Secret
-	MarbleCert Secret
-	SealKey    Secret
+	RootCA     manifest.Secret
+	MarbleCert manifest.Secret
+	SealKey    manifest.Secret
 }
 
 // Defines the "Marblerun" prefix when mentioned in a manifest
 type secretsWrapper struct {
 	Marblerun reservedSecrets
-	Secrets   map[string]Secret
+	Secrets   map[string]manifest.Secret
 }
 
 // Activate implements the MarbleAPI function to authenticate a marble (implements the MarbleServer interface)
@@ -186,7 +187,7 @@ func (c *Core) generateCertFromCSR(csrReq []byte, pubk ecdsa.PublicKey, marbleTy
 }
 
 // customizeParameters replaces the placeholders in the manifest's parameters with the actual values
-func customizeParameters(params *rpc.Parameters, specialSecrets reservedSecrets, userSecrets map[string]Secret) (*rpc.Parameters, error) {
+func customizeParameters(params *rpc.Parameters, specialSecrets reservedSecrets, userSecrets map[string]manifest.Secret) (*rpc.Parameters, error) {
 	customParams := rpc.Parameters{
 		Argv:  params.Argv,
 		Files: make(map[string]string),
@@ -219,15 +220,15 @@ func customizeParameters(params *rpc.Parameters, specialSecrets reservedSecrets,
 	}
 
 	// Set as environment variables
-	rootCaPem, err := encodeSecretDataToPem(specialSecrets.RootCA.Cert)
+	rootCaPem, err := manifest.EncodeSecretDataToPem(specialSecrets.RootCA.Cert)
 	if err != nil {
 		return nil, err
 	}
-	marbleCertPem, err := encodeSecretDataToPem(specialSecrets.MarbleCert.Cert)
+	marbleCertPem, err := manifest.EncodeSecretDataToPem(specialSecrets.MarbleCert.Cert)
 	if err != nil {
 		return nil, err
 	}
-	encodedPrivKey, err := encodeSecretDataToPem(specialSecrets.MarbleCert.Private)
+	encodedPrivKey, err := manifest.EncodeSecretDataToPem(specialSecrets.MarbleCert.Private)
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +243,7 @@ func customizeParameters(params *rpc.Parameters, specialSecrets reservedSecrets,
 func parseSecrets(data string, secretsWrapped secretsWrapper) (string, error) {
 	var templateResult bytes.Buffer
 
-	tpl, err := template.New("data").Funcs(manifestTemplateFuncMap).Parse(data)
+	tpl, err := template.New("data").Funcs(manifest.ManifestTemplateFuncMap).Parse(data)
 	if err != nil {
 		return "", err
 	}
@@ -291,9 +292,9 @@ func (c *Core) generateMarbleAuthSecrets(req *rpc.ActivationReq, marbleUUID uuid
 
 	// customize marble's parameters
 	authSecrets := reservedSecrets{
-		RootCA:     Secret{Cert: Certificate(*c.cert)},
-		MarbleCert: Secret{Cert: Certificate(*marbleCert), Public: encodedPubKey, Private: encodedPrivKey},
-		SealKey:    Secret{Public: sealKey, Private: sealKey},
+		RootCA:     manifest.Secret{Cert: manifest.Certificate(*c.cert)},
+		MarbleCert: manifest.Secret{Cert: manifest.Certificate(*marbleCert), Public: encodedPubKey, Private: encodedPrivKey},
+		SealKey:    manifest.Secret{Public: sealKey, Private: sealKey},
 	}
 
 	return authSecrets, nil
