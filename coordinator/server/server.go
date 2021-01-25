@@ -12,6 +12,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -44,7 +45,11 @@ type manifestSignatureResp struct {
 
 // Contains RSA-encrypted AES state sealing key with public key specified by user in manifest
 type recoveryDataResp struct {
-	EncryptionKey string
+	RecoverySecrets map[string]string
+}
+
+type recoveryStatusResp struct {
+	StatusMessage string
 }
 
 // RunMarbleServer starts a gRPC with the given Coordinator core.
@@ -117,16 +122,22 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			recoveryDataBytes, err := cc.SetManifest(r.Context(), manifest)
+			recoverySecretMap, err := cc.SetManifest(r.Context(), manifest)
+
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
-			// If a recovery key has been set, include recovery data as response. If not, leave response empty.
-			if recoveryDataBytes != nil {
-				encodedRecoveryData := base64.StdEncoding.EncodeToString(recoveryDataBytes)
-				writeJSON(w, recoveryDataResp{encodedRecoveryData})
+
+			// If recovery data is set, return it
+			if recoverySecretMap != nil {
+				secretMap := make(map[string]string, len(recoverySecretMap))
+				for name, secret := range recoverySecretMap {
+					secretMap[name] = base64.StdEncoding.EncodeToString(secret)
+				}
+				writeJSON(w, recoveryDataResp{secretMap})
 			}
+
 		default:
 			http.Error(w, "", http.StatusMethodNotAllowed)
 		}
@@ -154,10 +165,25 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			if err = cc.Recover(r.Context(), key); err != nil {
+
+			// Perform recover and receive amount of remaining secrets (for multi-party recovery)
+			remaining, err := cc.Recover(r.Context(), key)
+
+			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+
+			// Construct status message based on remaining keys
+			var statusMessage string
+			if remaining != 0 {
+				statusMessage = fmt.Sprintf("Secret was processed successfully. Upload the next secret. Remaining secrets: %d", remaining)
+			} else {
+				statusMessage = "Recovery successful."
+			}
+
+			writeJSON(w, recoveryStatusResp{statusMessage})
+
 		default:
 			http.Error(w, "", http.StatusMethodNotAllowed)
 		}

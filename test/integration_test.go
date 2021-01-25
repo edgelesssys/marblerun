@@ -10,9 +10,6 @@ package test
 
 import (
 	"bytes"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
@@ -259,112 +256,30 @@ func TestRecoveryRestoreKey(t *testing.T) {
 
 	log.Println("Testing recovery...")
 
-	// start Coordinator
-	log.Println("Starting a coordinator enclave")
-	cfg := newCoordinatorConfig()
+	// Trigger recovery mode
+	recoveryResponse, coordinatorProc, serverProc, cfg, serverCfg, cert := triggerRecovery(testManifest, assert, require)
 	defer cfg.cleanup()
-	coordinatorProc := startCoordinator(cfg)
-	require.NotNil(coordinatorProc)
-
-	// set Manifest
-	log.Println("Setting the Manifest")
-	recoveryResponse, err := setManifest(testManifest)
-	require.NoError(err, "failed to set Manifest")
-
-	// start server
-	log.Println("Starting a Server-Marble")
-	serverCfg := newMarbleConfig(meshServerAddr, "test_marble_server", "server,backend,localhost")
 	defer serverCfg.cleanup()
-	serverProc := startMarbleServer(serverCfg)
-	require.NotNil(serverProc, "failed to start server-marble")
 	defer serverProc.Kill()
-
-	// get certificate
-	log.Println("Save certificate before we try to recover.")
-	client := http.Client{Transport: transportSkipVerify}
-	clientAPIURL := url.URL{Scheme: "https", Host: clientServerAddr, Path: "quote"}
-	resp, err := client.Get(clientAPIURL.String())
-	require.NoError(err)
-	require.Equal(http.StatusOK, resp.StatusCode)
-	quote, err := ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
-	require.NoError(err)
-	cert := gjson.Get(string(quote), "Cert").String()
-	require.NotEmpty(cert)
-
-	// simulate restart of coordinator
-	log.Println("Simulating a restart of the coordinator enclave...")
-	log.Println("Killing the old instance")
-	require.NoError(coordinatorProc.Kill())
-
-	// Garble encryption key to trigger recovery state
-	log.Println("Purposely corrupt sealed key to trigger recovery state...")
-	pathToKeyFile := filepath.Join(cfg.sealDir, core.SealedKeyFname)
-	sealedKeyData, err := ioutil.ReadFile(pathToKeyFile)
-	require.NoError(err)
-	sealedKeyData[0] ^= byte(0x42)
-	require.NoError(ioutil.WriteFile(pathToKeyFile, sealedKeyData, 0600))
-
-	// Restart server, we should be in recovery mode
-	log.Println("Restarting the old instance")
-	coordinatorProc = startCoordinator(cfg)
-	require.NotNil(coordinatorProc)
 	defer coordinatorProc.Kill()
 
-	// Query status API, check if status response begins with Code 1 (recovery state)
-	log.Println("Checking status...")
-	statusResponse, err := getStatus()
-	require.NoError(err)
-	assert.EqualValues(1, gjson.Get(statusResponse, "Code").Int(), "Server is not in recovery state, but should be.")
-
 	// Decode & Decrypt recovery data from when we set the manifest
-	key := gjson.Get(string(recoveryResponse), "EncryptionKey").String()
+	key := gjson.Get(string(recoveryResponse), "RecoverySecrets.testRecKey1").String()
 	recoveryDataEncrypted, err := base64.StdEncoding.DecodeString(key)
 	require.NoError(err, "Failed to base64 decode recovery data.")
-	recoveryKey, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, RecoveryPrivateKey, recoveryDataEncrypted, nil)
+	recoveryKey, err := util.DecryptOAEP(RecoveryPrivateKey, recoveryDataEncrypted)
 	require.NoError(err, "Failed to RSA OAEP decrypt the recovery data.")
 
 	// Perform recovery
 	require.NoError(setRecover(recoveryKey))
 	log.Println("Performed recovery, now checking status again...")
-	statusResponse, err = getStatus()
+	statusResponse, err := getStatus()
 	require.NoError(err)
 	assert.EqualValues(3, gjson.Get(statusResponse, "Code").Int(), "Server is in wrong status after recovery.")
 
-	// Test with certificate
-	log.Println("Verifying certificate after recovery, without a restart.")
-	pool := x509.NewCertPool()
-	require.True(pool.AppendCertsFromPEM([]byte(cert)))
-	client = http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{RootCAs: pool}}}
-	clientAPIURL.Path = "status"
-	resp, err = client.Get(clientAPIURL.String())
-	require.NoError(err)
-	resp.Body.Close()
-	require.Equal(http.StatusOK, resp.StatusCode)
-
-	// Simulate restart of coordinator
-	log.Println("Simulating a restart of the coordinator enclave...")
-	log.Println("Killing the old instance")
+	// Verify if old certificate is still valid
+	coordinatorProc = verifyCertAfterRecovery(cert, coordinatorProc, cfg, assert, require)
 	require.NoError(coordinatorProc.Kill())
-
-	// Restart server, we should be in recovery mode
-	log.Println("Restarting the old instance")
-	coordinatorProc = startCoordinator(cfg)
-	require.NotNil(coordinatorProc)
-	defer coordinatorProc.Kill()
-
-	// Finally, check if we survive a restart.
-	log.Println("Restarted instance, now let's see if the state can be restored again successfully.")
-	statusResponse, err = getStatus()
-	require.NoError(err)
-	assert.EqualValues(3, gjson.Get(statusResponse, "Code").Int(), "Server is in wrong status after recovery.")
-
-	// test with certificate
-	log.Println("Verifying certificate after restart.")
-	resp, err = client.Get(clientAPIURL.String())
-	require.NoError(err)
-	resp.Body.Close()
-	require.Equal(http.StatusOK, resp.StatusCode)
 }
 
 func TestRecoveryReset(t *testing.T) {
@@ -373,78 +288,21 @@ func TestRecoveryReset(t *testing.T) {
 
 	log.Println("Testing recovery...")
 
-	// start Coordinator
-	log.Println("Starting a coordinator enclave")
-	cfg := newCoordinatorConfig()
+	// Trigger recovery mode
+	_, coordinatorProc, serverProc, cfg, serverCfg, _ := triggerRecovery(testManifest, assert, require)
 	defer cfg.cleanup()
-	coordinatorProc := startCoordinator(cfg)
-	require.NotNil(coordinatorProc)
+	defer serverCfg.cleanup()
+	defer serverProc.Kill()
+	defer coordinatorProc.Kill()
 
-	// set Manifest
+	// Set manifest again
 	log.Println("Setting the Manifest")
 	_, err := setManifest(testManifest)
 	require.NoError(err, "failed to set Manifest")
 
-	// start server
-	log.Println("Starting a Server-Marble")
-	serverCfg := newMarbleConfig(meshServerAddr, "test_marble_server", "server,backend,localhost")
-	defer serverCfg.cleanup()
-	serverProc := startMarbleServer(serverCfg)
-	require.NotNil(serverProc, "failed to start server-marble")
-	defer serverProc.Kill()
-
-	// simulate restart of coordinator
-	log.Println("Simulating a restart of the coordinator enclave...")
-	log.Println("Killing the old instance")
+	// Verify if a new manifest has been set correctly and we are off to a fresh start
+	coordinatorProc = verifyResetAfterRecovery(coordinatorProc, cfg, assert, require)
 	require.NoError(coordinatorProc.Kill())
-
-	// Garble encryption key to trigger recovery state
-	log.Println("Purposely corrupt sealed key to trigger recovery state...")
-	pathToKeyFile := filepath.Join(cfg.sealDir, core.SealedKeyFname)
-	sealedKeyData, err := ioutil.ReadFile(pathToKeyFile)
-	require.NoError(err)
-	sealedKeyData[0] ^= byte(0x42)
-	require.NoError(ioutil.WriteFile(pathToKeyFile, sealedKeyData, 0600))
-
-	// Restart server, we should be in recovery mode
-	log.Println("Restarting the old instance")
-	coordinatorProc = startCoordinator(cfg)
-	require.NotNil(coordinatorProc)
-	defer coordinatorProc.Kill()
-
-	// Query status API, check if status response begins with Code 1 (recovery state)
-	log.Println("Checking status...")
-	statusResponse, err := getStatus()
-	require.NoError(err)
-	assert.EqualValues(1, gjson.Get(statusResponse, "Code").Int(), "Server is not in recovery state, but should be.")
-
-	// Set manifest again
-	log.Println("Setting the Manifest")
-	_, err = setManifest(testManifest)
-	require.NoError(err, "failed to set Manifest")
-
-	// Check status after setting a new manifest, we should be able
-	log.Println("Check if the manifest was accepted and we are ready to accept Marbles")
-	statusResponse, err = getStatus()
-	require.NoError(err)
-	assert.EqualValues(3, gjson.Get(statusResponse, "Code").Int(), "Server is in wrong status after recovery.")
-
-	// simulate restart of coordinator
-	log.Println("Simulating a restart of the coordinator enclave...")
-	log.Println("Killing the old instance")
-	require.NoError(coordinatorProc.Kill())
-
-	// Restart server, we should be in recovery mode
-	log.Println("Restarting the old instance")
-	coordinatorProc = startCoordinator(cfg)
-	require.NotNil(coordinatorProc)
-	defer coordinatorProc.Kill()
-
-	// Finally, check if we survive a restart.
-	log.Println("Restarted instance, now let's see if the new state can be decrypted successfully...")
-	statusResponse, err = getStatus()
-	require.NoError(err)
-	assert.EqualValues(3, gjson.Get(statusResponse, "Code").Int(), "Server is in wrong status after recovery.")
 }
 
 func TestManifestUpdate(t *testing.T) {
@@ -792,4 +650,126 @@ func startMarbleClient(cfg marbleConfig) bool {
 	}
 
 	panic(err.Error() + "\n" + string(out))
+}
+
+func triggerRecovery(manifest manifest.Manifest, assert *assert.Assertions, require *require.Assertions) ([]byte, *os.Process, *os.Process, coordinatorConfig, marbleConfig, string) {
+	// start Coordinator
+	log.Println("Starting a coordinator enclave")
+	cfg := newCoordinatorConfig()
+	coordinatorProc := startCoordinator(cfg)
+	require.NotNil(coordinatorProc)
+
+	// set Manifest
+	log.Println("Setting the Manifest")
+	recoveryResponse, err := setManifest(manifest)
+	require.NoError(err, "failed to set Manifest")
+
+	// start server
+	log.Println("Starting a Server-Marble")
+	serverCfg := newMarbleConfig(meshServerAddr, "test_marble_server", "server,backend,localhost")
+	serverProc := startMarbleServer(serverCfg)
+	require.NotNil(serverProc, "failed to start server-marble")
+
+	// get certificate
+	log.Println("Save certificate before we try to recover.")
+	client := http.Client{Transport: transportSkipVerify}
+	clientAPIURL := url.URL{Scheme: "https", Host: clientServerAddr, Path: "quote"}
+	resp, err := client.Get(clientAPIURL.String())
+	require.NoError(err)
+	require.Equal(http.StatusOK, resp.StatusCode)
+	quote, err := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	require.NoError(err)
+	cert := gjson.Get(string(quote), "Cert").String()
+	require.NotEmpty(cert)
+
+	// simulate restart of coordinator
+	log.Println("Simulating a restart of the coordinator enclave...")
+	log.Println("Killing the old instance")
+	require.NoError(coordinatorProc.Kill())
+
+	// Garble encryption key to trigger recovery state
+	log.Println("Purposely corrupt sealed key to trigger recovery state...")
+	pathToKeyFile := filepath.Join(cfg.sealDir, core.SealedKeyFname)
+	sealedKeyData, err := ioutil.ReadFile(pathToKeyFile)
+	require.NoError(err)
+	sealedKeyData[0] ^= byte(0x42)
+	require.NoError(ioutil.WriteFile(pathToKeyFile, sealedKeyData, 0600))
+
+	// Restart server, we should be in recovery mode
+	log.Println("Restarting the old instance")
+	coordinatorProc = startCoordinator(cfg)
+	require.NotNil(coordinatorProc)
+
+	// Query status API, check if status response begins with Code 1 (recovery state)
+	log.Println("Checking status...")
+	statusResponse, err := getStatus()
+	require.NoError(err)
+	assert.EqualValues(1, gjson.Get(statusResponse, "Code").Int(), "Server is not in recovery state, but should be.")
+
+	return recoveryResponse, coordinatorProc, serverProc, cfg, serverCfg, cert
+}
+
+func verifyCertAfterRecovery(cert string, coordinatorProc *os.Process, cfg coordinatorConfig, assert *assert.Assertions, require *require.Assertions) *os.Process {
+	// Test with certificate
+	log.Println("Verifying certificate after recovery, without a restart.")
+	pool := x509.NewCertPool()
+	require.True(pool.AppendCertsFromPEM([]byte(cert)))
+	client := http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{RootCAs: pool}}}
+	clientAPIURL := url.URL{Scheme: "https", Host: clientServerAddr, Path: "status"}
+	resp, err := client.Get(clientAPIURL.String())
+	require.NoError(err)
+	resp.Body.Close()
+	require.Equal(http.StatusOK, resp.StatusCode)
+
+	// Simulate restart of coordinator
+	log.Println("Simulating a restart of the coordinator enclave...")
+	log.Println("Killing the old instance")
+	require.NoError(coordinatorProc.Kill())
+
+	// Restart server, we should be in recovery mode
+	log.Println("Restarting the old instance")
+	coordinatorProc = startCoordinator(cfg)
+	require.NotNil(coordinatorProc)
+
+	// Finally, check if we survive a restart.
+	log.Println("Restarted instance, now let's see if the state can be restored again successfully.")
+	statusResponse, err := getStatus()
+	require.NoError(err)
+	assert.EqualValues(3, gjson.Get(statusResponse, "Code").Int(), "Server is in wrong status after recovery.")
+
+	// test with certificate
+	log.Println("Verifying certificate after restart.")
+	resp, err = client.Get(clientAPIURL.String())
+	require.NoError(err)
+	resp.Body.Close()
+	require.Equal(http.StatusOK, resp.StatusCode)
+
+	return coordinatorProc
+}
+
+func verifyResetAfterRecovery(coordinatorProc *os.Process, cfg coordinatorConfig, assert *assert.Assertions, require *require.Assertions) *os.Process {
+	// Check status after setting a new manifest, we should be able
+	log.Println("Check if the manifest was accepted and we are ready to accept Marbles")
+	statusResponse, err := getStatus()
+	require.NoError(err)
+	assert.EqualValues(3, gjson.Get(statusResponse, "Code").Int(), "Server is in wrong status after recovery.")
+
+	// simulate restart of coordinator
+	log.Println("Simulating a restart of the coordinator enclave...")
+	log.Println("Killing the old instance")
+	require.NoError(coordinatorProc.Kill())
+
+	// Restart server, we should be in recovery mode
+	log.Println("Restarting the old instance")
+	coordinatorProc = startCoordinator(cfg)
+	require.NotNil(coordinatorProc)
+
+	// Finally, check if we survive a restart.
+	log.Println("Restarted instance, now let's see if the new state can be decrypted successfully...")
+	statusResponse, err = getStatus()
+	require.NoError(err)
+	assert.EqualValues(3, gjson.Get(statusResponse, "Code").Int(), "Server is in wrong status after recovery.")
+
+	return coordinatorProc
 }

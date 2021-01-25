@@ -28,6 +28,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
+	"github.com/edgelesssys/marblerun/coordinator/recovery"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -42,6 +43,7 @@ type Core struct {
 	quote             []byte
 	privk             *ecdsa.PrivateKey
 	sealer            Sealer
+	recovery          recovery.Recovery
 	manifest          manifest.Manifest
 	rawManifest       []byte
 	updateManifest    manifest.Manifest
@@ -99,13 +101,14 @@ func (c *Core) advanceState(newState state) {
 }
 
 // NewCore creates and initializes a new Core object
-func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer Sealer, zapLogger *zap.Logger) (*Core, error) {
+func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer Sealer, recovery recovery.Recovery, zapLogger *zap.Logger) (*Core, error) {
 	c := &Core{
 		state:       stateUninitialized,
 		activations: make(map[string]uint),
 		qv:          qv,
 		qi:          qi,
 		sealer:      sealer,
+		recovery:    recovery,
 		zaplogger:   zapLogger,
 	}
 
@@ -147,7 +150,8 @@ func NewCoreWithMocks() *Core {
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
 	sealer := &MockSealer{}
-	core, err := NewCore([]string{"localhost"}, validator, issuer, sealer, zapLogger)
+	recovery := recovery.NewSinglePartyRecovery()
+	core, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
 	if err != nil {
 		panic(err)
 	}
@@ -176,9 +180,16 @@ func (c *Core) GetTLSCertificate(clientHello *tls.ClientHelloInfo) (*tls.Certifi
 }
 
 func (c *Core) loadState() (*x509.Certificate, *ecdsa.PrivateKey, error) {
-	_, stateRaw, err := c.sealer.Unseal()
+	encodedRecoveryData, stateRaw, unsealErr := c.sealer.Unseal()
+
+	// Retrieve and set recovery data from state
+	err := c.recovery.SetRecoveryData(encodedRecoveryData)
 	if err != nil {
-		return nil, nil, err
+		c.zaplogger.Error("Could not retrieve recovery data from state. Recovery will be unavailable", zap.Error(err))
+	}
+
+	if unsealErr != nil {
+		return nil, nil, unsealErr
 	}
 	if len(stateRaw) == 0 {
 		return nil, nil, nil
@@ -229,7 +240,7 @@ func (c *Core) loadState() (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	return cert, privk, err
 }
 
-func (c *Core) sealState() error {
+func (c *Core) sealState(recoveryData []byte) error {
 	// marshal private key
 	x509Encoded, err := x509.MarshalECPrivateKey(c.privk)
 	if err != nil {
@@ -250,7 +261,7 @@ func (c *Core) sealState() error {
 	if err != nil {
 		return err
 	}
-	return c.sealer.Seal(nil, stateRaw)
+	return c.sealer.Seal(recoveryData, stateRaw)
 }
 
 func (c *Core) generateCert(dnsNames []string) (*x509.Certificate, *ecdsa.PrivateKey, error) {
