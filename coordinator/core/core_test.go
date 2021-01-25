@@ -12,6 +12,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
+	"github.com/edgelesssys/marblerun/coordinator/recovery"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -58,8 +59,9 @@ func TestSeal(t *testing.T) {
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
 	sealer := &MockSealer{}
+	recovery := recovery.NewSinglePartyRecovery()
 
-	c, err := NewCore([]string{"localhost"}, validator, issuer, sealer, zapLogger)
+	c, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
 	require.NoError(err)
 
 	// Set manifest. This will seal the state.
@@ -72,7 +74,7 @@ func TestSeal(t *testing.T) {
 	signature := c.GetManifestSignature(context.TODO())
 
 	// Check sealing with a new core initialized with the sealed state.
-	c2, err := NewCore([]string{"localhost"}, validator, issuer, sealer, zapLogger)
+	c2, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
 	require.NoError(err)
 	assert.Equal(stateAcceptingMarbles, c2.state)
 
@@ -102,30 +104,34 @@ func TestRecover(t *testing.T) {
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
 	sealer := &MockSealer{}
+	recovery := recovery.NewSinglePartyRecovery()
 
-	c, err := NewCore([]string{"localhost"}, validator, issuer, sealer, zapLogger)
+	c, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
 	require.NoError(err)
 
 	// new core does not allow recover
 	key := make([]byte, 16)
-	assert.Error(c.Recover(context.TODO(), key))
+	_, err = c.Recover(context.TODO(), key)
+	assert.Error(err)
 
 	// Set manifest. This will seal the state.
 	_, err = c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
 	require.NoError(err)
 
 	// core does not allow recover after manifest has been set
-	assert.Error(c.Recover(context.TODO(), key))
+	_, err = c.Recover(context.TODO(), key)
+	assert.Error(err)
 
 	// Initialize new core and let unseal fail
 	sealer.unsealError = ErrEncryptionKey
-	c2, err := NewCore([]string{"localhost"}, validator, issuer, sealer, zapLogger)
+	c2, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
 	sealer.unsealError = nil
 	require.NoError(err)
 	require.Equal(stateRecovery, c2.state)
 
 	// recover
-	assert.NoError(c2.Recover(context.TODO(), key))
+	_, err = c2.Recover(context.TODO(), key)
+	assert.NoError(err)
 	assert.Equal(stateAcceptingMarbles, c2.state)
 }
 

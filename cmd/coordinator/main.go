@@ -12,6 +12,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/config"
 	"github.com/edgelesssys/marblerun/coordinator/core"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
+	"github.com/edgelesssys/marblerun/coordinator/recovery"
 	"github.com/edgelesssys/marblerun/util"
 )
 
@@ -20,5 +21,6 @@ func main() {
 	issuer := quote.NewFailIssuer()
 	sealDir := util.MustGetenv(config.SealDir)
 	sealer := core.NewNoEnclaveSealer(sealDir)
-	run(validator, issuer, sealDir, sealer)
+	recovery := recovery.NewSinglePartyRecovery()
+	run(validator, issuer, sealDir, sealer, recovery)
 }

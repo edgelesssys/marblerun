@@ -23,6 +23,7 @@ import (
 	libMarble "github.com/edgelesssys/ertgolib/marble"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
+	"github.com/edgelesssys/marblerun/coordinator/recovery"
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/edgelesssys/marblerun/util"
@@ -51,7 +52,8 @@ func TestActivate(t *testing.T) {
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
 	sealer := &MockSealer{}
-	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, sealer, zapLogger)
+	recovery := recovery.NewSinglePartyRecovery()
+	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
 	require.NoError(err)
 	require.NotNil(coreServer)
 
@@ -388,7 +390,8 @@ func TestSecurityLevelUpdate(t *testing.T) {
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
 	sealer := &MockSealer{}
-	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, sealer, zapLogger)
+	recovery := recovery.NewSinglePartyRecovery()
+	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
 	require.NoError(err)
 	require.NotNil(coreServer)
 
@@ -415,7 +418,7 @@ func TestSecurityLevelUpdate(t *testing.T) {
 	spawner.newMarble("frontend", "Azure", false)
 
 	// Use a new core and test if updated manifest persisted after restart
-	coreServer2, err := NewCore([]string{"localhost"}, validator, issuer, sealer, zapLogger)
+	coreServer2, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
 	require.NoError(err)
 	assert.Equal(stateAcceptingMarbles, coreServer2.state)
 	assert.EqualValues(5, *coreServer2.updateManifest.Packages["frontend"].SecurityVersion)

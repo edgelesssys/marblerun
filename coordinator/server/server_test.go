@@ -8,9 +8,6 @@ package server
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
@@ -24,6 +21,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/coordinator/core"
 	"github.com/edgelesssys/marblerun/test"
+	"github.com/edgelesssys/marblerun/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -83,11 +81,17 @@ func TestManifestWithRecoveryKey(t *testing.T) {
 	// Decode JSON response from server
 	var b64EncryptedRecoveryData recoveryDataResp
 	require.NoError(json.Unmarshal(resp.Body.Bytes(), &b64EncryptedRecoveryData))
-	encryptedRecoveryData, err := base64.StdEncoding.DecodeString(b64EncryptedRecoveryData.EncryptionKey)
-	require.NoError(err)
+
+	var encryptedRecoveryData []byte
+
+	for _, value := range b64EncryptedRecoveryData.RecoverySecrets {
+		var err error
+		encryptedRecoveryData, err = base64.StdEncoding.DecodeString(value)
+		require.NoError(err)
+	}
 
 	// Decrypt recovery data and see if it matches the key used by the mock sealer
-	recoveryData, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, test.RecoveryPrivateKey, encryptedRecoveryData, nil)
+	recoveryData, err := util.DecryptOAEP(test.RecoveryPrivateKey, encryptedRecoveryData)
 	require.NoError(err)
 	require.NotNil(recoveryData)
 }

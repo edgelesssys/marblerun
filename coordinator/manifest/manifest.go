@@ -36,8 +36,8 @@ type Manifest struct {
 	Clients map[string][]byte
 	// Secrets holds user-specified secrets, which should be generated and later on stored in a marble (if not shared) or in the core (if shared).
 	Secrets map[string]Secret
-	// RecoveryKey holds a RSA public key to encrypt the state encryption key, which gets returned over the Client API when setting a manifest.
-	RecoveryKey string
+	// RecoveryKeys holds one or multiple RSA public keys to encrypt multiple secrets, which can be used to decrypt the sealed state again in case the encryption key on disk was corrupted somehow.
+	RecoveryKeys map[string]string
 }
 
 // Marble describes a service in the mesh that should be handled and verified by the Coordinator

@@ -167,7 +167,9 @@ var ManifestJSONWithRecoveryKey string = `{
 	"Admins": {
 		"admin": "` + pemToJSONString(AdminCert) + `"
 	},
-	"RecoveryKey": "` + pemToJSONString(RecoveryPublicKey) + `"
+	"RecoveryKeys": {
+		"testRecKey1": "` + pemToJSONString(RecoveryPublicKey) + `"
+	}
 }`
 
 // IntegrationManifestJSON is a test manifest
@@ -242,7 +244,9 @@ var IntegrationManifestJSON string = `{
 	"Admins": {
 		"admin": "` + pemToJSONString(AdminCert) + `"
 	},
-	"RecoveryKey": "` + pemToJSONString(RecoveryPublicKey) + `"
+	"RecoveryKeys": {
+		"testRecKey1": "` + pemToJSONString(RecoveryPublicKey) + `"
+	}
 }`
 
 func generateTestRecoveryKey() (publicKeyPem []byte, privateKey *rsa.PrivateKey) {

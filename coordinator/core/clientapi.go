@@ -8,8 +8,6 @@ package core
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/json"
@@ -17,18 +15,17 @@ import (
 	"errors"
 
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
-	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
 // ClientCore provides the core functionality for the client. It can be used by e.g. a http server
 type ClientCore interface {
-	SetManifest(ctx context.Context, rawManifest []byte) (recoveryDataBytes []byte, err error)
+	SetManifest(ctx context.Context, rawManifest []byte) (recoverySecretMap map[string][]byte, err error)
 	GetCertQuote(ctx context.Context) (cert string, certQuote []byte, err error)
 	GetManifestSignature(ctx context.Context) (manifestSignature []byte)
 	GetStatus(ctx context.Context) (statusCode int, status string, err error)
-	Recover(ctx context.Context, encryptionKey []byte) error
+	Recover(ctx context.Context, encryptionKey []byte) (int, error)
 	VerifyAdmin(ctx context.Context, clientCerts []*x509.Certificate) bool
 	UpdateManifest(ctx context.Context, rawUpdateManifest []byte) error
 }
@@ -36,7 +33,7 @@ type ClientCore interface {
 // SetManifest sets the manifest, once and for all
 //
 // rawManifest is the manifest of type Manifest in JSON format.
-func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) ([]byte, error) {
+func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string][]byte, error) {
 	defer c.mux.Unlock()
 	if err := c.requireState(stateAcceptingManifest, stateRecovery); err != nil {
 		return nil, err
@@ -57,31 +54,17 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) ([]byte, err
 		return nil, err
 	}
 
-	var recoveryk *rsa.PublicKey
-
-	// Retrieve RSA public key for potential key recovery
-	if manifest.RecoveryKey != "" {
-		block, _ := pem.Decode([]byte(manifest.RecoveryKey))
-
-		if block == nil || block.Type != "PUBLIC KEY" {
-			c.zaplogger.Error("Manifest supplied a key which does not appear to be a public key.")
-			return nil, errors.New("invalid public key in manifest")
-		}
-		pub, err := x509.ParsePKIXPublicKey(block.Bytes)
-		if err != nil {
-			c.zaplogger.Error("Could not parse public key specified in manifest.", zap.Error(err))
-			return nil, err
-		}
-		var ok bool
-		if recoveryk, ok = pub.(*rsa.PublicKey); !ok {
-			c.zaplogger.Error("Public Key specified in manifest is not a RSA public key.")
-			return nil, errors.New("unsupported type of public key")
-		}
+	// Set encryption key & generate recovery data
+	encryptionKey, err := c.recovery.GenerateEncryptionKey(manifest.RecoveryKeys)
+	if err != nil {
+		c.zaplogger.Error("could not set up encryption key for sealing the state", zap.Error(err))
+		return nil, err
 	}
-
-	// Generate a new encryption key for a new manifest, as the old one might be broken
-	encryptionKey := make([]byte, 16)
-	_, err = rand.Read(encryptionKey)
+	recoverySecretMap, recoveryData, err := c.recovery.GenerateRecoveryData(manifest.RecoveryKeys)
+	if err != nil {
+		c.zaplogger.Error("could not generate recovery data", zap.Error(err))
+		return nil, err
+	}
 	c.sealer.SetEncryptionKey(encryptionKey)
 
 	// Parse X.509 admin certificates from manifest
@@ -97,19 +80,11 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) ([]byte, err
 	c.adminCerts = adminCerts
 
 	c.advanceState(stateAcceptingMarbles)
-	if err := c.sealState(); err != nil {
+	if err := c.sealState(recoveryData); err != nil {
 		c.zaplogger.Error("sealState failed", zap.Error(err))
 	}
 
-	var recoveryData []byte
-	if recoveryk != nil {
-		recoveryData, err = util.EncryptOAEP(recoveryk, encryptionKey)
-		if err != nil {
-			c.zaplogger.Error("Creation of recovery data failed.", zap.Error(err))
-		}
-	}
-
-	return recoveryData, nil
+	return recoverySecretMap, nil
 }
 
 // GetCertQuote gets the Coordinators certificate and corresponding quote (containing the cert)
@@ -139,26 +114,27 @@ func (c *Core) GetManifestSignature(ctx context.Context) []byte {
 }
 
 // Recover sets an encryption key (ideally decrypted from the recovery data) and tries to unseal and load a saved state again.
-func (c *Core) Recover(ctx context.Context, encryptionKey []byte) error {
+func (c *Core) Recover(ctx context.Context, secret []byte) (int, error) {
 	defer c.mux.Unlock()
 	if err := c.requireState(stateRecovery); err != nil {
-		return err
+		return -1, err
 	}
 
-	if err := c.sealer.SetEncryptionKey(encryptionKey); err != nil {
-		return err
-	}
+	remaining, secret, err := c.recovery.RecoverKey(secret)
 
-	cert, privk, err := c.loadState()
 	if err != nil {
-		return err
+		return remaining, err
 	}
 
-	c.cert = cert
-	c.privk = privk
-	c.quote = c.generateQuote()
+	if remaining != 0 {
+		return remaining, nil
+	}
 
-	return nil
+	if err := c.performRecovery(secret); err != nil {
+		return -1, err
+	}
+
+	return 0, nil
 }
 
 // GetStatus returns status information about the state of the mesh.
@@ -199,13 +175,34 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte) err
 		return err
 	}
 
+	// Retrieve current recovery data before we seal the state again
+	currentRecoveryData, err := c.recovery.GetRecoveryData()
+	if err != nil {
+		c.zaplogger.Error("Could not retrieve the current recovery data from the recovery module. Cannot reseal the state, the update manifest will not be applied.")
+		return err
+	}
+
 	c.updateManifest = updateManifest
 	c.rawUpdateManifest = rawUpdateManifest
 	c.zaplogger.Info("An update manifest overriding package settings from the original manifest was set.")
-	err := c.sealState()
+
+	return c.sealState(currentRecoveryData)
+}
+
+func (c *Core) performRecovery(encryptionKey []byte) error {
+	if err := c.sealer.SetEncryptionKey(encryptionKey); err != nil {
+		return err
+	}
+
+	cert, privk, err := c.loadState()
 	if err != nil {
 		return err
 	}
+
+	c.cert = cert
+	c.privk = privk
+
+	c.quote = c.generateQuote()
 
 	return nil
 }
