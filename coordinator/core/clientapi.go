@@ -17,6 +17,7 @@ import (
 	"errors"
 
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
+	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
@@ -102,7 +103,7 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) ([]byte, err
 
 	var recoveryData []byte
 	if recoveryk != nil {
-		recoveryData, err = rsa.EncryptOAEP(sha256.New(), rand.Reader, recoveryk, encryptionKey, nil)
+		recoveryData, err = util.EncryptOAEP(recoveryk, encryptionKey)
 		if err != nil {
 			c.zaplogger.Error("Creation of recovery data failed.", zap.Error(err))
 		}

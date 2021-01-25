@@ -7,7 +7,10 @@
 package util
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -55,4 +58,26 @@ func MustGetLocalListenerAndAddr() (net.Listener, string) {
 		panic(err)
 	}
 	return listener, localhost + port
+}
+
+// XORBytes XORs two byte slices
+func XORBytes(a, b []byte) ([]byte, error) {
+	if len(a) != len(b) {
+		return nil, fmt.Errorf("lengths of byte slices differ: %v != %v", len(a), len(b))
+	}
+	result := make([]byte, len(a))
+	for i := range result {
+		result[i] = a[i] ^ b[i]
+	}
+	return result, nil
+}
+
+// EncryptOAEP is a wrapper function for rsa.EncryptOAEP for a nicer syntax
+func EncryptOAEP(pub *rsa.PublicKey, plaintext []byte) ([]byte, error) {
+	return rsa.EncryptOAEP(sha256.New(), rand.Reader, pub, plaintext, nil)
+}
+
+// DecryptOAEP is a wrapper function for rsa.DecryptOAEP for a nicer syntax
+func DecryptOAEP(priv *rsa.PrivateKey, ciphertext []byte) ([]byte, error) {
+	return rsa.DecryptOAEP(sha256.New(), rand.Reader, priv, ciphertext, nil)
 }

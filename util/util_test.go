@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDeriveKey(t *testing.T) {
@@ -29,4 +30,17 @@ func TestMustGetenv(t *testing.T) {
 	assert.NoError(os.Setenv(name, value))
 	assert.Equal(value, MustGetenv(name))
 	assert.NoError(os.Unsetenv(name))
+}
+
+func TestXORBytes(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	firstValue := []byte{0xD, 0xE, 0xA, 0xD, 0xC, 0x0, 0xD, 0xE}
+	secondValue := []byte{0xB, 0xA, 0xD, 0xD, 0xC, 0xA, 0xF, 0xE}
+	expectedResult := []byte{0x6, 0x4, 0x7, 0x0, 0x0, 0xa, 0x2, 0x0}
+
+	result, err := XORBytes(firstValue, secondValue)
+	require.NoError(err)
+	assert.Equal(expectedResult, result)
 }
