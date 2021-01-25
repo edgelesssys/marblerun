@@ -142,7 +142,7 @@ func TestMarbleAPI(t *testing.T) {
 	require.NoError(err, "failed to set Manifest")
 
 	// start server
-	log.Println("Starting a Server-Marble")
+	log.Println("Starting a Server-Marble...")
 	serverCfg := newMarbleConfig(meshServerAddr, "test_marble_server", "server,backend,localhost")
 	defer serverCfg.cleanup()
 	serverProc := startMarbleServer(serverCfg)
@@ -150,7 +150,7 @@ func TestMarbleAPI(t *testing.T) {
 	defer serverProc.Kill()
 
 	// start clients
-	log.Println("Starting a bunch of Client-Marbles")
+	log.Println("Starting a bunch of Client-Marbles...")
 	clientCfg := newMarbleConfig(meshServerAddr, "test_marble_client", "client,frontend,localhost")
 	defer clientCfg.cleanup()
 	assert.True(startMarbleClient(clientCfg))
@@ -170,7 +170,7 @@ func TestRestart(t *testing.T) {
 
 	log.Println("Testing the restart capabilities")
 	// start Coordinator
-	log.Println("Starting a coordinator enclave")
+	log.Println("Starting a coordinator enclave...")
 	cfg := newCoordinatorConfig()
 	defer cfg.cleanup()
 	coordinatorProc := startCoordinator(cfg)
@@ -181,7 +181,7 @@ func TestRestart(t *testing.T) {
 	require.NoError(err, "failed to set Manifest")
 
 	// start server
-	log.Println("Starting a Server-Marble")
+	log.Println("Starting a Server-Marble...")
 	serverCfg := newMarbleConfig(meshServerAddr, "test_marble_server", "server,backend,localhost")
 	defer serverCfg.cleanup()
 	serverProc := startMarbleServer(serverCfg)
@@ -189,7 +189,7 @@ func TestRestart(t *testing.T) {
 	defer serverProc.Kill()
 
 	// start clients
-	log.Println("Starting a bunch of Client-Marbles")
+	log.Println("Starting a bunch of Client-Marbles...")
 	clientCfg := newMarbleConfig(meshServerAddr, "test_marble_client", "client,frontend,localhost")
 	defer clientCfg.cleanup()
 	assert.True(startMarbleClient(clientCfg))
@@ -210,7 +210,7 @@ func TestRestart(t *testing.T) {
 	assert.Error(err, "expected updating of manifest to fail, but succeeded")
 
 	// start a bunch of client marbles and assert they still work with old server marble
-	log.Println("Starting a bunch of Client-Marbles, which should still authenticate successfully with the Server-Marble")
+	log.Println("Starting a bunch of Client-Marbles, which should still authenticate successfully with the Server-Marble...")
 	assert.True(startMarbleClient(clientCfg))
 	assert.True(startMarbleClient(clientCfg))
 }
@@ -542,7 +542,7 @@ func startCoordinator(cfg coordinatorConfig) *os.Process {
 	client := http.Client{Transport: transportSkipVerify}
 	url := url.URL{Scheme: "https", Host: clientServerAddr, Path: "quote"}
 
-	log.Println("Coordinator starting ...")
+	log.Println("Coordinator starting...")
 	for {
 		time.Sleep(10 * time.Millisecond)
 		select {
