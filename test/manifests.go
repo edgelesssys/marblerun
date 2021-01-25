@@ -239,6 +239,9 @@ var IntegrationManifestJSON string = `{
 	"Clients": {
 		"owner": [9,9,9]
 	},
+	"Admins": {
+		"admin": "` + pemToJSONString(AdminCert) + `"
+	},
 	"RecoveryKey": "` + pemToJSONString(RecoveryPublicKey) + `"
 }`
 

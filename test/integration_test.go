@@ -17,6 +17,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -44,6 +45,7 @@ var simulationMode = flag.Bool("s", false, "Execute test in simulation mode (wit
 var noenclave = flag.Bool("noenclave", false, "Do not run with erthost")
 var meshServerAddr, clientServerAddr, marbleTestAddr string
 var manifest core.Manifest
+var updatedManifest core.Manifest
 var transportSkipVerify = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 var simFlag string
 
@@ -63,6 +65,9 @@ func TestMain(m *testing.M) {
 	}
 
 	if err := json.Unmarshal([]byte(IntegrationManifestJSON), &manifest); err != nil {
+		log.Fatalln(err)
+	}
+	if err := json.Unmarshal([]byte(UpdateManifest), &updatedManifest); err != nil {
 		log.Fatalln(err)
 	}
 	updateManifest()
@@ -101,6 +106,9 @@ func updateManifest() {
 	pkg.SecurityVersion = &cfg.SecurityVersion
 	pkg.ProductID = &cfg.ProductID
 	manifest.Packages["backend"] = pkg
+
+	// Adjust unit test update manifest to work with the integration test
+	updatedManifest.Packages["backend"] = updatedManifest.Packages["frontend"]
 }
 
 // sanity test of the integration test environment
@@ -438,6 +446,60 @@ func TestRecoveryReset(t *testing.T) {
 	assert.EqualValues(3, gjson.Get(statusResponse, "Code").Int(), "Server is in wrong status after recovery.")
 }
 
+func TestManifestUpdate(t *testing.T) {
+	// This file cannot be run in DOS mode ;)
+	if *simulationMode || *noenclave {
+		t.Skip("This test cannot be run in Simulation / No Enclave mode.")
+		return
+	}
+
+	assert := assert.New(t)
+	require := require.New(t)
+
+	// start Coordinator
+	log.Println("Starting a coordinator enclave")
+	cfg := newCoordinatorConfig()
+	defer cfg.cleanup()
+	coordinatorProc := startCoordinator(cfg)
+	require.NotNil(coordinatorProc)
+	defer coordinatorProc.Kill()
+
+	// set Manifest
+	log.Println("Setting the Manifest")
+	_, err := setManifest(manifest)
+	require.NoError(err, "failed to set Manifest")
+
+	// start server
+	log.Println("Starting a Server-Marble")
+	serverCfg := newMarbleConfig(meshServerAddr, "test_marble_server", "server,backend,localhost")
+	defer serverCfg.cleanup()
+	serverProc := startMarbleServer(serverCfg)
+	require.NotNil(serverProc, "failed to start server-marble")
+	defer serverProc.Kill()
+
+	// start clients
+	log.Println("Starting a bunch of Client-Marbles (should start successfully)...")
+	clientCfg := newMarbleConfig(meshServerAddr, "test_marble_client", "client,frontend,localhost")
+	defer clientCfg.cleanup()
+	assert.True(startMarbleClient(clientCfg))
+	assert.True(startMarbleClient(clientCfg))
+	// start bad marbles (would be accepted if we run in SimulationMode)
+	badCfg := newMarbleConfig(meshServerAddr, "bad_marble", "bad,localhost")
+	defer badCfg.cleanup()
+	assert.False(startMarbleClient(badCfg))
+	assert.False(startMarbleClient(badCfg))
+
+	// Set the update manifest
+	log.Println("Setting the Update Manifest")
+	_, err = setUpdateManifest(updatedManifest)
+	require.NoError(err, "failed to set Update Manifest")
+
+	// Try to start marbles again, should fail now due to increased minimum SecurityVersion
+	log.Println("Starting the same bunch of outdated Client-Marbles again (should fail now)...")
+	assert.False(startMarbleClient(clientCfg), "Did start successfully, but must not run successfully. The increased minimum SecurityVersion was ignored.")
+	assert.False(startMarbleClient(clientCfg), "Did start successfully, but must not run successfully. The increased minimum SecurityVersion was ignored.")
+}
+
 type coordinatorConfig struct {
 	dnsNames string
 	sealDir  string
@@ -524,6 +586,55 @@ func setManifest(manifest core.Manifest) ([]byte, error) {
 		Scheme: "https",
 		Host:   clientServerAddr,
 		Path:   "manifest",
+	}
+
+	manifestRaw, err := json.Marshal(manifest)
+	if err != nil {
+		panic(err)
+	}
+
+	resp, err := client.Post(clientAPIURL.String(), "application/json", bytes.NewReader(manifestRaw))
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("expected %v, but /manifest returned %v: %v", http.StatusOK, resp.Status, string(body))
+	}
+
+	return body, nil
+}
+
+func setUpdateManifest(manifest core.Manifest) ([]byte, error) {
+	// Setup requied client certificate for authentication
+	privk, err := x509.MarshalPKCS8PrivateKey(RecoveryPrivateKey)
+	if err != nil {
+		panic(err)
+	}
+	cert, err := tls.X509KeyPair(AdminCert, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privk}))
+	if err != nil {
+		panic(err)
+	}
+
+	tlsConfig := &tls.Config{
+		Certificates:       []tls.Certificate{cert},
+		InsecureSkipVerify: true,
+	}
+
+	transport := &http.Transport{TLSClientConfig: tlsConfig}
+
+	// Use ClientAPI to set Manifest
+	client := http.Client{Transport: transport}
+	clientAPIURL := url.URL{
+		Scheme: "https",
+		Host:   clientServerAddr,
+		Path:   "update",
 	}
 
 	manifestRaw, err := json.Marshal(manifest)
