@@ -78,9 +78,9 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) ([]byte, err
 	}
 
 	// Generate a new encryption key for a new manifest, as the old one might be broken
-	if err := c.sealer.GenerateNewEncryptionKey(); err != nil {
-		return nil, err
-	}
+	encryptionKey := make([]byte, 16)
+	_, err = rand.Read(encryptionKey)
+	c.sealer.SetEncryptionKey(encryptionKey)
 
 	// Parse X.509 admin certificates from manifest
 	adminCerts, err := generateAdminCertsFromManifest(manifest.Admins)
@@ -95,8 +95,7 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) ([]byte, err
 	c.adminCerts = adminCerts
 
 	c.advanceState(stateAcceptingMarbles)
-	encryptionKey, err := c.sealState()
-	if err != nil {
+	if err := c.sealState(); err != nil {
 		c.zaplogger.Error("sealState failed", zap.Error(err))
 	}
 
@@ -201,7 +200,7 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte) err
 	c.updateManifest = updateManifest
 	c.rawUpdateManifest = rawUpdateManifest
 	c.zaplogger.Info("An update manifest overriding package settings from the original manifest was set.")
-	_, err := c.sealState()
+	err := c.sealState()
 	if err != nil {
 		return err
 	}

@@ -8,6 +8,7 @@ package core
 
 import (
 	"crypto/rand"
+	"encoding/binary"
 	"errors"
 	"io/ioutil"
 	"os"
@@ -28,9 +29,8 @@ var ErrEncryptionKey = errors.New("cannot unseal encryption key")
 
 // Sealer is an interface for the Core object to seal information to the filesystem for persistence
 type Sealer interface {
-	Seal(data []byte) ([]byte, error)
-	Unseal() ([]byte, error)
-	GenerateNewEncryptionKey() error
+	Seal(unencryptedData []byte, toBeEncrypted []byte) error
+	Unseal() (unencryptedData []byte, decryptedData []byte, err error)
 	SetEncryptionKey(key []byte) error
 }
 
@@ -46,49 +46,79 @@ func NewAESGCMSealer(sealDir string) *AESGCMSealer {
 }
 
 // Unseal reads and decrypts stored information from the fs
-func (s *AESGCMSealer) Unseal() ([]byte, error) {
+func (s *AESGCMSealer) Unseal() ([]byte, []byte, error) {
 	// load from fs
 	sealedData, err := ioutil.ReadFile(s.getFname(SealedDataFname))
 
 	if os.IsNotExist(err) {
-		return nil, nil
+		return nil, nil, nil
 	} else if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+
+	if len(sealedData) <= 4 {
+		return nil, nil, errors.New("sealed state is missing data")
+	}
+
+	// Retrieve recovery secret hash map
+	encodedUnencryptDataLength := binary.LittleEndian.Uint32(sealedData[:4])
+
+	// Check if we do not go out of bounds
+	if 4+encodedUnencryptDataLength > uint32(len(sealedData)) {
+		return nil, nil, errors.New("sealed state is corrupted, embedded length does not fit the data")
+	}
+
+	var unencryptedData []byte
+	if encodedUnencryptDataLength != 0 {
+		unencryptedData = sealedData[4 : 4+encodedUnencryptDataLength]
+	}
+	ciphertext := sealedData[4+encodedUnencryptDataLength:]
 
 	// Decrypt generated encryption key with seal key, if needed
 	if err = s.unsealEncryptionKey(); err != nil {
-		return nil, ErrEncryptionKey
+		return unencryptedData, nil, ErrEncryptionKey
 	}
 
 	// Decrypt data with the unsealed encryption key and return it
-	return ertcrypto.Decrypt(sealedData, s.encryptionKey)
+	decryptedData, err := ertcrypto.Decrypt(ciphertext, s.encryptionKey)
+	if err != nil {
+		return unencryptedData, nil, err
+	}
+
+	return unencryptedData, decryptedData, nil
 }
 
 // Seal encrypts and stores information to the fs
-func (s *AESGCMSealer) Seal(data []byte) ([]byte, error) {
+func (s *AESGCMSealer) Seal(unencryptedData []byte, toBeEncrypted []byte) error {
 	// If we don't have an AES key to encrypt the state, generate one
 	if err := s.unsealEncryptionKey(); err != nil {
 		if !os.IsNotExist(err) {
-			return nil, err
+			return err
 		}
-		if err := s.GenerateNewEncryptionKey(); err != nil {
-			return nil, err
+		if err := s.generateNewEncryptionKey(); err != nil {
+			return err
 		}
 	}
 
 	// Encrypt data to seal with generated encryption key
-	encryptedData, err := ertcrypto.Encrypt(data, s.encryptionKey)
+	encryptedData, err := ertcrypto.Encrypt(toBeEncrypted, s.encryptionKey)
 	if err != nil {
-		return nil, err
+		return err
 	}
+
+	unencryptDataLength := make([]byte, 4)
+	binary.LittleEndian.PutUint32(unencryptDataLength, uint32(len(unencryptedData)))
+	unencryptedData = append(unencryptDataLength, unencryptedData...)
+
+	// Append unencrypted data with encrypted data
+	encryptedData = append(unencryptedData, encryptedData...)
 
 	// store to fs
 	if err := ioutil.WriteFile(s.getFname(SealedDataFname), encryptedData, 0600); err != nil {
-		return nil, err
+		return err
 	}
 
-	return s.encryptionKey, nil
+	return nil
 }
 
 func (s *AESGCMSealer) getFname(basename string) string {
@@ -118,8 +148,8 @@ func (s *AESGCMSealer) unsealEncryptionKey() error {
 	return nil
 }
 
-// GenerateNewEncryptionKey generates a random 128 Bit (16 Byte) key to encrypt the state
-func (s *AESGCMSealer) GenerateNewEncryptionKey() error {
+// generateNewEncryptionKey generates a random 128 Bit (16 Byte) key to encrypt the state
+func (s *AESGCMSealer) generateNewEncryptionKey() error {
 	encryptionKey := make([]byte, 16)
 
 	_, err := rand.Read(encryptionKey)
@@ -157,28 +187,25 @@ func (s *AESGCMSealer) SetEncryptionKey(encryptionKey []byte) error {
 
 // MockSealer is a mockup sealer
 type MockSealer struct {
-	data        []byte
-	unsealError error
+	data            []byte
+	unencryptedData []byte
+	unsealError     error
 }
 
 // Unseal implements the Sealer interface
-func (s *MockSealer) Unseal() ([]byte, error) {
-	return s.data, s.unsealError
+func (s *MockSealer) Unseal() ([]byte, []byte, error) {
+	return s.unencryptedData, s.data, s.unsealError
 }
 
 // Seal implements the Sealer interface
-func (s *MockSealer) Seal(data []byte) ([]byte, error) {
-	s.data = data
-	return []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, nil
+func (s *MockSealer) Seal(unencryptedData []byte, toBeEncrypted []byte) error {
+	s.unencryptedData = unencryptedData
+	s.data = toBeEncrypted
+	return nil
 }
 
 // SetEncryptionKey implements the Sealer interface
 func (s *MockSealer) SetEncryptionKey(key []byte) error {
-	return nil
-}
-
-// GenerateNewEncryptionKey implements the Sealer interface
-func (s *MockSealer) GenerateNewEncryptionKey() error {
 	return nil
 }
 
@@ -194,60 +221,75 @@ func NewNoEnclaveSealer(sealDir string) *NoEnclaveSealer {
 }
 
 // Seal writes the given data encrypted and the used key as plaintext to the disk
-func (s *NoEnclaveSealer) Seal(data []byte) ([]byte, error) {
+func (s *NoEnclaveSealer) Seal(unencryptedData []byte, toBeEncrypted []byte) error {
 	// Encrypt data
-	sealedData, err := ertcrypto.Encrypt(data, s.encryptionKey)
+	sealedData, err := ertcrypto.Encrypt(toBeEncrypted, s.encryptionKey)
 	if err != nil {
-		return nil, err
+		return err
 	}
+
+	unencryptDataLength := make([]byte, 4)
+	binary.LittleEndian.PutUint32(unencryptDataLength, uint32(len(unencryptedData)))
+	unencryptedData = append(unencryptDataLength, unencryptedData...)
+
+	// Append unencrypted data with encrypted data
+	sealedData = append(unencryptedData, sealedData...)
 
 	// Write encrypted data to disk
 	if err := ioutil.WriteFile(s.getFname(SealedDataFname), sealedData, 0600); err != nil {
-		return nil, err
+		return err
 	}
 
 	// Write key in plaintext to disk
 	if err := ioutil.WriteFile(s.getFname(SealedKeyFname), s.encryptionKey, 0600); err != nil {
-		return nil, err
+		return err
 	}
-	return s.encryptionKey, nil
+	return nil
 }
 
 // Unseal reads the plaintext state from disk
-func (s *NoEnclaveSealer) Unseal() ([]byte, error) {
+func (s *NoEnclaveSealer) Unseal() ([]byte, []byte, error) {
 	// Read sealed data from disk
 	sealedData, err := ioutil.ReadFile(s.getFname(SealedDataFname))
 	if os.IsNotExist(err) {
-		return nil, nil
+		return nil, nil, nil
 	} else if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Read key in plaintext from disk
 	keyData, err := ioutil.ReadFile(s.getFname(SealedKeyFname))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+
+	// Retrieve recovery secret hash map
+	encodedUnencryptDataLength := binary.LittleEndian.Uint32(sealedData[:4])
+
+	// Check if we do not go out of bounds
+	if 4+int(encodedUnencryptDataLength) > len(sealedData) {
+		return nil, nil, errors.New("sealed state is corrupted, embedded length does not fit the data")
+	}
+
+	var unencryptedData []byte
+	if encodedUnencryptDataLength != 0 {
+		unencryptedData = sealedData[4 : 4+encodedUnencryptDataLength]
+	}
+	ciphertext := sealedData[4+encodedUnencryptDataLength:]
 
 	// Decrypt data with key from disk
-	data, err := ertcrypto.Decrypt(sealedData, keyData)
+	decryptedData, err := ertcrypto.Decrypt(ciphertext, keyData)
 	if err != nil {
-		return nil, ErrEncryptionKey
+		return unencryptedData, nil, ErrEncryptionKey
 	}
 
-	return data, nil
+	return unencryptedData, decryptedData, nil
 }
 
 // SetEncryptionKey implements the Sealer interface
 func (s *NoEnclaveSealer) SetEncryptionKey(key []byte) error {
 	s.encryptionKey = key
 	return ioutil.WriteFile(s.getFname(SealedKeyFname), s.encryptionKey, 0600)
-}
-
-// GenerateNewEncryptionKey implements the Sealer interface
-func (s *NoEnclaveSealer) GenerateNewEncryptionKey() error {
-	s.encryptionKey = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-	return nil
 }
 
 func (s *NoEnclaveSealer) getFname(basename string) string {
