@@ -49,7 +49,7 @@ jobs:
           github.event_name == 'push'
       run: |
         curl -X POST -H "Accept: application/vnd.github.v3+json" \
-        -H "Authorization: token $CI_GITHUB_REPOSITORY" \
+        -H "Authorization: token ${{ secrets.CI_GITHUB_REPOSITORY }}" \
         -d '{"event_type": "docker-build",
             "client_payload":{"repository":"marblerun",
                               "sign":"nightly",
