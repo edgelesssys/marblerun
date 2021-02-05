@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io"
 	"net/http"
@@ -44,4 +46,23 @@ func verifyCoordinator(host string, configFilename string, insecure bool) (strin
 	fmt.Println("Got latest config")
 
 	return era.GetCertificate(host, "era-config.json")
+}
+
+// restClient creates and returns a http client using a provided certificate to communicate with the Coordinator REST API
+func restClient(cert string) (*http.Client, error) {
+	// Set rootCA for connection to coordinator
+	certPool := x509.NewCertPool()
+	if ok := certPool.AppendCertsFromPEM([]byte(cert)); !ok {
+		return &http.Client{}, fmt.Errorf("failed to parse certificate")
+	}
+
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs: certPool,
+			},
+		},
+	}
+
+	return client, nil
 }
