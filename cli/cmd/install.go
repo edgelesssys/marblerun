@@ -96,7 +96,8 @@ func cliInstall(path string, hostname string, sim bool, noSgx bool, clientPort i
 
 	if path == "" {
 		// No chart was specified -> look for edgeless repository, if not present add it
-		if err := getRepo("edgeless", "https://helm.edgeless.systems/stable", settings); err != nil {
+		err := getRepo("edgeless", "https://helm.edgeless.systems/stable", settings)
+		if err != nil {
 			return err
 		}
 		path, err = installer.ChartPathOptions.LocateChart("edgeless/marblerun-coordinator", settings)
