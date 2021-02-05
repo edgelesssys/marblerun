@@ -19,4 +19,5 @@ func init() {
 	rootCmd.AddCommand(newRootCACmd())
 	rootCmd.AddCommand(newInstallCmd())
 	rootCmd.AddCommand(newManifestCmd())
+	rootCmd.AddCommand(newStatusCmd())
 }
