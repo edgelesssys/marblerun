@@ -2,13 +2,9 @@ package cmd
 
 import (
 	"bytes"
-	"crypto/tls"
-	"crypto/x509"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -18,8 +14,8 @@ func newManifestSet() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "set <manifest.json> <IP:PORT>",
-		Short: "Sets the manifest for the marblerun Coordinator",
-		Long:  "Sets the manifest for the marblerun Coordinator",
+		Short: "Sets the manifest for the Marblerun coordinator",
+		Long:  "Sets the manifest for the Marblerun coordinator",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			manifestFile := args[0]
@@ -42,67 +38,48 @@ func cliManifestSet(manifestName string, host string, configFilename string, ins
 	}
 	fmt.Println("Successfully verified coordinator, now uploading manifest")
 
-	// Set rootCA for connection to coordinator
-	certPool, err := x509.SystemCertPool()
-	if err != nil {
-		return err
-	}
-	if certPool == nil {
-		certPool = x509.NewCertPool()
-	}
-	if ok := certPool.AppendCertsFromPEM([]byte(cert)); !ok {
-		return errors.New("Failed to parse certificate")
-	}
-
-	client := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				RootCAs: certPool,
-			},
-		},
-	}
-
-	f, err := os.Open(manifestName)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
 	// Load manifest
-	manifest, err := ioutil.ReadAll(f)
+	manifest, err := ioutil.ReadFile(manifestName)
 	if err != nil {
 		return err
 	}
 
-	resp, err := client.Post("https://"+host+"/manifest", "application/json", bytes.NewBuffer(manifest))
+	client, err := restClient(cert)
+	if err != nil {
+		return err
+	}
+
+	resp, err := client.Post("https://"+host+"/manifest", "application/json", bytes.NewReader(manifest))
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 
 	switch resp.StatusCode {
-	case 200:
+	case http.StatusOK:
 		respBody, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Manifest successfully set\n")
+		fmt.Println("Manifest successfully set")
 
-		// Check if recovery secret was sent back
-		if string(respBody) != "" {
-			if recover == "" {
-				fmt.Println(string(respBody))
-			} else {
-				if err := ioutil.WriteFile(recover, respBody, 0644); err != nil {
-					return err
-				}
-				fmt.Printf("Manifest successfully set, recovery data saved to: %s.\n", recover)
-			}
+		if len(respBody) <= 0 {
+			return nil
 		}
-	case 400:
-		fmt.Printf("Unable to set manifest: Server is not in expected state.\nDid you mean to update the manifest?\n")
+
+		// recovery secret was sent, print or save to file
+		if recover == "" {
+			fmt.Println(string(respBody))
+		} else {
+			if err := ioutil.WriteFile(recover, respBody, 0644); err != nil {
+				return err
+			}
+			fmt.Printf("Manifest successfully set, recovery data saved to: %s.\n", recover)
+		}
+	case http.StatusBadRequest:
+		return fmt.Errorf("unable to set manifest: Server is not in expected state. Did you mean to update the manifest?")
 	default:
-		fmt.Printf("Error connecting to server: %d %s\n", resp.StatusCode, http.StatusText(resp.StatusCode))
+		return fmt.Errorf("error connecting to server: %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
 	}
 
 	return nil

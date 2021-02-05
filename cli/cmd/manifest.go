@@ -7,9 +7,9 @@ import (
 func newManifestCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "manifest",
-		Short: "Manages manifest for the marblerun coordinator",
+		Short: "Manages manifest for the Marblerun coordinator",
 		Long: `
-Manages manifests for the marblerun Coordinator.
+Manages manifests for the Marblerun coordinator.
 Used to either set the manifest, update an already set manifest, 
 or return a signature of the currently set manifest to the user`,
 		Example: "manifest set manifest.json example.com:25555 [--era-config=config.json] [--insecure]",
