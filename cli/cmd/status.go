@@ -10,7 +10,7 @@ import (
 )
 
 const statusDesc = `
-This command provides information about the currently running marblerun Coordinator.
+This command provides information about the currently running Marblerun coordinator.
 Information is obtained from the /status endpoint of the Coordinators REST API.
 
 The Coordinator will be in one of these 4 states:
