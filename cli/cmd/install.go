@@ -37,13 +37,7 @@ func newInstallCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			settings = cli.New()
-			hostname := domain
-			sim := simulation
-			noSgx := noSgxDevicePlugin
-			path := chartPath
-			clientPort := clientServerPort
-			meshPort := meshServerPort
-			return cliInstall(path, hostname, sim, noSgx, clientPort, meshPort, settings)
+			return cliInstall(chartPath, domain, simulation, noSgxDevicePlugin, clientServerPort, meshServerPort, settings)
 		},
 		SilenceUsage: true,
 	}
@@ -61,11 +55,13 @@ func newInstallCmd() *cobra.Command {
 // cliInstall installs marblerun on the cluster
 func cliInstall(path string, hostname string, sim bool, noSgx bool, clientPort int, meshPort int, settings *cli.EnvSettings) error {
 	actionConfig := new(action.Configuration)
-	err := actionConfig.Init(settings.RESTClientGetter(), "marblerun", os.Getenv("HELM_DRIVER"), debug)
+	if err := actionConfig.Init(settings.RESTClientGetter(), "marblerun", os.Getenv("HELM_DRIVER"), debug); err != nil {
+		return err
+	}
 
 	// set overwrite values
 	var vals map[string]interface{}
-	if sim == true {
+	if sim {
 		// simulation mode, disable tolerations and resources, set simulation to 1
 		vals = map[string]interface{}{
 			"tolerations": nil,
@@ -100,8 +96,7 @@ func cliInstall(path string, hostname string, sim bool, noSgx bool, clientPort i
 
 	if path == "" {
 		// No chart was specified -> look for edgeless repository, if not present add it
-		err = getRepo("edgeless", "https://helm.edgeless.systems/stable", settings)
-		if err != nil {
+		if err := getRepo("edgeless", "https://helm.edgeless.systems/stable", settings); err != nil {
 			return err
 		}
 		path, err = installer.ChartPathOptions.LocateChart("edgeless/marblerun-coordinator", settings)
@@ -114,13 +109,11 @@ func cliInstall(path string, hostname string, sim bool, noSgx bool, clientPort i
 		return err
 	}
 
-	err = chartutil.ValidateAgainstSchema(chart, vals)
-	if err != nil {
+	if err := chartutil.ValidateAgainstSchema(chart, vals); err != nil {
 		return err
 	}
 
-	_, err = installer.Run(chart, vals)
-	if err != nil {
+	if _, err := installer.Run(chart, vals); err != nil {
 		return err
 	}
 
