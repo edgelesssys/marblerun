@@ -18,4 +18,5 @@ func Execute() error {
 func init() {
 	rootCmd.AddCommand(newRootCACmd())
 	rootCmd.AddCommand(newInstallCmd())
+	rootCmd.AddCommand(newManifestCmd())
 }
