@@ -91,11 +91,23 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 //
 // Returns the a remote attestation quote of its own certificate alongside this certificate that allows to verify the Coordinator's integrity and authentication for use of the ClientAPI.
 func (c *Core) GetCertQuote(ctx context.Context) (string, []byte, error) {
-	pemCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: c.rootCert.Raw})
-	if len(pemCert) <= 0 {
-		return "", nil, errors.New("pem.EncodeToMemory failed")
+	defer c.mux.Unlock()
+	if err := c.requireState(stateAcceptingManifest, stateAcceptingMarbles); err != nil {
+		return "", nil, err
 	}
-	strCert := string(pemCert)
+
+	pemCertRoot := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: c.rootCert.Raw})
+	if len(pemCertRoot) <= 0 {
+		return "", nil, errors.New("pem.EncodeToMemory failed for root certificate")
+	}
+
+	// Include intermediate certificate if a manifest has been set
+	pemCertIntermediate := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: c.intermediateCert.Raw})
+	if len(pemCertIntermediate) <= 0 {
+		return "", nil, errors.New("pem.EncodeToMemory failed for intermediate certificate")
+	}
+
+	strCert := string(pemCertIntermediate) + string(pemCertRoot)
 	return strCert, c.quote, nil
 }
 

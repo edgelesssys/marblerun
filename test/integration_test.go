@@ -399,7 +399,7 @@ func startCoordinator(cfg coordinatorConfig) *os.Process {
 	output := startCommand(cmd)
 
 	client := http.Client{Transport: transportSkipVerify}
-	url := url.URL{Scheme: "https", Host: clientServerAddr, Path: "quote"}
+	url := url.URL{Scheme: "https", Host: clientServerAddr, Path: "status"}
 
 	log.Println("Coordinator starting...")
 	for {
