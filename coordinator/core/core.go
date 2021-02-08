@@ -391,7 +391,7 @@ func (c *Core) getStatus(ctx context.Context) (int, string, error) {
 	return int(c.state), status, nil
 }
 
-func (c *Core) generateSecrets(ctx context.Context, secrets map[string]manifest.Secret, id uuid.UUID) (map[string]manifest.Secret, error) {
+func (c *Core) generateSecrets(ctx context.Context, secrets map[string]manifest.Secret, id uuid.UUID, parentCertificate *x509.Certificate, parentPrivKey *ecdsa.PrivateKey) (map[string]manifest.Secret, error) {
 	// Create a new map so we do not overwrite the entries in the manifest
 	newSecrets := make(map[string]manifest.Secret)
 
@@ -445,7 +445,7 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]manifest.
 			}
 
 			// Generate certificate
-			newSecrets[name], err = c.generateCertificateForSecret(secret, privKey, &privKey.PublicKey)
+			newSecrets[name], err = c.generateCertificateForSecret(secret, parentCertificate, parentPrivKey, privKey, &privKey.PublicKey)
 			if err != nil {
 				return nil, err
 			}
@@ -463,7 +463,7 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]manifest.
 			}
 
 			// Generate certificate
-			newSecrets[name], err = c.generateCertificateForSecret(secret, privKey, pubKey)
+			newSecrets[name], err = c.generateCertificateForSecret(secret, parentCertificate, parentPrivKey, privKey, pubKey)
 			if err != nil {
 				return nil, err
 			}
@@ -493,7 +493,7 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]manifest.
 			}
 
 			// Generate certificate
-			newSecrets[name], err = c.generateCertificateForSecret(secret, privKey, &privKey.PublicKey)
+			newSecrets[name], err = c.generateCertificateForSecret(secret, parentCertificate, parentPrivKey, privKey, &privKey.PublicKey)
 			if err != nil {
 				return nil, err
 			}
@@ -506,7 +506,7 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]manifest.
 	return newSecrets, nil
 }
 
-func (c *Core) generateCertificateForSecret(secret manifest.Secret, privKey crypto.PrivateKey, pubKey crypto.PublicKey) (manifest.Secret, error) {
+func (c *Core) generateCertificateForSecret(secret manifest.Secret, parentCertificate *x509.Certificate, parentPrivKey *ecdsa.PrivateKey, privKey crypto.PrivateKey, pubKey crypto.PublicKey) (manifest.Secret, error) {
 	// Load given information from manifest as template
 	template := x509.Certificate(secret.Cert)
 
@@ -536,7 +536,6 @@ func (c *Core) generateCertificateForSecret(secret manifest.Secret, privKey cryp
 	}
 
 	template.IsCA = false
-	template.Issuer = c.rootCert.Subject
 	template.BasicConstraintsValid = true
 	template.NotBefore = time.Now()
 
@@ -553,7 +552,7 @@ func (c *Core) generateCertificateForSecret(secret manifest.Secret, privKey cryp
 	}
 
 	// Generate certificate with given public key
-	secretCertRaw, err := x509.CreateCertificate(rand.Reader, &template, c.rootCert, pubKey, c.rootPrivK)
+	secretCertRaw, err := x509.CreateCertificate(rand.Reader, &template, parentCertificate, pubKey, parentPrivKey)
 
 	if err != nil {
 		c.zaplogger.Error("Failed to generate X.509 certificate", zap.Error(err))

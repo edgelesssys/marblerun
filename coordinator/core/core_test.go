@@ -173,7 +173,7 @@ func TestGenerateSecrets(t *testing.T) {
 	c := NewCoreWithMocks()
 
 	// This should return valid secrets
-	generatedSecrets, err := c.generateSecrets(context.TODO(), secretsToGenerate, uuid.Nil)
+	generatedSecrets, err := c.generateSecrets(context.TODO(), secretsToGenerate, uuid.Nil, c.rootCert, c.rootPrivK)
 	require.NoError(err)
 	// Check if rawTest1 has 128 Bits/16 Bytes and rawTest2 256 Bits/8 Bytes
 	assert.Len(generatedSecrets["rawTest1"].Public, 16)
@@ -187,28 +187,28 @@ func TestGenerateSecrets(t *testing.T) {
 	assert.NotNil(generatedSecrets["cert-rsa-specified-test"].Cert.Raw)
 
 	// Check if we get an empty secret map as output for an empty map as input
-	generatedSecrets, err = c.generateSecrets(context.TODO(), secretsEmptyMap, uuid.Nil)
+	generatedSecrets, err = c.generateSecrets(context.TODO(), secretsEmptyMap, uuid.Nil, c.rootCert, c.rootPrivK)
 	assert.IsType(map[string]manifest.Secret{}, generatedSecrets)
 	assert.Len(generatedSecrets, 0)
 
 	// Check if we get an empty secret map as output for nil
-	generatedSecrets, err = c.generateSecrets(context.TODO(), nil, uuid.Nil)
+	generatedSecrets, err = c.generateSecrets(context.TODO(), nil, uuid.Nil, c.rootCert, c.rootPrivK)
 	assert.IsType(map[string]manifest.Secret{}, generatedSecrets)
 	assert.Len(generatedSecrets, 0)
 
 	// If no size is specified, the function should fail
-	_, err = c.generateSecrets(context.TODO(), secretsNoSize, uuid.Nil)
+	_, err = c.generateSecrets(context.TODO(), secretsNoSize, uuid.Nil, c.rootCert, c.rootPrivK)
 	assert.Error(err)
 
 	// Also, it should fail if we try to generate a secret with an unknown type
-	_, err = c.generateSecrets(context.TODO(), secretsInvalidType, uuid.Nil)
+	_, err = c.generateSecrets(context.TODO(), secretsInvalidType, uuid.Nil, c.rootCert, c.rootPrivK)
 	assert.Error(err)
 
 	// If Ed25519 key size is specified, we should fail
-	_, err = c.generateSecrets(context.TODO(), secretsEd25519WrongKeySize, uuid.Nil)
+	_, err = c.generateSecrets(context.TODO(), secretsEd25519WrongKeySize, uuid.Nil, c.rootCert, c.rootPrivK)
 	assert.Error(err)
 
 	// However, for ECDSA we fail as we can have multiple curves
-	_, err = c.generateSecrets(context.TODO(), secretsECDSAWrongKeySize, uuid.Nil)
+	_, err = c.generateSecrets(context.TODO(), secretsECDSAWrongKeySize, uuid.Nil, c.rootCert, c.rootPrivK)
 	assert.Error(err)
 }
