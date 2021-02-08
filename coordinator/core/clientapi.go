@@ -91,7 +91,7 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 //
 // Returns the a remote attestation quote of its own certificate alongside this certificate that allows to verify the Coordinator's integrity and authentication for use of the ClientAPI.
 func (c *Core) GetCertQuote(ctx context.Context) (string, []byte, error) {
-	pemCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: c.cert.Raw})
+	pemCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: c.rootCert.Raw})
 	if len(pemCert) <= 0 {
 		return "", nil, errors.New("pem.EncodeToMemory failed")
 	}
@@ -175,6 +175,13 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte) err
 		return err
 	}
 
+	// Generate new intermediate CA for Marble gRPC authentication
+	intermediateCert, intermediatePrivK, err := generateCert(c.rootCert.DNSNames, coordinatorIntermediateName, c.rootCert, c.rootPrivK)
+	if err != nil {
+		c.zaplogger.Error("Could not generate a new intermediate CA for Marble authentication.", zap.Error(err))
+		return err
+	}
+
 	// Retrieve current recovery data before we seal the state again
 	currentRecoveryData, err := c.recovery.GetRecoveryData()
 	if err != nil {
@@ -184,7 +191,11 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte) err
 
 	c.updateManifest = updateManifest
 	c.rawUpdateManifest = rawUpdateManifest
+	c.intermediateCert = intermediateCert
+	c.intermediatePrivK = intermediatePrivK
+
 	c.zaplogger.Info("An update manifest overriding package settings from the original manifest was set.")
+	c.zaplogger.Info("Please restart your Marbles to enforce the update.")
 
 	return c.sealState(currentRecoveryData)
 }
@@ -194,13 +205,15 @@ func (c *Core) performRecovery(encryptionKey []byte) error {
 		return err
 	}
 
-	cert, privk, err := c.loadState()
+	rootCert, rootPrivK, intermediateCert, intermediatePrivK, err := c.loadState()
 	if err != nil {
 		return err
 	}
 
-	c.cert = cert
-	c.privk = privk
+	c.rootCert = rootCert
+	c.rootPrivK = rootPrivK
+	c.intermediateCert = intermediateCert
+	c.intermediatePrivK = intermediatePrivK
 
 	c.quote = c.generateQuote()
 

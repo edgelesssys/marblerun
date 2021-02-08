@@ -160,7 +160,7 @@ func (c *Core) generateCertFromCSR(csrReq []byte, pubk ecdsa.PublicKey, marbleTy
 
 	// create certificate
 	csr.Subject.CommonName = marbleUUID
-	csr.Subject.Organization = c.cert.Issuer.Organization
+	csr.Subject.Organization = c.rootCert.Issuer.Organization
 	notBefore := time.Now()
 	// TODO: produce shorter lived certificates
 	notAfter := notBefore.Add(math.MaxInt64)
@@ -178,7 +178,7 @@ func (c *Core) generateCertFromCSR(csrReq []byte, pubk ecdsa.PublicKey, marbleTy
 		IPAddresses:           csr.IPAddresses,
 	}
 
-	certRaw, err := x509.CreateCertificate(rand.Reader, &template, c.cert, &pubk, c.privk)
+	certRaw, err := x509.CreateCertificate(rand.Reader, &template, c.rootCert, &pubk, c.rootPrivK)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to issue certificate")
 	}
@@ -275,7 +275,7 @@ func (c *Core) generateMarbleAuthSecrets(req *rpc.ActivationReq, marbleUUID uuid
 	if err != nil {
 		return reservedSecrets{}, err
 	}
-	sealKey, err := util.DeriveKey(c.privk.D.Bytes(), uuidBytes, 32)
+	sealKey, err := util.DeriveKey(c.rootPrivK.D.Bytes(), uuidBytes, 32)
 	if err != nil {
 		return reservedSecrets{}, err
 	}
@@ -292,7 +292,7 @@ func (c *Core) generateMarbleAuthSecrets(req *rpc.ActivationReq, marbleUUID uuid
 
 	// customize marble's parameters
 	authSecrets := reservedSecrets{
-		RootCA:     manifest.Secret{Cert: manifest.Certificate(*c.cert)},
+		RootCA:     manifest.Secret{Cert: manifest.Certificate(*c.rootCert)},
 		MarbleCert: manifest.Secret{Cert: manifest.Certificate(*marbleCert), Public: encodedPubKey, Private: encodedPrivKey},
 		SealKey:    manifest.Secret{Public: sealKey, Private: sealKey},
 	}
