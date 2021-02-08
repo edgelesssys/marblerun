@@ -19,7 +19,7 @@ or return a signature of the currently set manifest to the user`,
 	cmd.PersistentFlags().BoolVarP(&insecureEra, "insecure", "i", false, "Set to skip quote verification, needed when running in simulation mode")
 	cmd.AddCommand(newManifestSet())
 	cmd.AddCommand(newManifestGet())
-	//cmd.AddCommand(newManifestUpdate())
+	cmd.AddCommand(newManifestUpdate())
 
 	return cmd
 }

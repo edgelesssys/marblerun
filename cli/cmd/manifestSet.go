@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 
 	"github.com/spf13/cobra"
 )
@@ -49,7 +50,8 @@ func cliManifestSet(manifestName string, host string, configFilename string, ins
 		return err
 	}
 
-	resp, err := client.Post("https://"+host+"/manifest", "application/json", bytes.NewReader(manifest))
+	url := url.URL{Scheme: "https", Host: host, Path: "manifest"}
+	resp, err := client.Post(url.String(), "application/json", bytes.NewReader(manifest))
 	if err != nil {
 		return err
 	}
