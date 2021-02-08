@@ -160,7 +160,7 @@ func (c *Core) generateCertFromCSR(csrReq []byte, pubk ecdsa.PublicKey, marbleTy
 
 	// create certificate
 	csr.Subject.CommonName = marbleUUID
-	csr.Subject.Organization = c.rootCert.Issuer.Organization
+	csr.Subject.Organization = c.intermediateCert.Issuer.Organization
 	notBefore := time.Now()
 	// TODO: produce shorter lived certificates
 	notAfter := notBefore.Add(math.MaxInt64)
@@ -178,7 +178,7 @@ func (c *Core) generateCertFromCSR(csrReq []byte, pubk ecdsa.PublicKey, marbleTy
 		IPAddresses:           csr.IPAddresses,
 	}
 
-	certRaw, err := x509.CreateCertificate(rand.Reader, &template, c.rootCert, &pubk, c.rootPrivK)
+	certRaw, err := x509.CreateCertificate(rand.Reader, &template, c.intermediateCert, &pubk, c.intermediatePrivK)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to issue certificate")
 	}
@@ -220,7 +220,7 @@ func customizeParameters(params *rpc.Parameters, specialSecrets reservedSecrets,
 	}
 
 	// Set as environment variables
-	rootCaPem, err := manifest.EncodeSecretDataToPem(specialSecrets.RootCA.Cert)
+	intermediateCaPem, err := manifest.EncodeSecretDataToPem(specialSecrets.RootCA.Cert)
 	if err != nil {
 		return nil, err
 	}
@@ -233,8 +233,8 @@ func customizeParameters(params *rpc.Parameters, specialSecrets reservedSecrets,
 		return nil, err
 	}
 
-	customParams.Env[marble.MarbleEnvironmentRootCA] = rootCaPem
-	customParams.Env[marble.MarbleEnvironmentCertificate] = marbleCertPem
+	customParams.Env[marble.MarbleEnvironmentIntermediateCA] = intermediateCaPem
+	customParams.Env[marble.MarbleEnvironmentCertificateChain] = marbleCertPem + intermediateCaPem
 	customParams.Env[marble.MarbleEnvironmentPrivateKey] = encodedPrivKey
 
 	return &customParams, nil
@@ -292,7 +292,7 @@ func (c *Core) generateMarbleAuthSecrets(req *rpc.ActivationReq, marbleUUID uuid
 
 	// customize marble's parameters
 	authSecrets := reservedSecrets{
-		RootCA:     manifest.Secret{Cert: manifest.Certificate(*c.rootCert)},
+		RootCA:     manifest.Secret{Cert: manifest.Certificate(*c.intermediateCert)},
 		MarbleCert: manifest.Secret{Cert: manifest.Certificate(*marbleCert), Public: encodedPubKey, Private: encodedPrivKey},
 		SealKey:    manifest.Secret{Public: sealKey, Private: sealKey},
 	}

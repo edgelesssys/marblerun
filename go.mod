@@ -4,7 +4,7 @@ go 1.14
 
 require (
 	github.com/edgelesssys/era v0.1.0
-	github.com/edgelesssys/ertgolib v0.1.4
+	github.com/edgelesssys/ertgolib v0.1.5-0.20210208080427-0d5e24e2f855
 	github.com/gofrs/flock v0.8.0
 	github.com/golang/protobuf v1.4.3
 	github.com/google/go-cmp v0.5.2

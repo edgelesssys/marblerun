@@ -183,17 +183,25 @@ func (c *Core) inSimulationMode() bool {
 // GetTLSConfig gets the core's TLS configuration
 func (c *Core) GetTLSConfig() (*tls.Config, error) {
 	return &tls.Config{
-		GetCertificate: c.GetTLSCertificate,
+		GetCertificate: c.GetTLSRootCertificate,
 		ClientAuth:     tls.RequestClientCert,
 	}, nil
 }
 
-// GetTLSCertificate creates a TLS certificate for the Coordinators self-signed x509 certificate
-func (c *Core) GetTLSCertificate(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+// GetTLSRootCertificate creates a TLS certificate for the Coordinators self-signed x509 certificate
+func (c *Core) GetTLSRootCertificate(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
 	if c.state == stateUninitialized {
 		return nil, errors.New("don't have a cert yet")
 	}
 	return util.TLSCertFromDER(c.rootCert.Raw, c.rootPrivK), nil
+}
+
+// GetTLSIntermediateCertificate creates a TLS certificate for the Coordinator's x509 intermediate certificate based on the self-signed x509 root certificate
+func (c *Core) GetTLSIntermediateCertificate(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+	if c.state == stateUninitialized {
+		return nil, errors.New("don't have a cert yet")
+	}
+	return util.TLSCertFromDER(c.intermediateCert.Raw, c.intermediatePrivK), nil
 }
 
 func (c *Core) loadState() (*x509.Certificate, *ecdsa.PrivateKey, *x509.Certificate, *ecdsa.PrivateKey, error) {

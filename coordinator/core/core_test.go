@@ -27,7 +27,7 @@ func TestCore(t *testing.T) {
 	assert.Equal(stateAcceptingManifest, c.state)
 	assert.Equal(coordinatorName, c.rootCert.Subject.CommonName)
 
-	cert, err := c.GetTLSCertificate(nil)
+	cert, err := c.GetTLSRootCertificate(nil)
 	assert.NoError(err)
 	assert.NotNil(cert)
 
@@ -69,7 +69,7 @@ func TestSeal(t *testing.T) {
 	require.NoError(err)
 
 	// Get certificate and signature.
-	cert, err := c.GetTLSCertificate(nil)
+	cert, err := c.GetTLSRootCertificate(nil)
 	assert.NoError(err)
 	signature := c.GetManifestSignature(context.TODO())
 
@@ -78,7 +78,7 @@ func TestSeal(t *testing.T) {
 	require.NoError(err)
 	assert.Equal(stateAcceptingMarbles, c2.state)
 
-	cert2, err := c2.GetTLSCertificate(nil)
+	cert2, err := c2.GetTLSRootCertificate(nil)
 	assert.NoError(err)
 	assert.Equal(cert, cert2)
 

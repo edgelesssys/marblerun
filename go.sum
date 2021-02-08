@@ -196,8 +196,8 @@ github.com/eapache/queue v1.1.0/go.mod h1:6eCeP0CKFpHLu8blIFXhExK/dRa7WDZfr6jVFP
 github.com/edgelesssys/era v0.1.0 h1:13xUhHo61VE0k4xUKPVuRLfpWbMuM0WKBWs3CgeWLDM=
 github.com/edgelesssys/era v0.1.0/go.mod h1:rEv/EPEWTUpu8gGOUWp97Bk1kFFvgYwcJY0yA4cKG8U=
 github.com/edgelesssys/ertgolib v0.1.1/go.mod h1:QV27eWmoYHCNMkPMnz2XcER13+XdhPyG5qLQu5iDL0I=
-github.com/edgelesssys/ertgolib v0.1.4 h1:hncFuwrB2wz9LqsOce5UUwer4wA0aaRjnN35dT8/jtw=
-github.com/edgelesssys/ertgolib v0.1.4/go.mod h1:1E8jAgXZp9wyP3n43wCsLCiEGXxjBQ35+uzxUkypBNs=
+github.com/edgelesssys/ertgolib v0.1.5-0.20210208080427-0d5e24e2f855 h1:3iTzGhF0FJf5ZFDPfU54NAfObJwlexJYFR3ShITYlEk=
+github.com/edgelesssys/ertgolib v0.1.5-0.20210208080427-0d5e24e2f855/go.mod h1:1E8jAgXZp9wyP3n43wCsLCiEGXxjBQ35+uzxUkypBNs=
 github.com/edsrzf/mmap-go v1.0.0/go.mod h1:YO35OhQPt3KJa3ryjFM5Bs14WD66h8eGKpfaBNrHW5M=
 github.com/elazarl/goproxy v0.0.0-20180725130230-947c36da3153 h1:yUdfgN0XgIJw7foRItutHYUIhlcKzcSf5vDpdhQAKTc=
 github.com/elazarl/goproxy v0.0.0-20180725130230-947c36da3153/go.mod h1:/Zj4wYkgs4iZTTu3o/KG3Itv/qCCa8VVMlb3i9OVuzc=
