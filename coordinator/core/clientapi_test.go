@@ -216,6 +216,61 @@ func TestUpdateManifest(t *testing.T) {
 	require := require.New(t)
 	c, _ := mustSetup()
 
+	// Set manifest
+	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
+	require.NoError(err)
+
+	// Get current certificate
+	rootCABeforeUpdate := c.rootCert
+	intermediateCABeforeUpdate := c.intermediateCert
+	secretsBeforeUpdate := make(map[string]manifest.Secret, len(c.secrets))
+	for name, secret := range c.secrets {
+		secretsBeforeUpdate[name] = secret
+	}
+
+	// Update manifest
+	err = c.UpdateManifest(context.TODO(), []byte(test.UpdateManifest))
+	require.NoError(err)
+
+	// Get new certificates
+	rootCAAfterUpdate := c.rootCert
+	intermediateCAAfterUpdate := c.intermediateCert
+	secretsAfterUpdate := make(map[string]manifest.Secret, len(c.secrets))
+	for name, secret := range c.secrets {
+		secretsAfterUpdate[name] = secret
+	}
+
+	// Check if root certificate stayed the same, but intermediate CA changed
+	assert.Equal(rootCABeforeUpdate, rootCAAfterUpdate)
+	assert.NotEqual(intermediateCABeforeUpdate, intermediateCAAfterUpdate)
+
+	// Secrets: symmetric keys should remain the same, certificates should be regenerated based on the new intermediate ca
+	assert.Equal(secretsBeforeUpdate["symmetric_key_shared"], secretsAfterUpdate["symmetric_key_shared"])
+	assert.NotEqual(secretsBeforeUpdate["cert_shared"], secretsAfterUpdate["cert_shared"])
+
+	// Verify if the old secret certificate is not correctly verified anymore by the new intermediate certificate
+	roots := x509.NewCertPool()
+	roots.AddCert(c.intermediateCert)
+
+	opts := x509.VerifyOptions{
+		Roots:     roots,
+		DNSName:   "localhost",
+		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+	}
+
+	oldCert := x509.Certificate(secretsBeforeUpdate["cert_shared"].Cert)
+	_, err = oldCert.Verify(opts)
+	assert.Error(err)
+	newCert := x509.Certificate(secretsAfterUpdate["cert_shared"].Cert)
+	_, err = newCert.Verify(opts)
+	assert.NoError(err)
+}
+
+func TestUpdateManifestInvalid(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	c, _ := mustSetup()
+
 	// Good update manifests
 	// Set manifest (frontend has SecurityVersion 3)
 	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
