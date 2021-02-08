@@ -14,8 +14,8 @@ import (
 func newNameSpaceAdd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add NAMESPACE ...",
-		Short: "Add namespaces to marblerun coordinator",
-		Long:  `Add namespaces to marblerun coordinator`,
+		Short: "Add namespaces to a Marblerun mesh",
+		Long:  `Add namespaces to a Marblerun mesh`,
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			namespaces := args
@@ -64,7 +64,7 @@ func cliNameSpaceAdd(namespaces []string, clientSet kubernetes.Interface) error 
 			return err
 		}
 
-		fmt.Printf("Added namespace [%s] to marblerun-coordinator\n", ns)
+		fmt.Printf("Added namespace [%s] to Marblerun mesh\n", ns)
 	}
 	return nil
 }

@@ -16,12 +16,13 @@ const marblerunAnnotation = "marblerun/monitor"
 func newNamespaceCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "namespace",
-		Short: "Manages marblerun namespaces",
-		Long:  "Manages marblerun namespaces",
+		Short: "Manages namespaces associated with Marblerun installations",
+		Long:  "Manages namespaces associated with Marblerun installations",
 		Args:  cobra.NoArgs,
 	}
 	cmd.AddCommand(newNameSpaceAdd())
-	cmd.AddCommand(newNameSpaceGet())
+	cmd.AddCommand(newNameSpaceList())
+	cmd.AddCommand(newNameSpaceRemove())
 
 	return cmd
 }

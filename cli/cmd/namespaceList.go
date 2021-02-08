@@ -11,11 +11,11 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func newNameSpaceGet() *cobra.Command {
+func newNameSpaceList() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get",
-		Short: "Shows all namespaces added to marblerun",
-		Long:  `Shows all namespaces added to marblerun`,
+		Use:   "list",
+		Short: "Lists all namespaces added to a Marblerun mesh",
+		Long:  `Lists all namespaces added to a Marblerun mesh`,
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			localSettings := envSettings{
@@ -35,22 +35,22 @@ func newNameSpaceGet() *cobra.Command {
 				return err
 			}
 
-			return cliNameSpaceGet(clientSet)
+			return cliNameSpaceList(clientSet)
 		},
 		SilenceUsage: true,
 	}
 	return cmd
 }
 
-// cliNameSpaceGet prints out all namespaces added to marblerun
-func cliNameSpaceGet(clientSet kubernetes.Interface) error {
+// cliNameSpaceList prints out all namespaces added to marblerun
+func cliNameSpaceList(clientSet kubernetes.Interface) error {
 	namespaces, err := selectNamespaces(clientSet)
 	if err != nil {
 		return err
 	}
 
 	if len(namespaces.Items) == 0 {
-		fmt.Printf("No namespaces have been added to marblerun\n")
+		fmt.Printf("No namespaces have been added to the Marblerun mesh\n")
 	}
 
 	for _, ns := range namespaces.Items {
