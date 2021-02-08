@@ -57,7 +57,7 @@ type recoveryStatusResp struct {
 // The effective TCP address is returned via `addrChan`.
 func RunMarbleServer(core *core.Core, addr string, addrChan chan string, errChan chan error, zapLogger *zap.Logger) {
 	tlsConfig := tls.Config{
-		GetCertificate: core.GetTLSCertificate,
+		GetCertificate: core.GetTLSIntermediateCertificate,
 		// NOTE: we'll verify the cert later using the given quote
 		ClientAuth: tls.RequireAnyClientCert,
 	}

@@ -177,24 +177,36 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	p, _ := pem.Decode([]byte(params.Env[libMarble.MarbleEnvironmentPrivateKey]))
 	ms.assert.NotNil(p)
 
-	// Validate Cert
-	p, _ = pem.Decode([]byte(params.Env[libMarble.MarbleEnvironmentCertificate]))
-	ms.assert.NotNil(p)
-	newCert, err := x509.ParseCertificate(p.Bytes)
+	// Validate Certificate Chain
+	pLeaf, rest := pem.Decode([]byte(params.Env[libMarble.MarbleEnvironmentCertificateChain]))
+	ms.assert.NotNil(pLeaf)
+	ms.assert.NotEmpty(rest)
+	pIntermediate, rest := pem.Decode(rest)
+	ms.assert.NotNil(pIntermediate)
+	ms.assert.Empty(rest)
+
+	newIntermediateCert, err := x509.ParseCertificate(pIntermediate.Bytes)
 	ms.assert.NoError(err)
-	ms.assert.Equal(coordinatorName, newCert.Issuer.CommonName)
-	// Check CommonName
-	_, err = uuid.Parse(newCert.Subject.CommonName)
+	newLeafCert, err := x509.ParseCertificate(pLeaf.Bytes)
+	ms.assert.NoError(err)
+
+	ms.assert.Equal(coordinatorName, newIntermediateCert.Issuer.CommonName)
+	ms.assert.Equal(coordinatorIntermediateName, newLeafCert.Issuer.CommonName)
+
+	// Check CommonName for leaf certificate
+	_, err = uuid.Parse(newLeafCert.Subject.CommonName)
 	ms.assert.NoError(err, "cert.Subject.CommonName is not a valid UUID: %v", err)
-	// Check KeyUusage:
-	ms.assert.Equal(cert.KeyUsage, newCert.KeyUsage)
-	// Check ExtKeyUsage
-	ms.assert.Equal(cert.ExtKeyUsage, newCert.ExtKeyUsage)
-	// Check DNSNames
-	ms.assert.Equal(cert.DNSNames, newCert.DNSNames)
-	ms.assert.Equal(cert.IPAddresses, newCert.IPAddresses)
-	// Check Signature
-	ms.assert.NoError(ms.coreServer.rootCert.CheckSignature(newCert.SignatureAlgorithm, newCert.RawTBSCertificate, newCert.Signature))
+	// Check KeyUsage for leaf certificate
+	ms.assert.Equal(cert.KeyUsage, newLeafCert.KeyUsage)
+	// Check ExtKeyUsage for leaf certificate
+	ms.assert.Equal(cert.ExtKeyUsage, newLeafCert.ExtKeyUsage)
+	// Check DNSNames for leaf certificate
+	ms.assert.Equal(cert.DNSNames, newLeafCert.DNSNames)
+	ms.assert.Equal(cert.IPAddresses, newLeafCert.IPAddresses)
+
+	// Check Signature for both, intermediate certificate and leaf certificate
+	ms.assert.NoError(ms.coreServer.rootCert.CheckSignature(newIntermediateCert.SignatureAlgorithm, newIntermediateCert.RawTBSCertificate, newIntermediateCert.Signature))
+	ms.assert.NoError(ms.coreServer.intermediateCert.CheckSignature(newLeafCert.SignatureAlgorithm, newLeafCert.RawTBSCertificate, newLeafCert.Signature))
 
 	// Validate generated secret (only specified in backend_first)
 	if marbleType == "backend_first" {
@@ -205,13 +217,13 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 
 	// Check cert-chain
 	roots := x509.NewCertPool()
-	ms.assert.True(roots.AppendCertsFromPEM([]byte(params.Env[libMarble.MarbleEnvironmentRootCA])), "cannot parse rootCA")
+	ms.assert.True(roots.AppendCertsFromPEM([]byte(params.Env[libMarble.MarbleEnvironmentIntermediateCA])), "cannot parse intermediateCA")
 	opts := x509.VerifyOptions{
 		Roots:     roots,
 		DNSName:   "localhost",
-		KeyUsages: newCert.ExtKeyUsage,
+		KeyUsages: newLeafCert.ExtKeyUsage,
 	}
-	_, err = newCert.Verify(opts)
+	_, err = newLeafCert.Verify(opts)
 	ms.assert.NoError(err, "failed to verify new certificate: %v", err)
 
 	// Shared & non-shared secret checks
