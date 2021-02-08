@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 
 	"github.com/spf13/cobra"
 )
@@ -75,7 +76,8 @@ func cliManifestUpdate(manifestName string, host string, clCertFile string, clKe
 		return err
 	}
 
-	resp, err := client.Post("https://"+host+"/update", "application/json", bytes.NewReader(manifest))
+	url := url.URL{Scheme: "https", Host: host, Path: "update"}
+	resp, err := client.Post(url.String(), "application/json", bytes.NewReader(manifest))
 	if err != nil {
 		return err
 	}

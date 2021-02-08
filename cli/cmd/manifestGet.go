@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 
 	"github.com/spf13/cobra"
 )
@@ -44,7 +45,8 @@ func cliManifestGet(targetFile string, host string, configFilename string, insec
 		return err
 	}
 
-	resp, err := client.Get("https://" + host + "/manifest")
+	url := url.URL{Scheme: "https", Host: host, Path: "manifest"}
+	resp, err := client.Get(url.String())
 	if err != nil {
 		return err
 	}
