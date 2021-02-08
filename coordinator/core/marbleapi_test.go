@@ -182,7 +182,7 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	ms.assert.NotNil(p)
 	newCert, err := x509.ParseCertificate(p.Bytes)
 	ms.assert.NoError(err)
-	ms.assert.Equal(CoordinatorName, newCert.Issuer.CommonName)
+	ms.assert.Equal(coordinatorName, newCert.Issuer.CommonName)
 	// Check CommonName
 	_, err = uuid.Parse(newCert.Subject.CommonName)
 	ms.assert.NoError(err, "cert.Subject.CommonName is not a valid UUID: %v", err)
@@ -194,7 +194,7 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	ms.assert.Equal(cert.DNSNames, newCert.DNSNames)
 	ms.assert.Equal(cert.IPAddresses, newCert.IPAddresses)
 	// Check Signature
-	ms.assert.NoError(ms.coreServer.cert.CheckSignature(newCert.SignatureAlgorithm, newCert.RawTBSCertificate, newCert.Signature))
+	ms.assert.NoError(ms.coreServer.rootCert.CheckSignature(newCert.SignatureAlgorithm, newCert.RawTBSCertificate, newCert.Signature))
 
 	// Validate generated secret (only specified in backend_first)
 	if marbleType == "backend_first" {

@@ -38,10 +38,12 @@ import (
 
 // Core implements the core logic of the Coordinator
 type Core struct {
-	cert              *x509.Certificate
+	rootCert          *x509.Certificate
+	intermediateCert  *x509.Certificate
 	adminCerts        []*x509.Certificate
 	quote             []byte
-	privk             *ecdsa.PrivateKey
+	rootPrivK         *ecdsa.PrivateKey
+	intermediatePrivK *ecdsa.PrivateKey
 	sealer            Sealer
 	recovery          recovery.Recovery
 	manifest          manifest.Manifest
@@ -70,17 +72,22 @@ const (
 
 // sealedState represents the state information, required for persistence, that gets sealed to the filesystem
 type sealedState struct {
-	Privk             []byte
-	RawManifest       []byte
-	RawUpdateManifest []byte
-	RawCert           []byte
-	Secrets           map[string]manifest.Secret
-	State             state
-	Activations       map[string]uint
+	RootPrivK           []byte
+	IntermediatePrivK   []byte
+	RawManifest         []byte
+	RawUpdateManifest   []byte
+	RawRootCert         []byte
+	RawIntermediateCert []byte
+	Secrets             map[string]manifest.Secret
+	State               state
+	Activations         map[string]uint
 }
 
-// CoordinatorName is the name of the Coordinator. It is used as CN of the root certificate.
-const CoordinatorName string = "Marblerun Coordinator"
+// coordinatorName is the name of the Coordinator. It is used as CN of the root certificate.
+const coordinatorName string = "Marblerun Coordinator"
+
+// coordinatorIntermediateName is the name of the Coordinator. It is used as CN of the intermediate certificate which is set when setting or updating a certificate.
+const coordinatorIntermediateName string = "Marblerun Coordinator - Intermediate CA"
 
 // Needs to be paired with `defer c.mux.Unlock()`
 func (c *Core) requireState(states ...state) error {
@@ -113,28 +120,38 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer Seal
 	}
 
 	zapLogger.Info("loading state")
-	cert, privk, err := c.loadState()
+	rootCert, rootPrivK, intermediateCert, intermediatePrivK, err := c.loadState()
 	if err != nil {
 		if err != ErrEncryptionKey {
 			return nil, err
 		}
 		c.zaplogger.Error("Failed to decrypt sealed state. Processing with a new state. Use the /recover API endpoint to load an old state, or submit a new manifest to overwrite the old state. Look up the documentation for more information on how to proceed.")
-		cert, privk, err = c.generateCert(dnsNames)
+		rootCert, rootPrivK, err = generateCert(dnsNames, coordinatorName, nil, nil)
+		if err != nil {
+			return nil, err
+		}
+		intermediateCert, intermediatePrivK, err = generateCert(dnsNames, coordinatorIntermediateName, rootCert, rootPrivK)
 		if err != nil {
 			return nil, err
 		}
 		c.advanceState(stateRecovery)
-	} else if cert == nil {
+	} else if rootCert == nil {
 		c.zaplogger.Info("No sealed state found. Proceeding with new state.")
-		cert, privk, err = c.generateCert(dnsNames)
+		rootCert, rootPrivK, err = generateCert(dnsNames, coordinatorName, nil, nil)
+		if err != nil {
+			return nil, err
+		}
+		intermediateCert, intermediatePrivK, err = generateCert(dnsNames, coordinatorIntermediateName, rootCert, rootPrivK)
 		if err != nil {
 			return nil, err
 		}
 		c.advanceState(stateAcceptingManifest)
 	}
 
-	c.cert = cert
-	c.privk = privk
+	c.rootCert = rootCert
+	c.rootPrivK = rootPrivK
+	c.intermediateCert = intermediateCert
+	c.intermediatePrivK = intermediatePrivK
 	c.quote = c.generateQuote()
 
 	return c, nil
@@ -176,10 +193,10 @@ func (c *Core) GetTLSCertificate(clientHello *tls.ClientHelloInfo) (*tls.Certifi
 	if c.state == stateUninitialized {
 		return nil, errors.New("don't have a cert yet")
 	}
-	return util.TLSCertFromDER(c.cert.Raw, c.privk), nil
+	return util.TLSCertFromDER(c.rootCert.Raw, c.rootPrivK), nil
 }
 
-func (c *Core) loadState() (*x509.Certificate, *ecdsa.PrivateKey, error) {
+func (c *Core) loadState() (*x509.Certificate, *ecdsa.PrivateKey, *x509.Certificate, *ecdsa.PrivateKey, error) {
 	encodedRecoveryData, stateRaw, unsealErr := c.sealer.Unseal()
 
 	// Retrieve and set recovery data from state
@@ -189,31 +206,39 @@ func (c *Core) loadState() (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	}
 
 	if unsealErr != nil {
-		return nil, nil, unsealErr
+		return nil, nil, nil, nil, unsealErr
 	}
 	if len(stateRaw) == 0 {
-		return nil, nil, nil
+		return nil, nil, nil, nil, nil
 	}
 
 	// load state
 	c.zaplogger.Info("applying sealed state")
 	var loadedState sealedState
 	if err := json.Unmarshal(stateRaw, &loadedState); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
 	// set Core to loaded state
-	cert, err := x509.ParseCertificate(loadedState.RawCert)
+	rootCert, err := x509.ParseCertificate(loadedState.RawRootCert)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, nil, err
 	}
-	privk, err := x509.ParseECPrivateKey(loadedState.Privk)
+	rootPrivk, err := x509.ParseECPrivateKey(loadedState.RootPrivK)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, nil, err
+	}
+	intermediateCert, err := x509.ParseCertificate(loadedState.RawIntermediateCert)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+	intermediatePrivK, err := x509.ParseECPrivateKey(loadedState.IntermediatePrivK)
+	if err != nil {
+		return nil, nil, nil, nil, err
 	}
 
 	if err := json.Unmarshal(loadedState.RawManifest, &c.manifest); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	c.rawManifest = loadedState.RawManifest
 
@@ -221,13 +246,13 @@ func (c *Core) loadState() (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	adminCerts, err := generateAdminCertsFromManifest(c.manifest.Admins)
 	if err != nil {
 		c.zaplogger.Error("Could not parse specified admin client certificate from sealed state", zap.Error(err))
-		return nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
 	// Load update manifest if one has been set
 	if loadedState.RawUpdateManifest != nil {
 		if err := json.Unmarshal(loadedState.RawUpdateManifest, &c.updateManifest); err != nil {
-			return nil, nil, err
+			return nil, nil, nil, nil, err
 		}
 		c.rawUpdateManifest = loadedState.RawUpdateManifest
 	}
@@ -237,25 +262,33 @@ func (c *Core) loadState() (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	c.secrets = loadedState.Secrets
 	c.adminCerts = adminCerts
 
-	return cert, privk, err
+	return rootCert, rootPrivk, intermediateCert, intermediatePrivK, err
 }
 
 func (c *Core) sealState(recoveryData []byte) error {
-	// marshal private key
-	x509Encoded, err := x509.MarshalECPrivateKey(c.privk)
+	// marshal root CA private key
+	rootPrivKEncoded, err := x509.MarshalECPrivateKey(c.rootPrivK)
+	if err != nil {
+		return err
+	}
+
+	// marshal intermediate CA private key
+	intermediatePrivKEncoded, err := x509.MarshalECPrivateKey(c.intermediatePrivK)
 	if err != nil {
 		return err
 	}
 
 	// seal with manifest set
 	state := sealedState{
-		Privk:             x509Encoded,
-		RawManifest:       c.rawManifest,
-		RawUpdateManifest: c.rawUpdateManifest,
-		RawCert:           c.cert.Raw,
-		State:             c.state,
-		Secrets:           c.secrets,
-		Activations:       c.activations,
+		RootPrivK:           rootPrivKEncoded,
+		IntermediatePrivK:   intermediatePrivKEncoded,
+		RawManifest:         c.rawManifest,
+		RawUpdateManifest:   c.rawUpdateManifest,
+		RawRootCert:         c.rootCert.Raw,
+		RawIntermediateCert: c.intermediateCert.Raw,
+		State:               c.state,
+		Secrets:             c.secrets,
+		Activations:         c.activations,
 	}
 	stateRaw, err := json.Marshal(state)
 	if err != nil {
@@ -264,17 +297,14 @@ func (c *Core) sealState(recoveryData []byte) error {
 	return c.sealer.Seal(recoveryData, stateRaw)
 }
 
-func (c *Core) generateCert(dnsNames []string) (*x509.Certificate, *ecdsa.PrivateKey, error) {
-	defer c.mux.Unlock()
-	if err := c.requireState(stateUninitialized); err != nil {
-		return nil, nil, err
-	}
-
+func generateCert(dnsNames []string, commonName string, parentCertificate *x509.Certificate, parentPrivateKey *ecdsa.PrivateKey) (*x509.Certificate, *ecdsa.PrivateKey, error) {
+	// Generate private key
 	privk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, nil, err
 	}
 
+	// Certifcate parameter
 	notBefore := time.Now()
 	notAfter := notBefore.Add(math.MaxInt64)
 
@@ -288,7 +318,7 @@ func (c *Core) generateCert(dnsNames []string) (*x509.Certificate, *ecdsa.Privat
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
-			CommonName: CoordinatorName,
+			CommonName: commonName,
 		},
 		DNSNames:    dnsNames,
 		IPAddresses: util.DefaultCertificateIPAddresses,
@@ -301,7 +331,12 @@ func (c *Core) generateCert(dnsNames []string) (*x509.Certificate, *ecdsa.Privat
 		IsCA:                  true,
 	}
 
-	certRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, &privk.PublicKey, privk)
+	if parentCertificate == nil {
+		parentCertificate = &template
+		parentPrivateKey = privk
+	}
+	certRaw, err := x509.CreateCertificate(rand.Reader, &template, parentCertificate, &privk.PublicKey, parentPrivateKey)
+
 	if err != nil {
 		return nil, nil, err
 	}
@@ -315,7 +350,7 @@ func (c *Core) generateCert(dnsNames []string) (*x509.Certificate, *ecdsa.Privat
 
 func (c *Core) generateQuote() []byte {
 	c.zaplogger.Info("generating quote")
-	quote, err := c.qi.Issue(c.cert.Raw)
+	quote, err := c.qi.Issue(c.rootCert.Raw)
 	if err != nil {
 		c.zaplogger.Warn("Failed to get quote. Proceeding in simulation mode.")
 		// If we run in SimulationMode we get an error here
@@ -387,7 +422,7 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]manifest.
 				}
 			} else {
 				salt := id.String() + name
-				secretKeyDerive := c.privk.D.Bytes()
+				secretKeyDerive := c.rootPrivK.D.Bytes()
 				var err error
 				generatedValue, err = util.DeriveKey(secretKeyDerive, []byte(salt), secret.Size/8)
 				if err != nil {
@@ -501,7 +536,7 @@ func (c *Core) generateCertificateForSecret(secret manifest.Secret, privKey cryp
 	}
 
 	template.IsCA = false
-	template.Issuer = c.cert.Subject
+	template.Issuer = c.rootCert.Subject
 	template.BasicConstraintsValid = true
 	template.NotBefore = time.Now()
 
@@ -518,7 +553,7 @@ func (c *Core) generateCertificateForSecret(secret manifest.Secret, privKey cryp
 	}
 
 	// Generate certificate with given public key
-	secretCertRaw, err := x509.CreateCertificate(rand.Reader, &template, c.cert, pubKey, c.privk)
+	secretCertRaw, err := x509.CreateCertificate(rand.Reader, &template, c.rootCert, pubKey, c.rootPrivK)
 
 	if err != nil {
 		c.zaplogger.Error("Failed to generate X.509 certificate", zap.Error(err))

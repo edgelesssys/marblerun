@@ -25,7 +25,7 @@ func TestCore(t *testing.T) {
 
 	c := NewCoreWithMocks()
 	assert.Equal(stateAcceptingManifest, c.state)
-	assert.Equal(CoordinatorName, c.cert.Subject.CommonName)
+	assert.Equal(coordinatorName, c.rootCert.Subject.CommonName)
 
 	cert, err := c.GetTLSCertificate(nil)
 	assert.NoError(err)
