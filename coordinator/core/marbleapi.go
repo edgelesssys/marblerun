@@ -75,7 +75,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	}
 
 	// Generate user-defined unique (= per marble) secrets
-	secrets, err := c.generateSecrets(ctx, c.manifest.Secrets, marbleUUID)
+	secrets, err := c.generateSecrets(ctx, c.manifest.Secrets, marbleUUID, c.intermediateCert, c.intermediatePrivK)
 	if err != nil {
 		c.zaplogger.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
 		return nil, err

@@ -48,7 +48,7 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 	}
 
 	// Generate shared secrets specified in manifest
-	secrets, err := c.generateSecrets(ctx, manifest.Secrets, uuid.Nil)
+	secrets, err := c.generateSecrets(ctx, manifest.Secrets, uuid.Nil, c.intermediateCert, c.intermediatePrivK)
 	if err != nil {
 		c.zaplogger.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
 		return nil, err
@@ -182,6 +182,21 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte) err
 		return err
 	}
 
+	// Gather all shared certificate secrets we need to regenerate
+	secretsToRegenerate := make(map[string]manifest.Secret)
+	for name, secret := range c.manifest.Secrets {
+		if secret.Shared && secret.Type != "symmetric-key" {
+			secretsToRegenerate[name] = secret
+		}
+	}
+
+	// Regenerate shared secrets specified in manifest
+	regeneratedSecrets, err := c.generateSecrets(ctx, secretsToRegenerate, uuid.Nil, intermediateCert, intermediatePrivK)
+	if err != nil {
+		c.zaplogger.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
+		return err
+	}
+
 	// Retrieve current recovery data before we seal the state again
 	currentRecoveryData, err := c.recovery.GetRecoveryData()
 	if err != nil {
@@ -193,6 +208,11 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte) err
 	c.rawUpdateManifest = rawUpdateManifest
 	c.intermediateCert = intermediateCert
 	c.intermediatePrivK = intermediatePrivK
+
+	// Overwrite regenerated secrets in core
+	for name, secret := range regeneratedSecrets {
+		c.secrets[name] = secret
+	}
 
 	c.zaplogger.Info("An update manifest overriding package settings from the original manifest was set.")
 	c.zaplogger.Info("Please restart your Marbles to enforce the update.")
