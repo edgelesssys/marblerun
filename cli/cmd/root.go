@@ -16,7 +16,7 @@ func Execute() error {
 }
 
 func init() {
-	rootCmd.AddCommand(newRootCACmd())
+	rootCmd.AddCommand(newCertificateCmd())
 	rootCmd.AddCommand(newInstallCmd())
 	rootCmd.AddCommand(newManifestCmd())
 	rootCmd.AddCommand(newStatusCmd())
