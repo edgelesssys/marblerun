@@ -21,4 +21,5 @@ func init() {
 	rootCmd.AddCommand(newManifestCmd())
 	rootCmd.AddCommand(newStatusCmd())
 	rootCmd.AddCommand(newNamespaceCmd())
+	rootCmd.AddCommand(newRecoverCmd())
 }
