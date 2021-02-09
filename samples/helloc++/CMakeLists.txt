@@ -13,7 +13,7 @@ target_link_libraries(enclave
   openenclave::oeenclave
   openenclave::ertmeshentry
   app
-  ertmeshpremain)
+  openenclave::ertmeshpremain)
 
 # Generate key
 add_custom_command(

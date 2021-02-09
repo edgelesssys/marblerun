@@ -17,7 +17,6 @@ Marblerun is written entirely in Go and builds on Edgeless RT, which is written 
 ### Data Plane
 
 * [`marble`](marble): The data plane code written in Go
-* [`libertmeshpremain`](libertmeshpremain): Provides a pre-main routine written in Go for linking against non-Go applications.
 
 ## Build
 
@@ -31,8 +30,6 @@ cd build
 cmake ..
 make
 ```
-
-For building and installing the libertmeshpremain library (required for services not written in Go) see the [`libertmeshpremain build instructions`](libertmeshpremain/README.md).
 
 ## Run
 
