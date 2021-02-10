@@ -53,12 +53,12 @@ func verifyCoordinator(host string, configFilename string, insecure bool) ([]*pe
 func restClient(cert []*pem.Block) (*http.Client, error) {
 	// Set rootCA for connection to coordinator
 	certPool := x509.NewCertPool()
-	if ok := certPool.AppendCertsFromPEM(pem.EncodeToMemory(cert[0])); !ok {
+	if ok := certPool.AppendCertsFromPEM(pem.EncodeToMemory(cert[len(cert)-1])); !ok {
 		return &http.Client{}, fmt.Errorf("failed to parse root certificate")
 	}
 	// Add intermediate cert if applicable
 	if len(cert) > 1 {
-		if ok := certPool.AppendCertsFromPEM(pem.EncodeToMemory(cert[1])); !ok {
+		if ok := certPool.AppendCertsFromPEM(pem.EncodeToMemory(cert[0])); !ok {
 			return &http.Client{}, fmt.Errorf("failed to parse intermediate certificate")
 		}
 	}
