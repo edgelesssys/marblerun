@@ -3,7 +3,7 @@ module github.com/edgelesssys/marblerun
 go 1.14
 
 require (
-	github.com/edgelesssys/era v0.1.0
+	github.com/edgelesssys/era v0.1.1-0.20210209072546-fb6c08a3562c
 	github.com/edgelesssys/ertgolib v0.1.5-0.20210208080427-0d5e24e2f855
 	github.com/gofrs/flock v0.8.0
 	github.com/golang/protobuf v1.4.3
