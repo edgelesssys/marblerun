@@ -1,9 +1,9 @@
 package cmd
 
 import (
+	"encoding/pem"
 	"fmt"
 	"io/ioutil"
-	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -13,8 +13,8 @@ func newCertificateIntermediate() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "intermediate <IP:PORT>",
-		Short: "returns the intermediateCA of the marblerun coordinator",
-		Long:  `returns the intermediateCA of the marblerun coordinator`,
+		Short: "returns the intermediate certificate of the Marblerun coordinator",
+		Long:  `returns the intermediate certificate of the Marblerun coordinator`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hostName := args[0]
@@ -28,26 +28,21 @@ func newCertificateIntermediate() *cobra.Command {
 	return cmd
 }
 
-// cliCertificateIntermediate gets the intermediateCA of the Marblerun coordinator
+// cliCertificateIntermediate gets the intermediate certificate of the Marblerun coordinator
 func cliCertificateIntermediate(host string, output string, configFilename string, insecure bool) error {
-	cert, err := verifyCoordinator(host, configFilename, insecure)
+	certs, err := verifyCoordinator(host, configFilename, insecure)
 	if err != nil {
 		return err
 	}
 
-	// Seperate rootCA from intermediateCA, if only one certificate save nothing and notify the user
-	var intermediateCA string
-	certSplit := strings.SplitAfter(cert, "-----END CERTIFICATE-----\n")
-	if len(certSplit) == 3 {
-		intermediateCA = certSplit[0]
-		if err := ioutil.WriteFile(output, []byte(intermediateCA), 0644); err != nil {
+	if len(certs) > 1 {
+		if err := ioutil.WriteFile(output, pem.EncodeToMemory(certs[0]), 0644); err != nil {
 			return err
 		}
-		fmt.Printf("Certificate written to: %s\n", output)
-		return nil
+		fmt.Println("Intermediate certificate writen to", output)
+	} else {
+		fmt.Println("WARNING: No intermediate certificate received.")
 	}
-
-	fmt.Println("Got no intermediate certificate from the Marblerun coordinator")
 
 	return nil
 }

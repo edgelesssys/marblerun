@@ -15,6 +15,7 @@ func newCertificateCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(&insecureEra, "insecure", "i", false, "Set to skip quote verification, needed when running in simulation mode")
 	cmd.AddCommand(newCertificateRoot())
 	cmd.AddCommand(newCertificateIntermediate())
+	cmd.AddCommand(newCertificateChain())
 
 	return cmd
 }

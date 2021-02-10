@@ -195,6 +195,8 @@ github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21/go.mod h1
 github.com/eapache/queue v1.1.0/go.mod h1:6eCeP0CKFpHLu8blIFXhExK/dRa7WDZfr6jVFPTqq+I=
 github.com/edgelesssys/era v0.1.0 h1:13xUhHo61VE0k4xUKPVuRLfpWbMuM0WKBWs3CgeWLDM=
 github.com/edgelesssys/era v0.1.0/go.mod h1:rEv/EPEWTUpu8gGOUWp97Bk1kFFvgYwcJY0yA4cKG8U=
+github.com/edgelesssys/era v0.1.1-0.20210209072546-fb6c08a3562c h1:tHXDurmMedmO1dWopD6qR24T93hnBd6Jf0tuIyHTXm8=
+github.com/edgelesssys/era v0.1.1-0.20210209072546-fb6c08a3562c/go.mod h1:rEv/EPEWTUpu8gGOUWp97Bk1kFFvgYwcJY0yA4cKG8U=
 github.com/edgelesssys/ertgolib v0.1.1/go.mod h1:QV27eWmoYHCNMkPMnz2XcER13+XdhPyG5qLQu5iDL0I=
 github.com/edgelesssys/ertgolib v0.1.5-0.20210208080427-0d5e24e2f855 h1:3iTzGhF0FJf5ZFDPfU54NAfObJwlexJYFR3ShITYlEk=
 github.com/edgelesssys/ertgolib v0.1.5-0.20210208080427-0d5e24e2f855/go.mod h1:1E8jAgXZp9wyP3n43wCsLCiEGXxjBQ35+uzxUkypBNs=
