@@ -11,7 +11,7 @@ ego sign hello
 
 Then get the enclave's unique ID aka MRENCLAVE
 ```sh
-oesign dump -e hello | grep mrenclave
+ego uniqueid hello
 ```
 and set it as `UniqueID` in `manifest.json`.
 
