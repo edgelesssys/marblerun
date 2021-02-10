@@ -1,7 +1,6 @@
 # helloworld sample
-This sample shows how to build a confidential Go application with [ego](https://ego.dev) and run it in Marblerun. This should serve as a blueprint for making existing applications Marblerun-ready or creating new ones. Detailed instructions for setting up Marblerun are omitted for brevity. Please refer to the [documentation](https://marblerun.sh/docs/introduction/) for that.
+This sample shows how to build a confidential Go application with [EGo](https://ego.dev) and run it in Marblerun. This should serve as a blueprint for making existing applications Marblerun-ready or creating new ones. Detailed instructions for setting up Marblerun are omitted for brevity. Please refer to the [documentation](https://marblerun.sh/docs/introduction/) for that.
 
-The `hello.go` contains the application code:
 
 You can build the sample as follows:
 ```sh

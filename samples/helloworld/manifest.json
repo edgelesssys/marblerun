@@ -1,7 +1,7 @@
 {
     "Packages": {
         "world": {
-            "UniqueID": "<replace with mrenclave obtained by `oesign dump -e hello`>"
+            "UniqueID": "<replace with mrenclave obtained by `ego uniqueid hello`>"
         }
     },
     "Marbles": {
