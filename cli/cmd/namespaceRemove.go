@@ -60,11 +60,12 @@ func cliNameSpaceRemove(namespace string, clientSet kubernetes.Interface) error 
 {
 	"metadata": {
 		"labels": {
+			"%s": null,
 			"%s": null
 		}
 	}
 }
-`, marblerunAnnotation)
+`, marblerunAnnotation, injectionAnnotation)
 			if _, err := clientSet.CoreV1().Namespaces().Patch(ctx, namespace, types.StrategicMergePatchType, []byte(patch), metav1.PatchOptions{}, ""); err != nil {
 				return err
 			}

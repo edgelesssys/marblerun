@@ -12,6 +12,8 @@ import (
 )
 
 func newNameSpaceAdd() *cobra.Command {
+	var injectSgx bool
+
 	cmd := &cobra.Command{
 		Use:   "add NAMESPACE ...",
 		Short: "Add namespaces to a Marblerun mesh",
@@ -37,20 +39,33 @@ func newNameSpaceAdd() *cobra.Command {
 				return err
 			}
 
-			return cliNameSpaceAdd(namespaces, clientSet)
+			return cliNameSpaceAdd(namespaces, clientSet, injectSgx)
 		},
 		SilenceUsage: true,
 	}
+	cmd.Flags().BoolVar(&injectSgx, "inject-sgx", false, "Set to enable automatic injection of SGX tolerations for namespace")
+
 	return cmd
 }
 
 // cliNameSpaceAdd adds specified namespaces to the marblerun coordinator
-func cliNameSpaceAdd(namespaces []string, clientSet kubernetes.Interface) error {
+func cliNameSpaceAdd(namespaces []string, clientSet kubernetes.Interface, injectSgx bool) error {
 	for _, ns := range namespaces {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		var patch string
-		patch = fmt.Sprintf(`
+		if injectSgx {
+			patch = fmt.Sprintf(`
+{
+	"metadata": {
+		"labels": {
+			"%s": "marblerun",
+			"%s": "enabled"
+		}
+	}
+}`, marblerunAnnotation, injectionAnnotation)
+		} else {
+			patch = fmt.Sprintf(`
 {
 	"metadata": {
 		"labels": {
@@ -58,6 +73,7 @@ func cliNameSpaceAdd(namespaces []string, clientSet kubernetes.Interface) error 
 		}
 	}
 }`, marblerunAnnotation)
+		}
 		// apply patch to namespace
 		if _, err := clientSet.CoreV1().Namespaces().Patch(ctx, ns, types.StrategicMergePatchType, []byte(patch), metav1.PatchOptions{}, ""); err != nil {
 			fmt.Printf("Could not apply patch\n")
