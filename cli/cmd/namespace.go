@@ -12,6 +12,7 @@ type envSettings struct {
 
 // injected monitor annotation
 const marblerunAnnotation = "marblerun/monitor"
+const injectionAnnotation = "marblerun/injectsgx"
 
 func newNamespaceCmd() *cobra.Command {
 	cmd := &cobra.Command{
