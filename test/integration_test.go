@@ -25,6 +25,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"syscall"
 	"testing"
 	"time"
 
@@ -389,6 +390,7 @@ func startCoordinator(cfg coordinatorConfig) *os.Process {
 	} else {
 		cmd = exec.Command("erthost", filepath.Join(*buildDir, "coordinator-enclave.signed"))
 	}
+	cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGKILL} // kill if parent dies
 	cmd.Env = []string{
 		makeEnv(config.MeshAddr, meshServerAddr),
 		makeEnv(config.ClientAddr, clientServerAddr),
@@ -603,6 +605,7 @@ func getMarbleCmd(cfg marbleConfig) *exec.Cmd {
 	} else {
 		cmd = exec.Command("erthost", filepath.Join(*buildDir, "marble-test-enclave.signed"))
 	}
+	cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGKILL} // kill if parent dies
 	uuidFile := filepath.Join(cfg.dataDir, "uuid")
 	cmd.Env = []string{
 		makeEnv(mconfig.CoordinatorAddr, cfg.coordinatorAddr),
