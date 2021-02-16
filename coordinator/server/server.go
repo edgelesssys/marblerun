@@ -42,8 +42,8 @@ type certQuoteResp struct {
 	Quote []byte
 }
 type statusResp struct {
-	Code   int
-	Status string
+	StatusCode   int
+	StatusMessage string
 }
 type manifestSignatureResp struct {
 	ManifestSignature string

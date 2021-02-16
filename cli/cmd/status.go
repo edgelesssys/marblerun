@@ -29,8 +29,8 @@ The Coordinator will be in one of these 4 states:
 `
 
 type statusResponse struct {
-	Code   int    `json:"Code"`
-	Status string `json:"Status"`
+	StatusCode    int    `json:"StatusCode"`
+	StatusMessage string `json:"StatusMessage"`
 }
 
 func newStatusCmd() *cobra.Command {
@@ -82,7 +82,7 @@ func cliStatus(host string, configFilename string, insecure bool) error {
 		if err := json.Unmarshal([]byte(jsonResponse.String()), &statusResp); err != nil {
 			return err
 		}
-		fmt.Printf("%d: %s\n", statusResp.Code, statusResp.Status)
+		fmt.Printf("%d: %s\n", statusResp.StatusCode, statusResp.StatusMessage)
 	default:
 		return fmt.Errorf("error connecting to server: %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
 	}
