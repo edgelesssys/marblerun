@@ -130,7 +130,7 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 			}
 
 			// If recovery data is set, return it
-			if recoverySecretMap != nil {
+			if len(recoverySecretMap) > 0 {
 				secretMap := make(map[string]string, len(recoverySecretMap))
 				for name, secret := range recoverySecretMap {
 					secretMap[name] = base64.StdEncoding.EncodeToString(secret)
