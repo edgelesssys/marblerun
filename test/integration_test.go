@@ -234,7 +234,7 @@ func TestClientAPI(t *testing.T) {
 	quote, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	require.NoError(err)
-	cert := gjson.Get(string(quote), "Cert").String()
+	cert := gjson.Get(string(quote), "data.Cert").String()
 	require.NotEmpty(cert)
 
 	// test with certificate
@@ -248,7 +248,7 @@ func TestClientAPI(t *testing.T) {
 	manifest, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	require.NoError(err)
-	assert.JSONEq(`{"ManifestSignature":""}`, string(manifest))
+	assert.JSONEq(`{"status":"success","data":{"ManifestSignature":""}}`, string(manifest))
 }
 
 func TestRecoveryRestoreKey(t *testing.T) {
@@ -265,7 +265,7 @@ func TestRecoveryRestoreKey(t *testing.T) {
 	defer coordinatorProc.Kill()
 
 	// Decode & Decrypt recovery data from when we set the manifest
-	key := gjson.Get(string(recoveryResponse), "RecoverySecrets.testRecKey1").String()
+	key := gjson.GetBytes(recoveryResponse, "data.RecoverySecrets.testRecKey1").String()
 	recoveryDataEncrypted, err := base64.StdEncoding.DecodeString(key)
 	require.NoError(err, "Failed to base64 decode recovery data.")
 	recoveryKey, err := util.DecryptOAEP(RecoveryPrivateKey, recoveryDataEncrypted)
@@ -276,7 +276,7 @@ func TestRecoveryRestoreKey(t *testing.T) {
 	log.Println("Performed recovery, now checking status again...")
 	statusResponse, err := getStatus()
 	require.NoError(err)
-	assert.EqualValues(3, gjson.Get(statusResponse, "Code").Int(), "Server is in wrong status after recovery.")
+	assert.EqualValues(3, gjson.Get(statusResponse, "data.Code").Int(), "Server is in wrong status after recovery.")
 
 	// Verify if old certificate is still valid
 	coordinatorProc = verifyCertAfterRecovery(cert, coordinatorProc, cfg, assert, require)
@@ -683,7 +683,7 @@ func triggerRecovery(manifest manifest.Manifest, assert *assert.Assertions, requ
 	quote, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	require.NoError(err)
-	cert := gjson.Get(string(quote), "Cert").String()
+	cert := gjson.GetBytes(quote, "data.Cert").String()
 	require.NotEmpty(cert)
 
 	// simulate restart of coordinator
@@ -708,7 +708,7 @@ func triggerRecovery(manifest manifest.Manifest, assert *assert.Assertions, requ
 	log.Println("Checking status...")
 	statusResponse, err := getStatus()
 	require.NoError(err)
-	assert.EqualValues(1, gjson.Get(statusResponse, "Code").Int(), "Server is not in recovery state, but should be.")
+	assert.EqualValues(1, gjson.Get(statusResponse, "data.Code").Int(), "Server is not in recovery state, but should be.")
 
 	return recoveryResponse, coordinatorProc, serverProc, cfg, serverCfg, cert
 }
@@ -739,7 +739,7 @@ func verifyCertAfterRecovery(cert string, coordinatorProc *os.Process, cfg coord
 	log.Println("Restarted instance, now let's see if the state can be restored again successfully.")
 	statusResponse, err := getStatus()
 	require.NoError(err)
-	assert.EqualValues(3, gjson.Get(statusResponse, "Code").Int(), "Server is in wrong status after recovery.")
+	assert.EqualValues(3, gjson.Get(statusResponse, "data.Code").Int(), "Server is in wrong status after recovery.")
 
 	// test with certificate
 	log.Println("Verifying certificate after restart.")
@@ -756,7 +756,7 @@ func verifyResetAfterRecovery(coordinatorProc *os.Process, cfg coordinatorConfig
 	log.Println("Check if the manifest was accepted and we are ready to accept Marbles")
 	statusResponse, err := getStatus()
 	require.NoError(err)
-	assert.EqualValues(3, gjson.Get(statusResponse, "Code").Int(), "Server is in wrong status after recovery.")
+	assert.EqualValues(3, gjson.Get(statusResponse, "data.Code").Int(), "Server is in wrong status after recovery.")
 
 	// simulate restart of coordinator
 	log.Println("Simulating a restart of the coordinator enclave...")
@@ -772,7 +772,7 @@ func verifyResetAfterRecovery(coordinatorProc *os.Process, cfg coordinatorConfig
 	log.Println("Restarted instance, now let's see if the new state can be decrypted successfully...")
 	statusResponse, err = getStatus()
 	require.NoError(err)
-	assert.EqualValues(3, gjson.Get(statusResponse, "Code").Int(), "Server is in wrong status after recovery.")
+	assert.EqualValues(3, gjson.Get(statusResponse, "data.Code").Int(), "Server is in wrong status after recovery.")
 
 	return coordinatorProc
 }

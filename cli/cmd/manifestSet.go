@@ -8,6 +8,7 @@ import (
 	"net/url"
 
 	"github.com/spf13/cobra"
+	"github.com/tidwall/gjson"
 )
 
 func newManifestSet() *cobra.Command {
@@ -69,11 +70,18 @@ func cliManifestSet(manifestName string, host string, configFilename string, ins
 			return nil
 		}
 
+		response := gjson.GetBytes(respBody, "data")
+
+		// Skip outputting secrets if we do not get any recovery secrets back
+		if len(response.String()) == 0 {
+			return nil
+		}
+
 		// recovery secret was sent, print or save to file
 		if recover == "" {
-			fmt.Println(string(respBody))
+			fmt.Println(response.String())
 		} else {
-			if err := ioutil.WriteFile(recover, respBody, 0644); err != nil {
+			if err := ioutil.WriteFile(recover, []byte(response.String()), 0644); err != nil {
 				return err
 			}
 			fmt.Printf("Manifest successfully set, recovery data saved to: %s.\n", recover)
