@@ -9,6 +9,7 @@ import (
 	"net/url"
 
 	"github.com/spf13/cobra"
+	"github.com/tidwall/gjson"
 )
 
 type coordinatorResponse struct {
@@ -73,8 +74,9 @@ func cliRecover(host string, keyFile string, configFilename string, insecure boo
 		}
 
 		// if a response was sent another recovery key will be needed, print message to user
+		jsonResponse := gjson.GetBytes(respBody, "data")
 		var response coordinatorResponse
-		if err := json.Unmarshal(respBody, &response); err != nil {
+		if err := json.Unmarshal([]byte(jsonResponse.String()), &response); err != nil {
 			return err
 		}
 		fmt.Printf("%s \n", response)

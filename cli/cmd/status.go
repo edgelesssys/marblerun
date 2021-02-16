@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/spf13/cobra"
+	"github.com/tidwall/gjson"
 )
 
 const statusDesc = `
@@ -19,7 +20,7 @@ The Coordinator will be in one of these 4 states:
 
   1 uninitialized: Fresh start, initializing the Coordinator.
 	The Coordinator is in its starting phase.
-	
+
   2 waiting for manifest: Waiting for user input on /manifest.
 	Send a manifest to the Coordinator using [marblerun manifest set] to start.
 
@@ -76,8 +77,9 @@ func cliStatus(host string, configFilename string, insecure bool) error {
 		if err != nil {
 			return err
 		}
+		jsonResponse := gjson.GetBytes(respBody, "data")
 		var statusResp statusResponse
-		if err := json.Unmarshal(respBody, &statusResp); err != nil {
+		if err := json.Unmarshal([]byte(jsonResponse.String()), &statusResp); err != nil {
 			return err
 		}
 		fmt.Printf("%d: %s\n", statusResp.Code, statusResp.Status)

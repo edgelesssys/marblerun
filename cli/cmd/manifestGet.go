@@ -8,6 +8,7 @@ import (
 	"net/url"
 
 	"github.com/spf13/cobra"
+	"github.com/tidwall/gjson"
 )
 
 func newManifestGet() *cobra.Command {
@@ -58,10 +59,11 @@ func cliManifestGet(targetFile string, host string, configFilename string, insec
 	switch resp.StatusCode {
 	case http.StatusOK:
 		respBody, err := ioutil.ReadAll(resp.Body)
+		manifestData := gjson.GetBytes(respBody, "data")
 		if err != nil {
 			return err
 		}
-		if err := ioutil.WriteFile(targetFile, respBody, 0644); err != nil {
+		if err := ioutil.WriteFile(targetFile, []byte(manifestData.String()), 0644); err != nil {
 			return err
 		}
 		fmt.Printf("Manifest written to: %s.\n", targetFile)

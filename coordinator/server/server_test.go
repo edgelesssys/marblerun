@@ -24,6 +24,7 @@ import (
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
 )
 
 func TestQuote(t *testing.T) {
@@ -57,7 +58,7 @@ func TestManifest(t *testing.T) {
 	require.Equal(http.StatusOK, resp.Code)
 
 	sig := hex.EncodeToString(c.GetManifestSignature(context.TODO()))
-	assert.JSONEq(`{"ManifestSignature":"`+sig+`"}`, resp.Body.String())
+	assert.JSONEq(`{"status":"success","data":{"ManifestSignature":"`+sig+`"}}`, resp.Body.String())
 
 	// try setting manifest again, should fail
 	req = httptest.NewRequest(http.MethodPost, "/manifest", strings.NewReader(test.ManifestJSON))
@@ -80,7 +81,8 @@ func TestManifestWithRecoveryKey(t *testing.T) {
 
 	// Decode JSON response from server
 	var b64EncryptedRecoveryData recoveryDataResp
-	require.NoError(json.Unmarshal(resp.Body.Bytes(), &b64EncryptedRecoveryData))
+	b64EncryptedRecoveryDataJSON := gjson.Get(resp.Body.String(), "data")
+	require.NoError(json.Unmarshal([]byte(b64EncryptedRecoveryDataJSON.String()), &b64EncryptedRecoveryData))
 
 	var encryptedRecoveryData []byte
 

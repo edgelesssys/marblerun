@@ -31,6 +31,12 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
+// generalResponse is a wrapper for all our REST API responses to follow the JSend style: https://github.com/omniti-labs/jsend
+type generalResponse struct {
+	Status  string      `json:"status"`
+	Data    interface{} `json:"data"`
+	Message string      `json:"message,omitempty"` // only used when status = "error"
+}
 type certQuoteResp struct {
 	Cert  string
 	Quote []byte
@@ -102,12 +108,12 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 		case http.MethodGet:
 			statusCode, status, err := cc.GetStatus(r.Context())
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeJSONError(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			writeJSON(w, statusResp{statusCode, status})
 		default:
-			http.Error(w, "", http.StatusMethodNotAllowed)
+			writeJSONError(w, "", http.StatusMethodNotAllowed)
 		}
 	})
 
@@ -119,13 +125,13 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 		case http.MethodPost:
 			manifest, err := ioutil.ReadAll(r.Body)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeJSONError(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			recoverySecretMap, err := cc.SetManifest(r.Context(), manifest)
 
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
+				writeJSONError(w, err.Error(), http.StatusBadRequest)
 				return
 			}
 
@@ -136,10 +142,12 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 					secretMap[name] = base64.StdEncoding.EncodeToString(secret)
 				}
 				writeJSON(w, recoveryDataResp{secretMap})
+			} else {
+				writeJSON(w, nil)
 			}
 
 		default:
-			http.Error(w, "", http.StatusMethodNotAllowed)
+			writeJSONError(w, "", http.StatusMethodNotAllowed)
 		}
 	})
 
@@ -148,12 +156,12 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 		case http.MethodGet:
 			cert, quote, err := cc.GetCertQuote(r.Context())
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeJSONError(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			writeJSON(w, certQuoteResp{cert, quote})
 		default:
-			http.Error(w, "", http.StatusMethodNotAllowed)
+			writeJSONError(w, "", http.StatusMethodNotAllowed)
 		}
 	})
 
@@ -162,7 +170,7 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 		case http.MethodPost:
 			key, err := ioutil.ReadAll(r.Body)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeJSONError(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 
@@ -170,7 +178,7 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 			remaining, err := cc.Recover(r.Context(), key)
 
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeJSONError(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 
@@ -185,14 +193,14 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 			writeJSON(w, recoveryStatusResp{statusMessage})
 
 		default:
-			http.Error(w, "", http.StatusMethodNotAllowed)
+			writeJSONError(w, "", http.StatusMethodNotAllowed)
 		}
 	})
 
 	mux.HandleFunc("/update", func(w http.ResponseWriter, r *http.Request) {
 		// Abort if no admin client certificate was provided
 		if r.TLS == nil || !cc.VerifyAdmin(r.Context(), r.TLS.PeerCertificates) {
-			http.Error(w, "unauthorized user", http.StatusUnauthorized)
+			writeJSONError(w, "unauthorized user", http.StatusUnauthorized)
 			return
 		}
 
@@ -200,16 +208,17 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 		case http.MethodPost:
 			updateManifest, err := ioutil.ReadAll(r.Body)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeJSONError(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			err = cc.UpdateManifest(r.Context(), updateManifest)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
+				writeJSONError(w, err.Error(), http.StatusBadRequest)
 				return
 			}
+			writeJSON(w, nil)
 		default:
-			http.Error(w, "", http.StatusMethodNotAllowed)
+			writeJSONError(w, "", http.StatusMethodNotAllowed)
 		}
 	})
 
@@ -217,9 +226,19 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 }
 
 func writeJSON(w http.ResponseWriter, v interface{}) {
-	if err := json.NewEncoder(w).Encode(v); err != nil {
+	dataToReturn := generalResponse{Status: "success", Data: v}
+	if err := json.NewEncoder(w).Encode(dataToReturn); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+func writeJSONError(w http.ResponseWriter, errorString string, httpErrorCode int) {
+	marshalledJSON, err := json.Marshal(generalResponse{Status: "error", Message: errorString})
+	// Only fall back to non-JSON error when we cannot even marshal the error (which is pretty bad)
+	if err != nil {
+		http.Error(w, errorString, httpErrorCode)
+	}
+	http.Error(w, string(marshalledJSON), httpErrorCode)
 }
 
 // RunClientServer runs a HTTP server serving mux.
