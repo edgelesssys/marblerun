@@ -19,6 +19,7 @@ import (
 
 	"github.com/edgelesssys/ertgolib/marble"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
+	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
@@ -104,7 +105,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 }
 
 // verifyManifestRequirement verifies marble attempting to register with respect to manifest
-func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, quote []byte, marbleType string) error {
+func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, certQuote []byte, marbleType string) error {
 	marble, ok := c.manifest.Marbles[marbleType]
 	if !ok {
 		return status.Error(codes.InvalidArgument, "unknown marble type requested")
@@ -122,15 +123,21 @@ func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, quote []byte
 	}
 
 	if !c.inSimulationMode() {
-		infraMatch := false
-		for _, infra := range c.manifest.Infrastructures {
-			if c.qv.Validate(quote, tlsCert.Raw, pkg, infra) == nil {
-				infraMatch = true
-				break
+		if len(c.manifest.Infrastructures) == 0 {
+			if err := c.qv.Validate(certQuote, tlsCert.Raw, pkg, quote.InfrastructureProperties{}); err != nil {
+				return status.Errorf(codes.Unauthenticated, "invalid quote: %v", err)
 			}
-		}
-		if !infraMatch {
-			return status.Error(codes.Unauthenticated, "invalid quote")
+		} else {
+			infraMatch := false
+			for _, infra := range c.manifest.Infrastructures {
+				if c.qv.Validate(certQuote, tlsCert.Raw, pkg, infra) == nil {
+					infraMatch = true
+					break
+				}
+			}
+			if !infraMatch {
+				return status.Error(codes.Unauthenticated, "invalid quote")
+			}
 		}
 	}
 

@@ -1,6 +1,7 @@
 {
     "Packages": {
         "world": {
+            "Debug": true,
             "UniqueID": "<replace with mrenclave obtained by `ego uniqueid hello`>"
         }
     },
