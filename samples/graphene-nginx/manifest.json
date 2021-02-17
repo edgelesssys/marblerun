@@ -1,0 +1,19 @@
+{
+    "Packages": {
+        "nginx": {
+            "Debug": true
+        }
+    },
+    "Marbles": {
+        "frontend": {
+            "Package": "nginx",
+            "Parameters": {
+                "Argv": [
+                    "./nginx",
+                    "-c",
+                    "conf/nginx-graphene.conf"
+                ]
+            }
+        }
+    }
+}

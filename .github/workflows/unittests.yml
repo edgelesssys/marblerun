@@ -30,7 +30,7 @@ jobs:
     - name: Integration test
       run: ertgo test -tags integration -b ../build -s
       working-directory: test
-    
+
     - name: Integration test (-noenclave)
       run: ertgo test -tags integration -b ../build -noenclave
       working-directory: test
@@ -43,6 +43,7 @@ jobs:
           build/coordinator-enclave.signed
           build/coordinator-noenclave
           build/coordinator-era.json
+          build/premain-graphene
 
     - name: Deploy coordinator:nightly
       if: github.ref == 'refs/heads/master' &&

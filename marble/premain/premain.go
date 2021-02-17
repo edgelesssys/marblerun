@@ -103,6 +103,11 @@ func PreMainMock() error {
 	return preMain(quote.NewFailIssuer(), activateRPC, hostfs, hostfs)
 }
 
+// PreMainEx is like PreMain, but allows to customize the quoting and file system handling.
+func PreMainEx(issuer quote.Issuer, hostfs, enclavefs afero.Fs) error {
+	return preMain(issuer, activateRPC, hostfs, enclavefs)
+}
+
 func preMain(issuer quote.Issuer, activate activateFunc, hostfs, enclavefs afero.Fs) error {
 	prefixBackup := log.Prefix()
 	defer log.SetPrefix(prefixBackup)
@@ -150,7 +155,7 @@ func preMain(issuer quote.Issuer, activate activateFunc, hostfs, enclavefs afero
 	}
 	quote, err := issuer.Issue(cert.Raw)
 	if err != nil {
-		log.Println("failed to get quote. Proceeding in simulation mode")
+		log.Printf("failed to get quote: %v. Proceeding in simulation mode", err)
 		// If we run in SimulationMode we get an error here
 		// For testing purpose we do not want to just fail here
 		// Instead we store an empty quote that will only be accepted if the coordinator also runs in SimulationMode
