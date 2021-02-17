@@ -5,18 +5,18 @@ This sample shows how to build a confidential Go application with [EGo](https://
 You can build the sample as follows:
 ```sh
 ego-go build
-ego sign hello
+ego sign helloworld
 ```
 
 Then get the enclave's unique ID aka MRENCLAVE
 ```sh
-ego uniqueid hello
+ego uniqueid helloworld
 ```
 and set it as `UniqueID` in `manifest.json`.
 
 After you have [started a Coordinator instance](../../BUILD.md#run-the-coordinator) with `EDG_COORDINATOR_MESH_ADDR=localhost:2001` and [initialized it with the Manifest](../../BUILD.md#create-a-manifest), you can run your application:
 ```sh
-EDG_MARBLE_COORDINATOR_ADDR=localhost:2001 EDG_MARBLE_TYPE=hello EDG_MARBLE_UUID_FILE=$PWD/uuid EDG_MARBLE_DNS_NAMES=localhost ego marblerun hello
+EDG_MARBLE_COORDINATOR_ADDR=localhost:2001 EDG_MARBLE_TYPE=hello EDG_MARBLE_UUID_FILE=$PWD/uuid EDG_MARBLE_DNS_NAMES=localhost ego marblerun helloworld
 ```
 
 This app will then serve HTTP on port 8080:
