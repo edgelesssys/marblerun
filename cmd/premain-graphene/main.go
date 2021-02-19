@@ -8,12 +8,15 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
+	"io/ioutil"
 	"os"
 	"strings"
 	"syscall"
 
+	"github.com/edgelesssys/marblerun/coordinator/rpc"
 	"github.com/edgelesssys/marblerun/marble/premain"
 	"github.com/spf13/afero"
+	"google.golang.org/grpc/credentials"
 )
 
 func main() {
@@ -30,7 +33,7 @@ func main() {
 	service := os.Args[0]
 
 	hostfs := afero.NewOsFs()
-	if err := premain.PreMainEx(quoteIssuer{}, hostfs, hostfs); err != nil {
+	if err := premain.PreMainEx(quoteIssuer{}, activate, hostfs, hostfs); err != nil {
 		panic(err)
 	}
 
@@ -50,6 +53,25 @@ func toCArray(arr []string) []*C.char {
 		result[i] = C.CString(s)
 	}
 	return result
+}
+
+func activate(req *rpc.ActivationReq, coordAddr string, tlsCredentials credentials.TransportCredentials) (*rpc.Parameters, error) {
+	// call the actual Activate function
+	params, err := premain.ActivateRPC(req, coordAddr, tlsCredentials)
+	if err != nil {
+		return nil, err
+	}
+
+	// Write the protected files key if present. We must do this "manually" here because premain will write files
+	// in an unspecified order. However, the key must be written before any other protected file is written.
+	const pfKeyPath = "/dev/attestation/protected_files_key"
+	if key, ok := params.Files[pfKeyPath]; ok {
+		if err := ioutil.WriteFile(pfKeyPath, []byte(key), 0); err != nil {
+			return nil, err
+		}
+	}
+
+	return params, nil
 }
 
 type quoteIssuer struct{}

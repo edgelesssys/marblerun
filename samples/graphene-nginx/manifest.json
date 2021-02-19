@@ -12,7 +12,26 @@
                     "./nginx",
                     "-c",
                     "conf/nginx-graphene.conf"
-                ]
+                ],
+                "Files": {
+                    "/dev/attestation/protected_files_key": "{{ hex .Marblerun.SealKey }}",
+                    "install/conf/server.crt": "{{ pem .Secrets.server_cert.Cert }}",
+                    "install/conf/server.key": "{{ pem .Secrets.server_cert.Private }}"
+                }
+            }
+        }
+    },
+    "Secrets": {
+        "server_cert": {
+            "Type": "cert-ecdsa",
+            "Size": 256,
+            "Cert": {
+                "Subject": {
+                    "CommonName": "localhost",
+                    "DNSNames": [
+                        "localhost"
+                    ]
+                }
             }
         }
     }

@@ -16,17 +16,23 @@ sgx.thread_num = 16
 ```
 See [hello.manifest.template](../graphene-hello/hello.manifest.template) from the other sample for explanations of these values.
 
+Replace `sgx.trusted_files.cert` and `sgx.trusted_files.privkey` with
+```toml
+sgx.protected_files.cert    = "file:install/conf/server.crt"
+sgx.protected_files.privkey = "file:install/conf/server.key"
+```
+The server certificate will be injected by Marblerun, see [manifest.json](manifest.json).
+
 As you increased the `enclave_size`, you may need to decrease the number of `worker_processes` in `nginx-graphene.conf.template` to 1 or 2.
 
 Build the sample as follows:
 ```sh
 wget https://github.com/edgelesssys/marblerun/releases/latest/download/premain-graphene
 make SGX=1
+rm install/conf/server.*
 ```
 
 After you have [started a Coordinator instance](../../BUILD.md#run-the-coordinator) with `EDG_COORDINATOR_MESH_ADDR=localhost:2001` and [initialized it with the Manifest](../../BUILD.md#create-a-manifest), you can run your application:
 ```sh
 EDG_MARBLE_COORDINATOR_ADDR=localhost:2001 EDG_MARBLE_TYPE=frontend EDG_MARBLE_UUID_FILE=uuid EDG_MARBLE_DNS_NAMES=localhost SGX=1 ./pal_loader nginx
 ```
-
-TODO Get TLS certificate from Coordinator and store it as a Graphene Protected File.
