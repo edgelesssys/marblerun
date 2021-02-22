@@ -1,0 +1,81 @@
+--- nginx.manifest.template	2021-02-18 10:16:17.872293408 +0000
++++ nginx.manifest.template_	2021-02-22 20:33:21.745996000 +0000
+@@ -2,7 +2,11 @@
+ #
+ # This manifest was prepared and tested on Ubuntu 18.04.
+ 
+-libos.entrypoint = "file:$(INSTALL_DIR)/sbin/nginx"
++libos.entrypoint = "file:premain-graphene"
++sgx.trusted_files.premain = "file:premain-graphene"
++
++loader.argv0_override = "$(INSTALL_DIR)/sbin/nginx"
++loader.insecure__use_host_env = 1
+ 
+ # Path to the library OS
+ loader.preload = "file:$(GRAPHENEDIR)/Runtime/libsysdb.so"
+@@ -57,9 +61,9 @@
+ # Set the virtual memory size of the SGX enclave. For SGX v1, the enclave
+ # size must be specified during signing. If Nginx needs more virtual memory
+ # than the enclave size, Graphene will not be able to allocate it.
+-sgx.enclave_size = "256M"
++sgx.enclave_size = "1024M"
+ 
+-sgx.nonpie_binary = 1
++# sgx.nonpie_binary = 1
+ 
+ # Set the maximum number of enclave threads. For SGX v1, the number of enclave
+ # TCSes must be specified during signing, so the application cannot use more
+@@ -69,11 +73,13 @@
+ # the application can create is (sgx.thread_num - 2).
+ #
+ # We (somewhat arbitrarily) specify 4 threads since Nginx is single-threaded.
+-sgx.thread_num = 4
++sgx.thread_num = 16
+ 
+ # Nginx benefits from Exitless. Uncomment the below line to use it.
+ #sgx.rpc_thread_num = 4
+ 
++sgx.remote_attestation = 1
++
+ # SGX trusted files
+ 
+ sgx.trusted_files.nginx = "file:$(INSTALL_DIR)/sbin/nginx"
+@@ -91,6 +97,7 @@
+ sgx.trusted_files.libnsscompat = "file:$(ARCH_LIBDIR)/libnss_compat.so.2"
+ sgx.trusted_files.libnssfiles = "file:$(ARCH_LIBDIR)/libnss_files.so.2"
+ sgx.trusted_files.libnssnis = "file:$(ARCH_LIBDIR)/libnss_nis.so.2"
++sgx.trusted_files.libnsssystemd = "file:$(ARCH_LIBDIR)/libnss_systemd.so.2"
+ 
+ # libNSL is a dependency of libnss_compat above
+ sgx.trusted_files.libnsl = "file:$(ARCH_LIBDIR)/libnsl.so.1"
+@@ -98,8 +105,12 @@
+ # Nginx configuration (trusted)
+ sgx.trusted_files.conf1   = "file:$(INSTALL_DIR)/conf/nginx-graphene.conf"
+ sgx.trusted_files.conf2   = "file:$(INSTALL_DIR)/conf/mime.types"
+-sgx.trusted_files.cert    = "file:$(INSTALL_DIR)/conf/server.crt"
+-sgx.trusted_files.privkey = "file:$(INSTALL_DIR)/conf/server.key"
++
++sgx.protected_files.cert    = "file:$(INSTALL_DIR)/conf/server.crt"
++sgx.protected_files.privkey = "file:$(INSTALL_DIR)/conf/server.key"
++
++sgx.allowed_files.cert    = "file:$(INSTALL_DIR)/conf/server.crt"
++sgx.allowed_files.privkey = "file:$(INSTALL_DIR)/conf/server.key"
+ 
+ # Nginx HTTP documents (trusted)
+ # We only specify those documents used in our tests/benchmarks
+@@ -114,9 +125,15 @@
+ # Nginx logs directory (untrusted and allowed, since log files are not security-critical)
+ sgx.allowed_files.logs = "file:$(INSTALL_DIR)/logs"
+ 
++# pre-main allowed files
++sgx.allowed_files.uuid = "file:uuid"
++sgx.allowed_files.localtime = "file:/etc/localtime"
++
+ # Name Service Switch (NSS) files (Glibc reads these files)
+ sgx.allowed_files.nsswitch = "file:/etc/nsswitch.conf"
+ sgx.allowed_files.ethers = "file:/etc/ethers"
+ sgx.allowed_files.hosts = "file:/etc/hosts"
+ sgx.allowed_files.group = "file:/etc/group"
+ sgx.allowed_files.passwd = "file:/etc/passwd"
++sgx.allowed_files.resolv = "file:/etc/resolv.conf"
++sgx.allowed_files.hostconf = "file:/etc/host.conf"
