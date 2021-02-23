@@ -106,11 +106,8 @@ sgx.trusted_files.libnsl = "file:$(ARCH_LIBDIR)/libnsl.so.1"
 sgx.trusted_files.conf1   = "file:$(INSTALL_DIR)/conf/nginx-graphene.conf"
 sgx.trusted_files.conf2   = "file:$(INSTALL_DIR)/conf/mime.types"
 
-sgx.protected_files.cert    = "file:$(INSTALL_DIR)/conf/server.crt"
-sgx.protected_files.privkey = "file:$(INSTALL_DIR)/conf/server.key"
-
-sgx.allowed_files.cert    = "file:$(INSTALL_DIR)/conf/server.crt"
-sgx.allowed_files.privkey = "file:$(INSTALL_DIR)/conf/server.key"
+sgx.protected_files.cert    = "file:install/conf/server.crt"
+sgx.protected_files.privkey = "file:install/conf/server.key"
 
 # Nginx HTTP documents (trusted)
 # We only specify those documents used in our tests/benchmarks

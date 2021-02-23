@@ -29,7 +29,8 @@ sgx.protected_files.cert    = "file:install/conf/server.crt"
 sgx.protected_files.privkey = "file:install/conf/server.key"
 ```
 We delete these files before running nginx as they are handled by Marblerun.
-The server certificate, for instance, will be injected by Marblerun, see [manifest.json](manifest.json).
+The server certificate, for instance, will be injected by Marblerun. See
+[manifest.json](manifest.json) on how this is specified.
 
 As we increased the `enclave_size`, we might need to decrease the number of `worker_processes` in `nginx-graphene.conf.template` to 1 or 2.
 Again we mention this for your information. The changes are already made to the conf.
@@ -42,7 +43,7 @@ rm install/conf/server.*  # handled by Marblerun
 ```
 
 
-Once the [Coordinator instance is started](../../BUILD.md#run-the-coordinator) with `EDG_COORDINATOR_MESH_ADDR=localhost:2001` and [initialized it with the Manifest](../../BUILD.md#create-a-manifest), you can run your application:
+Once the [Coordinator instance is started](../../BUILD.md#run-the-coordinator) with `EDG_COORDINATOR_MESH_ADDR=localhost:2001` and [initialized with the Manifest](../../BUILD.md#create-a-manifest), you can run your application:
 ```sh
 EDG_MARBLE_COORDINATOR_ADDR=localhost:2001 EDG_MARBLE_TYPE=frontend EDG_MARBLE_UUID_FILE=uuid EDG_MARBLE_DNS_NAMES=localhost SGX=1 ./pal_loader nginx
 ```

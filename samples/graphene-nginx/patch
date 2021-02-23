@@ -1,5 +1,5 @@
---- nginx.manifest.template	2021-02-18 10:16:17.872293408 +0000
-+++ nginx.manifest.template_	2021-02-22 20:33:21.745996000 +0000
+--- /home/behrad/SGX/graphene/Examples/nginx/nginx.manifest.template_orig	2021-02-18 18:11:06.208477275 +0100
++++ nginx.manifest.template	2021-02-23 13:56:36.432606855 +0100
 @@ -2,7 +2,11 @@
  #
  # This manifest was prepared and tested on Ubuntu 18.04.
@@ -48,22 +48,19 @@
  
  # libNSL is a dependency of libnss_compat above
  sgx.trusted_files.libnsl = "file:$(ARCH_LIBDIR)/libnsl.so.1"
-@@ -98,8 +105,12 @@
+@@ -98,8 +105,9 @@
  # Nginx configuration (trusted)
  sgx.trusted_files.conf1   = "file:$(INSTALL_DIR)/conf/nginx-graphene.conf"
  sgx.trusted_files.conf2   = "file:$(INSTALL_DIR)/conf/mime.types"
 -sgx.trusted_files.cert    = "file:$(INSTALL_DIR)/conf/server.crt"
 -sgx.trusted_files.privkey = "file:$(INSTALL_DIR)/conf/server.key"
 +
-+sgx.protected_files.cert    = "file:$(INSTALL_DIR)/conf/server.crt"
-+sgx.protected_files.privkey = "file:$(INSTALL_DIR)/conf/server.key"
-+
-+sgx.allowed_files.cert    = "file:$(INSTALL_DIR)/conf/server.crt"
-+sgx.allowed_files.privkey = "file:$(INSTALL_DIR)/conf/server.key"
++sgx.protected_files.cert    = "file:install/conf/server.crt"
++sgx.protected_files.privkey = "file:install/conf/server.key"
  
  # Nginx HTTP documents (trusted)
  # We only specify those documents used in our tests/benchmarks
-@@ -114,9 +125,15 @@
+@@ -114,9 +122,15 @@
  # Nginx logs directory (untrusted and allowed, since log files are not security-critical)
  sgx.allowed_files.logs = "file:$(INSTALL_DIR)/logs"
  
