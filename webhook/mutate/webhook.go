@@ -122,8 +122,13 @@ func mutate(body []byte, injectSgx bool) ([]byte, error) {
 			Value: fmt.Sprintf("%s,%s.%s,%s.%s.svc.cluster.local", marbleType, marbleType, namespace, marbleType, namespace),
 		},
 		{
-			Name:  "EDG_MARBLE_UUID_FILE",
-			Value: string(pod.UID), // fmt.Sprintf("/%s/data/uuid", marbleType),
+			Name: "EDG_MARBLE_UUID_FILE",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					APIVersion: "v1",
+					FieldPath:  "metadata.uid",
+				},
+			},
 		},
 	}
 
