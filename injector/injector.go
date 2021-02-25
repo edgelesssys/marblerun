@@ -1,4 +1,4 @@
-package mutate
+package injector
 
 import (
 	"encoding/json"
@@ -13,11 +13,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// CoordAddr contains the address of the marblerun coordinator
-var CoordAddr string
+// Mutator struct
+type Mutator struct {
+	// CoordAddr contains the address of the marblerun coordinator
+	CoordAddr string
+}
 
 // HandleMutate handles mutate requests and injects sgx tolerations into the request
-func HandleMutate(w http.ResponseWriter, r *http.Request) {
+func (m *Mutator) HandleMutate(w http.ResponseWriter, r *http.Request) {
 	log.Println("Handling mutate request, injecting sgx tolerations")
 	body := checkRequest(w, r)
 	if body == nil {
@@ -26,7 +29,7 @@ func HandleMutate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// mutate the request and add sgx tolerations to pod
-	mutatedBody, err := mutate(body, true)
+	mutatedBody, err := mutate(body, m.CoordAddr, true)
 	if err != nil {
 		http.Error(w, "unable to mutate request", http.StatusInternalServerError)
 		return
@@ -37,7 +40,7 @@ func HandleMutate(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleMutateNoSgx is called when the sgx injection label is not set
-func HandleMutateNoSgx(w http.ResponseWriter, r *http.Request) {
+func (m *Mutator) HandleMutateNoSgx(w http.ResponseWriter, r *http.Request) {
 	log.Println("Handling mutate request, omitting sgx injection")
 	body := checkRequest(w, r)
 	if body == nil {
@@ -46,7 +49,7 @@ func HandleMutateNoSgx(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// mutate the request and add sgx tolerations to pod
-	mutatedBody, err := mutate(body, false)
+	mutatedBody, err := mutate(body, m.CoordAddr, false)
 	if err != nil {
 		http.Error(w, "unable to mutate request", http.StatusInternalServerError)
 		return
@@ -57,7 +60,7 @@ func HandleMutateNoSgx(w http.ResponseWriter, r *http.Request) {
 }
 
 // mutate handles the creation of json patches for pods
-func mutate(body []byte, injectSgx bool) ([]byte, error) {
+func mutate(body []byte, coordAddr string, injectSgx bool) ([]byte, error) {
 	admReviewReq := v1.AdmissionReview{}
 	if err := json.Unmarshal(body, &admReviewReq); err != nil {
 		return nil, errors.New("invalid admission review")
@@ -111,7 +114,7 @@ func mutate(body []byte, injectSgx bool) ([]byte, error) {
 	newEnvVars := []corev1.EnvVar{
 		{
 			Name:  "EDG_MARBLE_COORDINATOR_ADDR",
-			Value: CoordAddr,
+			Value: coordAddr,
 		},
 		{
 			Name:  "EDG_MARBLE_TYPE",
@@ -121,31 +124,53 @@ func mutate(body []byte, injectSgx bool) ([]byte, error) {
 			Name:  "EDG_MARBLE_DNS_NAMES",
 			Value: fmt.Sprintf("%s,%s.%s,%s.%s.svc.cluster.local", marbleType, marbleType, namespace, marbleType, namespace),
 		},
-		{
-			Name: "EDG_MARBLE_UUID_FILE",
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{
-					APIVersion: "v1",
-					FieldPath:  "metadata.uid",
-				},
-			},
-		},
 	}
 
 	var patch []map[string]interface{}
+	var needNewVolume bool
 
 	// create env variable patches for each container of the pod
 	for idx, container := range pod.Spec.Containers {
+		if !envIsSet(container.Env, corev1.EnvVar{Name: "EDG_MARBLE_UUID_FILE"}) {
+			needNewVolume = true
+
+			newEnvVars = append(newEnvVars, corev1.EnvVar{
+				Name:  "EDG_MARBLE_UUID_FILE",
+				Value: fmt.Sprintf("/%s/data/uuid", marbleType),
+			})
+
+			// If we need to set the uuid env variable we also need to create a volume mount, which the variable points to
+			patch = append(patch, createMountPatch(
+				len(container.VolumeMounts),
+				fmt.Sprintf("/spec/containers/%d/volumeMounts", idx),
+				fmt.Sprintf("/%s/data", marbleType),
+			))
+		}
+
 		patch = append(patch, addEnvVar(container.Env, newEnvVars, fmt.Sprintf("/spec/containers/%d/env", idx))...)
+	}
+
+	if needNewVolume {
+		patch = append(patch, createVolumePatch(len(pod.Spec.Volumes)))
 	}
 
 	// add sgx tolerations if enabled
 	if injectSgx {
-		patch = append(patch, map[string]interface{}{
-			"op":    "add",
-			"path":  "/spec/tolerations/-",
-			"value": corev1.Toleration{Key: "kubernetes.azure.com/sgx_epc_mem_in_MiB"},
-		})
+		if len(pod.Spec.Tolerations) <= 0 {
+			// create array if this is the first toleration of the pod
+			patch = append(patch, map[string]interface{}{
+				"op":    "add",
+				"path":  "/spec/tolerations",
+				"value": []corev1.Toleration{{Key: "kubernetes.azure.com/sgx_epc_mem_in_MiB"}},
+			})
+		} else {
+			// append as last element of the tolerations array otherwise
+			patch = append(patch, map[string]interface{}{
+				"op":    "add",
+				"path":  "/spec/tolerations/-",
+				"value": corev1.Toleration{Key: "kubernetes.azure.com/sgx_epc_mem_in_MiB"},
+			})
+		}
 	}
 
 	// convert admission response into bytes and return
@@ -205,6 +230,8 @@ func addEnvVar(setVars, newVars []corev1.EnvVar, basePath string) []map[string]i
 	for _, newVar := range newVars {
 		newValue = newVar
 		path := basePath
+		// if the to be added env variable is the first of the pod we have to create the env field of the spec as an array
+		// otherwise we append the env variable the as the last element to the array
 		if first {
 			first = false
 			newValue = []corev1.EnvVar{newVar}
@@ -220,4 +247,58 @@ func addEnvVar(setVars, newVars []corev1.EnvVar, basePath string) []map[string]i
 		}
 	}
 	return envPatch
+}
+
+func createMountPatch(mounts int, path string, mountpath string) map[string]interface{} {
+	val := corev1.VolumeMount{
+		Name:      "uuid-file",
+		MountPath: mountpath,
+	}
+
+	// If no other volumeMounts exist we have to created the first one as an array
+	if mounts <= 0 {
+		return map[string]interface{}{
+			"op":    "add",
+			"path":  path,
+			"value": []corev1.VolumeMount{val},
+		}
+	}
+	return map[string]interface{}{
+		"op":    "add",
+		"path":  fmt.Sprintf("%s/-", path),
+		"value": val,
+	}
+
+}
+
+func createVolumePatch(volumes int) map[string]interface{} {
+	val := corev1.Volume{
+		Name: "uuid-file",
+		VolumeSource: corev1.VolumeSource{
+			DownwardAPI: &corev1.DownwardAPIVolumeSource{
+				Items: []corev1.DownwardAPIVolumeFile{
+					{
+						Path: "uuid",
+						FieldRef: &corev1.ObjectFieldSelector{
+							FieldPath: "metadata.uid",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// If no other volumes exist we have to created the first one as an array
+	if volumes <= 0 {
+		return map[string]interface{}{
+			"op":    "add",
+			"path":  "/spec/volumes",
+			"value": []corev1.Volume{val},
+		}
+	}
+	return map[string]interface{}{
+		"op":    "add",
+		"path":  "/spec/volumes/-",
+		"value": val,
+	}
 }
