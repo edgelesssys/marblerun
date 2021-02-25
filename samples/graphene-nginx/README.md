@@ -1,5 +1,5 @@
 # Graphene nginx sample
-This sample is a slightly modified variant of the [Graphene nginx sample](https://github.com/oscarlab/graphene/tree/master/Examples/nginx). Changes are required to run it in Marblerun.
+This sample is a slightly modified variant of the [Graphene nginx sample](https://github.com/oscarlab/graphene/tree/master/Examples/nginx). These changes are required to run it in Marblerun.
 
 *Prerequisite*: Graphene is set up and the original nginx sample is working.
 
@@ -10,6 +10,7 @@ We also removed certificate generation from the Makefile because it will be prov
 We now build the sample as follows:
 ```sh
 wget https://github.com/edgelesssys/marblerun/releases/latest/download/premain-graphene
+export GRAPHENEDIR=[PATH To Your Graphene Folder]
 make SGX=1
 ```
 
