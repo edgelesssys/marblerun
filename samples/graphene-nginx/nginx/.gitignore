@@ -1,0 +1,7 @@
+*.tar.gz
+/install/*
+/nginx-*/*
+/OUTPUT
+/result-*
+/ssl/ca.*
+/ssl/server.*
