@@ -39,7 +39,7 @@ func newInstallCmd() *cobra.Command {
 	var chartPath string
 	var simulation bool
 	var noSgxDevicePlugin bool
-	var inject bool
+	var disableInjection bool
 	var meshServerPort int
 	var clientServerPort int
 
@@ -50,7 +50,7 @@ func newInstallCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			settings = cli.New()
-			return cliInstall(chartPath, domain, simulation, noSgxDevicePlugin, inject, clientServerPort, meshServerPort, settings)
+			return cliInstall(chartPath, domain, simulation, noSgxDevicePlugin, disableInjection, clientServerPort, meshServerPort, settings)
 		},
 		SilenceUsage: true,
 	}
@@ -59,7 +59,7 @@ func newInstallCmd() *cobra.Command {
 	cmd.Flags().StringVar(&chartPath, "marblerun-chart-path", "", "Path to marblerun helm chart")
 	cmd.Flags().BoolVar(&simulation, "simulation", false, "Set marblerun to start in simulation mode")
 	cmd.Flags().BoolVar(&noSgxDevicePlugin, "no-sgx-device-plugin", false, "Disables the installation of an sgx device plugin")
-	cmd.Flags().BoolVar(&inject, "auto-injection", false, "Enable automatic injection of selected namespaces")
+	cmd.Flags().BoolVar(&disableInjection, "disable-auto-injection", false, "Disable automatic injection of selected namespaces")
 	cmd.Flags().IntVar(&meshServerPort, "mesh-server-port", 25554, "Set the mesh server port. Needs to be configured to the same port as in the data-plane marbles")
 	cmd.Flags().IntVar(&clientServerPort, "client-server-port", 25555, "Set the client server port. Needs to be configured to the same port as in your client tool stack")
 
@@ -67,7 +67,7 @@ func newInstallCmd() *cobra.Command {
 }
 
 // cliInstall installs marblerun on the cluster
-func cliInstall(path string, hostname string, sim bool, noSgx bool, inject bool, clientPort int, meshPort int, settings *cli.EnvSettings) error {
+func cliInstall(path string, hostname string, sim bool, noSgx bool, disableInjection bool, clientPort int, meshPort int, settings *cli.EnvSettings) error {
 	actionConfig := new(action.Configuration)
 	if err := actionConfig.Init(settings.RESTClientGetter(), "marblerun", os.Getenv("HELM_DRIVER"), debug); err != nil {
 		return err
@@ -102,7 +102,7 @@ func cliInstall(path string, hostname string, sim bool, noSgx bool, inject bool,
 	vals["coordinator"].(map[string]interface{})["meshServerPort"] = meshPort
 	vals["coordinator"].(map[string]interface{})["clientServerPort"] = clientPort
 
-	if inject {
+	if !disableInjection {
 		if err := installWebhook(vals); err != nil {
 			return err
 		}
@@ -245,7 +245,7 @@ func findKubeConfig() (string, error) {
 		if err != nil {
 			return "", err
 		}
-		path = homedir + "/.kube/config"
+		path = filepath.Join(homedir, ".kube", "config")
 	}
 	return path, nil
 }
@@ -292,7 +292,7 @@ func genWebhookCerts() error {
 	fmt.Printf(".")
 
 	// get the csr which should now contain the signed certificate
-	csr, err = kubeClient.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), "marble-injector.marblerun", metav1.GetOptions{})
+	csr, err = kubeClient.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), webhookName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -350,7 +350,7 @@ func genCsr(privKey *rsa.PrivateKey) (*certv1.CertificateSigningRequest, error) 
 	// create the k8s certificate request which bundles the x509 csr
 	certificateRequest := &certv1.CertificateSigningRequest{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "marble-injector.marblerun",
+			Name: webhookName,
 		},
 		Spec: certv1.CertificateSigningRequestSpec{
 			Request:    pem.EncodeToMemory(csrPEM),
@@ -372,8 +372,8 @@ func sendAndApprove(csr *certv1.CertificateSigningRequest, kubeClient *kubernete
 		return err
 	}
 
-	if err := waitForResource("marble-injector.marblerun", kubeClient, 10, func(string, *kubernetes.Clientset) bool {
-		_, err := kubeClient.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), "marble-injector.marblerun", metav1.GetOptions{})
+	if err := waitForResource(webhookName, kubeClient, 10, func(string, *kubernetes.Clientset) bool {
+		_, err := kubeClient.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), webhookName, metav1.GetOptions{})
 		if err != nil {
 			return false
 		}
@@ -392,10 +392,10 @@ func sendAndApprove(csr *certv1.CertificateSigningRequest, kubeClient *kubernete
 		LastUpdateTime: metav1.Now(),
 	})
 
-	_, err = kubeClient.CertificatesV1().CertificateSigningRequests().UpdateApproval(context.TODO(), "marble-injector.marblerun", certReturn, metav1.UpdateOptions{})
+	_, err = kubeClient.CertificatesV1().CertificateSigningRequests().UpdateApproval(context.TODO(), webhookName, certReturn, metav1.UpdateOptions{})
 
-	return waitForResource("marble-injector.marblerun", kubeClient, 10, func(string, *kubernetes.Clientset) bool {
-		csr, err := kubeClient.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), "marble-injector.marblerun", metav1.GetOptions{})
+	return waitForResource(webhookName, kubeClient, 10, func(string, *kubernetes.Clientset) bool {
+		csr, err := kubeClient.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), webhookName, metav1.GetOptions{})
 		if err != nil {
 			return false
 		}

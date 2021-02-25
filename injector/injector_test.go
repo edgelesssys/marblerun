@@ -1,14 +1,18 @@
-package mutate
+package injector
 
 import (
 	"encoding/json"
-	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/admission/v1"
 )
 
 func TestMutatesValidRequest(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
 	rawJSON := `{
 		"apiVersion": "admission.k8s.io/v1",
 		"kind": "AdmissionReview",
@@ -53,49 +57,29 @@ func TestMutatesValidRequest(t *testing.T) {
 		}
 	}`
 
-	CoordAddr = "coordinator-mesh-api.marblerun:25554"
-
 	// test if patch contains all desired values
-	response, err := mutate([]byte(rawJSON), true)
-	if err != nil {
-		t.Errorf("failed to mutate request with error %s", err)
-	}
-	r := v1.AdmissionReview{}
-	if err := json.Unmarshal(response, &r); err != nil {
-		t.Errorf("failed to unmarshal response with error %s", err)
-	}
+	response, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:25554", true)
+	require.NoError(err, "failed to mutate request")
 
-	if !strings.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env","value":[{"name":"EDG_MARBLE_COORDINATOR_ADDR","value":"coordinator-mesh-api.marblerun:25554"}]`) {
-		t.Error("failed to apply coordinator env variable patch")
-	}
-	if !strings.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env/-","value":{"name":"EDG_MARBLE_TYPE","value":"test"}`) {
-		t.Error("failed to apply marble type env variable patch")
-	}
-	if !strings.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env/-","value":{"name":"EDG_MARBLE_DNS_NAMES","value":"test,test.injectable,test.injectable.svc.cluster.local"}`) {
-		t.Error("failed to apply DNS name env varibale patch")
-	}
-	if !strings.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env/-","value":{"name":"EDG_MARBLE_UUID_FILE"`) {
-		t.Error("failed to apply marble UUID file env variable patch")
-	}
-	if !strings.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/tolerations/-","value":{"key":"kubernetes.azure.com/sgx_epc_mem_in_MiB"}`) {
-		t.Error("failed to apply tolerations patch")
-	}
+	r := v1.AdmissionReview{}
+	require.NoError(json.Unmarshal(response, &r), "failed to unmarshal response with error %s", err)
+	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env","value":[{"name":"EDG_MARBLE_COORDINATOR_ADDR","value":"coordinator-mesh-api.marblerun:25554"}]`, "failed to apply coordinator env variable patch")
+	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env/-","value":{"name":"EDG_MARBLE_TYPE","value":"test"}`, "failed to apply marble type env variable patch")
+	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env/-","value":{"name":"EDG_MARBLE_DNS_NAMES","value":"test,test.injectable,test.injectable.svc.cluster.local"}`, "failed to apply DNS name env varibale patch")
+	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env/-","value":{"name":"EDG_MARBLE_UUID_FILE"`, "failed to apply marble UUID file env variable patch")
+	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/tolerations","value":[{"key":"kubernetes.azure.com/sgx_epc_mem_in_MiB"}]`, "failed to apply tolerations patch")
 
 	// test if patch works without sgx values
-	response, err = mutate([]byte(rawJSON), false)
-	if err != nil {
-		t.Errorf("failed to mutate request with error %s", err)
-	}
-	if err := json.Unmarshal(response, &r); err != nil {
-		t.Errorf("failed to unmarshal response with error %s", err)
-	}
-
-	if strings.Contains(string(r.Response.Patch), `{"op":"add","path":"/spec/tolerations","value":{"key":"kubernetes.azure.com/sgx_epc_mem_in_MiB"}}`) {
-		t.Error("patch contained sgx tolerations, but tolerations were not supposed to be set")
-	}
+	response, err = mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:25554", false)
+	require.NoError(err, "failed to mutate request")
+	require.NoError(json.Unmarshal(response, &r), "failed to unmarshal response with error %s", err)
+	assert.NotContains(string(r.Response.Patch), `{"op":"add","path":"/spec/tolerations","value":{"key":"kubernetes.azure.com/sgx_epc_mem_in_MiB"}}`, "patch contained sgx tolerations, but tolerations were not supposed to be set")
 }
 
 func TestPreSetValues(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
 	rawJSON := `{
 		"apiVersion": "admission.k8s.io/v1",
 		"kind": "AdmissionReview",
@@ -158,32 +142,22 @@ func TestPreSetValues(t *testing.T) {
 		}
 	}`
 
-	CoordAddr = "coordinator-mesh-api.marblerun:25554"
+	response, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:25554", true)
+	require.NoError(err, "failed to mutate request")
 
-	response, err := mutate([]byte(rawJSON), true)
-	if err != nil {
-		t.Errorf("failed to mutate request with error %s", err)
-	}
 	r := v1.AdmissionReview{}
-	if err := json.Unmarshal(response, &r); err != nil {
-		t.Errorf("failed to unmarshal response with error %s", err)
-	}
+	require.NoError(json.Unmarshal(response, &r), "failed to unmarshal response with error %s", err)
 
-	if strings.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env"`) {
-		t.Error("applied coordinator env variable patch when it shouldnt have")
-	}
-	if strings.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env/-"`) {
-		t.Error("applied marble type env variable patch when it shouldnt have")
-	}
-	if strings.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env/-"`) {
-		t.Error("applied DNS name env varibale patch when it shouldnt have")
-	}
-	if strings.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env/-"`) {
-		t.Error("applied marble UUID file env variable patch when it shouldnt have")
-	}
+	assert.NotContains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env"`, "applied coordinator env variable patch when it shouldnt have")
+	assert.NotContains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env/-"`, "applied marble type env variable patch when it shouldnt have")
+	assert.NotContains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env/-"`, "applied DNS name env varibale patch when it shouldnt have")
+	assert.NotContains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env/-"`, "applied marble UUID file env variable patch when it shouldnt have")
 }
 
 func TestRejectsUnsetMarbletype(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
 	rawJSON := `{
 		"apiVersion": "admission.k8s.io/v1",
 		"kind": "AdmissionReview",
@@ -226,32 +200,28 @@ func TestRejectsUnsetMarbletype(t *testing.T) {
 			}
 		}
 	}`
-	CoordAddr = "coordinator-mesh-api.marblerun:25554"
 
-	response, err := mutate([]byte(rawJSON), true)
-	if err != nil {
-		t.Errorf("failed to mutate request with error %s", err)
-	}
+	response, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:25554", true)
+	require.NoError(err, "failed to mutate request")
+
 	r := v1.AdmissionReview{}
-	if err := json.Unmarshal(response, &r); err != nil {
-		t.Errorf("failed to unmarshal response with error %s", err)
-	}
+	require.NoError(json.Unmarshal(response, &r), "failed to unmarshal response with error %s", err)
 
-	if r.Response.Result.Status != "Rejected" {
-		t.Errorf("failed to reject pod on unset marbletype")
-	}
+	assert.Equal("Rejected", r.Response.Result.Status, "failed to reject pod on unset marbletype")
 }
 
 func TestErrorsOnInvalid(t *testing.T) {
+	require := require.New(t)
+
 	rawJSON := `This should return Error`
 
-	_, err := mutate([]byte(rawJSON), true)
-	if err == nil {
-		t.Error("did not fail on invalid request")
-	}
+	_, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:25554", true)
+	require.Error(err, "did not fail on invalid request")
 }
 
 func TestErrorsOnInvalidPod(t *testing.T) {
+	require := require.New(t)
+
 	rawJSON := `{
 		"apiVersion": "admission.k8s.io/v1",
 		"kind": "AdmissionReview",
@@ -259,8 +229,6 @@ func TestErrorsOnInvalidPod(t *testing.T) {
 			"object": "invalid"
 		}
 	}`
-	_, err := mutate([]byte(rawJSON), true)
-	if err == nil {
-		t.Errorf("did not fail when sending invalid request with error %s", err)
-	}
+	_, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:25554", true)
+	require.Error(err, "did not fail when sending invalid request")
 }

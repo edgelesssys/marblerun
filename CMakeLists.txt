@@ -54,6 +54,15 @@ add_custom_command(
 add_custom_target(sign-coordinator ALL DEPENDS coordinator-enclave.signed coordinator-config.json)
 
 #
+# Build marble-injector
+#
+
+add_custom_target(marble-injector ALL
+  go build
+  -o marble-injector
+  ${CMAKE_SOURCE_DIR}/cmd/marble-injector)
+
+#
 # Build marble-test
 #
 

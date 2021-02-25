@@ -12,6 +12,8 @@ import (
 	"github.com/edgelesssys/era/era"
 )
 
+const webhookName = "marble-injector.marblerun"
+
 var eraConfig string
 var insecureEra bool
 

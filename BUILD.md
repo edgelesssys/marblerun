@@ -125,6 +125,21 @@ Run a simple application.
 
     In the coordinator-terminal you should see `Successfully activated new Marble of type 'client: ...'`
 
+## Auotmatic Marble Injector
+
+By default a Marblerun installation ships with a Kubernetes [MutatingAdmissionWebhook](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#mutatingadmissionwebhook).
+The admission controller monitors selected namespaces of the cluster and injects the data-plane configuration into Deployments, Pods, etc.
+The marble-injector is only useful in a Kubernetes environment.
+
+You can build the marble-injector with:
+
+```bash
+mkdir build
+cd build
+cmake ..
+make marble-injector
+```
+
 ## Test
 
 ### Unit Tests
@@ -153,9 +168,14 @@ go test -v -tags integration ./test -b ../build -noenclave
 
 ## Docker image
 
-You can build the docker image by providing a signing key:
+You can build the docker image of the coordinator by providing a signing key:
 
 ```bash
 openssl genrsa -out private.pem -3 3072
-docker buildx build --secret id=signingkey,src=private.pem --target release --tag ghcr.io/edgelesssys/coordinator .
+docker buildx build --secret id=signingkey,src=private.pem --target release --tag ghcr.io/edgelesssys/coordinator -f dockerfiles/Dockerfile.coordinator .
 ```
+
+You can build the docker image of the marble-injector as follows:
+
+```bash
+docker build --tag ghcr.io/edgelesssys/marble-injector -f dockerfiles/Dockerfile.marble-injector .

@@ -64,7 +64,7 @@ func selectNamespaces(clientSet kubernetes.Interface) (*v1.NamespaceList, error)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	selector := fmt.Sprintf("%s=marblerun", marblerunAnnotation)
+	selector := fmt.Sprintf("%s=enabled", marblerunAnnotation)
 
 	return clientSet.CoreV1().Namespaces().List(ctx, metav1.ListOptions{
 		LabelSelector: selector,

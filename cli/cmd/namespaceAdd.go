@@ -59,7 +59,7 @@ func cliNameSpaceAdd(namespaces []string, clientSet kubernetes.Interface, inject
 {
 	"metadata": {
 		"labels": {
-			"%s": "marblerun",
+			"%s": "enabled",
 			"%s": "enabled"
 		}
 	}
