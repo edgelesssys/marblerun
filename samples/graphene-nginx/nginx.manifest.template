@@ -2,11 +2,8 @@
 #
 # This manifest was prepared and tested on Ubuntu 18.04.
 
+# MARBLERUN: entrypoint must be premain-graphene
 libos.entrypoint = "file:premain-graphene"
-sgx.trusted_files.premain = "file:premain-graphene"
-
-loader.argv0_override = "$(INSTALL_DIR)/sbin/nginx"
-loader.insecure__use_host_env = 1
 
 # Path to the library OS
 loader.preload = "file:$(GRAPHENEDIR)/Runtime/libsysdb.so"
@@ -61,9 +58,10 @@ fs.mount.cwd.uri = "file:$(INSTALL_DIR)"
 # Set the virtual memory size of the SGX enclave. For SGX v1, the enclave
 # size must be specified during signing. If Nginx needs more virtual memory
 # than the enclave size, Graphene will not be able to allocate it.
+# MARBLERUN: enclave must have enough memory for Go runtime of premain
 sgx.enclave_size = "1024M"
 
-# sgx.nonpie_binary = 1
+sgx.nonpie_binary = 1
 
 # Set the maximum number of enclave threads. For SGX v1, the number of enclave
 # TCSes must be specified during signing, so the application cannot use more
@@ -73,12 +71,11 @@ sgx.enclave_size = "1024M"
 # the application can create is (sgx.thread_num - 2).
 #
 # We (somewhat arbitrarily) specify 4 threads since Nginx is single-threaded.
+# MARBLERUN: enclave must have enough threads for Go runtime of premain
 sgx.thread_num = 16
 
 # Nginx benefits from Exitless. Uncomment the below line to use it.
 #sgx.rpc_thread_num = 4
-
-sgx.remote_attestation = 1
 
 # SGX trusted files
 
@@ -97,7 +94,6 @@ sgx.trusted_files.libpthread = "file:$(GRAPHENEDIR)/Runtime/libpthread.so.0"
 sgx.trusted_files.libnsscompat = "file:$(ARCH_LIBDIR)/libnss_compat.so.2"
 sgx.trusted_files.libnssfiles = "file:$(ARCH_LIBDIR)/libnss_files.so.2"
 sgx.trusted_files.libnssnis = "file:$(ARCH_LIBDIR)/libnss_nis.so.2"
-sgx.trusted_files.libnsssystemd = "file:$(ARCH_LIBDIR)/libnss_systemd.so.2"
 
 # libNSL is a dependency of libnss_compat above
 sgx.trusted_files.libnsl = "file:$(ARCH_LIBDIR)/libnsl.so.1"
@@ -105,7 +101,7 @@ sgx.trusted_files.libnsl = "file:$(ARCH_LIBDIR)/libnsl.so.1"
 # Nginx configuration (trusted)
 sgx.trusted_files.conf1   = "file:$(INSTALL_DIR)/conf/nginx-graphene.conf"
 sgx.trusted_files.conf2   = "file:$(INSTALL_DIR)/conf/mime.types"
-
+# MARBLERUN: these are provisioned by the Coordinator
 sgx.protected_files.cert    = "file:install/conf/server.crt"
 sgx.protected_files.privkey = "file:install/conf/server.key"
 
@@ -122,15 +118,24 @@ sgx.trusted_files.htdocs7 = "file:$(INSTALL_DIR)/html/random/10M.1.html"
 # Nginx logs directory (untrusted and allowed, since log files are not security-critical)
 sgx.allowed_files.logs = "file:$(INSTALL_DIR)/logs"
 
-# pre-main allowed files
-sgx.allowed_files.uuid = "file:uuid"
-sgx.allowed_files.localtime = "file:/etc/localtime"
-
 # Name Service Switch (NSS) files (Glibc reads these files)
 sgx.allowed_files.nsswitch = "file:/etc/nsswitch.conf"
 sgx.allowed_files.ethers = "file:/etc/ethers"
 sgx.allowed_files.hosts = "file:/etc/hosts"
 sgx.allowed_files.group = "file:/etc/group"
 sgx.allowed_files.passwd = "file:/etc/passwd"
-sgx.allowed_files.resolv = "file:/etc/resolv.conf"
-sgx.allowed_files.hostconf = "file:/etc/host.conf"
+
+# MARBLERUN: must trust premain-graphene
+sgx.trusted_files.premain = "file:premain-graphene"
+
+# MARBLERUN: argv0 must be the path to the actual application
+loader.argv0_override = "$(INSTALL_DIR)/sbin/nginx"
+
+# MARBLERUN: required and ok because premain will filter host env
+loader.insecure__use_host_env = 1
+
+# MARBLERUN: allow the marble's uuid file
+sgx.allowed_files.uuid = "file:uuid"
+
+# MARBLERUN: enable DCAP
+sgx.remote_attestation = 1

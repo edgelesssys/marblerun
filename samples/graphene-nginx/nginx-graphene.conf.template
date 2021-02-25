@@ -14,7 +14,8 @@
 # Uncomment "user nobody;" below to switch to this user. If you run under root, use
 # "user root;" instead. Typically there is no need to specify a non-default user.
 #user  nobody;
-#worker_processes 4;
+
+# MARBLERUN: changed from 4 to save memory: each process creates a new enclave and we increased the enclave_size
 worker_processes 2;
 
 #error_log  logs/error.log;
