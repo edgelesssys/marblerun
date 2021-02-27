@@ -92,3 +92,9 @@ add_custom_command(
 )
 
 add_custom_target(sign-marble-test ALL DEPENDS marble-test-enclave.signed marble-test-config.json)
+
+#
+# Build premain-graphene
+#
+
+add_custom_target(premain-graphene ALL ertgo build -buildmode=pie ${CMAKE_SOURCE_DIR}/cmd/premain-graphene)

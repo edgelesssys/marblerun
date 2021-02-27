@@ -94,16 +94,17 @@ func PreMain() error {
 		return err
 	}
 	enclavefs := afero.NewOsFs()
-	return preMain(ertvalidator.NewERTIssuer(), activateRPC, hostfs, enclavefs)
+	return PreMainEx(ertvalidator.NewERTIssuer(), ActivateRPC, hostfs, enclavefs)
 }
 
 // PreMainMock mocks the quoting and file system handling in the PreMain routine for testing.
 func PreMainMock() error {
 	hostfs := afero.NewOsFs()
-	return preMain(quote.NewFailIssuer(), activateRPC, hostfs, hostfs)
+	return PreMainEx(quote.NewFailIssuer(), ActivateRPC, hostfs, hostfs)
 }
 
-func preMain(issuer quote.Issuer, activate activateFunc, hostfs, enclavefs afero.Fs) error {
+// PreMainEx is like PreMain, but allows to customize the quoting and file system handling.
+func PreMainEx(issuer quote.Issuer, activate ActivateFunc, hostfs, enclavefs afero.Fs) error {
 	prefixBackup := log.Prefix()
 	defer log.SetPrefix(prefixBackup)
 	log.SetPrefix("[PreMain] ")
@@ -150,7 +151,7 @@ func preMain(issuer quote.Issuer, activate activateFunc, hostfs, enclavefs afero
 	}
 	quote, err := issuer.Issue(cert.Raw)
 	if err != nil {
-		log.Println("failed to get quote. Proceeding in simulation mode")
+		log.Printf("failed to get quote: %v. Proceeding in simulation mode", err)
 		// If we run in SimulationMode we get an error here
 		// For testing purpose we do not want to just fail here
 		// Instead we store an empty quote that will only be accepted if the coordinator also runs in SimulationMode
@@ -184,9 +185,11 @@ func preMain(issuer quote.Issuer, activate activateFunc, hostfs, enclavefs afero
 	return nil
 }
 
-type activateFunc func(req *rpc.ActivationReq, coordAddr string, tlsCredentials credentials.TransportCredentials) (*rpc.Parameters, error)
+// ActivateFunc is called by premain to activate the Marble and get its parameters.
+type ActivateFunc func(req *rpc.ActivationReq, coordAddr string, tlsCredentials credentials.TransportCredentials) (*rpc.Parameters, error)
 
-func activateRPC(req *rpc.ActivationReq, coordAddr string, tlsCredentials credentials.TransportCredentials) (*rpc.Parameters, error) {
+// ActivateRPC sends an activation request to the Coordinator.
+func ActivateRPC(req *rpc.ActivationReq, coordAddr string, tlsCredentials credentials.TransportCredentials) (*rpc.Parameters, error) {
 	connection, err := grpc.Dial(coordAddr, grpc.WithTransportCredentials(tlsCredentials))
 	if err != nil {
 		return nil, err

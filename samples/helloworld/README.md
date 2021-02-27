@@ -14,7 +14,18 @@ ego uniqueid helloworld
 ```
 and set it as `UniqueID` in `manifest.json`.
 
-After you have [started a Coordinator instance](../../BUILD.md#run-the-coordinator) with `EDG_COORDINATOR_MESH_ADDR=localhost:2001` and [initialized it with the Manifest](../../BUILD.md#create-a-manifest), you can run your application:
+We assume that the Coordinator is run with the following environment variables:
+- EDG_COORDINATOR_MESH_ADDR=localhost:2001
+- EDG_COORDINATOR_CLIENT_ADDR=localhost:4433
+- EDG_COORDINATOR_DNS_NAMES=localhost
+- EDG_COORDINATOR_SEAL_DIR=$PWD
+
+Once the [Coordinator instance is running](../../BUILD.md#run-the-coordinator), upload the manifest to the Coordinator:
+```sh
+curl -k --data-binary @manifest.json https://localhost:4433/manifest
+```
+
+Now we can run our application:
 ```sh
 EDG_MARBLE_COORDINATOR_ADDR=localhost:2001 EDG_MARBLE_TYPE=hello EDG_MARBLE_UUID_FILE=$PWD/uuid EDG_MARBLE_DNS_NAMES=localhost ego marblerun helloworld
 ```

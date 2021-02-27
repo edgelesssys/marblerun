@@ -66,7 +66,7 @@ func TestPreMain(t *testing.T) {
 
 		hostfs := afero.NewMemMapFs()
 		enclavefs := afero.NewMemMapFs()
-		require.NoError(preMain(issuer, activate, hostfs, enclavefs))
+		require.NoError(PreMainEx(issuer, activate, hostfs, enclavefs))
 
 		savedUUID, err := afero.ReadFile(hostfs, "uuidfile")
 		assert.NoError(err)
@@ -82,7 +82,7 @@ func TestPreMain(t *testing.T) {
 
 		hostfs := afero.NewMemMapFs()
 		enclavefs := afero.NewMemMapFs()
-		require.Error(preMain(issuer, activate, hostfs, enclavefs))
+		require.Error(PreMainEx(issuer, activate, hostfs, enclavefs))
 
 		_, err := afero.ReadFile(hostfs, "uuidfile")
 		assert.Error(err)
@@ -108,7 +108,7 @@ func TestPreMain(t *testing.T) {
 
 		hostfs := afero.NewMemMapFs()
 		enclavefs := afero.NewMemMapFs()
-		require.NoError(preMain(issuer, activate, hostfs, enclavefs))
+		require.NoError(PreMainEx(issuer, activate, hostfs, enclavefs))
 
 		savedUUID, err := afero.ReadFile(hostfs, "uuidfile")
 		assert.NoError(err)
@@ -136,7 +136,7 @@ func TestPreMain(t *testing.T) {
 
 		hostfs := afero.NewMemMapFs()
 		enclavefs := afero.NewMemMapFs()
-		require.Error(preMain(issuer, activate, hostfs, enclavefs))
+		require.Error(PreMainEx(issuer, activate, hostfs, enclavefs))
 
 		_, err := afero.ReadFile(hostfs, "uuidfile")
 		assert.Error(err)

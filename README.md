@@ -10,7 +10,7 @@
 
 [Marblerun][marblerunsh] is a framework for creating distributed confidential-computing apps.
 
-Build your confidential microservices with [Edgeless RT][edgelessrt], distribute them with Kubernetes on an SGX-enabled cluster, and let Marblerun take care of the rest. Deploy end-to-end secure and verifiable AI pipelines or crunch on sensitive big data in the cloud. 
+Build your confidential microservices with [Edgeless RT][edgelessrt], distribute them with Kubernetes on an SGX-enabled cluster, and let Marblerun take care of the rest. Deploy end-to-end secure and verifiable AI pipelines or crunch on sensitive big data in the cloud.
 
 Confidential computing at scale has never been easier. Marblerun guarantees that the topology of your distributed app adheres to a Manifest specified in simple JSON. Marblerun verifies the integrity of services, bootstraps them, and sets up encrypted connections between them. If a node fails, Marblerun will seamlessly substitute it with respect to the rules defined in the Manifest.
 
@@ -45,10 +45,12 @@ See the [documentation][docs] for details.
 
 ### Hello World
 
-We provide two basic examples on how to build confidential apps with Marblerun.
+We provide basic examples on how to build confidential apps with Marblerun.
 
 * See [helloworld](samples/helloworld) for an example in Go.
 * See [helloc++](samples/helloc++) for an example in C++.
+* See [graphene-hello](samples/graphene-hello) for an example using Graphene.
+* See [graphene-nginx](samples/graphene-nginx) for an example of converting an existing Graphene application to a Marble.
 
 ### Confidential Emoji Voting
 
