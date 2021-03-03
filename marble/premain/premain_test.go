@@ -84,9 +84,6 @@ func TestPreMain(t *testing.T) {
 		enclavefs := afero.NewMemMapFs()
 		require.Error(PreMainEx(issuer, activate, hostfs, enclavefs))
 
-		//_, err := afero.ReadFile(hostfs, "uuidfile")
-		//assert.Error(err)
-
 		assert.Equal([]string{"not modified"}, os.Args)
 	}
 	{
@@ -137,9 +134,6 @@ func TestPreMain(t *testing.T) {
 		hostfs := afero.NewMemMapFs()
 		enclavefs := afero.NewMemMapFs()
 		require.Error(PreMainEx(issuer, activate, hostfs, enclavefs))
-
-		//_, err := afero.ReadFile(hostfs, "uuidfile")
-		//assert.Error(err)
 
 		_, err := afero.ReadFile(enclavefs, "path1")
 		assert.Error(err)

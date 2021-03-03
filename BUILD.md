@@ -125,7 +125,7 @@ Run a simple application.
 
     In the coordinator-terminal you should see `Successfully activated new Marble of type 'client: ...'`
 
-## Auotmatic Marble Injector
+## Marble-Injector
 
 By default a Marblerun installation ships with a Kubernetes [MutatingAdmissionWebhook](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#mutatingadmissionwebhook).
 The admission controller monitors selected namespaces of the cluster and injects the data-plane configuration into Deployments, Pods, etc.
