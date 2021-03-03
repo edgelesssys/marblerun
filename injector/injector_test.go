@@ -67,7 +67,10 @@ func TestMutatesValidRequest(t *testing.T) {
 	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env/-","value":{"name":"EDG_MARBLE_TYPE","value":"test"}`, "failed to apply marble type env variable patch")
 	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env/-","value":{"name":"EDG_MARBLE_DNS_NAMES","value":"test,test.injectable,test.injectable.svc.cluster.local"}`, "failed to apply DNS name env varibale patch")
 	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env/-","value":{"name":"EDG_MARBLE_UUID_FILE"`, "failed to apply marble UUID file env variable patch")
-	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/tolerations","value":[{"key":"kubernetes.azure.com/sgx_epc_mem_in_MiB"}]`, "failed to apply tolerations patch")
+	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/resources/limits"`, "failed to apply resource patch")
+	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/volumeMounts"`, "failed to apply volumeMount patch")
+	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/volumes"`, "failed to apply volumes patch")
+	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/tolerations","value":[{"key":"kubernetes.azure.com/sgx_epc_mem_in_MiB"`, "failed to apply tolerations patch")
 
 	// test if patch works without sgx values
 	response, err = mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:25554", false)

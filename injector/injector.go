@@ -145,6 +145,9 @@ func mutate(body []byte, coordAddr string, injectSgx bool) ([]byte, error) {
 				fmt.Sprintf("/spec/containers/%d/volumeMounts", idx),
 				fmt.Sprintf("/%s/data", marbleType),
 			))
+			if injectSgx {
+				patch = append(patch, createResourcePatch(fmt.Sprintf("/spec/containers/%d/resources/limits", idx)))
+			}
 		}
 
 		patch = append(patch, addEnvVar(container.Env, newEnvVars, fmt.Sprintf("/spec/containers/%d/env", idx))...)
@@ -159,16 +162,26 @@ func mutate(body []byte, coordAddr string, injectSgx bool) ([]byte, error) {
 		if len(pod.Spec.Tolerations) <= 0 {
 			// create array if this is the first toleration of the pod
 			patch = append(patch, map[string]interface{}{
-				"op":    "add",
-				"path":  "/spec/tolerations",
-				"value": []corev1.Toleration{{Key: "kubernetes.azure.com/sgx_epc_mem_in_MiB"}},
+				"op":   "add",
+				"path": "/spec/tolerations",
+				"value": []corev1.Toleration{
+					{
+						Key:      "kubernetes.azure.com/sgx_epc_mem_in_MiB",
+						Operator: corev1.TolerationOpExists,
+						Effect:   corev1.TaintEffectNoSchedule,
+					},
+				},
 			})
 		} else {
 			// append as last element of the tolerations array otherwise
 			patch = append(patch, map[string]interface{}{
-				"op":    "add",
-				"path":  "/spec/tolerations/-",
-				"value": corev1.Toleration{Key: "kubernetes.azure.com/sgx_epc_mem_in_MiB"},
+				"op":   "add",
+				"path": "/spec/tolerations/-",
+				"value": corev1.Toleration{
+					Key:      "kubernetes.azure.com/sgx_epc_mem_in_MiB",
+					Operator: corev1.TolerationOpExists,
+					Effect:   corev1.TaintEffectNoSchedule,
+				},
 			})
 		}
 	}
@@ -249,6 +262,18 @@ func addEnvVar(setVars, newVars []corev1.EnvVar, basePath string) []map[string]i
 	return envPatch
 }
 
+// createResourcePatch creates a json patch for sgx resource limits
+func createResourcePatch(path string) map[string]interface{} {
+	return map[string]interface{}{
+		"op":   "add",
+		"path": path,
+		"value": map[string]int{
+			"kubernetes.azure.com/sgx_epc_mem_in_MiB": 10,
+		},
+	}
+}
+
+// createMountPatch creates a json patch to mount a volume on a pod
 func createMountPatch(mounts int, path string, mountpath string) map[string]interface{} {
 	val := corev1.VolumeMount{
 		Name:      "uuid-file",
@@ -271,6 +296,7 @@ func createMountPatch(mounts int, path string, mountpath string) map[string]inte
 
 }
 
+// createVolumePatch creates a json patch which creates a volume utilising the k8s downward api
 func createVolumePatch(volumes int) map[string]interface{} {
 	val := corev1.Volume{
 		Name: "uuid-file",
