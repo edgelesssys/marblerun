@@ -16,7 +16,8 @@ import (
 // Mutator struct
 type Mutator struct {
 	// CoordAddr contains the address of the marblerun coordinator
-	CoordAddr string
+	CoordAddr  string
+	DomainName string
 }
 
 // HandleMutate handles mutate requests and injects sgx tolerations into the request
@@ -29,7 +30,7 @@ func (m *Mutator) HandleMutate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// mutate the request and add sgx tolerations to pod
-	mutatedBody, err := mutate(body, m.CoordAddr, true)
+	mutatedBody, err := mutate(body, m.CoordAddr, m.DomainName, true)
 	if err != nil {
 		http.Error(w, "unable to mutate request", http.StatusInternalServerError)
 		return
@@ -49,7 +50,7 @@ func (m *Mutator) HandleMutateNoSgx(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// mutate the request and add sgx tolerations to pod
-	mutatedBody, err := mutate(body, m.CoordAddr, false)
+	mutatedBody, err := mutate(body, m.CoordAddr, m.DomainName, false)
 	if err != nil {
 		http.Error(w, "unable to mutate request", http.StatusInternalServerError)
 		return
@@ -60,7 +61,7 @@ func (m *Mutator) HandleMutateNoSgx(w http.ResponseWriter, r *http.Request) {
 }
 
 // mutate handles the creation of json patches for pods
-func mutate(body []byte, coordAddr string, injectSgx bool) ([]byte, error) {
+func mutate(body []byte, coordAddr string, domainName string, injectSgx bool) ([]byte, error) {
 	admReviewReq := v1.AdmissionReview{}
 	if err := json.Unmarshal(body, &admReviewReq); err != nil {
 		return nil, errors.New("invalid admission review")
@@ -90,13 +91,13 @@ func mutate(body []byte, coordAddr string, injectSgx bool) ([]byte, error) {
 	admReviewResponse.Response.PatchType = &pT
 
 	// get marble type from pod labels
-	marbleType := pod.Labels["marblerun.marbletype"]
+	marbleType := pod.Labels["marblerun/marbletype"]
 	// reject pod if label does not exist
 	if len(marbleType) == 0 {
 		admReviewResponse.Response.Allowed = false
 		admReviewResponse.Response.Result = &metav1.Status{
 			Status: "Rejected",
-			Reason: "Missing required label: [marblerun.marbletype]",
+			Reason: "Missing required label: [marblerun/marbletype]",
 		}
 		bytes, err := json.Marshal(admReviewResponse)
 		if err != nil {
@@ -122,7 +123,7 @@ func mutate(body []byte, coordAddr string, injectSgx bool) ([]byte, error) {
 		},
 		{
 			Name:  "EDG_MARBLE_DNS_NAMES",
-			Value: fmt.Sprintf("%s,%s.%s,%s.%s.svc.cluster.local", marbleType, marbleType, namespace, marbleType, namespace),
+			Value: fmt.Sprintf("%s,%s.%s,%s.%s.svc.%s", marbleType, marbleType, namespace, marbleType, namespace, domainName),
 		},
 	}
 
@@ -136,14 +137,15 @@ func mutate(body []byte, coordAddr string, injectSgx bool) ([]byte, error) {
 
 			newEnvVars = append(newEnvVars, corev1.EnvVar{
 				Name:  "EDG_MARBLE_UUID_FILE",
-				Value: fmt.Sprintf("/%s/data/uuid", marbleType),
+				Value: fmt.Sprintf("/%s-uid/uuid-file", marbleType),
 			})
 
 			// If we need to set the uuid env variable we also need to create a volume mount, which the variable points to
 			patch = append(patch, createMountPatch(
 				len(container.VolumeMounts),
 				fmt.Sprintf("/spec/containers/%d/volumeMounts", idx),
-				fmt.Sprintf("/%s/data", marbleType),
+				fmt.Sprintf("/%s-uid", marbleType),
+				string(admReviewReq.Request.UID),
 			))
 			if injectSgx {
 				patch = append(patch, createResourcePatch(fmt.Sprintf("/spec/containers/%d/resources/limits", idx)))
@@ -154,7 +156,7 @@ func mutate(body []byte, coordAddr string, injectSgx bool) ([]byte, error) {
 	}
 
 	if needNewVolume {
-		patch = append(patch, createVolumePatch(len(pod.Spec.Volumes)))
+		patch = append(patch, createVolumePatch(len(pod.Spec.Volumes), string(admReviewReq.Request.UID)))
 	}
 
 	// add sgx tolerations if enabled
@@ -264,19 +266,18 @@ func addEnvVar(setVars, newVars []corev1.EnvVar, basePath string) []map[string]i
 
 // createResourcePatch creates a json patch for sgx resource limits
 func createResourcePatch(path string) map[string]interface{} {
+	// container limits are not defined as array so we can just add a new value here
 	return map[string]interface{}{
-		"op":   "add",
-		"path": path,
-		"value": map[string]int{
-			"kubernetes.azure.com/sgx_epc_mem_in_MiB": 10,
-		},
+		"op":    "add",
+		"path":  fmt.Sprintf("%s/kubernetes.azure.com~1sgx_epc_mem_in_MiB", path),
+		"value": 10,
 	}
 }
 
 // createMountPatch creates a json patch to mount a volume on a pod
-func createMountPatch(mounts int, path string, mountpath string) map[string]interface{} {
+func createMountPatch(mounts int, path string, mountpath string, uid string) map[string]interface{} {
 	val := corev1.VolumeMount{
-		Name:      "uuid-file",
+		Name:      fmt.Sprintf("uuid-file-%s", uid),
 		MountPath: mountpath,
 	}
 
@@ -297,14 +298,14 @@ func createMountPatch(mounts int, path string, mountpath string) map[string]inte
 }
 
 // createVolumePatch creates a json patch which creates a volume utilising the k8s downward api
-func createVolumePatch(volumes int) map[string]interface{} {
+func createVolumePatch(volumes int, uid string) map[string]interface{} {
 	val := corev1.Volume{
-		Name: "uuid-file",
+		Name: fmt.Sprintf("uuid-file-%s", uid),
 		VolumeSource: corev1.VolumeSource{
 			DownwardAPI: &corev1.DownwardAPIVolumeSource{
 				Items: []corev1.DownwardAPIVolumeFile{
 					{
-						Path: "uuid",
+						Path: "uuid-file",
 						FieldRef: &corev1.ObjectFieldSelector{
 							FieldPath: "metadata.uid",
 						},

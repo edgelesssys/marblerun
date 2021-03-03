@@ -55,7 +55,7 @@ func cliNameSpaceRemove(namespace string, clientSet kubernetes.Interface) error 
 
 	val, exists := k8sNamespace.ObjectMeta.Labels[marblerunAnnotation]
 	if exists {
-		if val == "marblerun" {
+		if val == "enabled" {
 			patch := fmt.Sprintf(`
 {
 	"metadata": {

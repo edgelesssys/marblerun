@@ -12,7 +12,7 @@ import (
 )
 
 func newNameSpaceAdd() *cobra.Command {
-	var injectSgx bool
+	var dontInjectSgx bool
 
 	cmd := &cobra.Command{
 		Use:   "add NAMESPACE ...",
@@ -39,22 +39,31 @@ func newNameSpaceAdd() *cobra.Command {
 				return err
 			}
 
-			return cliNameSpaceAdd(namespaces, clientSet, injectSgx)
+			return cliNameSpaceAdd(namespaces, clientSet, dontInjectSgx)
 		},
 		SilenceUsage: true,
 	}
-	cmd.Flags().BoolVar(&injectSgx, "inject-sgx", false, "Set to enable automatic injection of SGX tolerations for namespace")
+	cmd.Flags().BoolVar(&dontInjectSgx, "no-sgx-injection", false, "Set to disable automatic injection of SGX tolerations for namespace")
 
 	return cmd
 }
 
 // cliNameSpaceAdd adds specified namespaces to the marblerun coordinator
-func cliNameSpaceAdd(namespaces []string, clientSet kubernetes.Interface, injectSgx bool) error {
+func cliNameSpaceAdd(namespaces []string, clientSet kubernetes.Interface, dontInjectSgx bool) error {
 	for _, ns := range namespaces {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		var patch string
-		if injectSgx {
+		if dontInjectSgx {
+			patch = fmt.Sprintf(`
+{
+	"metadata": {
+		"labels": {
+			"%s": "enabled"
+		}
+	}
+}`, marblerunAnnotation)
+		} else {
 			patch = fmt.Sprintf(`
 {
 	"metadata": {
@@ -64,15 +73,6 @@ func cliNameSpaceAdd(namespaces []string, clientSet kubernetes.Interface, inject
 		}
 	}
 }`, marblerunAnnotation, injectionAnnotation)
-		} else {
-			patch = fmt.Sprintf(`
-{
-	"metadata": {
-		"labels": {
-			"%s": "marblerun"
-		}
-	}
-}`, marblerunAnnotation)
 		}
 		// apply patch to namespace
 		if _, err := clientSet.CoreV1().Namespaces().Patch(ctx, ns, types.StrategicMergePatchType, []byte(patch), metav1.PatchOptions{}, ""); err != nil {
