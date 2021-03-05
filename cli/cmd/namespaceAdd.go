@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -22,24 +21,12 @@ func newNameSpaceAdd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			namespaces := args
 
-			localSettings := envSettings{
-				namespace: "marblerun",
-			}
-			localSettings.config = &genericclioptions.ConfigFlags{
-				Namespace: &localSettings.namespace,
-			}
-
-			config, err := localSettings.config.ToRESTConfig()
+			kubeClient, err := getKubernetesInterface()
 			if err != nil {
 				return err
 			}
 
-			clientSet, err := kubernetes.NewForConfig(config)
-			if err != nil {
-				return err
-			}
-
-			return cliNameSpaceAdd(namespaces, clientSet, dontInjectSgx)
+			return cliNameSpaceAdd(namespaces, kubeClient, dontInjectSgx)
 		},
 		SilenceUsage: true,
 	}
@@ -49,7 +36,7 @@ func newNameSpaceAdd() *cobra.Command {
 }
 
 // cliNameSpaceAdd adds specified namespaces to the marblerun coordinator
-func cliNameSpaceAdd(namespaces []string, clientSet kubernetes.Interface, dontInjectSgx bool) error {
+func cliNameSpaceAdd(namespaces []string, kubeClient kubernetes.Interface, dontInjectSgx bool) error {
 	for _, ns := range namespaces {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -59,10 +46,11 @@ func cliNameSpaceAdd(namespaces []string, clientSet kubernetes.Interface, dontIn
 {
 	"metadata": {
 		"labels": {
-			"%s": "enabled"
+			"%s": "enabled",
+			"%s": "disabled"
 		}
 	}
-}`, marblerunAnnotation)
+}`, marblerunAnnotation, injectionAnnotation)
 		} else {
 			patch = fmt.Sprintf(`
 {
@@ -75,7 +63,7 @@ func cliNameSpaceAdd(namespaces []string, clientSet kubernetes.Interface, dontIn
 }`, marblerunAnnotation, injectionAnnotation)
 		}
 		// apply patch to namespace
-		if _, err := clientSet.CoreV1().Namespaces().Patch(ctx, ns, types.StrategicMergePatchType, []byte(patch), metav1.PatchOptions{}, ""); err != nil {
+		if _, err := kubeClient.CoreV1().Namespaces().Patch(ctx, ns, types.StrategicMergePatchType, []byte(patch), metav1.PatchOptions{}, ""); err != nil {
 			fmt.Printf("Could not apply patch\n")
 			return err
 		}

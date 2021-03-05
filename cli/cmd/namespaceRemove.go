@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -18,37 +17,25 @@ func newNameSpaceRemove() *cobra.Command {
 		Long:  `Remove namespaces from a Marblerun mesh`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			localSettings := envSettings{
-				namespace: "marblerun",
-			}
-			localSettings.config = &genericclioptions.ConfigFlags{
-				Namespace: &localSettings.namespace,
-			}
-
-			config, err := localSettings.config.ToRESTConfig()
-			if err != nil {
-				return err
-			}
-
-			clientSet, err := kubernetes.NewForConfig(config)
-			if err != nil {
-				return err
-			}
-
 			namespace := args[0]
 
-			return cliNameSpaceRemove(namespace, clientSet)
+			kubeClient, err := getKubernetesInterface()
+			if err != nil {
+				return err
+			}
+
+			return cliNameSpaceRemove(namespace, kubeClient)
 		},
 		SilenceUsage: true,
 	}
 	return cmd
 }
 
-func cliNameSpaceRemove(namespace string, clientSet kubernetes.Interface) error {
+func cliNameSpaceRemove(namespace string, kubeClient kubernetes.Interface) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	k8sNamespace, err := clientSet.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
+	k8sNamespace, err := kubeClient.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -66,7 +53,7 @@ func cliNameSpaceRemove(namespace string, clientSet kubernetes.Interface) error 
 	}
 }
 `, marblerunAnnotation, injectionAnnotation)
-			if _, err := clientSet.CoreV1().Namespaces().Patch(ctx, namespace, types.StrategicMergePatchType, []byte(patch), metav1.PatchOptions{}, ""); err != nil {
+			if _, err := kubeClient.CoreV1().Namespaces().Patch(ctx, namespace, types.StrategicMergePatchType, []byte(patch), metav1.PatchOptions{}, ""); err != nil {
 				return err
 			}
 

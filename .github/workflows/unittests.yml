@@ -45,6 +45,7 @@ jobs:
           build/coordinator-era.json
           build/premain-graphene
           build/marble-injector
+          build/marblerun
 
     - name: Deploy coordinator:nightly
       if: github.ref == 'refs/heads/master' &&

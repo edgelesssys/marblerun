@@ -2,18 +2,15 @@ package cmd
 
 import (
 	"context"
-	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
-	"crypto/x509/pkix"
-	"encoding/asn1"
-	"encoding/base64"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -26,11 +23,9 @@ import (
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/repo"
-	certv1 "k8s.io/api/certificates/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 func newInstallCmd() *cobra.Command {
@@ -205,205 +200,42 @@ func getRepo(name string, url string, settings *cli.EnvSettings) error {
 
 // installWebhook enables a mutating admission webhook to allow automatic injection of values into pods
 func installWebhook(vals map[string]interface{}) error {
-	path, err := findKubeConfig()
+	kubeClient, err := getKubernetesInterface()
 	if err != nil {
 		return err
 	}
 
-	caBundle, err := loadCABundle(path)
-	if err != nil {
+	// verify marblerun namespace exists, if not create it
+	if err := verifyNamespace("marblerun", kubeClient); err != nil {
 		return err
 	}
 
-	vals["webhook"] = map[string]interface{}{
-		"start":    true,
-		"CABundle": caBundle,
-	}
-
-	return genWebhookCerts()
-}
-
-// loadCABundle generates the base64 CA_Bundle string for the k8s webhook configuration
-func loadCABundle(path string) (string, error) {
-	kubeConfig, err := clientcmd.BuildConfigFromFlags("", path)
-	if err != nil {
-		return "", err
-	}
-	certRaw, err := ioutil.ReadFile(kubeConfig.CAFile)
-	if err != nil {
-		return "", err
-	}
-
-	return base64.StdEncoding.EncodeToString(certRaw), nil
-}
-
-// get kubernetes config from env variable or "~/.kube/config"
-func findKubeConfig() (string, error) {
-	path := os.Getenv("KUBECONFIG")
-	if path == "" {
-		homedir, err := os.UserHomeDir()
-		if err != nil {
-			return "", err
-		}
-		path = filepath.Join(homedir, ".kube", "config")
-	}
-	return path, nil
-}
-
-// genWebhookCerts creates a certificate signing request which is signed by the kubernetes API server
-// the resulting certificate and used private key are then saved as secrets so they can be used by the
-// mutating admission webhook server
-func genWebhookCerts() error {
 	fmt.Printf("Setting up Marblerun Webhook")
-
-	path, err := findKubeConfig()
+	certificateHandler, err := getCertificateHandler(kubeClient)
 	if err != nil {
 		return err
 	}
-
-	kubeConfig, err := clientcmd.BuildConfigFromFlags("", path)
+	fmt.Printf(".")
+	err = certificateHandler.signRequest()
 	if err != nil {
 		return err
 	}
-
-	kubeClient, err := kubernetes.NewForConfig(kubeConfig)
+	fmt.Printf(".")
+	certificateHandler.setCaBundle(vals)
+	cert, err := certificateHandler.get()
 	if err != nil {
-		return fmt.Errorf("failed setting up kubernetes client: %v", err)
+		return err
 	}
-
-	privKey, err := rsa.GenerateKey(rand.Reader, 2048) // different key size maybe??
-	if err != nil {
-		return fmt.Errorf("failed creating rsa private key: %v", err)
+	if len(cert) <= 0 {
+		return fmt.Errorf("certificate was not signed by the CA")
 	}
-
 	fmt.Printf(".")
 
-	csr, err := genCsr(privKey)
-	if err != nil {
+	if err := createSecret(certificateHandler.getKey(), cert, kubeClient); err != nil {
 		return err
 	}
-
-	fmt.Printf(".")
-
-	if err := sendAndApprove(csr, kubeClient); err != nil {
-		return err
-	}
-
-	fmt.Printf(".")
-
-	// get the csr which should now contain the signed certificate
-	csr, err = kubeClient.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), webhookName, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-	if err := createSecret(privKey, csr.Status.Certificate, kubeClient); err != nil {
-		return err
-	}
-
 	fmt.Printf(" Done\n")
-
 	return nil
-}
-
-// genCsr generates the x509 certificate request
-func genCsr(privKey *rsa.PrivateKey) (*certv1.CertificateSigningRequest, error) {
-	subj := pkix.Name{
-		// we could set more information here, is that needed?
-		CommonName:   "system:node:marble-injector.marblerun.svc",
-		Organization: []string{"system:nodes"},
-	}
-
-	// set KeyUsage extensions. See RFC 5280, Section 4.2.1.3 and Section 4.2.1.12
-	extendedUsage := pkix.Extension{
-		// id-kp (Extended Key Usage) object identifier
-		Id:       asn1.ObjectIdentifier{2, 5, 29, 37},
-		Critical: true,
-		// id-kp-serverAuth object identifier
-		Value: []byte{0x30, 0xa, 0x6, 0x8, 0x2b, 0x6, 0x1, 0x5, 0x5, 0x7, 0x3, 0x1},
-	}
-	keyUsage := pkix.Extension{
-		// id-ce-keyUsage object identifier
-		Id:       asn1.ObjectIdentifier{2, 5, 29, 15},
-		Critical: true,
-		// bit string for key encipherment, digital signature
-		Value: []byte{0x3, 0x2, 0x5, 0xa0},
-	}
-
-	// create a x509 certificate request
-	template := &x509.CertificateRequest{
-		Subject:            subj,
-		SignatureAlgorithm: x509.SHA256WithRSA,
-		Extensions:         []pkix.Extension{extendedUsage, keyUsage},
-		DNSNames:           []string{"marble-injector.marblerun.svc"},
-	}
-
-	csrRaw, err := x509.CreateCertificateRequest(rand.Reader, template, privKey)
-	if err != nil {
-		return nil, err
-	}
-
-	csrPEM := &pem.Block{
-		Type:  "CERTIFICATE REQUEST",
-		Bytes: csrRaw,
-	}
-
-	// create the k8s certificate request which bundles the x509 csr
-	certificateRequest := &certv1.CertificateSigningRequest{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: webhookName,
-		},
-		Spec: certv1.CertificateSigningRequestSpec{
-			Request:    pem.EncodeToMemory(csrPEM),
-			SignerName: "kubernetes.io/kubelet-serving",
-			// usages have to match usages defined in the x509 csr
-			Usages: []certv1.KeyUsage{
-				"key encipherment", "digital signature", "server auth",
-			},
-		},
-	}
-	return certificateRequest, nil
-}
-
-// sendAndApprove sends a CertificateSigningRequest and approves it after creation
-func sendAndApprove(csr *certv1.CertificateSigningRequest, kubeClient *kubernetes.Clientset) error {
-	// send the csr to the k8s api server for signing
-	certReturn, err := kubeClient.CertificatesV1().CertificateSigningRequests().Create(context.TODO(), csr, metav1.CreateOptions{})
-	if err != nil {
-		return err
-	}
-
-	if err := waitForResource(webhookName, kubeClient, 10, func(string, *kubernetes.Clientset) bool {
-		_, err := kubeClient.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), webhookName, metav1.GetOptions{})
-		if err != nil {
-			return false
-		}
-		return true
-	}); err != nil {
-		return err
-	}
-
-	// approve of the signing, the user performing the install has to be allowed to approv certificates
-	// e.g. if he can use kubectl certificate approve $csr_name, then this should also work
-	certReturn.Status.Conditions = append(certReturn.Status.Conditions, certv1.CertificateSigningRequestCondition{
-		Type:           certv1.RequestConditionType(string(certv1.CertificateApproved)),
-		Status:         corev1.ConditionTrue,
-		Reason:         "MarblerunInstall",
-		Message:        "This CSR was automatically approved after creation with marblerun install.",
-		LastUpdateTime: metav1.Now(),
-	})
-
-	_, err = kubeClient.CertificatesV1().CertificateSigningRequests().UpdateApproval(context.TODO(), webhookName, certReturn, metav1.UpdateOptions{})
-
-	return waitForResource(webhookName, kubeClient, 10, func(string, *kubernetes.Clientset) bool {
-		csr, err := kubeClient.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), webhookName, metav1.GetOptions{})
-		if err != nil {
-			return false
-		}
-		if len(csr.Status.Certificate) <= 0 {
-			return false
-		}
-		return true
-	})
 }
 
 // createSecret creates a secret containing the signed certificate and private key for the webhook server
@@ -414,11 +246,6 @@ func createSecret(privKey *rsa.PrivateKey, crt []byte, kubeClient *kubernetes.Cl
 			Bytes: x509.MarshalPKCS1PrivateKey(privKey),
 		},
 	)
-
-	// to create the secret we first have to make sure the namespace exists
-	if err := verifyNamespace("marblerun", kubeClient); err != nil {
-		return err
-	}
 
 	newSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -433,6 +260,29 @@ func createSecret(privKey *rsa.PrivateKey, crt []byte, kubeClient *kubernetes.Cl
 
 	_, err := kubeClient.CoreV1().Secrets("marblerun").Create(context.TODO(), newSecret, metav1.CreateOptions{})
 	return err
+}
+
+func getCertificateHandler(kubeClient kubernetes.Interface) (certificateInterface, error) {
+	versionInfo, err := kubeClient.Discovery().ServerVersion()
+	if err != nil {
+		return nil, err
+	}
+	majorVersion, err := strconv.Atoi(versionInfo.Major)
+	if err != nil {
+		return nil, err
+	}
+	minorVersion, err := strconv.Atoi(versionInfo.Minor)
+	if err != nil {
+		return nil, err
+	}
+
+	// return the legacy interface if kubernetes version is < 1.19
+	if majorVersion == 1 && minorVersion < 19 {
+		fmt.Printf("\nKubernetes version lower than 1.19 detected, using self-signed certificates as CABundle")
+		return newCertificateLegacy()
+	}
+
+	return newCertificateV1(kubeClient)
 }
 
 func verifyNamespace(namespace string, kubeClient *kubernetes.Clientset) error {
@@ -453,18 +303,6 @@ func verifyNamespace(namespace string, kubeClient *kubernetes.Clientset) error {
 		}
 	}
 	return nil
-}
-
-// calls to the CertificateSigningRequests interface are non blocking, we use this function
-// to check if a resource has been created and can be used
-func waitForResource(name string, kubeClient *kubernetes.Clientset, timeout int, resourceCheck func(string, *kubernetes.Clientset) bool) error {
-	for i := 0; i < timeout; i++ {
-		if ok := resourceCheck(name, kubeClient); ok == true {
-			return nil
-		}
-		time.Sleep(1 * time.Second)
-	}
-	return fmt.Errorf("certificate signing request was not updated after %d attempts. Giving up", timeout)
 }
 
 func debug(format string, v ...interface{}) {
