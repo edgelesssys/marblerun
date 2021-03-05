@@ -63,6 +63,15 @@ add_custom_target(marble-injector ALL
   ${CMAKE_SOURCE_DIR}/cmd/marble-injector)
 
 #
+# Build CI
+#
+
+add_custom_target(cli ALL
+go build
+-o marblerun
+${CMAKE_SOURCE_DIR}/cli/main.go)
+
+#
 # Build marble-test
 #
 
