@@ -7,7 +7,6 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
-	"encoding/base64"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -26,7 +25,7 @@ import (
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/repo"
-	certv1 "k8s.io/api/certificates/v1"
+	certv1beta1 "k8s.io/api/certificates/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -205,36 +204,12 @@ func getRepo(name string, url string, settings *cli.EnvSettings) error {
 
 // installWebhook enables a mutating admission webhook to allow automatic injection of values into pods
 func installWebhook(vals map[string]interface{}) error {
-	path, err := findKubeConfig()
-	if err != nil {
-		return err
-	}
 
-	caBundle, err := loadCABundle(path)
-	if err != nil {
-		return err
-	}
-
-	vals["webhook"] = map[string]interface{}{
-		"start":    true,
-		"CABundle": caBundle,
+	vals["marbleInjector"] = map[string]interface{}{
+		"start": true,
 	}
 
 	return genWebhookCerts()
-}
-
-// loadCABundle generates the base64 CA_Bundle string for the k8s webhook configuration
-func loadCABundle(path string) (string, error) {
-	kubeConfig, err := clientcmd.BuildConfigFromFlags("", path)
-	if err != nil {
-		return "", err
-	}
-	certRaw, err := ioutil.ReadFile(kubeConfig.CAFile)
-	if err != nil {
-		return "", err
-	}
-
-	return base64.StdEncoding.EncodeToString(certRaw), nil
 }
 
 // get kubernetes config from env variable or "~/.kube/config"
@@ -292,7 +267,7 @@ func genWebhookCerts() error {
 	fmt.Printf(".")
 
 	// get the csr which should now contain the signed certificate
-	csr, err = kubeClient.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), webhookName, metav1.GetOptions{})
+	csr, err = kubeClient.CertificatesV1beta1().CertificateSigningRequests().Get(context.TODO(), webhookName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -306,7 +281,7 @@ func genWebhookCerts() error {
 }
 
 // genCsr generates the x509 certificate request
-func genCsr(privKey *rsa.PrivateKey) (*certv1.CertificateSigningRequest, error) {
+func genCsr(privKey *rsa.PrivateKey) (*certv1beta1.CertificateSigningRequest, error) {
 	subj := pkix.Name{
 		// we could set more information here, is that needed?
 		CommonName:   "system:node:marble-injector.marblerun.svc",
@@ -347,16 +322,19 @@ func genCsr(privKey *rsa.PrivateKey) (*certv1.CertificateSigningRequest, error) 
 		Bytes: csrRaw,
 	}
 
+	// this is neccessary due to certv1beta1, certv1 allows direct string usage instaed
+	signer := "kubernetes.io/kubelet-serving"
+
 	// create the k8s certificate request which bundles the x509 csr
-	certificateRequest := &certv1.CertificateSigningRequest{
+	certificateRequest := &certv1beta1.CertificateSigningRequest{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: webhookName,
 		},
-		Spec: certv1.CertificateSigningRequestSpec{
+		Spec: certv1beta1.CertificateSigningRequestSpec{
 			Request:    pem.EncodeToMemory(csrPEM),
-			SignerName: "kubernetes.io/kubelet-serving",
+			SignerName: &signer,
 			// usages have to match usages defined in the x509 csr
-			Usages: []certv1.KeyUsage{
+			Usages: []certv1beta1.KeyUsage{
 				"key encipherment", "digital signature", "server auth",
 			},
 		},
@@ -365,15 +343,15 @@ func genCsr(privKey *rsa.PrivateKey) (*certv1.CertificateSigningRequest, error) 
 }
 
 // sendAndApprove sends a CertificateSigningRequest and approves it after creation
-func sendAndApprove(csr *certv1.CertificateSigningRequest, kubeClient *kubernetes.Clientset) error {
+func sendAndApprove(csr *certv1beta1.CertificateSigningRequest, kubeClient *kubernetes.Clientset) error {
 	// send the csr to the k8s api server for signing
-	certReturn, err := kubeClient.CertificatesV1().CertificateSigningRequests().Create(context.TODO(), csr, metav1.CreateOptions{})
+	certReturn, err := kubeClient.CertificatesV1beta1().CertificateSigningRequests().Create(context.TODO(), csr, metav1.CreateOptions{})
 	if err != nil {
 		return err
 	}
 
 	if err := waitForResource(webhookName, kubeClient, 10, func(string, *kubernetes.Clientset) bool {
-		_, err := kubeClient.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), webhookName, metav1.GetOptions{})
+		_, err := kubeClient.CertificatesV1beta1().CertificateSigningRequests().Get(context.TODO(), webhookName, metav1.GetOptions{})
 		if err != nil {
 			return false
 		}
@@ -384,18 +362,21 @@ func sendAndApprove(csr *certv1.CertificateSigningRequest, kubeClient *kubernete
 
 	// approve of the signing, the user performing the install has to be allowed to approv certificates
 	// e.g. if he can use kubectl certificate approve $csr_name, then this should also work
-	certReturn.Status.Conditions = append(certReturn.Status.Conditions, certv1.CertificateSigningRequestCondition{
-		Type:           certv1.RequestConditionType(string(certv1.CertificateApproved)),
+	certReturn.Status.Conditions = append(certReturn.Status.Conditions, certv1beta1.CertificateSigningRequestCondition{
+		Type:           certv1beta1.RequestConditionType(string(certv1beta1.CertificateApproved)),
 		Status:         corev1.ConditionTrue,
 		Reason:         "MarblerunInstall",
 		Message:        "This CSR was automatically approved after creation with marblerun install.",
 		LastUpdateTime: metav1.Now(),
 	})
 
-	_, err = kubeClient.CertificatesV1().CertificateSigningRequests().UpdateApproval(context.TODO(), webhookName, certReturn, metav1.UpdateOptions{})
+	// this will be used with certv1
+	//_, err = kubeClient.CertificatesV1().CertificateSigningRequests().UpdateApproval(context.TODO(), webhookName, certReturn, metav1.UpdateOptions{})
+
+	_, err = kubeClient.CertificatesV1beta1().CertificateSigningRequests().UpdateApproval(context.TODO(), certReturn, metav1.UpdateOptions{})
 
 	return waitForResource(webhookName, kubeClient, 10, func(string, *kubernetes.Clientset) bool {
-		csr, err := kubeClient.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), webhookName, metav1.GetOptions{})
+		csr, err := kubeClient.CertificatesV1beta1().CertificateSigningRequests().Get(context.TODO(), webhookName, metav1.GetOptions{})
 		if err != nil {
 			return false
 		}
