@@ -26,7 +26,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 func newInstallCmd() *cobra.Command {
@@ -201,19 +200,9 @@ func getRepo(name string, url string, settings *cli.EnvSettings) error {
 
 // installWebhook enables a mutating admission webhook to allow automatic injection of values into pods
 func installWebhook(vals map[string]interface{}) error {
-	path, err := findKubeConfig()
+	kubeClient, err := getKubernetesInterface()
 	if err != nil {
 		return err
-	}
-
-	kubeConfig, err := clientcmd.BuildConfigFromFlags("", path)
-	if err != nil {
-		return err
-	}
-
-	kubeClient, err := kubernetes.NewForConfig(kubeConfig)
-	if err != nil {
-		return fmt.Errorf("failed setting up kubernetes client: %v", err)
 	}
 
 	// verify marblerun namespace exists, if not create it
@@ -247,19 +236,6 @@ func installWebhook(vals map[string]interface{}) error {
 	}
 	fmt.Printf(" Done\n")
 	return nil
-}
-
-// get kubernetes config from env variable or "~/.kube/config"
-func findKubeConfig() (string, error) {
-	path := os.Getenv("KUBECONFIG")
-	if path == "" {
-		homedir, err := os.UserHomeDir()
-		if err != nil {
-			return "", err
-		}
-		path = filepath.Join(homedir, ".kube", "config")
-	}
-	return path, nil
 }
 
 // createSecret creates a secret containing the signed certificate and private key for the webhook server
