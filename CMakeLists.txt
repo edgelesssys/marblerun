@@ -58,18 +58,21 @@ add_custom_target(sign-coordinator ALL DEPENDS coordinator-enclave.signed coordi
 #
 
 add_custom_target(marble-injector ALL
+  CGO_ENABLED=0
   go build
   -o marble-injector
-  ${CMAKE_SOURCE_DIR}/cmd/marble-injector)
+  ${CMAKE_SOURCE_DIR}/cmd/marble-injector
+)
 
 #
-# Build CI
+# Build CLI
 #
 
 add_custom_target(cli ALL
-go build
--o marblerun
-${CMAKE_SOURCE_DIR}/cli/main.go)
+  go build
+  -o marblerun
+  ${CMAKE_SOURCE_DIR}/cli/main.go
+)
 
 #
 # Build marble-test
