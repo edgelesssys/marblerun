@@ -87,17 +87,15 @@ func mutate(body []byte, coordAddr string, domainName string, injectSgx bool) ([
 		},
 	}
 
-	pT := v1.PatchTypeJSONPatch
-	admReviewResponse.Response.PatchType = &pT
-
 	// get marble type from pod labels
 	marbleType := pod.Labels["marblerun/marbletype"]
 	// reject pod if label does not exist
 	if len(marbleType) == 0 {
 		admReviewResponse.Response.Allowed = false
 		admReviewResponse.Response.Result = &metav1.Status{
-			Status: "Rejected",
-			Reason: "Missing required label: [marblerun/marbletype]",
+			Status:  "Rejected",
+			Message: "Missing required label: [marblerun/marbletype]",
+			Reason:  metav1.StatusReasonConflict,
 		}
 		bytes, err := json.Marshal(admReviewResponse)
 		if err != nil {
@@ -105,6 +103,9 @@ func mutate(body []byte, coordAddr string, domainName string, injectSgx bool) ([
 		}
 		return bytes, nil
 	}
+
+	pT := v1.PatchTypeJSONPatch
+	admReviewResponse.Response.PatchType = &pT
 
 	// get namespace of pod
 	namespace := pod.Namespace
@@ -147,12 +148,12 @@ func mutate(body []byte, coordAddr string, domainName string, injectSgx bool) ([
 				fmt.Sprintf("/%s-uid", marbleType),
 				string(admReviewReq.Request.UID),
 			))
-			if injectSgx {
-				patch = append(patch, createResourcePatch(fmt.Sprintf("/spec/containers/%d/resources/limits", idx)))
-			}
 		}
-
 		patch = append(patch, addEnvVar(container.Env, newEnvVars, fmt.Sprintf("/spec/containers/%d/env", idx))...)
+
+		if injectSgx {
+			patch = append(patch, createResourcePatch(container, idx))
+		}
 	}
 
 	if needNewVolume {
@@ -265,11 +266,34 @@ func addEnvVar(setVars, newVars []corev1.EnvVar, basePath string) []map[string]i
 }
 
 // createResourcePatch creates a json patch for sgx resource limits
-func createResourcePatch(path string) map[string]interface{} {
-	// container limits are not defined as array so we can just add a new value here
+func createResourcePatch(container corev1.Container, idx int) map[string]interface{} {
+	// first check if neither limits nor requests have been set for the container -> we need to create the complete path
+	if len(container.Resources.Limits) <= 0 && len(container.Resources.Requests) <= 0 {
+		return map[string]interface{}{
+			"op":   "add",
+			"path": fmt.Sprintf("/spec/containers/%d/resources", idx),
+			"value": map[string]interface{}{
+				"limits": map[string]int{
+					"kubernetes.azure.com/sgx_epc_mem_in_MiB": 10,
+				},
+			},
+		}
+	}
+	// next check if only requests have been set -> we only need to create the limits path
+	if len(container.Resources.Limits) <= 0 {
+		return map[string]interface{}{
+			"op":   "add",
+			"path": fmt.Sprintf("/spec/containers/%d/resources/limits", idx),
+			"value": map[string]int{
+				"kubernetes.azure.com/sgx_epc_mem_in_MiB": 10,
+			},
+		}
+	}
+
+	// default case: both requests and limits have been set -> we can just add a new value
 	return map[string]interface{}{
 		"op":    "add",
-		"path":  fmt.Sprintf("%s/kubernetes.azure.com~1sgx_epc_mem_in_MiB", path),
+		"path":  fmt.Sprintf("/spec/containers/%d/resources/limits/kubernetes.azure.com~1sgx_epc_mem_in_MiB", idx),
 		"value": 10,
 	}
 }
