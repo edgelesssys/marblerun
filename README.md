@@ -10,7 +10,7 @@
 
 [Marblerun][marblerunsh] is a framework for creating distributed confidential-computing apps.
 
-Build your confidential microservices with [Edgeless RT][edgelessrt], distribute them with Kubernetes on an SGX-enabled cluster, and let Marblerun take care of the rest. Deploy end-to-end secure and verifiable AI pipelines or crunch on sensitive big data in the cloud.
+Build your confidential microservices with [EGo][ego] or another [runtime](#supported-runtimes), distribute them with Kubernetes on an SGX-enabled cluster, and let Marblerun take care of the rest. Deploy end-to-end secure and verifiable AI pipelines or crunch on sensitive big data in the cloud.
 
 Confidential computing at scale has never been easier. Marblerun guarantees that the topology of your distributed app adheres to a Manifest specified in simple JSON. Marblerun verifies the integrity of services, bootstraps them, and sets up encrypted connections between them. If a node fails, Marblerun will seamlessly substitute it with respect to the rules defined in the Manifest.
 
@@ -26,6 +26,14 @@ To keep things simple, Marblerun issues one concise remote attestation statement
 ### Overview
 
 <img src="assets/overview.svg" alt="overview" width="600"/>
+
+### Supported Runtimes
+Marblerun supports services built with one of the following frameworks:
+* [EGo][ego]
+* [Edgeless RT][edgelessrt]
+* [Graphene][graphene]
+
+More are coming soon.
 
 ## Quickstart and documentation
 
@@ -56,16 +64,10 @@ We provide basic examples on how to build confidential apps with Marblerun.
 
 The popular [Linkerd][linkerd] service mesh uses the simple and scalable *emojivoto* app as its default demo. You can find our confidential variant [here][emojivoto]. Your emoji votes have never been more secure! 😉
 
-## Roadmap :rocket:
-
-Planned features include:
-
-* Support for [Graphene][graphene], [SGX-LKL][sgx-lkl], and potentially other SGX software frameworks
-* Distribution of the Control Plane to mitigate against a single point of failure
-
 <!-- refs -->
 [docs]: https://marblerun.sh/docs/introduction/
 [edgelessrt]: https://github.com/edgelesssys/edgelessrt
+[ego]: https://github.com/edgelesssys/ego
 [emojivoto]: https://github.com/edgelesssys/emojivoto
 [getting-started]: https://marblerun.sh/docs/getting-started/quickstart/
 [github-actions]: https://github.com/edgelesssys/marblerun/actions
