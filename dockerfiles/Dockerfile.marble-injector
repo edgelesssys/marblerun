@@ -1,8 +1,8 @@
 FROM alpine/git:latest AS pull
-RUN git clone -b feat/webhook https://github.com/edgelesssys/marblerun.git /marble-injector
+RUN git clone https://github.com/edgelesssys/marblerun.git /marble-injector
 WORKDIR /marble-injector
 
-FROM ghcr.io/edgelesssys/edgelessrt-dev:ci AS build
+FROM ghcr.io/edgelesssys/edgelessrt-dev AS build
 COPY --from=pull /marble-injector /marble-injector
 WORKDIR /marble-injector/build
 RUN cmake ..
