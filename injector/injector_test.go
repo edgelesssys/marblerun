@@ -220,7 +220,7 @@ func TestRejectsUnsetMarbletype(t *testing.T) {
 	r := v1.AdmissionReview{}
 	require.NoError(json.Unmarshal(response, &r), "failed to unmarshal response with error %s", err)
 
-	assert.Equal("Rejected", r.Response.Result.Status, "failed to reject pod on unset marbletype")
+	assert.Equal("Missing [marblerun/marbletype] label, injection skipped", r.Response.Result.Message, "failed to skip injection on unset marbletype")
 }
 
 func TestErrorsOnInvalid(t *testing.T) {

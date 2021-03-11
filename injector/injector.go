@@ -95,6 +95,10 @@ func mutate(body []byte, coordAddr string, domainName string, injectSgx bool) ([
 	// allow pod to start if label does not exist, but dont inject any values
 	if len(marbleType) == 0 {
 		admReviewResponse.Response.Allowed = true
+		admReviewResponse.Response.Result = &metav1.Status{
+			Status:  "Success",
+			Message: "Missing [marblerun/marbletype] label, injection skipped",
+		}
 		bytes, err := json.Marshal(admReviewResponse)
 		if err != nil {
 			log.Println("Error: unable to marshal admission response")
