@@ -22,7 +22,7 @@ type Mutator struct {
 
 // HandleMutate handles mutate requests and injects sgx tolerations into the request
 func (m *Mutator) HandleMutate(w http.ResponseWriter, r *http.Request) {
-	log.Println("handling mutate request, injecting sgx tolerations")
+	log.Println("Handling mutate request, injecting sgx tolerations")
 	body := checkRequest(w, r)
 	if body == nil {
 		// Error was already written to w
@@ -42,7 +42,7 @@ func (m *Mutator) HandleMutate(w http.ResponseWriter, r *http.Request) {
 
 // HandleMutateNoSgx is called when the sgx injection label is not set
 func (m *Mutator) HandleMutateNoSgx(w http.ResponseWriter, r *http.Request) {
-	log.Println("handling mutate request, omitting sgx injection")
+	log.Println("Handling mutate request, omitting sgx injection")
 	body := checkRequest(w, r)
 	if body == nil {
 		// Error was already written to w
@@ -64,18 +64,18 @@ func (m *Mutator) HandleMutateNoSgx(w http.ResponseWriter, r *http.Request) {
 func mutate(body []byte, coordAddr string, domainName string, injectSgx bool) ([]byte, error) {
 	admReviewReq := v1.AdmissionReview{}
 	if err := json.Unmarshal(body, &admReviewReq); err != nil {
-		log.Println("unable to mutate request: invalid admission review")
+		log.Println("Unable to mutate request: invalid admission review")
 		return nil, errors.New("invalid admission review")
 	}
 
 	if admReviewReq.Request == nil {
-		log.Println("unable to mutate request: empty admission review request")
+		log.Println("Unable to mutate request: empty admission review request")
 		return nil, errors.New("empty admission request")
 	}
 
 	var pod corev1.Pod
 	if err := json.Unmarshal(admReviewReq.Request.Object.Raw, &pod); err != nil {
-		log.Println("unable to mutate request: invalid pod")
+		log.Println("Unable to mutate request: invalid pod")
 		return nil, errors.New("invalid pod")
 	}
 
@@ -92,20 +92,15 @@ func mutate(body []byte, coordAddr string, domainName string, injectSgx bool) ([
 
 	// get marble type from pod labels
 	marbleType := pod.Labels["marblerun/marbletype"]
-	// reject pod if label does not exist
+	// allow pod to start if label does not exist, but dont inject any values
 	if len(marbleType) == 0 {
-		admReviewResponse.Response.Allowed = false
-		admReviewResponse.Response.Result = &metav1.Status{
-			Status:  "Rejected",
-			Message: "Missing required label: [marblerun/marbletype]",
-			Reason:  metav1.StatusReasonConflict,
-		}
+		admReviewResponse.Response.Allowed = true
 		bytes, err := json.Marshal(admReviewResponse)
 		if err != nil {
 			log.Println("Error: unable to marshal admission response")
 			return nil, errors.New("unable to marshal admission response")
 		}
-		log.Println("unable to mutate request: pod is missing required lable [marblerun/marbletype]")
+		log.Println("Pod is missing [marblerun/marbletype] label, skipping injection")
 		return bytes, nil
 	}
 
@@ -208,7 +203,7 @@ func mutate(body []byte, coordAddr string, domainName string, injectSgx bool) ([
 		return nil, errors.New("unable to marshal admission response")
 	}
 
-	log.Println("mutation request successful")
+	log.Printf("Mutation request for pod of marble type [%s] successful", marbleType)
 	return bytes, nil
 }
 
