@@ -22,4 +22,5 @@ func init() {
 	rootCmd.AddCommand(newStatusCmd())
 	rootCmd.AddCommand(newNamespaceCmd())
 	rootCmd.AddCommand(newRecoverCmd())
+	rootCmd.AddCommand(newUninstallCmd())
 }
