@@ -33,7 +33,7 @@ func TestCertificateV1(t *testing.T) {
 	require.NoError(err)
 
 	testKey := testHandler.getKey()
-	assert.True(testKey.Equal(testHandler.privKey), "private key of the handler and private key returned by its method were not equal")
+	assert.Equal(testKey, testHandler.privKey, "private key of the handler and private key returned by its method were not equal")
 
 	testHandler.timeout = 5
 	// this should error with a timeout since the fakeClient does not keep upated resources, but only returns them once on API call
@@ -71,7 +71,7 @@ func TestCertificateLegacy(t *testing.T) {
 	assert.True(len(testHandler.serverCert.Bytes) > 0, "failed creating serverCert")
 
 	testKey := testHandler.getKey()
-	assert.True(testKey.Equal(testHandler.serverPrivKey), "private key of the handler and private key returned by its method were not equal")
+	assert.Equal(testKey, testHandler.serverPrivKey, "private key of the handler and private key returned by its method were not equal")
 
 	testCrt, err := testHandler.get()
 	require.NoError(err)
