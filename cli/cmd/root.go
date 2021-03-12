@@ -6,8 +6,8 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:   "marblerun",
-	Short: "marblerun cli short description",
-	Long:  `marblerun cli long description`,
+	Short: "This CLI allows you to install Marblerun on your cluster and interacts with the control plane through the Client API for all administrative tasks in the service mesh",
+	Long:  `This CLI allows you to install Marblerun on your cluster and interacts with the control plane through the Client API for all administrative tasks in the service mesh`,
 }
 
 // Execute starts the CLI

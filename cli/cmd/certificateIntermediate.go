@@ -13,8 +13,8 @@ func newCertificateIntermediate() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "intermediate <IP:PORT>",
-		Short: "returns the intermediate certificate of the Marblerun coordinator",
-		Long:  `returns the intermediate certificate of the Marblerun coordinator`,
+		Short: "Returns the intermediate certificate of the Marblerun coordinator",
+		Long:  `Returns the intermediate certificate of the Marblerun coordinator`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hostName := args[0]

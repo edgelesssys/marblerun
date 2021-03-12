@@ -13,8 +13,8 @@ func newCertificateRoot() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "root <IP:PORT>",
-		Short: "returns the root certificate of the Marblerun coordinator",
-		Long:  `returns the root certificate of the Marblerun coordinator`,
+		Short: "Returns the root certificate of the Marblerun coordinator",
+		Long:  `Returns the root certificate of the Marblerun coordinator`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hostName := args[0]

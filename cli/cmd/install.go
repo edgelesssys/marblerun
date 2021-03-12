@@ -239,7 +239,7 @@ func installWebhook(vals map[string]interface{}) error {
 }
 
 // createSecret creates a secret containing the signed certificate and private key for the webhook server
-func createSecret(privKey *rsa.PrivateKey, crt []byte, kubeClient *kubernetes.Clientset) error {
+func createSecret(privKey *rsa.PrivateKey, crt []byte, kubeClient kubernetes.Interface) error {
 	rsaPEM := pem.EncodeToMemory(
 		&pem.Block{
 			Type:  "RSA PRIVATE KEY",
@@ -285,14 +285,14 @@ func getCertificateHandler(kubeClient kubernetes.Interface) (certificateInterfac
 	return newCertificateV1(kubeClient)
 }
 
-func verifyNamespace(namespace string, kubeClient *kubernetes.Clientset) error {
-	_, err := kubeClient.CoreV1().Namespaces().Get(context.TODO(), "marblerun", metav1.GetOptions{})
+func verifyNamespace(namespace string, kubeClient kubernetes.Interface) error {
+	_, err := kubeClient.CoreV1().Namespaces().Get(context.TODO(), namespace, metav1.GetOptions{})
 	if err != nil {
 		// if the namespace does not exist we create it
-		if err.Error() == "namespaces \"marblerun\" not found" {
+		if err.Error() == fmt.Sprintf("namespaces \"%s\" not found", namespace) {
 			marbleNamespace := &corev1.Namespace{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "marblerun",
+					Name: namespace,
 				},
 			}
 			if _, err := kubeClient.CoreV1().Namespaces().Create(context.TODO(), marbleNamespace, metav1.CreateOptions{}); err != nil {
