@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -43,17 +43,13 @@ func cliUninstall(settings *cli.EnvSettings, kubeClient kubernetes.Interface) er
 	// If we get a "not found" error the resource was already removed / never created
 	// and we can continue on without a problem
 	err := cleanupSecrets(kubeClient)
-	if err != nil {
-		if !strings.HasSuffix(err.Error(), "not found") {
-			return err
-		}
+	if !errors.IsNotFound(err) {
+		return err
 	}
 
 	err = cleanupCSR(kubeClient)
-	if err != nil {
-		if !strings.HasSuffix(err.Error(), "not found") {
-			return err
-		}
+	if !errors.IsNotFound(err) {
+		return err
 	}
 
 	fmt.Println("Marblerun successfully removed from your cluster")

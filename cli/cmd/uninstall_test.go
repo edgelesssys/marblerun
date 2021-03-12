@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	certv1 "k8s.io/api/certificates/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/version"
 	fakediscovery "k8s.io/client-go/discovery/fake"
@@ -29,7 +30,7 @@ func TestCleanupWebhook(t *testing.T) {
 
 	err = cleanupCSR(testClient)
 	require.Error(err)
-	assert.Contains(err.Error(), "not found", "function returned an error other than not found")
+	assert.True(errors.IsNotFound(err), "function returned an error other than not found")
 
 	// Create and test for CSR
 	csr := &certv1.CertificateSigningRequest{
@@ -72,7 +73,7 @@ func TestCleanupWebhook(t *testing.T) {
 
 	err = cleanupSecrets(testClient)
 	require.Error(err)
-	assert.Contains(err.Error(), "not found", "function returned an error other than not found")
+	assert.True(errors.IsNotFound(err), "function returned an error other than not found")
 
 	// Create Secret and test for Secret
 	secret := &corev1.Secret{
