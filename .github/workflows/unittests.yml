@@ -44,6 +44,8 @@ jobs:
           build/coordinator-noenclave
           build/coordinator-era.json
           build/premain-graphene
+          build/marble-injector
+          build/marblerun
 
     - name: Deploy coordinator:nightly
       if: github.ref == 'refs/heads/master' &&
@@ -56,5 +58,21 @@ jobs:
                               "sign":"nightly",
                               "imagename":"coordinator",
                               "tag":"nightly",
+                              "file": "dockerfiles/Dockerfile.coordinator",
+                              "target":"release"}}' \
+        https://api.github.com/repos/edgelesssys/deployment/dispatches
+
+    - name: Deploy marble-injector:nightly
+      if: github.ref == 'refs/heads/master' &&
+          github.event_name == 'push'
+      run: |
+        curl -X POST -H "Accept: application/vnd.github.v3+json" \
+        -H "Authorization: token ${{ secrets.CI_GITHUB_REPOSITORY }}" \
+        -d '{"event_type": "docker-build",
+            "client_payload":{"repository":"marblerun",
+                              "sign":"nightly",
+                              "imagename":"marble-injector",
+                              "tag":"nightly",
+                              "file": "dockerfiles/Dockerfile.marble-injector",
                               "target":"release"}}' \
         https://api.github.com/repos/edgelesssys/deployment/dispatches

@@ -8,9 +8,14 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/edgelesssys/era/era"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 )
+
+const webhookName = "marble-injector.marblerun"
 
 var eraConfig string
 var insecureEra bool
@@ -72,4 +77,28 @@ func restClient(cert []*pem.Block) (*http.Client, error) {
 	}
 
 	return client, nil
+}
+
+// getKubernetesInterface returns the kubernetes Clientset to interact with the k8s API
+func getKubernetesInterface() (*kubernetes.Clientset, error) {
+	path := os.Getenv("KUBECONFIG")
+	if path == "" {
+		homedir, err := os.UserHomeDir()
+		if err != nil {
+			return nil, err
+		}
+		path = filepath.Join(homedir, ".kube", "config")
+	}
+
+	kubeConfig, err := clientcmd.BuildConfigFromFlags("", path)
+	if err != nil {
+		return nil, err
+	}
+
+	kubeClient, err := kubernetes.NewForConfig(kubeConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed setting up kubernetes client: %v", err)
+	}
+
+	return kubeClient, nil
 }

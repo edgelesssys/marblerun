@@ -70,7 +70,7 @@ func TestPreMain(t *testing.T) {
 
 		savedUUID, err := afero.ReadFile(hostfs, "uuidfile")
 		assert.NoError(err)
-		assert.Len(savedUUID, len(uuid.UUID{}))
+		assert.Len(savedUUID, len(uuid.UUID{}.String()))
 
 		assert.Equal([]string{"./marble"}, os.Args)
 	}
@@ -83,9 +83,6 @@ func TestPreMain(t *testing.T) {
 		hostfs := afero.NewMemMapFs()
 		enclavefs := afero.NewMemMapFs()
 		require.Error(PreMainEx(issuer, activate, hostfs, enclavefs))
-
-		_, err := afero.ReadFile(hostfs, "uuidfile")
-		assert.Error(err)
 
 		assert.Equal([]string{"not modified"}, os.Args)
 	}
@@ -112,7 +109,7 @@ func TestPreMain(t *testing.T) {
 
 		savedUUID, err := afero.ReadFile(hostfs, "uuidfile")
 		assert.NoError(err)
-		assert.Len(savedUUID, len(uuid.UUID{}))
+		assert.Len(savedUUID, len(uuid.UUID{}.String()))
 
 		data, err := afero.ReadFile(enclavefs, "path1")
 		assert.NoError(err)
@@ -138,10 +135,7 @@ func TestPreMain(t *testing.T) {
 		enclavefs := afero.NewMemMapFs()
 		require.Error(PreMainEx(issuer, activate, hostfs, enclavefs))
 
-		_, err := afero.ReadFile(hostfs, "uuidfile")
-		assert.Error(err)
-
-		_, err = afero.ReadFile(enclavefs, "path1")
+		_, err := afero.ReadFile(enclavefs, "path1")
 		assert.Error(err)
 		_, err = afero.ReadFile(enclavefs, "path2")
 		assert.Error(err)

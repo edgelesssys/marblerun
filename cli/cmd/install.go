@@ -2,11 +2,15 @@ package cmd
 
 import (
 	"context"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,6 +23,9 @@ import (
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/repo"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 func newInstallCmd() *cobra.Command {
@@ -27,6 +34,7 @@ func newInstallCmd() *cobra.Command {
 	var chartPath string
 	var simulation bool
 	var noSgxDevicePlugin bool
+	var disableInjection bool
 	var meshServerPort int
 	var clientServerPort int
 
@@ -37,7 +45,7 @@ func newInstallCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			settings = cli.New()
-			return cliInstall(chartPath, domain, simulation, noSgxDevicePlugin, clientServerPort, meshServerPort, settings)
+			return cliInstall(chartPath, domain, simulation, noSgxDevicePlugin, disableInjection, clientServerPort, meshServerPort, settings)
 		},
 		SilenceUsage: true,
 	}
@@ -46,6 +54,7 @@ func newInstallCmd() *cobra.Command {
 	cmd.Flags().StringVar(&chartPath, "marblerun-chart-path", "", "Path to marblerun helm chart")
 	cmd.Flags().BoolVar(&simulation, "simulation", false, "Set marblerun to start in simulation mode")
 	cmd.Flags().BoolVar(&noSgxDevicePlugin, "no-sgx-device-plugin", false, "Disables the installation of an sgx device plugin")
+	cmd.Flags().BoolVar(&disableInjection, "disable-auto-injection", false, "Disable automatic injection of selected namespaces")
 	cmd.Flags().IntVar(&meshServerPort, "mesh-server-port", 25554, "Set the mesh server port. Needs to be configured to the same port as in the data-plane marbles")
 	cmd.Flags().IntVar(&clientServerPort, "client-server-port", 25555, "Set the client server port. Needs to be configured to the same port as in your client tool stack")
 
@@ -53,7 +62,7 @@ func newInstallCmd() *cobra.Command {
 }
 
 // cliInstall installs marblerun on the cluster
-func cliInstall(path string, hostname string, sim bool, noSgx bool, clientPort int, meshPort int, settings *cli.EnvSettings) error {
+func cliInstall(path string, hostname string, sim bool, noSgx bool, disableInjection bool, clientPort int, meshPort int, settings *cli.EnvSettings) error {
 	actionConfig := new(action.Configuration)
 	if err := actionConfig.Init(settings.RESTClientGetter(), "marblerun", os.Getenv("HELM_DRIVER"), debug); err != nil {
 		return err
@@ -88,6 +97,12 @@ func cliInstall(path string, hostname string, sim bool, noSgx bool, clientPort i
 	vals["coordinator"].(map[string]interface{})["meshServerPort"] = meshPort
 	vals["coordinator"].(map[string]interface{})["clientServerPort"] = clientPort
 
+	if !disableInjection {
+		if err := installWebhook(vals); err != nil {
+			return err
+		}
+	}
+
 	// create helm installer
 	installer := action.NewInstall(actionConfig)
 	installer.CreateNamespace = true
@@ -118,7 +133,7 @@ func cliInstall(path string, hostname string, sim bool, noSgx bool, clientPort i
 		return err
 	}
 
-	fmt.Printf("Marblerun installed successfully\n")
+	fmt.Println("Marblerun installed successfully")
 	return nil
 }
 
@@ -180,6 +195,113 @@ func getRepo(name string, url string, settings *cli.EnvSettings) error {
 		return err
 	}
 	fmt.Printf("%s has been added to your helm repositories\n", name)
+	return nil
+}
+
+// installWebhook enables a mutating admission webhook to allow automatic injection of values into pods
+func installWebhook(vals map[string]interface{}) error {
+	kubeClient, err := getKubernetesInterface()
+	if err != nil {
+		return err
+	}
+
+	// verify marblerun namespace exists, if not create it
+	if err := verifyNamespace("marblerun", kubeClient); err != nil {
+		return err
+	}
+
+	fmt.Printf("Setting up Marblerun Webhook")
+	certificateHandler, err := getCertificateHandler(kubeClient)
+	if err != nil {
+		return err
+	}
+	fmt.Printf(".")
+	err = certificateHandler.signRequest()
+	if err != nil {
+		return err
+	}
+	fmt.Printf(".")
+	certificateHandler.setCaBundle(vals)
+	cert, err := certificateHandler.get()
+	if err != nil {
+		return err
+	}
+	if len(cert) <= 0 {
+		return fmt.Errorf("certificate was not signed by the CA")
+	}
+	fmt.Printf(".")
+
+	if err := createSecret(certificateHandler.getKey(), cert, kubeClient); err != nil {
+		return err
+	}
+	fmt.Printf(" Done\n")
+	return nil
+}
+
+// createSecret creates a secret containing the signed certificate and private key for the webhook server
+func createSecret(privKey *rsa.PrivateKey, crt []byte, kubeClient *kubernetes.Clientset) error {
+	rsaPEM := pem.EncodeToMemory(
+		&pem.Block{
+			Type:  "RSA PRIVATE KEY",
+			Bytes: x509.MarshalPKCS1PrivateKey(privKey),
+		},
+	)
+
+	newSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "marble-injector-webhook-certs",
+			Namespace: "marblerun",
+		},
+		Data: map[string][]byte{
+			"cert.pem": crt,
+			"key.pem":  rsaPEM,
+		},
+	}
+
+	_, err := kubeClient.CoreV1().Secrets("marblerun").Create(context.TODO(), newSecret, metav1.CreateOptions{})
+	return err
+}
+
+func getCertificateHandler(kubeClient kubernetes.Interface) (certificateInterface, error) {
+	versionInfo, err := kubeClient.Discovery().ServerVersion()
+	if err != nil {
+		return nil, err
+	}
+	majorVersion, err := strconv.Atoi(versionInfo.Major)
+	if err != nil {
+		return nil, err
+	}
+	minorVersion, err := strconv.Atoi(versionInfo.Minor)
+	if err != nil {
+		return nil, err
+	}
+
+	// return the legacy interface if kubernetes version is < 1.19
+	if majorVersion == 1 && minorVersion < 19 {
+		fmt.Printf("\nKubernetes version lower than 1.19 detected, using self-signed certificates as CABundle")
+		return newCertificateLegacy()
+	}
+
+	return newCertificateV1(kubeClient)
+}
+
+func verifyNamespace(namespace string, kubeClient *kubernetes.Clientset) error {
+	_, err := kubeClient.CoreV1().Namespaces().Get(context.TODO(), "marblerun", metav1.GetOptions{})
+	if err != nil {
+		// if the namespace does not exist we create it
+		if err.Error() == "namespaces \"marblerun\" not found" {
+			marbleNamespace := &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "marblerun",
+				},
+			}
+			if _, err := kubeClient.CoreV1().Namespaces().Create(context.TODO(), marbleNamespace, metav1.CreateOptions{}); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	}
 	return nil
 }
 

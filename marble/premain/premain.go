@@ -31,7 +31,7 @@ import (
 
 // storeUUID stores the uuid to the fs
 func storeUUID(appFs afero.Fs, marbleUUID uuid.UUID, filename string) error {
-	uuidBytes, err := marbleUUID.MarshalBinary()
+	uuidBytes, err := marbleUUID.MarshalText()
 	if err != nil {
 		return fmt.Errorf("failed to marshal UUID: %v", err)
 	}
@@ -51,25 +51,30 @@ func readUUID(appFs afero.Fs, filename string) (*uuid.UUID, error) {
 	}
 
 	marbleUUID := uuid.New()
-	if err := marbleUUID.UnmarshalBinary(uuidBytes); err != nil {
+	if err := marbleUUID.UnmarshalText(uuidBytes); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal UUID: %v", err)
 	}
+
 	return &marbleUUID, nil
 }
 
 // getUUID loads or generates the uuid
 func getUUID(appFs afero.Fs, uuidFile string) (uuid.UUID, error) {
-	// check if we have a uuid stored in the fs (means we are restarted)
+	// check if we have a uuid stored in the fs (means we are restarted or it was set by the admission controller)
 	log.Println("loading UUID")
 	existingUUID, err := readUUID(appFs, uuidFile)
 	if err != nil {
 		return uuid.UUID{}, err
 	}
 
-	// generate new UUID if not present
+	// generate new UUID if not present and store it
 	if existingUUID == nil {
-		log.Println("UUID not found. Generating a new UUID")
-		return uuid.New(), nil
+		log.Println("UUID not found. Generating and storing a new UUID")
+		newUUID := uuid.New()
+		if err := storeUUID(appFs, newUUID, uuidFile); err != nil {
+			return uuid.UUID{}, err
+		}
+		return newUUID, nil
 	}
 
 	log.Println("found UUID:", existingUUID.String())
@@ -168,12 +173,6 @@ func PreMainEx(issuer quote.Issuer, activate ActivateFunc, hostfs, enclavefs afe
 	log.Println("activating marble of type", marbleType)
 	params, err := activate(req, coordAddr, tlsCredentials)
 	if err != nil {
-		return err
-	}
-
-	// store UUID to file
-	log.Println("storing UUID")
-	if err := storeUUID(hostfs, marbleUUID, uuidFile); err != nil {
 		return err
 	}
 
