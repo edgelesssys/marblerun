@@ -4,10 +4,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var globalUsage = `The marblerun CLI enables you to install and manage the Marblerun
+confidential computing service mesh in your Kubernetes cluster
+
+To install and configure Marblerun, run:
+   
+    $ marblerun install
+`
+
 var rootCmd = &cobra.Command{
 	Use:   "marblerun",
-	Short: "This CLI allows you to install Marblerun on your cluster and interacts with the control plane through the Client API for all administrative tasks in the service mesh",
-	Long:  `This CLI allows you to install Marblerun on your cluster and interacts with the control plane through the Client API for all administrative tasks in the service mesh`,
+	Short: "Install and manage the Marblerun confidential computing service mesh",
+	Long:  globalUsage,
 }
 
 // Execute starts the CLI
