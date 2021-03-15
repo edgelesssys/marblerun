@@ -3,7 +3,7 @@ module github.com/edgelesssys/marblerun
 go 1.14
 
 require (
-	github.com/edgelesssys/era v0.1.1-0.20210209072546-fb6c08a3562c
+	github.com/edgelesssys/era v0.3.0
 	github.com/edgelesssys/ertgolib v0.1.5-0.20210208080427-0d5e24e2f855
 	github.com/gofrs/flock v0.8.0
 	github.com/golang/protobuf v1.4.3
@@ -16,7 +16,7 @@ require (
 	github.com/spf13/afero v1.4.1
 	github.com/spf13/cobra v1.1.1
 	github.com/stretchr/testify v1.6.1
-	github.com/tidwall/gjson v1.6.1
+	github.com/tidwall/gjson v1.6.8
 	go.uber.org/zap v1.16.0
 	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897
 	google.golang.org/grpc v1.33.1
