@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -22,7 +23,21 @@ func newManifestSet() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			manifestFile := args[0]
 			hostName := args[1]
-			return cliManifestSet(manifestFile, hostName, eraConfig, insecureEra, recoveryFilename)
+
+			cert, err := verifyCoordinator(hostName, eraConfig, insecureEra)
+			if err != nil {
+				return err
+			}
+
+			// Load manifest
+			manifest, err := ioutil.ReadFile(manifestFile)
+			if err != nil {
+				return err
+			}
+
+			fmt.Println("Successfully verified coordinator, now uploading manifest")
+
+			return cliManifestSet(manifest, hostName, cert, recoveryFilename)
 		},
 		SilenceUsage: true,
 	}
@@ -33,19 +48,7 @@ func newManifestSet() *cobra.Command {
 }
 
 // cliManifestSet sets the coordinators manifest using its rest api
-func cliManifestSet(manifestName string, host string, configFilename string, insecure bool, recover string) error {
-	cert, err := verifyCoordinator(host, configFilename, insecure)
-	if err != nil {
-		return err
-	}
-	fmt.Println("Successfully verified coordinator, now uploading manifest")
-
-	// Load manifest
-	manifest, err := ioutil.ReadFile(manifestName)
-	if err != nil {
-		return err
-	}
-
+func cliManifestSet(manifest []byte, host string, cert []*pem.Block, recover string) error {
 	client, err := restClient(cert)
 	if err != nil {
 		return err

@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -25,7 +26,21 @@ func newRecoverCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hostName := args[0]
 			keyFile := args[1]
-			return cliRecover(hostName, keyFile, eraConfig, insecureEra)
+
+			cert, err := verifyCoordinator(hostName, eraConfig, insecureEra)
+			if err != nil {
+				return err
+			}
+
+			// read in key
+			recoveryKey, err := ioutil.ReadFile(keyFile)
+			if err != nil {
+				return err
+			}
+
+			fmt.Println("Successfully verified coordinator, now uploading key")
+
+			return cliRecover(hostName, recoveryKey, cert)
 		},
 		SilenceUsage: true,
 	}
@@ -37,20 +52,8 @@ func newRecoverCmd() *cobra.Command {
 }
 
 // cliRecover tries to unseal the coordinator by uploading the recovery key
-func cliRecover(host string, keyFile string, configFilename string, insecure bool) error {
-	cert, err := verifyCoordinator(host, configFilename, insecure)
-	if err != nil {
-		return err
-	}
-	fmt.Println("Successfully verified coordinator, now uploading key")
-
+func cliRecover(host string, key []byte, cert []*pem.Block) error {
 	client, err := restClient(cert)
-	if err != nil {
-		return err
-	}
-
-	// read in key
-	key, err := ioutil.ReadFile(keyFile)
 	if err != nil {
 		return err
 	}
@@ -67,13 +70,6 @@ func cliRecover(host string, keyFile string, configFilename string, insecure boo
 		if err != nil {
 			return err
 		}
-
-		if len(respBody) <= 0 {
-			fmt.Println("Successfully uploaded recovery key and unsealed the Marblerun coordinator")
-			return nil
-		}
-
-		// if a response was sent another recovery key will be needed, print message to user
 		jsonResponse := gjson.GetBytes(respBody, "data")
 		var response coordinatorResponse
 		if err := json.Unmarshal([]byte(jsonResponse.String()), &response); err != nil {

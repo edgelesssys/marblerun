@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -28,7 +29,27 @@ An admin certificate specified in the original manifest is needed to verify the 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			manifestFile := args[0]
 			hostName := args[1]
-			return cliManifestUpdate(manifestFile, hostName, clientAdminCert, clientAdminKey, eraConfig, insecureEra)
+
+			caCert, err := verifyCoordinator(hostName, eraConfig, insecureEra)
+			if err != nil {
+				return err
+			}
+
+			// Load client certificate and key
+			clCert, err := tls.LoadX509KeyPair(clientAdminCert, clientAdminKey)
+			if err != nil {
+				return err
+			}
+
+			// Load manifest
+			manifest, err := ioutil.ReadFile(manifestFile)
+			if err != nil {
+				return err
+			}
+
+			fmt.Println("Successfully verified coordinator, now uploading manifest")
+
+			return cliManifestUpdate(manifest, hostName, clCert, caCert)
 		},
 		SilenceUsage: true,
 	}
@@ -42,16 +63,10 @@ An admin certificate specified in the original manifest is needed to verify the 
 }
 
 // cliManifestUpdate updates the coordinators manifest using its rest api
-func cliManifestUpdate(manifestName string, host string, clCertFile string, clKeyFile string, configFilename string, insecure bool) error {
-	caCert, err := verifyCoordinator(host, configFilename, insecure)
-	if err != nil {
-		return err
-	}
-	fmt.Println("Successfully verified coordinator, now uploading manifest")
-
+func cliManifestUpdate(manifest []byte, host string, clCert tls.Certificate, caCert []*pem.Block) error {
 	// Set rootCA for connection to coordinator
 	certPool := x509.NewCertPool()
-	if ok := certPool.AppendCertsFromPEM([]byte(caCert[len(caCert)-1].Bytes)); !ok {
+	if ok := certPool.AppendCertsFromPEM(pem.EncodeToMemory(caCert[len(caCert)-1])); !ok {
 		return errors.New("Failed to parse certificate")
 	}
 	// Add intermediate cert if applicable
@@ -61,12 +76,6 @@ func cliManifestUpdate(manifestName string, host string, clCertFile string, clKe
 		}
 	}
 
-	// Load client certificate and key
-	clCert, err := tls.LoadX509KeyPair(clCertFile, clKeyFile)
-	if err != nil {
-		return err
-	}
-
 	client := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
@@ -74,12 +83,6 @@ func cliManifestUpdate(manifestName string, host string, clCertFile string, clKe
 				Certificates: []tls.Certificate{clCert},
 			},
 		},
-	}
-
-	// Load manifest
-	manifest, err := ioutil.ReadFile(manifestName)
-	if err != nil {
-		return err
 	}
 
 	url := url.URL{Scheme: "https", Host: host, Path: "update"}

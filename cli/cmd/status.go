@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -41,7 +42,11 @@ func newStatusCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hostname := args[0]
-			return cliStatus(hostname, eraConfig, insecureEra)
+			cert, err := verifyCoordinator(hostname, eraConfig, insecureEra)
+			if err != nil {
+				return err
+			}
+			return cliStatus(hostname, cert)
 		},
 		SilenceUsage: true,
 	}
@@ -53,12 +58,7 @@ func newStatusCmd() *cobra.Command {
 }
 
 // cliStatus requests the current status of the coordinator
-func cliStatus(host string, configFilename string, insecure bool) error {
-	cert, err := verifyCoordinator(host, configFilename, insecure)
-	if err != nil {
-		return err
-	}
-
+func cliStatus(host string, cert []*pem.Block) error {
 	client, err := restClient(cert)
 	if err != nil {
 		return err

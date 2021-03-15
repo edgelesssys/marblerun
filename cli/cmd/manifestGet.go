@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -22,25 +23,23 @@ func newManifestGet() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hostName := args[0]
 			targetFile := manifestFilename
-			if targetFile == "" {
-				targetFile = "manifest.json"
+			cert, err := verifyCoordinator(hostName, eraConfig, insecureEra)
+			if err != nil {
+				return err
 			}
-			return cliManifestGet(targetFile, hostName, eraConfig, insecureEra)
+
+			fmt.Println("Successfully verified coordinator, now requesting manifest signature")
+
+			return cliManifestGet(targetFile, hostName, cert)
 		},
 		SilenceUsage: true,
 	}
-	cmd.Flags().StringVarP(&manifestFilename, "output", "o", "manifest.json", "Define file to write to")
+	cmd.Flags().StringVarP(&manifestFilename, "output", "o", "signature.json", "Define file to write to")
 	return cmd
 }
 
 // cliManifestGet gets the manifest from the coordinatros rest api
-func cliManifestGet(targetFile string, host string, configFilename string, insecure bool) error {
-	cert, err := verifyCoordinator(host, configFilename, insecure)
-	if err != nil {
-		return err
-	}
-	fmt.Println("Successfully verified coordinator, now requesting manifest signature")
-
+func cliManifestGet(targetFile string, host string, cert []*pem.Block) error {
 	client, err := restClient(cert)
 	if err != nil {
 		return err
