@@ -31,12 +31,11 @@ func TestCliManifestGet(t *testing.T) {
 
 		assert.NoError(json.NewEncoder(w).Encode(serverResp))
 	}))
+	defer s.Close()
 
 	dir, err := ioutil.TempDir("", "unittest")
 	require.NoError(err)
-
 	defer os.RemoveAll(dir)
-	defer s.Close()
 
 	responseFile := filepath.Join(dir, "tmp-sign.json")
 	err = cliManifestGet(responseFile, host, []*pem.Block{cert})
@@ -82,12 +81,11 @@ func TestCliManifestSet(t *testing.T) {
 
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
+	defer s.Close()
 
 	dir, err := ioutil.TempDir("", "unittest")
 	require.NoError(err)
-
 	defer os.RemoveAll(dir)
-	defer s.Close()
 
 	err = cliManifestSet([]byte("00"), host, []*pem.Block{cert}, "")
 	require.NoError(err)
