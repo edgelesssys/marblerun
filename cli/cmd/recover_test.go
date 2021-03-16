@@ -3,42 +3,44 @@ package cmd
 import (
 	"encoding/json"
 	"encoding/pem"
+	"io/ioutil"
 	"net/http"
 	"testing"
 
+	"github.com/edgelesssys/marblerun/coordinator/server"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestCliRecover(t *testing.T) {
 	require := require.New(t)
+	assert := assert.New(t)
 	s, host, cert := newTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI != "/recover" {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		if r.Method != http.MethodPost {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
+		assert.Equal("/recover", r.RequestURI)
+		assert.Equal(http.MethodPost, r.Method)
 
-		w.WriteHeader(http.StatusOK)
+		reqData, err := ioutil.ReadAll(r.Body)
+		assert.NoError(err)
 
 		type recoveryStatusResp struct {
 			StatusMessage string
+		}
+
+		if string(reqData) == "Return Error" {
+			w.WriteHeader(http.StatusBadRequest)
+			return
 		}
 
 		data := recoveryStatusResp{
 			StatusMessage: "Recovery successful.",
 		}
 
-		serverResp := testServerResponse{
+		serverResp := server.GeneralResponse{
 			Status: "success",
 			Data:   data,
 		}
 
-		if err := json.NewEncoder(w).Encode(serverResp); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
+		assert.NoError(json.NewEncoder(w).Encode(serverResp))
 	}))
 
 	defer s.Close()
@@ -46,36 +48,6 @@ func TestCliRecover(t *testing.T) {
 	err := cliRecover(host, []byte{0xAA, 0xAA}, []*pem.Block{cert})
 	require.NoError(err)
 
-	// change handler func to request additional secrets
-	s.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI != "/recover" {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		if r.Method != http.MethodPost {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		w.WriteHeader(http.StatusOK)
-		type recoveryStatusResp struct {
-			StatusMessage string
-		}
-
-		data := recoveryStatusResp{
-			StatusMessage: "Secret was processed successfully. Upload the next secret. Remaining secrets: 1",
-		}
-
-		serverResp := testServerResponse{
-			Status: "success",
-			Data:   data,
-		}
-
-		if err := json.NewEncoder(w).Encode(serverResp); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-	})
-
-	err = cliRecover(host, []byte{0xAA, 0xAA}, []*pem.Block{cert})
-	require.NoError(err)
+	err = cliRecover(host, []byte("Return Error"), []*pem.Block{cert})
+	require.Error(err)
 }

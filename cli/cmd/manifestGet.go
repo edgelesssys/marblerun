@@ -13,7 +13,7 @@ import (
 )
 
 func newManifestGet() *cobra.Command {
-	var manifestFilename string
+	var signatureFilename string
 
 	cmd := &cobra.Command{
 		Use:   "get <IP:PORT>",
@@ -22,7 +22,7 @@ func newManifestGet() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hostName := args[0]
-			targetFile := manifestFilename
+			targetFile := signatureFilename
 			cert, err := verifyCoordinator(hostName, eraConfig, insecureEra)
 			if err != nil {
 				return err
@@ -34,7 +34,7 @@ func newManifestGet() *cobra.Command {
 		},
 		SilenceUsage: true,
 	}
-	cmd.Flags().StringVarP(&manifestFilename, "output", "o", "signature.json", "Define file to write to")
+	cmd.Flags().StringVarP(&signatureFilename, "output", "o", "signature.json", "Define file to write to")
 	return cmd
 }
 
