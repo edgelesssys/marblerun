@@ -6,6 +6,9 @@ find_package(OpenEnclave CONFIG REQUIRED)
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Debug)
 endif ()
+if (NOT CMAKE_BUILD_TYPE STREQUAL Debug)
+  set(TRIMPATH -trimpath)
+endif ()
 
 # Generate key
 add_custom_command(
@@ -18,13 +21,13 @@ add_custom_command(
 #
 
 add_custom_target(coordinatorlib
-  ertgo build -buildmode=c-archive -tags enclave
+  ertgo build ${TRIMPATH} -buildmode=c-archive -tags enclave
   -o libcoordinator.a
   ${CMAKE_SOURCE_DIR}/cmd/coordinator
 )
 
 add_custom_target(coordinator-noenclave ALL
-  go build
+  go build ${TRIMPATH}
   -o coordinator-noenclave
   ${CMAKE_SOURCE_DIR}/cmd/coordinator)
 
@@ -59,7 +62,7 @@ add_custom_target(sign-coordinator ALL DEPENDS coordinator-enclave.signed coordi
 
 add_custom_target(marble-injector ALL
   CGO_ENABLED=0
-  go build
+  go build ${TRIMPATH}
   -o marble-injector
   ${CMAKE_SOURCE_DIR}/cmd/marble-injector
 )
@@ -69,9 +72,9 @@ add_custom_target(marble-injector ALL
 #
 
 add_custom_target(cli ALL
-  go build
+  go build ${TRIMPATH}
   -o marblerun
-  ${CMAKE_SOURCE_DIR}/cli/main.go
+  ${CMAKE_SOURCE_DIR}/cli
 )
 
 #
@@ -79,13 +82,13 @@ add_custom_target(cli ALL
 #
 
 add_custom_target(marbletestlib
-  ertgo build -buildmode=c-archive -tags enclave
-  -o libmarbletest.a
+  ertgo build ${TRIMPATH} -buildmode=c-archive
+  -tags enclave -o libmarbletest.a
   ${CMAKE_SOURCE_DIR}/cmd/marble-test
 )
 
 add_custom_target(marble-test-noenclave ALL
-  go build
+  go build ${TRIMPATH}
   -o marble-test-noenclave
   ${CMAKE_SOURCE_DIR}/cmd/marble-test)
 
@@ -118,5 +121,5 @@ add_custom_target(sign-marble-test ALL DEPENDS marble-test-enclave.signed marble
 # Build premain-graphene
 #
 
-add_custom_target(premain-graphene ALL ertgo build -buildmode=pie ${CMAKE_SOURCE_DIR}/cmd/premain-graphene)
-add_custom_target(premain-graphene-so ALL ertgo build -buildmode=c-shared -o premain-graphene.so ${CMAKE_SOURCE_DIR}/cmd/premain-graphene-so)
+add_custom_target(premain-graphene ALL ertgo build ${TRIMPATH} -buildmode=pie ${CMAKE_SOURCE_DIR}/cmd/premain-graphene)
+add_custom_target(premain-graphene-so ALL ertgo build ${TRIMPATH} -buildmode=c-shared -o premain-graphene.so ${CMAKE_SOURCE_DIR}/cmd/premain-graphene-so)
