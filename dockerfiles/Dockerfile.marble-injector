@@ -5,7 +5,7 @@ WORKDIR /marble-injector
 FROM ghcr.io/edgelesssys/edgelessrt-dev AS build
 COPY --from=pull /marble-injector /marble-injector
 WORKDIR /marble-injector/build
-RUN cmake ..
+RUN cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
 RUN make marble-injector
 
 FROM scratch AS release
