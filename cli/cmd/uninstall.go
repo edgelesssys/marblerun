@@ -43,12 +43,12 @@ func cliUninstall(settings *cli.EnvSettings, kubeClient kubernetes.Interface) er
 	// If we get a "not found" error the resource was already removed / never created
 	// and we can continue on without a problem
 	err := cleanupSecrets(kubeClient)
-	if !errors.IsNotFound(err) {
+	if err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 
 	err = cleanupCSR(kubeClient)
-	if !errors.IsNotFound(err) {
+	if err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 
