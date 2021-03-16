@@ -13,7 +13,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/edgelesssys/ertgolib/ertenclave"
+	"github.com/edgelesssys/ego/enclave"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 )
 
@@ -29,7 +29,7 @@ func NewERTValidator() *ERTValidator {
 // Validate implements the Validator interface for ERTValidator
 func (m *ERTValidator) Validate(givenQuote []byte, cert []byte, pp quote.PackageProperties, ip quote.InfrastructureProperties) error {
 	// Verify Quote
-	report, err := ertenclave.VerifyRemoteReport(givenQuote)
+	report, err := enclave.VerifyRemoteReport(givenQuote)
 	if err != nil {
 		return fmt.Errorf("verifying quote failed: %v", err)
 	}
@@ -68,5 +68,5 @@ func NewERTIssuer() *ERTIssuer {
 // Issue implements the Issuer interface
 func (m *ERTIssuer) Issue(cert []byte) ([]byte, error) {
 	hash := sha256.Sum256(cert)
-	return ertenclave.GetRemoteReport(hash[:])
+	return enclave.GetRemoteReport(hash[:])
 }

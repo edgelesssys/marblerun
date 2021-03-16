@@ -13,7 +13,7 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/edgelesssys/ertgolib/marble"
+	"github.com/edgelesssys/ego/marble"
 	"github.com/edgelesssys/marblerun/util"
 )
 
