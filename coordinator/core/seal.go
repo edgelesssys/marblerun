@@ -15,7 +15,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/edgelesssys/ertgolib/ertcrypto"
+	"github.com/edgelesssys/ego/ecrypto"
 )
 
 // SealedDataFname contains the file name in which the state is sealed on disk in seal_dir
@@ -80,7 +80,7 @@ func (s *AESGCMSealer) Unseal() ([]byte, []byte, error) {
 	}
 
 	// Decrypt data with the unsealed encryption key and return it
-	decryptedData, err := ertcrypto.Decrypt(ciphertext, s.encryptionKey)
+	decryptedData, err := ecrypto.Decrypt(ciphertext, s.encryptionKey)
 	if err != nil {
 		return unencryptedData, nil, err
 	}
@@ -101,7 +101,7 @@ func (s *AESGCMSealer) Seal(unencryptedData []byte, toBeEncrypted []byte) error 
 	}
 
 	// Encrypt data to seal with generated encryption key
-	encryptedData, err := ertcrypto.Encrypt(toBeEncrypted, s.encryptionKey)
+	encryptedData, err := ecrypto.Encrypt(toBeEncrypted, s.encryptionKey)
 	if err != nil {
 		return err
 	}
@@ -137,7 +137,7 @@ func (s *AESGCMSealer) unsealEncryptionKey() error {
 	}
 
 	// Decrypt stored encryption key with seal key
-	encryptionKey, err := ertcrypto.Unseal(sealedKeyData)
+	encryptionKey, err := ecrypto.Unseal(sealedKeyData)
 	if err != nil {
 		return err
 	}
@@ -170,7 +170,7 @@ func (s *AESGCMSealer) SetEncryptionKey(encryptionKey []byte) error {
 	}
 
 	// Encrypt encryption key with seal key
-	encryptedKeyData, err := ertcrypto.SealWithProductKey(encryptionKey)
+	encryptedKeyData, err := ecrypto.SealWithProductKey(encryptionKey)
 	if err != nil {
 		return err
 	}
@@ -223,7 +223,7 @@ func NewNoEnclaveSealer(sealDir string) *NoEnclaveSealer {
 // Seal writes the given data encrypted and the used key as plaintext to the disk
 func (s *NoEnclaveSealer) Seal(unencryptedData []byte, toBeEncrypted []byte) error {
 	// Encrypt data
-	sealedData, err := ertcrypto.Encrypt(toBeEncrypted, s.encryptionKey)
+	sealedData, err := ecrypto.Encrypt(toBeEncrypted, s.encryptionKey)
 	if err != nil {
 		return err
 	}
@@ -278,7 +278,7 @@ func (s *NoEnclaveSealer) Unseal() ([]byte, []byte, error) {
 	ciphertext := sealedData[4+encodedUnencryptDataLength:]
 
 	// Decrypt data with key from disk
-	decryptedData, err := ertcrypto.Decrypt(ciphertext, keyData)
+	decryptedData, err := ecrypto.Decrypt(ciphertext, keyData)
 	if err != nil {
 		return unencryptedData, nil, ErrEncryptionKey
 	}

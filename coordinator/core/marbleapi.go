@@ -17,7 +17,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/edgelesssys/ertgolib/marble"
+	"github.com/edgelesssys/ego/marble"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/rpc"

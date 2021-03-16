@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	libMarble "github.com/edgelesssys/ertgolib/marble"
+	libMarble "github.com/edgelesssys/ego/marble"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
