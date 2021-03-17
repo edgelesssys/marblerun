@@ -1,0 +1,22 @@
+{
+    "Packages": {
+        "world": {
+            "Debug": true,
+	    "SignerID": "6127426a53d0f5988d3c24f4e4f837c57ef49701aedb96d864420471f87a5f48",
+	    "SecurityVersion": 1,
+	    "ProductID": 1
+        }
+    },
+    "Marbles": {
+        "hello": {
+            "Package": "world",
+            "Parameters": {
+                "Argv": [
+                    "foo",
+                    "bar"
+                ]
+            }
+        }
+    }
+}
+
