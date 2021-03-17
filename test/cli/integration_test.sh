@@ -1,10 +1,19 @@
 #!/bin/bash
 
 function wait_for_resource() {
+    grace=2
+    
     while true; do
         eval $1 > /dev/null
         if [ $? -eq 0 ]; then
             sleep 5
+            grace=2
+            continue
+        fi
+
+        if [ $grace -gt 0 ]; then
+            sleep 1
+            grace=$(($grace-1))
             continue
         fi
         break
@@ -15,9 +24,9 @@ function wait_for_resource() {
 #-------------install marblerun on the cluster-----------------------
 
 echo "Starting integration test"
-if [[ $(minikube status | grep host) != "host: Running" ]];
+if [[ -z $(kubectl get nodes | grep Ready) ]];
 then
-    echo "Minikube seems to not be running"
+    echo "Unable to connect to cluster"
     exit 1
 fi
 
@@ -216,6 +225,7 @@ marblerun uninstall
 kubectl delete namespace marblerun
 wait_for_resource "kubectl get namespaces | grep marblerun"
 
-pkill kubectl
+kill %1 # kill kubectl port-forward coordinator
+kill %2 # kill kubectl port-forward hello-marble
 echo -e "\nIntegration test successful"
 exit
