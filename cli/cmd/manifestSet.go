@@ -87,7 +87,12 @@ func cliManifestSet(manifestName string, host string, configFilename string, ins
 			fmt.Printf("Manifest successfully set, recovery data saved to: %s.\n", recover)
 		}
 	case http.StatusBadRequest:
-		return fmt.Errorf("unable to set manifest: Server is not in expected state. Did you mean to update the manifest?")
+		respBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		response := gjson.GetBytes(respBody, "message")
+		return fmt.Errorf(response.String())
 	default:
 		return fmt.Errorf("error connecting to server: %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
 	}
