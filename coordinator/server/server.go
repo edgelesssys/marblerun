@@ -31,8 +31,8 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-// generalResponse is a wrapper for all our REST API responses to follow the JSend style: https://github.com/omniti-labs/jsend
-type generalResponse struct {
+// GeneralResponse is a wrapper for all our REST API responses to follow the JSend style: https://github.com/omniti-labs/jsend
+type GeneralResponse struct {
 	Status  string      `json:"status"`
 	Data    interface{} `json:"data"`
 	Message string      `json:"message,omitempty"` // only used when status = "error"
@@ -42,7 +42,7 @@ type certQuoteResp struct {
 	Quote []byte
 }
 type statusResp struct {
-	StatusCode   int
+	StatusCode    int
 	StatusMessage string
 }
 type manifestSignatureResp struct {
@@ -226,14 +226,14 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 }
 
 func writeJSON(w http.ResponseWriter, v interface{}) {
-	dataToReturn := generalResponse{Status: "success", Data: v}
+	dataToReturn := GeneralResponse{Status: "success", Data: v}
 	if err := json.NewEncoder(w).Encode(dataToReturn); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
 func writeJSONError(w http.ResponseWriter, errorString string, httpErrorCode int) {
-	marshalledJSON, err := json.Marshal(generalResponse{Status: "error", Message: errorString})
+	marshalledJSON, err := json.Marshal(GeneralResponse{Status: "error", Message: errorString})
 	// Only fall back to non-JSON error when we cannot even marshal the error (which is pretty bad)
 	if err != nil {
 		http.Error(w, errorString, httpErrorCode)
