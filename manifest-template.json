@@ -1,0 +1,44 @@
+{
+    "Packages": {
+        "<PackageName>": {
+            "SignerID": "",
+            "ProductID": 0,
+            "SecurityVersion": 0,
+            "Debug": false
+        }
+    },
+
+    "Marbles": {
+        "<MarbleName>": {
+            "Package": "<PackageName>",
+            "MaxActivations": 0,
+            "Parameters": {
+                "Files": {
+                },
+                "Env": {
+                },
+                "Argv": [
+                ]
+            }
+        }
+    },
+
+    "Secrets": {
+        "<SecretName>": {
+            "Type": "symmetric-key cert-rsa cert-ecdsa cert-ed25519",
+            "Size": 0,
+            "Shared": false,
+            "ValidFor": 0,
+            "Cert": {
+            }
+        }
+    },
+
+    "Admins": {
+        "<AdminName>": ""
+    },
+
+    "RecoveryKeys": {
+        "<KeyName>": ""
+    }
+}

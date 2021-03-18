@@ -1,0 +1,95 @@
+{
+    "Packages": {
+        "<string, e.g. PackageName1>": {
+            "UniqueID": "<64 character string, not needed when SignerID is set>",
+            "SignerID": "<64 character string, not needed when UniqueID is set>",
+            "ProductID": "<int, only needed when SignerID is set>",
+            "SecurityVersion": "<int, only needed when SigneID is set>",
+            "Debug": "<bool, optional, if true other parameters are not verified>"
+        },
+        "HelloWorldProgram": {
+            "SignerID": "43361affedeb75affee9baec7e054a5e14883213e5a121b67d74a0e12e9d2b7a",
+            "ProductID": 1,
+            "SecurityVersion": 1,
+            "Debug": false
+        }
+    },
+
+    "Marbles": {
+        "<string, e.g. MarbleName1>": {
+            "Package": "<string, Name of corresponding Package, e.g. PackageName1>",
+            "MaxActivations": "<int, optional>",
+            "Parameters": {
+                "Files": {
+                    "<path to file>": "<file content>",
+                    "<path to second file>": "<file content>"
+                },
+                "Env": {
+                    "<Name of Env Variable>": "<Value of Env Variable>",
+                    "<Name of another Env Variable>": "<Value of that Env Variable>"
+                },
+                "Argv": [
+                    "<first command line argument>",
+                    "<second command line argument>"
+                ]
+            }
+        },
+        "HelloWorld": {
+            "Package": "HelloWorldProgram",
+            "MaxActivations": 2,
+            "Parameters": {
+                "Files": {
+                    "/tmp/text/input.txt": "Hello World!"
+                },
+                "Env": {
+                    "PRINT_UPPERCASE": "true"
+                },
+                "Argv": [
+                    "--filename",
+                    "/tmp/text/input.txt",
+                    "--command",
+                    "print"
+                ]
+            }
+        }
+    },
+
+    "Secrets": {
+        "<SecretName1>": {
+            "Type": "<string, one of {symmetric-key, cert-rsa, cert-ecdsa, cert-ed25519}>",
+            "Size": "<int, key size in bits>",
+            "Shared": "<bool, optional(default false), wether or not the secret is unique for each Marble>",
+            "ValidFor": "<int, only if Type=cert-*>",
+            "Cert": {
+                "<Optional X.509 certificate properties>": "<only if Type=cert-*>"
+            }
+        },
+        "AESKeyForSomething": {
+            "Type": "symmetric-key",
+            "Size": 128,
+            "Shared": true
+        },
+        "SomeRSACertificate": {
+            "Type": "cert-rsa",
+            "Size": 2048,
+            "ValidFor": 120,
+            "Cert": {
+                "DNSNames": [
+                    "example.com",
+                    "test.com"
+                ],
+                "SerialNumber": 12345
+            }
+        }
+    },
+
+    "Admins": {
+        "<Name of Admin>": "<PEM Encoded Certificate of Admin>",
+        "alice": "-----BEGIN CERTIFICATE-----\nMIIFPjCCA...",
+        "bob": "-----BEGIN CERTIFICATE-----\nMIIFP..."
+    },
+
+    "RecoveryKeys": {
+        "<Name of Recovery Key>": "<PEM Encoded Public Key>"
+    }
+}
