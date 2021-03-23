@@ -146,3 +146,90 @@ func TestCliManifestUpdate(t *testing.T) {
 	err = cliManifestUpdate([]byte("33"), host, clCert, []*pem.Block{cert})
 	require.Error(err)
 }
+
+func TestLoadJSON(t *testing.T) {
+	require := require.New(t)
+
+	tmpFile, err := ioutil.TempFile("", "unittest")
+	require.NoError(err)
+	defer os.Remove(tmpFile.Name())
+
+	input := []byte(`
+{
+	"Packages": {
+		"APackage": {
+			"SignerID": "1234",
+			"ProductID": 0,
+			"SecurityVersion": 0,
+			"Debug": false
+		}
+	}
+}
+`)
+	assert.True(t, json.Valid(input))
+	_, err = tmpFile.Write(input)
+	require.NoError(err)
+
+	dataJSON, err := loadManifestFile(tmpFile.Name())
+	require.NoError(err)
+	assert.True(t, json.Valid(dataJSON))
+}
+
+func TestLoadYAML(t *testing.T) {
+	require := require.New(t)
+
+	tmpFile, err := ioutil.TempFile("", "unittest")
+	require.NoError(err)
+	defer os.Remove(tmpFile.Name())
+
+	input := []byte(`
+Packages:
+  APackage:
+    Debug: false
+    ProductID: 0
+    SecurityVersion: 0
+    SignerID: "1234"
+`)
+	assert.False(t, json.Valid(input))
+	_, err = tmpFile.Write(input)
+	require.NoError(err)
+
+	dataJSON, err := loadManifestFile(tmpFile.Name())
+	require.NoError(err)
+	assert.True(t, json.Valid(dataJSON))
+}
+
+func TestLoadFailsOnInvalid(t *testing.T) {
+	require := require.New(t)
+
+	tmpFile, err := ioutil.TempFile("", "unittest")
+	require.NoError(err)
+	defer os.Remove(tmpFile.Name())
+
+	input := []byte(`
+Invalid YAML:
+This should return an error
+`)
+	assert.False(t, json.Valid(input))
+	_, err = tmpFile.Write(input)
+	require.NoError(err)
+
+	dataJSON, err := loadManifestFile(tmpFile.Name())
+	require.Error(err)
+	assert.False(t, json.Valid(dataJSON))
+
+	input = []byte(`
+{
+	"JSON": "Data",
+	"But its invalid",
+}
+`)
+
+	assert.False(t, json.Valid(input))
+	_, err = tmpFile.Write(input)
+	require.NoError(err)
+
+	dataJSON, err = loadManifestFile(tmpFile.Name())
+	require.Error(err)
+	assert.False(t, json.Valid(dataJSON))
+}
