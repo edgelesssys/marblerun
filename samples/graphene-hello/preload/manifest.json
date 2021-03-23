@@ -1,0 +1,18 @@
+{
+    "Packages": {
+        "world": {
+            "Debug": true,
+            "UniqueID": "<replace with mrenclave printed during the build>"
+        }
+    },
+    "Marbles": {
+        "hello": {
+            "Package": "world",
+            "Parameters": {
+                "Env": {
+                    "HELLO_WORLD": "Hello World from Marblerun!"
+                }
+            }
+        }
+    }
+}
