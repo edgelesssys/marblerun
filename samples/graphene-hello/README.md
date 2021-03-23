@@ -1,47 +1,15 @@
-# Graphene sample
-This sample shows how to run a [Graphene](https://github.com/oscarlab/graphene) application in Marblerun. In essence, you have to add the `premain` process to the Graphene manifest. `premain` will contact the Coordinator, set up the environment, and run the actual application. See the commented [hello.manifest.template](hello.manifest.template) for details.
-## Requirements
-First, get Graphene up and running. You can use either the [Building](https://graphene.readthedocs.io/en/latest/building.html) or [Cloud Deployment](https://graphene.readthedocs.io/en/latest/cloud-deployment.html) guide to build and initially setup Graphene.
+# Graphene "Hello World!" sample
+This sample shows how to run a [Graphene](https://github.com/oscarlab/graphene) application in Marblerun.
 
-Then, before you can run the sample, make sure you got the prerequisites for ECDSA remote attestation installed on your system. You can collectively install them with the following command:
-```sh
-sudo apt install libsgx-quote-ex-dev
-```
+In essence, you have to add the `premain` process either by manually adding the Marblerun premain process as the entry point for your application (see: `spawn`), or by automatically injecting it as a preloaded shared library via Graphene's LD_PRELOAD feature (see: `preload`).
 
-## Build
-You can build the sample as follows:
-```sh
-export GRAPHENEDIR=[PATH To Your Graphene Folder]
-make
-```
-Then get `mr_enclave` from the build output and set it as `UniqueID` in `manifest.json`.
+`premain` will contact the Coordinator, set up the environment, and run the actual application. See the commented hello.manifest.template in the corresponding folder for details.
 
-## Run
-We assume that the Coordinator is run with the following environment variables:
+## Advantages / Disadvantages
+`preload`:
+* **+**: Faster application launch time
+* **-**: argv arguments need to be provisioned during build time, ignoring the parameters set in the Marblerun manifest
 
-- EDG_COORDINATOR_MESH_ADDR=localhost:2001
-- EDG_COORDINATOR_CLIENT_ADDR=localhost:4433
-- EDG_COORDINATOR_DNS_NAMES=localhost
-- EDG_COORDINATOR_SEAL_DIR=$PWD
-
-Once the [Coordinator instance is running](../../BUILD.md#run-the-coordinator), upload the manifest to the Coordinator:
-
-```
-curl -k --data-binary @manifest.json https://localhost:4433/manifest
-```
-
-Now we can run our application:
-
-```sh
-EDG_MARBLE_COORDINATOR_ADDR=localhost:2001 EDG_MARBLE_TYPE=hello EDG_MARBLE_UUID_FILE=uuid EDG_MARBLE_DNS_NAMES=localhost make run
-```
-
-## Troubleshooting
-If you receive the following error message on launch:
-
-```
-aesm_service returned error: 30
-load_enclave() failed with error -1
-```
-
-Make sure you installed the Intel AESM ECDSA plugins on your machine. You can do this by installing the `libsgx-quote-dev` mentioned in the requirements above:
+`spawn`:
+* **+**: argv can be defined in Marblerun's manifest.json
+* **-**: Slower application launch time
