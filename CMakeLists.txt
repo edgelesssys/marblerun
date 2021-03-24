@@ -69,11 +69,16 @@ add_custom_target(marble-injector ALL
 
 #
 # Build CLI
-#
+# 
 
+
+# Version information will need to be adjusted for each new release
+set(cliPath "github.com/edgelesssys/marblerun/cli/cmd")
+string(TIMESTAMP date)
 add_custom_target(cli ALL
   go build ${TRIMPATH}
   -o marblerun
+  -ldflags "-X '${cliPath}.Major=0' -X '${cliPath}.Minor=3' -X '${cliPath}.Patch=0' -X '${cliPath}.BuildTime=${date}'"
   ${CMAKE_SOURCE_DIR}/cli
 )
 
