@@ -26,13 +26,12 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer 
 	var err error
 
 	// Development Logger shows a stacktrace for warnings & errors, Production Logger only for errors
-	devMode := os.Getenv(config.DevMode)
+	devMode := util.GetEnv(config.DevMode, config.DevModeDefault)
 	if devMode == "1" {
 		zapLogger, err = zap.NewDevelopment()
 	} else {
 		zapLogger, err = zap.NewProduction()
 	}
-
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -41,10 +40,10 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer 
 	zapLogger.Info("starting coordinator")
 
 	// fetching env vars
-	dnsNamesString := util.MustGetenv(config.DNSNames)
+	dnsNamesString := util.GetEnv(config.DNSNames, config.DNSNamesDefault)
 	dnsNames := strings.Split(dnsNamesString, ",")
-	clientServerAddr := util.MustGetenv(config.ClientAddr)
-	meshServerAddr := util.MustGetenv(config.MeshAddr)
+	clientServerAddr := util.GetEnv(config.ClientAddr, config.ClientAddrDefault)
+	meshServerAddr := util.GetEnv(config.MeshAddr, config.MeshAddrDefault)
 	promServerAddr := os.Getenv(config.PromAddr)
 
 	// creating core

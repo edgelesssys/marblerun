@@ -21,15 +21,38 @@ func TestDeriveKey(t *testing.T) {
 	assert.Len(key, 32)
 }
 
-func TestMustGetenv(t *testing.T) {
+func TestMustGetEnv(t *testing.T) {
 	assert := assert.New(t)
 
 	const name = "EDG_TEST_MUST_GETENV"
 	const value = "foo"
 
 	assert.NoError(os.Setenv(name, value))
-	assert.Equal(value, MustGetenv(name))
+	assert.Equal(value, MustGetEnv(name))
 	assert.NoError(os.Unsetenv(name))
+}
+
+func TestGetEnv(t *testing.T) {
+	assert := assert.New(t)
+
+	tests := []struct {
+		envname  string
+		set      bool
+		value    string
+		fallback string
+		result   string
+	}{
+		{"EDG_TEST_GETENV", true, "foo", "bar", "foo"},
+		{"EDG_TEST_GETENV2", false, "not set", "bar", "bar"},
+		{"EDG_TEST_GETENV3", true, "", "bar", ""},
+	}
+	for _, test := range tests {
+		if test.set {
+			assert.NoError(os.Setenv(test.envname, test.value))
+		}
+		assert.Equal(test.result, GetEnv(test.envname, test.fallback))
+		assert.NoError(os.Unsetenv(test.envname))
+	}
 }
 
 func TestXORBytes(t *testing.T) {

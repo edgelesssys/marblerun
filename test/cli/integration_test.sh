@@ -2,7 +2,7 @@
 
 function wait_for_resource() {
     grace=2
-    
+
     while true; do
         eval $1 > /dev/null
         if [ $? -eq 0 ]; then
@@ -44,10 +44,10 @@ fi
 #-------------test setting manifest----------------------------------
 
 echo ""
-kubectl -n marblerun port-forward svc/coordinator-client-api 25555:25555 --address localhost >/dev/null &
+kubectl -n marblerun port-forward svc/coordinator-client-api 4433:4433 --address localhost >/dev/null &
 sleep 2
 echo -n "Checking coordinator state: "
-if [[ $(marblerun status localhost:25555 --insecure | tail -n 1) != "2: Coordinator is ready to accept a manifest." ]]
+if [[ $(marblerun status localhost:4433 --insecure | tail -n 1) != "2: Coordinator is ready to accept a manifest." ]]
 then
     echo "[FAIL]"
     exit 1
@@ -55,14 +55,14 @@ fi
 echo "[OK]"
 
 echo -n "Setting manifest: "
-if [[ $(marblerun manifest set test-manifest.json localhost:25555 --insecure | tail -n 1) != "Manifest successfully set" ]]
+if [[ $(marblerun manifest set test-manifest.json localhost:4433 --insecure | tail -n 1) != "Manifest successfully set" ]]
 then
     echo "[FAIL]"
 fi
 echo "[OK]"
 
 echo -n "Verifying set manifest: "
-if [[ $(marblerun manifest get localhost:25555 --insecure -o test-signature.json | tail -n 1) != "Manifest written to: test-signature.json." ]]
+if [[ $(marblerun manifest get localhost:4433 --insecure -o test-signature.json | tail -n 1) != "Manifest written to: test-signature.json." ]]
 then
     echo "[FAIL]"
     exit 1
@@ -95,7 +95,7 @@ then
 fi
 
 echo -n "Checking env variable EDG_COORDINATOR_ADDR: "
-if [[ -n $(kubectl get pod -l marblerun/marbletype=hello-world -o jsonpath='{.spec.containers[0].env[0]}' | grep -v coordinator-mesh-api.marblerun:25554) ]];
+if [[ -n $(kubectl get pod -l marblerun/marbletype=hello-world -o jsonpath='{.spec.containers[0].env[0]}' | grep -v coordinator-mesh-api.marblerun:2001) ]];
 then
     echo "[FAIL]"
     exit 1
@@ -178,7 +178,7 @@ fi
 echo "[OK]"
 
 echo -n "Checking env variable EDG_COORDINATOR_ADDR: "
-if [[ -n $(kubectl get pod test-pod -o jsonpath='{.spec.containers[0].env[0]}' | grep -v coordinator-mesh-api.marblerun:25554) ]];
+if [[ -n $(kubectl get pod test-pod -o jsonpath='{.spec.containers[0].env[0]}' | grep -v coordinator-mesh-api.marblerun:2001) ]];
 then
     echo "[FAIL]"
     exit 1
