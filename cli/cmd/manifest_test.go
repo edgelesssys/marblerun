@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"crypto/sha256"
 	"crypto/tls"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"io/ioutil"
@@ -22,11 +24,11 @@ func TestCliManifestGet(t *testing.T) {
 		assert.Equal("/manifest", r.RequestURI)
 		assert.Equal(http.MethodGet, r.Method)
 		type testResp struct {
-			TestSignature string
+			ManifestSignature string
 		}
 
 		data := testResp{
-			TestSignature: "TestSignature",
+			ManifestSignature: "TestSignature",
 		}
 
 		serverResp := server.GeneralResponse{
@@ -38,18 +40,14 @@ func TestCliManifestGet(t *testing.T) {
 	}))
 	defer s.Close()
 
-	resp, err := cliManifestGet("json", host, []*pem.Block{cert})
+	resp, err := cliManifestGet(host, []*pem.Block{cert})
 	require.NoError(err)
-	assert.True(json.Valid(resp))
-
-	resp, err = cliManifestGet("yaml", host, []*pem.Block{cert})
-	require.NoError(err)
-	assert.False(json.Valid(resp))
+	assert.Equal("TestSignature", string(resp))
 
 	s.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	})
-	resp, err = cliManifestGet("json", host, []*pem.Block{cert})
+	resp, err = cliManifestGet(host, []*pem.Block{cert})
 	require.Error(err)
 }
 
@@ -237,4 +235,13 @@ This should return an error
 	dataJSON, err = loadManifestFile(tmpFile.Name())
 	require.Error(err)
 	assert.False(json.Valid(dataJSON))
+}
+
+func TestCliManifestSignature(t *testing.T) {
+	assert := assert.New(t)
+
+	testValue := []byte("Test")
+	hash := sha256.Sum256(testValue)
+	signature := hex.EncodeToString(hash[:])
+	assert.Equal(signature, cliManifestSignature(testValue))
 }

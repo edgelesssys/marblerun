@@ -10,11 +10,10 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tidwall/gjson"
-	"sigs.k8s.io/yaml"
 )
 
 func newManifestGet() *cobra.Command {
-	var format string
+	var output string
 
 	cmd := &cobra.Command{
 		Use:   "get <IP:PORT>",
@@ -30,22 +29,26 @@ func newManifestGet() *cobra.Command {
 
 			fmt.Println("Successfully verified coordinator, now requesting manifest signature")
 
-			response, err := cliManifestGet(format, hostName, cert)
+			response, err := cliManifestGet(hostName, cert)
 			if err != nil {
 				return err
 			}
 
-			fmt.Println(string(response))
+			if len(output) > 0 {
+				return ioutil.WriteFile(output, response, 0644)
+			}
+
+			fmt.Printf("Manifest signature: %s\n", string(response))
 			return nil
 		},
 		SilenceUsage: true,
 	}
-	cmd.Flags().StringVarP(&format, "output", "o", "json", "Output format, either json or yaml")
+	cmd.Flags().StringVarP(&output, "output", "o", "", "Save singature to file instead of printing to stdout")
 	return cmd
 }
 
 // cliManifestGet gets the manifest from the coordinatros rest api
-func cliManifestGet(format string, host string, cert []*pem.Block) ([]byte, error) {
+func cliManifestGet(host string, cert []*pem.Block) ([]byte, error) {
 	client, err := restClient(cert)
 	if err != nil {
 		return nil, err
@@ -64,15 +67,10 @@ func cliManifestGet(format string, host string, cert []*pem.Block) ([]byte, erro
 	switch resp.StatusCode {
 	case http.StatusOK:
 		respBody, err := ioutil.ReadAll(resp.Body)
-		manifestData := gjson.GetBytes(respBody, "data")
 		if err != nil {
 			return nil, err
 		}
-
-		if format == "yaml" {
-			return yaml.JSONToYAML([]byte(manifestData.String()))
-		}
-
+		manifestData := gjson.GetBytes(respBody, "data.ManifestSignature")
 		return []byte(manifestData.String()), nil
 	default:
 		return nil, fmt.Errorf("error connecting to server: %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))

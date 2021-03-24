@@ -31,13 +31,15 @@ func newManifestSet() *cobra.Command {
 				return err
 			}
 
+			fmt.Println("Successfully verified coordinator, now uploading manifest")
+
 			// Load manifest
 			manifest, err := loadManifestFile(manifestFile)
 			if err != nil {
 				return err
 			}
-
-			fmt.Println("Successfully verified coordinator, now uploading manifest")
+			signature := cliManifestSignature(manifest)
+			fmt.Printf("Manifest signature: %s\n", signature)
 
 			return cliManifestSet(manifest, hostName, cert, recoveryFilename)
 		},

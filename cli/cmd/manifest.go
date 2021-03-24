@@ -20,6 +20,7 @@ or return a signature of the currently set manifest to the user`,
 	cmd.AddCommand(newManifestSet())
 	cmd.AddCommand(newManifestGet())
 	cmd.AddCommand(newManifestUpdate())
+	cmd.AddCommand(newManifestSignature())
 
 	return cmd
 }
