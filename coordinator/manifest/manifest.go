@@ -62,7 +62,11 @@ func (m Manifest) Check(ctx context.Context, zaplogger *zap.Logger) error {
 	// if len(m.Infrastructures) <= 0 {
 	// 	return errors.New("no allowed infrastructures defined")
 	// }
-	for _, marble := range m.Marbles {
+	for idx, marble := range m.Marbles {
+		if marble.Parameters == nil {
+			marble.Parameters = &rpc.Parameters{}
+			m.Marbles[idx] = marble
+		}
 		singlePackage, ok := m.Packages[marble.Package]
 		if !ok {
 			return errors.New("manifest does not contain marble package " + marble.Package)
