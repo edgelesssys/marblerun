@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
+// GrapheneActivate sends an activation request to the Coordinator and initializes protected files.
 func GrapheneActivate(req *rpc.ActivationReq, coordAddr string, tlsCredentials credentials.TransportCredentials) (*rpc.Parameters, error) {
 	// call the actual Activate function
 	params, err := ActivateRPC(req, coordAddr, tlsCredentials)
@@ -30,8 +31,10 @@ func GrapheneActivate(req *rpc.ActivationReq, coordAddr string, tlsCredentials c
 	return params, nil
 }
 
+// GrapheneQuoteIssuer issues quotes
 type GrapheneQuoteIssuer struct{}
 
+// Issue issues a quote for remote attestation for a given message
 func (GrapheneQuoteIssuer) Issue(cert []byte) ([]byte, error) {
 	hash := sha256.Sum256(cert)
 
