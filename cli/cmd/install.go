@@ -146,7 +146,7 @@ func getRepo(name string, url string, settings *cli.EnvSettings) error {
 	repoFile := settings.RepositoryConfig
 
 	// Ensure the file directory exists as it is required for file locking
-	err := os.MkdirAll(filepath.Dir(repoFile), os.ModePerm)
+	err := os.MkdirAll(filepath.Dir(repoFile), 0755)
 	if err != nil && !os.IsExist(err) {
 		return err
 	}
