@@ -266,8 +266,7 @@ func (ms *marbleSpawner) verifyCertificateFromEnvironment(envName string, params
 	ms.assert.NoError(err, "failed to verify secret certificate with root CA: %v", err)
 
 	// Check if our certificate does actually expire 7 days, as specified, after it was generated
-	expectedNotBefore := certificate.NotAfter.AddDate(0, 0, -7)
-	ms.assert.EqualValues(expectedNotBefore, certificate.NotBefore)
+	ms.assert.InDelta(7*24, certificate.NotAfter.Sub(certificate.NotBefore).Hours(), 2)
 
 	return *certificate
 }
