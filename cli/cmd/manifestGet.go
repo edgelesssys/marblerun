@@ -13,7 +13,7 @@ import (
 )
 
 func newManifestGet() *cobra.Command {
-	var signatureFilename string
+	var output string
 
 	cmd := &cobra.Command{
 		Use:   "get <IP:PORT>",
@@ -22,7 +22,6 @@ func newManifestGet() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hostName := args[0]
-			targetFile := signatureFilename
 			cert, err := verifyCoordinator(hostName, eraConfig, insecureEra)
 			if err != nil {
 				return err
@@ -30,45 +29,50 @@ func newManifestGet() *cobra.Command {
 
 			fmt.Println("Successfully verified coordinator, now requesting manifest signature")
 
-			return cliManifestGet(targetFile, hostName, cert)
+			response, err := cliManifestGet(hostName, cert)
+			if err != nil {
+				return err
+			}
+
+			if len(output) > 0 {
+				return ioutil.WriteFile(output, response, 0644)
+			}
+
+			fmt.Printf("Manifest signature: %s\n", string(response))
+			return nil
 		},
 		SilenceUsage: true,
 	}
-	cmd.Flags().StringVarP(&signatureFilename, "output", "o", "signature.json", "Define file to write to")
+	cmd.Flags().StringVarP(&output, "output", "o", "", "Save singature to file instead of printing to stdout")
 	return cmd
 }
 
 // cliManifestGet gets the manifest from the coordinatros rest api
-func cliManifestGet(targetFile string, host string, cert []*pem.Block) error {
+func cliManifestGet(host string, cert []*pem.Block) ([]byte, error) {
 	client, err := restClient(cert)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	url := url.URL{Scheme: "https", Host: host, Path: "manifest"}
 	resp, err := client.Get(url.String())
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if resp.Body == nil {
-		return errors.New("Received empty manifest")
+		return nil, errors.New("Received empty manifest")
 	}
 	defer resp.Body.Close()
 
 	switch resp.StatusCode {
 	case http.StatusOK:
 		respBody, err := ioutil.ReadAll(resp.Body)
-		manifestData := gjson.GetBytes(respBody, "data")
 		if err != nil {
-			return err
+			return nil, err
 		}
-		if err := ioutil.WriteFile(targetFile, []byte(manifestData.String()), 0644); err != nil {
-			return err
-		}
-		fmt.Printf("Manifest written to: %s.\n", targetFile)
+		manifestData := gjson.GetBytes(respBody, "data.ManifestSignature")
+		return []byte(manifestData.String()), nil
 	default:
-		return fmt.Errorf("error connecting to server: %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
+		return nil, fmt.Errorf("error connecting to server: %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
 	}
-
-	return nil
 }

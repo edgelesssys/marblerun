@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"crypto/sha256"
 	"crypto/tls"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"io/ioutil"
@@ -21,8 +23,13 @@ func TestCliManifestGet(t *testing.T) {
 	s, host, cert := newTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal("/manifest", r.RequestURI)
 		assert.Equal(http.MethodGet, r.Method)
+		type testResp struct {
+			ManifestSignature string
+		}
 
-		data := "Everything OK"
+		data := testResp{
+			ManifestSignature: "TestSignature",
+		}
 
 		serverResp := server.GeneralResponse{
 			Status: "success",
@@ -33,21 +40,14 @@ func TestCliManifestGet(t *testing.T) {
 	}))
 	defer s.Close()
 
-	dir, err := ioutil.TempDir("", "unittest")
+	resp, err := cliManifestGet(host, []*pem.Block{cert})
 	require.NoError(err)
-	defer os.RemoveAll(dir)
-
-	responseFile := filepath.Join(dir, "tmp-sign.json")
-	err = cliManifestGet(responseFile, host, []*pem.Block{cert})
-	require.NoError(err)
-	response, err := ioutil.ReadFile(responseFile)
-	require.NoError(err)
-	require.Equal("Everything OK", string(response), "saved incorrect data to file")
+	assert.Equal("TestSignature", string(resp))
 
 	s.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	})
-	err = cliManifestGet(responseFile, host, []*pem.Block{cert})
+	resp, err = cliManifestGet(host, []*pem.Block{cert})
 	require.Error(err)
 }
 
@@ -145,4 +145,103 @@ func TestCliManifestUpdate(t *testing.T) {
 
 	err = cliManifestUpdate([]byte("33"), host, clCert, []*pem.Block{cert})
 	require.Error(err)
+}
+
+func TestLoadJSON(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	tmpFile, err := ioutil.TempFile("", "unittest")
+	require.NoError(err)
+	defer os.Remove(tmpFile.Name())
+
+	input := []byte(`
+{
+	"Packages": {
+		"APackage": {
+			"SignerID": "1234",
+			"ProductID": 0,
+			"SecurityVersion": 0,
+			"Debug": false
+		}
+	}
+}
+`)
+	assert.True(json.Valid(input))
+	_, err = tmpFile.Write(input)
+	require.NoError(err)
+
+	dataJSON, err := loadManifestFile(tmpFile.Name())
+	require.NoError(err)
+	assert.True(json.Valid(dataJSON))
+}
+
+func TestLoadYAML(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	tmpFile, err := ioutil.TempFile("", "unittest")
+	require.NoError(err)
+	defer os.Remove(tmpFile.Name())
+
+	input := []byte(`
+Packages:
+  APackage:
+    Debug: false
+    ProductID: 0
+    SecurityVersion: 0
+    SignerID: "1234"
+`)
+	assert.False(json.Valid(input))
+	_, err = tmpFile.Write(input)
+	require.NoError(err)
+
+	dataJSON, err := loadManifestFile(tmpFile.Name())
+	require.NoError(err)
+	assert.True(json.Valid(dataJSON))
+}
+
+func TestLoadFailsOnInvalid(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	tmpFile, err := ioutil.TempFile("", "unittest")
+	require.NoError(err)
+	defer os.Remove(tmpFile.Name())
+
+	input := []byte(`
+Invalid YAML:
+This should return an error
+`)
+	assert.False(json.Valid(input))
+	_, err = tmpFile.Write(input)
+	require.NoError(err)
+
+	dataJSON, err := loadManifestFile(tmpFile.Name())
+	require.Error(err)
+	assert.False(json.Valid(dataJSON))
+
+	input = []byte(`
+{
+	"JSON": "Data",
+	"But its invalid",
+}
+`)
+
+	assert.False(json.Valid(input))
+	_, err = tmpFile.Write(input)
+	require.NoError(err)
+
+	dataJSON, err = loadManifestFile(tmpFile.Name())
+	require.Error(err)
+	assert.False(json.Valid(dataJSON))
+}
+
+func TestCliManifestSignature(t *testing.T) {
+	assert := assert.New(t)
+
+	testValue := []byte("Test")
+	hash := sha256.Sum256(testValue)
+	signature := hex.EncodeToString(hash[:])
+	assert.Equal(signature, cliManifestSignature(testValue))
 }

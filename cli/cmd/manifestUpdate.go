@@ -7,7 +7,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 
@@ -42,7 +41,7 @@ An admin certificate specified in the original manifest is needed to verify the 
 			}
 
 			// Load manifest
-			manifest, err := ioutil.ReadFile(manifestFile)
+			manifest, err := loadManifestFile(manifestFile)
 			if err != nil {
 				return err
 			}

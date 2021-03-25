@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tidwall/gjson"
+	"sigs.k8s.io/yaml"
 )
 
 func newManifestSet() *cobra.Command {
@@ -29,13 +31,15 @@ func newManifestSet() *cobra.Command {
 				return err
 			}
 
+			fmt.Println("Successfully verified coordinator, now uploading manifest")
+
 			// Load manifest
-			manifest, err := ioutil.ReadFile(manifestFile)
+			manifest, err := loadManifestFile(manifestFile)
 			if err != nil {
 				return err
 			}
-
-			fmt.Println("Successfully verified coordinator, now uploading manifest")
+			signature := cliManifestSignature(manifest)
+			fmt.Printf("Manifest signature: %s\n", signature)
 
 			return cliManifestSet(manifest, hostName, cert, recoveryFilename)
 		},
@@ -101,4 +105,20 @@ func cliManifestSet(manifest []byte, host string, cert []*pem.Block, recover str
 	}
 
 	return nil
+}
+
+// loadManifestFile loads a manifest in either json or yaml format and returns the data as json
+func loadManifestFile(filename string) ([]byte, error) {
+	manifestData, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	// if Valid is true the file was in JSON format and we can just return the data
+	if json.Valid(manifestData) {
+		return manifestData, err
+	}
+
+	// otherwise we try to convert from YAML to json
+	return yaml.YAMLToJSON(manifestData)
 }

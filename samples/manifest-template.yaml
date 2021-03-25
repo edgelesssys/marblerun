@@ -1,0 +1,33 @@
+Admins:
+  # Fill in Name of the admin
+  <AdminName>: ""
+Marbles:
+  # Fill in name of the Marble
+  <MarbleName>:
+    MaxActivations: 0
+    # Package needs to be one of the defined Packages
+    Package: <PackageName>
+    Parameters:
+      Argv: []
+      Env: {}
+      Files: {}
+Packages:
+  # Fill in name of the package
+  <PackageName>:
+    Debug: false
+    ProductID: 0
+    SecurityVersion: 0
+    SignerID: ""
+RecoveryKeys:
+  # Fill in Key Name
+  <KeyName>: ""
+Secrets:
+  # Fille in Secret Name
+  <SecretName>:
+    Cert: {}
+    Shared: false
+    # size of key in bits, for symmetric-key this needs to be multiple of 8, for ECDSA length needs to be supported by Go's crypto library
+    Size: 0
+    # one of symmetric-key cert-rsa cert-ecdsa cert-ed25519
+    Type: symmetric-key
+    ValidFor: 0
