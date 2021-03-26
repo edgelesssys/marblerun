@@ -6,7 +6,7 @@
 [![GitHub license][license-badge]](LICENSE)
 [![Go Report Card][go-report-card-badge]][go-report-card]
 [![PkgGoDev][go-pkg-badge]][go-pkg]
-[![Gitter Chat][gitter-badge]][gitter]
+[![Discord Chat][discord-badge]][discord]
 
 [Marblerun][marblerunsh] is a framework for creating distributed confidential-computing apps.
 
@@ -83,5 +83,5 @@ The popular [Linkerd][linkerd] service mesh uses the simple and scalable *emojiv
 [sgx-lkl]: https://github.com/lsds/sgx-lkl
 [slack]: https://join.slack.com/t/confidentialcloud/shared_invite/zt-ix8nzzr6-vVNb6IM76Ab8z9a_5NMJnQ
 [twitter]: https://twitter.com/EdgelessSystems
-[gitter]: https://gitter.im/edgeless-systems/community
-[gitter-badge]: https://badges.gitter.im/edgeless-systems/Marblerun.svg
+[discord]: https://discord.gg/dFeQpez8GJ
+[discord-badge]: https://img.shields.io/badge/chat-on%20Discord-blue
