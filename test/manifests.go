@@ -249,6 +249,30 @@ var IntegrationManifestJSON string = `{
 	}
 }`
 
+var ManifestJSONMissingParameters string = `{
+	"Packages": {
+		"frontend": {
+			"SignerID": "1f1e1d1c1b1a191817161514131211100f0e0d0c0b0a09080706050403020100",
+			"ProductID": 44,
+			"SecurityVersion": 3,
+			"Debug": true
+		}
+	},
+	"Infrastructures": {
+		"Azure": {
+			"QESVN": 2,
+			"PCESVN": 3,
+			"CPUSVN": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
+			"RootCA": [3,3,3]
+		}
+	},
+	"Marbles": {
+		"frontend": {
+			"Package": "frontend"
+		}
+	}
+}`
+
 func generateTestRecoveryKey() (publicKeyPem []byte, privateKey *rsa.PrivateKey) {
 	key, err := rsa.GenerateKey(rand.Reader, 3096)
 	if err != nil {
