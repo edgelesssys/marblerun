@@ -47,7 +47,7 @@ See the [documentation][docs] for details.
 ## Get involved
 
 * Follow [@EdgelessSystems][twitter] on Twitter.
-* Chat with us on [Gitter][gitter].
+* Chat with us on [Discord][discord].
 
 ## Examples
 
@@ -83,5 +83,5 @@ The popular [Linkerd][linkerd] service mesh uses the simple and scalable *emojiv
 [sgx-lkl]: https://github.com/lsds/sgx-lkl
 [slack]: https://join.slack.com/t/confidentialcloud/shared_invite/zt-ix8nzzr6-vVNb6IM76Ab8z9a_5NMJnQ
 [twitter]: https://twitter.com/EdgelessSystems
-[discord]: https://discord.gg/dFeQpez8GJ
+[discord]: https://discord.gg/rH8QTH56JN
 [discord-badge]: https://img.shields.io/badge/chat-on%20Discord-blue
