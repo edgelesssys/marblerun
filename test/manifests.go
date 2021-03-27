@@ -249,6 +249,7 @@ var IntegrationManifestJSON string = `{
 	}
 }`
 
+// ManifestJSONMissingParameters is a test manifest
 var ManifestJSONMissingParameters string = `{
 	"Packages": {
 		"frontend": {
