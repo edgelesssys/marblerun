@@ -439,3 +439,89 @@ func TestSecurityLevelUpdate(t *testing.T) {
 	spawner.coreServer = coreServer2
 	spawner.newMarble("frontend", "Azure", false)
 }
+
+func (ms *marbleSpawner) shortMarbleActivation(marbleType string, infraName string, shouldSucceed bool) {
+	cert, csr, _ := util.MustGenerateTestMarbleCredentials()
+
+	// create mock quote using values from the manifest
+	quote, err := ms.issuer.Issue(cert.Raw)
+	ms.assert.NotNil(quote)
+	ms.assert.Nil(err)
+	marble, ok := ms.manifest.Marbles[marbleType]
+	ms.assert.True(ok)
+	pkg, ok := ms.manifest.Packages[marble.Package]
+	ms.assert.True(ok)
+	infra, ok := ms.manifest.Infrastructures[infraName]
+	ms.assert.True(ok)
+	ms.validator.AddValidQuote(quote, cert.Raw, pkg, infra)
+
+	tlsInfo := credentials.TLSInfo{
+		State: tls.ConnectionState{
+			PeerCertificates: []*x509.Certificate{cert},
+		},
+	}
+
+	ctx := peer.NewContext(context.TODO(), &peer.Peer{
+		AuthInfo: tlsInfo,
+	})
+
+	resp, err := ms.coreServer.Activate(ctx, &rpc.ActivationReq{
+		CSR:        csr,
+		MarbleType: marbleType,
+		Quote:      quote,
+		UUID:       uuid.New().String(),
+	})
+
+	ms.assert.NoError(err, "Activate failed: %v", err)
+	ms.assert.NotNil(resp)
+
+	// Validate response
+	params := resp.GetParameters()
+	// Get the marble from the manifest set on the coreServer since this one sets default values for empty values
+	marble = ms.coreServer.manifest.Marbles[marbleType]
+	// Validate Files
+	if marble.Parameters.Files != nil {
+		ms.assert.Equal(marble.Parameters.Files, params.Files)
+	}
+	// Validate Argv
+	if marble.Parameters.Argv != nil {
+		ms.assert.Equal(marble.Parameters.Argv, params.Argv)
+	}
+}
+
+func TestActivateWithMissingParameters(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	// parse manifest
+	var manifest manifest.Manifest
+	require.NoError(json.Unmarshal([]byte(test.ManifestJSONMissingParameters), &manifest))
+
+	// setup mock zaplogger which can be passed to Core
+	zapLogger, err := zap.NewDevelopment()
+	require.NoError(err)
+	defer zapLogger.Sync()
+
+	// create core
+	validator := quote.NewMockValidator()
+	issuer := quote.NewMockIssuer()
+	sealer := &MockSealer{}
+	recovery := recovery.NewSinglePartyRecovery()
+	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
+	require.NoError(err)
+	require.NotNil(coreServer)
+
+	spawner := marbleSpawner{
+		assert:     assert,
+		require:    require,
+		issuer:     issuer,
+		validator:  validator,
+		manifest:   manifest,
+		coreServer: coreServer,
+	}
+	// set manifest
+	_, err = coreServer.SetManifest(context.TODO(), []byte(test.ManifestJSONMissingParameters))
+	require.NoError(err)
+
+	spawner.shortMarbleActivation("frontend", "Azure", true)
+}
