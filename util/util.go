@@ -32,8 +32,8 @@ func DeriveKey(secret, salt []byte, length uint) ([]byte, error) {
 	return key, nil
 }
 
-// MustGetEnv returns the environment variable `name` if it exists or panics otherwise
-func MustGetEnv(name string) string {
+// MustGetenv returns the environment variable `name` if it exists or panics otherwise
+func MustGetenv(name string) string {
 	value := os.Getenv(name)
 	if len(value) == 0 {
 		log.Fatalln("environment variable not set:", name)
