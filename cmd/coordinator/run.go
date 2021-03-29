@@ -21,7 +21,7 @@ import (
 )
 
 var Version = "0.3.0-dev"
-var BuildDate = ""
+var GitCommit string
 
 func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer core.Sealer, recovery recovery.Recovery) {
 	// Setup logging with Zap Logger
@@ -41,7 +41,7 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer 
 	}
 	defer zapLogger.Sync() // flushes buffer, if any
 
-	zapLogger.Info("starting coordinator", zap.String("version", Version), zap.String("build date", BuildDate))
+	zapLogger.Info("starting coordinator", zap.String("version", Version), zap.String("commit", GitCommit))
 
 	// fetching env vars
 	dnsNamesString := util.MustGetenv(config.DNSNames)

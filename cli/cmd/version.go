@@ -9,7 +9,7 @@ import (
 )
 
 var Version = "0.3.0-dev"
-var BuildDate string
+var GitCommit string
 
 func newVersionCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -18,7 +18,7 @@ func newVersionCmd() *cobra.Command {
 		Long:  `Display version of this CLI and (if running) the Marblerun coordinator`,
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("CLI Version: v%s \nBuild Date: %s\n", Version, BuildDate)
+			fmt.Printf("CLI Version: v%s \nCommit: %s\n", Version, GitCommit)
 
 			cVersion, err := getCoordinatorVersion()
 			if err != nil {
