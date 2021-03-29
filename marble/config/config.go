@@ -12,7 +12,7 @@ import "github.com/edgelesssys/marblerun/util"
 // CoordinatorAddr is the marble's addr to connect to the coordinator via gRPC
 const CoordinatorAddr = "EDG_MARBLE_COORDINATOR_ADDR"
 
-// CoordinatorAdrrDefault is the marble's default addr to connect to the coordinator via gRPC
+// CoordinatorAddrDefault is the marble's default addr to connect to the coordinator via gRPC
 const CoordinatorAddrDefault = "localhost:2001"
 
 // Type is the marble's type used for attestation with the coordinator
