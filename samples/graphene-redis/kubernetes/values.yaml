@@ -1,0 +1,4 @@
+imagePullSecrets:
+  - name: regcred
+
+imagePullPolicy: Always

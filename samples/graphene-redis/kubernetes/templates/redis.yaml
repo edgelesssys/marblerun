@@ -1,0 +1,66 @@
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: redis
+  namespace: redis
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: redis
+  labels:
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/part-of: redis
+    app.kubernetes.io/version: v1
+spec:
+  serviceName: "redis"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: redis
+        version: v1
+        marblerun/marbletype: redis
+    spec:
+      serviceAccountName: redis
+      containers:
+      - image: ghcr.io/edgelesssys/redis-graphene-marble:latest
+        imagePullPolicy: {{ .Values.imagePullPolicy }}
+        env:
+        - name: SGX_AESM_ADDR
+          value: "1"
+        - name: EDG_MARBLE_UUID_FILE
+          value: "uuid"
+        name: redis
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: aesmd-socket
+          mountPath: /var/run/aesmd
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+      - name: aesmd-socket
+        hostPath:
+          path: /var/run/aesmd
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: redis
+spec:
+  type: LoadBalancer
+  selector:
+    app: redis
+  ports:
+  - name: http
+    port: 6379
+    targetPort: 6379

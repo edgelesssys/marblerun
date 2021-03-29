@@ -1,0 +1,14 @@
+{
+    "Packages": {
+        "redis-package": {
+            "Debug": true
+        }
+    },
+
+    "Marbles": {
+        "redis": {
+            "Package": "redis-package",
+            "Parameters": {}
+        }
+    }
+}
