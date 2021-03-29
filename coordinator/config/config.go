@@ -36,7 +36,7 @@ const DNSNamesDefault = "localhost"
 const SealDir = "EDG_COORDINATOR_SEAL_DIR"
 
 // SealDirDefault returns the coordinator's default file location to store the sealed state
-func SealDirDefault() string { return util.GetWd() + "/marblerun-coordinator-data" }
+func SealDirDefault() string { return filepath.Join(util.GetWd(), "marblerun-coordinator-data") }
 
 // DevMode enables more verbose logging
 const DevMode = "EDG_COORDINATOR_DEV_MODE"
