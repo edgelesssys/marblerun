@@ -93,8 +93,7 @@ func DecryptOAEP(priv *rsa.PrivateKey, ciphertext []byte) ([]byte, error) {
 // GetWd returns the current working directory and panics if it cannot be dcetermined.
 func GetWd() string {
 	// If marblerun runs in an enclave, EDG_CWD should be set.
-	wd, found := os.LookupEnv("EDG_CWD")
-	if found {
+	if wd, ok := os.LookupEnv("EDG_CWD"); ok {
 		return wd
 	}
 	// If marblerun runs outside an enclave, try to find the working directory.
