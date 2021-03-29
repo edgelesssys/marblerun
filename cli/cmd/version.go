@@ -8,10 +8,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var Major = "0"
-var Minor = "3"
-var Patch = "0-dev"
-var BuildTime string
+var Version = "0.3.0-dev"
+var BuildDate string
 
 func newVersionCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -20,7 +18,7 @@ func newVersionCmd() *cobra.Command {
 		Long:  `Display version of this CLI and (if running) the Marblerun coordinator`,
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("CLI Version: v%s.%s.%s \nBuild Date: %s\n", Major, Minor, Patch, BuildTime)
+			fmt.Printf("CLI Version: v%s \nBuild Date: %s\n", Version, BuildDate)
 
 			cVersion, err := getCoordinatorVersion()
 			if err != nil {

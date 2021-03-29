@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.11)
 
 project(coordinator)
+project(marblerun VERSION 0.3.0)
+string(TIMESTAMP date)
 find_package(OpenEnclave CONFIG REQUIRED)
 
 if (NOT CMAKE_BUILD_TYPE)
@@ -23,12 +25,14 @@ add_custom_command(
 add_custom_target(coordinatorlib
   ertgo build ${TRIMPATH} -buildmode=c-archive -tags enclave
   -o libcoordinator.a
+  -ldflags "-X 'main.Version=${PROJECT_VERSION}' -X 'main.BuildDate=${date}'"
   ${CMAKE_SOURCE_DIR}/cmd/coordinator
 )
 
 add_custom_target(coordinator-noenclave ALL
   go build ${TRIMPATH}
   -o coordinator-noenclave
+  -ldflags "-X 'main.Version=${PROJECT_VERSION}' -X 'main.BuildDate=${date}'"
   ${CMAKE_SOURCE_DIR}/cmd/coordinator)
 
 add_executable(coordinator-enclave enclave/main.c)
@@ -71,14 +75,11 @@ add_custom_target(marble-injector ALL
 # Build CLI
 # 
 
-
-# Version information will need to be adjusted for each new release
 set(cliPath "github.com/edgelesssys/marblerun/cli/cmd")
-string(TIMESTAMP date)
 add_custom_target(cli ALL
   go build ${TRIMPATH}
   -o marblerun
-  -ldflags "-X '${cliPath}.Major=0' -X '${cliPath}.Minor=3' -X '${cliPath}.Patch=0' -X '${cliPath}.BuildTime=${date}'"
+  -ldflags "-X '${cliPath}.Version=${PROJECT_VERSION}' -X '${cliPath}.BuildDate=${date}'"
   ${CMAKE_SOURCE_DIR}/cli
 )
 
