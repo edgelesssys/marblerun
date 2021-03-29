@@ -65,3 +65,21 @@ kubectl -n redis port-forward svc/redis 6379:6379 --address localhost >/dev/null
 ```bash
 redis-cli -h localhost -p 6379
 ```
+
+## Building the Docker image
+
+First, get Graphene up and running. You can use either the [Building](https://graphene.readthedocs.io/en/latest/building.html) or [Cloud Deployment](https://graphene.readthedocs.io/en/latest/cloud-deployment.html) guide to build and initially setup Graphene.
+
+Assuming you have built Graphene in `/graphene` copy the redis-server.manifest.template into the `/graphene/Examples/redis`
+
+```bash
+cp ./redis-server.manifest.template /graphene/Examples/redis/redis-server.manifest.template
+```
+
+Next we can build the Docker image:
+
+```bash
+docker build --tag graphene/redis -f ./Dockerfile /graphene
+```
+
+The current Dockerfile is poorly optimized and can probably be configured to be smaller and more efficient, but for the sake of this demo it works
