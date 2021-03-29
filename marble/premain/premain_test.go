@@ -53,7 +53,6 @@ func TestPreMain(t *testing.T) {
 
 	issuer := quote.NewMockIssuer()
 
-	require.NoError(os.Setenv("EDG_CWD", "test"))
 	require.NoError(os.Setenv(config.CoordinatorAddr, "addr"))
 	require.NoError(os.Setenv(config.Type, "type"))
 	require.NoError(os.Setenv(config.UUIDFile, "uuidfile"))
