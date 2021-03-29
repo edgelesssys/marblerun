@@ -82,7 +82,7 @@ func getUUID(appFs afero.Fs, uuidFile string) (uuid.UUID, error) {
 }
 
 func generateCertificate() (*x509.Certificate, *ecdsa.PrivateKey, error) {
-	marbleDNSNamesString := util.GetEnv(config.DNSNames, config.DNSNamesDefault())
+	marbleDNSNamesString := util.Getenv(config.DNSNames, config.DNSNamesDefault())
 	marbleDNSNames := strings.Split(marbleDNSNamesString, ",")
 	ipAddrs := util.DefaultCertificateIPAddresses
 	return util.GenerateCert(marbleDNSNames, ipAddrs, false)
@@ -117,11 +117,11 @@ func PreMainEx(issuer quote.Issuer, activate ActivateFunc, hostfs, enclavefs afe
 
 	// get env variables
 	log.Println("fetching env variables")
-	coordAddr := util.GetEnv(config.CoordinatorAddr, config.CoordinatorAddrDefault)
-	marbleType := util.MustGetEnv(config.Type)
-	marbleDNSNamesString := util.GetEnv(config.DNSNames, config.DNSNamesDefault())
+	coordAddr := util.Getenv(config.CoordinatorAddr, config.CoordinatorAddrDefault)
+	marbleType := util.MustGetenv(config.Type)
+	marbleDNSNamesString := util.Getenv(config.DNSNames, config.DNSNamesDefault())
 	marbleDNSNames := strings.Split(marbleDNSNamesString, ",")
-	uuidFile := util.GetEnv(config.UUIDFile, config.UUIDFileDefault())
+	uuidFile := util.Getenv(config.UUIDFile, config.UUIDFileDefault())
 
 	cert, privk, err := generateCertificate()
 	if err != nil {

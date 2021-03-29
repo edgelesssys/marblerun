@@ -19,7 +19,7 @@ import (
 func main() {
 	validator := quote.NewFailValidator()
 	issuer := quote.NewFailIssuer()
-	sealDir := util.GetEnv(config.SealDir, config.SealDirDefault())
+	sealDir := util.Getenv(config.SealDir, config.SealDirDefault())
 	sealer := core.NewNoEnclaveSealer(sealDir)
 	recovery := recovery.NewSinglePartyRecovery()
 	run(validator, issuer, sealDir, sealer, recovery)

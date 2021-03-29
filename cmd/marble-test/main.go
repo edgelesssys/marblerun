@@ -18,7 +18,7 @@ import (
 )
 
 func main() {
-	addr := util.MustGetEnv("EDG_TEST_ADDR")
+	addr := util.MustGetenv("EDG_TEST_ADDR")
 
 	if len(os.Args) > 1 && os.Args[1] == "serve" {
 		runServer(addr)

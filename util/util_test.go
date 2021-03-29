@@ -21,18 +21,18 @@ func TestDeriveKey(t *testing.T) {
 	assert.Len(key, 32)
 }
 
-func TestMustGetEnv(t *testing.T) {
+func TestMustGetenv(t *testing.T) {
 	assert := assert.New(t)
 
 	const name = "EDG_TEST_MUST_GETENV"
 	const value = "foo"
 
 	assert.NoError(os.Setenv(name, value))
-	assert.Equal(value, MustGetEnv(name))
+	assert.Equal(value, MustGetenv(name))
 	assert.NoError(os.Unsetenv(name))
 }
 
-func TestGetEnv(t *testing.T) {
+func TestGetenv(t *testing.T) {
 	assert := assert.New(t)
 
 	tests := []struct {
@@ -44,13 +44,13 @@ func TestGetEnv(t *testing.T) {
 	}{
 		{"EDG_TEST_GETENV", true, "foo", "bar", "foo"},
 		{"EDG_TEST_GETENV2", false, "not set", "bar", "bar"},
-		{"EDG_TEST_GETENV3", true, "", "bar", ""},
+		{"EDG_TEST_GETENV3", true, "", "bar", "bar"},
 	}
 	for _, test := range tests {
 		if test.set {
 			assert.NoError(os.Setenv(test.envname, test.value))
 		}
-		assert.Equal(test.result, GetEnv(test.envname, test.fallback))
+		assert.Equal(test.result, Getenv(test.envname, test.fallback))
 		assert.NoError(os.Unsetenv(test.envname))
 	}
 }
