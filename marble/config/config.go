@@ -27,5 +27,5 @@ func DNSNamesDefault() string { return util.MustGetEnv("EDG_MARBLE_TYPE") }
 // UUIDFile is the file path to store the marble's uuid
 const UUIDFile = "EDG_MARBLE_UUID_FILE"
 
-// UUIDFile is the default file path to store the marble's uuid
+// UUIDFileDefault is the default file path to store the marble's uuid
 func UUIDFileDefault() string { return util.GetWd() + "/uuid" }
