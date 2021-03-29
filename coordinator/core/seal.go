@@ -42,10 +42,6 @@ type AESGCMSealer struct {
 
 // NewAESGCMSealer creates and initializes a new AESGCMSealer object
 func NewAESGCMSealer(sealDir string) *AESGCMSealer {
-	// ensure sealDir exists
-	if _, err := os.Stat(sealDir); os.IsNotExist(err) {
-		os.Mkdir(sealDir, os.ModeDir)
-	}
 	return &AESGCMSealer{sealDir: sealDir}
 }
 
