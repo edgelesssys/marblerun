@@ -34,7 +34,7 @@ marblerun manifest set redis-manifest.json $MARBLERUN
 * Create and annotate redis namespace
 
 ```bash
-kubectl namespace create redis
+kubectl create namespace redis
 marblerun namespace add redis
 ```
 
