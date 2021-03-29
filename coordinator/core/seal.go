@@ -217,10 +217,6 @@ type NoEnclaveSealer struct {
 
 // NewNoEnclaveSealer creates and initializes a new NoEnclaveSealer object
 func NewNoEnclaveSealer(sealDir string) *NoEnclaveSealer {
-	// ensure sealDir exists
-	if _, err := os.Stat(sealDir); os.IsNotExist(err) {
-		os.Mkdir(sealDir, os.ModeDir)
-	}
 	return &NoEnclaveSealer{sealDir: sealDir}
 }
 
