@@ -91,8 +91,8 @@ func DecryptOAEP(priv *rsa.PrivateKey, ciphertext []byte) ([]byte, error) {
 	return rsa.DecryptOAEP(sha256.New(), rand.Reader, priv, ciphertext, nil)
 }
 
-// GetWd returns the current working directory and panics if it cannot be dcetermined.
-func Getwd() string {
+// MustGetwd returns the current working directory and panics if it cannot be dcetermined.
+func MustGetwd() string {
 	// If marblerun runs in an enclave, EDG_CWD should be set.
 	wd := os.Getenv("EDG_CWD")
 	if len(wd) != 0 {
