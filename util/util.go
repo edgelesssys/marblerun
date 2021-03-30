@@ -41,7 +41,7 @@ func MustGetenv(name string) string {
 	return value
 }
 
-// GetEnv returns the environment variable `name` if it exists or the handed fallback value elsewise.
+// Getenv returns the environment variable `name` if it exists or the handed fallback value elsewise.
 func Getenv(name string, fallback string) string {
 	value := os.Getenv(name)
 	if len(value) == 0 {
