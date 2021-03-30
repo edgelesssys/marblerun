@@ -82,7 +82,7 @@ func getUUID(appFs afero.Fs, uuidFile string) (uuid.UUID, error) {
 }
 
 func generateCertificate() (*x509.Certificate, *ecdsa.PrivateKey, error) {
-	marbleDNSNamesString := util.Getenv(config.DNSNames, config.DNSNamesDefault())
+	marbleDNSNamesString := util.Getenv(config.DNSNames, config.DNSNamesDefault)
 	marbleDNSNames := strings.Split(marbleDNSNamesString, ",")
 	ipAddrs := util.DefaultCertificateIPAddresses
 	return util.GenerateCert(marbleDNSNames, ipAddrs, false)
@@ -119,7 +119,7 @@ func PreMainEx(issuer quote.Issuer, activate ActivateFunc, hostfs, enclavefs afe
 	log.Println("fetching env variables")
 	coordAddr := util.Getenv(config.CoordinatorAddr, config.CoordinatorAddrDefault)
 	marbleType := util.MustGetenv(config.Type)
-	marbleDNSNamesString := util.Getenv(config.DNSNames, config.DNSNamesDefault())
+	marbleDNSNamesString := util.Getenv(config.DNSNames, config.DNSNamesDefault)
 	marbleDNSNames := strings.Split(marbleDNSNamesString, ",")
 	uuidFile := util.Getenv(config.UUIDFile, config.UUIDFileDefault())
 

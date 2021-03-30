@@ -25,11 +25,11 @@ const Type = "EDG_MARBLE_TYPE"
 // DNSNames are the alternative dns names for the marble's certificate
 const DNSNames = "EDG_MARBLE_DNS_NAMES"
 
-// DNSNamesDefault returns the default alternative dns names for the marble's certificate
-func DNSNamesDefault() string { return util.MustGetenv("EDG_MARBLE_TYPE") }
+// DNSNamesDefault are the default alternative dns names for the marble's certificate
+const DNSNamesDefault = "localhost"
 
 // UUIDFile is the file path to store the marble's uuid
 const UUIDFile = "EDG_MARBLE_UUID_FILE"
 
 // UUIDFileDefault is the default file path to store the marble's uuid
-func UUIDFileDefault() string { return filepath.Join(util.Getwd(), "uuid") }
+func UUIDFileDefault() string { return filepath.Join(util.MustGetwd(), "uuid") }
