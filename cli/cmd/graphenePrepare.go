@@ -4,7 +4,12 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
 	"os"
+	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -117,7 +122,7 @@ func addSpawnToGrapheneManifest(fileName string) error {
 	changes["sgx.trusted_files.marblerun_premain"] = "file:premain-graphene"
 	changes["sgx.allowed_files.marblerun_uuid"] = "file:uuid"
 
-	return performChanges(calculateChanges(original, changes))
+	return performChanges(calculateChanges(original, changes), fileName)
 }
 
 func addPreloadToGrapheneManifest(fileName string) error {
@@ -157,7 +162,7 @@ func calculateChanges(original map[string]interface{}, updates map[string]interf
 }
 
 // performChanges displays the suggested changes to the user and tries to automatically perform them
-func performChanges(changeDiffs []diff) error {
+func performChanges(changeDiffs []diff, fileName string) error {
 	fmt.Println("\nMarblerun suggests the following changes to your Graphene manifest:")
 	for _, entry := range changeDiffs {
 		if entry.alreadyExisting {
@@ -182,5 +187,93 @@ func performChanges(changeDiffs []diff) error {
 		return nil
 	}
 
+	directory := filepath.Dir(fileName)
+	// Download Marblerun premain for Graphene from GitHub
+	if err := downloadPremain(filepath.Join(directory, "premain-graphene")); err != nil {
+		fmt.Println("\033[0;31mERROR: Cannot download 'premain-graphene' from GitHub. Please add the file manually.\033[0m")
+	}
+
+	// Read Graphene manifest as normal text file
+	manifestContent, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		return err
+	}
+	// Backup original manifest
+	backupFileName := filepath.Base(fileName) + ".bak"
+	fmt.Printf("Saving original manifest as %s...\n", backupFileName)
+	if err := ioutil.WriteFile(filepath.Join(directory, backupFileName), manifestContent, 0644); err != nil {
+		return err
+	}
+
+	// Perform modifications to manifest
+	fileNameBase := filepath.Base(fileName)
+	fmt.Printf("Applying changes to %s...\n", fileNameBase)
+	/*
+		Perform the manifest modifcation.
+		For existing entries: Run a RegEx search, replace the line.
+		For new entries: Append to the end of the file.
+		NOTE: This only works for flat-mapped TOML configs.
+		These seem to be usually used for Graphene manifests.
+		However, TOML is quite flexible, and there are no TOML parsers out there which are style & comments preserving
+		So, if we do not have a flat-mapped config, this will fail at some point.
+	*/
+
+	var firstAdditionDone bool
+	for _, value := range changeDiffs {
+		if value.alreadyExisting {
+			// If a value was previously existing, we replace the existing entry
+			key := strings.Split(value.manifestEntry, " =")
+			regexKey := strings.ReplaceAll(key[0], ".", "\\.")
+			regex := regexp.MustCompile("\\b" + regexKey + "\\b.*")
+			// Check if we actually found the entry we searched for. If not, we might be dealing with a TOML file we cannot handle correctly without a full parser.
+			if regex.Find(manifestContent) == nil {
+				fmt.Println("\033[0;31mERROR: Cannot find specified entry. Your Graphene config might not be flat-mapped.")
+				fmt.Println("Marblerun can only automatically modify manifests using a flat hierarchy, as otherwise we would lose all styling & comments.")
+				fmt.Println("To continue, please manually perform the changes printed above in your Graphene manifest.\033[0m")
+			}
+			// But if everything went as expected, replace the entry
+			manifestContent = regex.ReplaceAll(manifestContent, []byte(value.manifestEntry))
+		} else {
+			// If a value was not defined previously, we append the new entries down below
+			if !firstAdditionDone {
+				appendToFile := "\n# Marblerun -- auto generated configuration entries" + "\n"
+				manifestContent = append(manifestContent, []byte(appendToFile)...)
+				firstAdditionDone = true
+			}
+			appendToFile := value.manifestEntry + "\n"
+			manifestContent = append(manifestContent, []byte(appendToFile)...)
+		}
+	}
+
+	// Write modified file to disk
+	if err := ioutil.WriteFile(fileName, manifestContent, 0644); err != nil {
+		return err
+	}
+
+	fmt.Println("Done! You should be good to go for Marblerun!")
+
+	return nil
+}
+
+func downloadPremain(path string) error {
+	cleanVersion := "v" + strings.SplitAfter(Version, "-")[0]
+	fmt.Printf("Downloading premain-graphene for Marblerun %s...\n", cleanVersion)
+	resp, err := http.Get(fmt.Sprintf("https://github.com/edgelesssys/marblerun/releases/download/%s/premain-graphene", cleanVersion))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	out, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	if _, err := io.Copy(out, resp.Body); err != nil {
+		return err
+	}
+
+	fmt.Println("Successfully downloaded graphene-premain.")
 	return nil
 }
