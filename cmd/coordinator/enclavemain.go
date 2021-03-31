@@ -22,7 +22,7 @@ func main() {
 	validator := ertvalidator.NewERTValidator()
 	issuer := ertvalidator.NewERTIssuer()
 	sealDirPrefix := filepath.Join(filepath.FromSlash("/edg"), "hostfs")
-	sealDir := util.MustGetenv(config.SealDir)
+	sealDir := util.Getenv(config.SealDir, config.SealDirDefault())
 	sealDir = filepath.Join(sealDirPrefix, sealDir)
 	sealer := core.NewAESGCMSealer(sealDir)
 	recovery := recovery.NewSinglePartyRecovery()

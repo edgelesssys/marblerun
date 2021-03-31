@@ -32,6 +32,29 @@ func TestMustGetenv(t *testing.T) {
 	assert.NoError(os.Unsetenv(name))
 }
 
+func TestGetenv(t *testing.T) {
+	assert := assert.New(t)
+
+	tests := []struct {
+		envname  string
+		set      bool
+		value    string
+		fallback string
+		result   string
+	}{
+		{"EDG_TEST_GETENV", true, "foo", "bar", "foo"},
+		{"EDG_TEST_GETENV2", false, "not set", "bar", "bar"},
+		{"EDG_TEST_GETENV3", true, "", "bar", "bar"},
+	}
+	for _, test := range tests {
+		if test.set {
+			assert.NoError(os.Setenv(test.envname, test.value))
+		}
+		assert.Equal(test.result, Getenv(test.envname, test.fallback))
+		assert.NoError(os.Unsetenv(test.envname))
+	}
+}
+
 func TestXORBytes(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)

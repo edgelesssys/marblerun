@@ -58,14 +58,14 @@ func TestMutatesValidRequest(t *testing.T) {
 	}`
 
 	// test if patch contains all desired values
-	response, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:25554", "cluster.local", true)
+	response, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:2001", "cluster.local", true)
 	require.NoError(err, "failed to mutate request")
 
 	r := v1.AdmissionReview{}
 	require.NoError(json.Unmarshal(response, &r), "failed to unmarshal response with error %s", err)
 
 	assert.Contains(string(r.Response.Patch), `{"op":"add","path":"/spec/containers/0/resources","value":{"limits":{"kubernetes.azure.com/sgx_epc_mem_in_MiB":10}}}`, "applied incorrect resource patch")
-	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env","value":[{"name":"EDG_MARBLE_COORDINATOR_ADDR","value":"coordinator-mesh-api.marblerun:25554"}]`, "failed to apply coordinator env variable patch")
+	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env","value":[{"name":"EDG_MARBLE_COORDINATOR_ADDR","value":"coordinator-mesh-api.marblerun:2001"}]`, "failed to apply coordinator env variable patch")
 	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env/-","value":{"name":"EDG_MARBLE_TYPE","value":"test"}`, "failed to apply marble type env variable patch")
 	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env/-","value":{"name":"EDG_MARBLE_DNS_NAMES","value":"test,test.injectable,test.injectable.svc.cluster.local"}`, "failed to apply DNS name env varibale patch")
 	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env/-","value":{"name":"EDG_MARBLE_UUID_FILE"`, "failed to apply marble UUID file env variable patch")
@@ -74,7 +74,7 @@ func TestMutatesValidRequest(t *testing.T) {
 	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/tolerations","value":[{"key":"kubernetes.azure.com/sgx_epc_mem_in_MiB"`, "failed to apply tolerations patch")
 
 	// test if patch works without sgx values
-	response, err = mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:25554", "cluster.local", false)
+	response, err = mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:2001", "cluster.local", false)
 	require.NoError(err, "failed to mutate request")
 	require.NoError(json.Unmarshal(response, &r), "failed to unmarshal response with error %s", err)
 	assert.NotContains(string(r.Response.Patch), `{"op":"add","path":"/spec/tolerations","value":{"key":"kubernetes.azure.com/sgx_epc_mem_in_MiB"}}`, "patch contained sgx tolerations, but tolerations were not supposed to be set")
@@ -154,7 +154,7 @@ func TestPreSetValues(t *testing.T) {
 		}
 	}`
 
-	response, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:25554", "cluster.local", true)
+	response, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:2001", "cluster.local", true)
 	require.NoError(err, "failed to mutate request")
 
 	r := v1.AdmissionReview{}
@@ -214,7 +214,7 @@ func TestRejectsUnsetMarbletype(t *testing.T) {
 		}
 	}`
 
-	response, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:25554", "cluster.local", true)
+	response, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:2001", "cluster.local", true)
 	require.NoError(err, "failed to mutate request")
 
 	r := v1.AdmissionReview{}
@@ -228,7 +228,7 @@ func TestErrorsOnInvalid(t *testing.T) {
 
 	rawJSON := `This should return Error`
 
-	_, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:25554", "cluster.local", true)
+	_, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:2001", "cluster.local", true)
 	require.Error(err, "did not fail on invalid request")
 }
 
@@ -242,6 +242,6 @@ func TestErrorsOnInvalidPod(t *testing.T) {
 			"object": "invalid"
 		}
 	}`
-	_, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:25554", "cluster.local", true)
+	_, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:2001", "cluster.local", true)
 	require.Error(err, "did not fail when sending invalid request")
 }

@@ -41,6 +41,15 @@ func MustGetenv(name string) string {
 	return value
 }
 
+// Getenv returns the environment variable `name` if it exists or the handed fallback value elsewise.
+func Getenv(name string, fallback string) string {
+	value := os.Getenv(name)
+	if len(value) == 0 {
+		return fallback
+	}
+	return value
+}
+
 // MustGetLocalListenerAndAddr returns a TCP listener on a system-chosen port on localhost and its address.
 func MustGetLocalListenerAndAddr() (net.Listener, string) {
 	const localhost = "localhost:"
@@ -80,4 +89,19 @@ func EncryptOAEP(pub *rsa.PublicKey, plaintext []byte) ([]byte, error) {
 // DecryptOAEP is a wrapper function for rsa.DecryptOAEP for a nicer syntax
 func DecryptOAEP(priv *rsa.PrivateKey, ciphertext []byte) ([]byte, error) {
 	return rsa.DecryptOAEP(sha256.New(), rand.Reader, priv, ciphertext, nil)
+}
+
+// MustGetwd returns the current working directory and panics if it cannot be dcetermined.
+func MustGetwd() string {
+	// If marblerun runs in an enclave, EDG_CWD should be set.
+	wd := os.Getenv("EDG_CWD")
+	if len(wd) != 0 {
+		return wd
+	}
+	// If marblerun runs outside an enclave, try to find the working directory.
+	wd, err := os.Getwd()
+	if err == nil {
+		return wd
+	}
+	panic(err)
 }

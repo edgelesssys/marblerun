@@ -55,8 +55,8 @@ func newInstallCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&simulation, "simulation", false, "Set marblerun to start in simulation mode")
 	cmd.Flags().BoolVar(&noSgxDevicePlugin, "no-sgx-device-plugin", false, "Disables the installation of an sgx device plugin")
 	cmd.Flags().BoolVar(&disableInjection, "disable-auto-injection", false, "Disable automatic injection of selected namespaces")
-	cmd.Flags().IntVar(&meshServerPort, "mesh-server-port", 25554, "Set the mesh server port. Needs to be configured to the same port as in the data-plane marbles")
-	cmd.Flags().IntVar(&clientServerPort, "client-server-port", 25555, "Set the client server port. Needs to be configured to the same port as in your client tool stack")
+	cmd.Flags().IntVar(&meshServerPort, "mesh-server-port", 2001, "Set the mesh server port. Needs to be configured to the same port as in the data-plane marbles")
+	cmd.Flags().IntVar(&clientServerPort, "client-server-port", 4433, "Set the client server port. Needs to be configured to the same port as in your client tool stack")
 
 	return cmd
 }

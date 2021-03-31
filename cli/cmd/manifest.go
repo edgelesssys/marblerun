@@ -10,9 +10,9 @@ func newManifestCmd() *cobra.Command {
 		Short: "Manages manifest for the Marblerun coordinator",
 		Long: `
 Manages manifests for the Marblerun coordinator.
-Used to either set the manifest, update an already set manifest, 
+Used to either set the manifest, update an already set manifest,
 or return a signature of the currently set manifest to the user`,
-		Example: "manifest set manifest.json example.com:25555 [--era-config=config.json] [--insecure]",
+		Example: "manifest set manifest.json example.com:4433 [--era-config=config.json] [--insecure]",
 	}
 
 	cmd.PersistentFlags().StringVar(&eraConfig, "era-config", "", "Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github")
