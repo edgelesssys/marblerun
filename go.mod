@@ -3,6 +3,7 @@ module github.com/edgelesssys/marblerun
 go 1.14
 
 require (
+	github.com/c2h5oh/datasize v0.0.0-20200825124411-48ed595a09d2
 	github.com/edgelesssys/ego v0.1.2
 	github.com/edgelesssys/era v0.3.0
 	github.com/gofrs/flock v0.8.0
@@ -12,6 +13,7 @@ require (
 	github.com/gorilla/handlers v1.5.1
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
+	github.com/pelletier/go-toml v1.8.1
 	github.com/prometheus/client_golang v1.8.0
 	github.com/spf13/afero v1.5.1
 	github.com/spf13/cobra v1.1.1
