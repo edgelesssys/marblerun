@@ -32,6 +32,7 @@ func newInstallCmd() *cobra.Command {
 	var settings *cli.EnvSettings
 	var domain string
 	var chartPath string
+	var chartVersion string
 	var simulation bool
 	var noSgxDevicePlugin bool
 	var disableInjection bool
@@ -45,13 +46,14 @@ func newInstallCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			settings = cli.New()
-			return cliInstall(chartPath, domain, simulation, noSgxDevicePlugin, disableInjection, clientServerPort, meshServerPort, settings)
+			return cliInstall(chartPath, domain, chartVersion, simulation, noSgxDevicePlugin, disableInjection, clientServerPort, meshServerPort, settings)
 		},
 		SilenceUsage: true,
 	}
 
 	cmd.Flags().StringVar(&domain, "domain", "localhost", "Sets the CNAME for the coordinator certificate")
 	cmd.Flags().StringVar(&chartPath, "marblerun-chart-path", "", "Path to marblerun helm chart")
+	cmd.Flags().StringVar(&chartVersion, "version", "", "Version of the Coordinator to install, latest by default")
 	cmd.Flags().BoolVar(&simulation, "simulation", false, "Set marblerun to start in simulation mode")
 	cmd.Flags().BoolVar(&noSgxDevicePlugin, "no-sgx-device-plugin", false, "Disables the installation of an sgx device plugin")
 	cmd.Flags().BoolVar(&disableInjection, "disable-auto-injection", false, "Disable automatic injection of selected namespaces")
@@ -62,7 +64,7 @@ func newInstallCmd() *cobra.Command {
 }
 
 // cliInstall installs marblerun on the cluster
-func cliInstall(path string, hostname string, sim bool, noSgx bool, disableInjection bool, clientPort int, meshPort int, settings *cli.EnvSettings) error {
+func cliInstall(path string, hostname string, version string, sim bool, noSgx bool, disableInjection bool, clientPort int, meshPort int, settings *cli.EnvSettings) error {
 	actionConfig := new(action.Configuration)
 	if err := actionConfig.Init(settings.RESTClientGetter(), "marblerun", os.Getenv("HELM_DRIVER"), debug); err != nil {
 		return err
@@ -108,9 +110,10 @@ func cliInstall(path string, hostname string, sim bool, noSgx bool, disableInjec
 	installer.CreateNamespace = true
 	installer.Namespace = "marblerun"
 	installer.ReleaseName = "marblerun-coordinator"
+	installer.ChartPathOptions.Version = version
 
 	if path == "" {
-		// No chart was specified -> look for edgeless repository, if not present add it
+		// No chart was specified -> add or update edgeless helm repo
 		err := getRepo("edgeless", "https://helm.edgeless.systems/stable", settings)
 		if err != nil {
 			return err
@@ -138,6 +141,7 @@ func cliInstall(path string, hostname string, sim bool, noSgx bool, disableInjec
 }
 
 // simplified repo_add from helm cli to add marblerun repo if it does not yet exist
+// to make sure we use the newest chart we always download the needed index file
 func getRepo(name string, url string, settings *cli.EnvSettings) error {
 	repoFile := settings.RepositoryConfig
 
@@ -169,18 +173,12 @@ func getRepo(name string, url string, settings *cli.EnvSettings) error {
 		return err
 	}
 
-	c := repo.Entry{
+	c := &repo.Entry{
 		Name: name,
 		URL:  url,
 	}
 
-	if f.Has(name) {
-		// Repository is already present on the systems, return nothing
-		return nil
-	}
-	fmt.Printf("Did not find marblerun helm repository on system, adding now...\n")
-
-	r, err := repo.NewChartRepository(&c, getter.All(settings))
+	r, err := repo.NewChartRepository(c, getter.All(settings))
 	if err != nil {
 		return err
 	}
@@ -189,12 +187,11 @@ func getRepo(name string, url string, settings *cli.EnvSettings) error {
 		return errors.New("Chart repository cannot be reached")
 	}
 
-	f.Update(&c)
+	f.Update(c)
 
 	if err := f.WriteFile(repoFile, 0644); err != nil {
 		return err
 	}
-	fmt.Printf("%s has been added to your helm repositories\n", name)
 	return nil
 }
 

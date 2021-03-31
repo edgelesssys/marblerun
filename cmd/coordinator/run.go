@@ -20,6 +20,9 @@ import (
 	"go.uber.org/zap"
 )
 
+var Version = "0.3.0-dev"
+var GitCommit string
+
 func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer core.Sealer, recovery recovery.Recovery) {
 	// Setup logging with Zap Logger
 	var zapLogger *zap.Logger
@@ -37,7 +40,7 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer 
 	}
 	defer zapLogger.Sync() // flushes buffer, if any
 
-	zapLogger.Info("starting coordinator")
+	zapLogger.Info("starting coordinator", zap.String("version", Version), zap.String("commit", GitCommit))
 
 	// fetching env vars
 	dnsNamesString := util.Getenv(config.DNSNames, config.DNSNamesDefault)

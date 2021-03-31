@@ -31,4 +31,5 @@ func init() {
 	rootCmd.AddCommand(newNamespaceCmd())
 	rootCmd.AddCommand(newRecoverCmd())
 	rootCmd.AddCommand(newUninstallCmd())
+	rootCmd.AddCommand(newVersionCmd())
 }
