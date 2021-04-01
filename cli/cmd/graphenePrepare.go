@@ -124,6 +124,7 @@ func parseTreeForChanges(tree *toml.Tree, mode string) (map[string]interface{}, 
 		splittedPaths := strings.Split(original["loader.env.LD_PRELOAD"].(string), ":")
 		for _, value := range splittedPaths {
 			if strings.Contains(value, premainNamePreload) {
+				color.Yellow("The supplied manifest already contains changes for Marblerun. Have you selected the correct file?")
 				return nil, nil, errors.New("manifest already contains Marblerun changes")
 			}
 		}
@@ -142,6 +143,10 @@ func parseTreeForChanges(tree *toml.Tree, mode string) (map[string]interface{}, 
 			if len(fileEntry) == 2 {
 				changes["loader.argv0_override"] = fileEntry[1]
 			} else {
+				color.Red("ERROR: Cannot process the current entrypoint: %s", original["libos.entrypoint"].(string))
+				color.Red("Note: This tool only supports 'file:' URIs for automatic modifcation.")
+				color.Red("If you chose another type of path reference, please change it to 'file:' to continue.")
+				color.Red("Otherwise, please file a bug report!")
 				return nil, nil, fmt.Errorf("cannot determine entrypoint for argv0 override correctly")
 			}
 
