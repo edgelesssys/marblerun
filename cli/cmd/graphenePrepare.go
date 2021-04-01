@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/c2h5oh/datasize"
+	"github.com/fatih/color"
 	"github.com/pelletier/go-toml"
 	"github.com/spf13/cobra"
 )
@@ -82,7 +83,7 @@ func addToGrapheneManifest(fileName string, mode string) error {
 	fmt.Println("Reading file:", fileName)
 	tree, err := toml.LoadFile(fileName)
 	if err != nil {
-		fmt.Println("\033[0;31mERROR: Cannot parse manifest. Have you selected the corrected file?\033[0m")
+		color.Red("ERROR: Cannot parse manifest. Have you selected the corrected file?")
 		return err
 	}
 
@@ -249,9 +250,9 @@ func performChanges(changeDiffs []diff, fileName string, mode string) error {
 	fmt.Println("\nMarblerun suggests the following changes to your Graphene manifest:")
 	for _, entry := range changeDiffs {
 		if entry.alreadyExists {
-			fmt.Printf("\033[0;33m%s\033[0m\n", entry.manifestEntry)
+			color.Yellow(entry.manifestEntry)
 		} else {
-			fmt.Printf("\033[0;32m%s\033[0m\n", entry.manifestEntry)
+			color.Green(entry.manifestEntry)
 		}
 	}
 
@@ -279,7 +280,7 @@ func performChanges(changeDiffs []diff, fileName string, mode string) error {
 		} else if mode == "preload" {
 			fileName = premainNamePreload
 		}
-		fmt.Printf("\033[0;31mERROR: Cannot download '%s' from GitHub. Please add the file manually.\033[0m", fileName)
+		color.Red("ERROR: Cannot download '%s' from GitHub. Please add the file manually.", fileName)
 	}
 
 	// Read Graphene manifest as normal text file
@@ -370,9 +371,9 @@ func appendAndReplace(changeDiffs []diff, manifestContent []byte) ([]byte, error
 			regex := regexp.MustCompile("\\b" + regexKey + "\\b.*")
 			// Check if we actually found the entry we searched for. If not, we might be dealing with a TOML file we cannot handle correctly without a full parser.
 			if regex.Find(newManifestContent) == nil {
-				fmt.Println("\033[0;31mERROR: Cannot find specified entry. Your Graphene config might not be flat-mapped.")
-				fmt.Println("Marblerun can only automatically modify manifests using a flat hierarchy, as otherwise we would lose all styling & comments.")
-				fmt.Println("To continue, please manually perform the changes printed above in your Graphene manifest.\033[0m")
+				color.Red("ERROR: Cannot find specified entry. Your Graphene config might not be flat-mapped.")
+				color.Red("Marblerun can only automatically modify manifests using a flat hierarchy, as otherwise we would lose all styling & comments.")
+				color.Red("To continue, please manually perform the changes printed above in your Graphene manifest.")
 				return nil, errors.New("failed to detect position of config entry")
 			}
 			// But if everything went as expected, replace the entry

@@ -6,6 +6,7 @@ require (
 	github.com/c2h5oh/datasize v0.0.0-20200825124411-48ed595a09d2
 	github.com/edgelesssys/ego v0.1.2
 	github.com/edgelesssys/era v0.3.0
+	github.com/fatih/color v1.10.0
 	github.com/gofrs/flock v0.8.0
 	github.com/golang/protobuf v1.4.3
 	github.com/google/go-cmp v0.5.5
