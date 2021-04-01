@@ -37,7 +37,7 @@ The first parameter of this command is either 'spawn' or 'preload'.
 
 'spawn': Replace the entrypoint of your application with Marblerun's premain. Dedicates argv provisioning to Marblerun's manifest, but takes longer to load.
 
-'preload': Loads Marblerun's premain as a shared library via LD_PRELOAD and keeps your original endpoint in tact.
+'preload': Loads Marblerun's premain as a shared library via LD_PRELOAD and keeps your original entrypoint intact.
 This feature delegates argv provisioning to Graphene, making Marblerun unable to supply its own arguments via the Marblerun manifest, but keeps better compability with existing Graphene applications and leads to faster load times.
 
 For more information about both modes, consult the documentation: https://www.marblerun.sh/docs/tasks/build-service-graphene/
@@ -46,8 +46,8 @@ The second parameter of this command is the path of the Graphene manifest templa
 `
 
 type diff struct {
-	manifestEntry   string
-	alreadyExisting bool
+	manifestEntry string
+	alreadyExists bool
 }
 
 func newGraphenePrepareCmd() *cobra.Command {
@@ -73,13 +73,30 @@ func newGraphenePrepareCmd() *cobra.Command {
 }
 
 func addToGrapheneManifest(fileName string, mode string) error {
+	// Check if file actually exists
+	if _, err := os.Stat(fileName); os.IsNotExist(err) {
+		return fmt.Errorf("file does not exist: %v", fileName)
+	}
+
 	// Read Graphene manifest and populate TOML tree
 	fmt.Println("Reading file:", fileName)
 	tree, err := toml.LoadFile(fileName)
 	if err != nil {
+		fmt.Println("\033[0;31mERROR: Cannot parse manifest. Have you selected the corrected file?\033[0m")
 		return err
 	}
 
+	// Parse tree for changes and generate maps with original entries & changes
+	original, changes, err := parseTreeForChanges(tree, mode)
+	if err != nil {
+		return err
+	}
+
+	// Calculate the differences, apply the changes
+	return performChanges(calculateChanges(original, changes), fileName, mode)
+}
+
+func parseTreeForChanges(tree *toml.Tree, mode string) (map[string]interface{}, map[string]interface{}, error) {
 	// Create two maps, one with original values, one with the values we want to add or modify
 	original := make(map[string]interface{})
 	changes := make(map[string]interface{})
@@ -98,7 +115,7 @@ func addToGrapheneManifest(fileName string, mode string) error {
 
 	// Abort, if we cannot find an endpoint
 	if original["libos.entrypoint"] == nil {
-		return errors.New("cannot find libos.entrypoint")
+		return nil, nil, errors.New("cannot find libos.entrypoint")
 	}
 
 	// If Marblerun already touched the manifest, abort.
@@ -106,13 +123,13 @@ func addToGrapheneManifest(fileName string, mode string) error {
 		splittedPaths := strings.Split(original["loader.env.LD_PRELOAD"].(string), ":")
 		for _, value := range splittedPaths {
 			if strings.Contains(value, premainNamePreload) {
-				return errors.New("manifest already contains Marblerun changes")
+				return nil, nil, errors.New("manifest already contains Marblerun changes")
 			}
 		}
 	}
 
 	if original["libos.entrypoint"].(string) == premainNameSpawn || original["sgx.trusted_files.marblerun_premain"] != nil || original["sgx.allowed_files.marblerun_uuid"] != nil {
-		return errors.New("manifest already contains Marblerun changes")
+		return nil, nil, errors.New("manifest already contains Marblerun changes")
 	}
 
 	// Add changes to entry point depending on mode
@@ -124,7 +141,7 @@ func addToGrapheneManifest(fileName string, mode string) error {
 			if len(fileEntry) == 2 {
 				changes["loader.argv0_override"] = fileEntry[1]
 			} else {
-				return fmt.Errorf("cannot determine entrypoint for argv0 override correctly")
+				return nil, nil, fmt.Errorf("cannot determine entrypoint for argv0 override correctly")
 			}
 
 			// Add premain-graphene executable as trusted file & entry point
@@ -187,12 +204,15 @@ func addToGrapheneManifest(fileName string, mode string) error {
 	// Add Marble UUID to allowed files
 	changes["sgx.allowed_files.marblerun_uuid"] = "file:" + uuidName
 
-	return performChanges(calculateChanges(original, changes), fileName, mode)
+	return original, changes, nil
 }
 
 // calculateChanges takes two maps with TOML indices and values as input and calculates the difference between them
 func calculateChanges(original map[string]interface{}, updates map[string]interface{}) []diff {
 	var changeDiffs []diff
+	// Note: This function only outputs entries which are defined in the original map.
+	// This is designed this way as we need to check for each value if it already was set and if it was, if it was correct.
+	// Defining new entries in "updates" is NOT intended here, and these values will be ignored.
 	for index, originalValue := range original {
 		if changedValue, ok := updates[index]; ok {
 			// Add quotation marks for strings, direct value if not
@@ -204,11 +224,13 @@ func calculateChanges(original map[string]interface{}, updates map[string]interf
 				diffLine = fmt.Sprintf("%s = %v", index, v)
 			}
 
+			// alreadyExisting = false means, the entry existed and was set to nil.
+			// alreadyExisting = true means, the entry existed and was not set to nil.
 			newDiff := diff{manifestEntry: diffLine}
 			if originalValue != nil {
-				newDiff.alreadyExisting = true
+				newDiff.alreadyExists = true
 			} else {
-				newDiff.alreadyExisting = false
+				newDiff.alreadyExists = false
 			}
 			changeDiffs = append(changeDiffs, newDiff)
 		}
@@ -226,7 +248,7 @@ func calculateChanges(original map[string]interface{}, updates map[string]interf
 func performChanges(changeDiffs []diff, fileName string, mode string) error {
 	fmt.Println("\nMarblerun suggests the following changes to your Graphene manifest:")
 	for _, entry := range changeDiffs {
-		if entry.alreadyExisting {
+		if entry.alreadyExists {
 			fmt.Printf("\033[0;33m%s\033[0m\n", entry.manifestEntry)
 		} else {
 			fmt.Printf("\033[0;32m%s\033[0m\n", entry.manifestEntry)
@@ -275,41 +297,9 @@ func performChanges(changeDiffs []diff, fileName string, mode string) error {
 	// Perform modifications to manifest
 	fileNameBase := filepath.Base(fileName)
 	fmt.Printf("Applying changes to %s...\n", fileNameBase)
-	/*
-		Perform the manifest modifcation.
-		For existing entries: Run a RegEx search, replace the line.
-		For new entries: Append to the end of the file.
-		NOTE: This only works for flat-mapped TOML configs.
-		These seem to be usually used for Graphene manifests.
-		However, TOML is quite flexible, and there are no TOML parsers out there which are style & comments preserving
-		So, if we do not have a flat-mapped config, this will fail at some point.
-	*/
-
-	var firstAdditionDone bool
-	for _, value := range changeDiffs {
-		if value.alreadyExisting {
-			// If a value was previously existing, we replace the existing entry
-			key := strings.Split(value.manifestEntry, " =")
-			regexKey := strings.ReplaceAll(key[0], ".", "\\.")
-			regex := regexp.MustCompile("\\b" + regexKey + "\\b.*")
-			// Check if we actually found the entry we searched for. If not, we might be dealing with a TOML file we cannot handle correctly without a full parser.
-			if regex.Find(manifestContent) == nil {
-				fmt.Println("\033[0;31mERROR: Cannot find specified entry. Your Graphene config might not be flat-mapped.")
-				fmt.Println("Marblerun can only automatically modify manifests using a flat hierarchy, as otherwise we would lose all styling & comments.")
-				fmt.Println("To continue, please manually perform the changes printed above in your Graphene manifest.\033[0m")
-			}
-			// But if everything went as expected, replace the entry
-			manifestContent = regex.ReplaceAll(manifestContent, []byte(value.manifestEntry))
-		} else {
-			// If a value was not defined previously, we append the new entries down below
-			if !firstAdditionDone {
-				appendToFile := "\n# Marblerun -- auto generated configuration entries" + "\n"
-				manifestContent = append(manifestContent, []byte(appendToFile)...)
-				firstAdditionDone = true
-			}
-			appendToFile := value.manifestEntry + "\n"
-			manifestContent = append(manifestContent, []byte(appendToFile)...)
-		}
+	manifestContent, err = appendAndReplace(changeDiffs, manifestContent)
+	if err != nil {
+		return err
 	}
 
 	// Write modified file to disk
@@ -323,7 +313,7 @@ func performChanges(changeDiffs []diff, fileName string, mode string) error {
 }
 
 func downloadPremain(directory string, mode string) error {
-	cleanVersion := "v" + strings.SplitAfter(Version, "-")[0]
+	cleanVersion := "v" + strings.Split(Version, "-")[0]
 
 	// Download premain-graphene as executable (spawn) or as shared library (preload), depending on user's choice
 	var downloadName string
@@ -331,7 +321,10 @@ func downloadPremain(directory string, mode string) error {
 		downloadName = premainNameSpawn
 	} else if mode == "preload" {
 		downloadName = premainNamePreload
+	} else {
+		return errors.New("unknown premain mode, cannot download premain")
 	}
+
 	resp, err := http.Get(fmt.Sprintf("https://github.com/edgelesssys/marblerun/releases/download/%s/%s", cleanVersion, downloadName))
 	if err != nil {
 		return err
@@ -354,4 +347,47 @@ func downloadPremain(directory string, mode string) error {
 	fmt.Printf("Successfully downloaded %s.\n", downloadName)
 
 	return nil
+}
+
+/*
+	Perform the manifest modification.
+	For existing entries: Run a RegEx search, replace the line.
+	For new entries: Append to the end of the file.
+	NOTE: This only works for flat-mapped TOML configs.
+	These seem to be usually used for Graphene manifests.
+	However, TOML is quite flexible, and there are no TOML parsers out there which are style & comments preserving
+	So, if we do not have a flat-mapped config, this will fail at some point.
+*/
+func appendAndReplace(changeDiffs []diff, manifestContent []byte) ([]byte, error) {
+	newManifestContent := manifestContent
+
+	var firstAdditionDone bool
+	for _, value := range changeDiffs {
+		if value.alreadyExists {
+			// If a value was previously existing, we replace the existing entry
+			key := strings.Split(value.manifestEntry, " =")
+			regexKey := strings.ReplaceAll(key[0], ".", "\\.")
+			regex := regexp.MustCompile("\\b" + regexKey + "\\b.*")
+			// Check if we actually found the entry we searched for. If not, we might be dealing with a TOML file we cannot handle correctly without a full parser.
+			if regex.Find(newManifestContent) == nil {
+				fmt.Println("\033[0;31mERROR: Cannot find specified entry. Your Graphene config might not be flat-mapped.")
+				fmt.Println("Marblerun can only automatically modify manifests using a flat hierarchy, as otherwise we would lose all styling & comments.")
+				fmt.Println("To continue, please manually perform the changes printed above in your Graphene manifest.\033[0m")
+				return nil, errors.New("failed to detect position of config entry")
+			}
+			// But if everything went as expected, replace the entry
+			newManifestContent = regex.ReplaceAll(newManifestContent, []byte(value.manifestEntry))
+		} else {
+			// If a value was not defined previously, we append the new entries down below
+			if !firstAdditionDone {
+				appendToFile := "\n# Marblerun -- auto generated configuration entries" + "\n"
+				newManifestContent = append(newManifestContent, []byte(appendToFile)...)
+				firstAdditionDone = true
+			}
+			appendToFile := value.manifestEntry + "\n"
+			newManifestContent = append(newManifestContent, []byte(appendToFile)...)
+		}
+	}
+
+	return newManifestContent, nil
 }

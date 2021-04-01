@@ -13,6 +13,7 @@ require (
 	github.com/gorilla/handlers v1.5.1
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
+	github.com/jarcoal/httpmock v1.0.8
 	github.com/pelletier/go-toml v1.8.1
 	github.com/prometheus/client_golang v1.8.0
 	github.com/spf13/afero v1.5.1
