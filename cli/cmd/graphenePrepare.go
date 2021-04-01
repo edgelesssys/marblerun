@@ -18,6 +18,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// premainNameSpawn is the name of the premain executable used for the 'spawn' method
+const premainNameSpawn = "premain-graphene"
+
+// premainNamePreload is the name of the premain shared library used for the 'preload' method
+const premainNamePreload = "premain-graphene.so"
+
+// uuidName is the file name of a Marble's uuid
+const uuidName = "uuid"
+
 type diff struct {
 	manifestEntry   string
 	alreadyExisting bool
@@ -81,13 +90,13 @@ func addToGrapheneManifest(fileName string, mode string) error {
 	if original["loader.env.LD_PRELOAD"] != nil {
 		splittedPaths := strings.Split(original["loader.env.LD_PRELOAD"].(string), ":")
 		for _, value := range splittedPaths {
-			if strings.Contains(value, "premain-graphene.so") {
+			if strings.Contains(value, premainNamePreload) {
 				return errors.New("manifest already contains Marblerun changes")
 			}
 		}
 	}
 
-	if original["libos.entrypoint"].(string) == "premain-graphene" || original["sgx.trusted_files.marblerun_premain"] != nil || original["sgx.allowed_files.marblerun_uuid"] != nil {
+	if original["libos.entrypoint"].(string) == premainNameSpawn || original["sgx.trusted_files.marblerun_premain"] != nil || original["sgx.allowed_files.marblerun_uuid"] != nil {
 		return errors.New("manifest already contains Marblerun changes")
 	}
 
@@ -104,15 +113,15 @@ func addToGrapheneManifest(fileName string, mode string) error {
 			}
 
 			// Add premain-graphene executable as trusted file & entry point
-			changes["libos.entrypoint"] = "file:premain-graphene"
-			changes["sgx.trusted_files.marblerun_premain"] = "file:premain-graphene"
+			changes["libos.entrypoint"] = "file:" + premainNameSpawn
+			changes["sgx.trusted_files.marblerun_premain"] = "file:" + premainNameSpawn
 		}
 	case "preload":
 		// Add premain-graphene.so to LD_PRELOAD or append to existing LD_PRELOAD
 		if original["loader.env.LD_PRELOAD"] == nil {
-			changes["loader.env.LD_PRELOAD"] = "./premain-graphene.so"
+			changes["loader.env.LD_PRELOAD"] = "./" + premainNamePreload
 		} else {
-			changes["loader.env.LD_PRELOAD"] = original["loader.env.LD_PRELOAD"].(string) + ":./premain-graphene.so"
+			changes["loader.env.LD_PRELOAD"] = original["loader.env.LD_PRELOAD"].(string) + ":./" + premainNamePreload
 		}
 
 		// Check if LD_LIBRARY_PATH contains /lib, add otherwise
@@ -133,7 +142,7 @@ func addToGrapheneManifest(fileName string, mode string) error {
 		}
 
 		// Add premain-graphene.so as trusted file
-		changes["sgx.trusted_files.marblerun_premain"] = "file:premain-graphene.so"
+		changes["sgx.trusted_files.marblerun_premain"] = "file:" + premainNamePreload
 	}
 
 	// Enable use "insecure" host env (which delegates the "secure" handling to Marblerun)
@@ -161,7 +170,7 @@ func addToGrapheneManifest(fileName string, mode string) error {
 	}
 
 	// Add Marble UUID to allowed files
-	changes["sgx.allowed_files.marblerun_uuid"] = "file:uuid"
+	changes["sgx.allowed_files.marblerun_uuid"] = "file:" + uuidName
 
 	return performChanges(calculateChanges(original, changes), fileName, mode)
 }
@@ -227,7 +236,13 @@ func performChanges(changeDiffs []diff, fileName string, mode string) error {
 	directory := filepath.Dir(fileName)
 	// Download Marblerun premain for Graphene from GitHub
 	if err := downloadPremain(directory, mode); err != nil {
-		fmt.Println("\033[0;31mERROR: Cannot download 'premain-graphene' from GitHub. Please add the file manually.\033[0m")
+		var fileName string
+		if mode == "spawn" {
+			fileName = premainNameSpawn
+		} else if mode == "preload" {
+			fileName = premainNamePreload
+		}
+		fmt.Printf("\033[0;31mERROR: Cannot download '%s' from GitHub. Please add the file manually.\033[0m", fileName)
 	}
 
 	// Read Graphene manifest as normal text file
@@ -298,23 +313,20 @@ func downloadPremain(directory string, mode string) error {
 	// Download premain-graphene as executable (spawn) or as shared library (preload), depending on user's choice
 	var downloadName string
 	if mode == "spawn" {
-		downloadName = "premain-graphene"
+		downloadName = premainNameSpawn
 	} else if mode == "preload" {
-		downloadName = "premain-graphene.so"
+		downloadName = premainNamePreload
 	}
 	resp, err := http.Get(fmt.Sprintf("https://github.com/edgelesssys/marblerun/releases/download/%s/%s", cleanVersion, downloadName))
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-
-	var path string
-	if mode == "spawn" {
-		path = filepath.Join(directory, "premain-graphene")
-	} else if mode == "preload" {
-		path = filepath.Join(directory, "premain-graphene.so")
+	if resp.StatusCode < 200 && resp.StatusCode > 299 {
+		return errors.New("received a non-successful HTTP response")
 	}
-	out, err := os.Create(path)
+
+	out, err := os.Create(filepath.Join(directory, downloadName))
 	if err != nil {
 		return err
 	}
