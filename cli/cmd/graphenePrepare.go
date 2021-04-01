@@ -27,6 +27,24 @@ const premainNamePreload = "premain-graphene.so"
 // uuidName is the file name of a Marble's uuid
 const uuidName = "uuid"
 
+// longDescription is the help text shown for this command
+const longDescription = `Modifies a Graphene manifest for use with Marblerun.
+
+This command tries to automatically adjust the required parameters in an already existing Graphene manifest template, simplifying the migration of your existing Graphene application to Marblerun.
+Please note that you still need to manually create a Marblerun manifest.
+
+The first parameter of this command is either 'spawn' or 'preload'.
+
+'spawn': Replace the entrypoint of your application with Marblerun's premain. Dedicates argv provisioning to Marblerun's manifest, but takes longer to load.
+
+'preload': Loads Marblerun's premain as a shared library via LD_PRELOAD and keeps your original endpoint in tact.
+This feature delegates argv provisioning to Graphene, making Marblerun unable to supply its own arguments via the Marblerun manifest, but keeps better compability with existing Graphene applications and leads to faster load times.
+
+For more information about both modes, consult the documentation: https://www.marblerun.sh/docs/tasks/build-service-graphene/
+
+The second parameter of this command is the path of the Graphene manifest template you want to modify.
+`
+
 type diff struct {
 	manifestEntry   string
 	alreadyExisting bool
@@ -36,14 +54,11 @@ func newGraphenePrepareCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "graphene-prepare",
 		Short: "Modifies a Graphene manifest for use with Marblerun",
-		Long:  "Modifies a Graphene manifest for use with Marblerun",
+		Long:  longDescription,
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			mode := args[0]
 			fileName := args[1]
-
-			fmt.Println("Marblerun 🤝 Graphene")
-			fmt.Printf("Arg 1: %s, Arg 2: %s\n", mode, fileName)
 
 			mode = strings.ToLower(mode)
 			if mode != "spawn" && mode != "preload" {
