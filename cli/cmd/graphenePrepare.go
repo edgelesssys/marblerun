@@ -74,15 +74,12 @@ func newGraphenePrepareCmd() *cobra.Command {
 }
 
 func addToGrapheneManifest(fileName string, mode string) error {
-	// Check if file actually exists
-	if _, err := os.Stat(fileName); os.IsNotExist(err) {
-		return fmt.Errorf("file does not exist: %v", fileName)
-	}
-
 	// Read Graphene manifest and populate TOML tree
 	fmt.Println("Reading file:", fileName)
 	tree, err := toml.LoadFile(fileName)
-	if err != nil {
+	if os.IsNotExist(err) {
+		return fmt.Errorf("file does not exist: %v", fileName)
+	} else if err != nil {
 		color.Red("ERROR: Cannot parse manifest. Have you selected the corrected file?")
 		return err
 	}
@@ -375,11 +372,16 @@ func appendAndReplace(changeDiffs []diff, manifestContent []byte) ([]byte, error
 			regexKey := strings.ReplaceAll(key[0], ".", "\\.")
 			regex := regexp.MustCompile("\\b" + regexKey + "\\b.*")
 			// Check if we actually found the entry we searched for. If not, we might be dealing with a TOML file we cannot handle correctly without a full parser.
-			if regex.Find(newManifestContent) == nil {
+			regexMatches := regex.FindAll(newManifestContent, -1)
+			if regexMatches == nil {
 				color.Red("ERROR: Cannot find specified entry. Your Graphene config might not be flat-mapped.")
 				color.Red("Marblerun can only automatically modify manifests using a flat hierarchy, as otherwise we would lose all styling & comments.")
 				color.Red("To continue, please manually perform the changes printed above in your Graphene manifest.")
 				return nil, errors.New("failed to detect position of config entry")
+			} else if len(regexMatches) > 1 {
+				color.Red("ERROR: Found multiple potential matches for automatic value substitution.")
+				color.Red("Is the configuration valid (no multiple declarations)?")
+				return nil, errors.New("found multiple matches for a single entry")
 			}
 			// But if everything went as expected, replace the entry
 			newManifestContent = regex.ReplaceAll(newManifestContent, []byte(value.manifestEntry))
