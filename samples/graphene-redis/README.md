@@ -3,7 +3,7 @@
 First, ensure you have access to a Kubernetes cluster with SGX-enabled nodes and kubectl installed and configured.
 Probably the easiest way to get started is to run Kubernetes on an [Azure Kubernetes Service (AKS)](https://docs.microsoft.com/en-us/azure/confidential-computing/confidential-nodes-aks-get-started), which offers SGX-enabled nodes.
 
-* Install Marblerun on the Clutser
+* Install Marblerun on the Cluster
 
     ```bash
     marblerun install
