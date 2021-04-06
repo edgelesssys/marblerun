@@ -103,7 +103,7 @@ cp ./redis-server.manifest.template /graphene/Examples/redis/redis-server.manife
 Next we can build the Docker image:
 
 ```bash
-docker build --tag graphene/redis -f ./Dockerfile /graphene
+docker build --tag ghcr.io/edgelesssys/redis-graphene-marble -f ./Dockerfile /graphene
 ```
 
 The current Dockerfile is poorly optimized and can probably be configured to be smaller and more efficient, but for the sake of this demo it works
