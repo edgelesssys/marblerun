@@ -129,6 +129,14 @@ sgx.trusted_files.premain = "file:premain-graphene"
 # Redis by default does not use configuration files, so this section is empty.
 # sgx.trusted_files.config = "file:<important-configuration-file>"
 
+############################# SGX: PROTECTED FILES ###############################
+
+sgx.protected_files.redis-conf = "file:redis.conf"
+sgx.protected_files.redis-crt = "file:redis.crt"
+sgx.protected_files.redis-key = "file:redis.key"
+sgx.protected_files.redis-ca = "file:ca.crt"
+
+
 ############################# SGX: ALLOWED FILES ###############################
 
 # Specify all non-static files used by app. These files may be accessed by
@@ -153,3 +161,7 @@ sgx.allowed_files.aesm_socket = "file:/var/run/aesmd/aesm.socket"
 # getaddrinfo(3) configuration file. Glibc reads this file to correctly find
 # network addresses. For more info, see 'man gai.conf'.
 sgx.allowed_files.gaiconf = "file:/etc/gai.conf"
+
+############################# SGX: Attestation ###############################
+sgx.isvprodid = 13
+sgx.isnsvn    = 1

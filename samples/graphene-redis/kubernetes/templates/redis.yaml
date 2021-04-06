@@ -7,25 +7,76 @@ metadata:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: redis
+  name: redis-master
   namespace: redis
   labels:
-    app.kubernetes.io/name: redis
-    app.kubernetes.io/part-of: redis
-    app.kubernetes.io/version: v1
+    app: redis
+    role: master
+    tier: backend
 spec:
   serviceName: "redis"
   replicas: 1
   selector:
     matchLabels:
       app: redis
-      version: v1
+      role: master
+      tier: backend
   template:
     metadata:
       labels:
         app: redis
-        version: v1
-        marblerun/marbletype: redis
+        role: master
+        tier: backend
+        marblerun/marbletype: redis-master
+    spec:
+      serviceAccountName: redis
+      containers:
+      - image: ghcr.io/edgelesssys/redis-graphene-marble:latest
+        imagePullPolicy: {{ .Values.imagePullPolicy }}
+        env:
+        - name: SGX_AESM_ADDR
+          value: "1"
+        - name: EDG_MARBLE_UUID_FILE
+          value: "uuid"
+        name: redis
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: aesmd-socket
+          mountPath: /var/run/aesmd
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+      - name: aesmd-socket
+        hostPath:
+          path: /var/run/aesmd
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-slave
+  namespace: redis
+  labels:
+    app: redis
+    role: slave
+    tier: backend
+spec:
+  serviceName: "redis"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+      role: slave
+      tier: backend
+  template:
+    metadata:
+      labels:
+        app: redis
+        role: slave
+        tier: backend
+        marblerun/marbletype: redis-slave
     spec:
       serviceAccountName: redis
       containers:
@@ -60,6 +111,7 @@ spec:
   type: LoadBalancer
   selector:
     app: redis
+    role: master
   ports:
   - name: http
     port: 6379

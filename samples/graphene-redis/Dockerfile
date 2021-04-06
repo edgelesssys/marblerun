@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:experimental
 
 FROM alpine/git:latest AS pull
-git clone https://github.com/edgelesssys/marblerun.git /premain
+RUN git clone https://github.com/edgelesssys/marblerun.git /premain
 
 FROM ghcr.io/edgelesssys/edgelessrt-dev AS build-premain
 COPY --from=pull /premain /premain
@@ -21,5 +21,6 @@ RUN python3 -m pip install toml
 COPY . /graphene
 COPY --from=build-premain /premain/build/premain-graphene /graphene/Examples/redis
 WORKDIR /graphene/Examples/redis
+ENV BUILD_TLS yes
 RUN make clean && make SGX=1
 ENTRYPOINT [ "bash", "-c", "SGX=1 /graphene/Runtime/pal_loader /graphene/Examples/redis/redis-server" ]
