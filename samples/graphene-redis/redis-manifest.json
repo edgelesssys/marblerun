@@ -1,0 +1,45 @@
+{
+    "Packages": {
+        "redis-package": {
+            "Debug": true,
+            "SignerID": "43361affedeb75affee9baec7e054a5e14883213e5a121b67d74a0e12e9d2b7a",
+            "ProductID": 13,
+            "SecurityVersion": 1
+        }
+    },
+
+    "Marbles": {
+        "redis-master": {
+            "Package": "redis-package",
+            "Parameters": {
+                "Argv": [
+                    "redis-server",
+                    "redis.conf"
+                ],
+                "Files": {
+                    "/dev/attestation/protected_files_key": "{{ hex .Marblerun.SealKey }}",
+                    "redis.conf": "bind 0.0.0.0\nprotected-mode no\nport 0\ntls-port 6379\ntls-cert-file redis.crt\ntls-key-file redis.key\ntls-ca-cert-file ca.crt\ntls-auth-clients no\ntls-replication yes\ntls-cluster yes\nsave ''",
+                    "redis.crt": "{{ pem .Marblerun.MarbleCert.Cert }}",
+                    "redis.key": "{{ pem .Marblerun.MarbleCert.Private }}",
+                    "ca.crt": "{{ pem .Marblerun.RootCA.Cert }}"
+                }
+            }
+        },
+        "redis-slave": {
+            "Package": "redis-package",
+            "Parameters": {
+                "Argv": [
+                    "redis-server",
+                    "redis.conf"
+                ],
+                "Files": {
+                    "/dev/attestation/protected_files_key": "{{ hex .Marblerun.SealKey }}",
+                    "redis.conf": "bind 0.0.0.0\nprotected-mode no\nport 0\ntls-port 6379\ntls-cert-file redis.crt\ntls-key-file redis.key\ntls-ca-cert-file ca.crt\ntls-auth-clients no\ntls-replication yes\ntls-cluster yes\nsave ''\nslaveof redis-master-0.redis 6379",
+                    "redis.crt": "{{ pem .Marblerun.MarbleCert.Cert  }}",
+                    "redis.key": "{{ pem .Marblerun.MarbleCert.Private }}",
+                    "ca.crt": "{{ pem .Marblerun.RootCA.Cert }}"
+                }
+            }
+        }
+    }
+}
