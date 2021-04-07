@@ -9,6 +9,7 @@
 # to relative path to Graphene repository in the Makefile as part of the
 # build process.
 loader.preload = "file:$(GRAPHENEDIR)/Runtime/libsysdb.so"
+# MARBLERUN: entrypoint must be premain-graphene
 libos.entrypoint = "file:premain-graphene"
 
 # Verbosity of Graphene debug log (none/error/warning/debug/trace/all). Note
@@ -21,7 +22,9 @@ loader.log_level = "$(GRAPHENE_LOG_LEVEL)"
 
 # Read application arguments directly from the command line. Don't use this on production!
 loader.insecure__use_cmdline_argv = 1
+# MARBLERUN: argv0 must be the path to the actual application
 loader.argv0_override = "redis-server"
+# MARBLERUN: required and ok because premain will filter host env
 loader.insecure__use_host_env = 1
 
 ################################# ENV VARS ####################################
@@ -80,10 +83,12 @@ fs.mount.etc.uri = "file:/etc"
 # 1024MB then it will start failing with random errors. Greater enclave sizes
 # result in longer startup times, smaller enclave sizes are not enough for
 # typical Redis workloads.
+# MARBLERUN: enclave must have enough memory for Go runtime of premain
 sgx.enclave_size = "1024M"
 
 sgx.nonpie_binary = 1
 
+# MARBLERUN: enable DCAP
 sgx.remote_attestation = 1
 
 # Set maximum number of in-enclave threads (somewhat arbitrarily) to 8. Recall
@@ -94,6 +99,7 @@ sgx.remote_attestation = 1
 # and one for asynchronous events/alarms. Redis is technically single-threaded
 # but spawns couple additional threads to do background bookkeeping. Therefore,
 # specifying '8' allows to run a maximum of 6 Redis threads which is enough.
+# MARBLERUN: enclave must have enough threads for Go runtime of premain
 sgx.thread_num = 16
 
 ############################# SGX: TRUSTED FILES ###############################
@@ -119,6 +125,7 @@ sgx.trusted_files.runtime = "file:$(GRAPHENEDIR)/Runtime/"
 sgx.trusted_files.arch_libdir = "file:$(ARCH_LIBDIR)/"
 sgx.trusted_files.usr_arch_libdir = "file:/usr/$(ARCH_LIBDIR)/"
 
+# MARBLERUN: must trust premain-graphene
 sgx.trusted_files.premain = "file:premain-graphene"
 
 # Trusted no-library files include configuration files, read-only files, and
@@ -131,6 +138,7 @@ sgx.trusted_files.premain = "file:premain-graphene"
 
 ############################# SGX: PROTECTED FILES ###############################
 
+# MARBLERUN: these are provisioned by the Coordinator
 sgx.protected_files.redis-conf = "file:redis.conf"
 sgx.protected_files.redis-crt = "file:redis.crt"
 sgx.protected_files.redis-key = "file:redis.key"
@@ -143,6 +151,7 @@ sgx.protected_files.redis-ca = "file:ca.crt"
 # Graphene-SGX but their integrity is not verified (Graphene-SGX does not
 # measure their hashes). This may pose a security risk!
 
+# MARBLERUN: allow the marble's uuid file
 sgx.allowed_files.injected-uuid = "file:/redis-uid/uuid-file"
 sgx.allowed_files.uuid = "file:uuid"
 
