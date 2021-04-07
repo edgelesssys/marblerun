@@ -70,7 +70,7 @@ func cliManifestUpdate(manifest []byte, host string, clCert tls.Certificate, caC
 	}
 	// Add intermediate cert if applicable
 	if len(caCert) > 1 {
-		if ok := certPool.AppendCertsFromPEM([]byte(caCert[0].Bytes)); !ok {
+		if ok := certPool.AppendCertsFromPEM(pem.EncodeToMemory(caCert[0])); !ok {
 			return errors.New("Failed to parse certificate")
 		}
 	}
