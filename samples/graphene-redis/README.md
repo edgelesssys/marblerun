@@ -1,7 +1,19 @@
-# Demo of graphene + marblerun
+# Graphene redis sample
 
-First, ensure you have access to a Kubernetes cluster with SGX-enabled nodes and kubectl installed and configured.
+This sample is a slightly modified variant of the [Graphene redis sample](https://github.com/oscarlab/graphene/tree/master/Examples/redis).
+Instead of running a single [redis](https://redis.io/) server instance, Marblerun unleashes the full potential of redis and takes care of distributing the redis server in *replication* mode.
+
+*Prerequisite*: Ensure you have access to a Kubernetes cluster with SGX-enabled nodes and kubectl installed and configured.
 Probably the easiest way to get started is to run Kubernetes on an [Azure Kubernetes Service (AKS)](https://docs.microsoft.com/en-us/azure/confidential-computing/confidential-nodes-aks-get-started), which offers SGX-enabled nodes.
+## Kubernetes deployment walkthrough
+
+We are now installing a distributed redis server in master-slave replication mode on your cluster.
+
+*Prerequisite*: Ensure you have the [Marblerun CLI](https://www.marblerun.sh/docs/getting-started/cli/) installed.
+
+### Step 1: Installing Marblerun
+
+First, we are installing Marblerun on your cluster.
 
 * Install Marblerun on the Cluster
 
@@ -28,11 +40,13 @@ Probably the easiest way to get started is to run Kubernetes on an [Azure Kubern
     marblerun status $MARBLERUN
     ```
 
-* Set the manifest
+* Set the [manifest](redis-manifest.json)
 
     ```bash
     marblerun manifest set redis-manifest.json $MARBLERUN
     ```
+
+### Step 2: Deploying redis
 
 * Create and add the redis namespace to Marblerun
 
@@ -64,36 +78,39 @@ Probably the easiest way to get started is to run Kubernetes on an [Azure Kubern
     kubectl -n redis port-forward svc/redis 6379:6379 --address localhost >/dev/null &
     ```
 
-* You can now connect to the redis server using `redis-cli`
+### Step 3: Using redis
 
-    * Make sure you have the latest redis-cli with TLS support:
+You can now securely connect to the redis server using the `redis-cli` and the Marblerun CA certificate for authentication.
 
-        ```bash
-        wget http://download.redis.io/redis-stable.tar.gz
-        tar xzf redis-stable.tar.gz
-        make BUILD_TLS=yes -C redis-stable &&  cp redis-stable/src/redis-cli /usr/local/bin
-        ```
+* Make sure you have the latest redis-cli with TLS support:
 
-    * Obtain the Coordinator's CA certificate
+    ```bash
+    wget http://download.redis.io/redis-stable.tar.gz
+    tar xzf redis-stable.tar.gz
+    make BUILD_TLS=yes -C redis-stable &&  cp redis-stable/src/redis-cli /usr/local/bin
+    ```
 
-        ```bash
-        marblerun certificate root $MARBLERUN -o marblerun.crt
-        ```
+* Obtain the Coordinator's CA certificate
 
-    * Connect with the redis-cli
+    ```bash
+    marblerun certificate root $MARBLERUN -o marblerun.crt
+    ```
 
-        ```bash
-        redis-cli -h localhost -p 6379 --tls --cacert marblerun.crt
-        localhost:6379> set mykey somevalue
-        OK
-        localhost:6379> get mykey
-        "somevalue"
-        ```
+* Connect via the redis-cli
+
+    ```bash
+    redis-cli -h localhost -p 6379 --tls --cacert marblerun.crt
+    localhost:6379> set mykey somevalue
+    OK
+    localhost:6379> get mykey
+    "somevalue"
+    ```
 
 ## Building the Docker image
 
-First, get Graphene up and running. You can use either the [Building](https://graphene.readthedocs.io/en/latest/building.html) or [Cloud Deployment](https://graphene.readthedocs.io/en/latest/cloud-deployment.html) guide to build and initially setup Graphene.
+*Prerequisite*: Graphene is set up and the original redis sample is working.
 
+To marbleize the sample we edited [redis-server.manifest.template](redis-server.manifest.template). See comments starting with `MARBLERUN` for explanations of the required changes.
 Assuming you have built Graphene in `/graphene` copy the redis-server.manifest.template into the `/graphene/Examples/redis`
 
 ```bash
@@ -105,5 +122,3 @@ Next we can build the Docker image:
 ```bash
 docker build --tag ghcr.io/edgelesssys/redis-graphene-marble -f ./Dockerfile /graphene
 ```
-
-The current Dockerfile is poorly optimized and can probably be configured to be smaller and more efficient, but for the sake of this demo it works
