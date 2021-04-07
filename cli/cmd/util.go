@@ -38,7 +38,7 @@ func verifyCoordinator(host string, configFilename string, insecure bool) ([]*pe
 	if err != nil {
 		return nil, err
 	}
-	eraURL := fmt.Sprintf("https://github.com/edgelesssys/marblerun/releases/%s/download/coordinator-era.json", coordinatorVersion)
+	eraURL := fmt.Sprintf("https://github.com/edgelesssys/marblerun/releases/download/%s/coordinator-era.json", coordinatorVersion)
 
 	fmt.Printf("No era config file specified, getting config from %s\n", eraURL)
 	resp, err := http.Get(eraURL)
