@@ -91,7 +91,7 @@ func cliManifestSet(manifest []byte, host string, cert []*pem.Block, recover str
 			if err := ioutil.WriteFile(recover, []byte(response.String()), 0644); err != nil {
 				return err
 			}
-			fmt.Printf("Manifest successfully set, recovery data saved to: %s.\n", recover)
+			fmt.Printf("Recovery data saved to: %s.\n", recover)
 		}
 	case http.StatusBadRequest:
 		respBody, err := ioutil.ReadAll(resp.Body)
