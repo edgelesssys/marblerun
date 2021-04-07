@@ -111,6 +111,7 @@ You can now securely connect to the redis server using the `redis-cli` and the M
 *Prerequisite*: Graphene is set up and the original redis sample is working.
 
 To marbleize the sample we edited [redis-server.manifest.template](redis-server.manifest.template). See comments starting with `MARBLERUN` for explanations of the required changes.
+
 Assuming you have built Graphene in `/graphene` copy the redis-server.manifest.template into the `/graphene/Examples/redis`
 
 ```bash
