@@ -34,8 +34,14 @@ func verifyCoordinator(host string, configFilename string, insecure bool) ([]*pe
 	}
 
 	// get latest config from github if none specified
-	fmt.Println("No era config file specified, getting latest config from github.com/edgelesssys/marblerun/releases/latest/download/coordinator-era.json")
-	resp, err := http.Get("https://github.com/edgelesssys/marblerun/releases/latest/download/coordinator-era.json")
+	coordinatorVersion, err := getCoordinatorVersion()
+	if err != nil {
+		return nil, err
+	}
+	eraURL := fmt.Sprintf("https://github.com/edgelesssys/marblerun/releases/download/%s/coordinator-era.json", coordinatorVersion)
+
+	fmt.Printf("No era config file specified, getting config from %s\n", eraURL)
+	resp, err := http.Get(eraURL)
 	if err != nil {
 		return nil, err
 	}
