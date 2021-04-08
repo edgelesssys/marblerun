@@ -92,7 +92,7 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 // Returns the a remote attestation quote of its own certificate alongside this certificate that allows to verify the Coordinator's integrity and authentication for use of the ClientAPI.
 func (c *Core) GetCertQuote(ctx context.Context) (string, []byte, error) {
 	defer c.mux.Unlock()
-	if err := c.requireState(stateAcceptingManifest, stateAcceptingMarbles); err != nil {
+	if err := c.requireState(stateAcceptingManifest, stateAcceptingMarbles, stateRecovery); err != nil {
 		return "", nil, err
 	}
 

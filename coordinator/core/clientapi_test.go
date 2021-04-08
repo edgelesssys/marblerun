@@ -169,6 +169,10 @@ func TestGetCertQuote(t *testing.T) {
 	c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
 	_, _, err = c.GetCertQuote(context.TODO())
 	assert.NoError(err, "GetCertQuote should not fail (with manifest)")
+
+	c.state = stateRecovery
+	_, _, err = c.GetCertQuote(context.TODO())
+	assert.NoError(err, "GetCertQuote should not fail when coordinator is in recovery mode")
 	//todo check quote
 }
 
