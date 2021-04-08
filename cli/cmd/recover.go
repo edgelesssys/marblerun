@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
@@ -13,19 +12,15 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-type coordinatorResponse struct {
-	StatusMessage string `json:"StatusMessage"`
-}
-
 func newRecoverCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "recover <IP:PORT> <recovery_key_decrypted>",
+		Use:   "recover <recovery_key_decrypted> <IP:PORT>",
 		Short: "Recovers the Marblerun coordinator from a sealed state",
 		Long:  `Recovers the Marblerun coordinator from a sealed state`,
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			hostName := args[0]
-			keyFile := args[1]
+			keyFile := args[0]
+			hostName := args[1]
 
 			cert, err := verifyCoordinator(hostName, eraConfig, insecureEra)
 			if err != nil {
@@ -70,12 +65,8 @@ func cliRecover(host string, key []byte, cert []*pem.Block) error {
 		if err != nil {
 			return err
 		}
-		jsonResponse := gjson.GetBytes(respBody, "data")
-		var response coordinatorResponse
-		if err := json.Unmarshal([]byte(jsonResponse.String()), &response); err != nil {
-			return err
-		}
-		fmt.Printf("%s \n", response)
+		jsonResponse := gjson.GetBytes(respBody, "data.StatusMessage")
+		fmt.Printf("%s \n", jsonResponse.String())
 	default:
 		return fmt.Errorf("error connecting to server: %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
 	}
