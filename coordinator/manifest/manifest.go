@@ -38,6 +38,8 @@ type Manifest struct {
 	Secrets map[string]Secret
 	// RecoveryKeys holds one or multiple RSA public keys to encrypt multiple secrets, which can be used to decrypt the sealed state again in case the encryption key on disk was corrupted somehow.
 	RecoveryKeys map[string]string
+	// TLS contains tags which can be assiged to Marbles to specify which connections should be elevated to TLS
+	TLS map[string]TLStag
 }
 
 // Marble describes a service in the mesh that should be handled and verified by the Coordinator
@@ -49,7 +51,24 @@ type Marble struct {
 	// Parameters contains lists for files, environment variables and commandline arguments that should be passed to the application.
 	// Placeholder variables are supported for specific assets of the marble's activation process.
 	Parameters *rpc.Parameters
+	// TLS holds a list of tags which are specified in the manifest
+	TLS []string
 }
+
+// TLStag decribes which entries should be used to determine the ttls connections of a marble
+type TLStag struct {
+        // Outgoing holds a list of all outgoing addresses that should be elevated to TLS
+        Outgoing []TLSTagEntry
+        // Incoming holds a list of all incoming addresses that should be elevated to TLS
+        Incoming []TLSTagEntry
+}
+
+type TLSTagEntry struct {
+        Port string
+        Addr string
+}
+
+
 
 // Check checks if the manifest is consistent.
 func (m Manifest) Check(ctx context.Context, zaplogger *zap.Logger) error {

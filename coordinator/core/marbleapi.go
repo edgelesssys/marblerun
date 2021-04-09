@@ -13,6 +13,8 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/json"
+	"encoding/pem"
 	"math"
 	"text/template"
 	"time"
@@ -88,6 +90,24 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	}
 
 	marble := c.manifest.Marbles[req.GetMarbleType()] // existence has been checked in verifyManifestRequirement
+	// add TTLS config to Env
+	ttlsConf := make(map[string]map[string]string)
+	ttlsConf["tls"] = make(map[string]string)
+	for _, value := range marble.TLS {
+		for _, value2 := range c.manifest.TLS[value].Outgoing {
+			pemCert := pem.Block{Type: "CERTIFICATE", Bytes: c.rootCert.Raw}
+			ttlsConf["tls"][value2.Addr+":"+value2.Port] = string(pem.EncodeToMemory(&pemCert))
+		}
+	}
+	ttlsConfJson, err := json.Marshal(ttlsConf)
+	if err != nil {
+		c.zaplogger.Error("Could not create TTLS config.", zap.Error(err))
+	}
+	if marble.Parameters.Env == nil {
+		marble.Parameters.Env = make(map[string]string)
+	}
+	marble.Parameters.Env["EDG_TTLS_CONFIG"] = string(ttlsConfJson)
+
 	params, err := customizeParameters(marble.Parameters, authSecrets, secrets)
 	if err != nil {
 		c.zaplogger.Error("Could not customize parameters.", zap.Error(err))
