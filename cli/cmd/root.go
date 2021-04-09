@@ -25,6 +25,8 @@ func Execute() error {
 
 func init() {
 	rootCmd.AddCommand(newCertificateCmd())
+	rootCmd.AddCommand(newCheckCmd())
+	rootCmd.AddCommand(newPrecheckCmd())
 	rootCmd.AddCommand(newInstallCmd())
 	rootCmd.AddCommand(newManifestCmd())
 	rootCmd.AddCommand(newStatusCmd())
