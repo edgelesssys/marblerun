@@ -51,6 +51,14 @@ type diff struct {
 	alreadyExists bool
 }
 
+type mode uint
+
+const (
+	modeInvalid mode = iota
+	modeSpawn
+	modePreload
+)
+
 func newGraphenePrepareCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "graphene-prepare",
@@ -61,11 +69,11 @@ func newGraphenePrepareCmd() *cobra.Command {
 			mode := args[0]
 			fileName := args[1]
 
-			mode = strings.ToLower(mode)
-			if mode != "spawn" && mode != "preload" {
+			chosenMode := toMode(mode)
+			if chosenMode == modeInvalid {
 				return fmt.Errorf("unknown mode was chosen, aborting")
 			}
-			return addToGrapheneManifest(fileName, mode)
+			return addToGrapheneManifest(fileName, chosenMode)
 		},
 		SilenceUsage: true,
 	}
@@ -73,7 +81,7 @@ func newGraphenePrepareCmd() *cobra.Command {
 	return cmd
 }
 
-func addToGrapheneManifest(fileName string, mode string) error {
+func addToGrapheneManifest(fileName string, mode mode) error {
 	// Read Graphene manifest and populate TOML tree
 	fmt.Println("Reading file:", fileName)
 	tree, err := toml.LoadFile(fileName)
@@ -94,7 +102,7 @@ func addToGrapheneManifest(fileName string, mode string) error {
 	return performChanges(calculateChanges(original, changes), fileName, mode)
 }
 
-func parseTreeForChanges(tree *toml.Tree, mode string) (map[string]interface{}, map[string]interface{}, error) {
+func parseTreeForChanges(tree *toml.Tree, mode mode) (map[string]interface{}, map[string]interface{}, error) {
 	// Create two maps, one with original values, one with the values we want to add or modify
 	original := make(map[string]interface{})
 	changes := make(map[string]interface{})
@@ -133,7 +141,7 @@ func parseTreeForChanges(tree *toml.Tree, mode string) (map[string]interface{}, 
 
 	// Add changes to entry point depending on mode
 	switch mode {
-	case "spawn":
+	case modeSpawn:
 		// Set original endpoint as argv0. If one exists, keep the old one
 		if original["loader.argv0_override"] == nil {
 			fileEntry := strings.SplitAfter(original["libos.entrypoint"].(string), "file:")
@@ -151,7 +159,7 @@ func parseTreeForChanges(tree *toml.Tree, mode string) (map[string]interface{}, 
 			changes["libos.entrypoint"] = "file:" + premainNameSpawn
 			changes["sgx.trusted_files.marblerun_premain"] = "file:" + premainNameSpawn
 		}
-	case "preload":
+	case modePreload:
 		// Add premain-graphene.so to LD_PRELOAD or append to existing LD_PRELOAD
 		if original["loader.env.LD_PRELOAD"] == nil {
 			changes["loader.env.LD_PRELOAD"] = "./" + premainNamePreload
@@ -248,7 +256,7 @@ func calculateChanges(original map[string]interface{}, updates map[string]interf
 }
 
 // performChanges displays the suggested changes to the user and tries to automatically perform them
-func performChanges(changeDiffs []diff, fileName string, mode string) error {
+func performChanges(changeDiffs []diff, fileName string, mode mode) error {
 	fmt.Println("\nMarblerun suggests the following changes to your Graphene manifest:")
 	for _, entry := range changeDiffs {
 		if entry.alreadyExists {
@@ -277,9 +285,9 @@ func performChanges(changeDiffs []diff, fileName string, mode string) error {
 	// Download Marblerun premain for Graphene from GitHub
 	if err := downloadPremain(directory, mode); err != nil {
 		var fileName string
-		if mode == "spawn" {
+		if mode == modeSpawn {
 			fileName = premainNameSpawn
-		} else if mode == "preload" {
+		} else if mode == modePreload {
 			fileName = premainNamePreload
 		}
 		color.Red("ERROR: Cannot download '%s' from GitHub. Please add the file manually.", fileName)
@@ -315,14 +323,14 @@ func performChanges(changeDiffs []diff, fileName string, mode string) error {
 	return nil
 }
 
-func downloadPremain(directory string, mode string) error {
+func downloadPremain(directory string, mode mode) error {
 	cleanVersion := "v" + strings.Split(Version, "-")[0]
 
 	// Download premain-graphene as executable (spawn) or as shared library (preload), depending on user's choice
 	var downloadName string
-	if mode == "spawn" {
+	if mode == modeSpawn {
 		downloadName = premainNameSpawn
-	} else if mode == "preload" {
+	} else if mode == modePreload {
 		downloadName = premainNamePreload
 	} else {
 		return errors.New("unknown premain mode, cannot download premain")
@@ -398,4 +406,15 @@ func appendAndReplace(changeDiffs []diff, manifestContent []byte) ([]byte, error
 	}
 
 	return newManifestContent, nil
+}
+
+func toMode(modeStr string) mode {
+	lowerString := strings.ToLower(modeStr)
+	if lowerString == "spawn" {
+		return modeSpawn
+	}
+	if lowerString == "preload" {
+		return modePreload
+	}
+	return modeInvalid
 }

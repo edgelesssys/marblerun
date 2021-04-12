@@ -62,7 +62,7 @@ func TestParseTreeForChanges(t *testing.T) {
 	// Checking all possible combinations will result in tremendous effort...
 	// So for this, we check if we at least changed the entry point / PRELOAD and the memory/thread requirements for the Go runtime
 	// For 'spawn'
-	original, changes, err := parseTreeForChanges(tree, "spawn")
+	original, changes, err := parseTreeForChanges(tree, modeSpawn)
 	require.NoError(err)
 	assert.NotEmpty(original)
 	assert.NotEmpty(changes)
@@ -76,7 +76,7 @@ func TestParseTreeForChanges(t *testing.T) {
 	assert.GreaterOrEqual(v.GBytes(), 1.00)
 
 	// For 'preload'
-	original, changes, err = parseTreeForChanges(tree, "preload")
+	original, changes, err = parseTreeForChanges(tree, modePreload)
 	require.NoError(err)
 	assert.NotEmpty(original)
 	assert.NotEmpty(changes)
@@ -147,17 +147,17 @@ func TestDownloadPremain(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	// Try to download spawn & preload, fail for some invalid input
-	assert.NoError(downloadPremain(tempDir, "spawn"))
+	assert.NoError(downloadPremain(tempDir, modeSpawn))
 	content, err := ioutil.ReadFile(filepath.Join(tempDir, premainNameSpawn))
 	assert.NoError(err)
 	assert.Equal(testContent, content)
 
-	assert.NoError(downloadPremain(tempDir, "preload"))
+	assert.NoError(downloadPremain(tempDir, modePreload))
 	content, err = ioutil.ReadFile(filepath.Join(tempDir, premainNamePreload))
 	assert.NoError(err)
 	assert.Equal(testContent, content)
 
-	assert.Error(downloadPremain(tempDir, "someUnknownMode"))
+	assert.Error(downloadPremain(tempDir, modeInvalid))
 
 	// We should have two downloads here
 	info := httpmock.GetCallCountInfo()
