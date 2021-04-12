@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -12,6 +13,8 @@ import (
 )
 
 func newCheckCmd() *cobra.Command {
+	var timeout uint
+
 	cmd := &cobra.Command{
 		Use:   "check",
 		Short: "Check the status of Marbleruns control plane",
@@ -22,30 +25,24 @@ func newCheckCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return cliCheck(kubeClient)
+			return cliCheck(kubeClient, timeout)
 		},
 		SilenceUsage: true,
 	}
 
+	cmd.Flags().UintVar(&timeout, "timeout", 60, "Time to wait before aborting in seconds")
 	return cmd
 }
 
-// check if marblerun control-plane deployments are ready to use
-func cliCheck(kubeClient kubernetes.Interface) error {
-	err := checkDeploymentStatus(kubeClient, "marble-injector", "marblerun")
-	if err != nil {
+// cliCheck if marblerun control-plane deployments are ready to use
+func cliCheck(kubeClient kubernetes.Interface, timeout uint) error {
+	if err := checkDeploymentStatus(kubeClient, "marble-injector", "marblerun", timeout); err != nil {
 		return err
 	}
 
-	err = checkDeploymentStatus(kubeClient, "marblerun-coordinator", "marblerun")
-	if err != nil {
+	if err := checkDeploymentStatus(kubeClient, "marblerun-coordinator", "marblerun", timeout); err != nil {
 		return err
 	}
-
-	// Add checks for other control plane deployments here
-	//
-	// err = checkDeploymentStatus(kubeClient, "some-control-plane-component", "marblerun")
-	//
 
 	return nil
 }
@@ -53,7 +50,7 @@ func cliCheck(kubeClient kubernetes.Interface) error {
 // checkDeploymentStatus checks if a deployment is installed on the cluster
 // If it is, this function will wait until all replicas have the "available" status (ready for at least minReadySeconds)
 // Current status is continuously printed on screen
-func checkDeploymentStatus(kubeClient kubernetes.Interface, deploymentName string, namespace string) error {
+func checkDeploymentStatus(kubeClient kubernetes.Interface, deploymentName string, namespace string, timeout uint) error {
 	_, err := kubeClient.AppsV1().Deployments(namespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return err
@@ -61,23 +58,41 @@ func checkDeploymentStatus(kubeClient kubernetes.Interface, deploymentName strin
 	if errors.IsNotFound(err) {
 		fmt.Printf("%s is not installed on this cluster\n", deploymentName)
 	} else {
-		var podsReady string
 		deploymentReady := false
-		for !deploymentReady {
+		var tries uint
+		var podsReady string
+
+		// check if command is run from a terminal
+		isTTY := false
+		if fileInfo, _ := os.Stdout.Stat(); (fileInfo.Mode() & os.ModeCharDevice) != 0 {
+			isTTY = true
+			// save current cursor position
+			fmt.Print("\033[s")
+		}
+
+		for !deploymentReady && tries < timeout {
 			deploymentReady, podsReady, err = deploymentIsReady(kubeClient, deploymentName, namespace)
 			if err != nil {
 				return err
 			}
 
-			updateString := fmt.Sprintf("%s pods ready: %s", deploymentName, podsReady)
-			for i := 0; i < len(updateString); i++ {
-				fmt.Printf(" ")
+			// if command was run from a terminal we can print continuous updates on the same line
+			if isTTY {
+				// return cursor and clear line
+				fmt.Print("\033[u\033[K")
+				fmt.Printf("%s pods ready: %s", deploymentName, podsReady)
+			} else {
+				fmt.Printf("%s pods ready: %s\n", deploymentName, podsReady)
 			}
 
-			fmt.Printf("\r%s", updateString)
-			time.Sleep(1)
+			tries++
+			time.Sleep(1 * time.Second)
 		}
 		fmt.Println()
+
+		if tries == timeout {
+			return fmt.Errorf("deployment %s was not ready after %d seconds (%s pods available) ", deploymentName, timeout, podsReady)
+		}
 	}
 
 	return nil

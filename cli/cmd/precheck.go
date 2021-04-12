@@ -14,6 +14,7 @@ const (
 	intelEpc       corev1.ResourceName = "sgx.intel.com/epc"
 	intelEnclave   corev1.ResourceName = "sgx.intel.com/enclave"
 	intelProvision corev1.ResourceName = "sgx.intel.com/provision"
+	azureEpc       corev1.ResourceName = "kubernetes.azure.com/sgx_epc_mem_in_MiB"
 )
 
 func newPrecheckCmd() *cobra.Command {
@@ -41,22 +42,20 @@ func cliCheckSGXSupport(kubeClient kubernetes.Interface) error {
 		return err
 	}
 
-	numNodes := len(nodes.Items)
 	supportedNodes := 0
 
 	// Iterate over all nodes in the cluster and check their SGX support
-	for i := 0; i < numNodes; i++ {
-		if nodeSupportsSGX(nodes.Items[i].Status.Capacity) {
+	for _, node := range nodes.Items {
+		if nodeSupportsSGX(node.Status.Capacity) {
 			supportedNodes++
 		}
 	}
-
-	nodeString := "node"
 
 	if supportedNodes == 0 {
 		fmt.Println("Cluster does not support SGX, you may still run Marblerun in simulation mode")
 		fmt.Println("To install Marblerun run [marblerun install --simulation]")
 	} else {
+		nodeString := "node"
 		if supportedNodes > 1 {
 			nodeString = nodeString + "s"
 		}
@@ -68,21 +67,30 @@ func cliCheckSGXSupport(kubeClient kubernetes.Interface) error {
 }
 
 // nodeSupportsSGX checks if a single cluster node supports SGX in some way
-// Checks for different implementations of kubernetes SGX should be put here (e.g. different resource definitions than the one used by Azure)
+// Checks for different implementations of SGX device plugins should be put here (e.g. different resource definitions than the one used by Azure/Intel)
 func nodeSupportsSGX(capacityInfo corev1.ResourceList) bool {
-	if nodeSupportsAzureSGX(capacityInfo) {
+	if nodeHasAzureDevPlugin(capacityInfo) {
 		return true
 	}
 
-	// if nodeSupports[SomeCloudProvider]SGX(capacityInfo) {
-	// 	return true
-	// }
+	if nodeHasIntelDevPlugin(capacityInfo) {
+		return true
+	}
 
 	return false
 }
 
-// nodeSupportsAzureSGX checks if nodes in the cluster contain Azures SGX definitions
-func nodeSupportsAzureSGX(capacityInfo corev1.ResourceList) bool {
+// nodeHasAzureDevPlugin checks if a node has the Azures SGX device plugin installed
+func nodeHasAzureDevPlugin(capacityInfo corev1.ResourceList) bool {
+	epcQuant := capacityInfo[azureEpc]
+	if epcQuant.Value() == 0 {
+		return false
+	}
+	return true
+}
+
+// nodeHasIntelDevPlugin checks if a node has the Intel SGX device plugin installed
+func nodeHasIntelDevPlugin(capacityInfo corev1.ResourceList) bool {
 	epcQuant := capacityInfo[intelEpc]
 	enclaveQuant := capacityInfo[intelEnclave]
 	provisionQuant := capacityInfo[intelProvision]
