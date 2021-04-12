@@ -91,22 +91,9 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 
 	marble := c.manifest.Marbles[req.GetMarbleType()] // existence has been checked in verifyManifestRequirement
 	// add TTLS config to Env
-	ttlsConf := make(map[string]map[string]string)
-	ttlsConf["tls"] = make(map[string]string)
-	for _, value := range marble.TLS {
-		for _, value2 := range c.manifest.TLS[value].Outgoing {
-			pemCert := pem.Block{Type: "CERTIFICATE", Bytes: c.rootCert.Raw}
-			ttlsConf["tls"][value2.Addr+":"+value2.Port] = string(pem.EncodeToMemory(&pemCert))
-		}
-	}
-	ttlsConfJson, err := json.Marshal(ttlsConf)
-	if err != nil {
+	if err := c.setTTLSConfig(marble); err != nil {
 		c.zaplogger.Error("Could not create TTLS config.", zap.Error(err))
 	}
-	if marble.Parameters.Env == nil {
-		marble.Parameters.Env = make(map[string]string)
-	}
-	marble.Parameters.Env["EDG_TTLS_CONFIG"] = string(ttlsConfJson)
 
 	params, err := customizeParameters(marble.Parameters, authSecrets, secrets)
 	if err != nil {
@@ -325,4 +312,25 @@ func (c *Core) generateMarbleAuthSecrets(req *rpc.ActivationReq, marbleUUID uuid
 	}
 
 	return authSecrets, nil
+}
+
+func (c *Core) setTTLSConfig(marble manifest.Marble) error {
+	ttlsConf := make(map[string]map[string]string)
+	ttlsConf["tls"] = make(map[string]string)
+	for _, tag := range marble.TLS {
+		for _, entry := range c.manifest.TLS[tag].Outgoing {
+			pemCert := pem.Block{Type: "CERTIFICATE", Bytes: c.rootCert.Raw}
+			ttlsConf["tls"][entry.Addr+":"+entry.Port] = string(pem.EncodeToMemory(&pemCert))
+		}
+	}
+	ttlsConfJson, err := json.Marshal(ttlsConf)
+	if err != nil {
+		return err
+	}
+	if marble.Parameters.Env == nil {
+		marble.Parameters.Env = make(map[string]string)
+	}
+	marble.Parameters.Env["MARBLE_TTLS_CONFIG"] = string(ttlsConfJson)
+
+	return nil
 }
