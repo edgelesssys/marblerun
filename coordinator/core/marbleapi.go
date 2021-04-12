@@ -323,14 +323,14 @@ func (c *Core) setTTLSConfig(marble manifest.Marble) error {
 			ttlsConf["tls"][entry.Addr+":"+entry.Port] = string(pem.EncodeToMemory(&pemCert))
 		}
 	}
-	ttlsConfJson, err := json.Marshal(ttlsConf)
+	ttlsConfJSON, err := json.Marshal(ttlsConf)
 	if err != nil {
 		return err
 	}
 	if marble.Parameters.Env == nil {
 		marble.Parameters.Env = make(map[string]string)
 	}
-	marble.Parameters.Env["MARBLE_TTLS_CONFIG"] = string(ttlsConfJson)
+	marble.Parameters.Env["MARBLE_TTLS_CONFIG"] = string(ttlsConfJSON)
 
 	return nil
 }
