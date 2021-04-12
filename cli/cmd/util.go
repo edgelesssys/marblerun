@@ -124,7 +124,6 @@ func PromptYesNo(stdin io.Reader, question string) (bool, error) {
 	response = strings.ToLower(strings.TrimSpace(response))
 
 	if response != "y" && response != "yes" {
-		fmt.Println("Aborting.")
 		return false, nil
 	}
 

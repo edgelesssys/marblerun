@@ -245,6 +245,7 @@ func performChanges(changeDiffs []diff, fileName string, mode mode) error {
 		return err
 	}
 	if !accepted {
+		fmt.Println("Aborting.")
 		return nil
 	}
 
