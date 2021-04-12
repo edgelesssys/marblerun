@@ -12,7 +12,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 )
 
-func TestNodeSupportsAzureSGX(t *testing.T) {
+func TestNodeSupportsSGX(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 	testClient := fake.NewSimpleClientset()
@@ -30,15 +30,15 @@ func TestNodeSupportsAzureSGX(t *testing.T) {
 	require.NoError(err)
 
 	supportsSGX := nodeSupportsSGX(nodes.Items[0].Status.Capacity)
-	assert.False(supportsSGX, "Function returned true for nodes not supporting SGX")
+	assert.False(supportsSGX, "function returned true for nodes not supporting SGX")
 
 	err = testClient.CoreV1().Nodes().Delete(context.TODO(), "regular-node", metav1.DeleteOptions{})
 	require.NoError(err)
 
-	// Test node supporting SGX
-	testNodeSGX := &corev1.Node{
+	// Test Intel Device Plugin
+	intelSGXNode := &corev1.Node{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "sgx-node",
+			Name: "intel-sgx-node",
 		},
 		Status: corev1.NodeStatus{
 			Capacity: corev1.ResourceList{
@@ -48,17 +48,41 @@ func TestNodeSupportsAzureSGX(t *testing.T) {
 			},
 		},
 	}
-	_, err = testClient.CoreV1().Nodes().Create(context.TODO(), testNodeSGX, metav1.CreateOptions{})
+	_, err = testClient.CoreV1().Nodes().Create(context.TODO(), intelSGXNode, metav1.CreateOptions{})
 	require.NoError(err)
 
 	nodes, err = testClient.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	require.NoError(err)
 
 	supportsSGX = nodeSupportsSGX(nodes.Items[0].Status.Capacity)
-	assert.True(supportsSGX, "Function returned false for nodes supporting SGX")
+	assert.True(supportsSGX, "function returned false for nodes supporting SGX")
+
+	err = testClient.CoreV1().Nodes().Delete(context.TODO(), "intel-sgx-node", metav1.DeleteOptions{})
+	require.NoError(err)
+
+	// test Azure Device Plugin
+	azureSGXNode := &corev1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "azure-sgx-node",
+		},
+		Status: corev1.NodeStatus{
+			Capacity: corev1.ResourceList{
+				azureEpc: resource.MustParse("500"),
+			},
+		},
+	}
+	_, err = testClient.CoreV1().Nodes().Create(context.TODO(), azureSGXNode, metav1.CreateOptions{})
+	require.NoError(err)
+
+	nodes, err = testClient.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+	require.NoError(err)
+
+	supportsSGX = nodeSupportsSGX(nodes.Items[0].Status.Capacity)
+	assert.True(supportsSGX, "function returned false for nodes supporting SGX")
 }
 
 func TestCliCheckSGXSupport(t *testing.T) {
+	assert := assert.New(t)
 	require := require.New(t)
 	testClient := fake.NewSimpleClientset()
 
@@ -74,7 +98,7 @@ func TestCliCheckSGXSupport(t *testing.T) {
 	require.NoError(err)
 
 	err = cliCheckSGXSupport(testClient)
-	require.NoError(err)
+	assert.NoError(err)
 
 	// Test node supporting SGX
 	testNodeSGX := &corev1.Node{
@@ -93,12 +117,12 @@ func TestCliCheckSGXSupport(t *testing.T) {
 	require.NoError(err)
 
 	err = cliCheckSGXSupport(testClient)
-	require.NoError(err)
+	assert.NoError(err)
 
 	testNodeSGX.ObjectMeta.Name = "sgx-node-2"
 	_, err = testClient.CoreV1().Nodes().Create(context.TODO(), testNodeSGX, metav1.CreateOptions{})
 	require.NoError(err)
 
 	err = cliCheckSGXSupport(testClient)
-	require.NoError(err)
+	assert.NoError(err)
 }
