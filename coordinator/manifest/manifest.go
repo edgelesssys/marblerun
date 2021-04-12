@@ -55,20 +55,19 @@ type Marble struct {
 	TLS []string
 }
 
-// TLStag decribes which entries should be used to determine the ttls connections of a marble
+// TLStag describes which entries should be used to determine the ttls connections of a marble
 type TLStag struct {
-        // Outgoing holds a list of all outgoing addresses that should be elevated to TLS
-        Outgoing []TLSTagEntry
-        // Incoming holds a list of all incoming addresses that should be elevated to TLS
-        Incoming []TLSTagEntry
+	// Outgoing holds a list of all outgoing addresses that should be elevated to TLS
+	Outgoing []TLSTagEntry
+	// Incoming holds a list of all incoming addresses that should be elevated to TLS
+	Incoming []TLSTagEntry
 }
 
+// TLSTagEntry describes one connection which should be elevated to ttls
 type TLSTagEntry struct {
-        Port string
-        Addr string
+	Port string
+	Addr string
 }
-
-
 
 // Check checks if the manifest is consistent.
 func (m Manifest) Check(ctx context.Context, zaplogger *zap.Logger) error {
