@@ -378,7 +378,7 @@ func appendAndReplace(changeDiffs []diff, manifestContent []byte) ([]byte, error
 			// If a value was previously existing, we replace the existing entry
 			key := strings.Split(value.manifestEntry, " =")
 			regexKey := strings.ReplaceAll(key[0], ".", "\\.")
-			regex := regexp.MustCompile("\\b" + regexKey + "\\b.*")
+			regex := regexp.MustCompile("(?m)^" + regexKey + "\\s?=.*$")
 			// Check if we actually found the entry we searched for. If not, we might be dealing with a TOML file we cannot handle correctly without a full parser.
 			regexMatches := regex.FindAll(newManifestContent, -1)
 			if regexMatches == nil {
