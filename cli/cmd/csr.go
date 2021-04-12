@@ -7,14 +7,19 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"time"
 
 	certv1 "k8s.io/api/certificates/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 // certificateInterface provides the interface for certificate handlers
@@ -22,7 +27,7 @@ type certificateInterface interface {
 	// get the signed certificate
 	get() ([]byte, error)
 	// set the caBundle field for the helm chart
-	setCaBundle(map[string]interface{})
+	setCaBundle(map[string]interface{}) error
 	// sign the certificate
 	signRequest() error
 	getKey() *rsa.PrivateKey
@@ -82,11 +87,41 @@ func (crt *certificateV1) get() ([]byte, error) {
 }
 
 // setCarBundle removes the CABundle field since it is not needed by this version
-func (crt *certificateV1) setCaBundle(values map[string]interface{}) {
+func (crt *certificateV1) setCaBundle(values map[string]interface{}) error {
+	path := os.Getenv("KUBECONFIG")
+	if path == "" {
+		homedir, err := os.UserHomeDir()
+		if err != nil {
+			return err
+		}
+		path = filepath.Join(homedir, ".kube", "config")
+	}
+
+	kubeConfig, err := clientcmd.BuildConfigFromFlags("", path)
+	if err != nil {
+		return err
+	}
+
+	var caBundle string
+
+	if len(kubeConfig.CAData) > 0 {
+		caBundle = base64.StdEncoding.EncodeToString(kubeConfig.CAData)
+	} else if len(kubeConfig.CAFile) > 0 {
+		fileData, err := ioutil.ReadFile(kubeConfig.CAFile)
+		if err != nil {
+			return err
+		}
+		caBundle = base64.StdEncoding.EncodeToString(fileData)
+	} else {
+		return fmt.Errorf("unable to read CAData or CAFile from kube-config: %s", path)
+	}
+
 	values["marbleInjector"] = map[string]interface{}{
 		"start":    true,
-		"CABundle": nil,
+		"CABundle": caBundle,
 	}
+
+	return nil
 }
 
 // signRequest performs a certificate signing request to the api server and approves it
@@ -107,8 +142,8 @@ func (crt *certificateV1) signRequest() error {
 		return err
 	}
 
-	// approve of the signing, the user performing the install has to be allowed to approve certificates
-	// e.g. if he can use kubectl certificate approve $csr_name, then this should also work
+	// approve of the signing, the users performing the install have to be allowed to approve certificates
+	// e.g. if they can use kubectl certificate approve $csr_name, then this should also work
 	certReturn.Status.Conditions = append(certReturn.Status.Conditions, certv1.CertificateSigningRequestCondition{
 		Type:           certv1.RequestConditionType(string(certv1.CertificateApproved)),
 		Status:         corev1.ConditionTrue,

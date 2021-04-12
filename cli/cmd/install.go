@@ -213,12 +213,13 @@ func installWebhook(vals map[string]interface{}) error {
 		return err
 	}
 	fmt.Printf(".")
-	err = certificateHandler.signRequest()
-	if err != nil {
+	if err := certificateHandler.signRequest(); err != nil {
 		return err
 	}
 	fmt.Printf(".")
-	certificateHandler.setCaBundle(vals)
+	if err := certificateHandler.setCaBundle(vals); err != nil {
+		return err
+	}
 	cert, err := certificateHandler.get()
 	if err != nil {
 		return err

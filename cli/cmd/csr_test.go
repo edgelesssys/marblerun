@@ -46,16 +46,7 @@ func TestCertificateV1(t *testing.T) {
 	require.NoError(err)
 	assert.True((len(testCrt) == 0))
 
-	testValues := map[string]interface{}{
-		"marbleInjector": map[string]interface{}{
-			"start":    false,
-			"CABundle": "string",
-		},
-	}
-
-	testHandler.setCaBundle(testValues)
-	assert.Equal(nil, testValues["marbleInjector"].(map[string]interface{})["CABundle"], "failed to remove CABundle")
-	assert.Equal(true, testValues["marbleInjector"].(map[string]interface{})["start"], "failed to set start to true")
+	// TODO: Re-add setCaBundle test by creating mock kube config
 }
 
 func TestCertificateLegacy(t *testing.T) {
@@ -84,7 +75,8 @@ func TestCertificateLegacy(t *testing.T) {
 		},
 	}
 
-	testHandler.setCaBundle(testValues)
+	err = testHandler.setCaBundle(testValues)
+	assert.NoError(err)
 	assert.Equal(true, testValues["marbleInjector"].(map[string]interface{})["start"], "failed to set start to true")
 	assert.NotEqual("string", testValues["marbleInjector"].(map[string]interface{})["CABundle"], "failed to set CABundle")
 }
