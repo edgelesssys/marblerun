@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/edgelesssys/era/era"
 	"k8s.io/client-go/kubernetes"
@@ -16,6 +18,8 @@ import (
 )
 
 const webhookName = "marble-injector.marblerun"
+
+const promptForChanges = "Do you want to automatically apply the suggested changes [y/n]? "
 
 var eraConfig string
 var insecureEra bool
@@ -107,4 +111,22 @@ func getKubernetesInterface() (*kubernetes.Clientset, error) {
 	}
 
 	return kubeClient, nil
+}
+
+func PromptYesNo(stdin io.Reader, question string) (bool, error) {
+	fmt.Print(question)
+	reader := bufio.NewReader(stdin)
+	response, err := reader.ReadString('\n')
+	if err != nil {
+		return false, err
+	}
+
+	response = strings.ToLower(strings.TrimSpace(response))
+
+	if response != "y" && response != "yes" {
+		fmt.Println("Aborting.")
+		return false, nil
+	}
+
+	return true, nil
 }

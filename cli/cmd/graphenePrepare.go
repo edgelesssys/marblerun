@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -27,6 +26,9 @@ const premainNamePreload = "premain-graphene.so"
 
 // uuidName is the file name of a Marble's uuid
 const uuidName = "uuid"
+
+// commentMarblerunAdditions holds the marker which is appended to the Graphene manifest before the performed additions
+const commentMarblerunAdditions = "\n# MARBLERUN -- auto generated configuration entries \n"
 
 // longDescription is the help text shown for this command
 const longDescription = `Modifies a Graphene manifest for use with Marblerun.
@@ -126,62 +128,42 @@ func parseTreeForChanges(tree *toml.Tree, mode mode) (map[string]interface{}, ma
 
 	// If Marblerun already touched the manifest, abort.
 	if original["loader.env.LD_PRELOAD"] != nil {
-		splittedPaths := strings.Split(original["loader.env.LD_PRELOAD"].(string), ":")
-		for _, value := range splittedPaths {
-			if strings.Contains(value, premainNamePreload) {
-				color.Yellow("The supplied manifest already contains changes for Marblerun. Have you selected the correct file?")
-				return nil, nil, errors.New("manifest already contains Marblerun changes")
-			}
+		if strings.Contains(original["loader.env.LD_PRELOAD"].(string), premainNamePreload) {
+			color.Yellow("The supplied manifest already contains changes for Marblerun. Have you selected the correct file?")
+			return nil, nil, errors.New("manifest already contains Marblerun changes")
 		}
 	}
 
-	if original["libos.entrypoint"].(string) == premainNameSpawn || original["sgx.trusted_files.marblerun_premain"] != nil || original["sgx.allowed_files.marblerun_uuid"] != nil {
+	if original["libos.entrypoint"].(string) == "file:"+premainNameSpawn || original["sgx.trusted_files.marblerun_premain"] != nil || original["sgx.allowed_files.marblerun_uuid"] != nil {
 		return nil, nil, errors.New("manifest already contains Marblerun changes")
 	}
 
 	// Add changes to entry point depending on mode
 	switch mode {
 	case modeSpawn:
+		// Add premain-graphene executable as trusted file & entry point
+		changes["libos.entrypoint"] = "file:" + premainNameSpawn
+		changes["sgx.trusted_files.marblerun_premain"] = "file:" + premainNameSpawn
+
 		// Set original endpoint as argv0. If one exists, keep the old one
 		if original["loader.argv0_override"] == nil {
 			fileEntry := strings.SplitAfter(original["libos.entrypoint"].(string), "file:")
-			if len(fileEntry) == 2 {
-				changes["loader.argv0_override"] = fileEntry[1]
-			} else {
+			if len(fileEntry) != 2 {
 				color.Red("ERROR: Cannot process the current entrypoint: %s", original["libos.entrypoint"].(string))
 				color.Red("Note: This tool only supports 'file:' URIs for automatic modifcation.")
 				color.Red("If you chose another type of path reference, please change it to 'file:' to continue.")
 				color.Red("Otherwise, please file a bug report!")
 				return nil, nil, fmt.Errorf("cannot determine entrypoint for argv0 override correctly")
 			}
-
-			// Add premain-graphene executable as trusted file & entry point
-			changes["libos.entrypoint"] = "file:" + premainNameSpawn
-			changes["sgx.trusted_files.marblerun_premain"] = "file:" + premainNameSpawn
+			changes["loader.argv0_override"] = fileEntry[1]
 		}
+
 	case modePreload:
 		// Add premain-graphene.so to LD_PRELOAD or append to existing LD_PRELOAD
 		if original["loader.env.LD_PRELOAD"] == nil {
 			changes["loader.env.LD_PRELOAD"] = "./" + premainNamePreload
 		} else {
 			changes["loader.env.LD_PRELOAD"] = original["loader.env.LD_PRELOAD"].(string) + ":./" + premainNamePreload
-		}
-
-		// Check if LD_LIBRARY_PATH contains /lib, add otherwise
-		if original["loader.env.LD_LIBRARY_PATH"] == nil {
-			changes["loader.env.LD_LIBRARY_PATH"] = "/lib"
-		} else {
-			splittedPaths := strings.Split(original["loader.env.LD_LIBRARY_PATH"].(string), ":")
-			var foundLib bool
-			for _, value := range splittedPaths {
-				if value == "/lib" {
-					foundLib = true
-					break
-				}
-			}
-			if !foundLib {
-				changes["loader.env.LD_LIBRARY_PATH"] = original["loader.env.LD_LIBRARY_PATH"].(string) + ":/lib"
-			}
 		}
 
 		// Add premain-graphene.so as trusted file
@@ -199,12 +181,12 @@ func parseTreeForChanges(tree *toml.Tree, mode mode) (map[string]interface{}, ma
 	}
 
 	// Ensure at least 1024 MB of enclave memory for the premain Go runtime
+	var v datasize.ByteSize
 	if original["sgx.enclave_size"] != nil {
-		var v datasize.ByteSize
 		v.UnmarshalText([]byte(original["sgx.enclave_size"].(string)))
-		if v.GBytes() < 1.00 {
-			changes["sgx.enclave_size"] = "1024M"
-		}
+	}
+	if v.GBytes() < 1.00 {
+		changes["sgx.enclave_size"] = "1024M"
 	}
 
 	// Ensure at least 16 SGX threads for the premain Go runtime
@@ -227,21 +209,13 @@ func calculateChanges(original map[string]interface{}, updates map[string]interf
 	for index, originalValue := range original {
 		if changedValue, ok := updates[index]; ok {
 			// Add quotation marks for strings, direct value if not
-			var diffLine string
+			newDiff := diff{alreadyExists: originalValue != nil}
+			// Add quotation marks for strings, direct value if not
 			switch v := changedValue.(type) {
 			case string:
-				diffLine = fmt.Sprintf("%s = \"%v\"", index, v)
+				newDiff.manifestEntry = fmt.Sprintf("%s = \"%v\"", index, v)
 			default:
-				diffLine = fmt.Sprintf("%s = %v", index, v)
-			}
-
-			// alreadyExisting = false means, the entry existed and was set to nil.
-			// alreadyExisting = true means, the entry existed and was not set to nil.
-			newDiff := diff{manifestEntry: diffLine}
-			if originalValue != nil {
-				newDiff.alreadyExists = true
-			} else {
-				newDiff.alreadyExists = false
+				newDiff.manifestEntry = fmt.Sprintf("%s = %v", index, v)
 			}
 			changeDiffs = append(changeDiffs, newDiff)
 		}
@@ -266,22 +240,44 @@ func performChanges(changeDiffs []diff, fileName string, mode mode) error {
 		}
 	}
 
-	// Prompt user for confirmation
-	fmt.Printf("\nDo you want to automatically apply the suggested changes [y/n]? ")
-	reader := bufio.NewReader(os.Stdin)
-	response, err := reader.ReadString('\n')
+	accepted, err := PromptYesNo(os.Stdin, promptForChanges)
 	if err != nil {
 		return err
 	}
-
-	response = strings.ToLower(strings.TrimSpace(response))
-
-	if response != "y" && response != "yes" {
-		fmt.Println("Aborting.")
+	if !accepted {
 		return nil
 	}
 
 	directory := filepath.Dir(fileName)
+
+	// Read Graphene manifest as normal text file
+	manifestContentOriginal, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		return err
+	}
+
+	// Perform modifications to manifest
+	fmt.Println("Applying changes...")
+	manifestContentModified, err := appendAndReplace(changeDiffs, manifestContentOriginal)
+	if err != nil {
+		return err
+	}
+
+	// Backup original manifest
+	backupFileName := filepath.Base(fileName) + ".bak"
+	fmt.Printf("Saving original manifest as %s...\n", backupFileName)
+	if err := ioutil.WriteFile(filepath.Join(directory, backupFileName), manifestContentOriginal, 0644); err != nil {
+		return err
+	}
+
+	// Write modified file to disk
+	fileNameBase := filepath.Base(fileName)
+	fmt.Printf("Saving changes to %s...\n", fileNameBase)
+	if err := ioutil.WriteFile(fileName, manifestContentModified, 0644); err != nil {
+		return err
+	}
+
+	fmt.Println("Downloading Marblerun premain from GitHub...")
 	// Download Marblerun premain for Graphene from GitHub
 	if err := downloadPremain(directory, mode); err != nil {
 		var fileName string
@@ -291,31 +287,6 @@ func performChanges(changeDiffs []diff, fileName string, mode mode) error {
 			fileName = premainNamePreload
 		}
 		color.Red("ERROR: Cannot download '%s' from GitHub. Please add the file manually.", fileName)
-	}
-
-	// Read Graphene manifest as normal text file
-	manifestContent, err := ioutil.ReadFile(fileName)
-	if err != nil {
-		return err
-	}
-	// Backup original manifest
-	backupFileName := filepath.Base(fileName) + ".bak"
-	fmt.Printf("Saving original manifest as %s...\n", backupFileName)
-	if err := ioutil.WriteFile(filepath.Join(directory, backupFileName), manifestContent, 0644); err != nil {
-		return err
-	}
-
-	// Perform modifications to manifest
-	fileNameBase := filepath.Base(fileName)
-	fmt.Printf("Applying changes to %s...\n", fileNameBase)
-	manifestContent, err = appendAndReplace(changeDiffs, manifestContent)
-	if err != nil {
-		return err
-	}
-
-	// Write modified file to disk
-	if err := ioutil.WriteFile(fileName, manifestContent, 0644); err != nil {
-		return err
 	}
 
 	fmt.Println("\nDone! You should be good to go for Marblerun!")
@@ -341,7 +312,7 @@ func downloadPremain(directory string, mode mode) error {
 		return err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode < 200 && resp.StatusCode > 299 {
+	if resp.StatusCode != http.StatusOK {
 		return errors.New("received a non-successful HTTP response")
 	}
 
@@ -396,7 +367,7 @@ func appendAndReplace(changeDiffs []diff, manifestContent []byte) ([]byte, error
 		} else {
 			// If a value was not defined previously, we append the new entries down below
 			if !firstAdditionDone {
-				appendToFile := "\n# Marblerun -- auto generated configuration entries" + "\n"
+				appendToFile := commentMarblerunAdditions
 				newManifestContent = append(newManifestContent, []byte(appendToFile)...)
 				firstAdditionDone = true
 			}

@@ -18,6 +18,8 @@ const someManifest = `
 libos.entrypoint = "file:myapplication"
 sgx.remote_attestation = 0
 # Some comment here in between
+# This should not match: sgx.enclave_size - 2
+# This should also not match: sgx.enclave_size = 24M
 sgx.enclave_size = "128M"
 `
 
@@ -83,7 +85,6 @@ func TestParseTreeForChanges(t *testing.T) {
 
 	// Verify minimum changes
 	assert.Equal("./"+premainNamePreload, changes["loader.env.LD_PRELOAD"])
-	assert.Contains("/lib", changes["loader.env.LD_LIBRARY_PATH"])
 	assert.GreaterOrEqual(changes["sgx.thread_num"], 16)
 	require.NoError(v.UnmarshalText([]byte(changes["sgx.enclave_size"].(string))))
 	assert.GreaterOrEqual(v.GBytes(), 1.00)
@@ -162,4 +163,17 @@ func TestDownloadPremain(t *testing.T) {
 	// We should have two downloads here
 	info := httpmock.GetCallCountInfo()
 	assert.Equal(2, info[`GET =~^https://github\.com/edgelesssys/marblerun/releases/download/v[0-9\.]*/premain-graphene[\.so]{0}|[\.so]{3}`])
+}
+
+func TestToMode(t *testing.T) {
+	assert := assert.New(t)
+
+	mode := toMode("spawn")
+	assert.Equal(modeSpawn, mode)
+
+	mode = toMode("preload")
+	assert.Equal(modePreload, mode)
+
+	mode = toMode("someInvalidMode")
+	assert.Equal(modeInvalid, mode)
 }
