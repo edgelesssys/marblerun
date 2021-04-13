@@ -8,7 +8,7 @@ var globalUsage = `The marblerun CLI enables you to install and manage the Marbl
 confidential computing service mesh in your Kubernetes cluster
 
 To install and configure Marblerun, run:
-   
+
     $ marblerun install
 `
 
@@ -32,4 +32,5 @@ func init() {
 	rootCmd.AddCommand(newRecoverCmd())
 	rootCmd.AddCommand(newUninstallCmd())
 	rootCmd.AddCommand(newVersionCmd())
+	rootCmd.AddCommand(newGraphenePrepareCmd())
 }
