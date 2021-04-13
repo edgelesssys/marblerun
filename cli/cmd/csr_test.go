@@ -4,12 +4,28 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/tools/clientcmd"
 )
+
+var MockConfig = `
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: CABundle
+    server: https://example.com:443
+  name: mock-config
+contexts:
+- context:
+    cluster: mock-config
+    user: clusterUser_unit-test_mock-config
+`
 
 func TestCreateCSR(t *testing.T) {
 	require := require.New(t)
@@ -35,8 +51,8 @@ func TestCertificateV1(t *testing.T) {
 	testKey := testHandler.getKey()
 	assert.Equal(testKey, testHandler.privKey, "private key of the handler and private key returned by its method were not equal")
 
-	testHandler.timeout = 5
-	// this should error with a timeout since the fakeClient does not keep upated resources, but only returns them once on API call
+	testHandler.timeout = 2
+	// this should error with a timeout since the fakeClient does not keep updated resources, but only returns them once on API call
 	err = testHandler.signRequest()
 	require.Error(err)
 	assert.Contains(err.Error(), "certificate signing request was not updated", fmt.Sprintf("failed with unexpected error: %s", err.Error()))
@@ -46,7 +62,25 @@ func TestCertificateV1(t *testing.T) {
 	require.NoError(err)
 	assert.True((len(testCrt) == 0))
 
-	// TODO: Re-add setCaBundle test by creating mock kube config
+	configFile, err := ioutil.TempFile(os.TempDir(), "unittest")
+	require.NoError(err)
+	defer os.Remove(configFile.Name())
+	err = os.Setenv(clientcmd.RecommendedConfigPathEnvVar, configFile.Name())
+	require.NoError(err)
+	_, err = configFile.Write([]byte(MockConfig))
+	require.NoError(err)
+
+	testValues := map[string]interface{}{
+		"marbleInjector": map[string]interface{}{
+			"start":    false,
+			"CABundle": "string",
+		},
+	}
+
+	err = testHandler.setCaBundle(testValues)
+	assert.NoError(err)
+	assert.Equal(true, testValues["marbleInjector"].(map[string]interface{})["start"], "failed to set start to true")
+	assert.NotEqual("string", testValues["marbleInjector"].(map[string]interface{})["CABundle"], "failed to set CABundle")
 }
 
 func TestCertificateLegacy(t *testing.T) {

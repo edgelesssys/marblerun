@@ -87,13 +87,13 @@ func restClient(cert []*pem.Block) (*http.Client, error) {
 
 // getKubernetesInterface returns the kubernetes Clientset to interact with the k8s API
 func getKubernetesInterface() (*kubernetes.Clientset, error) {
-	path := os.Getenv("KUBECONFIG")
+	path := os.Getenv(clientcmd.RecommendedConfigPathEnvVar)
 	if path == "" {
 		homedir, err := os.UserHomeDir()
 		if err != nil {
 			return nil, err
 		}
-		path = filepath.Join(homedir, ".kube", "config")
+		path = filepath.Join(homedir, clientcmd.RecommendedHomeDir, clientcmd.RecommendedFileName)
 	}
 
 	kubeConfig, err := clientcmd.BuildConfigFromFlags("", path)
