@@ -88,13 +88,13 @@ func (crt *certificateV1) get() ([]byte, error) {
 
 // setCarBundle removes the CABundle field since it is not needed by this version
 func (crt *certificateV1) setCaBundle(values map[string]interface{}) error {
-	path := os.Getenv("KUBECONFIG")
+	path := os.Getenv(clientcmd.RecommendedConfigPathEnvVar)
 	if path == "" {
 		homedir, err := os.UserHomeDir()
 		if err != nil {
 			return err
 		}
-		path = filepath.Join(homedir, ".kube", "config")
+		path = filepath.Join(homedir, clientcmd.RecommendedHomeDir, clientcmd.RecommendedFileName)
 	}
 
 	kubeConfig, err := clientcmd.BuildConfigFromFlags("", path)
