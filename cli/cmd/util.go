@@ -46,6 +46,9 @@ func verifyCoordinator(host string, configFilename string, insecure bool) ([]*pe
 		return nil, err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("downloading era config failed with error %d: %s", resp.StatusCode, http.StatusText(resp.StatusCode))
+	}
 	out, err := os.Create("era-config.json")
 	if err != nil {
 		return nil, err
