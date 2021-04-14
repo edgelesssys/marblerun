@@ -14,18 +14,25 @@ export GRAPHENEDIR=[PATH To Your Graphene Folder]
 make SGX=1
 ```
 
-We assume that the Coordinator is run with the following environment variables:
-- EDG_COORDINATOR_MESH_ADDR=localhost:2001
-- EDG_COORDINATOR_CLIENT_ADDR=localhost:4433
-- EDG_COORDINATOR_DNS_NAMES=localhost
-- EDG_COORDINATOR_SEAL_DIR=$PWD
-
-Once the [Coordinator instance is running](../../BUILD.md#run-the-coordinator), upload the manifest to the Coordinator:
+Start the Coordinator in a local simulated enclave:
 ```sh
+OE_SIMULATION=1 erthost ../../../build/coordinator-enclave.signed
+```
+
+The Coordinator exposes two APIs, a client API to instruct the Coordinator (port 4433) and a mesh API to communicate with your Marble (port 2001).
+
+Once the Coordinator instance is running, you can upload the mainfest to the Coordinators client API:
+```
 curl -k --data-binary @manifest.json https://localhost:4433/manifest
 ```
 
-Now we can run our application:
+To run the application, you need to set some environment variables. The Marbles type is defined in the `manifest.json`. In this sample, the manifest defines a single Marble, which is called "frontend". The Marbles DNS name and the Coordinators address are used to establish a connection between the Coordinators mesh API and the Marble, and the UUID file stores a unique ID that enables a restart of the application.
+
 ```sh
-EDG_MARBLE_COORDINATOR_ADDR=localhost:2001 EDG_MARBLE_TYPE=frontend EDG_MARBLE_UUID_FILE=uuid EDG_MARBLE_DNS_NAMES=localhost SGX=1 ./pal_loader nginx
+EDG_MARBLE_TYPE=frontend \
+EDG_MARBLE_COORDINATOR_ADDR=localhost:2001 \
+EDG_MARBLE_UUID_FILE=uuid \
+EDG_MARBLE_DNS_NAMES=localhost \
+SGX=1 \
+./pal_loader nginx
 ```

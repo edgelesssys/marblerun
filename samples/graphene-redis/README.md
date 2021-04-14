@@ -3,19 +3,19 @@
 This sample is a slightly modified variant of the [Graphene redis sample](https://github.com/oscarlab/graphene/tree/master/Examples/redis).
 Instead of running a single [redis](https://redis.io/) server instance, Marblerun unleashes the full potential of redis and takes care of distributing the redis server in *replication* mode.
 
-*Prerequisite*: Ensure you have access to a Kubernetes cluster with SGX-enabled nodes and kubectl installed and configured.
-Probably the easiest way to get started is to run Kubernetes on an [Azure Kubernetes Service (AKS)](https://docs.microsoft.com/en-us/azure/confidential-computing/confidential-nodes-aks-get-started), which offers SGX-enabled nodes.
+*Prerequisite:*
+* Ensure you have access to a Kubernetes cluster with SGX-enabled nodes and kubectl installed and configured. Probably the easiest way to get started is to run Kubernetes on an [Azure Kubernetes Service (AKS)](https://docs.microsoft.com/en-us/azure/confidential-computing/confidential-nodes-aks-get-started), which offers SGX-enabled nodes.
+* Ensure you have the [Marblerun CLI](https://www.marblerun.sh/docs/getting-started/cli/) installed.
+
 ## Kubernetes deployment walkthrough
 
-We are now installing a distributed redis server in master-slave replication mode on your cluster.
-
-*Prerequisite*: Ensure you have the [Marblerun CLI](https://www.marblerun.sh/docs/getting-started/cli/) installed.
+We are now installing a distributed redis server in primary/subordinate replication mode on your cluster.
 
 ### Step 1: Installing Marblerun
 
 First, we are installing Marblerun on your cluster.
 
-* Install Marblerun on the Cluster
+* Install the Marblerun Coordinator on the Cluster
 
     ```bash
     marblerun install
@@ -61,16 +61,14 @@ First, we are installing Marblerun on your cluster.
     helm install -f ./kubernetes/values.yaml redis ./kubernetes -n redis
     ```
 
-* Wait for the redis server to start, this might take a moment
+* Wait for the redis server to start, this might take a moment. The output shoud look like this:
 
-    * Basically we wait for this output
-
-        ```bash
-        kubectl logs redis-master-0 -n redis
-        ...
-        7:M 29 Mar 2021 12:25:40.076 # Server initialized
-        7:M 29 Mar 2021 12:25:40.108 * Ready to accept connections
-        ```
+    ```bash
+    kubectl logs redis-main-0 -n redis
+    ...
+    7:M 29 Mar 2021 12:25:40.076 # Server initialized
+    7:M 29 Mar 2021 12:25:40.108 * Ready to accept connections
+    ```
 
 * Port-forward the redis service to localhost
 

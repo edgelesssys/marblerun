@@ -59,6 +59,7 @@ We provide basic examples on how to build confidential apps with Marblerun.
 * See [helloc++](samples/helloc++) for an example in C++.
 * See [graphene-hello](samples/graphene-hello) for an example using Graphene.
 * See [graphene-nginx](samples/graphene-nginx) for an example of converting an existing Graphene application to a Marble.
+* See [graphene-redis](samples/graphene-redis) for a distributed redis example using Graphene.
 
 ### Confidential Emoji Voting
 
