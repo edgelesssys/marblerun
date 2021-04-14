@@ -320,7 +320,7 @@ func (c *Core) setTTLSConfig(marble manifest.Marble) error {
 	ttlsConf["tls"] = make(map[string]string)
 	for _, tag := range marble.TLS {
 		for _, entry := range c.manifest.TLS[tag].Outgoing {
-			pemCert := pem.Block{Type: "CERTIFICATE", Bytes: c.rootCert.Raw}
+			pemCert := pem.Block{Type: "CERTIFICATE", Bytes: c.intermediateCert.Raw}
 			ttlsConf["tls"][entry.Addr+":"+entry.Port] = string(pem.EncodeToMemory(&pemCert))
 		}
 	}
