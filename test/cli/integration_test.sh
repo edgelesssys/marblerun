@@ -20,6 +20,12 @@ function wait_for_resource() {
     done
 }
 
+function cleanup_cluster() {
+    marblerun uninstall
+    marblerun namespace remove default
+    pkill -P $$
+}
+
 
 #-------------install marblerun on the cluster-----------------------
 
@@ -37,6 +43,7 @@ marblerun namespace add default --no-sgx-injection
 if [[ $(kubectl describe namespace default | grep marblerun/inject | grep -v enabled | xargs) != "marblerun/inject-sgx=disabled" ]];
 then
     echo "failed to inject correct values into namespace"
+    cleanup_cluster
     exit 1
 fi
 
@@ -50,6 +57,7 @@ echo -n "Checking coordinator state: "
 if [[ $(marblerun status localhost:4433 --insecure | tail -n 1) != "2: Coordinator is ready to accept a manifest." ]]
 then
     echo "[FAIL]"
+    cleanup_cluster
     exit 1
 fi
 echo "[OK]"
@@ -58,13 +66,16 @@ echo -n "Setting manifest: "
 if [[ $(marblerun manifest set test-manifest.json localhost:4433 --insecure | tail -n 1) != "Manifest successfully set" ]]
 then
     echo "[FAIL]"
+    cleanup_cluster
+    exit 1
 fi
 echo "[OK]"
 
 echo -n "Verifying set manifest: "
-if [[ $(marblerun manifest get localhost:4433 --insecure -o test-signature.json | tail -n 1) != "Manifest written to: test-signature.json." ]]
+if [[ $(marblerun manifest get localhost:4433 --insecure | tail -n 1 | cut -d ' ' -f3) != $(marblerun manifest signature test-manifest.json) ]]
 then
     echo "[FAIL]"
+    cleanup_cluster
     exit 1
 fi
 echo "[OK]"
@@ -78,6 +89,7 @@ echo -n "Checking if hello-marble is running correctly: "
 if [[ $(curl http://localhost:8080 -s | tail -n 1) != "Commandline arguments: [foo bar]" ]]
 then
     echo "[FAIL]"
+    cleanup_cluster
     exit 1
 fi
 echo "[OK]"
@@ -91,6 +103,7 @@ echo ""
 if [[ -n $(kubectl logs -n marblerun -l app.kubernetes.io/name=marble-injector | grep "injecting sgx tolerations") ]];
 then
     echo "called the wrong webhook"
+    cleanup_cluster
     exit 1
 fi
 
@@ -98,6 +111,7 @@ echo -n "Checking env variable EDG_COORDINATOR_ADDR: "
 if [[ -n $(kubectl get pod -l marblerun/marbletype=hello-world -o jsonpath='{.spec.containers[0].env[0]}' | grep -v coordinator-mesh-api.marblerun:2001) ]];
 then
     echo "[FAIL]"
+    cleanup_cluster
     exit 1
 fi
 echo "[OK]"
@@ -106,6 +120,7 @@ echo -n "Checking env variable EDG_MARBLE_TYPE: "
 if [[ -n $(kubectl get pod -l marblerun/marbletype=hello-world -o jsonpath='{.spec.containers[0].env[1]}' | grep -v test) ]];
 then
     echo "[FAIL]"
+    cleanup_cluster
     exit 1
 fi
 echo "[OK]"
@@ -114,6 +129,7 @@ echo -n "Checking env variable EDG_MARBLE_DNS_NAMES: "
 if [[ -n $(kubectl get pod -l marblerun/marbletype=hello-world -o jsonpath='{.spec.containers[0].env[2]}' | grep -v test,test.default,test.default.svc.cluster.local) ]];
 then
     echo "[FAIL]"
+    cleanup_cluster
     exit 1
 fi
 echo "[OK]"
@@ -122,6 +138,7 @@ echo -n "Checking env variable EDG_MARBLE_UUID_FILE: "
 if [[ -n $(kubectl get pod -l marblerun/marbletype=hello-world -o jsonpath='{.spec.containers[0].env[3]}' | grep -v "/test-uid/uuid-file") ]];
 then
     echo "[FAIL]"
+    cleanup_cluster
     exit 1
 fi
 echo "[OK]"
@@ -130,6 +147,7 @@ echo -n "Checking pod resource limits: "
 if [[ -n $(kubectl get pod -l marblerun/marbletype=hello-world -o jsonpath='{.spec.containers[0].resources.limits}' | grep kubernetes.azure.com/sgx_epc_mem_in_MiB) ]];
 then
     echo "[FAIL]"
+    cleanup_cluster
     exit 1
 fi
 echo "[OK]"
@@ -143,6 +161,7 @@ marblerun namespace add default
 if [[ -n $(kubectl describe namespace default | grep marblerun/inject | grep -v enabled) ]];
 then
     echo "failed to inject correct values into namespace"
+    cleanup_cluster
     exit 1
 fi
 
@@ -152,12 +171,14 @@ wait_for_resource "kubectl get pods -n default | grep default | grep -v Pending"
 if [[ -n $(kubectl logs -n marblerun -l app.kubernetes.io/name=marble-injector | tail -n 2 | grep -v "successful" | grep "omitting sgx injection") ]];
 then
     echo "called the wrong webhook"
+    cleanup_cluster
     exit 1
 fi
 
 if [[ -n $(kubectl describe pod test-pod | grep FailedScheduling | grep -v "Insufficient kubernetes.azure.com/sgx_epc_mem_in_MiB") ]];
 then
     echo "pod creating stuck in pending due to unrelated issue"
+    cleanup_cluster
     exit 1
 fi
 
@@ -165,6 +186,7 @@ echo -n "Checking pod tolerations: "
 if [[ -n $(kubectl get pod test-pod -o jsonpath='{.spec.tolerations}' | grep -v "kubernetes.azure.com/sgx_epc_mem_in_MiB") ]];
 then
     echo "[FAIL]"
+    cleanup_cluster
     exit 1
 fi
 echo "[OK]"
@@ -173,6 +195,7 @@ echo -n "Checking pod resource limits: "
 if [[ -n $(kubectl get pod test-pod -o jsonpath='{.spec.containers[0].resources.limits}' | grep -v "kubernetes.azure.com/sgx_epc_mem_in_MiB") ]];
 then
     echo "[FAIL]"
+    cleanup_cluster
     exit 1
 fi
 echo "[OK]"
@@ -181,6 +204,7 @@ echo -n "Checking env variable EDG_COORDINATOR_ADDR: "
 if [[ -n $(kubectl get pod test-pod -o jsonpath='{.spec.containers[0].env[0]}' | grep -v coordinator-mesh-api.marblerun:2001) ]];
 then
     echo "[FAIL]"
+    cleanup_cluster
     exit 1
 fi
 echo "[OK]"
@@ -189,6 +213,7 @@ echo -n "Checking env variable EDG_MARBLE_TYPE: "
 if [[ -n $(kubectl get pod test-pod -o jsonpath='{.spec.containers[0].env[1]}' | grep -v test) ]];
 then
     echo "[FAIL]"
+    cleanup_cluster
     exit 1
 fi
 echo "[OK]"
@@ -197,6 +222,7 @@ echo -n "Checking env variable EDG_MARBLE_DNS_NAMES: "
 if [[ -n $(kubectl get pod test-pod -o jsonpath='{.spec.containers[0].env[2]}' | grep -v test,test.default,test.default.svc.cluster.local) ]];
 then
     echo "[FAIL]"
+    cleanup_cluster
     exit 1
 fi
 echo "[OK]"
@@ -205,27 +231,19 @@ echo -n "Checking env variable EDG_MARBLE_UUID_FILE: "
 if [[ -n $(kubectl get pod test-pod -o jsonpath='{.spec.containers[0].env[3]}' | grep -v "/test-uid/uuid-file") ]];
 then
     echo "[FAIL]"
+    cleanup_cluster
     exit 1
 fi
 echo "[OK]"
 
 echo ""
 kubectl delete pod test-pod
-marblerun namespace remove default
-
-if [[ -n $(marblerun namespace list | grep default) ]];
-then
-    echo "failed to remove default namespace from the Marblerun mesh"
-    exit 1
-fi
 
 kubectl delete deployments hello-marble
 kubectl delete svc hello-marble
-marblerun uninstall
+cleanup_cluster
 kubectl delete namespace marblerun
 wait_for_resource "kubectl get namespaces | grep marblerun"
 
-kill %1 # kill kubectl port-forward coordinator
-kill %2 # kill kubectl port-forward hello-marble
 echo -e "\nIntegration test successful"
 exit
