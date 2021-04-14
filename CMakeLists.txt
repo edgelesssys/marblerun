@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.11)
 
-project(marblerun VERSION 0.3.0)
-execute_process(COMMAND bash "-c" "git rev-parse HEAD | tr -d '\n'" OUTPUT_VARIABLE GIT_COMMIT) 
+project(marblerun VERSION 0.3.1)
+execute_process(COMMAND bash "-c" "git rev-parse HEAD | tr -d '\n'" OUTPUT_VARIABLE GIT_COMMIT)
 find_package(OpenEnclave CONFIG REQUIRED)
 
 if (NOT CMAKE_BUILD_TYPE)
@@ -72,7 +72,7 @@ add_custom_target(marble-injector ALL
 
 #
 # Build CLI
-# 
+#
 
 set(cliPath "github.com/edgelesssys/marblerun/cli/cmd")
 add_custom_target(cli ALL
