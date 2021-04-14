@@ -19,7 +19,7 @@ spec:
           - name: OE_SIMULATION
             value: "1"
           name: hello-marble
-          image: ghcr.io/edgelesssys/hello-marble:v0.3.0
+          image: ghcr.io/edgelesssys/hello-marble:v0.3.1
           imagePullPolicy: IfNotPresent
 ---
 apiVersion: v1
