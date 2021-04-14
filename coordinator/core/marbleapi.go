@@ -13,6 +13,8 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/json"
+	"encoding/pem"
 	"math"
 	"text/template"
 	"time"
@@ -88,6 +90,12 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	}
 
 	marble := c.manifest.Marbles[req.GetMarbleType()] // existence has been checked in verifyManifestRequirement
+	// add TTLS config to Env
+	if err := c.setTTLSConfig(marble); err != nil {
+		c.zaplogger.Error("Could not create TTLS config.", zap.Error(err))
+		return nil, err
+	}
+
 	params, err := customizeParameters(marble.Parameters, authSecrets, secrets)
 	if err != nil {
 		c.zaplogger.Error("Could not customize parameters.", zap.Error(err))
@@ -305,4 +313,25 @@ func (c *Core) generateMarbleAuthSecrets(req *rpc.ActivationReq, marbleUUID uuid
 	}
 
 	return authSecrets, nil
+}
+
+func (c *Core) setTTLSConfig(marble manifest.Marble) error {
+	ttlsConf := make(map[string]map[string]string)
+	ttlsConf["tls"] = make(map[string]string)
+	for _, tag := range marble.TLS {
+		for _, entry := range c.manifest.TLS[tag].Outgoing {
+			pemCert := pem.Block{Type: "CERTIFICATE", Bytes: c.intermediateCert.Raw}
+			ttlsConf["tls"][entry.Addr+":"+entry.Port] = string(pem.EncodeToMemory(&pemCert))
+		}
+	}
+	ttlsConfJSON, err := json.Marshal(ttlsConf)
+	if err != nil {
+		return err
+	}
+	if marble.Parameters.Env == nil {
+		marble.Parameters.Env = make(map[string]string)
+	}
+	marble.Parameters.Env["MARBLE_TTLS_CONFIG"] = string(ttlsConfJSON)
+
+	return nil
 }

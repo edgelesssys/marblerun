@@ -69,7 +69,10 @@ const ManifestJSON string = `{
 					"--first",
 					"serve"
 				]
-			}
+			},
+			"TLS": [
+				"web"
+			]
 		},
 		"backend_other": {
 			"Package": "backend",
@@ -82,7 +85,10 @@ const ManifestJSON string = `{
 				"Argv": [
 					"serve"
 				]
-			}
+			},
+			"TLS": [
+				"web", "anotherWeb"
+			]
 		},
 		"frontend": {
 			"Package": "frontend",
@@ -129,6 +135,28 @@ const ManifestJSON string = `{
 				}
 			},
 			"ValidFor": 7
+		}
+	},
+	"TLS": {
+		"web": {
+			"Outgoing": [
+				{
+					"Port": "8080",
+					"Addr": "localhost"
+				},
+				{
+					"Port": "4242",
+					"Addr": "service.namespace"
+				}
+			]
+		},
+		"anotherWeb": {
+			"Outgoing": [
+				{
+					"Port": "40000",
+					"Addr": "example.com"
+				}
+			]
 		}
 	}
 }`

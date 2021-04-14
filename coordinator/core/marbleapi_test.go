@@ -245,6 +245,21 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 		}
 		ms.mutex.Unlock()
 	}
+
+	// Validate ttls conf
+	config := make(map[string]map[string]string)
+	ms.assert.NoError(json.Unmarshal([]byte(params.Env["MARBLE_TTLS_CONFIG"]), &config))
+	if marbleType == "backend_first" {
+		ms.assert.NotEqual(nil, config["tls"]["localhost:8080"])
+		ms.assert.NotEqual(nil, config["tls"]["service.namespace:4242"])
+	} else if marbleType == "backend_other" {
+		ms.assert.NotEqual(nil, config["tls"]["localhost:8080"])
+		ms.assert.NotEqual(nil, config["tls"]["service.namespace:4242"])
+		ms.assert.NotEqual(nil, config["tls"]["example.com:40000"])
+	} else if marbleType == "frontend" {
+		ms.assert.NotEqual(nil, config["tls"])
+		ms.assert.Equal(0, len(config["tls"]))
+	}
 }
 
 func (ms *marbleSpawner) newMarbleAsync(marbleType string, infraName string, shouldSucceed bool) {
