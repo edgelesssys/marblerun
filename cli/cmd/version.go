@@ -8,7 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var Version = "0.3.0-dev"
+var Version = "0.3.1-dev"
 var GitCommit string
 
 func newVersionCmd() *cobra.Command {
