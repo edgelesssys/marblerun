@@ -72,14 +72,16 @@ func TestCertificateV1(t *testing.T) {
 
 	testValues := map[string]interface{}{
 		"marbleInjector": map[string]interface{}{
-			"start":    false,
-			"CABundle": "string",
+			"start":       false,
+			"CABundle":    "string",
+			"resourceKey": azureEpc.String(),
 		},
 	}
 
-	err = testHandler.setCaBundle(testValues)
+	err = testHandler.setCaBundle(testValues, intelEpc.String())
 	assert.NoError(err)
 	assert.Equal(true, testValues["marbleInjector"].(map[string]interface{})["start"], "failed to set start to true")
+	assert.Equal(intelEpc.String(), testValues["marbleInjector"].(map[string]interface{})["resourceKey"], "failed to set resourceKey")
 	assert.NotEqual("string", testValues["marbleInjector"].(map[string]interface{})["CABundle"], "failed to set CABundle")
 }
 
@@ -104,13 +106,15 @@ func TestCertificateLegacy(t *testing.T) {
 
 	testValues := map[string]interface{}{
 		"marbleInjector": map[string]interface{}{
-			"start":    false,
-			"CABundle": "string",
+			"start":       false,
+			"CABundle":    "string",
+			"resourceKey": azureEpc.String(),
 		},
 	}
 
-	err = testHandler.setCaBundle(testValues)
+	err = testHandler.setCaBundle(testValues, intelEpc.String())
 	assert.NoError(err)
 	assert.Equal(true, testValues["marbleInjector"].(map[string]interface{})["start"], "failed to set start to true")
+	assert.Equal(intelEpc.String(), testValues["marbleInjector"].(map[string]interface{})["resourceKey"], "failed to set resourceKey")
 	assert.NotEqual("string", testValues["marbleInjector"].(map[string]interface{})["CABundle"], "failed to set CABundle")
 }

@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 
 	v1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -16,8 +17,9 @@ import (
 // Mutator struct
 type Mutator struct {
 	// CoordAddr contains the address of the marblerun coordinator
-	CoordAddr  string
-	DomainName string
+	CoordAddr   string
+	DomainName  string
+	SGXResource string
 }
 
 // HandleMutate handles mutate requests and injects sgx tolerations into the request
@@ -30,7 +32,7 @@ func (m *Mutator) HandleMutate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// mutate the request and add sgx tolerations to pod
-	mutatedBody, err := mutate(body, m.CoordAddr, m.DomainName, true)
+	mutatedBody, err := mutate(body, m.CoordAddr, m.DomainName, m.SGXResource, true)
 	if err != nil {
 		http.Error(w, "unable to mutate request", http.StatusInternalServerError)
 		return
@@ -50,7 +52,7 @@ func (m *Mutator) HandleMutateNoSgx(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// mutate the request and add sgx tolerations to pod
-	mutatedBody, err := mutate(body, m.CoordAddr, m.DomainName, false)
+	mutatedBody, err := mutate(body, m.CoordAddr, m.DomainName, m.SGXResource, false)
 	if err != nil {
 		http.Error(w, "unable to mutate request", http.StatusInternalServerError)
 		return
@@ -61,7 +63,7 @@ func (m *Mutator) HandleMutateNoSgx(w http.ResponseWriter, r *http.Request) {
 }
 
 // mutate handles the creation of json patches for pods
-func mutate(body []byte, coordAddr string, domainName string, injectSgx bool) ([]byte, error) {
+func mutate(body []byte, coordAddr string, domainName string, resourceKey string, injectSgx bool) ([]byte, error) {
 	admReviewReq := v1.AdmissionReview{}
 	if err := json.Unmarshal(body, &admReviewReq); err != nil {
 		log.Println("Unable to mutate request: invalid admission review")
@@ -156,7 +158,7 @@ func mutate(body []byte, coordAddr string, domainName string, injectSgx bool) ([
 		patch = append(patch, addEnvVar(container.Env, newEnvVars, fmt.Sprintf("/spec/containers/%d/env", idx))...)
 
 		if injectSgx {
-			patch = append(patch, createResourcePatch(container, idx))
+			patch = append(patch, createResourcePatch(container, idx, resourceKey))
 		}
 	}
 
@@ -173,7 +175,7 @@ func mutate(body []byte, coordAddr string, domainName string, injectSgx bool) ([
 				"path": "/spec/tolerations",
 				"value": []corev1.Toleration{
 					{
-						Key:      "kubernetes.azure.com/sgx_epc_mem_in_MiB",
+						Key:      resourceKey,
 						Operator: corev1.TolerationOpExists,
 						Effect:   corev1.TaintEffectNoSchedule,
 					},
@@ -185,7 +187,7 @@ func mutate(body []byte, coordAddr string, domainName string, injectSgx bool) ([
 				"op":   "add",
 				"path": "/spec/tolerations/-",
 				"value": corev1.Toleration{
-					Key:      "kubernetes.azure.com/sgx_epc_mem_in_MiB",
+					Key:      resourceKey,
 					Operator: corev1.TolerationOpExists,
 					Effect:   corev1.TaintEffectNoSchedule,
 				},
@@ -274,7 +276,7 @@ func addEnvVar(setVars, newVars []corev1.EnvVar, basePath string) []map[string]i
 }
 
 // createResourcePatch creates a json patch for sgx resource limits
-func createResourcePatch(container corev1.Container, idx int) map[string]interface{} {
+func createResourcePatch(container corev1.Container, idx int, resourceKey string) map[string]interface{} {
 	// first check if neither limits nor requests have been set for the container -> we need to create the complete path
 	if len(container.Resources.Limits) <= 0 && len(container.Resources.Requests) <= 0 {
 		return map[string]interface{}{
@@ -282,7 +284,7 @@ func createResourcePatch(container corev1.Container, idx int) map[string]interfa
 			"path": fmt.Sprintf("/spec/containers/%d/resources", idx),
 			"value": map[string]interface{}{
 				"limits": map[string]int{
-					"kubernetes.azure.com/sgx_epc_mem_in_MiB": 10,
+					resourceKey: 10,
 				},
 			},
 		}
@@ -293,15 +295,17 @@ func createResourcePatch(container corev1.Container, idx int) map[string]interfa
 			"op":   "add",
 			"path": fmt.Sprintf("/spec/containers/%d/resources/limits", idx),
 			"value": map[string]int{
-				"kubernetes.azure.com/sgx_epc_mem_in_MiB": 10,
+				resourceKey: 10,
 			},
 		}
 	}
 
 	// default case: both requests and limits have been set -> we can just add a new value
+	// replace any "/" in the added key with "~1" so JSONPatch does not interpret it as a path
+	newKey := strings.Replace(resourceKey, "/", "~1", -1)
 	return map[string]interface{}{
 		"op":    "add",
-		"path":  fmt.Sprintf("/spec/containers/%d/resources/limits/kubernetes.azure.com~1sgx_epc_mem_in_MiB", idx),
+		"path":  fmt.Sprintf("/spec/containers/%d/resources/limits/%s", idx, newKey),
 		"value": 10,
 	}
 }

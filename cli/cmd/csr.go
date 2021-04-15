@@ -27,7 +27,7 @@ type certificateInterface interface {
 	// get the signed certificate
 	get() ([]byte, error)
 	// set the caBundle field for the helm chart
-	setCaBundle(map[string]interface{}) error
+	setCaBundle(map[string]interface{}, string) error
 	// sign the certificate
 	signRequest() error
 	getKey() *rsa.PrivateKey
@@ -87,7 +87,7 @@ func (crt *certificateV1) get() ([]byte, error) {
 }
 
 // setCarBundle removes the CABundle field since it is not needed by this version
-func (crt *certificateV1) setCaBundle(values map[string]interface{}) error {
+func (crt *certificateV1) setCaBundle(values map[string]interface{}, resourceKey string) error {
 	path := os.Getenv(clientcmd.RecommendedConfigPathEnvVar)
 	if path == "" {
 		homedir, err := os.UserHomeDir()
@@ -117,8 +117,9 @@ func (crt *certificateV1) setCaBundle(values map[string]interface{}) error {
 	}
 
 	values["marbleInjector"] = map[string]interface{}{
-		"start":    true,
-		"CABundle": caBundle,
+		"start":       true,
+		"CABundle":    caBundle,
+		"resourceKey": resourceKey,
 	}
 
 	return nil

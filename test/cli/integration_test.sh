@@ -36,7 +36,9 @@ then
     exit 1
 fi
 
-marblerun install --simulation
+resource_key="some.sgx.provider/epc"
+
+marblerun install --simulation --resource-key=$resource_key
 wait_for_resource "kubectl get pods -n marblerun | grep marble | grep -v Running"
 
 marblerun namespace add default --no-sgx-injection
@@ -94,8 +96,6 @@ then
 fi
 echo "[OK]"
 
-#verify returned manifest
-
 
 #-------------test injection of env variables------------------------
 
@@ -144,7 +144,7 @@ fi
 echo "[OK]"
 
 echo -n "Checking pod resource limits: "
-if [[ -n $(kubectl get pod -l marblerun/marbletype=hello-world -o jsonpath='{.spec.containers[0].resources.limits}' | grep kubernetes.azure.com/sgx_epc_mem_in_MiB) ]];
+if [[ -n $(kubectl get pod -l marblerun/marbletype=hello-world -o jsonpath='{.spec.containers[0].resources.limits}' | grep $resource_key) ]];
 then
     echo "[FAIL]"
     cleanup_cluster
@@ -175,15 +175,15 @@ then
     exit 1
 fi
 
-if [[ -n $(kubectl describe pod test-pod | grep FailedScheduling | grep -v "Insufficient kubernetes.azure.com/sgx_epc_mem_in_MiB") ]];
+if [[ -n $(kubectl describe pod test-pod | grep FailedScheduling | grep -v "Insufficient $resource_key") ]];
 then
-    echo "pod creating stuck in pending due to unrelated issue"
+    echo "pod stuck in pending due to unrelated issue"
     cleanup_cluster
     exit 1
 fi
 
 echo -n "Checking pod tolerations: "
-if [[ -n $(kubectl get pod test-pod -o jsonpath='{.spec.tolerations}' | grep -v "kubernetes.azure.com/sgx_epc_mem_in_MiB") ]];
+if [[ -n $(kubectl get pod test-pod -o jsonpath='{.spec.tolerations}' | grep -v "$resource_key") ]];
 then
     echo "[FAIL]"
     cleanup_cluster
@@ -192,7 +192,7 @@ fi
 echo "[OK]"
 
 echo -n "Checking pod resource limits: "
-if [[ -n $(kubectl get pod test-pod -o jsonpath='{.spec.containers[0].resources.limits}' | grep -v "kubernetes.azure.com/sgx_epc_mem_in_MiB") ]];
+if [[ -n $(kubectl get pod test-pod -o jsonpath='{.spec.containers[0].resources.limits}' | grep -v "$resource_key") ]];
 then
     echo "[FAIL]"
     cleanup_cluster
