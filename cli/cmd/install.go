@@ -23,21 +23,26 @@ import (
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/repo"
+	"helm.sh/helm/v3/pkg/strvals"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
+type installOptions struct {
+	chartPath        string
+	hostname         string
+	version          string
+	defaultKey       string
+	simulation       bool
+	disableInjection bool
+	clientPort       int
+	meshPort         int
+	settings         *cli.EnvSettings
+}
+
 func newInstallCmd() *cobra.Command {
-	var settings *cli.EnvSettings
-	var domain string
-	var chartPath string
-	var chartVersion string
-	var simulation bool
-	var noSgxDevicePlugin bool
-	var disableInjection bool
-	var meshServerPort int
-	var clientServerPort int
+	options := &installOptions{}
 
 	cmd := &cobra.Command{
 		Use:   "install",
@@ -45,64 +50,29 @@ func newInstallCmd() *cobra.Command {
 		Long:  `Installs marblerun on a kubernetes cluster`,
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			settings = cli.New()
-			return cliInstall(chartPath, domain, chartVersion, simulation, noSgxDevicePlugin, disableInjection, clientServerPort, meshServerPort, settings)
+			options.settings = cli.New()
+			return cliInstall(options)
 		},
 		SilenceUsage: true,
 	}
 
-	cmd.Flags().StringVar(&domain, "domain", "localhost", "Sets the CNAME for the coordinator certificate")
-	cmd.Flags().StringVar(&chartPath, "marblerun-chart-path", "", "Path to marblerun helm chart")
-	cmd.Flags().StringVar(&chartVersion, "version", "", "Version of the Coordinator to install, latest by default")
-	cmd.Flags().BoolVar(&simulation, "simulation", false, "Set marblerun to start in simulation mode")
-	cmd.Flags().BoolVar(&noSgxDevicePlugin, "no-sgx-device-plugin", false, "Disables the installation of an sgx device plugin")
-	cmd.Flags().BoolVar(&disableInjection, "disable-auto-injection", false, "Disable automatic injection of selected namespaces")
-	cmd.Flags().IntVar(&meshServerPort, "mesh-server-port", 2001, "Set the mesh server port. Needs to be configured to the same port as in the data-plane marbles")
-	cmd.Flags().IntVar(&clientServerPort, "client-server-port", 4433, "Set the client server port. Needs to be configured to the same port as in your client tool stack")
+	cmd.Flags().StringVar(&options.hostname, "domain", "localhost", "Sets the CNAME for the coordinator certificate")
+	cmd.Flags().StringVar(&options.chartPath, "marblerun-chart-path", "", "Path to marblerun helm chart")
+	cmd.Flags().StringVar(&options.version, "version", "", "Version of the Coordinator to install, latest by default")
+	cmd.Flags().StringVar(&options.defaultKey, "resource-key", intelEpc.String(), "Resource providing SGX, different depending on used device plugin")
+	cmd.Flags().BoolVar(&options.simulation, "simulation", false, "Set marblerun to start in simulation mode")
+	cmd.Flags().BoolVar(&options.disableInjection, "disable-auto-injection", false, "Disable automatic injection of selected namespaces")
+	cmd.Flags().IntVar(&options.meshPort, "mesh-server-port", 2001, "Set the mesh server port. Needs to be configured to the same port as in the data-plane marbles")
+	cmd.Flags().IntVar(&options.clientPort, "client-server-port", 4433, "Set the client server port. Needs to be configured to the same port as in your client tool stack")
 
 	return cmd
 }
 
 // cliInstall installs marblerun on the cluster
-func cliInstall(path string, hostname string, version string, sim bool, noSgx bool, disableInjection bool, clientPort int, meshPort int, settings *cli.EnvSettings) error {
+func cliInstall(options *installOptions) error {
 	actionConfig := new(action.Configuration)
-	if err := actionConfig.Init(settings.RESTClientGetter(), "marblerun", os.Getenv("HELM_DRIVER"), debug); err != nil {
+	if err := actionConfig.Init(options.settings.RESTClientGetter(), "marblerun", os.Getenv("HELM_DRIVER"), debug); err != nil {
 		return err
-	}
-
-	// set overwrite values
-	var vals map[string]interface{}
-	if sim {
-		// simulation mode, disable tolerations and resources, set simulation to 1
-		vals = map[string]interface{}{
-			"tolerations": nil,
-			"coordinator": map[string]interface{}{
-				"simulation": "1",
-				"resources":  nil,
-				"hostname":   hostname,
-			},
-		}
-	} else {
-		vals = map[string]interface{}{
-			"coordinator": map[string]interface{}{
-				"hostname": hostname,
-			},
-		}
-	}
-	if noSgx {
-		// disable deployment of sgx-device-plugin pod
-		vals["coordinator"].(map[string]interface{})["resources"] = nil
-		vals["sgxDevice"] = map[string]interface{}{
-			"start": false,
-		}
-	}
-	vals["coordinator"].(map[string]interface{})["meshServerPort"] = meshPort
-	vals["coordinator"].(map[string]interface{})["clientServerPort"] = clientPort
-
-	if !disableInjection {
-		if err := installWebhook(vals); err != nil {
-			return err
-		}
 	}
 
 	// create helm installer
@@ -110,30 +80,91 @@ func cliInstall(path string, hostname string, version string, sim bool, noSgx bo
 	installer.CreateNamespace = true
 	installer.Namespace = "marblerun"
 	installer.ReleaseName = "marblerun-coordinator"
-	installer.ChartPathOptions.Version = version
+	installer.ChartPathOptions.Version = options.version
 
-	if path == "" {
+	if options.chartPath == "" {
 		// No chart was specified -> add or update edgeless helm repo
-		err := getRepo("edgeless", "https://helm.edgeless.systems/stable", settings)
+		err := getRepo("edgeless", "https://helm.edgeless.systems/stable", options.settings)
 		if err != nil {
 			return err
 		}
-		path, err = installer.ChartPathOptions.LocateChart("edgeless/marblerun-coordinator", settings)
+		options.chartPath, err = installer.ChartPathOptions.LocateChart("edgeless/marblerun-coordinator", options.settings)
 		if err != nil {
 			return err
 		}
 	}
-	chart, err := loader.Load(path)
+	chart, err := loader.Load(options.chartPath)
 	if err != nil {
 		return err
 	}
 
-	if err := chartutil.ValidateAgainstSchema(chart, vals); err != nil {
+	resourceKey, err := getResourceKey(options.defaultKey)
+	if err != nil {
 		return err
 	}
 
-	if _, err := installer.Run(chart, vals); err != nil {
-		return err
+	// set overwrite values
+	finalValues := map[string]interface{}{}
+	var stringValues []string
+
+	stringValues = append(stringValues, fmt.Sprintf("coordinator.meshServerPort=%d", options.meshPort))
+	stringValues = append(stringValues, fmt.Sprintf("coordinator.clientServerPort=%d", options.clientPort))
+
+	if options.simulation {
+		// simulation mode, disable tolerations and resources, set simulation to 1
+		stringValues = append(stringValues,
+			fmt.Sprintf("tolerations=%s", "null"),
+			fmt.Sprintf("coordinator.simulation=%d", 1),
+			fmt.Sprintf("coordinator.resources.limits=%s", "null"),
+			fmt.Sprintf("coordinator.hostname=%s", options.hostname),
+		)
+	} else {
+		stringValues = append(stringValues,
+			fmt.Sprintf("tolerations[0].key=%s", resourceKey),
+			fmt.Sprintf("tolerations[0].operator=Exists"),
+			fmt.Sprintf("tolerations[0].effect=NoSchedule"),
+			fmt.Sprintf("coordinator.hostname=%s", options.hostname),
+		)
+	}
+
+	for _, val := range stringValues {
+		if err := strvals.ParseInto(val, finalValues); err != nil {
+			return err
+		}
+	}
+
+	// strvals cant parse keys which include dots, e.g. setting as a resource limit key "sgx.intel.com/epc" will lead to errors
+	// With this we directly set the needed values as a map[string]interface
+	if !options.simulation {
+		// Since we want to potentially change a key in the "limits" map we have to remove keys that are different from the one we want to insert
+		// If we just set a new key the resulting deployment will potentially have 2 resource limits for different SGX definitions resulting in a pod that will never start
+		if presetLimits, ok := chart.Values["coordinator"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{}); ok {
+			finalValues["coordinator"].(map[string]interface{})["resources"] = map[string]interface{}{
+				"limits": map[string]interface{}{},
+			}
+			for oldResourceKey := range presetLimits {
+				// Make sure the key we delete is not a common kubernetes resource type
+				if oldResourceKey != resourceKey && !(strings.Contains("cpu memory", oldResourceKey) || strings.Contains(oldResourceKey, "hugepages-")) {
+					finalValues["coordinator"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})[oldResourceKey] = nil
+				}
+			}
+		}
+		// Set the new sgx resource limit
+		finalValues["coordinator"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})[resourceKey] = 10
+	}
+
+	if !options.disableInjection {
+		if err := installWebhook(finalValues, resourceKey); err != nil {
+			return errorAndCleanup(err)
+		}
+	}
+
+	if err := chartutil.ValidateAgainstSchema(chart, finalValues); err != nil {
+		return errorAndCleanup(err)
+	}
+
+	if _, err := installer.Run(chart, finalValues); err != nil {
+		return errorAndCleanup(err)
 	}
 
 	fmt.Println("Marblerun installed successfully")
@@ -196,7 +227,7 @@ func getRepo(name string, url string, settings *cli.EnvSettings) error {
 }
 
 // installWebhook enables a mutating admission webhook to allow automatic injection of values into pods
-func installWebhook(vals map[string]interface{}) error {
+func installWebhook(vals map[string]interface{}, resourceKey string) error {
 	kubeClient, err := getKubernetesInterface()
 	if err != nil {
 		return err
@@ -217,7 +248,7 @@ func installWebhook(vals map[string]interface{}) error {
 		return err
 	}
 	fmt.Printf(".")
-	if err := certificateHandler.setCaBundle(vals); err != nil {
+	if err := certificateHandler.setCaBundle(vals, resourceKey); err != nil {
 		return err
 	}
 	cert, err := certificateHandler.get()
@@ -301,6 +332,46 @@ func verifyNamespace(namespace string, kubeClient kubernetes.Interface) error {
 		}
 	}
 	return nil
+}
+
+// getResourceKey checks what device plugin is providing SGX on the cluster and returns the corresponding resource key
+func getResourceKey(defaultKey string) (string, error) {
+	kubeClient, err := getKubernetesInterface()
+	if err != nil {
+		return "", err
+	}
+
+	nodes, err := kubeClient.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	for _, node := range nodes.Items {
+		if nodeHasAzureDevPlugin(node.Status.Capacity) {
+			return azureEpc.String(), nil
+		}
+		if nodeHasIntelDevPlugin(node.Status.Capacity) {
+			return intelEpc.String(), nil
+		}
+	}
+
+	// assume cluster has the intel SGX device plugin by default
+	return defaultKey, nil
+}
+
+// errorAndCleanup returns the given error and deletes resources which might have been created previously
+// This prevents secrets and CSRs to stay on the cluster after a failed installation attempt
+func errorAndCleanup(err error) error {
+	// If we cant even create a clientset wed dont attempt to remove any resources
+	kubeClient, kubeErr := getKubernetesInterface()
+	if kubeErr != nil {
+		return err
+	}
+
+	// We dont care about any errors here
+	cleanupCSR(kubeClient)
+	cleanupSecrets(kubeClient)
+	return err
 }
 
 func debug(format string, v ...interface{}) {
