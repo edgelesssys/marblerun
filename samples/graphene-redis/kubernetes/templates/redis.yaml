@@ -108,7 +108,7 @@ metadata:
   name: redis
   namespace: redis
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     app: redis
     role: main
