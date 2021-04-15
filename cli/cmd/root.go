@@ -26,13 +26,14 @@ func Execute() error {
 func init() {
 	rootCmd.AddCommand(newCertificateCmd())
 	rootCmd.AddCommand(newCheckCmd())
-	rootCmd.AddCommand(newPrecheckCmd())
+	rootCmd.AddCommand(newCompletionCmd())
+	rootCmd.AddCommand(newGraphenePrepareCmd())
 	rootCmd.AddCommand(newInstallCmd())
 	rootCmd.AddCommand(newManifestCmd())
-	rootCmd.AddCommand(newStatusCmd())
 	rootCmd.AddCommand(newNamespaceCmd())
+	rootCmd.AddCommand(newPrecheckCmd())
 	rootCmd.AddCommand(newRecoverCmd())
+	rootCmd.AddCommand(newStatusCmd())
 	rootCmd.AddCommand(newUninstallCmd())
 	rootCmd.AddCommand(newVersionCmd())
-	rootCmd.AddCommand(newGraphenePrepareCmd())
 }
