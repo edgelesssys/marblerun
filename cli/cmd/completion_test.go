@@ -13,9 +13,9 @@ func TestCliCompletion(t *testing.T) {
 	assert.NoError(err)
 	assert.Contains(bashCompletion, "# bash completion for marblerun")
 
-	fishCompletion, err := cliCompletion("fish", rootCmd)
-	assert.NoError(err)
-	assert.Contains(fishCompletion, "# fish completion for marblerun")
+	//fishCompletion, err := cliCompletion("fish", rootCmd)
+	//assert.NoError(err)
+	//assert.Contains(fishCompletion, "# fish completion for marblerun")
 
 	zshCompletion, err := cliCompletion("zsh", rootCmd)
 	assert.NoError(err)

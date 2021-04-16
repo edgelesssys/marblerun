@@ -18,12 +18,6 @@ func newCompletionCmd() *cobra.Command {
 
 	To load completions for each session, execute once:
 	marblerun completion zsh > "${fpath[1]}/_marblerun"
-
-	For fish:
-	marblerun completion fish | source
-
-	To load fish shell completions for each session, execute once:
-	marblerun completion fish > ~/.config/fish/completions/marblerun.fish
 	`
 	cmd := &cobra.Command{
 		Use:                   "completion",
@@ -31,7 +25,7 @@ func newCompletionCmd() *cobra.Command {
 		Long:                  `Output script for specified shell to enable autocompletion`,
 		Example:               example,
 		Args:                  cobra.ExactArgs(1),
-		ValidArgs:             []string{"bash", "fish", "zsh"},
+		ValidArgs:             []string{"bash", "zsh"},
 		DisableFlagsInUseLine: true,
 		SilenceErrors:         true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -56,8 +50,8 @@ func cliCompletion(shell string, parent *cobra.Command) (string, error) {
 	switch shell {
 	case "bash":
 		err = parent.GenBashCompletion(&buf)
-	case "fish":
-		err = parent.GenFishCompletion(&buf, false)
+	//case "fish":
+	//	err = parent.GenFishCompletion(&buf, false)
 	case "zsh":
 		err = parent.GenZshCompletion(&buf)
 	default:
