@@ -197,4 +197,4 @@ docker buildx build --secret id=signingkey,src=private.pem --target release --ta
 You can build the docker image of the marble-injector as follows:
 
 ```bash
-docker build --tag ghcr.io/edgelesssys/marble-injector -f dockerfiles/Dockerfile.marble-injector .
+docker buildx build --tag ghcr.io/edgelesssys/marble-injector -f dockerfiles/Dockerfile.marble-injector .
