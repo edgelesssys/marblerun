@@ -27,7 +27,7 @@ type certificateInterface interface {
 	// get the signed certificate
 	get() ([]byte, error)
 	// set the caBundle field for the helm chart
-	setCaBundle(map[string]interface{}, string) error
+	setCaBundle() ([]string, error)
 	// sign the certificate
 	signRequest() error
 	getKey() *rsa.PrivateKey
@@ -86,20 +86,20 @@ func (crt *certificateV1) get() ([]byte, error) {
 	return csr.Status.Certificate, nil
 }
 
-// setCarBundle removes the CABundle field since it is not needed by this version
-func (crt *certificateV1) setCaBundle(values map[string]interface{}, resourceKey string) error {
+// setCaBundle sets the CABundle field to the clusters CABundle
+func (crt *certificateV1) setCaBundle() ([]string, error) {
 	path := os.Getenv(clientcmd.RecommendedConfigPathEnvVar)
 	if path == "" {
 		homedir, err := os.UserHomeDir()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		path = filepath.Join(homedir, clientcmd.RecommendedHomeDir, clientcmd.RecommendedFileName)
 	}
 
 	kubeConfig, err := clientcmd.BuildConfigFromFlags("", path)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var caBundle string
@@ -109,20 +109,19 @@ func (crt *certificateV1) setCaBundle(values map[string]interface{}, resourceKey
 	} else if len(kubeConfig.CAFile) > 0 {
 		fileData, err := ioutil.ReadFile(kubeConfig.CAFile)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		caBundle = base64.StdEncoding.EncodeToString(fileData)
 	} else {
-		return fmt.Errorf("unable to read CAData or CAFile from kube-config: %s", path)
+		return nil, fmt.Errorf("unable to read CAData or CAFile from kube-config: %s", path)
 	}
 
-	values["marbleInjector"] = map[string]interface{}{
-		"start":       true,
-		"CABundle":    caBundle,
-		"resourceKey": resourceKey,
+	injectorVals := []string{
+		fmt.Sprintf("marbleInjector.start=%v", true),
+		fmt.Sprintf("marbleInjector.CABundle=%s", caBundle),
 	}
 
-	return nil
+	return injectorVals, nil
 }
 
 // signRequest performs a certificate signing request to the api server and approves it

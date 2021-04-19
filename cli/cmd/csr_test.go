@@ -70,19 +70,10 @@ func TestCertificateV1(t *testing.T) {
 	_, err = configFile.Write([]byte(MockConfig))
 	require.NoError(err)
 
-	testValues := map[string]interface{}{
-		"marbleInjector": map[string]interface{}{
-			"start":       false,
-			"CABundle":    "string",
-			"resourceKey": azureEpc.String(),
-		},
-	}
-
-	err = testHandler.setCaBundle(testValues, intelEpc.String())
+	testValues, err := testHandler.setCaBundle()
 	assert.NoError(err)
-	assert.Equal(true, testValues["marbleInjector"].(map[string]interface{})["start"], "failed to set start to true")
-	assert.Equal(intelEpc.String(), testValues["marbleInjector"].(map[string]interface{})["resourceKey"], "failed to set resourceKey")
-	assert.NotEqual("string", testValues["marbleInjector"].(map[string]interface{})["CABundle"], "failed to set CABundle")
+	assert.Equal("marbleInjector.start=true", testValues[0], "failed to set start to true")
+	assert.Equal("marbleInjector.CABundle=CABundle", testValues[1], "failed to set CABundle")
 }
 
 func TestCertificateLegacy(t *testing.T) {
@@ -104,17 +95,8 @@ func TestCertificateLegacy(t *testing.T) {
 	require.NoError(err)
 	assert.True(len(testCrt) > 0, "failed to retrieve server certificate")
 
-	testValues := map[string]interface{}{
-		"marbleInjector": map[string]interface{}{
-			"start":       false,
-			"CABundle":    "string",
-			"resourceKey": azureEpc.String(),
-		},
-	}
-
-	err = testHandler.setCaBundle(testValues, intelEpc.String())
+	testValues, err := testHandler.setCaBundle()
 	assert.NoError(err)
-	assert.Equal(true, testValues["marbleInjector"].(map[string]interface{})["start"], "failed to set start to true")
-	assert.Equal(intelEpc.String(), testValues["marbleInjector"].(map[string]interface{})["resourceKey"], "failed to set resourceKey")
-	assert.NotEqual("string", testValues["marbleInjector"].(map[string]interface{})["CABundle"], "failed to set CABundle")
+	assert.Equal("marbleInjector.start=true", testValues[0], "failed to set start to true")
+	assert.Contains(testValues[1], "LS0t", "failed to set CABundle")
 }
