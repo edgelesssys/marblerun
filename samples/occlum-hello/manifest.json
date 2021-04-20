@@ -1,0 +1,22 @@
+{
+    "Packages": {
+        "world": {
+            "Debug": true,
+            "UniqueID": "<replace with mrenclave>"
+        }
+    },
+    "Marbles": {
+        "hello": {
+            "Package": "world",
+            "Parameters": {
+                "Env": {
+                    "HELLO_WORLD": "Hello World from Marblerun!"
+                },
+                "Argv": [
+                    "Welcome!",
+                    "Hello World from Marblerun!"
+                ]
+            }
+        }
+    }
+}
