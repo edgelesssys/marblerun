@@ -2,7 +2,6 @@ package premain
 
 import (
 	"crypto/sha256"
-	"encoding/binary"
 	"errors"
 	"io/ioutil"
 	"os"
@@ -34,7 +33,7 @@ func GrapheneActivate(req *rpc.ActivationReq, coordAddr string, tlsCredentials c
 // GrapheneQuoteIssuer issues quotes
 type GrapheneQuoteIssuer struct{}
 
-// Issue issues a quote for remote attestation for a given message
+// Issue issues a quote for remote attestation for a given message (usually a certificate)
 func (GrapheneQuoteIssuer) Issue(cert []byte) ([]byte, error) {
 	hash := sha256.Sum256(cert)
 
@@ -65,10 +64,5 @@ func (GrapheneQuoteIssuer) Issue(cert []byte) ([]byte, error) {
 		return nil, errors.New("invalid quote size")
 	}
 
-	// add OE header to raw quote
-	quoteHeader := make([]byte, 16)
-	binary.LittleEndian.PutUint32(quoteHeader, 1)     // version
-	binary.LittleEndian.PutUint32(quoteHeader[4:], 2) // OE_REPORT_TYPE_SGX_REMOTE
-	binary.LittleEndian.PutUint64(quoteHeader[8:], uint64(quoteSize))
-	return append(quoteHeader, quote[:quoteSize]...), nil
+	return prependOEHeaderToRawQuote(quote[:quoteSize]), nil
 }

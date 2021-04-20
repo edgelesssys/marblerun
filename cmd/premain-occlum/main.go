@@ -10,7 +10,6 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/edgelesssys/marblerun/coordinator/quote/ertvalidator"
 	marblePremain "github.com/edgelesssys/marblerun/marble/premain"
 	"github.com/fatih/color"
 	"github.com/spf13/afero"
@@ -41,7 +40,7 @@ func main() {
 	service := os.Args[1]
 
 	hostfs := afero.NewOsFs()
-	if err := marblePremain.PreMainEx(ertvalidator.NewERTIssuer(), marblePremain.ActivateRPC, hostfs, hostfs); err != nil {
+	if err := marblePremain.PreMainEx(marblePremain.OcclumQuoteIssuer{}, marblePremain.ActivateRPC, hostfs, hostfs); err != nil {
 		panic(err)
 	}
 
