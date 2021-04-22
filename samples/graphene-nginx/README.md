@@ -1,7 +1,7 @@
 # Graphene nginx example
 This example is a slightly modified variant of the [Graphene nginx example](https://github.com/oscarlab/graphene/tree/master/Examples/nginx). These changes are required to run it in Marblerun.
 
-*Prerequisite*: Graphene is set up and the original nginx example is working.
+*Prerequisite*: Graphene is set up and the original nginx example is working. You will need hardware with Intel SGX support.
 
 To marbleize the example we edited [nginx.manifest.template](nginx.manifest.template). See comments starting with `MARBLERUN` for explanations of the required changes.
 
@@ -16,7 +16,7 @@ make SGX=1
 
 Start the Coordinator in a local simulated enclave:
 ```sh
-OE_SIMULATION=1 erthost ../../../build/coordinator-enclave.signed
+erthost ../../../build/coordinator-enclave.signed
 ```
 
 The Coordinator exposes two APIs, a client API to instruct the Coordinator (port 4433) and a mesh API to communicate with your Marble (port 2001).
