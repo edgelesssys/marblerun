@@ -1,6 +1,6 @@
-# Graphene redis sample
+# Graphene redis example
 
-This sample is a slightly modified variant of the [Graphene redis sample](https://github.com/oscarlab/graphene/tree/master/Examples/redis).
+This example is a slightly modified variant of the [Graphene redis example](https://github.com/oscarlab/graphene/tree/master/Examples/redis).
 Instead of running a single [redis](https://redis.io/) server instance, Marblerun unleashes the full potential of redis and takes care of distributing the redis server in *replication* mode.
 
 *Prerequisite:*
@@ -106,9 +106,9 @@ You can now securely connect to the redis server using the `redis-cli` and the M
 
 ## Building the Docker image
 
-*Prerequisite*: Graphene is set up and the original redis sample is working.
+*Prerequisite*: Graphene is set up and the original redis example is working.
 
-To marbleize the sample we edited [redis-server.manifest.template](redis-server.manifest.template). See comments starting with `MARBLERUN` for explanations of the required changes.
+To marbleize the example we edited [redis-server.manifest.template](redis-server.manifest.template). See comments starting with `MARBLERUN` for explanations of the required changes.
 
 Assuming you have built Graphene in `/graphene` copy the redis-server.manifest.template into the `/graphene/Examples/redis`
 

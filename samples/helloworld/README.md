@@ -1,8 +1,8 @@
 # How to build a helloworld Marble
-This sample shows how to build a confidential Go application with [EGo](https://ego.dev) and run it in Marblerun. This can serve you as a blueprint for making existing applications Marblerun-ready or creating new [Marbles](https://www.marblerun.sh/docs/getting-started/marbles/). If you haven't already, [setup Marblerun](../../BUILD.md#build) and EGo to get ready.
+This example shows how to build a confidential Go application with [EGo](https://ego.dev) and run it in Marblerun. This can serve you as a blueprint for making existing applications Marblerun-ready or creating new [Marbles](https://www.marblerun.sh/docs/getting-started/marbles/). If you haven't already, [setup Marblerun](../../BUILD.md#build) and EGo to get ready.
 
 
-You can build and sign the sample (or your app) like this:
+You can build and sign the example (or your app) like this:
 ```sh
 ego-go build
 ego sign hello
@@ -26,13 +26,13 @@ You can now upload the manifest to the Coordinators client API:
 curl -k --data-binary @manifest.json https://localhost:4433/manifest
 ```
 
-Finaly, you can run the helloworld Marble (or whatever Marble you just created) with the `ego marblerun` command. You just need to set `EDG_MARBLE_TYPE` to a Marble that was defined in the `manifest.json`. In this sample, the manifest defines a single Marble, which is called "hello".
+Finaly, you can run the helloworld Marble (or whatever Marble you just created) with the `ego marblerun` command. You just need to set `EDG_MARBLE_TYPE` to a Marble that was defined in the `manifest.json`. In this example, the manifest defines a single Marble, which is called "hello".
 ```sh
 EDG_MARBLE_TYPE=hello ego marblerun helloworld
 ```
 Marblerun starts the Marble and connects it to the mesh API of the Coordinator.
 
-The helloworld sample app will then serve HTTP on port 8080:
+The helloworld example app will then serve HTTP on port 8080:
 ```sh
 $ curl http://localhost:8080
 Hello world!

@@ -1,5 +1,5 @@
-# Graphene "Hello World!" sample
-This sample shows how to run a [Graphene](https://github.com/oscarlab/graphene) application in Marblerun.
+# Graphene "Hello World!" example
+This example shows how to run a [Graphene](https://github.com/oscarlab/graphene) application in Marblerun.
 
 In essence, you have to add the `premain` process either by manually adding the Marblerun premain process as the entry point for your application (see: [`spawn`](spawn)), or by automatically injecting it as a preloaded shared library via Graphene's LD_PRELOAD feature (see: [`preload`](preload)).
 
