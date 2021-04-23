@@ -316,6 +316,10 @@ func (c *Core) generateMarbleAuthSecrets(req *rpc.ActivationReq, marbleUUID uuid
 }
 
 func (c *Core) setTTLSConfig(marble manifest.Marble) error {
+	if len(marble.TLS) == 0 {
+		return nil
+	}
+
 	ttlsConf := make(map[string]map[string]string)
 	ttlsConf["tls"] = make(map[string]string)
 	for _, tag := range marble.TLS {
