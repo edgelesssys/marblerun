@@ -260,7 +260,6 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 		ms.assert.NotEqual(nil, config["tls"]["example.com:40000"])
 	} else {
 		ms.assert.Empty(configBytes)
-		ms.assert.Error(json.Unmarshal([]byte(params.Env["MARBLE_TTLS_CONFIG"]), &config))
 	}
 }
 
