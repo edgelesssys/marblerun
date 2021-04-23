@@ -248,16 +248,18 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 
 	// Validate ttls conf
 	config := make(map[string]map[string]string)
+	configBytes := []byte(params.Env["MARBLE_TTLS_CONFIG"])
 	if marbleType == "backend_first" {
-		ms.assert.NoError(json.Unmarshal([]byte(params.Env["MARBLE_TTLS_CONFIG"]), &config))
+		ms.assert.NoError(json.Unmarshal(configBytes, &config))
 		ms.assert.NotEqual(nil, config["tls"]["localhost:8080"])
 		ms.assert.NotEqual(nil, config["tls"]["service.namespace:4242"])
 	} else if marbleType == "backend_other" {
-		ms.assert.NoError(json.Unmarshal([]byte(params.Env["MARBLE_TTLS_CONFIG"]), &config))
+		ms.assert.NoError(json.Unmarshal(configBytes, &config))
 		ms.assert.NotEqual(nil, config["tls"]["localhost:8080"])
 		ms.assert.NotEqual(nil, config["tls"]["service.namespace:4242"])
 		ms.assert.NotEqual(nil, config["tls"]["example.com:40000"])
-	} else if marbleType == "frontend" {
+	} else {
+		ms.assert.Empty(configBytes)
 		ms.assert.Error(json.Unmarshal([]byte(params.Env["MARBLE_TTLS_CONFIG"]), &config))
 	}
 }
