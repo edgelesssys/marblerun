@@ -91,9 +91,11 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 
 	marble := c.manifest.Marbles[req.GetMarbleType()] // existence has been checked in verifyManifestRequirement
 	// add TTLS config to Env
-	if err := c.setTTLSConfig(marble); err != nil {
-		c.zaplogger.Error("Could not create TTLS config.", zap.Error(err))
-		return nil, err
+	if len(marble.TLS) > 0 {
+		if err := c.setTTLSConfig(marble); err != nil {
+			c.zaplogger.Error("Could not create TTLS config.", zap.Error(err))
+			return nil, err
+		}
 	}
 
 	params, err := customizeParameters(marble.Parameters, authSecrets, secrets)
