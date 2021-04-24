@@ -18,10 +18,13 @@ To keep things simple, Marblerun issues one concise remote attestation statement
 
 ### Key features
 
-* Authentication and integrity verification of microservices with respect to a Manifest written in simple JSON :lock:
-* Secrets management for microservices :key:
-* Provisioning of certificates, configurations, and parameters for microservices :package:
-* Remote attestation of the entire cluster :globe_with_meridians:
+:lock: Authentication and integrity verification of microservices with respect to a Manifest written in simple JSON
+
+:key: Secrets management for microservices
+
+:package: Provisioning of certificates, configurations, and parameters for microservices
+
+:globe_with_meridians: Remote attestation of the entire cluster
 
 ### Overview
 
@@ -30,8 +33,8 @@ To keep things simple, Marblerun issues one concise remote attestation statement
 ### Supported Runtimes
 Marblerun supports services built with one of the following frameworks:
 * [EGo][ego]
-* [Edgeless RT][edgelessrt]
 * [Graphene][graphene]
+* [Edgeless RT][edgelessrt]
 
 More are coming soon.
 
