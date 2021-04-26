@@ -13,6 +13,7 @@
                     "HELLO_WORLD": "Hello World from Marblerun!"
                 },
                 "Argv": [
+                    "/bin/hello",
                     "Welcome!",
                     "Hello World from Marblerun!"
                 ]

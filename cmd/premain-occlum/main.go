@@ -12,8 +12,9 @@ import "C"
 
 import (
 	"errors"
+	"fmt"
 	"os"
-	"strings"
+	"path/filepath"
 	"syscall"
 
 	marblePremain "github.com/edgelesssys/marblerun/marble/premain"
@@ -22,46 +23,36 @@ import (
 )
 
 func main() {
-	// Exit if we do not know which service to launch
-	if len(os.Args) < 2 {
-		color.Red("ERROR: You need to specify your application as second argument before running the premain.")
-		panic(errors.New("no service to launch specified"))
-	}
-	// Warn if the user supplies argv arguments which will not be passed
-	if len(os.Args) > 2 {
-		color.Yellow("WARNING: Specified more than two arguments via occlum run. They will not be passed to your service.")
-		color.Yellow("If you want to pass these arguments, define them in the Marblerun's manifest.")
-	}
-
-	// filter env vars
-	for _, env := range os.Environ() {
-		if !strings.HasPrefix(env, "EDG_") && !strings.HasPrefix(env, "LD_LIBRARY_PATH=") {
-			if err := os.Unsetenv(strings.SplitN(env, "=", 2)[0]); err != nil {
-				panic(err)
-			}
-		}
-	}
-
-	// save the passed argument which is our service to spawn
-	service := os.Args[1]
-
+	// Run Marblerun premain, add argv & envp from manifest
 	hostfs := afero.NewOsFs()
 	if err := marblePremain.PreMainEx(marblePremain.OcclumQuoteIssuer{}, marblePremain.ActivateRPC, hostfs, hostfs); err != nil {
 		panic(err)
 	}
 
+	// Check if the entrypoint defined in os.Args[0] actually exists
+	if _, err := os.Stat(os.Args[0]); os.IsNotExist(err) {
+		color.Red("ERROR: The entrypoint does not seem to exist: '$%s'", os.Args[0])
+		color.Red("Please make sure that you define a valid entrypoint in your manifest (for example: /bin/hello_world).")
+		panic(errors.New("invalid entrypoint definition in argv[0]"))
+	}
+
+	// Modify os.Args[0] / argv[0] to only hold the program name, not the whole path, but keep it as service so we can correctly spawn the application.
+	service := os.Args[0]
+	os.Args[0] = filepath.Base(os.Args[0])
+
 	argv := toCArray(os.Args)
 	envp := toCArray(os.Environ())
 
 	// Occlum cannot handle nil for the PID parameter ("pointer not in user space")
-	spawnedPID := C.int(0)
+	var spawnedPID C.int
 
+	fmt.Printf("Exiting PreMain. Launching: %s\n", service)
 	// spawn service
 	if res := C.posix_spawn(&spawnedPID, C.CString(service), nil, nil, &argv[0], &envp[0]); res == -1 {
 		color.Red("ERROR: Failed to spawn the target process.")
-		color.Red("Did you use the correct path for your target application (for example: occlum run /bin/premain-occlum /bin/hello_world)?")
+		color.Red("Did you specify the correct target application in the Marblerun manifest as argv[0]?")
 		color.Red("Have you allocated enough memory?")
-		panic(syscall.Errno(res))
+		panic(errors.New("posix_spawn failed with error code -1"))
 	} else if res != 0 {
 		panic(syscall.Errno(res))
 	}
