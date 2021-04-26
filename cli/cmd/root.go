@@ -33,6 +33,7 @@ func init() {
 	rootCmd.AddCommand(newNamespaceCmd())
 	rootCmd.AddCommand(newPrecheckCmd())
 	rootCmd.AddCommand(newRecoverCmd())
+	rootCmd.AddCommand(newSGXSDKPackageInfoCmd())
 	rootCmd.AddCommand(newStatusCmd())
 	rootCmd.AddCommand(newUninstallCmd())
 	rootCmd.AddCommand(newVersionCmd())
