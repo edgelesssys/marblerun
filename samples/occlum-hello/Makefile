@@ -20,4 +20,4 @@ premain-occlum:
 	occlum-go build -o premain-occlum ../../cmd/premain-occlum
 
 run:
-	cd occlum-instance; occlum run /bin/premain-occlum /bin/hello
+	cd occlum-instance; occlum run /bin/premain-occlum

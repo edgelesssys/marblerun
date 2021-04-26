@@ -1,11 +1,19 @@
 # Occlum "Hello World!" sample
-This sample shows how to run an [Occlum](https://github.com/occlum/occlum) application in Marblerun. In essence, you have to add the `premain-occlum` process to your Occlum image and use it as an entry point for your instance. `premain` will contact the Coordinator, set up the environment, and run the actual application. Look into the [Makefile](Makefile) for details.
+This sample shows how to run an [Occlum](https://github.com/occlum/occlum) application in Marblerun. In essence, you have to add the `premain-occlum` process to your Occlum image, use it as an entry point for your instance and supply the original entry point as an `Argv` value in Marblerun's [manifest.json](manifest.json). `premain` will contact the Coordinator, set up the environment, and run the actual application. Take a look into the [Makefile](Makefile) for details.
 
 ## Requirements
 First, get Occlum and its build toolchain up and running. This can become quite complex if you run it on your existing environment. Therefore, we use the official Docker image and expose the SGX device to it:
 
 ```sh
 docker run -it --network host --device /dev/sgx occlum/occlum:0.22.0-ubuntu18.04
+```
+
+If you are trying to run this sample on Azure, you might want to use the provided [Dockerfile](Dockerfile) instead. It is based on the official Occlum image, but replaces the default Intel DCAP client with the [Azure DCAP Client](https://github.com/microsoft/Azure-DCAP-Client). This is required to get correct quotes on Azure's Confidential Computing virtual machines. You can build and use the image in the following way:
+
+```sh
+# Assuming `samples/occlum-hello` is the current working directory
+docker build -t occlum-azure .
+docker run -it --network host --device /dev/sgx occlum-azure
 ```
 
 Note that we also chose `--network host` here, as we assume you do not run the coordinator in the same Docker instance. **This option is potentially insecure in production use**, as it disables the isolation of the container network. For a production setup, we recommend that you choose a setup that exposes the coordinator to the container.
@@ -18,6 +26,27 @@ git clone https://github.com/edgelesssys/marblerun.git
 cd marblerun/samples/occlum-hello
 make
 ```
+
+After you build the Occlum image, you need to retrieve the for `UniqueID` or `SignerID`/`ProductID`/`SecurityVersion` values for Marblerun's [`manifest.json`](manifest.json). You can get the values using the Marblerun CLI tool:
+
+```sh
+wget https://github.com/edgelesssys/marblerun/releases/latest/download/marblerun
+chmod +x marblerun
+./marblerun sgxsdk-package-info ./occlum-instance
+```
+
+You will receive an output like this:
+```
+PackageProperties for Occlum image at './occlum-instance':
+UniqueID (MRENCLAVE)      : ccad2391e0b79d9108209135c26b2c276c5a24f4f55bc67ccf5ab90fd3f5fc22
+SignerID (MRSIGNER)       : 83d719e77deaca1470f6baf62a4d774303c899db69020f9c70ee1dfc08c7ce9e
+ProductID (ISVPRODID)     : 0
+SecurityVersion (ISVSVN)  : 0
+```
+
+From this point, you can take the `UniqueID` (or `SignerID`/`ProductID`/`SecurityVersion` triple) and insert it into [`manifest.json`](manifest.json).
+
+If you want to change the entry point of your application, you can also edit the first `Argv` value in the manifest. This needs to be a path to the virtual file system of your Occlum image.
 
 ## Run
 We assume that the Coordinator is run with the following environment variables:
@@ -41,7 +70,7 @@ make run
 Or manually:
 ```sh
 cd occlum_instance
-occlum run /bin/premain-occlum /bin/hello
+occlum run /bin/premain-occlum
 ```
 
 ## Troubleshooting
@@ -56,13 +85,21 @@ occlum run /bin/premain-occlum /bin/hello
 * Else, if you receive:
 
     ```
-    ERROR: Failed to spawn the target process.
-    Did you use the correct path for your target application (for example: occlum run /bin/premain-occlum /bin/hello_world)?
-    Have you allocated enough memory?
-    panic: errno -1
+    ERROR: The entrypoint does not seem to exist: '/bin/your_application'
+    Please make sure that you define a valid entrypoint in your manifest (for example: /bin/hello_world).
+    panic: "invalid entrypoint definition in argv[0]"
     ```
 
-    Make sure you specified the correct filename of your target application, and also make sure enough memory is allocated. To find out the specific reason for why this error is occuring, you can set the environment variable `OCCLUM_LOG_LEVEL=error` by appending it in front of your run command like this:
+    or:
+
+    ```
+    ERROR: Failed to spawn the target process.
+    Did you specify the correct target application in the Marblerun manifest as argv[0]?
+    Have you allocated enough memory?
+    panic: posix_spawn failed with error code -1
+    ```
+
+    Make sure you specified the correct filename of your target application. For the latter error message, also make sure enough memory is allocated. To find out the specific reason for why this error is occuring, you can set the environment variable `OCCLUM_LOG_LEVEL=error` by appending it in front of your run command like this:
 
     ```sh
     OCCLUM_LOG_LEVEL=error make run
@@ -70,7 +107,7 @@ occlum run /bin/premain-occlum /bin/hello
 
     or:
     ```sh
-    OCCLUM_LOG_LEVEL=error occlum run /bin/premain-occlum /bin/hello
+    OCCLUM_LOG_LEVEL=error occlum run /bin/premain-occlum
     ```
 
     Search for `SpawnMusl`. This entry will contain the error encountered when spawning your application from Marblerun's premain process.
