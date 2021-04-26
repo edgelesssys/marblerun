@@ -5,8 +5,10 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -39,10 +41,16 @@ func verifyCoordinator(host string, configFilename string, insecure bool) ([]*pe
 
 	// get latest config from github if none specified
 	coordinatorVersion, err := getCoordinatorVersion()
-	if err != nil {
-		return nil, err
-	}
 	eraURL := fmt.Sprintf("https://github.com/edgelesssys/marblerun/releases/download/%s/coordinator-era.json", coordinatorVersion)
+	if err != nil {
+		// if errors were caused by an empty kube config file or by being unable to connect to a cluster we assume the coordinator is running as a standlone
+		// and we default to the latest era-config file
+		var dnsError *net.DNSError
+		if !clientcmd.IsEmptyConfig(err) && !errors.As(err, &dnsError) {
+			return nil, err
+		}
+		eraURL = "https://github.com/edgelesssys/marblerun/releases/latest/download/coordinator-era.json"
+	}
 
 	fmt.Printf("No era config file specified, getting config from %s\n", eraURL)
 	resp, err := http.Get(eraURL)
