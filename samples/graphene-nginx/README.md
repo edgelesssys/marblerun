@@ -14,19 +14,19 @@ export GRAPHENEDIR=[PATH To Your Graphene Folder]
 make SGX=1
 ```
 
-Start the Coordinator in a local simulated enclave:
+Start the Coordinator in a SGX enclave:
 ```sh
 erthost ../../../build/coordinator-enclave.signed
 ```
 
-The Coordinator exposes two APIs, a client API to instruct the Coordinator (port 4433) and a mesh API to communicate with your Marble (port 2001).
+The Coordinator exposes two APIs, a client REST API (port 4433) and a mesh API (port 2001). While the Coordinator and your Marble communicate via the mesh API, you can administrate the Coordinator via the REST API.
 
-Once the Coordinator instance is running, you can upload the mainfest to the Coordinators client API:
+Once the Coordinator instance is running, you can upload the manifest to the Coordinator's client API:
 ```
 curl -k --data-binary @manifest.json https://localhost:4433/manifest
 ```
 
-To run the application, you need to set some environment variables. The Marbles type is defined in the `manifest.json`. In this example, the manifest defines a single Marble, which is called "frontend". The Marbles DNS name and the Coordinators address are used to establish a connection between the Coordinators mesh API and the Marble, and the UUID file stores a unique ID that enables a restart of the application.
+To run the application, you need to set some environment variables. The type of the Marble is defined in the `manifest.json`. In this example, the manifest defines a single Marble, which is called "frontend". The Marble's DNS name and the Coordinator's address are used to establish a connection between the Coordinator's mesh API and the Marble. Further, the UUID file stores a unique ID that enables a restart of the application.
 
 ```sh
 EDG_MARBLE_TYPE=frontend \

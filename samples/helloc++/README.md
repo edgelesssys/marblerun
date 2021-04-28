@@ -1,7 +1,7 @@
 # How to create a C++ Marble
 This example shows how to build a confidential C++ application and run it in Marblerun. This can serve you as a blueprint for making existing applications Marblerun-ready or creating new [Marbles](https://www.marblerun.sh/docs/getting-started/marbles/). If you haven't already, [setup Marblerun](../../BUILD.md#build) to get ready.
 
-You can run this example on any hardware, since the enclave is only simulated (with the `OE_SIMULATION=1` environment variable). This might help you to get started with with the development of confidential apps. However, please notice that this mode does not provide any safety. Detailed information on how to develope secure Marbles can be found in [Marbleruns documentation](https://www.marblerun.sh/docs/tasks/add-service/).
+**Note:** You can run this example on any hardware by simulating the enclave through setting `OE_SIMULATION=1` as environment variable. This might help you to get started with with the development of confidential apps. However, please notice that this bypasses any security. Detailed information on how to develope secure Marbles can be found in [Marbleruns documentation](https://www.marblerun.sh/docs/tasks/add-service/).
 
 The directory `app` contains the application code:
 
@@ -25,19 +25,19 @@ oesign dump -e enclave.signed | grep mrenclave
 
 and set it as `UniqueID` in `manifest.json`.
 
-Next, use the `erthost` command to start the Coordinator in a local simulated enclave:
+Next, use the `erthost` command to start the Coordinator in a local enclave:
 ```sh
-OE_SIMULATION=1 erthost ../../../build/coordinator-enclave.signed
+erthost ../../../build/coordinator-enclave.signed
 ```
 
-The Coordinator exposes two APIs, a client API to instruct the Coordinator (port 4433) and a mesh API to communicate with your Marble (port 2001).
+The Coordinator exposes two APIs, a client REST API (port 4433) and a mesh API (port 2001). While the Coordinator and your Marble communicate via the mesh API, you can administrate the Coordinator via the REST API.
 
-Once the Coordinator instance is running, you can upload the mainfest to the Coordinators client API:
+Once the Coordinator instance is running, you can upload the manifest to the Coordinator's client API:
 ```sh
 curl -k --data-binary @manifest.json https://localhost:4433/manifest
 ```
 
-To run the application, you need to set some environment variables. The Marbles type is defined in the `manifest.json`. In this example, the manifest defines a single Marble, which is called "hello". The Marbles DNS name and the Coordinators address are used to establish a connection between the Coordinators mesh API and the Marble, and the UUID file stores a unique ID that enables a restart of the application.
+To run the application, you need to set some environment variables. The type of the Marble is defined in the `manifest.json`. In this example, the manifest defines a single Marble, which is called "hello". The Marble's DNS name and the Coordinator's address are used to establish a connection between the Coordinator's mesh API and the Marble. Further, the UUID file stores a unique ID that enables a restart of the application.
 ```sh
 EDG_MARBLE_TYPE=hello \
 EDG_MARBLE_COORDINATOR_ADDR=localhost:2001 \
@@ -45,4 +45,4 @@ EDG_MARBLE_UUID_FILE=$PWD/uuid \
 EDG_MARBLE_DNS_NAMES=localhost \
 erthost build/enclave.signed
 ```
-The app prints a "Hello world!" followd by the commandline arguments that are defined in the `manifest.json`.
+The app prints a "Hello world!" followed by the command line arguments that are defined in the `manifest.json`.
