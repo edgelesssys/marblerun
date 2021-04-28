@@ -22,7 +22,9 @@ Marblerun is written entirely in Go and builds on Edgeless RT, which is written 
 
 ## Build
 
-*Prerequisite*: [Edgeless RT](https://github.com/edgelesssys/edgelessrt) is installed and sourced.
+*Prerequisites*:
+* [Edgeless RT](https://github.com/edgelesssys/edgelessrt) is installed and sourced.
+* Go 1.14 or newer
 
 Build the coordinator control plane and marble test applications.
 
