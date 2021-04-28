@@ -124,7 +124,7 @@ func getKubernetesInterface() (*kubernetes.Clientset, error) {
 	return kubeClient, nil
 }
 
-func PromptYesNo(stdin io.Reader, question string) (bool, error) {
+func promptYesNo(stdin io.Reader, question string) (bool, error) {
 	fmt.Print(question)
 	reader := bufio.NewReader(stdin)
 	response, err := reader.ReadString('\n')

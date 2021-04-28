@@ -8,7 +8,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// Version is the CLI version
 var Version = "0.3.1-dev"
+
+// GitCommit is the git commit hash
 var GitCommit string
 
 func newVersionCmd() *cobra.Command {

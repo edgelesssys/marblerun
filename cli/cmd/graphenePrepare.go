@@ -240,7 +240,7 @@ func performChanges(changeDiffs []diff, fileName string, mode mode) error {
 		}
 	}
 
-	accepted, err := PromptYesNo(os.Stdin, promptForChanges)
+	accepted, err := promptYesNo(os.Stdin, promptForChanges)
 	if err != nil {
 		return err
 	}
