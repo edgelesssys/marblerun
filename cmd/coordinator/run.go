@@ -20,7 +20,10 @@ import (
 	"go.uber.org/zap"
 )
 
+// Version is the Coordinator version
 var Version = "0.3.1-dev"
+
+// GitCommit is the git commit hash
 var GitCommit string
 
 func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer core.Sealer, recovery recovery.Recovery) {

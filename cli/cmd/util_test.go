@@ -22,32 +22,32 @@ func TestPromptYesNo(t *testing.T) {
 	var stdin bytes.Buffer
 
 	stdin.Write([]byte("y\n"))
-	approved, err := PromptYesNo(&stdin, promptForChanges)
+	approved, err := promptYesNo(&stdin, promptForChanges)
 	require.NoError(err)
 	assert.True(approved)
 
 	// Typos are intentional to test if strings are lowercased later correctly
 	stdin.Reset()
 	stdin.Write([]byte("yEs\n"))
-	approved, err = PromptYesNo(&stdin, promptForChanges)
+	approved, err = promptYesNo(&stdin, promptForChanges)
 	require.NoError(err)
 	assert.True(approved)
 
 	stdin.Reset()
 	stdin.Write([]byte("n\n"))
-	approved, err = PromptYesNo(&stdin, promptForChanges)
+	approved, err = promptYesNo(&stdin, promptForChanges)
 	require.NoError(err)
 	assert.False(approved)
 
 	stdin.Reset()
 	stdin.Write([]byte("nO\n"))
-	approved, err = PromptYesNo(&stdin, promptForChanges)
+	approved, err = promptYesNo(&stdin, promptForChanges)
 	require.NoError(err)
 	assert.False(approved)
 
 	stdin.Reset()
 	stdin.Write([]byte("ja\n"))
-	approved, err = PromptYesNo(&stdin, promptForChanges)
+	approved, err = promptYesNo(&stdin, promptForChanges)
 	require.NoError(err)
 	assert.False(approved)
 }
