@@ -57,16 +57,27 @@ Per default, the Coordinator starts with the following default values. You can s
 ### Create a Manifest
 
 See the [`how to add a service`](https://marblerun.sh/docs/tasks/add-service/) documentation for more information on how to create a Manifest.
-You can find the enclave's specific values (MRENCLAVE, MRSIGNER, etc.) in `build/marble-test-config.json`
+You can find the enclave's specific values (MRENCLAVE, MRSIGNER, etc.) in `build/marble-test-config.json`:
 
-Here is an example that has only the `SecurityVersion` and `ProductID` set:
+```bash
+➜ cat build/marble-test-config.json
+{
+        "SecurityVersion": 1,
+        "ProductID": 1,
+        "UniqueID": "ac923351e562a127e7d5f58eae0787d13a1309b09893f6b6eb9eda49b1758621",
+        "SignerID": "233ac7711eba0f5b8c67c4abfef811bf8ff4cbca4fc7be6fb98e0dcd7a0ddad1"
+}
+
+```
+Here is an example that has the `SecurityVersion`, `ProductID`, and `SignerID` set:
 
 ```json
 {
 	"Packages": {
 		"backend": {
 			"SecurityVersion": 1,
-			"ProductID": 1
+			"ProductID": 1,
+			"SignerID": "233ac7711eba0f5b8c67c4abfef811bf8ff4cbca4fc7be6fb98e0dcd7a0ddad1"
 		}
 	},
 	"Infrastructures": {
@@ -105,7 +116,7 @@ Here is an example that has only the `SecurityVersion` and `ProductID` set:
 	}
 }
 ```
-
+**Replace the `SignerID` with YOUR value from `build/marble-test-config.json`**
 Save it in a file called `manifest.json` and upload it to the Coordinator with curl in another terminal:
 
 ```bash
@@ -146,6 +157,7 @@ Run a simple application.
 	| reference on one entry from your Manifest’s `Marbles` section | - (this needs to be set every time) | EDG_MARBLE_TYPE |
 	| local file path where the Marble stores its UUID | $PWD/uuid | EDG_MARBLE_UUID_FILE |
 	| DNS names the Coordinator will issue the Marble’s certificate for | $EDG_MARBLE_TYPE | EDG_MARBLE_DNS_NAMES |
+
 ## Marble-Injector
 
 By default a Marblerun installation ships with a Kubernetes [MutatingAdmissionWebhook](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#mutatingadmissionwebhook).
