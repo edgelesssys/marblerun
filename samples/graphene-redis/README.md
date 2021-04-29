@@ -1,21 +1,21 @@
-# Graphene redis sample
+# Graphene Redis example
 
-This sample is a slightly modified variant of the [Graphene redis sample](https://github.com/oscarlab/graphene/tree/master/Examples/redis).
-Instead of running a single [redis](https://redis.io/) server instance, Marblerun unleashes the full potential of redis and takes care of distributing the redis server in *replication* mode.
+This example is a slightly modified variant of the [Graphene Redis example](https://github.com/oscarlab/graphene/tree/master/Examples/redis).
+Instead of running a single [Redis](https://redis.io/) server instance, Marblerun unleashes the full potential of Redis and takes care of distributing the Redis server in *replication* mode.
 
-*Prerequisite*: Ensure you have access to a Kubernetes cluster with SGX-enabled nodes and kubectl installed and configured.
-Probably the easiest way to get started is to run Kubernetes on an [Azure Kubernetes Service (AKS)](https://docs.microsoft.com/en-us/azure/confidential-computing/confidential-nodes-aks-get-started), which offers SGX-enabled nodes.
+*Prerequisite:*
+* Ensure you have access to a Kubernetes cluster with SGX-enabled nodes and kubectl installed and configured. Probably the easiest way to get started is to run Kubernetes on an [Azure Kubernetes Service (AKS)](https://docs.microsoft.com/en-us/azure/confidential-computing/confidential-nodes-aks-get-started), which offers SGX-enabled nodes.
+* Ensure you have the [Marblerun CLI](https://www.marblerun.sh/docs/getting-started/cli/) installed.
+
 ## Kubernetes deployment walkthrough
 
-We are now installing a distributed redis server in master-slave replication mode on your cluster.
-
-*Prerequisite*: Ensure you have the [Marblerun CLI](https://www.marblerun.sh/docs/getting-started/cli/) installed.
+We are now installing a distributed Redis server in primary/subordinate replication mode on your cluster.
 
 ### Step 1: Installing Marblerun
 
 First, we are installing Marblerun on your cluster.
 
-* Install Marblerun on the Cluster
+* Install the Marblerun Coordinator on the Cluster
 
     ```bash
     marblerun install
@@ -46,43 +46,41 @@ First, we are installing Marblerun on your cluster.
     marblerun manifest set redis-manifest.json $MARBLERUN
     ```
 
-### Step 2: Deploying redis
+### Step 2: Deploying Redis
 
-* Create and add the redis namespace to Marblerun
+* Create and add the `redis` namespace to Marblerun
 
     ```bash
     kubectl create namespace redis
     marblerun namespace add redis
     ```
 
-* Deploy redis using helm
+* Deploy Redis using helm
 
     ```bash
     helm install -f ./kubernetes/values.yaml redis ./kubernetes -n redis
     ```
 
-* Wait for the redis server to start, this might take a moment
+* Wait for the Redis server to start, this might take a moment. The output shoud look like this:
 
-    * Basically we wait for this output
+    ```bash
+    kubectl logs redis-main-0 -n redis
+    ...
+    7:M 29 Mar 2021 12:25:40.076 # Server initialized
+    7:M 29 Mar 2021 12:25:40.108 * Ready to accept connections
+    ```
 
-        ```bash
-        kubectl logs redis-master-0 -n redis
-        ...
-        7:M 29 Mar 2021 12:25:40.076 # Server initialized
-        7:M 29 Mar 2021 12:25:40.108 * Ready to accept connections
-        ```
-
-* Port-forward the redis service to localhost
+* Port-forward the Redis service to localhost
 
     ```bash
     kubectl -n redis port-forward svc/redis 6379:6379 --address localhost >/dev/null &
     ```
 
-### Step 3: Using redis
+### Step 3: Using Redis
 
-You can now securely connect to the redis server using the `redis-cli` and the Marblerun CA certificate for authentication.
+You can now securely connect to the Redis server using the `redis-cli` and the Marblerun CA certificate for authentication.
 
-* Make sure you have the latest redis-cli with TLS support:
+* Make sure you have the latest Redis-CLI with TLS support:
 
     ```bash
     wget http://download.redis.io/redis-stable.tar.gz
@@ -96,7 +94,7 @@ You can now securely connect to the redis server using the `redis-cli` and the M
     marblerun certificate root $MARBLERUN -o marblerun.crt
     ```
 
-* Connect via the redis-cli
+* Connect via the Redis-CLI
 
     ```bash
     redis-cli -h localhost -p 6379 --tls --cacert marblerun.crt
@@ -108,9 +106,9 @@ You can now securely connect to the redis server using the `redis-cli` and the M
 
 ## Building the Docker image
 
-*Prerequisite*: Graphene is set up and the original redis sample is working.
+*Prerequisite*: Graphene is set up and the original Redis example is working.
 
-To marbleize the sample we edited [redis-server.manifest.template](redis-server.manifest.template). See comments starting with `MARBLERUN` for explanations of the required changes.
+To marbleize the example we edited [redis-server.manifest.template](redis-server.manifest.template). See comments starting with `MARBLERUN` for explanations of the required changes.
 
 Assuming you have built Graphene in `/graphene` copy the redis-server.manifest.template into the `/graphene/Examples/redis`
 

@@ -7,11 +7,11 @@ metadata:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: redis-master
+  name: redis-main
   namespace: redis
   labels:
     app: redis
-    role: master
+    role: main
     tier: backend
 spec:
   serviceName: "redis"
@@ -19,15 +19,15 @@ spec:
   selector:
     matchLabels:
       app: redis
-      role: master
+      role: main
       tier: backend
   template:
     metadata:
       labels:
         app: redis
-        role: master
+        role: main
         tier: backend
-        marblerun/marbletype: redis-master
+        marblerun/marbletype: redis-main
     spec:
       serviceAccountName: redis
       containers:
@@ -56,11 +56,11 @@ spec:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: redis-slave
+  name: redis-replica
   namespace: redis
   labels:
     app: redis
-    role: slave
+    role: replica
     tier: backend
 spec:
   serviceName: "redis"
@@ -68,15 +68,15 @@ spec:
   selector:
     matchLabels:
       app: redis
-      role: slave
+      role: replica
       tier: backend
   template:
     metadata:
       labels:
         app: redis
-        role: slave
+        role: replica
         tier: backend
-        marblerun/marbletype: redis-slave
+        marblerun/marbletype: redis-replica
     spec:
       serviceAccountName: redis
       containers:
@@ -108,10 +108,10 @@ metadata:
   name: redis
   namespace: redis
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     app: redis
-    role: master
+    role: main
   ports:
   - name: http
     port: 6379
