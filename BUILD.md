@@ -60,7 +60,7 @@ See the [`how to add a service`](https://marblerun.sh/docs/tasks/add-service/) d
 You can find the enclave's specific values (MRENCLAVE, MRSIGNER, etc.) in `build/marble-test-config.json`:
 
 ```bash
-➜ cat build/marble-test-config.json
+$ cat build/marble-test-config.json
 {
         "SecurityVersion": 1,
         "ProductID": 1,
