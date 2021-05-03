@@ -127,4 +127,3 @@ add_custom_target(sign-marble-test ALL DEPENDS marble-test-enclave.signed marble
 #
 
 add_custom_target(premain-graphene ALL ertgo build ${TRIMPATH} -buildmode=pie ${CMAKE_SOURCE_DIR}/cmd/premain-graphene)
-add_custom_target(premain-graphene-so ALL ertgo build ${TRIMPATH} -buildmode=c-shared -o premain-graphene.so ${CMAKE_SOURCE_DIR}/cmd/premain-graphene-so)
