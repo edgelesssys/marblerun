@@ -62,9 +62,8 @@ func TestParseTreeForChanges(t *testing.T) {
 	require.NoError(err)
 
 	// Checking all possible combinations will result in tremendous effort...
-	// So for this, we check if we at least changed the entry point / PRELOAD and the memory/thread requirements for the Go runtime
-	// For 'spawn'
-	original, changes, err := parseTreeForChanges(tree, modeSpawn)
+	// So for this, we check if we at least changed the entry point and the memory/thread requirements for the Go runtime
+	original, changes, err := parseTreeForChanges(tree)
 	require.NoError(err)
 	assert.NotEmpty(original)
 	assert.NotEmpty(changes)
@@ -72,19 +71,7 @@ func TestParseTreeForChanges(t *testing.T) {
 	// Verify minimum changes
 	var v datasize.ByteSize
 
-	assert.Equal("file:"+premainNameSpawn, changes["libos.entrypoint"])
-	assert.GreaterOrEqual(changes["sgx.thread_num"], 16)
-	require.NoError(v.UnmarshalText([]byte(changes["sgx.enclave_size"].(string))))
-	assert.GreaterOrEqual(v.GBytes(), 1.00)
-
-	// For 'preload'
-	original, changes, err = parseTreeForChanges(tree, modePreload)
-	require.NoError(err)
-	assert.NotEmpty(original)
-	assert.NotEmpty(changes)
-
-	// Verify minimum changes
-	assert.Equal("./"+premainNamePreload, changes["loader.env.LD_PRELOAD"])
+	assert.Equal("file:"+premainName, changes["libos.entrypoint"])
 	assert.GreaterOrEqual(changes["sgx.thread_num"], 16)
 	require.NoError(v.UnmarshalText([]byte(changes["sgx.enclave_size"].(string))))
 	assert.GreaterOrEqual(v.GBytes(), 1.00)
@@ -139,7 +126,7 @@ func TestDownloadPremain(t *testing.T) {
 	testContent := []byte("this is obviously not a binary, but we gotta test this anyway!")
 
 	// We don't want to hardcode the version, so let's use a regexp match here
-	httpmock.RegisterResponder("GET", `=~^https://github\.com/edgelesssys/marblerun/releases/download/v[0-9\.]*/premain-graphene[\.so]{0}|[\.so]{3}`,
+	httpmock.RegisterResponder("GET", `=~^https://github\.com/edgelesssys/marblerun/releases/download/v[0-9\.]*/premain-graphene`,
 		httpmock.NewBytesResponder(200, testContent))
 
 	// Create tempdir for downloads
@@ -147,33 +134,13 @@ func TestDownloadPremain(t *testing.T) {
 	require.NoError(err)
 	defer os.RemoveAll(tempDir)
 
-	// Try to download spawn & preload, fail for some invalid input
-	assert.NoError(downloadPremain(tempDir, modeSpawn))
-	content, err := ioutil.ReadFile(filepath.Join(tempDir, premainNameSpawn))
+	// Try to download premain
+	assert.NoError(downloadPremain(tempDir))
+	content, err := ioutil.ReadFile(filepath.Join(tempDir, premainName))
 	assert.NoError(err)
 	assert.Equal(testContent, content)
 
-	assert.NoError(downloadPremain(tempDir, modePreload))
-	content, err = ioutil.ReadFile(filepath.Join(tempDir, premainNamePreload))
-	assert.NoError(err)
-	assert.Equal(testContent, content)
-
-	assert.Error(downloadPremain(tempDir, modeInvalid))
-
-	// We should have two downloads here
+	// We should have one download here
 	info := httpmock.GetCallCountInfo()
-	assert.Equal(2, info[`GET =~^https://github\.com/edgelesssys/marblerun/releases/download/v[0-9\.]*/premain-graphene[\.so]{0}|[\.so]{3}`])
-}
-
-func TestToMode(t *testing.T) {
-	assert := assert.New(t)
-
-	mode := toMode("spawn")
-	assert.Equal(modeSpawn, mode)
-
-	mode = toMode("preload")
-	assert.Equal(modePreload, mode)
-
-	mode = toMode("someInvalidMode")
-	assert.Equal(modeInvalid, mode)
+	assert.Equal(1, info[`GET =~^https://github\.com/edgelesssys/marblerun/releases/download/v[0-9\.]*/premain-graphene`])
 }

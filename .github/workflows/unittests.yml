@@ -44,7 +44,6 @@ jobs:
             build/coordinator-noenclave
             build/coordinator-era.json
             build/premain-graphene
-            build/premain-graphene.so
             build/marble-injector
             build/marblerun
 
