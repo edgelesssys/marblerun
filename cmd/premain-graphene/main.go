@@ -6,10 +6,6 @@
 
 package main
 
-// #include <spawn.h>
-// #include <sys/wait.h>
-import "C"
-
 import (
 	"os"
 	"strings"
@@ -37,20 +33,8 @@ func main() {
 		panic(err)
 	}
 
-	argv := toCArray(os.Args)
-	envp := toCArray(os.Environ())
-
-	// spawn service
-	if res := C.posix_spawn(nil, C.CString(service), nil, nil, &argv[0], &envp[0]); res != 0 {
-		panic(syscall.Errno(res))
+	// launch service
+	if err := syscall.Exec(service, os.Args, os.Environ()); err != nil {
+		panic(err)
 	}
-	C.wait(nil)
-}
-
-func toCArray(arr []string) []*C.char {
-	result := make([]*C.char, len(arr)+1)
-	for i, s := range arr {
-		result[i] = C.CString(s)
-	}
-	return result
 }
