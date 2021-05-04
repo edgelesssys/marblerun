@@ -1,7 +1,7 @@
 # How to create a C++ Marble
 This example shows how to build a confidential C++ application and run it in Marblerun. This can serve you as a blueprint for making existing applications Marblerun-ready or creating new [Marbles](https://www.marblerun.sh/docs/getting-started/marbles/). If you haven't already, [setup Marblerun](../../BUILD.md#build) to get ready.
 
-**Note:** You can run this example on any hardware by simulating the enclave through setting `OE_SIMULATION=1` as environment variable. This might help you to get started with with the development of confidential apps. However, please notice that this bypasses any security. Detailed information on how to develope secure Marbles can be found in [Marbleruns documentation](https://www.marblerun.sh/docs/tasks/add-service/).
+**Note:** You can run this example on any hardware by simulating the enclave through setting `OE_SIMULATION=1` as environment variable. This might help you to get started with with the development of confidential apps. However, please notice that this bypasses any security. Detailed information on how to develope secure Marbles can be found in [Marbleruns documentation](https://www.marblerun.sh/docs/workflows/add-service/).
 
 The directory `app` contains the application code:
 

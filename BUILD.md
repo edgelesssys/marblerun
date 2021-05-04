@@ -56,7 +56,7 @@ Per default, the Coordinator starts with the following default values. You can s
 
 ### Create a Manifest
 
-See the [`how to add a service`](https://marblerun.sh/docs/tasks/add-service/) documentation for more information on how to create a Manifest.
+See the [`how to add a service`](https://marblerun.sh/docs/workflows/add-service/) documentation for more information on how to create a Manifest.
 You can find the enclave's specific values (MRENCLAVE, MRSIGNER, etc.) in `build/marble-test-config.json`:
 
 ```bash
