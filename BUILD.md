@@ -75,6 +75,7 @@ Here is an example that has the `SecurityVersion`, `ProductID`, and `SignerID` s
 {
 	"Packages": {
 		"backend": {
+			"Debug": true,
 			"SecurityVersion": 1,
 			"ProductID": 1,
 			"SignerID": "233ac7711eba0f5b8c67c4abfef811bf8ff4cbca4fc7be6fb98e0dcd7a0ddad1"
@@ -117,7 +118,10 @@ Here is an example that has the `SecurityVersion`, `ProductID`, and `SignerID` s
 }
 ```
 **Replace the `SignerID` with YOUR value from `build/marble-test-config.json`**
-Save it in a file called `manifest.json` and upload it to the Coordinator with curl in another terminal:
+
+*Note*: `Debug` is set to `true` here so that this example works with SGX debug enclaves. This is not secure for production.
+
+Save the manifest in a file called `manifest.json` and upload it to the Coordinator with curl in another terminal:
 
 ```bash
 curl -k --data-binary @manifest.json https://localhost:4433/manifest
