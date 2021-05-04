@@ -154,7 +154,7 @@ func TestSetManifestInvalid(t *testing.T) {
 	assert.Equal("manifest specfies both UniqueID *and* SignerID/ProductID/SecurityVersion in package backend", err.Error())
 
 	// Enable debug mode, should work now
-	c = testManifestInvalidDebugCase(c, manifest, backendPackage, assert, require)
+	_ = testManifestInvalidDebugCase(c, manifest, backendPackage, assert, require)
 }
 
 func TestGetCertQuote(t *testing.T) {
@@ -178,6 +178,7 @@ func TestGetCertQuote(t *testing.T) {
 
 func TestGetStatus(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 	c, _ := mustSetup()
 
 	// Server should be ready to accept a manifest after initializing a mock core
@@ -188,6 +189,7 @@ func TestGetStatus(t *testing.T) {
 
 	// Set a manifest, state should change
 	_, err = c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
+	require.NoError(err)
 	statusCode, status, err = c.GetStatus(context.TODO())
 	assert.NoError(err, "GetStatus failed")
 	assert.EqualValues(stateAcceptingMarbles, statusCode, "We should be ready to accept Marbles now, but GetStatus does tell us we don't.")
@@ -342,12 +344,14 @@ func TestUpdateManifestInvalid(t *testing.T) {
 	badUpdateManifest.Packages["backend"] = badModPackage
 	delete(badUpdateManifest.Packages, "frontend")
 	badRawManifest, err = json.Marshal(badUpdateManifest)
+	require.NoError(err)
 	err = c.UpdateManifest(context.TODO(), badRawManifest)
 	assert.Error(err)
 
 	// Test what happens if no packages are defined at all
 	badUpdateManifest.Packages = nil
 	badRawManifest, err = json.Marshal(badUpdateManifest)
+	require.NoError(err)
 	err = c.UpdateManifest(context.TODO(), badRawManifest)
 	assert.Error(err)
 }
