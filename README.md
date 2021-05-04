@@ -61,6 +61,12 @@ We provide basic examples on how to build confidential apps with Marblerun.
 * See [helloworld](samples/helloworld) for an example in Go.
 * See [helloc++](samples/helloc++) for an example in C++.
 * See [graphene-hello](samples/graphene-hello) for an example using Graphene.
+* See [occlum-hello](samples/occlum-hello) for an example using Occlum.
+
+### Advanced
+
+In case you want to see how you can integrate popular existing solutions with Marblerun, we provide some more advanced examples.
+
 * See [graphene-nginx](samples/graphene-nginx) for an example of converting an existing Graphene application to a Marble.
 * See [graphene-redis](samples/graphene-redis) for a distributed Redis example using Graphene.
 
