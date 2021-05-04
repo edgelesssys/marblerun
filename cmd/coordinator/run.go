@@ -21,10 +21,10 @@ import (
 )
 
 // Version is the Coordinator version
-var Version = "0.3.1-dev"
+var Version = "0.0.0" // Don't touch! Automatically injected at build-time.
 
 // GitCommit is the git commit hash
-var GitCommit string
+var GitCommit string // Don't touch! Automatically injected at build-time.
 
 func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer core.Sealer, recovery recovery.Recovery) {
 	// Setup logging with Zap Logger
