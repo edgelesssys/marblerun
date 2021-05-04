@@ -161,6 +161,7 @@ func TestErrorAndCleanup(t *testing.T) {
 	require.NoError(err)
 
 	_, err = testClient.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), webhookName, metav1.GetOptions{})
+	require.NoError(err)
 
 	err = errorAndCleanup(testError, testClient)
 	assert.Equal(testError, err)

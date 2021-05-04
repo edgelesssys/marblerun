@@ -47,7 +47,7 @@ func TestCliManifestGet(t *testing.T) {
 	s.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	})
-	resp, err = cliManifestGet(host, []*pem.Block{cert})
+	_, err = cliManifestGet(host, []*pem.Block{cert})
 	require.Error(err)
 }
 

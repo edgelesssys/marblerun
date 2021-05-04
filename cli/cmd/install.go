@@ -175,9 +175,7 @@ func cliInstall(options *installOptions) error {
 			return errorAndCleanup(err, options.kubeClient)
 		}
 
-		for _, val := range injectorValues {
-			stringValues = append(stringValues, val)
-		}
+		stringValues = append(stringValues, injectorValues...)
 		stringValues = append(stringValues, fmt.Sprintf("marbleInjector.resourceKey=%s", resourceKey))
 	}
 
@@ -247,7 +245,7 @@ func getRepo(name string, url string, settings *cli.EnvSettings) error {
 	}
 
 	if _, err := r.DownloadIndexFile(); err != nil {
-		return errors.New("Chart repository cannot be reached")
+		return errors.New("chart repository cannot be reached")
 	}
 
 	f.Update(c)

@@ -62,7 +62,7 @@ func cliNameSpaceRemove(namespace string, kubeClient kubernetes.Interface) error
 			return fmt.Errorf("unexpected value in namespace label: %s", val)
 		}
 	} else {
-		return fmt.Errorf("Namespace [%s] does not belong to the Marblerun mesh", namespace)
+		return fmt.Errorf("namespace [%s] does not belong to the Marblerun mesh", namespace)
 	}
 
 	return nil
