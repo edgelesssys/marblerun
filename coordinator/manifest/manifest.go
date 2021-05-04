@@ -242,7 +242,7 @@ func (m Manifest) CheckUpdate(ctx context.Context, originalPackages map[string]q
 		}
 
 		// Check if singlePackages contains illegal values to update
-		if singlePackage.Debug != false || singlePackage.UniqueID != "" || singlePackage.SignerID != "" || singlePackage.ProductID != nil {
+		if singlePackage.Debug || singlePackage.UniqueID != "" || singlePackage.SignerID != "" || singlePackage.ProductID != nil {
 			return errors.New("update manifest contains unupdatable values")
 		}
 

@@ -188,11 +188,13 @@ func TestGenerateSecrets(t *testing.T) {
 
 	// Check if we get an empty secret map as output for an empty map as input
 	generatedSecrets, err = c.generateSecrets(context.TODO(), secretsEmptyMap, uuid.Nil, c.rootCert, c.rootPrivK)
+	require.NoError(err)
 	assert.IsType(map[string]manifest.Secret{}, generatedSecrets)
 	assert.Len(generatedSecrets, 0)
 
 	// Check if we get an empty secret map as output for nil
 	generatedSecrets, err = c.generateSecrets(context.TODO(), nil, uuid.Nil, c.rootCert, c.rootPrivK)
+	require.NoError(err)
 	assert.IsType(map[string]manifest.Secret{}, generatedSecrets)
 	assert.Len(generatedSecrets, 0)
 
