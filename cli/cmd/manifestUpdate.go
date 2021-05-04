@@ -66,12 +66,12 @@ func cliManifestUpdate(manifest []byte, host string, clCert tls.Certificate, caC
 	// Set rootCA for connection to coordinator
 	certPool := x509.NewCertPool()
 	if ok := certPool.AppendCertsFromPEM(pem.EncodeToMemory(caCert[len(caCert)-1])); !ok {
-		return errors.New("Failed to parse certificate")
+		return errors.New("failed to parse certificate")
 	}
 	// Add intermediate cert if applicable
 	if len(caCert) > 1 {
 		if ok := certPool.AppendCertsFromPEM(pem.EncodeToMemory(caCert[0])); !ok {
-			return errors.New("Failed to parse certificate")
+			return errors.New("failed to parse certificate")
 		}
 	}
 

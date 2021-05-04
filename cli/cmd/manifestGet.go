@@ -60,7 +60,7 @@ func cliManifestGet(host string, cert []*pem.Block) ([]byte, error) {
 		return nil, err
 	}
 	if resp.Body == nil {
-		return nil, errors.New("Received empty manifest")
+		return nil, errors.New("received empty manifest")
 	}
 	defer resp.Body.Close()
 

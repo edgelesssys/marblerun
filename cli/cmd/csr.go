@@ -134,10 +134,7 @@ func (crt *certificateV1) signRequest() error {
 
 	if err := waitForResource(webhookName, crt.kubeClient, crt.timeout, func(name string, client kubernetes.Interface) bool {
 		_, err := client.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), name, metav1.GetOptions{})
-		if err != nil {
-			return false
-		}
-		return true
+		return err == nil
 	}); err != nil {
 		return err
 	}
@@ -153,6 +150,9 @@ func (crt *certificateV1) signRequest() error {
 	})
 
 	_, err = crt.kubeClient.CertificatesV1().CertificateSigningRequests().UpdateApproval(context.TODO(), webhookName, certReturn, metav1.UpdateOptions{})
+	if err != nil {
+		return err
+	}
 
 	return waitForResource(webhookName, crt.kubeClient, crt.timeout, func(name string, client kubernetes.Interface) bool {
 		csr, err := client.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), webhookName, metav1.GetOptions{})
@@ -219,7 +219,7 @@ func createCSR(privKey *rsa.PrivateKey) (*pem.Block, error) {
 // to check if a resource has been created and can be used
 func waitForResource(name string, kubeClient kubernetes.Interface, timeout int, resourceCheck func(string, kubernetes.Interface) bool) error {
 	for i := 0; i < timeout; i++ {
-		if ok := resourceCheck(name, kubeClient); ok == true {
+		if resourceCheck(name, kubeClient) {
 			return nil
 		}
 		time.Sleep(1 * time.Second)
