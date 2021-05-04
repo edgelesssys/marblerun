@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.11)
 
-project(marblerun VERSION 0.3.1)
+project(marblerun VERSION 0.3.2)
 execute_process(COMMAND bash "-c" "git rev-parse HEAD | tr -d '\n'" OUTPUT_VARIABLE GIT_COMMIT)
 find_package(OpenEnclave CONFIG REQUIRED)
 
