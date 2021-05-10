@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
