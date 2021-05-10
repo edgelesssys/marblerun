@@ -245,3 +245,60 @@ func TestCliManifestSignature(t *testing.T) {
 	signature := hex.EncodeToString(hash[:])
 	assert.Equal(signature, cliManifestSignature(testValue))
 }
+
+func TestCliManifestVerify(t *testing.T) {
+	assert := assert.New(t)
+
+	s, host, cert := newTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal("/manifest", r.RequestURI)
+		assert.Equal(http.MethodGet, r.Method)
+		type testResp struct {
+			ManifestSignature string
+		}
+
+		data := testResp{
+			ManifestSignature: "TestSignature",
+		}
+
+		serverResp := server.GeneralResponse{
+			Status: "success",
+			Data:   data,
+		}
+
+		assert.NoError(json.NewEncoder(w).Encode(serverResp))
+	}))
+	defer s.Close()
+
+	err := cliManifestVerify("TestSignature", host, []*pem.Block{cert})
+	assert.NoError(err)
+
+	err = cliManifestVerify("InvalidSignature", host, []*pem.Block{cert})
+	assert.Error(err)
+}
+
+func TestGetSignatureFromString(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	tmpFile, err := ioutil.TempFile("", "unittest")
+	require.NoError(err)
+	defer os.Remove(tmpFile.Name())
+
+	testValue := []byte("TestSignature")
+	hash := sha256.Sum256(testValue)
+	directSignature := hex.EncodeToString(hash[:])
+
+	_, err = tmpFile.Write(testValue)
+	require.NoError(err)
+
+	testSignature1, err := getSignatureFromString(directSignature)
+	assert.NoError(err)
+	assert.Equal(directSignature, testSignature1)
+
+	testSignature2, err := getSignatureFromString(tmpFile.Name())
+	assert.NoError(err)
+	assert.Equal(directSignature, testSignature2)
+
+	_, err = getSignatureFromString("invalidFilename")
+	assert.Error(err)
+}
