@@ -44,7 +44,7 @@ func getSignatureFromString(manifest string) (string, error) {
 		if os.IsNotExist(err) {
 			// command was called with a string that is not an existing file
 			// check if the string could be a valid signature
-			if len(manifest) != 64 {
+			if len(manifest) != hex.EncodedLen(sha256.Size) {
 				return "", fmt.Errorf("%s is not a file and of invalid length to be a signature (needs to be 32 bytes)", manifest)
 			}
 			if _, err := hex.DecodeString(manifest); err != nil {
