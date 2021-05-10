@@ -14,7 +14,7 @@ func newManifestVerify() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "verify <manifest/signature> <IP:PORT>",
 		Short: "Verifies the signature of a Marblerun manifest",
-		Long:  `Verifies the signature of a Marblerun manifest`,
+		Long:  `Verifies that the signature returned by the Coordinator is equal to a local signature`,
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			manifest := args[0]
@@ -43,7 +43,7 @@ func getSignatureFromString(manifest string) (string, error) {
 	if err != nil {
 		if os.IsNotExist(err) {
 			// command was called with a string that is not an existing file
-			// Check if the string could be a valid signature
+			// check if the string could be a valid signature
 			if len(manifest) != 64 {
 				return "", fmt.Errorf("%s is not a file and of invalid length to be a signature (needs to be 32 bytes)", manifest)
 			}
@@ -56,8 +56,7 @@ func getSignatureFromString(manifest string) (string, error) {
 		}
 	}
 
-	// manifest is an existing file
-	// localSignature is the signature of the file
+	// manifest is an existing file -> return the signature of the file
 	rawManifest, err := ioutil.ReadFile(manifest)
 	if err != nil {
 		return "", err
