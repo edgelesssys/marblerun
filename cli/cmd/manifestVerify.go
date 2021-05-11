@@ -33,6 +33,7 @@ func newManifestVerify() *cobra.Command {
 
 			return cliManifestVerify(localSignature, hostName, cert)
 		},
+		SilenceUsage: true,
 	}
 
 	return cmd
