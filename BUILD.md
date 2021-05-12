@@ -1,32 +1,32 @@
 
-# Build and Development Guide
+# Build and development guide
 
 ## Repo layout
 
 Marblerun is written entirely in Go and builds on Edgeless RT, which is written largely in C/C++.
 
-### Control Plane
+### Control plane
 
 * [`coordinator`](coordinator):
     * [`config`](coordinator/config): Environment variables for configuration
     * [`core`](coordinator/core): Provides the gRPC API for Marbles and HTTP-REST API for clients
     * [`quote`](coordinator/quote): Provides remote attestation quotes
-    * [`rpc`](coordinator/rpc): Protobuf definitions for the control plane <-> data plane communication.
-    * [`server`](coordinator/server): Provides the gRPC and HTTP server
+    * [`rpc`](coordinator/rpc): Protobuf definitions for the control plane <-> data plane communication
+    * [`server`](coordinator/server): Provides the Marble and client API server
 
-### Data Plane
+### Data plane
 
 * [`marble`](marble):
 	* [`config`](marble/config): Environment variables for configuration
-	* [`premain`](marble/config): The data plane code written in Go
+	* [`premain`](marble/premain): The data plane code that prepares the Marble's environment
 
 ## Build
 
 *Prerequisites*:
-* [Edgeless RT](https://github.com/edgelesssys/edgelessrt) is installed and sourced.
+* [Edgeless RT](https://github.com/edgelesssys/edgelessrt) is installed and sourced
 * Go 1.14 or newer
 
-Build the coordinator control plane and marble test applications.
+Build the Coordinator control plane and Marble test applications:
 
 ```bash
 mkdir build
@@ -36,6 +36,7 @@ make
 ```
 
 ## Run
+Here's how to run the Coordinator and test Marbles.
 
 ### Run the Coordinator
 
@@ -43,12 +44,12 @@ make
 OE_SIMULATION=1 erthost build/coordinator-enclave.signed
 ```
 
-Per default, the Coordinator starts with the following default values. You can set your desired configuration by setting the environment variables.
+The Coordinator starts with the following default values. You can set your desired configuration by setting the environment variables.
 
 | Setting | Default Value | Environment Variable |
 | --- | --- | --- |
-| the listener address for the gRPC server | localhost:2001 |  EDG_COORDINATOR_MESH_ADDR |
-| the listener address for the HTTP server | localhost: 4433 | EDG_COORDINATOR_CLIENT_ADDR |
+| the listener address for the Marble server | localhost:2001 |  EDG_COORDINATOR_MESH_ADDR |
+| the listener address for the client-API server | localhost: 4433 | EDG_COORDINATOR_CLIENT_ADDR |
 | the DNS names for the cluster’s root certificate | localhost | EDG_COORDINATOR_DNS_NAMES |
 | the file path for storing sealed data | $PWD/marblerun-coordinator-data | EDG_COORDINATOR_SEAL_DIR |
 
@@ -56,8 +57,8 @@ Per default, the Coordinator starts with the following default values. You can s
 
 ### Create a Manifest
 
-See the [`how to add a service`](https://marblerun.sh/docs/workflows/add-service/) documentation for more information on how to create a Manifest.
-You can find the enclave's specific values (MRENCLAVE, MRSIGNER, etc.) in `build/marble-test-config.json`:
+See the [how to add a service](https://marblerun.sh/docs/workflows/add-service/) documentation on how to create a Manifest.
+You can find the test enclave's specific values (MRENCLAVE, MRSIGNER, etc.) in `build/marble-test-config.json`:
 
 ```bash
 $ cat build/marble-test-config.json
@@ -69,7 +70,7 @@ $ cat build/marble-test-config.json
 }
 
 ```
-Here is an example that has the `SecurityVersion`, `ProductID`, and `SignerID` set:
+Here's an example that has the `SecurityVersion`, `ProductID`, and `SignerID` set:
 
 ```json
 {
@@ -121,7 +122,7 @@ Here is an example that has the `SecurityVersion`, `ProductID`, and `SignerID` s
 
 *Note*: `Debug` is set to `true` here so that this example works with SGX debug enclaves. This is not secure for production.
 
-Save the manifest in a file called `manifest.json` and upload it to the Coordinator with curl in another terminal:
+Save the Manifest in a file called `manifest.json` and upload it to the Coordinator with curl in another terminal:
 
 ```bash
 curl -k --data-binary @manifest.json https://localhost:4433/manifest
@@ -153,14 +154,14 @@ Run a simple application.
 
     In the coordinator-terminal you should see `Successfully activated new Marble of type 'client: ...'`
 
-* *Note*: Per default, a Marble starts with the following default values. You can set your desired configuration by setting the environment variables.
+* *Note*: A Marble starts with the following default values. You can set your desired configuration by setting the environment variables.
 
 	| Setting | Default Value | Environment Variable |
 	| --- | --- | --- |
 	| network address of the Coordinator’s API for Marbles | localhost:2001 |  EDG_MARBLE_COORDINATOR_ADDR |
 	| reference on one entry from your Manifest’s `Marbles` section | - (this needs to be set every time) | EDG_MARBLE_TYPE |
 	| local file path where the Marble stores its UUID | $PWD/uuid | EDG_MARBLE_UUID_FILE |
-	| DNS names the Coordinator will issue the Marble’s certificate for | $EDG_MARBLE_TYPE | EDG_MARBLE_DNS_NAMES |
+	| DNS names the Coordinator will issue the Marble’s certificate for | localhost | EDG_MARBLE_DNS_NAMES |
 
 ## Marble-Injector
 
@@ -179,7 +180,7 @@ make marble-injector
 
 ## Test
 
-### Unit Tests
+### Unit tests
 
 ```bash
 go test -race ./...
@@ -205,14 +206,14 @@ go test -v -tags integration ./test -b ../build -noenclave
 
 ## Docker image
 
-You can build the docker image of the coordinator by providing a signing key:
+You can build the Docker image of the Coordinator by providing a signing key:
 
 ```bash
 openssl genrsa -out private.pem -3 3072
 docker buildx build --secret id=signingkey,src=private.pem --target release --tag ghcr.io/edgelesssys/coordinator -f dockerfiles/Dockerfile.coordinator .
 ```
 
-You can build the docker image of the marble-injector as follows:
+You can build the Docker image of the marble-injector as follows:
 
 ```bash
 docker buildx build --tag ghcr.io/edgelesssys/marble-injector -f dockerfiles/Dockerfile.marble-injector .

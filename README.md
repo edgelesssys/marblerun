@@ -12,7 +12,7 @@
 
 Build your confidential microservices with [EGo][ego] or another [runtime](#supported-runtimes), distribute them with Kubernetes on an SGX-enabled cluster, and let Marblerun take care of the rest. Deploy end-to-end secure and verifiable AI pipelines or crunch on sensitive big data in the cloud.
 
-Confidential computing at scale has never been easier. Marblerun guarantees that the topology of your distributed app adheres to a Manifest specified in simple JSON. Marblerun verifies the integrity of services, bootstraps them, and sets up encrypted connections between them. If a node fails, Marblerun will seamlessly substitute it with respect to the rules defined in the Manifest.
+Marblerun guarantees that the topology of your distributed app adheres to a Manifest specified in simple JSON. Marblerun verifies the integrity of services, bootstraps them, and sets up encrypted connections between them. If a node fails, Marblerun will seamlessly substitute it with respect to the rules defined in the Manifest.
 
 To keep things simple, Marblerun issues one concise remote attestation statement for your whole distributed app. This can be used by anyone to verify the integrity of your distributed app.
 
@@ -30,7 +30,7 @@ To keep things simple, Marblerun issues one concise remote attestation statement
 
 <img src="assets/overview.svg" alt="overview" width="600"/>
 
-### Supported Runtimes
+### Supported runtimes
 Marblerun supports services built with one of the following frameworks:
 * [EGo][ego]
 * [Graphene][graphene]
@@ -40,7 +40,7 @@ More are coming soon.
 
 ## Quickstart and documentation
 
-See the [Getting Started Guide][getting-started] to set up a distributed confidential-computing app in a few simple steps.
+See the [Getting Started Guide][getting-started] to set up a distributed confidential-computing app in a few steps.
 See the [documentation][docs] for details.
 
 ## Working in this repo
@@ -49,30 +49,30 @@ See the [documentation][docs] for details.
 
 ## Get involved
 
-* Follow [@EdgelessSystems][twitter] on Twitter.
-* Chat with us on [Discord][discord].
+* Follow [@EdgelessSystems][twitter] on Twitter
+* Chat with us on [Discord][discord]
 
 ## Examples
 
-### Hello World
+### Hello world
 
-We provide basic examples on how to build confidential apps with Marblerun.
+We provide basic examples on how to build confidential apps with Marblerun:
 
-* See [helloworld](samples/helloworld) for an example in Go.
-* See [helloc++](samples/helloc++) for an example in C++.
-* See [graphene-hello](samples/graphene-hello) for an example using Graphene.
-* See [occlum-hello](samples/occlum-hello) for an example using Occlum.
+* See [helloworld](samples/helloworld) for an example in Go
+* See [helloc++](samples/helloc++) for an example in C++
+* See [graphene-hello](samples/graphene-hello) for an example using Graphene
+* See [occlum-hello](samples/occlum-hello) for an example using Occlum
 
 ### Advanced
 
-In case you want to see how you can integrate popular existing solutions with Marblerun, we provide some more advanced examples.
+In case you want to see how you can integrate popular existing solutions with Marblerun, we provide more advanced examples:
 
-* See [graphene-nginx](samples/graphene-nginx) for an example of converting an existing Graphene application to a Marble.
-* See [graphene-redis](samples/graphene-redis) for a distributed Redis example using Graphene.
+* See [graphene-nginx](samples/graphene-nginx) for an example of converting an existing Graphene application to a Marble
+* See [graphene-redis](samples/graphene-redis) for a distributed Redis example using Graphene
 
-### Confidential Emoji Voting
+### Confidential emoji voting
 
-The popular [Linkerd][linkerd] service mesh uses the simple and scalable *emojivoto* app as its default demo. You can find our confidential variant [here][emojivoto]. Your emoji votes have never been more secure! 😉
+The popular [Linkerd][linkerd] service mesh uses the simple and scalable *emojivoto* app as its default demo. Check out our [confidential variant][emojivoto]. Your emoji votes have never been more secure! 😉
 
 <!-- refs -->
 [docs]: https://marblerun.sh/docs/introduction/
