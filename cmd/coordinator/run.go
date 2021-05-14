@@ -20,12 +20,6 @@ import (
 	"go.uber.org/zap"
 )
 
-// Version is the Coordinator version
-var Version = "0.0.0" // Don't touch! Automatically injected at build-time.
-
-// GitCommit is the git commit hash
-var GitCommit string // Don't touch! Automatically injected at build-time.
-
 func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer core.Sealer, recovery recovery.Recovery) {
 	// Setup logging with Zap Logger
 	var zapLogger *zap.Logger
@@ -43,7 +37,7 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer 
 	}
 	defer zapLogger.Sync() // flushes buffer, if any
 
-	zapLogger.Info("starting coordinator", zap.String("version", Version), zap.String("commit", GitCommit))
+	zapLogger.Info("starting coordinator", zap.String("version", util.Version), zap.String("commit", util.GitCommit))
 
 	// fetching env vars
 	dnsNamesString := util.Getenv(config.DNSNames, config.DNSNamesDefault)

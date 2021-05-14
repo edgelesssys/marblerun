@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.11)
 
 project(marblerun VERSION 0.3.2)
-execute_process(COMMAND bash "-c" "git rev-parse HEAD | tr -d '\n'" OUTPUT_VARIABLE GIT_COMMIT)
 find_package(OpenEnclave CONFIG REQUIRED)
 
 if (NOT CMAKE_BUILD_TYPE)
@@ -10,6 +9,12 @@ endif ()
 if (NOT CMAKE_BUILD_TYPE STREQUAL Debug)
   set(TRIMPATH -trimpath)
 endif ()
+
+# Set commit hash
+add_custom_command(
+  OUTPUT ${CMAKE_SOURCE_DIR}/util/version.go ${CMAKE_SOURCE_DIR}/util/_version.go
+  COMMAND CMAKE_SOURCE_DIR=${CMAKE_SOURCE_DIR} ${CMAKE_COMMAND} -P ${CMAKE_SOURCE_DIR}/version.cmake ${PROJECT_VERSION}
+)
 
 # Generate key
 add_custom_command(
@@ -24,15 +29,16 @@ add_custom_command(
 add_custom_target(coordinatorlib
   ertgo build ${TRIMPATH} -buildmode=c-archive -tags enclave
   -o libcoordinator.a
-  -ldflags "-X 'main.Version=${PROJECT_VERSION}' -X 'main.GitCommit=${GIT_COMMIT}'"
   ${CMAKE_SOURCE_DIR}/cmd/coordinator
+  DEPENDS ${CMAKE_SOURCE_DIR}/util/version.go
 )
 
 add_custom_target(coordinator-noenclave ALL
   go build ${TRIMPATH}
   -o coordinator-noenclave
-  -ldflags "-X 'main.Version=${PROJECT_VERSION}' -X 'main.GitCommit=${GIT_COMMIT}'"
-  ${CMAKE_SOURCE_DIR}/cmd/coordinator)
+  ${CMAKE_SOURCE_DIR}/cmd/coordinator
+  DEPENDS ${CMAKE_SOURCE_DIR}/util/version.go
+)
 
 add_executable(coordinator-enclave enclave/main.c)
 add_dependencies(coordinator-enclave coordinatorlib)
@@ -74,12 +80,11 @@ add_custom_target(marble-injector ALL
 # Build CLI
 #
 
-set(cliPath "github.com/edgelesssys/marblerun/cli/cmd")
 add_custom_target(cli ALL
   go build ${TRIMPATH}
   -o marblerun
-  -ldflags "-X '${cliPath}.Version=${PROJECT_VERSION}' -X '${cliPath}.GitCommit=${GIT_COMMIT}'"
   ${CMAKE_SOURCE_DIR}/cli
+  DEPENDS ${CMAKE_SOURCE_DIR}/util/version.go
 )
 
 #
