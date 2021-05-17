@@ -27,7 +27,7 @@ cd marblerun/samples/occlum-hello
 make
 ```
 
-After you build the Occlum image, you need to retrieve the for `UniqueID` or `SignerID`/`ProductID`/`SecurityVersion` values for Marblerun's [`manifest.json`](manifest.json). You can get the values using the Marblerun CLI tool:
+After you build the Occlum image, you need to retrieve either the `UniqueID` or the `SignerID`/`ProductID`/`SecurityVersion` triple for Marblerun's [`manifest.json`](manifest.json). You can get the values using the Marblerun CLI tool:
 
 ```sh
 wget https://github.com/edgelesssys/marblerun/releases/latest/download/marblerun

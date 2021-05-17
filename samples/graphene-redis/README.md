@@ -30,8 +30,8 @@ First, we are installing Marblerun on your cluster.
 * Port-forward the client API service to localhost
 
     ```bash
-    kubectl -n marblerun port-forward svc/coordinator-client-api 25555:25555 --address localhost >/dev/null &
-    export MARBLERUN=localhost:25555
+    kubectl -n marblerun port-forward svc/coordinator-client-api 4433:4433 --address localhost >/dev/null &
+    export MARBLERUN=localhost:4433
     ```
 
 * Check Coordinator's status, this should return status `2: ready to accept manifest`.

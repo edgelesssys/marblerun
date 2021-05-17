@@ -2,7 +2,7 @@
     "Packages": {
         "world": {
             "Debug": true,
-            "UniqueID": "<replace with mrenclave obtained by `ego uniqueid hello`>"
+            "UniqueID": "<replace with mrenclave obtained by `oesign dump -e enclave.signed`>"
         }
     },
     "Marbles": {
