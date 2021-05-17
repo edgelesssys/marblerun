@@ -46,7 +46,7 @@ func verifyCoordinator(host string, configFilename string, insecure bool) ([]*pe
 		// if errors were caused by an empty kube config file or by being unable to connect to a cluster we assume the coordinator is running as a standlone
 		// and we default to the latest era-config file
 		var dnsError *net.DNSError
-		if !clientcmd.IsEmptyConfig(err) && !errors.As(err, &dnsError) {
+		if !clientcmd.IsEmptyConfig(err) && !errors.As(err, &dnsError) && !os.IsNotExist(err) {
 			return nil, err
 		}
 		eraURL = "https://github.com/edgelesssys/marblerun/releases/latest/download/coordinator-era.json"
