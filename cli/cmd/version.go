@@ -4,10 +4,15 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/edgelesssys/marblerun/util"
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+// Version is the CLI version
+var Version = "0.0.0" // Don't touch! Automatically injected at build-time.
+
+// GitCommit is the git commit hash
+var GitCommit = "0000000000000000000000000000000000000000" // Don't touch! Automatically injected at build-time.
 
 func newVersionCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -16,7 +21,7 @@ func newVersionCmd() *cobra.Command {
 		Long:  `Display version of this CLI and (if running) the Marblerun coordinator`,
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("CLI Version: v%s \nCommit: %s\n", util.Version, util.GitCommit)
+			fmt.Printf("CLI Version: v%s \nCommit: %s\n", Version, GitCommit)
 
 			cVersion, err := getCoordinatorVersion()
 			if err != nil {

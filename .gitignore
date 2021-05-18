@@ -3,4 +3,3 @@ build/
 *.pem
 *.test
 marblerun-coordinator-data/
-util/version.go

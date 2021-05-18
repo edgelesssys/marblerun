@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"github.com/c2h5oh/datasize"
-	"github.com/edgelesssys/marblerun/util"
 	"github.com/fatih/color"
 	"github.com/pelletier/go-toml"
 	"github.com/spf13/cobra"
@@ -245,7 +244,7 @@ func performChanges(changeDiffs []diff, fileName string) error {
 }
 
 func downloadPremain(directory string) error {
-	cleanVersion := "v" + strings.Split(util.Version, "-")[0]
+	cleanVersion := "v" + strings.Split(Version, "-")[0]
 
 	// Download premain-graphene executable
 	resp, err := http.Get(fmt.Sprintf("https://github.com/edgelesssys/marblerun/releases/download/%s/%s", cleanVersion, premainName))

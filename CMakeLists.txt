@@ -10,12 +10,6 @@ if (NOT CMAKE_BUILD_TYPE STREQUAL Debug)
   set(TRIMPATH -trimpath)
 endif ()
 
-# Set commit hash
-add_custom_command(
-  OUTPUT ${CMAKE_SOURCE_DIR}/util/version.go ${CMAKE_SOURCE_DIR}/util/_version.go
-  COMMAND CMAKE_SOURCE_DIR=${CMAKE_SOURCE_DIR} ${CMAKE_COMMAND} -P ${CMAKE_SOURCE_DIR}/version.cmake ${PROJECT_VERSION}
-)
-
 # Generate key
 add_custom_command(
   OUTPUT private.pem public.pem
@@ -27,17 +21,20 @@ add_custom_command(
 #
 
 add_custom_target(coordinatorlib
-  ertgo build ${TRIMPATH} -buildmode=c-archive -tags enclave
-  -o libcoordinator.a
-  ${CMAKE_SOURCE_DIR}/cmd/coordinator
-  DEPENDS ${CMAKE_SOURCE_DIR}/util/version.go
+  COMMAND
+  ${CMAKE_COMMAND} -P ${CMAKE_SOURCE_DIR}/build_with_version.cmake
+  "ertgo" ${PROJECT_VERSION} "libcoordinator.a"
+  "${CMAKE_SOURCE_DIR}/cmd/coordinator" "main"
+  ${TRIMPATH}
 )
 
 add_custom_target(coordinator-noenclave ALL
-  go build ${TRIMPATH}
-  -o coordinator-noenclave
-  ${CMAKE_SOURCE_DIR}/cmd/coordinator
-  DEPENDS ${CMAKE_SOURCE_DIR}/util/version.go
+  COMMAND
+  ${CMAKE_COMMAND} -P ${CMAKE_SOURCE_DIR}/build_with_version.cmake
+  "go" ${PROJECT_VERSION} "coordinator-noenclave"
+  "${CMAKE_SOURCE_DIR}/cmd/coordinator" "main"
+   ${TRIMPATH}
+  
 )
 
 add_executable(coordinator-enclave enclave/main.c)
@@ -81,10 +78,11 @@ add_custom_target(marble-injector ALL
 #
 
 add_custom_target(cli ALL
-  go build ${TRIMPATH}
-  -o marblerun
-  ${CMAKE_SOURCE_DIR}/cli
-  DEPENDS ${CMAKE_SOURCE_DIR}/util/version.go
+  COMMAND
+  ${CMAKE_COMMAND} -P ${CMAKE_SOURCE_DIR}/build_with_version.cmake
+  "go" "${PROJECT_VERSION}" "marblerun"
+  "${CMAKE_SOURCE_DIR}/cli" "github.com/edgelesssys/marblerun/cli/cmd"
+  ${TRIMPATH}
 )
 
 #
