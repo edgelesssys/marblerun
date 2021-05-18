@@ -20,7 +20,7 @@ Then get `mr_enclave` from the build output and set it as `UniqueID` in `manifes
 ## Run
 Next, use the `erthost` command to start the Coordinator in a local enclave:
 ```sh
-erthost ../../../build/coordinator-enclave.signed
+erthost ../../build/coordinator-enclave.signed
 ```
 
 The Coordinator exposes two APIs, a client REST API (port 4433) and a mesh API (port 2001). While the Coordinator and your Marble communicate via the mesh API, you can administrate the Coordinator via the REST API.
