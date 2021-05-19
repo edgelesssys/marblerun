@@ -13,7 +13,7 @@
                     "HELLO_WORLD": "Hello World from Marblerun!"
                 },
                 "Argv": [
-                    "Welcome!",
+                    "./hello",
                     "Hello World from Marblerun!"
                 ]
             }

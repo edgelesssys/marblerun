@@ -29,7 +29,7 @@ curl -k --data-binary @manifest.json https://localhost:4433/manifest
 
 Finaly, you can run the helloworld Marble (or whatever Marble you just created) with the `ego marblerun` command. You just need to set `EDG_MARBLE_TYPE` to a Marble that was defined in the `manifest.json`. In this example, the manifest defines a single Marble, which is called "hello".
 ```sh
-EDG_MARBLE_TYPE=hello ego marblerun helloworld
+EDG_MARBLE_TYPE=hello ego marblerun hello
 ```
 EGo starts the Marble, which will then connect itself to the mesh API of the Coordinator.
 

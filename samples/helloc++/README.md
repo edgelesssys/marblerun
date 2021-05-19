@@ -34,7 +34,7 @@ The Coordinator exposes two APIs, a client REST API (port 4433) and a mesh API (
 
 Once the Coordinator instance is running, you can upload the manifest to the Coordinator's client API:
 ```sh
-curl -k --data-binary @manifest.json https://localhost:4433/manifest
+curl -k --data-binary @../manifest.json https://localhost:4433/manifest
 ```
 
 To run the application, you need to set some environment variables. The type of the Marble is defined in the `manifest.json`. In this example, the manifest defines a single Marble, which is called "hello". The Marble's DNS name and the Coordinator's address are used to establish a connection between the Coordinator's mesh API and the Marble. Further, the UUID file stores a unique ID that enables a restart of the application.
@@ -43,6 +43,6 @@ EDG_MARBLE_TYPE=hello \
 EDG_MARBLE_COORDINATOR_ADDR=localhost:2001 \
 EDG_MARBLE_UUID_FILE=$PWD/uuid \
 EDG_MARBLE_DNS_NAMES=localhost \
-erthost build/enclave.signed
+erthost enclave.signed
 ```
 The app prints a "Hello world!" followed by the command line arguments that are defined in the `manifest.json`.

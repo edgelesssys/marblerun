@@ -16,7 +16,7 @@ make SGX=1
 
 Start the Coordinator in a SGX enclave:
 ```sh
-erthost ../../../build/coordinator-enclave.signed
+erthost ../../build/coordinator-enclave.signed
 ```
 
 The Coordinator exposes two APIs, a client REST API (port 4433) and a mesh API (port 2001). While the Coordinator and your Marble communicate via the mesh API, you can administrate the Coordinator via the REST API.
