@@ -339,7 +339,7 @@ func (c *Core) setTTLSConfig(marble manifest.Marble, specialSecrets reservedSecr
 		for _, entry := range c.manifest.TLS[tag].Outgoing {
 			connConf := make(map[string]interface{})
 			connConf["cacrt"] = stringCaCert
-			connConf["clicert"] = stringClientCert
+			connConf["clicrt"] = stringClientCert
 			connConf["clikey"] = stringClientKey
 
 			ttlsConf["tls"]["Outgoing"][entry.Addr+":"+entry.Port] = connConf
@@ -355,14 +355,14 @@ func (c *Core) setTTLSConfig(marble manifest.Marble, specialSecrets reservedSecr
 				pemUserClientKey := pem.Block{Type: "PRIVATE KEY", Bytes: userSecrets[entry.Cert].Private}
 				stringUserClientKey := string(pem.EncodeToMemory(&pemUserClientKey))
 
-				connConf["clicert"] = stringUserClientCert
+				connConf["clicrt"] = stringUserClientCert
 				connConf["clikey"] = stringUserClientKey
 				connConf["clientAuth"] = false
 				connConf["cacrt"] = stringCaCert
 
 			} else {
 				connConf["cacrt"] = stringCaCert
-				connConf["clicert"] = stringClientCert
+				connConf["clicrt"] = stringClientCert
 				connConf["clikey"] = stringClientKey
 				connConf["clientAuth"] = true
 			}
