@@ -115,6 +115,31 @@ func (m Manifest) Check(ctx context.Context, zaplogger *zap.Logger) error {
 				}
 			}
 		}
+		for _, tag := range marble.TLS {
+			if _, ok := m.TLS[tag]; !ok {
+				return fmt.Errorf("manifest misses TLS entry for %s", tag)
+			}
+		}
+	}
+	for key, TLStag := range m.TLS {
+		for _, entry := range TLStag.Incoming {
+			if entry.Port == "" {
+				return fmt.Errorf("manifest misses Port in TLS.Incoming.%s", key)
+			}
+			if entry.Cert != "" {
+				if _, ok := m.Secrets[entry.Cert]; !ok {
+					return fmt.Errorf("TLS.Incoming.%s references undefined secret %s", key, entry.Cert)
+				}
+			}
+		}
+		for _, entry := range TLStag.Outgoing {
+			if entry.Addr == "" {
+				return fmt.Errorf("manifest misses Addr in TLS.Outgoing.%s", key)
+			}
+			if entry.Port == "" {
+				return fmt.Errorf("manifest misses Port in TLS.Outgoing.%s", key)
+			}
+		}
 	}
 	return nil
 }
