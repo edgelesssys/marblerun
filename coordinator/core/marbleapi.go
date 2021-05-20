@@ -91,7 +91,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 
 	marble := c.manifest.Marbles[req.GetMarbleType()] // existence has been checked in verifyManifestRequirement
 	// add TTLS config to Env
-	if err := c.setTTLSConfig(marble, authSecrets); err != nil {
+	if err := c.setTTLSConfig(marble, authSecrets, secrets); err != nil {
 		c.zaplogger.Error("Could not create TTLS config.", zap.Error(err))
 		return nil, err
 	}
@@ -315,33 +315,62 @@ func (c *Core) generateMarbleAuthSecrets(req *rpc.ActivationReq, marbleUUID uuid
 	return authSecrets, nil
 }
 
-func (c *Core) setTTLSConfig(marble manifest.Marble, secrets reservedSecrets) error {
+func (c *Core) setTTLSConfig(marble manifest.Marble, specialSecrets reservedSecrets, userSecrets map[string]manifest.Secret) error {
 	if len(marble.TLS) == 0 {
 		return nil
 	}
 
-	ttlsConf := make(map[string]map[string]map[string]string)
-	ttlsConf["tls"] = make(map[string]map[string]string)
+	ttlsConf := make(map[string]map[string]map[string]map[string]interface{})
+	ttlsConf["tls"] = make(map[string]map[string]map[string]interface{})
+	ttlsConf["tls"]["Incoming"] = make(map[string]map[string]interface{})
+	ttlsConf["tls"]["Outgoing"] = make(map[string]map[string]interface{})
 
 	pemCaCert := pem.Block{Type: "CERTIFICATE", Bytes: c.intermediateCert.Raw}
 	stringCaCert := string(pem.EncodeToMemory(&pemCaCert))
 
-	pemClientCert := pem.Block{Type: "CERTIFICATE", Bytes: secrets.MarbleCert.Cert.Raw}
+	pemClientCert := pem.Block{Type: "CERTIFICATE", Bytes: specialSecrets.MarbleCert.Cert.Raw}
 	stringClientCert := string(pem.EncodeToMemory(&pemClientCert))
 
-	pemClientKey := pem.Block{Type: "PRIVATE KEY", Bytes: secrets.MarbleCert.Private}
+	pemClientKey := pem.Block{Type: "PRIVATE KEY", Bytes: specialSecrets.MarbleCert.Private}
 	stringClientKey := string(pem.EncodeToMemory(&pemClientKey))
 
 	for _, tag := range marble.TLS {
+
 		for _, entry := range c.manifest.TLS[tag].Outgoing {
-			connConf := make(map[string]string)
+			connConf := make(map[string]interface{})
 			connConf["cacrt"] = stringCaCert
 			connConf["clicert"] = stringClientCert
 			connConf["clikey"] = stringClientKey
 
-			ttlsConf["tls"][entry.Addr+":"+entry.Port] = connConf
+			ttlsConf["tls"]["Outgoing"][entry.Addr+":"+entry.Port] = connConf
+		}
+		for _, entry := range c.manifest.TLS[tag].Incoming {
+			connConf := make(map[string]interface{})
+
+			// use user-defined values if present
+			if entry.Cert != "" {
+				pemUserClientCert := pem.Block{Type: "CERTIFICATE", Bytes: userSecrets[entry.Cert].Cert.Raw}
+				stringUserClientCert := string(pem.EncodeToMemory(&pemUserClientCert))
+
+				pemUserClientKey := pem.Block{Type: "PRIVATE KEY", Bytes: userSecrets[entry.Cert].Private}
+				stringUserClientKey := string(pem.EncodeToMemory(&pemUserClientKey))
+
+				connConf["clicert"] = stringUserClientCert
+				connConf["clikey"] = stringUserClientKey
+				connConf["clientAuth"] = false
+				connConf["cacrt"] = stringCaCert
+
+			} else {
+				connConf["cacrt"] = stringCaCert
+				connConf["clicert"] = stringClientCert
+				connConf["clikey"] = stringClientKey
+				connConf["clientAuth"] = true
+			}
+
+			ttlsConf["tls"]["Incoming"]["*:"+entry.Port] = connConf
 		}
 	}
+
 	ttlsConfJSON, err := json.Marshal(ttlsConf)
 	if err != nil {
 		return err

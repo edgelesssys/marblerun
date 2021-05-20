@@ -247,32 +247,42 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	}
 
 	// Validate ttls conf
-	config := make(map[string]map[string]map[string]string)
+	config := make(map[string]map[string]map[string]map[string]interface{})
 	configBytes := []byte(params.Env["MARBLE_TTLS_CONFIG"])
 	if marbleType == "backend_first" {
 		ms.assert.NoError(json.Unmarshal(configBytes, &config))
 
-		ms.assert.NotEqual(nil, config["tls"]["localhost:8080"]["cacrt"])
-		ms.assert.NotEqual(nil, config["tls"]["localhost:8080"]["clicert"])
-		ms.assert.NotEqual(nil, config["tls"]["localhost:8080"]["clikey"])
+		ms.assert.NotEqual(nil, config["tls"]["Outgoing"]["localhost:8080"]["cacrt"])
+		ms.assert.NotEqual(nil, config["tls"]["Outgoing"]["localhost:8080"]["clicert"])
+		ms.assert.NotEqual(nil, config["tls"]["Outgoing"]["localhost:8080"]["clikey"])
 
-		ms.assert.NotEqual(nil, config["tls"]["service.namespace:4242"]["cacrt"])
-		ms.assert.NotEqual(nil, config["tls"]["service.namespace:4242"]["clicert"])
-		ms.assert.NotEqual(nil, config["tls"]["service.namespace:4242"]["clikey"])
+		ms.assert.NotEqual(nil, config["tls"]["Outgoing"]["service.namespace:4242"]["cacrt"])
+		ms.assert.NotEqual(nil, config["tls"]["Outgoing"]["service.namespace:4242"]["clicert"])
+		ms.assert.NotEqual(nil, config["tls"]["Outgoing"]["service.namespace:4242"]["clikey"])
+
+		ms.assert.NotEqual(nil, config["tls"]["Incoming"]["*:8080"]["cacrt"])
+		ms.assert.NotEmpty(config["tls"]["Incoming"]["*:8080"]["clicert"])
+		ms.assert.NotEmpty(config["tls"]["Incoming"]["*:8080"]["clikey"])
+		ms.assert.True(config["tls"]["Incoming"]["*:8080"]["clientAuth"].(bool))
 
 	} else if marbleType == "backend_other" {
 		ms.assert.NoError(json.Unmarshal(configBytes, &config))
-		ms.assert.NotEqual(nil, config["tls"]["localhost:8080"]["cacrt"])
-		ms.assert.NotEqual(nil, config["tls"]["localhost:8080"]["clicert"])
-		ms.assert.NotEqual(nil, config["tls"]["localhost:8080"]["clikey"])
+		ms.assert.NotEqual(nil, config["tls"]["Outgoing"]["localhost:8080"]["cacrt"])
+		ms.assert.NotEqual(nil, config["tls"]["Outgoing"]["localhost:8080"]["clicert"])
+		ms.assert.NotEqual(nil, config["tls"]["Outgoing"]["localhost:8080"]["clikey"])
 
-		ms.assert.NotEqual(nil, config["tls"]["service.namespace:4242"]["cacrt"])
-		ms.assert.NotEqual(nil, config["tls"]["service.namespace:4242"]["clicert"])
-		ms.assert.NotEqual(nil, config["tls"]["service.namespace:4242"]["clikey"])
+		ms.assert.NotEqual(nil, config["tls"]["Outgoing"]["service.namespace:4242"]["cacrt"])
+		ms.assert.NotEqual(nil, config["tls"]["Outgoing"]["service.namespace:4242"]["clicert"])
+		ms.assert.NotEqual(nil, config["tls"]["Outgoing"]["service.namespace:4242"]["clikey"])
 
-		ms.assert.NotEqual(nil, config["tls"]["example.com:40000"]["cacrt"])
-		ms.assert.NotEqual(nil, config["tls"]["example.com:40000"]["clicert"])
-		ms.assert.NotEqual(nil, config["tls"]["example.com:40000"]["clikey"])
+		ms.assert.NotEqual(nil, config["tls"]["Outgoing"]["example.com:40000"]["cacrt"])
+		ms.assert.NotEqual(nil, config["tls"]["Outgoing"]["example.com:40000"]["clicert"])
+		ms.assert.NotEqual(nil, config["tls"]["Outgoing"]["example.com:40000"]["clikey"])
+
+		ms.assert.NotEqual(nil, config["tls"]["Incoming"]["*:8080"]["cacrt"])
+		ms.assert.NotEmpty(config["tls"]["Incoming"]["*:8080"]["clicert"])
+		ms.assert.NotEmpty(config["tls"]["Incoming"]["*:8080"]["clikey"])
+		ms.assert.False(config["tls"]["Incoming"]["*:8080"]["clientAuth"].(bool))
 
 	} else {
 		ms.assert.Empty(configBytes)

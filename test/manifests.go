@@ -148,6 +148,11 @@ const ManifestJSON string = `{
 					"Port": "4242",
 					"Addr": "service.namespace"
 				}
+			],
+			"Incoming": [
+				{
+					"Port": "8080"
+				}
 			]
 		},
 		"anotherWeb": {
@@ -155,6 +160,12 @@ const ManifestJSON string = `{
 				{
 					"Port": "40000",
 					"Addr": "example.com"
+				}
+			],
+			"Incoming": [
+				{
+					"Port": "8080",
+					"Cert": "cert_shared"
 				}
 			]
 		}
