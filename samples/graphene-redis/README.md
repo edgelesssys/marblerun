@@ -3,6 +3,8 @@
 This example is a slightly modified variant of the [Graphene Redis example](https://github.com/oscarlab/graphene/tree/master/Examples/redis).
 Instead of running a single [Redis](https://redis.io/) server instance, Marblerun unleashes the full potential of Redis and takes care of distributing the Redis server in *replication* mode.
 
+**Warning**: This sample enables `loader.insecure__use_host_env` in [redis-server.manifest.template](redis-server.manifest.template). Don't use this on production until [secure forwarding of host environment variables](https://github.com/oscarlab/graphene/issues/2356) will be available.
+
 *Prerequisite:*
 * Ensure you have access to a Kubernetes cluster with SGX-enabled nodes and kubectl installed and configured. Probably the easiest way to get started is to run Kubernetes on an [Azure Kubernetes Service (AKS)](https://docs.microsoft.com/en-us/azure/confidential-computing/confidential-nodes-aks-get-started), which offers SGX-enabled nodes.
 * Ensure you have the [Marblerun CLI](https://www.marblerun.sh/docs/getting-started/cli/) installed.

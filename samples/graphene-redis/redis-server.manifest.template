@@ -24,7 +24,7 @@ loader.log_level = "$(GRAPHENE_LOG_LEVEL)"
 loader.insecure__use_cmdline_argv = 1
 # MARBLERUN: argv0 must be the path to the actual application
 loader.argv0_override = "redis-server"
-# MARBLERUN: required and ok because premain will filter host env
+# MARBLERUN: Forward environment variables from the host. Don't use this on production!
 loader.insecure__use_host_env = 1
 
 ################################# ENV VARS ####################################
