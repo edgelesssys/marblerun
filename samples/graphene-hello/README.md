@@ -9,6 +9,8 @@ Then, before you can run the example, make sure you got the prerequisites for EC
 sudo apt install libsgx-quote-ex-dev
 ```
 
+**Warning**: This sample enables `loader.insecure__use_host_env` in [hello.manifest.template](hello.manifest.template). For production consider hardcoding the Marble environment variables (see [Run](#run)) until [secure forwarding of host environment variables](https://github.com/oscarlab/graphene/issues/2356) will be available.
+
 ## Build
 You can build the example as follows:
 ```sh

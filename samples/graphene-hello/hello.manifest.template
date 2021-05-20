@@ -8,7 +8,7 @@ sgx.trusted_files.premain = "file:premain-graphene"
 # argv0 must be the path to the actual application
 loader.argv0_override = "hello"
 
-# required and ok because premain will filter host env
+# Forward environment variables from the host. Don't use this on production!
 loader.insecure__use_host_env = 1
 
 fs.mount.lib.type = "chroot"

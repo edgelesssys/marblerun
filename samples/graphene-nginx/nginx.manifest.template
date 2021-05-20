@@ -131,7 +131,7 @@ sgx.trusted_files.premain = "file:premain-graphene"
 # MARBLERUN: argv0 must be the path to the actual application
 loader.argv0_override = "$(INSTALL_DIR)/sbin/nginx"
 
-# MARBLERUN: required and ok because premain will filter host env
+# MARBLERUN: Forward environment variables from the host. Don't use this on production!
 loader.insecure__use_host_env = 1
 
 # MARBLERUN: allow the marble's uuid file

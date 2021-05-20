@@ -5,6 +5,8 @@ This example is a slightly modified variant of the [Graphene nginx example](http
 
 To marbleize the example we edited [nginx.manifest.template](nginx.manifest.template). See comments starting with `MARBLERUN` for explanations of the required changes.
 
+**Warning**: This sample enables `loader.insecure__use_host_env` in [nginx.manifest.template](nginx.manifest.template). For production consider hardcoding the Marble environment variables (see below) until [secure forwarding of host environment variables](https://github.com/oscarlab/graphene/issues/2356) will be available.
+
 We also removed certificate generation from the Makefile because it will be provisioned by the Coordinator. See [manifest.json](manifest.json) on how this is specified.
 
 We now build the example as follows:
