@@ -43,9 +43,15 @@ More are coming soon.
 See the [Getting Started Guide][getting-started] to set up a distributed confidential-computing app in a few steps.
 See the [documentation][docs] for details.
 
-## Working in this repo
+## Contributing
+
+To report a problem or suggest a new feature, file a GitHub issue.
+
+To report a security issue, write to security@edgeless.systems
 
 [`BUILD.md`](BUILD.md) includes general information on how to work in this repo.
+
+Pull requests are welcome! You need to agree to our [Contributor License Agreement](https://cla-assistant.io/edgelesssys/marblerun).
 
 ## Get involved
 
