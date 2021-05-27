@@ -52,11 +52,20 @@ type Core struct {
 	rawUpdateManifest []byte
 	secrets           map[string]manifest.Secret
 	state             state
+	store             Store
 	qv                quote.Validator
 	qi                quote.Issuer
 	activations       map[string]uint
 	mux               sync.Mutex
 	zaplogger         *zap.Logger
+}
+
+// Store is the interface for state transactions and persistance
+type Store interface {
+	Get(string) ([]byte, error)
+	Put(string, []byte) error
+	SealState() error
+	LoadState() error
 }
 
 // The sequence of states a Coordinator may be in
@@ -115,6 +124,7 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer Seal
 		qv:          qv,
 		qi:          qi,
 		sealer:      sealer,
+		store:       NewStdStore(sealer, recovery, zapLogger),
 		recovery:    recovery,
 		zaplogger:   zapLogger,
 	}
