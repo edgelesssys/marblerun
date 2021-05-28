@@ -17,38 +17,68 @@ import (
 )
 
 const (
-	requestActivations string = "activations"
-	requestCert        string = "certificate"
-	requestManifest    string = "manifest"
-	requestPrivKey     string = "privateKey"
-	requestSecret      string = "secret"
-	requestState       string = "state"
-	requestUser        string = "user"
+	requestActivations = "activations"
+	requestCert        = "certificate"
+	requestManifest    = "manifest"
+	requestPrivKey     = "privateKey"
+	requestSecret      = "secret"
+	requestState       = "state"
+	requestUser        = "user"
 )
 
-// getStoreActivations returns activations for a given Marble from store
-func (c *Core) getStoreActivations(marbleType string) (uint64, error) {
+// Store is the interface for state transactions and persistance
+type Store interface {
+	Get(string) ([]byte, error)
+	Put(string, []byte) error
+	SealState(recoveryData []byte) error
+	LoadState() ([]byte, error)
+	SetEncryptionKey([]byte) error
+}
+
+// storeWrapper is a wrapper for the store interface
+type storeWrapper struct {
+	store Store
+}
+
+// newStoreWrapper creates and initialses a new storeWrapper object
+func newStoreWrapper(store Store) *storeWrapper {
+	return &storeWrapper{store: store}
+}
+
+// getActivations returns activations for a given Marble from store
+func (s *storeWrapper) getActivations(marbleType string) (uint, error) {
 	request := strings.Join([]string{requestActivations, marbleType}, ":")
-	rawActivations, err := c.store.Get(request)
+	rawActivations, err := s.store.Get(request)
 	if err != nil {
 		return 0, err
 	}
 
-	return strconv.ParseUint(string(rawActivations), 16, 64)
+	activations, err := strconv.ParseUint(string(rawActivations), 16, 64)
+	return uint(activations), err
 }
 
-// putStoreActivations saves activations of a given Marble to store
-func (c *Core) putStoreActivations(marbleType string, activations uint64) error {
+// putActivations saves activations of a given Marble to store
+func (s *storeWrapper) putActivations(marbleType string, activations uint) error {
 	request := strings.Join([]string{requestActivations, marbleType}, ":")
-	rawActivations := []byte(strconv.FormatUint(activations, 16))
+	rawActivations := []byte(strconv.FormatUint(uint64(activations), 16))
 
-	return c.store.Put(request, rawActivations)
+	return s.store.Put(request, rawActivations)
 }
 
-// getStoreCertificate returns a certificate from store
-func (c *Core) getStoreCertificate(certType string) (*x509.Certificate, error) {
+// incrementActivations is a wrapper for get/put activations to increment the value for one marble
+func (s *storeWrapper) incrementActivations(marbleType string) error {
+	activations, err := s.getActivations(marbleType)
+	if err != nil {
+		return err
+	}
+	activations++
+	return s.putActivations(marbleType, activations)
+}
+
+// getCertificate returns a certificate from store
+func (s *storeWrapper) getCertificate(certType string) (*x509.Certificate, error) {
 	request := strings.Join([]string{requestCert, certType}, ":")
-	rawCert, err := c.store.Get(request)
+	rawCert, err := s.store.Get(request)
 	if err != nil {
 		return nil, err
 	}
@@ -56,16 +86,16 @@ func (c *Core) getStoreCertificate(certType string) (*x509.Certificate, error) {
 	return x509.ParseCertificate(rawCert)
 }
 
-// putStoreCertificate saves a certificate to store
-func (c *Core) putStoreCertificate(certType string, cert *x509.Certificate) error {
+// putCertificate saves a certificate to store
+func (s *storeWrapper) putCertificate(certType string, cert *x509.Certificate) error {
 	request := strings.Join([]string{requestCert, certType}, ":")
-	return c.store.Put(request, cert.Raw)
+	return s.store.Put(request, cert.Raw)
 }
 
-// getStorePrivK returns a private key from store
-func (c *Core) getStorePrivK(keyType string) (*ecdsa.PrivateKey, error) {
+// getPrivK returns a private key from store
+func (s *storeWrapper) getPrivK(keyType string) (*ecdsa.PrivateKey, error) {
 	request := strings.Join([]string{requestPrivKey, keyType}, ":")
-	rawKey, err := c.store.Get(request)
+	rawKey, err := s.store.Get(request)
 	if err != nil {
 		return nil, err
 	}
@@ -73,34 +103,49 @@ func (c *Core) getStorePrivK(keyType string) (*ecdsa.PrivateKey, error) {
 	return x509.ParseECPrivateKey(rawKey)
 }
 
-// putStorePrivK saves a private key to store
-func (c *Core) putStorePrivK(keyType string, privK *ecdsa.PrivateKey) error {
+// putPrivK saves a private key to store
+func (s *storeWrapper) putPrivK(keyType string, privK *ecdsa.PrivateKey) error {
 	rawKey, err := x509.MarshalECPrivateKey(privK)
 	if err != nil {
 		return err
 	}
 
 	request := strings.Join([]string{requestPrivKey, keyType}, ":")
-	return c.store.Put(request, rawKey)
+	return s.store.Put(request, rawKey)
 }
 
-// getStoreRawManifest returns the raw main or update manifest from store
-func (c *Core) getStoreRawManifest(manifestType string) ([]byte, error) {
+// getManifest loads a manifest by type and marshalls it to manifest.Manifest
+func (s *storeWrapper) getManifest(manifestType string) (*manifest.Manifest, error) {
+	var manifest manifest.Manifest
+	rawManifest, err := s.getRawManifest(manifestType)
+	if err == nil {
+		if err := json.Unmarshal(rawManifest, &manifest); err != nil {
+			return nil, err
+		}
+	} else if !isStoreValueUnsetError(err) {
+		return nil, err
+	}
+
+	return &manifest, nil
+}
+
+// getRawManifest returns the raw main or update manifest from store
+func (s *storeWrapper) getRawManifest(manifestType string) ([]byte, error) {
 	request := strings.Join([]string{requestManifest, manifestType}, ":")
-	return c.store.Get(request)
+	return s.store.Get(request)
 }
 
-// putStoreRawManifest saves the raw main or update manifest to store
-func (c *Core) putStoreRawManifest(manifestType string, manifest []byte) error {
+// putRawManifest saves the raw main or update manifest to store
+func (s *storeWrapper) putRawManifest(manifestType string, manifest []byte) error {
 	request := strings.Join([]string{requestManifest, manifestType}, ":")
-	return c.store.Put(request, manifest)
+	return s.store.Put(request, manifest)
 }
 
-// getStoreSecret returns a secret from store
-func (c *Core) getStoreSecret(secretType string) (manifest.Secret, error) {
+// getSecret returns a secret from store
+func (s *storeWrapper) getSecret(secretType string) (manifest.Secret, error) {
 	var loadedSecret manifest.Secret
 	request := strings.Join([]string{requestSecret, secretType}, ":")
-	rawSecret, err := c.store.Get(request)
+	rawSecret, err := s.store.Get(request)
 	if err != nil {
 		return loadedSecret, err
 	}
@@ -109,53 +154,115 @@ func (c *Core) getStoreSecret(secretType string) (manifest.Secret, error) {
 	return loadedSecret, err
 }
 
-// putStoreSecret saves a secret to store
-func (c *Core) putStoreSecret(secretType string, secret manifest.Secret) error {
+// putSecret saves a secret to store
+func (s *storeWrapper) putSecret(secretType string, secret manifest.Secret) error {
 	rawSecret, err := json.Marshal(secret)
 	if err != nil {
 		return err
 	}
 
 	request := strings.Join([]string{requestSecret, secretType}, ":")
-	return c.store.Put(request, rawSecret)
+	return s.store.Put(request, rawSecret)
 }
 
-// getStoreState returns the state from store
-func (c *Core) getStoreState() (state, error) {
-	rawState, err := c.store.Get("state")
+// getSecretMap returns a map of all Marblerun secrets
+func (s *storeWrapper) getSecretMap() (map[string]manifest.Secret, error) {
+	secretMap := map[string]manifest.Secret{}
+
+	rawManifest, err := s.getRawManifest("main")
 	if err != nil {
-		return stateMax, err
+		return nil, err
+	}
+	var manifest manifest.Manifest
+	if err := json.Unmarshal(rawManifest, &manifest); err != nil {
+		return nil, err
+	}
+
+	for key := range manifest.Secrets {
+		if manifest.Secrets[key].Shared {
+			secretMap[key], err = s.getSecret(key)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return secretMap, nil
+}
+
+// getState returns the state from store
+func (s *storeWrapper) getState() (state, error) {
+	rawState, err := s.store.Get("state")
+	if err != nil {
+		return -1, err
 	}
 
 	currState, err := strconv.Atoi(string(rawState))
 	if err != nil {
-		return stateMax, err
+		return -1, err
 	}
 
 	return state(currState), nil
 }
 
-// putStoreState saves the state to store
-func (c *Core) putStoreState(currState state) error {
+// putState saves the state to store
+func (s *storeWrapper) putState(currState state) error {
 	rawState := []byte(strconv.Itoa(int(currState)))
-	return c.store.Put("state", rawState)
+	return s.store.Put("state", rawState)
 }
 
-// getStoreUser returns user information from store
+// getUser returns user information from store
 // will be changed in the future to return permissions etc. instead of just certificate
-func (c *Core) getStoreUser(userType string) (*x509.Certificate, error) {
-	request := strings.Join([]string{requestUser, userType}, ":")
-	rawCert, err := c.store.Get(request)
+func (s *storeWrapper) getUser(userName string) (*marblerunUser, error) {
+	request := strings.Join([]string{requestUser, userName}, ":")
+	rawCert, err := s.store.Get(request)
 	if err != nil {
 		return nil, err
 	}
 
-	return x509.ParseCertificate(rawCert)
+	userCert, err := x509.ParseCertificate(rawCert)
+	if err != nil {
+		return nil, err
+	}
+
+	return &marblerunUser{name: userName, certificate: userCert}, nil
 }
 
-// putStoreUser saves user information to store
+// putUser saves user information to store
 // will be changed in the future to set permissions etc. instead of just certificate
-func (c *Core) putStoreUser(userType string, userCert *x509.Certificate) error {
-	request := strings.Join([]string{requestUser, userType}, ":")
-	return c.store.Put(request, userCert.Raw)
+func (s *storeWrapper) putUser(user *marblerunUser) error {
+	request := strings.Join([]string{requestUser, user.name}, ":")
+	return s.store.Put(request, user.certificate.Raw)
+}
+
+// loadState loads the store state and returns recoveryData
+func (s *storeWrapper) loadState() ([]byte, *manifest.Manifest, *manifest.Manifest, error) {
+	recoveryData, err := s.store.LoadState()
+	if err != nil {
+		return recoveryData, nil, nil, err
+	}
+
+	// load main manifest if it was set
+	mainManifest, err := s.getManifest("main")
+	if err != nil {
+		return recoveryData, nil, nil, err
+	}
+
+	// load update manifest it it was set
+	updateManifest, err := s.getManifest("update")
+	if err != nil {
+		return recoveryData, nil, nil, err
+	}
+
+	return recoveryData, mainManifest, updateManifest, nil
+}
+
+// sealState seals the store state
+func (s *storeWrapper) sealState(recoveryData []byte) error {
+	return s.store.SealState(recoveryData)
+}
+
+// setEncryptionKey sets the encryption key of store
+func (s *storeWrapper) setEncryptionKey(encryptionKey []byte) error {
+	return s.store.SetEncryptionKey(encryptionKey)
 }

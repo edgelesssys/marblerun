@@ -170,7 +170,8 @@ func TestGetCertQuote(t *testing.T) {
 	_, _, err = c.GetCertQuote(context.TODO())
 	assert.NoError(err, "GetCertQuote should not fail (with manifest)")
 
-	c.state = stateRecovery
+	err = c.store.putState(stateRecovery)
+	assert.NoError(err)
 	_, _, err = c.GetCertQuote(context.TODO())
 	assert.NoError(err, "GetCertQuote should not fail when coordinator is in recovery mode")
 	//todo check quote
@@ -227,24 +228,24 @@ func TestUpdateManifest(t *testing.T) {
 	require.NoError(err)
 
 	// Get current certificate
-	rootCABeforeUpdate := c.rootCert
-	intermediateCABeforeUpdate := c.intermediateCert
-	secretsBeforeUpdate := make(map[string]manifest.Secret, len(c.secrets))
-	for name, secret := range c.secrets {
-		secretsBeforeUpdate[name] = secret
-	}
+	rootCABeforeUpdate, err := c.store.getCertificate("root")
+	assert.NoError(err)
+	intermediateCABeforeUpdate, err := c.store.getCertificate("intermediate")
+	assert.NoError(err)
+	secretsBeforeUpdate, err := c.store.getSecretMap()
+	assert.NoError(err)
 
 	// Update manifest
 	err = c.UpdateManifest(context.TODO(), []byte(test.UpdateManifest))
 	require.NoError(err)
 
 	// Get new certificates
-	rootCAAfterUpdate := c.rootCert
-	intermediateCAAfterUpdate := c.intermediateCert
-	secretsAfterUpdate := make(map[string]manifest.Secret, len(c.secrets))
-	for name, secret := range c.secrets {
-		secretsAfterUpdate[name] = secret
-	}
+	rootCAAfterUpdate, err := c.store.getCertificate("root")
+	assert.NoError(err)
+	intermediateCAAfterUpdate, err := c.store.getCertificate("intermediate")
+	assert.NoError(err)
+	secretsAfterUpdate, err := c.store.getSecretMap()
+	assert.NoError(err)
 
 	// Check if root certificate stayed the same, but intermediate CA changed
 	assert.Equal(rootCABeforeUpdate, rootCAAfterUpdate)
@@ -256,7 +257,7 @@ func TestUpdateManifest(t *testing.T) {
 
 	// Verify if the old secret certificate is not correctly verified anymore by the new intermediate certificate
 	roots := x509.NewCertPool()
-	roots.AddCert(c.intermediateCert)
+	roots.AddCert(intermediateCAAfterUpdate)
 
 	opts := x509.VerifyOptions{
 		Roots:     roots,

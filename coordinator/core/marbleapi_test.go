@@ -204,9 +204,13 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	ms.assert.Equal(cert.DNSNames, newLeafCert.DNSNames)
 	ms.assert.Equal(cert.IPAddresses, newLeafCert.IPAddresses)
 
+	rootCert, err := ms.coreServer.store.getCertificate("root")
+	ms.assert.NoError(err)
+	intermediateCert, err := ms.coreServer.store.getCertificate("intermediate")
+	ms.assert.NoError(err)
 	// Check Signature for both, intermediate certificate and leaf certificate
-	ms.assert.NoError(ms.coreServer.rootCert.CheckSignature(newIntermediateCert.SignatureAlgorithm, newIntermediateCert.RawTBSCertificate, newIntermediateCert.Signature))
-	ms.assert.NoError(ms.coreServer.intermediateCert.CheckSignature(newLeafCert.SignatureAlgorithm, newLeafCert.RawTBSCertificate, newLeafCert.Signature))
+	ms.assert.NoError(rootCert.CheckSignature(newIntermediateCert.SignatureAlgorithm, newIntermediateCert.RawTBSCertificate, newIntermediateCert.Signature))
+	ms.assert.NoError(intermediateCert.CheckSignature(newLeafCert.SignatureAlgorithm, newLeafCert.RawTBSCertificate, newLeafCert.Signature))
 
 	// Validate generated secret (only specified in backend_first)
 	if marbleType == "backend_first" {
@@ -473,7 +477,9 @@ func TestSecurityLevelUpdate(t *testing.T) {
 	// Use a new core and test if updated manifest persisted after restart
 	coreServer2, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
 	require.NoError(err)
-	assert.Equal(stateAcceptingMarbles, coreServer2.state)
+	coreServer2State, err := coreServer2.store.getState()
+	assert.NoError(err)
+	assert.Equal(stateAcceptingMarbles, coreServer2State)
 	assert.EqualValues(5, *coreServer2.updateManifest.Packages["frontend"].SecurityVersion)
 
 	// This should still fail after a restart, as the update manifest should have been reloaded from the sealed state correctly

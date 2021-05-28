@@ -47,8 +47,17 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 		return nil, err
 	}
 
+	intermediateCert, err := c.store.getCertificate("intermediate")
+	if err != nil {
+		return nil, err
+	}
+	intermediatePrivK, err := c.store.getPrivK("intermediate")
+	if err != nil {
+		return nil, err
+	}
+
 	// Generate shared secrets specified in manifest
-	secrets, err := c.generateSecrets(ctx, manifest.Secrets, uuid.Nil, c.intermediateCert, c.intermediatePrivK)
+	secrets, err := c.generateSecrets(ctx, manifest.Secrets, uuid.Nil, intermediateCert, intermediatePrivK)
 	if err != nil {
 		c.zaplogger.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
 		return nil, err
@@ -65,22 +74,30 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 		c.zaplogger.Error("could not generate recovery data", zap.Error(err))
 		return nil, err
 	}
-	c.sealer.SetEncryptionKey(encryptionKey)
+	c.store.setEncryptionKey(encryptionKey)
 
 	// Parse X.509 admin certificates from manifest
-	adminCerts, err := generateAdminCertsFromManifest(manifest.Admins)
+	users, err := generateUsersFromManifest(manifest.Admins)
 	if err != nil {
 		c.zaplogger.Error("Could not parse specified admin client certificate from supplied manifest", zap.Error(err))
 		return nil, err
 	}
 
 	c.manifest = manifest
-	c.rawManifest = rawManifest
-	c.secrets = secrets
-	c.adminCerts = adminCerts
+	if err := c.store.putRawManifest("main", rawManifest); err != nil {
+		return nil, err
+	}
+	for key, secret := range secrets {
+		if err := c.store.putSecret(key, secret); err != nil {
+			return nil, err
+		}
+	}
+	for _, user := range users {
+		c.store.putUser(user)
+	}
 
 	c.advanceState(stateAcceptingMarbles)
-	if err := c.sealState(recoveryData); err != nil {
+	if err := c.store.sealState(recoveryData); err != nil {
 		c.zaplogger.Error("sealState failed", zap.Error(err))
 	}
 
@@ -96,13 +113,22 @@ func (c *Core) GetCertQuote(ctx context.Context) (string, []byte, error) {
 		return "", nil, err
 	}
 
-	pemCertRoot := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: c.rootCert.Raw})
+	rootCert, err := c.store.getCertificate("root")
+	if err != nil {
+		return "", nil, err
+	}
+	intermediateCert, err := c.store.getCertificate("intermediate")
+	if err != nil {
+		return "", nil, err
+	}
+
+	pemCertRoot := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: rootCert.Raw})
 	if len(pemCertRoot) <= 0 {
 		return "", nil, errors.New("pem.EncodeToMemory failed for root certificate")
 	}
 
 	// Include intermediate certificate if a manifest has been set
-	pemCertIntermediate := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: c.intermediateCert.Raw})
+	pemCertIntermediate := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: intermediateCert.Raw})
 	if len(pemCertIntermediate) <= 0 {
 		return "", nil, errors.New("pem.EncodeToMemory failed for intermediate certificate")
 	}
@@ -115,10 +141,8 @@ func (c *Core) GetCertQuote(ctx context.Context) (string, []byte, error) {
 //
 // Returns a SHA256 hash of the active manifest.
 func (c *Core) GetManifestSignature(ctx context.Context) []byte {
-	c.mux.Lock()
-	rawManifest := c.rawManifest
-	c.mux.Unlock()
-	if rawManifest == nil {
+	rawManifest, err := c.store.getRawManifest("main")
+	if err != nil {
 		return nil
 	}
 	hash := sha256.Sum256(rawManifest)
@@ -159,8 +183,9 @@ func (c *Core) VerifyAdmin(ctx context.Context, clientCerts []*x509.Certificate)
 	// Check if a supplied client cert matches the supplied ones from the manifest stored in the core
 	// NOTE: We do not use the "correct" X.509 verify here since we do not really care about expiration and chain verification here.
 	for _, suppliedCert := range clientCerts {
-		for _, knownCert := range c.adminCerts {
-			if suppliedCert.Equal(knownCert) {
+		for user := range c.manifest.Admins {
+			userData, _ := c.store.getUser(user)
+			if suppliedCert.Equal(userData.certificate) {
 				return true
 			}
 		}
@@ -187,8 +212,17 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte) err
 		return err
 	}
 
+	rootCert, err := c.store.getCertificate("root")
+	if err != nil {
+		return err
+	}
+	rootPrivK, err := c.store.getPrivK("root")
+	if err != nil {
+		return err
+	}
+
 	// Generate new intermediate CA for Marble gRPC authentication
-	intermediateCert, intermediatePrivK, err := generateCert(c.rootCert.DNSNames, coordinatorIntermediateName, c.rootCert, c.rootPrivK)
+	intermediateCert, intermediatePrivK, err := generateCert(rootCert.DNSNames, coordinatorIntermediateName, rootCert, rootPrivK)
 	if err != nil {
 		c.zaplogger.Error("Could not generate a new intermediate CA for Marble authentication.", zap.Error(err))
 		return err
@@ -217,37 +251,55 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte) err
 	}
 
 	c.updateManifest = updateManifest
-	c.rawUpdateManifest = rawUpdateManifest
-	c.intermediateCert = intermediateCert
-	c.intermediatePrivK = intermediatePrivK
+	if err := c.store.putRawManifest("update", rawUpdateManifest); err != nil {
+		return err
+	}
+	if err := c.store.putCertificate("intermediate", intermediateCert); err != nil {
+		return err
+	}
+	if err := c.store.putPrivK("intermediate", intermediatePrivK); err != nil {
+		return err
+	}
 
 	// Overwrite regenerated secrets in core
 	for name, secret := range regeneratedSecrets {
-		c.secrets[name] = secret
+		if err := c.store.putSecret(name, secret); err != nil {
+			return err
+		}
 	}
 
 	c.zaplogger.Info("An update manifest overriding package settings from the original manifest was set.")
 	c.zaplogger.Info("Please restart your Marbles to enforce the update.")
 
-	return c.sealState(currentRecoveryData)
+	return c.store.sealState(currentRecoveryData)
 }
 
 func (c *Core) performRecovery(encryptionKey []byte) error {
-	if err := c.sealer.SetEncryptionKey(encryptionKey); err != nil {
+	if err := c.store.setEncryptionKey(encryptionKey); err != nil {
 		return err
 	}
 
-	rootCert, rootPrivK, intermediateCert, intermediatePrivK, err := c.loadState()
+	// load state
+	recoveryData, manifest, updateManifest, err := c.store.loadState()
+	if err != nil {
+		return err
+	}
+	if err := c.recovery.SetRecoveryData(recoveryData); err != nil {
+		c.zaplogger.Error("Could not retrieve recovery data from state. Recovery will be unavailable", zap.Error(err))
+	}
+
+	if manifest != nil {
+		c.manifest = *manifest
+	}
+	if updateManifest != nil {
+		c.updateManifest = *updateManifest
+	}
+	rootCert, err := c.store.getCertificate("root")
 	if err != nil {
 		return err
 	}
 
-	c.rootCert = rootCert
-	c.rootPrivK = rootPrivK
-	c.intermediateCert = intermediateCert
-	c.intermediatePrivK = intermediatePrivK
-
-	c.quote = c.generateQuote()
+	c.quote = c.generateQuote(rootCert.Raw)
 
 	return nil
 }

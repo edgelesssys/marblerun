@@ -18,7 +18,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -38,34 +37,15 @@ import (
 
 // Core implements the core logic of the Coordinator
 type Core struct {
-	rootCert          *x509.Certificate
-	intermediateCert  *x509.Certificate
-	adminCerts        []*x509.Certificate
-	quote             []byte
-	rootPrivK         *ecdsa.PrivateKey
-	intermediatePrivK *ecdsa.PrivateKey
-	sealer            Sealer
-	recovery          recovery.Recovery
-	manifest          manifest.Manifest
-	rawManifest       []byte
-	updateManifest    manifest.Manifest
-	rawUpdateManifest []byte
-	secrets           map[string]manifest.Secret
-	state             state
-	store             Store
-	qv                quote.Validator
-	qi                quote.Issuer
-	activations       map[string]uint
-	mux               sync.Mutex
-	zaplogger         *zap.Logger
-}
-
-// Store is the interface for state transactions and persistance
-type Store interface {
-	Get(string) ([]byte, error)
-	Put(string, []byte) error
-	SealState() error
-	LoadState() error
+	quote          []byte
+	recovery       recovery.Recovery
+	manifest       manifest.Manifest
+	updateManifest manifest.Manifest
+	store          *storeWrapper
+	qv             quote.Validator
+	qi             quote.Issuer
+	mux            sync.Mutex
+	zaplogger      *zap.Logger
 }
 
 // The sequence of states a Coordinator may be in
@@ -79,17 +59,12 @@ const (
 	stateMax
 )
 
-// sealedState represents the state information, required for persistence, that gets sealed to the filesystem
-type sealedState struct {
-	RootPrivK           []byte
-	IntermediatePrivK   []byte
-	RawManifest         []byte
-	RawUpdateManifest   []byte
-	RawRootCert         []byte
-	RawIntermediateCert []byte
-	Secrets             map[string]manifest.Secret
-	State               state
-	Activations         map[string]uint
+// marblerunUser represents a privileged user of Marblerun
+type marblerunUser struct {
+	// name is the username
+	name string
+	// certificate is the users certificate, used for authentication
+	certificate *x509.Certificate
 }
 
 // coordinatorName is the name of the Coordinator. It is used as CN of the root certificate.
@@ -101,68 +76,85 @@ const coordinatorIntermediateName string = "Marblerun Coordinator - Intermediate
 // Needs to be paired with `defer c.mux.Unlock()`
 func (c *Core) requireState(states ...state) error {
 	c.mux.Lock()
+	curState, err := c.store.getState()
+	if err != nil {
+		return err
+	}
 	for _, s := range states {
-		if s == c.state {
+		if s == curState {
 			return nil
 		}
 	}
 	return errors.New("server is not in expected state")
 }
 
-func (c *Core) advanceState(newState state) {
-	if !(c.state < newState && newState < stateMax) {
-		panic(fmt.Errorf("cannot advance from %d to %d", c.state, newState))
+func (c *Core) advanceState(newState state) error {
+	curState, err := c.store.getState()
+	if err != nil {
+		return err
 	}
-	c.state = newState
+	if !(curState < newState && newState < stateMax) {
+		panic(fmt.Errorf("cannot advance from %d to %d", curState, newState))
+	}
+	return c.store.putState(newState)
 }
 
 // NewCore creates and initializes a new Core object
 func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer Sealer, recovery recovery.Recovery, zapLogger *zap.Logger) (*Core, error) {
 	c := &Core{
-		state:       stateUninitialized,
-		activations: make(map[string]uint),
-		qv:          qv,
-		qi:          qi,
-		sealer:      sealer,
-		store:       NewStdStore(sealer, recovery, zapLogger),
-		recovery:    recovery,
-		zaplogger:   zapLogger,
+		qv:        qv,
+		qi:        qi,
+		recovery:  recovery,
+		store:     &storeWrapper{store: NewStdStore(sealer, zapLogger)},
+		zaplogger: zapLogger,
+	}
+
+	if err := c.store.putState(stateUninitialized); err != nil {
+		return nil, err
 	}
 
 	zapLogger.Info("loading state")
-	rootCert, rootPrivK, intermediateCert, intermediatePrivK, err := c.loadState()
-	if err != nil {
-		if err != ErrEncryptionKey {
-			return nil, err
-		}
-		c.zaplogger.Error("Failed to decrypt sealed state. Processing with a new state. Use the /recover API endpoint to load an old state, or submit a new manifest to overwrite the old state. Look up the documentation for more information on how to proceed.")
-		rootCert, rootPrivK, err = generateCert(dnsNames, coordinatorName, nil, nil)
-		if err != nil {
-			return nil, err
-		}
-		intermediateCert, intermediatePrivK, err = generateCert(dnsNames, coordinatorIntermediateName, rootCert, rootPrivK)
-		if err != nil {
-			return nil, err
-		}
-		c.advanceState(stateRecovery)
-	} else if rootCert == nil {
-		c.zaplogger.Info("No sealed state found. Proceeding with new state.")
-		rootCert, rootPrivK, err = generateCert(dnsNames, coordinatorName, nil, nil)
-		if err != nil {
-			return nil, err
-		}
-		intermediateCert, intermediatePrivK, err = generateCert(dnsNames, coordinatorIntermediateName, rootCert, rootPrivK)
-		if err != nil {
-			return nil, err
-		}
-		c.advanceState(stateAcceptingManifest)
+	recoveryData, manifest, updateManifest, loadErr := c.store.loadState()
+	if err := c.recovery.SetRecoveryData(recoveryData); err != nil {
+		c.zaplogger.Error("Could not retrieve recovery data from state. Recovery will be unavailable", zap.Error(err))
 	}
 
-	c.rootCert = rootCert
-	c.rootPrivK = rootPrivK
-	c.intermediateCert = intermediateCert
-	c.intermediatePrivK = intermediatePrivK
-	c.quote = c.generateQuote()
+	if loadErr != nil {
+		if loadErr != ErrEncryptionKey {
+			return nil, loadErr
+		}
+		// sealed state was found but couldnt be decrypted, go to recovery mode or reset manifest
+		c.zaplogger.Error("Failed to decrypt sealed state. Processing with a new state. Use the /recover API endpoint to load an old state, or submit a new manifest to overwrite the old state. Look up the documentation for more information on how to proceed.")
+		if err := c.setCAData(dnsNames); err != nil {
+			return nil, err
+		}
+		if err := c.advanceState(stateRecovery); err != nil {
+			return nil, err
+		}
+	} else if _, err := c.store.getCertificate("root"); isStoreValueUnsetError(err) {
+		// no state was found, wait for manifest
+		c.zaplogger.Info("No sealed state found. Proceeding with new state.")
+		if err := c.setCAData(dnsNames); err != nil {
+			return nil, err
+		}
+		if err := c.advanceState(stateAcceptingManifest); err != nil {
+			return nil, err
+		}
+	} else if err != nil {
+		return nil, err
+	}
+
+	if manifest != nil {
+		c.manifest = *manifest
+	}
+	if updateManifest != nil {
+		c.updateManifest = *updateManifest
+	}
+	rootCert, err := c.store.getCertificate("root")
+	if err != nil {
+		return nil, err
+	}
+	c.quote = c.generateQuote(rootCert.Raw)
 
 	return c, nil
 }
@@ -200,119 +192,46 @@ func (c *Core) GetTLSConfig() (*tls.Config, error) {
 
 // GetTLSRootCertificate creates a TLS certificate for the Coordinators self-signed x509 certificate
 func (c *Core) GetTLSRootCertificate(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	if c.state == stateUninitialized {
+	curState, err := c.store.getState()
+	if err != nil {
+		return nil, err
+	}
+	if curState == stateUninitialized {
 		return nil, errors.New("don't have a cert yet")
 	}
-	return util.TLSCertFromDER(c.rootCert.Raw, c.rootPrivK), nil
+
+	rootCert, err := c.store.getCertificate("root")
+	if err != nil {
+		return nil, err
+	}
+	rootPrivK, err := c.store.getPrivK("root")
+	if err != nil {
+		return nil, err
+	}
+
+	return util.TLSCertFromDER(rootCert.Raw, rootPrivK), nil
 }
 
 // GetTLSIntermediateCertificate creates a TLS certificate for the Coordinator's x509 intermediate certificate based on the self-signed x509 root certificate
 func (c *Core) GetTLSIntermediateCertificate(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	if c.state == stateUninitialized {
+	curState, err := c.store.getState()
+	if err != nil {
+		return nil, err
+	}
+	if curState == stateUninitialized {
 		return nil, errors.New("don't have a cert yet")
 	}
-	return util.TLSCertFromDER(c.intermediateCert.Raw, c.intermediatePrivK), nil
-}
 
-func (c *Core) loadState() (*x509.Certificate, *ecdsa.PrivateKey, *x509.Certificate, *ecdsa.PrivateKey, error) {
-	encodedRecoveryData, stateRaw, unsealErr := c.sealer.Unseal()
-
-	// Retrieve and set recovery data from state
-	err := c.recovery.SetRecoveryData(encodedRecoveryData)
+	intermediateCert, err := c.store.getCertificate("intermediate")
 	if err != nil {
-		c.zaplogger.Error("Could not retrieve recovery data from state. Recovery will be unavailable", zap.Error(err))
+		return nil, err
 	}
-
-	if unsealErr != nil {
-		return nil, nil, nil, nil, unsealErr
-	}
-	if len(stateRaw) == 0 {
-		return nil, nil, nil, nil, nil
-	}
-
-	// load state
-	c.zaplogger.Info("applying sealed state")
-	var loadedState sealedState
-	if err := json.Unmarshal(stateRaw, &loadedState); err != nil {
-		return nil, nil, nil, nil, err
-	}
-
-	// set Core to loaded state
-	rootCert, err := x509.ParseCertificate(loadedState.RawRootCert)
+	intermediatePrivK, err := c.store.getPrivK("intermediate")
 	if err != nil {
-		return nil, nil, nil, nil, err
-	}
-	rootPrivk, err := x509.ParseECPrivateKey(loadedState.RootPrivK)
-	if err != nil {
-		return nil, nil, nil, nil, err
-	}
-	intermediateCert, err := x509.ParseCertificate(loadedState.RawIntermediateCert)
-	if err != nil {
-		return nil, nil, nil, nil, err
-	}
-	intermediatePrivK, err := x509.ParseECPrivateKey(loadedState.IntermediatePrivK)
-	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, err
 	}
 
-	if err := json.Unmarshal(loadedState.RawManifest, &c.manifest); err != nil {
-		return nil, nil, nil, nil, err
-	}
-	c.rawManifest = loadedState.RawManifest
-
-	// Generate and load admin certs from manifest
-	adminCerts, err := generateAdminCertsFromManifest(c.manifest.Admins)
-	if err != nil {
-		c.zaplogger.Error("Could not parse specified admin client certificate from sealed state", zap.Error(err))
-		return nil, nil, nil, nil, err
-	}
-
-	// Load update manifest if one has been set
-	if loadedState.RawUpdateManifest != nil {
-		if err := json.Unmarshal(loadedState.RawUpdateManifest, &c.updateManifest); err != nil {
-			return nil, nil, nil, nil, err
-		}
-		c.rawUpdateManifest = loadedState.RawUpdateManifest
-	}
-
-	c.state = loadedState.State
-	c.activations = loadedState.Activations
-	c.secrets = loadedState.Secrets
-	c.adminCerts = adminCerts
-
-	return rootCert, rootPrivk, intermediateCert, intermediatePrivK, err
-}
-
-func (c *Core) sealState(recoveryData []byte) error {
-	// marshal root CA private key
-	rootPrivKEncoded, err := x509.MarshalECPrivateKey(c.rootPrivK)
-	if err != nil {
-		return err
-	}
-
-	// marshal intermediate CA private key
-	intermediatePrivKEncoded, err := x509.MarshalECPrivateKey(c.intermediatePrivK)
-	if err != nil {
-		return err
-	}
-
-	// seal with manifest set
-	state := sealedState{
-		RootPrivK:           rootPrivKEncoded,
-		IntermediatePrivK:   intermediatePrivKEncoded,
-		RawManifest:         c.rawManifest,
-		RawUpdateManifest:   c.rawUpdateManifest,
-		RawRootCert:         c.rootCert.Raw,
-		RawIntermediateCert: c.intermediateCert.Raw,
-		State:               c.state,
-		Secrets:             c.secrets,
-		Activations:         c.activations,
-	}
-	stateRaw, err := json.Marshal(state)
-	if err != nil {
-		return err
-	}
-	return c.sealer.Seal(recoveryData, stateRaw)
+	return util.TLSCertFromDER(intermediateCert.Raw, intermediatePrivK), nil
 }
 
 func generateCert(dnsNames []string, commonName string, parentCertificate *x509.Certificate, parentPrivateKey *ecdsa.PrivateKey) (*x509.Certificate, *ecdsa.PrivateKey, error) {
@@ -366,9 +285,9 @@ func generateCert(dnsNames []string, commonName string, parentCertificate *x509.
 	return cert, privk, nil
 }
 
-func (c *Core) generateQuote() []byte {
+func (c *Core) generateQuote(cert []byte) []byte {
 	c.zaplogger.Info("generating quote")
-	quote, err := c.qi.Issue(c.rootCert.Raw)
+	quote, err := c.qi.Issue(cert)
 	if err != nil {
 		c.zaplogger.Warn("Failed to get quote. Proceeding in simulation mode.")
 		// If we run in SimulationMode we get an error here
@@ -393,9 +312,14 @@ func getClientTLSCert(ctx context.Context) *x509.Certificate {
 }
 
 func (c *Core) getStatus(ctx context.Context) (int, string, error) {
+	curState, err := c.store.getState()
+	if err != nil {
+		return -1, "Cannot determine coordinator status.", err
+	}
+
 	var status string
 
-	switch c.state {
+	switch curState {
 	case stateRecovery:
 		status = "Coordinator is in recovery mode. Either upload a key to unseal the saved state, or set a new manifest. For more information on how to proceed, consult the documentation."
 	case stateAcceptingManifest:
@@ -406,12 +330,17 @@ func (c *Core) getStatus(ctx context.Context) (int, string, error) {
 		return -1, "Cannot determine coordinator status.", errors.New("cannot determine coordinator status")
 	}
 
-	return int(c.state), status, nil
+	return int(curState), status, nil
 }
 
 func (c *Core) generateSecrets(ctx context.Context, secrets map[string]manifest.Secret, id uuid.UUID, parentCertificate *x509.Certificate, parentPrivKey *ecdsa.PrivateKey) (map[string]manifest.Secret, error) {
 	// Create a new map so we do not overwrite the entries in the manifest
 	newSecrets := make(map[string]manifest.Secret)
+
+	rootPrivK, err := c.store.getPrivK("root")
+	if err != nil {
+		return nil, err
+	}
 
 	// Generate secrets
 	for name, secret := range secrets {
@@ -440,7 +369,7 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]manifest.
 				}
 			} else {
 				salt := id.String() + name
-				secretKeyDerive := c.rootPrivK.D.Bytes()
+				secretKeyDerive := rootPrivK.D.Bytes()
 				var err error
 				generatedValue, err = util.DeriveKey(secretKeyDerive, []byte(salt), secret.Size/8)
 				if err != nil {
@@ -599,18 +528,43 @@ func (c *Core) generateCertificateForSecret(secret manifest.Secret, parentCertif
 	return secret, nil
 }
 
-func generateAdminCertsFromManifest(admins map[string]string) ([]*x509.Certificate, error) {
+func (c *Core) setCAData(dnsNames []string) error {
+	rootCert, rootPrivK, err := generateCert(dnsNames, coordinatorName, nil, nil)
+	if err != nil {
+		return err
+	}
+	intermediateCert, intermediatePrivK, err := generateCert(dnsNames, coordinatorIntermediateName, rootCert, rootPrivK)
+	if err != nil {
+		return err
+	}
+	if err := c.store.putCertificate("root", rootCert); err != nil {
+		return err
+	}
+	if err := c.store.putCertificate("intermediate", intermediateCert); err != nil {
+		return err
+	}
+	if err := c.store.putPrivK("root", rootPrivK); err != nil {
+		return err
+	}
+	if err := c.store.putPrivK("intermediate", intermediatePrivK); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func generateUsersFromManifest(users map[string]string) ([]*marblerunUser, error) {
 	// Parse & write X.509 admin certificates from sealed state
-	adminCerts := make([]*x509.Certificate, 0, len(admins))
-	for _, value := range admins {
+	userData := make([]*marblerunUser, 0, len(users))
+	for userName, value := range users {
 		block, _ := pem.Decode([]byte(value))
 		cert, err := x509.ParseCertificate(block.Bytes)
 		if err != nil {
 			return nil, err
 		}
 
-		adminCerts = append(adminCerts, cert)
+		userData = append(userData, &marblerunUser{name: userName, certificate: cert})
 	}
 
-	return adminCerts, nil
+	return userData, nil
 }
