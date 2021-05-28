@@ -24,8 +24,12 @@ func TestCore(t *testing.T) {
 	assert := assert.New(t)
 
 	c := NewCoreWithMocks()
-	assert.Equal(stateAcceptingManifest, c.state)
-	assert.Equal(coordinatorName, c.rootCert.Subject.CommonName)
+	curState, err := c.store.getState()
+	assert.NoError(err)
+	assert.Equal(stateAcceptingManifest, curState)
+	rootCert, err := c.store.getCertificate("root")
+	assert.NoError(err)
+	assert.Equal(coordinatorName, rootCert.Subject.CommonName)
 
 	cert, err := c.GetTLSRootCertificate(nil)
 	assert.NoError(err)
@@ -73,10 +77,16 @@ func TestSeal(t *testing.T) {
 	assert.NoError(err)
 	signature := c.GetManifestSignature(context.TODO())
 
+	// Get secrets
+	cSecrets, err := c.store.getSecretMap()
+	assert.NoError(err)
+
 	// Check sealing with a new core initialized with the sealed state.
 	c2, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
 	require.NoError(err)
-	assert.Equal(stateAcceptingMarbles, c2.state)
+	c2State, err := c2.store.getState()
+	assert.NoError(err)
+	assert.Equal(stateAcceptingMarbles, c2State)
 
 	cert2, err := c2.GetTLSRootCertificate(nil)
 	assert.NoError(err)
@@ -86,7 +96,9 @@ func TestSeal(t *testing.T) {
 	assert.Error(err)
 
 	// Check if the secret specified in the test manifest is unsealed correctly
-	assert.Equal(c.secrets, c2.secrets)
+	c2Secrets, err := c2.store.getSecretMap()
+	assert.NoError(err)
+	assert.Equal(cSecrets, c2Secrets)
 
 	signature2 := c2.GetManifestSignature(context.TODO())
 	assert.Equal(signature, signature2, "manifest signature differs after restart")
@@ -127,12 +139,16 @@ func TestRecover(t *testing.T) {
 	c2, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
 	sealer.unsealError = nil
 	require.NoError(err)
-	require.Equal(stateRecovery, c2.state)
+	c2State, err := c2.store.getState()
+	assert.NoError(err)
+	require.Equal(stateRecovery, c2State)
 
 	// recover
 	_, err = c2.Recover(context.TODO(), key)
 	assert.NoError(err)
-	assert.Equal(stateAcceptingMarbles, c2.state)
+	c2State, err = c2.store.getState()
+	assert.NoError(err)
+	assert.Equal(stateAcceptingMarbles, c2State)
 }
 
 func TestGenerateSecrets(t *testing.T) {
@@ -172,8 +188,13 @@ func TestGenerateSecrets(t *testing.T) {
 
 	c := NewCoreWithMocks()
 
+	rootCert, err := c.store.getCertificate("root")
+	assert.NoError(err)
+	rootPrivK, err := c.store.getPrivK("root")
+	assert.NoError(err)
+
 	// This should return valid secrets
-	generatedSecrets, err := c.generateSecrets(context.TODO(), secretsToGenerate, uuid.Nil, c.rootCert, c.rootPrivK)
+	generatedSecrets, err := c.generateSecrets(context.TODO(), secretsToGenerate, uuid.Nil, rootCert, rootPrivK)
 	require.NoError(err)
 	// Check if rawTest1 has 128 Bits/16 Bytes and rawTest2 256 Bits/8 Bytes
 	assert.Len(generatedSecrets["rawTest1"].Public, 16)
@@ -187,30 +208,30 @@ func TestGenerateSecrets(t *testing.T) {
 	assert.NotNil(generatedSecrets["cert-rsa-specified-test"].Cert.Raw)
 
 	// Check if we get an empty secret map as output for an empty map as input
-	generatedSecrets, err = c.generateSecrets(context.TODO(), secretsEmptyMap, uuid.Nil, c.rootCert, c.rootPrivK)
+	generatedSecrets, err = c.generateSecrets(context.TODO(), secretsEmptyMap, uuid.Nil, rootCert, rootPrivK)
 	require.NoError(err)
 	assert.IsType(map[string]manifest.Secret{}, generatedSecrets)
 	assert.Len(generatedSecrets, 0)
 
 	// Check if we get an empty secret map as output for nil
-	generatedSecrets, err = c.generateSecrets(context.TODO(), nil, uuid.Nil, c.rootCert, c.rootPrivK)
+	generatedSecrets, err = c.generateSecrets(context.TODO(), nil, uuid.Nil, rootCert, rootPrivK)
 	require.NoError(err)
 	assert.IsType(map[string]manifest.Secret{}, generatedSecrets)
 	assert.Len(generatedSecrets, 0)
 
 	// If no size is specified, the function should fail
-	_, err = c.generateSecrets(context.TODO(), secretsNoSize, uuid.Nil, c.rootCert, c.rootPrivK)
+	_, err = c.generateSecrets(context.TODO(), secretsNoSize, uuid.Nil, rootCert, rootPrivK)
 	assert.Error(err)
 
 	// Also, it should fail if we try to generate a secret with an unknown type
-	_, err = c.generateSecrets(context.TODO(), secretsInvalidType, uuid.Nil, c.rootCert, c.rootPrivK)
+	_, err = c.generateSecrets(context.TODO(), secretsInvalidType, uuid.Nil, rootCert, rootPrivK)
 	assert.Error(err)
 
 	// If Ed25519 key size is specified, we should fail
-	_, err = c.generateSecrets(context.TODO(), secretsEd25519WrongKeySize, uuid.Nil, c.rootCert, c.rootPrivK)
+	_, err = c.generateSecrets(context.TODO(), secretsEd25519WrongKeySize, uuid.Nil, rootCert, rootPrivK)
 	assert.Error(err)
 
 	// However, for ECDSA we fail as we can have multiple curves
-	_, err = c.generateSecrets(context.TODO(), secretsECDSAWrongKeySize, uuid.Nil, c.rootCert, c.rootPrivK)
+	_, err = c.generateSecrets(context.TODO(), secretsECDSAWrongKeySize, uuid.Nil, rootCert, rootPrivK)
 	assert.Error(err)
 }

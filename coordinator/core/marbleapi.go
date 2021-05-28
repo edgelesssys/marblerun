@@ -77,15 +77,29 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 		return nil, err
 	}
 
+	intermediateCert, err := c.store.getCertificate("intermediate")
+	if err != nil {
+		c.zaplogger.Error("Could not retrieve intermediate certificate.", zap.Error(err))
+		return nil, err
+	}
+	intermediatePrivK, err := c.store.getPrivK("intermediate")
+	if err != nil {
+		c.zaplogger.Error("Could not retrieve intermediate private key.", zap.Error(err))
+	}
+
 	// Generate user-defined unique (= per marble) secrets
-	secrets, err := c.generateSecrets(ctx, c.manifest.Secrets, marbleUUID, c.intermediateCert, c.intermediatePrivK)
+	secrets, err := c.generateSecrets(ctx, c.manifest.Secrets, marbleUUID, intermediateCert, intermediatePrivK)
 	if err != nil {
 		c.zaplogger.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
 		return nil, err
 	}
 
 	// Union user-defined unique secrets with user-defined shared secrets
-	for k, v := range c.secrets {
+	sharedSecrets, err := c.store.getSecretMap()
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range sharedSecrets {
 		secrets[k] = v
 	}
 
@@ -107,8 +121,12 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 		Parameters: params,
 	}
 
+	if err := c.store.incrementActivations(req.GetMarbleType()); err != nil {
+		c.zaplogger.Error("Could not increment activations.", zap.Error(err))
+		return nil, err
+	}
+
 	c.zaplogger.Info("Successfully activated new Marble", zap.String("MarbleType", req.MarbleType), zap.String("UUID", marbleUUID.String()))
-	c.activations[req.GetMarbleType()]++
 	return resp, nil
 }
 
@@ -150,7 +168,15 @@ func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, certQuote []
 	}
 
 	// check activation budget (MaxActivations == 0 means infinite budget)
-	activations := c.activations[marbleType]
+	activations, err := c.store.getActivations(marbleType)
+	if isStoreValueUnsetError(err) {
+		activations = 0
+	} else if err != nil {
+		return status.Error(codes.Internal, "could not retrieve activations for marble type")
+	}
+	if err := c.store.putActivations(marbleType, activations); err != nil {
+		return status.Error(codes.Internal, "could not set activations marble type")
+	}
 	if marble.MaxActivations > 0 && activations >= marble.MaxActivations {
 		return status.Error(codes.ResourceExhausted, "reached max activations count for marble type")
 	}
@@ -173,9 +199,18 @@ func (c *Core) generateCertFromCSR(csrReq []byte, pubk ecdsa.PublicKey, marbleTy
 		return nil, status.Error(codes.Internal, "failed to generate serial")
 	}
 
+	intermediateCert, err := c.store.getCertificate("intermediate")
+	if err != nil {
+		return nil, err
+	}
+	intermediatePrivK, err := c.store.getPrivK("intermediate")
+	if err != nil {
+		return nil, err
+	}
+
 	// create certificate
 	csr.Subject.CommonName = marbleUUID
-	csr.Subject.Organization = c.intermediateCert.Issuer.Organization
+	csr.Subject.Organization = intermediateCert.Issuer.Organization
 	notBefore := time.Now()
 	// TODO: produce shorter lived certificates
 	notAfter := notBefore.Add(math.MaxInt64)
@@ -193,7 +228,7 @@ func (c *Core) generateCertFromCSR(csrReq []byte, pubk ecdsa.PublicKey, marbleTy
 		IPAddresses:           csr.IPAddresses,
 	}
 
-	certRaw, err := x509.CreateCertificate(rand.Reader, &template, c.intermediateCert, &pubk, c.intermediatePrivK)
+	certRaw, err := x509.CreateCertificate(rand.Reader, &template, intermediateCert, &pubk, intermediatePrivK)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to issue certificate")
 	}
@@ -290,7 +325,11 @@ func (c *Core) generateMarbleAuthSecrets(req *rpc.ActivationReq, marbleUUID uuid
 	if err != nil {
 		return reservedSecrets{}, err
 	}
-	sealKey, err := util.DeriveKey(c.rootPrivK.D.Bytes(), uuidBytes, 32)
+	rootPrivK, err := c.store.getPrivK("root")
+	if err != nil {
+		return reservedSecrets{}, err
+	}
+	sealKey, err := util.DeriveKey(rootPrivK.D.Bytes(), uuidBytes, 32)
 	if err != nil {
 		return reservedSecrets{}, err
 	}
@@ -305,9 +344,13 @@ func (c *Core) generateMarbleAuthSecrets(req *rpc.ActivationReq, marbleUUID uuid
 		return reservedSecrets{}, err
 	}
 
+	intermediateCert, err := c.store.getCertificate("intermediate")
+	if err != nil {
+		return reservedSecrets{}, err
+	}
 	// customize marble's parameters
 	authSecrets := reservedSecrets{
-		RootCA:     manifest.Secret{Cert: manifest.Certificate(*c.intermediateCert)},
+		RootCA:     manifest.Secret{Cert: manifest.Certificate(*intermediateCert)},
 		MarbleCert: manifest.Secret{Cert: manifest.Certificate(*marbleCert), Public: encodedPubKey, Private: encodedPrivKey},
 		SealKey:    manifest.Secret{Public: sealKey, Private: sealKey},
 	}
@@ -325,7 +368,12 @@ func (c *Core) setTTLSConfig(marble manifest.Marble, specialSecrets reservedSecr
 	ttlsConf["tls"]["Incoming"] = make(map[string]map[string]interface{})
 	ttlsConf["tls"]["Outgoing"] = make(map[string]map[string]interface{})
 
-	pemCaCert := pem.Block{Type: "CERTIFICATE", Bytes: c.intermediateCert.Raw}
+	intermediateCert, err := c.store.getCertificate("intermediate")
+	if err != nil {
+		return err
+	}
+
+	pemCaCert := pem.Block{Type: "CERTIFICATE", Bytes: intermediateCert.Raw}
 	stringCaCert := string(pem.EncodeToMemory(&pemCaCert))
 
 	pemClientCert := pem.Block{Type: "CERTIFICATE", Bytes: specialSecrets.MarbleCert.Cert.Raw}

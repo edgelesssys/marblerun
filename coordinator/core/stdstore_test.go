@@ -9,7 +9,6 @@ package core
 import (
 	"testing"
 
-	"github.com/edgelesssys/marblerun/coordinator/recovery"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -21,7 +20,7 @@ func TestStdStore(t *testing.T) {
 
 	zap, err := zap.NewDevelopment()
 	require.NoError(err)
-	store := NewStdStore(&MockSealer{}, recovery.NewSinglePartyRecovery(), zap)
+	store := NewStdStore(&MockSealer{}, zap)
 
 	testData1 := []byte("test data")
 	testData2 := []byte("more test data")
@@ -52,18 +51,18 @@ func TestStdStoreSealing(t *testing.T) {
 	zap, err := zap.NewDevelopment()
 	require.NoError(err)
 	sealer := &MockSealer{}
-	store := NewStdStore(sealer, recovery.NewSinglePartyRecovery(), zap)
+	store := NewStdStore(sealer, zap)
 
 	testData1 := []byte("test data")
 	store.Put("test:input", testData1)
 	assert.NoError(err)
 
-	err = store.SealState()
+	err = store.SealState([]byte{0x00})
 	assert.NoError(err)
 
 	// Check sealing with a new store initialized with the sealed state
-	store2 := NewStdStore(sealer, recovery.NewSinglePartyRecovery(), zap)
-	err = store2.LoadState()
+	store2 := NewStdStore(sealer, zap)
+	_, err = store2.LoadState()
 	assert.NoError(err)
 	val, err := store2.Get("test:input")
 	assert.NoError(err)
@@ -76,7 +75,7 @@ func TestStdStoreRollback(t *testing.T) {
 
 	zap, err := zap.NewDevelopment()
 	require.NoError(err)
-	store := NewStdStore(&MockSealer{}, recovery.NewSinglePartyRecovery(), zap)
+	store := NewStdStore(&MockSealer{}, zap)
 
 	testData1 := []byte("test data")
 	testData2 := []byte("more test data")
@@ -84,7 +83,7 @@ func TestStdStoreRollback(t *testing.T) {
 	// save data to store and seal
 	err = store.Put("test:input", testData1)
 	assert.NoError(err)
-	err = store.SealState()
+	err = store.SealState([]byte{0x00})
 	assert.NoError(err)
 
 	// save more data to store
@@ -92,7 +91,7 @@ func TestStdStoreRollback(t *testing.T) {
 	assert.NoError(err)
 
 	// reload state and verify only testData1 exists
-	err = store.LoadState()
+	_, err = store.LoadState()
 	assert.NoError(err)
 	val, err := store.Get("test:input")
 	assert.NoError(err)
