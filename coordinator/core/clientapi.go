@@ -15,6 +15,7 @@ import (
 	"errors"
 
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
+	"github.com/edgelesssys/marblerun/coordinator/store"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
@@ -83,7 +84,6 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 		return nil, err
 	}
 
-	c.manifest = manifest
 	if err := c.store.putRawManifest("main", rawManifest); err != nil {
 		return nil, err
 	}
@@ -180,10 +180,15 @@ func (c *Core) GetStatus(ctx context.Context) (statusCode int, status string, er
 
 // VerifyAdmin checks if a given client certificate matches the admin certificates specified in the manifest
 func (c *Core) VerifyAdmin(ctx context.Context, clientCerts []*x509.Certificate) bool {
+	manifest, err := c.store.getManifest("main")
+	if err != nil {
+		return false
+	}
+
 	// Check if a supplied client cert matches the supplied ones from the manifest stored in the core
 	// NOTE: We do not use the "correct" X.509 verify here since we do not really care about expiration and chain verification here.
 	for _, suppliedCert := range clientCerts {
-		for user := range c.manifest.Admins {
+		for user := range manifest.Admins {
 			userData, _ := c.store.getUser(user)
 			if suppliedCert.Equal(userData.certificate) {
 				return true
@@ -208,7 +213,15 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte) err
 	if err := json.Unmarshal(rawUpdateManifest, &updateManifest); err != nil {
 		return err
 	}
-	if err := updateManifest.CheckUpdate(ctx, c.manifest.Packages, c.updateManifest.Packages); err != nil {
+	mainManifest, err := c.store.getManifest("main")
+	if err != nil {
+		return err
+	}
+	oldUpdateManifest, err := c.store.getManifest("update")
+	if err != nil && !store.IsStoreValueUnsetError(err) {
+		return err
+	}
+	if err := updateManifest.CheckUpdate(ctx, mainManifest.Packages, oldUpdateManifest.Packages); err != nil {
 		return err
 	}
 
@@ -230,7 +243,7 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte) err
 
 	// Gather all shared certificate secrets we need to regenerate
 	secretsToRegenerate := make(map[string]manifest.Secret)
-	for name, secret := range c.manifest.Secrets {
+	for name, secret := range mainManifest.Secrets {
 		if secret.Shared && secret.Type != "symmetric-key" {
 			secretsToRegenerate[name] = secret
 		}
@@ -250,7 +263,6 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte) err
 		return err
 	}
 
-	c.updateManifest = updateManifest
 	if err := c.store.putRawManifest("update", rawUpdateManifest); err != nil {
 		return err
 	}
@@ -280,7 +292,7 @@ func (c *Core) performRecovery(encryptionKey []byte) error {
 	}
 
 	// load state
-	recoveryData, manifest, updateManifest, err := c.store.loadState()
+	recoveryData, err := c.store.loadState()
 	if err != nil {
 		return err
 	}
@@ -288,12 +300,6 @@ func (c *Core) performRecovery(encryptionKey []byte) error {
 		c.zaplogger.Error("Could not retrieve recovery data from state. Recovery will be unavailable", zap.Error(err))
 	}
 
-	if manifest != nil {
-		c.manifest = *manifest
-	}
-	if updateManifest != nil {
-		c.updateManifest = *updateManifest
-	}
 	rootCert, err := c.store.getCertificate("root")
 	if err != nil {
 		return err

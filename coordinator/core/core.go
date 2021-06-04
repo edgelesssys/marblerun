@@ -39,15 +39,15 @@ import (
 
 // Core implements the core logic of the Coordinator
 type Core struct {
-	quote          []byte
-	recovery       recovery.Recovery
-	manifest       manifest.Manifest
-	updateManifest manifest.Manifest
-	store          *storeWrapper
-	qv             quote.Validator
-	qi             quote.Issuer
-	mux            sync.Mutex
-	zaplogger      *zap.Logger
+	quote    []byte
+	recovery recovery.Recovery
+	//manifest       manifest.Manifest
+	//updateManifest manifest.Manifest
+	store     *storeWrapper
+	qv        quote.Validator
+	qi        quote.Issuer
+	mux       sync.Mutex
+	zaplogger *zap.Logger
 }
 
 // The sequence of states a Coordinator may be in
@@ -116,7 +116,7 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 	}
 
 	zapLogger.Info("loading state")
-	recoveryData, manifest, updateManifest, loadErr := c.store.loadState()
+	recoveryData, loadErr := c.store.loadState()
 	if err := c.recovery.SetRecoveryData(recoveryData); err != nil {
 		c.zaplogger.Error("Could not retrieve recovery data from state. Recovery will be unavailable", zap.Error(err))
 	}
@@ -146,12 +146,6 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 		return nil, err
 	}
 
-	if manifest != nil {
-		c.manifest = *manifest
-	}
-	if updateManifest != nil {
-		c.updateManifest = *updateManifest
-	}
 	rootCert, err := c.store.getCertificate("root")
 	if err != nil {
 		return nil, err

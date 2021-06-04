@@ -126,7 +126,7 @@ func TestStoreWrapperRollback(t *testing.T) {
 	err = c.store.putActivations("test-marble-2", uint(20))
 	assert.NoError(err)
 
-	_, _, _, err = c.store.loadState()
+	_, err = c.store.loadState()
 	assert.NoError(err)
 	val, err := c.store.getActivations("test-marble-1")
 	assert.NoError(err)

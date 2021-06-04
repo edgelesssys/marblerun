@@ -480,8 +480,10 @@ func TestSecurityLevelUpdate(t *testing.T) {
 	require.NoError(err)
 	coreServer2State, err := coreServer2.store.getState()
 	assert.NoError(err)
+	coreServer2UpdateManifest, err := coreServer2.store.getManifest("update")
+	assert.NoError(err)
 	assert.Equal(stateAcceptingMarbles, coreServer2State)
-	assert.EqualValues(5, *coreServer2.updateManifest.Packages["frontend"].SecurityVersion)
+	assert.EqualValues(5, *coreServer2UpdateManifest.Packages["frontend"].SecurityVersion)
 
 	// This should still fail after a restart, as the update manifest should have been reloaded from the sealed state correctly
 	spawner.coreServer = coreServer2
@@ -526,14 +528,18 @@ func (ms *marbleSpawner) shortMarbleActivation(marbleType string, infraName stri
 	// Validate response
 	params := resp.GetParameters()
 	// Get the marble from the manifest set on the coreServer since this one sets default values for empty values
-	marble = ms.coreServer.manifest.Marbles[marbleType]
+	coreServerManifest, err := ms.coreServer.store.getManifest("main")
+	ms.assert.NoError(err)
+	marble = coreServerManifest.Marbles[marbleType]
 	// Validate Files
-	if marble.Parameters.Files != nil {
-		ms.assert.Equal(marble.Parameters.Files, params.Files)
-	}
-	// Validate Argv
-	if marble.Parameters.Argv != nil {
-		ms.assert.Equal(marble.Parameters.Argv, params.Argv)
+	if marble.Parameters != nil {
+		if marble.Parameters.Files != nil {
+			ms.assert.Equal(marble.Parameters.Files, params.Files)
+		}
+		// Validate Argv
+		if marble.Parameters.Argv != nil {
+			ms.assert.Equal(marble.Parameters.Argv, params.Argv)
+		}
 	}
 }
 
