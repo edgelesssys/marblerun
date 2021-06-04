@@ -10,9 +10,9 @@ package main
 
 import (
 	"github.com/edgelesssys/marblerun/coordinator/config"
-	"github.com/edgelesssys/marblerun/coordinator/core"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
+	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/util"
 )
 
@@ -20,7 +20,7 @@ func main() {
 	validator := quote.NewFailValidator()
 	issuer := quote.NewFailIssuer()
 	sealDir := util.Getenv(config.SealDir, config.SealDirDefault())
-	sealer := core.NewNoEnclaveSealer(sealDir)
+	sealer := seal.NewNoEnclaveSealer(sealDir)
 	recovery := recovery.NewSinglePartyRecovery()
 	run(validator, issuer, sealDir, sealer, recovery)
 }

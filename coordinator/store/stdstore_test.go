@@ -4,11 +4,12 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-package core
+package store
 
 import (
 	"testing"
 
+	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -20,7 +21,7 @@ func TestStdStore(t *testing.T) {
 
 	zap, err := zap.NewDevelopment()
 	require.NoError(err)
-	store := NewStdStore(&MockSealer{}, zap)
+	store := NewStdStore(&seal.MockSealer{}, zap)
 
 	testData1 := []byte("test data")
 	testData2 := []byte("more test data")
@@ -50,7 +51,7 @@ func TestStdStoreSealing(t *testing.T) {
 
 	zap, err := zap.NewDevelopment()
 	require.NoError(err)
-	sealer := &MockSealer{}
+	sealer := &seal.MockSealer{}
 	store := NewStdStore(sealer, zap)
 
 	testData1 := []byte("test data")
@@ -75,7 +76,7 @@ func TestStdStoreRollback(t *testing.T) {
 
 	zap, err := zap.NewDevelopment()
 	require.NoError(err)
-	store := NewStdStore(&MockSealer{}, zap)
+	store := NewStdStore(&seal.MockSealer{}, zap)
 
 	testData1 := []byte("test data")
 	testData2 := []byte("more test data")

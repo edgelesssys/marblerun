@@ -15,6 +15,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/core"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
+	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/coordinator/server"
 	"github.com/edgelesssys/marblerun/util"
 	"go.uber.org/zap"
@@ -26,7 +27,7 @@ var Version = "0.0.0" // Don't touch! Automatically injected at build-time.
 // GitCommit is the git commit hash
 var GitCommit = "0000000000000000000000000000000000000000" // Don't touch! Automatically injected at build-time.
 
-func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer core.Sealer, recovery recovery.Recovery) {
+func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer seal.Sealer, recovery recovery.Recovery) {
 	// Setup logging with Zap Logger
 	var zapLogger *zap.Logger
 	var err error

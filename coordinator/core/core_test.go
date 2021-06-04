@@ -13,6 +13,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
+	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -62,7 +63,7 @@ func TestSeal(t *testing.T) {
 
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
-	sealer := &MockSealer{}
+	sealer := &seal.MockSealer{}
 	recovery := recovery.NewSinglePartyRecovery()
 
 	c, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
@@ -115,7 +116,7 @@ func TestRecover(t *testing.T) {
 
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
-	sealer := &MockSealer{}
+	sealer := &seal.MockSealer{}
 	recovery := recovery.NewSinglePartyRecovery()
 
 	c, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
@@ -135,9 +136,9 @@ func TestRecover(t *testing.T) {
 	assert.Error(err)
 
 	// Initialize new core and let unseal fail
-	sealer.unsealError = ErrEncryptionKey
+	sealer.UnsealError = seal.ErrEncryptionKey
 	c2, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
-	sealer.unsealError = nil
+	sealer.UnsealError = nil
 	require.NoError(err)
 	c2State, err := c2.store.getState()
 	assert.NoError(err)

@@ -30,8 +30,8 @@ import (
 	"time"
 
 	"github.com/edgelesssys/marblerun/coordinator/config"
-	"github.com/edgelesssys/marblerun/coordinator/core"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
+	"github.com/edgelesssys/marblerun/coordinator/seal"
 	mconfig "github.com/edgelesssys/marblerun/marble/config"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/stretchr/testify/assert"
@@ -693,7 +693,7 @@ func triggerRecovery(manifest manifest.Manifest, assert *assert.Assertions, requ
 
 	// Garble encryption key to trigger recovery state
 	log.Println("Purposely corrupt sealed key to trigger recovery state...")
-	pathToKeyFile := filepath.Join(cfg.sealDir, core.SealedKeyFname)
+	pathToKeyFile := filepath.Join(cfg.sealDir, seal.SealedKeyFname)
 	sealedKeyData, err := ioutil.ReadFile(pathToKeyFile)
 	require.NoError(err)
 	sealedKeyData[0] ^= byte(0x42)
