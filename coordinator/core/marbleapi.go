@@ -357,7 +357,7 @@ func (c *Core) setTTLSConfig(marble manifest.Marble, specialSecrets reservedSecr
 
 				connConf["clicrt"] = stringUserClientCert
 				connConf["clikey"] = stringUserClientKey
-				connConf["clientAuth"] = false
+				connConf["clientAuth"] = !entry.DisableClientAuth
 				connConf["cacrt"] = stringCaCert
 
 			} else {

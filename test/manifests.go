@@ -165,7 +165,8 @@ const ManifestJSON string = `{
 			"Incoming": [
 				{
 					"Port": "8080",
-					"Cert": "cert_shared"
+					"Cert": "cert_shared",
+					"DisableClientAuth": true
 				}
 			]
 		}
