@@ -65,9 +65,10 @@ type TLStag struct {
 
 // TLSTagEntry describes one connection which should be elevated to ttls
 type TLSTagEntry struct {
-	Port string
-	Addr string
-	Cert string
+	Port              string
+	Addr              string
+	Cert              string
+	DisableClientAuth bool
 }
 
 // Check checks if the manifest is consistent.
@@ -129,6 +130,13 @@ func (m Manifest) Check(ctx context.Context, zaplogger *zap.Logger) error {
 			if entry.Cert != "" {
 				if _, ok := m.Secrets[entry.Cert]; !ok {
 					return fmt.Errorf("TLS.Incoming.%s references undefined secret %s", key, entry.Cert)
+				}
+				if !entry.DisableClientAuth {
+					return fmt.Errorf("TLS.Incoming.%s defines Cert but does not disable client authentication", key)
+				}
+			} else {
+				if entry.DisableClientAuth {
+					return fmt.Errorf("TLS.Incoming.%s disables client authentication", key)
 				}
 			}
 		}
