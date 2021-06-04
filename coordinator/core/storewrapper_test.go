@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
+	"github.com/edgelesssys/marblerun/coordinator/store"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -102,13 +103,13 @@ func TestStoreWrapperDefaults(t *testing.T) {
 
 	// Nothing else was set, should always return error
 	_, err = c.store.getActivations("test-marble")
-	assert.True(isStoreValueUnsetError(err), "activations were not unset")
+	assert.True(store.IsStoreValueUnsetError(err), "activations were not unset")
 	_, err = c.store.getRawManifest("main")
-	assert.True(isStoreValueUnsetError(err), "raw manifest was not unset")
+	assert.True(store.IsStoreValueUnsetError(err), "raw manifest was not unset")
 	_, err = c.store.getSecret("test-secret")
-	assert.True(isStoreValueUnsetError(err), "[test-secret] was not unset")
+	assert.True(store.IsStoreValueUnsetError(err), "[test-secret] was not unset")
 	_, err = c.store.getUser("test-user")
-	assert.True(isStoreValueUnsetError(err), "[test-user] was not unset")
+	assert.True(store.IsStoreValueUnsetError(err), "[test-user] was not unset")
 }
 
 func TestStoreWrapperRollback(t *testing.T) {
@@ -131,5 +132,5 @@ func TestStoreWrapperRollback(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(activations, val)
 	_, err = c.store.getActivations("test-marble-2")
-	assert.True(isStoreValueUnsetError(err))
+	assert.True(store.IsStoreValueUnsetError(err))
 }

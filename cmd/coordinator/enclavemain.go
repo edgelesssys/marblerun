@@ -12,9 +12,9 @@ import (
 	"path/filepath"
 
 	"github.com/edgelesssys/marblerun/coordinator/config"
-	"github.com/edgelesssys/marblerun/coordinator/core"
 	"github.com/edgelesssys/marblerun/coordinator/quote/ertvalidator"
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
+	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/util"
 )
 
@@ -24,7 +24,7 @@ func main() {
 	sealDirPrefix := filepath.Join(filepath.FromSlash("/edg"), "hostfs")
 	sealDir := util.Getenv(config.SealDir, config.SealDirDefault())
 	sealDir = filepath.Join(sealDirPrefix, sealDir)
-	sealer := core.NewAESGCMSealer(sealDir)
+	sealer := seal.NewAESGCMSealer(sealDir)
 	recovery := recovery.NewSinglePartyRecovery()
 	run(validator, issuer, sealDir, sealer, recovery)
 }

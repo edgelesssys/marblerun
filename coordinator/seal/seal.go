@@ -4,7 +4,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-package core
+package seal
 
 import (
 	"crypto/rand"
@@ -189,12 +189,13 @@ func (s *AESGCMSealer) SetEncryptionKey(encryptionKey []byte) error {
 type MockSealer struct {
 	data            []byte
 	unencryptedData []byte
-	unsealError     error
+	// mock unseal error
+	UnsealError error
 }
 
 // Unseal implements the Sealer interface
 func (s *MockSealer) Unseal() ([]byte, []byte, error) {
-	return s.unencryptedData, s.data, s.unsealError
+	return s.unencryptedData, s.data, s.UnsealError
 }
 
 // Seal implements the Sealer interface

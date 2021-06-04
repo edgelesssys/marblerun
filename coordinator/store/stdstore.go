@@ -4,40 +4,26 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-package core
+package store
 
 import (
 	"encoding/json"
-	"fmt"
 	"sync"
 
+	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"go.uber.org/zap"
 )
-
-// storeValueUnset is an error raised by unset values in the store
-type storeValueUnset struct {
-	requestedValue string
-}
-
-func (s *storeValueUnset) Error() string {
-	return fmt.Sprintf("requested value not set: %s", s.requestedValue)
-}
-
-func isStoreValueUnsetError(err error) bool {
-	_, ok := err.(*storeValueUnset)
-	return ok
-}
 
 // StdStore is the standard implementation of the Store interface
 type StdStore struct {
 	data      map[string][]byte
 	mux       sync.Mutex
-	sealer    Sealer
+	sealer    seal.Sealer
 	zaplogger *zap.Logger
 }
 
 // NewStdStore creates and initialises a new StdStore object
-func NewStdStore(sealer Sealer, zaplogger *zap.Logger) Store {
+func NewStdStore(sealer seal.Sealer, zaplogger *zap.Logger) Store {
 	s := &StdStore{
 		data:      make(map[string][]byte),
 		sealer:    sealer,

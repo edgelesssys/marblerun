@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
+	"github.com/edgelesssys/marblerun/coordinator/store"
 )
 
 const (
@@ -26,22 +27,13 @@ const (
 	requestUser        = "user"
 )
 
-// Store is the interface for state transactions and persistance
-type Store interface {
-	Get(string) ([]byte, error)
-	Put(string, []byte) error
-	SealState(recoveryData []byte) error
-	LoadState() ([]byte, error)
-	SetEncryptionKey([]byte) error
-}
-
 // storeWrapper is a wrapper for the store interface
 type storeWrapper struct {
-	store Store
+	store store.Store
 }
 
 // newStoreWrapper creates and initialses a new storeWrapper object
-func newStoreWrapper(store Store) *storeWrapper {
+func newStoreWrapper(store store.Store) *storeWrapper {
 	return &storeWrapper{store: store}
 }
 
@@ -122,7 +114,7 @@ func (s *storeWrapper) getManifest(manifestType string) (*manifest.Manifest, err
 		if err := json.Unmarshal(rawManifest, &manifest); err != nil {
 			return nil, err
 		}
-	} else if !isStoreValueUnsetError(err) {
+	} else if !store.IsStoreValueUnsetError(err) {
 		return nil, err
 	}
 
@@ -169,12 +161,8 @@ func (s *storeWrapper) putSecret(secretType string, secret manifest.Secret) erro
 func (s *storeWrapper) getSecretMap() (map[string]manifest.Secret, error) {
 	secretMap := map[string]manifest.Secret{}
 
-	rawManifest, err := s.getRawManifest("main")
+	manifest, err := s.getManifest("main")
 	if err != nil {
-		return nil, err
-	}
-	var manifest manifest.Manifest
-	if err := json.Unmarshal(rawManifest, &manifest); err != nil {
 		return nil, err
 	}
 

@@ -28,6 +28,8 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
+	"github.com/edgelesssys/marblerun/coordinator/seal"
+	"github.com/edgelesssys/marblerun/coordinator/store"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -100,12 +102,12 @@ func (c *Core) advanceState(newState state) error {
 }
 
 // NewCore creates and initializes a new Core object
-func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer Sealer, recovery recovery.Recovery, zapLogger *zap.Logger) (*Core, error) {
+func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal.Sealer, recovery recovery.Recovery, zapLogger *zap.Logger) (*Core, error) {
 	c := &Core{
 		qv:        qv,
 		qi:        qi,
 		recovery:  recovery,
-		store:     &storeWrapper{store: NewStdStore(sealer, zapLogger)},
+		store:     &storeWrapper{store: store.NewStdStore(sealer, zapLogger)},
 		zaplogger: zapLogger,
 	}
 
@@ -120,7 +122,7 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer Seal
 	}
 
 	if loadErr != nil {
-		if loadErr != ErrEncryptionKey {
+		if loadErr != seal.ErrEncryptionKey {
 			return nil, loadErr
 		}
 		// sealed state was found but couldnt be decrypted, go to recovery mode or reset manifest
@@ -131,7 +133,7 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer Seal
 		if err := c.advanceState(stateRecovery); err != nil {
 			return nil, err
 		}
-	} else if _, err := c.store.getCertificate("root"); isStoreValueUnsetError(err) {
+	} else if _, err := c.store.getCertificate("root"); store.IsStoreValueUnsetError(err) {
 		// no state was found, wait for manifest
 		c.zaplogger.Info("No sealed state found. Proceeding with new state.")
 		if err := c.setCAData(dnsNames); err != nil {
@@ -168,7 +170,7 @@ func NewCoreWithMocks() *Core {
 
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
-	sealer := &MockSealer{}
+	sealer := &seal.MockSealer{}
 	recovery := recovery.NewSinglePartyRecovery()
 	core, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
 	if err != nil {

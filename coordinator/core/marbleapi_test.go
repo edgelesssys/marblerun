@@ -25,6 +25,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
+	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
@@ -51,7 +52,7 @@ func TestActivate(t *testing.T) {
 	// create core
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
-	sealer := &MockSealer{}
+	sealer := &seal.MockSealer{}
 	recovery := recovery.NewSinglePartyRecovery()
 	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
 	require.NoError(err)
@@ -446,7 +447,7 @@ func TestSecurityLevelUpdate(t *testing.T) {
 	// create core
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
-	sealer := &MockSealer{}
+	sealer := &seal.MockSealer{}
 	recovery := recovery.NewSinglePartyRecovery()
 	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
 	require.NoError(err)
@@ -552,7 +553,7 @@ func TestActivateWithMissingParameters(t *testing.T) {
 	// create core
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
-	sealer := &MockSealer{}
+	sealer := &seal.MockSealer{}
 	recovery := recovery.NewSinglePartyRecovery()
 	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
 	require.NoError(err)

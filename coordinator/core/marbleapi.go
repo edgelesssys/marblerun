@@ -23,6 +23,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
+	"github.com/edgelesssys/marblerun/coordinator/store"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -169,7 +170,7 @@ func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, certQuote []
 
 	// check activation budget (MaxActivations == 0 means infinite budget)
 	activations, err := c.store.getActivations(marbleType)
-	if isStoreValueUnsetError(err) {
+	if store.IsStoreValueUnsetError(err) {
 		activations = 0
 	} else if err != nil {
 		return status.Error(codes.Internal, "could not retrieve activations for marble type")
