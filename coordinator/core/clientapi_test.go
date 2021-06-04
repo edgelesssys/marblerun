@@ -47,15 +47,22 @@ func TestSetManifest(t *testing.T) {
 
 	c, manifest := mustSetup()
 	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
-
 	assert.NoError(err, "SetManifest should succed on first try")
-	assert.Equal(*manifest, c.manifest, "Manifest should be set correctly")
+	cManifest, err := c.store.getManifest("main")
+	assert.NoError(err)
+	assert.Equal(*manifest, *cManifest, "Manifest should be set correctly")
+
 	_, err = c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
 	assert.Error(err, "SetManifest should fail on the second try")
-	assert.Equal(*manifest, c.manifest, "Manifest should still be set correctly")
+	cManifest, err = c.store.getManifest("main")
+	assert.NoError(err)
+	assert.Equal(*manifest, *cManifest, "Manifest should still be set correctly")
+
 	_, err = c.SetManifest(context.TODO(), []byte(test.ManifestJSON)[:len(test.ManifestJSON)-1])
 	assert.Error(err, "SetManifest should fail on broken json")
-	assert.Equal(*manifest, c.manifest, "Manifest should still be set correctly")
+	cManifest, err = c.store.getManifest("main")
+	assert.NoError(err)
+	assert.Equal(*manifest, *cManifest, "Manifest should still be set correctly")
 
 	// use new core
 	c, _ = mustSetup()
@@ -64,9 +71,12 @@ func TestSetManifest(t *testing.T) {
 	c, _ = mustSetup()
 	_, err = c.SetManifest(context.TODO(), []byte(""))
 	assert.Error(err, "empty string should not be accepted")
+
 	_, err = c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
 	assert.NoError(err, "SetManifest should succed after failed tries")
-	assert.Equal(*manifest, c.manifest, "Manifest should be set correctly")
+	cManifest, err = c.store.getManifest("main")
+	assert.NoError(err)
+	assert.Equal(*manifest, *cManifest, "Manifest should be set correctly")
 }
 
 func TestSetManifestInvalid(t *testing.T) {
@@ -282,12 +292,16 @@ func TestUpdateManifestInvalid(t *testing.T) {
 	// Set manifest (frontend has SecurityVersion 3)
 	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
 	require.NoError(err)
-	assert.EqualValues(3, *c.manifest.Packages["frontend"].SecurityVersion)
+	cManifest, err := c.store.getManifest("main")
+	assert.NoError(err)
+	assert.EqualValues(3, *cManifest.Packages["frontend"].SecurityVersion)
 
 	// Try to update manifest (frontend's SecurityVersion should rise from 3 to 5)
 	err = c.UpdateManifest(context.TODO(), []byte(test.UpdateManifest))
 	require.NoError(err)
-	assert.EqualValues(5, *c.updateManifest.Packages["frontend"].SecurityVersion)
+	cUpdateManifest, err := c.store.getManifest("update")
+	assert.NoError(err)
+	assert.EqualValues(5, *cUpdateManifest.Packages["frontend"].SecurityVersion)
 
 	// Test invalid manifests
 	var badUpdateManifest manifest.Manifest

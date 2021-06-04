@@ -87,9 +87,13 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	if err != nil {
 		c.zaplogger.Error("Could not retrieve intermediate private key.", zap.Error(err))
 	}
+	mainManifest, err := c.store.getManifest("main")
+	if err != nil {
+		return nil, err
+	}
 
 	// Generate user-defined unique (= per marble) secrets
-	secrets, err := c.generateSecrets(ctx, c.manifest.Secrets, marbleUUID, intermediateCert, intermediatePrivK)
+	secrets, err := c.generateSecrets(ctx, mainManifest.Secrets, marbleUUID, intermediateCert, intermediatePrivK)
 	if err != nil {
 		c.zaplogger.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
 		return nil, err
@@ -104,7 +108,10 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 		secrets[k] = v
 	}
 
-	marble := c.manifest.Marbles[req.GetMarbleType()] // existence has been checked in verifyManifestRequirement
+	marble := mainManifest.Marbles[req.GetMarbleType()] // existence has been checked in verifyManifestRequirement
+	if marble.Parameters == nil {
+		marble.Parameters = &rpc.Parameters{}
+	}
 	// add TTLS config to Env
 	if err := c.setTTLSConfig(marble, authSecrets, secrets); err != nil {
 		c.zaplogger.Error("Could not create TTLS config.", zap.Error(err))
@@ -133,30 +140,39 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 
 // verifyManifestRequirement verifies marble attempting to register with respect to manifest
 func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, certQuote []byte, marbleType string) error {
-	marble, ok := c.manifest.Marbles[marbleType]
+	mainManifest, err := c.store.getManifest("main")
+	if err != nil {
+		return err
+	}
+	updateManifest, err := c.store.getManifest("update")
+	if err != nil {
+		return err
+	}
+
+	marble, ok := mainManifest.Marbles[marbleType]
 	if !ok {
 		return status.Error(codes.InvalidArgument, "unknown marble type requested")
 	}
 
-	pkg, ok := c.manifest.Packages[marble.Package]
+	pkg, ok := mainManifest.Packages[marble.Package]
 	if !ok {
 		// can't happen
 		return status.Error(codes.Internal, "undefined package")
 	}
 
 	// In case the administrator has updated a package, apply the updated security version
-	if updpkg, ok := c.updateManifest.Packages[marble.Package]; ok {
+	if updpkg, ok := updateManifest.Packages[marble.Package]; ok {
 		pkg.SecurityVersion = updpkg.SecurityVersion
 	}
 
 	if !c.inSimulationMode() {
-		if len(c.manifest.Infrastructures) == 0 {
+		if len(mainManifest.Infrastructures) == 0 {
 			if err := c.qv.Validate(certQuote, tlsCert.Raw, pkg, quote.InfrastructureProperties{}); err != nil {
 				return status.Errorf(codes.Unauthenticated, "invalid quote: %v", err)
 			}
 		} else {
 			infraMatch := false
-			for _, infra := range c.manifest.Infrastructures {
+			for _, infra := range mainManifest.Infrastructures {
 				if c.qv.Validate(certQuote, tlsCert.Raw, pkg, infra) == nil {
 					infraMatch = true
 					break
@@ -383,9 +399,14 @@ func (c *Core) setTTLSConfig(marble manifest.Marble, specialSecrets reservedSecr
 	pemClientKey := pem.Block{Type: "PRIVATE KEY", Bytes: specialSecrets.MarbleCert.Private}
 	stringClientKey := string(pem.EncodeToMemory(&pemClientKey))
 
+	manifest, err := c.store.getManifest("main")
+	if err != nil {
+		return err
+	}
+
 	for _, tag := range marble.TLS {
 
-		for _, entry := range c.manifest.TLS[tag].Outgoing {
+		for _, entry := range manifest.TLS[tag].Outgoing {
 			connConf := make(map[string]interface{})
 			connConf["cacrt"] = stringCaCert
 			connConf["clicrt"] = stringClientCert
@@ -393,7 +414,7 @@ func (c *Core) setTTLSConfig(marble manifest.Marble, specialSecrets reservedSecr
 
 			ttlsConf["tls"]["Outgoing"][entry.Addr+":"+entry.Port] = connConf
 		}
-		for _, entry := range c.manifest.TLS[tag].Incoming {
+		for _, entry := range manifest.TLS[tag].Incoming {
 			connConf := make(map[string]interface{})
 
 			// use user-defined values if present

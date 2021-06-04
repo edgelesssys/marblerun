@@ -224,25 +224,8 @@ func (s *storeWrapper) putUser(user *marblerunUser) error {
 }
 
 // loadState loads the store state and returns recoveryData
-func (s *storeWrapper) loadState() ([]byte, *manifest.Manifest, *manifest.Manifest, error) {
-	recoveryData, err := s.store.LoadState()
-	if err != nil {
-		return recoveryData, nil, nil, err
-	}
-
-	// load main manifest if it was set
-	mainManifest, err := s.getManifest("main")
-	if err != nil {
-		return recoveryData, nil, nil, err
-	}
-
-	// load update manifest it it was set
-	updateManifest, err := s.getManifest("update")
-	if err != nil {
-		return recoveryData, nil, nil, err
-	}
-
-	return recoveryData, mainManifest, updateManifest, nil
+func (s *storeWrapper) loadState() ([]byte, error) {
+	return s.store.LoadState()
 }
 
 // sealState seals the store state
