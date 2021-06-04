@@ -10,15 +10,19 @@ import "fmt"
 
 // Store is the interface for state transactions and persistance
 type Store interface {
+	// BeginTransaction starts a new transaction, allowing new data to be stored in Store
+	BeginTransaction() error
+	// Commit ends a transaction by sealing the state
+	Commit(recoveryData []byte) error
 	// Get returns a value from store by key
 	Get(string) ([]byte, error)
-	// Put saves a value to store by key
-	Put(string, []byte) error
-	// SealState encrypts and persists the state of the store
-	SealState(recoveryData []byte) error
-	// LoadState loads the encrypted state of the store
+	// LoadState loads a sealed state
 	LoadState() ([]byte, error)
-	// SetEncryptionKey sets the key used by SealState
+	// Put saves a value to store by key, should only be called during a transaction
+	Put(string, []byte) error
+	// Rollback aborts a transaction by reverting to an earlier state
+	Rollback()
+	// SetEncryptionKey sets the key used for sealing the state
 	SetEncryptionKey([]byte) error
 }
 

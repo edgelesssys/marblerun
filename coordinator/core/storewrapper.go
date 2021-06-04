@@ -60,7 +60,7 @@ func (s *storeWrapper) putActivations(marbleType string, activations uint) error
 // incrementActivations is a wrapper for get/put activations to increment the value for one marble
 func (s *storeWrapper) incrementActivations(marbleType string) error {
 	activations, err := s.getActivations(marbleType)
-	if err != nil {
+	if err != nil && !store.IsStoreValueUnsetError(err) {
 		return err
 	}
 	activations++
@@ -110,11 +110,11 @@ func (s *storeWrapper) putPrivK(keyType string, privK *ecdsa.PrivateKey) error {
 func (s *storeWrapper) getManifest(manifestType string) (*manifest.Manifest, error) {
 	var manifest manifest.Manifest
 	rawManifest, err := s.getRawManifest(manifestType)
-	if err == nil {
-		if err := json.Unmarshal(rawManifest, &manifest); err != nil {
-			return nil, err
-		}
-	} else if !store.IsStoreValueUnsetError(err) {
+	if err != nil {
+		// return uninitialized manifest if non was set with error
+		return &manifest, err
+	}
+	if err := json.Unmarshal(rawManifest, &manifest); err != nil {
 		return nil, err
 	}
 
@@ -223,14 +223,24 @@ func (s *storeWrapper) putUser(user *marblerunUser) error {
 	return s.store.Put(request, user.certificate.Raw)
 }
 
+// beingTransaction starts a new transaction to store
+func (s *storeWrapper) beginTransaction() error {
+	return s.store.BeginTransaction()
+}
+
+// commit ends a transcation and seals the store state
+func (s *storeWrapper) commit(recoveryData []byte) error {
+	return s.store.Commit(recoveryData)
+}
+
 // loadState loads the store state and returns recoveryData
 func (s *storeWrapper) loadState() ([]byte, error) {
 	return s.store.LoadState()
 }
 
-// sealState seals the store state
-func (s *storeWrapper) sealState(recoveryData []byte) error {
-	return s.store.SealState(recoveryData)
+// rollback reverts to an early state of store
+func (s *storeWrapper) rollback() {
+	s.store.Rollback()
 }
 
 // setEncryptionKey sets the encryption key of store

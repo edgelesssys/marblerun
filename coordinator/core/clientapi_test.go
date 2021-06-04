@@ -180,7 +180,11 @@ func TestGetCertQuote(t *testing.T) {
 	_, _, err = c.GetCertQuote(context.TODO())
 	assert.NoError(err, "GetCertQuote should not fail (with manifest)")
 
+	err = c.store.beginTransaction()
+	assert.NoError(err)
 	err = c.store.putState(stateRecovery)
+	assert.NoError(err)
+	err = c.store.commit(nil)
 	assert.NoError(err)
 	_, _, err = c.GetCertQuote(context.TODO())
 	assert.NoError(err, "GetCertQuote should not fail when coordinator is in recovery mode")

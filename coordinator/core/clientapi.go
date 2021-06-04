@@ -85,20 +85,25 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 	}
 
 	if err := c.store.putRawManifest("main", rawManifest); err != nil {
+		c.store.rollback()
 		return nil, err
 	}
 	for key, secret := range secrets {
 		if err := c.store.putSecret(key, secret); err != nil {
+			c.store.rollback()
 			return nil, err
 		}
 	}
 	for _, user := range users {
-		c.store.putUser(user)
+		if err := c.store.putUser(user); err != nil {
+			c.store.rollback()
+			return nil, err
+		}
 	}
 
 	c.advanceState(stateAcceptingMarbles)
-	if err := c.store.sealState(recoveryData); err != nil {
-		c.zaplogger.Error("sealState failed", zap.Error(err))
+	if err := c.store.commit(recoveryData); err != nil {
+		c.zaplogger.Error("sealing of state failed", zap.Error(err))
 	}
 
 	return recoverySecretMap, nil
@@ -267,22 +272,30 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte) err
 		return err
 	}
 
+	if err := c.store.beginTransaction(); err != nil {
+		return err
+	}
 	if err := c.store.putRawManifest("update", rawUpdateManifest); err != nil {
+		c.store.rollback()
 		return err
 	}
 	if err := c.store.putCertificate(skCoordinatorIntermediateCert, intermediateCert); err != nil {
+		c.store.rollback()
 		return err
 	}
 	if err := c.store.putCertificate(sKMarbleRootCert, marbleRootCert); err != nil {
+		c.store.rollback()
 		return err
 	}
 	if err := c.store.putPrivK(sKCoordinatorIntermediateKey, intermediatePrivK); err != nil {
+		c.store.rollback()
 		return err
 	}
 
 	// Overwrite regenerated secrets in core
 	for name, secret := range regeneratedSecrets {
 		if err := c.store.putSecret(name, secret); err != nil {
+			c.store.rollback()
 			return err
 		}
 	}
@@ -290,7 +303,7 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte) err
 	c.zaplogger.Info("An update manifest overriding package settings from the original manifest was set.")
 	c.zaplogger.Info("Please restart your Marbles to enforce the update.")
 
-	return c.store.sealState(currentRecoveryData)
+	return c.store.commit(currentRecoveryData)
 }
 
 func (c *Core) performRecovery(encryptionKey []byte) error {

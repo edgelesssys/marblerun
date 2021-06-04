@@ -16,7 +16,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// just to test current implementation of storewrapper
 func TestStoreWrapper(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
@@ -44,6 +43,10 @@ func TestStoreWrapper(t *testing.T) {
 	testUser := &marblerunUser{name: "test-user", certificate: testUserCert}
 
 	// save values to store
+	err = c.store.commit(nil)
+	assert.NoError(err)
+	err = c.store.beginTransaction()
+	assert.NoError(err)
 	err = c.store.putActivations("test-marble", testActivations)
 	assert.NoError(err)
 	err = c.store.putCertificate("some-cert", someCert)
@@ -57,6 +60,8 @@ func TestStoreWrapper(t *testing.T) {
 	err = c.store.putState(curState)
 	assert.NoError(err)
 	err = c.store.putUser(testUser)
+	assert.NoError(err)
+	err = c.store.commit(nil)
 	assert.NoError(err)
 
 	// see if we can retrieve them again
@@ -118,16 +123,21 @@ func TestStoreWrapperRollback(t *testing.T) {
 	c := NewCoreWithMocks()
 
 	activations := uint(15)
-	err := c.store.putActivations("test-marble-1", activations)
+	err := c.store.commit(nil)
 	assert.NoError(err)
-	err = c.store.sealState([]byte{0x00})
+	err = c.store.beginTransaction()
+	assert.NoError(err)
+	err = c.store.putActivations("test-marble-1", activations)
+	assert.NoError(err)
+	err = c.store.commit([]byte{0x00})
 	assert.NoError(err)
 
+	err = c.store.beginTransaction()
+	assert.NoError(err)
 	err = c.store.putActivations("test-marble-2", uint(20))
 	assert.NoError(err)
 
-	_, err = c.store.loadState()
-	assert.NoError(err)
+	c.store.rollback()
 	val, err := c.store.getActivations("test-marble-1")
 	assert.NoError(err)
 	assert.Equal(activations, val)

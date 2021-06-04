@@ -129,8 +129,18 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 		Parameters: params,
 	}
 
+	recoveryData, err := c.recovery.GetRecoveryData()
+	if err != nil {
+		return nil, err
+	}
+	if err := c.store.beginTransaction(); err != nil {
+		return nil, err
+	}
 	if err := c.store.incrementActivations(req.GetMarbleType()); err != nil {
 		c.zaplogger.Error("Could not increment activations.", zap.Error(err))
+		return nil, err
+	}
+	if err := c.store.commit(recoveryData); err != nil {
 		return nil, err
 	}
 
@@ -145,7 +155,7 @@ func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, certQuote []
 		return err
 	}
 	updateManifest, err := c.store.getManifest("update")
-	if err != nil {
+	if err != nil && !store.IsStoreValueUnsetError(err) {
 		return err
 	}
 
@@ -190,9 +200,6 @@ func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, certQuote []
 		activations = 0
 	} else if err != nil {
 		return status.Error(codes.Internal, "could not retrieve activations for marble type")
-	}
-	if err := c.store.putActivations(marbleType, activations); err != nil {
-		return status.Error(codes.Internal, "could not set activations marble type")
 	}
 	if marble.MaxActivations > 0 && activations >= marble.MaxActivations {
 		return status.Error(codes.ResourceExhausted, "reached max activations count for marble type")

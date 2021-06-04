@@ -8,17 +8,28 @@ package store
 
 import (
 	"encoding/json"
+	"errors"
 	"sync"
 
 	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"go.uber.org/zap"
 )
 
+type stdStoreState int
+
+const (
+	stateUninitialized stdStoreState = iota
+	stateIdle
+	stateAcceptingData
+)
+
 // StdStore is the standard implementation of the Store interface
 type StdStore struct {
 	data      map[string][]byte
+	oldData   map[string][]byte
 	mux       sync.Mutex
 	sealer    seal.Sealer
+	state     stdStoreState
 	zaplogger *zap.Logger
 }
 
@@ -26,11 +37,22 @@ type StdStore struct {
 func NewStdStore(sealer seal.Sealer, zaplogger *zap.Logger) Store {
 	s := &StdStore{
 		data:      make(map[string][]byte),
+		oldData:   make(map[string][]byte),
 		sealer:    sealer,
+		state:     stateUninitialized,
 		zaplogger: zaplogger,
 	}
 
 	return s
+}
+
+// requireState ensures a method is only executed in the correc state
+func (s *StdStore) requireState(state stdStoreState) error {
+	s.mux.Lock()
+	if s.state != state {
+		return errors.New("store is not in required state")
+	}
+	return nil
 }
 
 // Get retrieves a value from StdStore by Type and Name
@@ -45,12 +67,55 @@ func (s *StdStore) Get(request string) ([]byte, error) {
 	return value, nil
 }
 
+// Put saves a value in StdStore by Type and Name
+func (s *StdStore) Put(request string, requestData []byte) error {
+	defer s.mux.Unlock()
+	if err := s.requireState(stateAcceptingData); err != nil {
+		return err
+	}
+
+	s.data[request] = requestData
+
+	return nil
+}
+
+// BeginTransaction starts a new transaction by making a copy of the current data
+func (s *StdStore) BeginTransaction() error {
+	defer s.mux.Unlock()
+	if err := s.requireState(stateIdle); err != nil {
+		return err
+	}
+
+	s.state = stateAcceptingData
+	// copy current state as backup
+	s.oldData = make(map[string][]byte)
+	for k, v := range s.data {
+		s.oldData[k] = v
+	}
+	return nil
+}
+
+// Commit persists and seals data of StdStore
+func (s *StdStore) Commit(recoveryData []byte) error {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+
+	dataRaw, err := json.Marshal(s.data)
+	if err != nil {
+		return err
+	}
+
+	s.state = stateIdle
+	return s.sealer.Seal(recoveryData, dataRaw)
+}
+
 // LoadState loads sealed data into StdStore's data
 func (s *StdStore) LoadState() ([]byte, error) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
-	encodedRecoveryData, stateRaw, err := s.sealer.Unseal()
 
+	encodedRecoveryData, stateRaw, err := s.sealer.Unseal()
+	s.state = stateIdle
 	if err != nil {
 		return encodedRecoveryData, err
 	}
@@ -68,27 +133,13 @@ func (s *StdStore) LoadState() ([]byte, error) {
 	return encodedRecoveryData, nil
 }
 
-// Put saves a value in StdStore by Type and Name
-func (s *StdStore) Put(request string, requestData []byte) error {
-	s.mux.Lock()
-	defer s.mux.Unlock()
-
-	s.data[request] = requestData
-
-	return nil
-}
-
-// SealState seals the state of StdStore using its sealer
-func (s *StdStore) SealState(recoveryData []byte) error {
-	s.mux.Lock()
-	defer s.mux.Unlock()
-
-	dataRaw, err := json.Marshal(s.data)
-	if err != nil {
-		return err
+// Rollback reverts the store to the previous state
+func (s *StdStore) Rollback() {
+	if s.oldData == nil {
+		s.zaplogger.Panic("no state to rollback to")
 	}
-
-	return s.sealer.Seal(recoveryData, dataRaw)
+	s.data = s.oldData
+	s.state = stateIdle
 }
 
 // SetEncryptionKey sets the encryption key of the stores sealer

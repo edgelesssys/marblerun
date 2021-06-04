@@ -39,10 +39,8 @@ import (
 
 // Core implements the core logic of the Coordinator
 type Core struct {
-	quote    []byte
-	recovery recovery.Recovery
-	//manifest       manifest.Manifest
-	//updateManifest manifest.Manifest
+	quote     []byte
+	recovery  recovery.Recovery
 	store     *storeWrapper
 	qv        quote.Validator
 	qi        quote.Issuer
@@ -120,14 +118,27 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 		zaplogger: zapLogger,
 	}
 
-	if err := c.store.putState(stateUninitialized); err != nil {
-		return nil, err
-	}
-
 	zapLogger.Info("loading state")
 	recoveryData, loadErr := c.store.loadState()
 	if err := c.recovery.SetRecoveryData(recoveryData); err != nil {
 		c.zaplogger.Error("Could not retrieve recovery data from state. Recovery will be unavailable", zap.Error(err))
+	}
+
+	// start a new transaction to put values into the store
+	// transaction ends by either uploading a manifest, or recovering from a sealed state
+	if err := c.store.beginTransaction(); err != nil {
+		return nil, err
+	}
+
+	// set core to uninitialized if no state is set
+	if _, err := c.store.getState(); err != nil {
+		if store.IsStoreValueUnsetError(err) {
+			if err := c.store.putState(stateUninitialized); err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, err
+		}
 	}
 
 	if loadErr != nil {
@@ -137,6 +148,7 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 		// sealed state was found but couldnt be decrypted, go to recovery mode or reset manifest
 		c.zaplogger.Error("Failed to decrypt sealed state. Processing with a new state. Use the /recover API endpoint to load an old state, or submit a new manifest to overwrite the old state. Look up the documentation for more information on how to proceed.")
 		if err := c.setCAData(dnsNames); err != nil {
+			c.store.rollback()
 			return nil, err
 		}
 		if err := c.advanceState(stateRecovery); err != nil {
@@ -146,13 +158,18 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 		// no state was found, wait for manifest
 		c.zaplogger.Info("No sealed state found. Proceeding with new state.")
 		if err := c.setCAData(dnsNames); err != nil {
+			c.store.rollback()
 			return nil, err
 		}
 		if err := c.advanceState(stateAcceptingManifest); err != nil {
+			c.store.rollback()
 			return nil, err
 		}
 	} else if err != nil {
 		return nil, err
+	} else {
+		// recovered from a sealed state, finish the store transaction
+		c.store.commit(recoveryData)
 	}
 
 	rootCert, err := c.store.getCertificate(sKCoordinatorRootCert)
