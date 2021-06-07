@@ -48,17 +48,17 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 		return nil, err
 	}
 
-	intermediateCert, err := c.store.getCertificate("intermediate")
+	marbleRootCert, err := c.store.getCertificate(sKMarbleRootCert)
 	if err != nil {
 		return nil, err
 	}
-	intermediatePrivK, err := c.store.getPrivK("intermediate")
+	intermediatePrivK, err := c.store.getPrivK(sKCoordinatorIntermediateKey)
 	if err != nil {
 		return nil, err
 	}
 
 	// Generate shared secrets specified in manifest
-	secrets, err := c.generateSecrets(ctx, manifest.Secrets, uuid.Nil, intermediateCert, intermediatePrivK)
+	secrets, err := c.generateSecrets(ctx, manifest.Secrets, uuid.Nil, marbleRootCert, intermediatePrivK)
 	if err != nil {
 		c.zaplogger.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
 		return nil, err
@@ -113,11 +113,11 @@ func (c *Core) GetCertQuote(ctx context.Context) (string, []byte, error) {
 		return "", nil, err
 	}
 
-	rootCert, err := c.store.getCertificate("root")
+	rootCert, err := c.store.getCertificate(sKCoordinatorRootCert)
 	if err != nil {
 		return "", nil, err
 	}
-	intermediateCert, err := c.store.getCertificate("intermediate")
+	intermediateCert, err := c.store.getCertificate(skCoordinatorIntermediateCert)
 	if err != nil {
 		return "", nil, err
 	}
@@ -225,19 +225,23 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte) err
 		return err
 	}
 
-	rootCert, err := c.store.getCertificate("root")
+	rootCert, err := c.store.getCertificate(sKCoordinatorRootCert)
 	if err != nil {
 		return err
 	}
-	rootPrivK, err := c.store.getPrivK("root")
+	rootPrivK, err := c.store.getPrivK(sKCoordinatorRootKey)
 	if err != nil {
 		return err
 	}
 
-	// Generate new intermediate CA for Marble gRPC authentication
-	intermediateCert, intermediatePrivK, err := generateCert(rootCert.DNSNames, coordinatorIntermediateName, rootCert, rootPrivK)
+	// Generate new cross-signed intermediate CA for Marble gRPC authentication
+	intermediateCert, intermediatePrivK, err := generateCert(rootCert.DNSNames, coordinatorIntermediateName, nil, rootCert, rootPrivK)
 	if err != nil {
 		c.zaplogger.Error("Could not generate a new intermediate CA for Marble authentication.", zap.Error(err))
+		return err
+	}
+	marbleRootCert, _, err := generateCert(rootCert.DNSNames, coordinatorIntermediateName, intermediatePrivK, nil, nil)
+	if err != nil {
 		return err
 	}
 
@@ -250,7 +254,7 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte) err
 	}
 
 	// Regenerate shared secrets specified in manifest
-	regeneratedSecrets, err := c.generateSecrets(ctx, secretsToRegenerate, uuid.Nil, intermediateCert, intermediatePrivK)
+	regeneratedSecrets, err := c.generateSecrets(ctx, secretsToRegenerate, uuid.Nil, marbleRootCert, intermediatePrivK)
 	if err != nil {
 		c.zaplogger.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
 		return err
@@ -266,10 +270,13 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte) err
 	if err := c.store.putRawManifest("update", rawUpdateManifest); err != nil {
 		return err
 	}
-	if err := c.store.putCertificate("intermediate", intermediateCert); err != nil {
+	if err := c.store.putCertificate(skCoordinatorIntermediateCert, intermediateCert); err != nil {
 		return err
 	}
-	if err := c.store.putPrivK("intermediate", intermediatePrivK); err != nil {
+	if err := c.store.putCertificate(sKMarbleRootCert, marbleRootCert); err != nil {
+		return err
+	}
+	if err := c.store.putPrivK(sKCoordinatorIntermediateKey, intermediatePrivK); err != nil {
 		return err
 	}
 
@@ -300,7 +307,7 @@ func (c *Core) performRecovery(encryptionKey []byte) error {
 		c.zaplogger.Error("Could not retrieve recovery data from state. Recovery will be unavailable", zap.Error(err))
 	}
 
-	rootCert, err := c.store.getCertificate("root")
+	rootCert, err := c.store.getCertificate(sKCoordinatorRootCert)
 	if err != nil {
 		return err
 	}

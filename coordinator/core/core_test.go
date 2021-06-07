@@ -28,7 +28,7 @@ func TestCore(t *testing.T) {
 	curState, err := c.store.getState()
 	assert.NoError(err)
 	assert.Equal(stateAcceptingManifest, curState)
-	rootCert, err := c.store.getCertificate("root")
+	rootCert, err := c.store.getCertificate(sKCoordinatorRootCert)
 	assert.NoError(err)
 	assert.Equal(coordinatorName, rootCert.Subject.CommonName)
 
@@ -189,9 +189,9 @@ func TestGenerateSecrets(t *testing.T) {
 
 	c := NewCoreWithMocks()
 
-	rootCert, err := c.store.getCertificate("root")
+	rootCert, err := c.store.getCertificate(sKCoordinatorRootCert)
 	assert.NoError(err)
-	rootPrivK, err := c.store.getPrivK("root")
+	rootPrivK, err := c.store.getPrivK(sKCoordinatorRootKey)
 	assert.NoError(err)
 
 	// This should return valid secrets

@@ -238,9 +238,11 @@ func TestUpdateManifest(t *testing.T) {
 	require.NoError(err)
 
 	// Get current certificate
-	rootCABeforeUpdate, err := c.store.getCertificate("root")
+	rootCABeforeUpdate, err := c.store.getCertificate(sKCoordinatorRootCert)
 	assert.NoError(err)
-	intermediateCABeforeUpdate, err := c.store.getCertificate("intermediate")
+	intermediateCABeforeUpdate, err := c.store.getCertificate(skCoordinatorIntermediateCert)
+	assert.NoError(err)
+	marbleRootCABeforeUpdate, err := c.store.getCertificate(sKMarbleRootCert)
 	assert.NoError(err)
 	secretsBeforeUpdate, err := c.store.getSecretMap()
 	assert.NoError(err)
@@ -250,16 +252,19 @@ func TestUpdateManifest(t *testing.T) {
 	require.NoError(err)
 
 	// Get new certificates
-	rootCAAfterUpdate, err := c.store.getCertificate("root")
+	rootCAAfterUpdate, err := c.store.getCertificate(sKCoordinatorRootCert)
 	assert.NoError(err)
-	intermediateCAAfterUpdate, err := c.store.getCertificate("intermediate")
+	intermediateCAAfterUpdate, err := c.store.getCertificate(skCoordinatorIntermediateCert)
+	assert.NoError(err)
+	marbleRootCABeAfterUpdate, err := c.store.getCertificate(sKMarbleRootCert)
 	assert.NoError(err)
 	secretsAfterUpdate, err := c.store.getSecretMap()
 	assert.NoError(err)
 
-	// Check if root certificate stayed the same, but intermediate CA changed
+	// Check if root certificate stayed the same, but intermediate CAs changed
 	assert.Equal(rootCABeforeUpdate, rootCAAfterUpdate)
 	assert.NotEqual(intermediateCABeforeUpdate, intermediateCAAfterUpdate)
+	assert.NotEqual(marbleRootCABeforeUpdate, marbleRootCABeAfterUpdate)
 
 	// Secrets: symmetric keys should remain the same, certificates should be regenerated based on the new intermediate ca
 	assert.Equal(secretsBeforeUpdate["symmetric_key_shared"], secretsAfterUpdate["symmetric_key_shared"])
@@ -279,6 +284,19 @@ func TestUpdateManifest(t *testing.T) {
 	_, err = oldCert.Verify(opts)
 	assert.Error(err)
 	newCert := x509.Certificate(secretsAfterUpdate["cert_shared"].Cert)
+	_, err = newCert.Verify(opts)
+	assert.NoError(err)
+
+	// Verify if the old secret certificate is not correctly verified anymore by the new marbleRoot certificate
+	roots = x509.NewCertPool()
+	roots.AddCert(marbleRootCABeAfterUpdate)
+	opts = x509.VerifyOptions{
+		Roots:     roots,
+		DNSName:   "localhost",
+		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+	}
+	_, err = oldCert.Verify(opts)
+	assert.Error(err)
 	_, err = newCert.Verify(opts)
 	assert.NoError(err)
 }
