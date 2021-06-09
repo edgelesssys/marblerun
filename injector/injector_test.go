@@ -64,7 +64,7 @@ func TestMutatesValidRequest(t *testing.T) {
 	r := v1.AdmissionReview{}
 	require.NoError(json.Unmarshal(response, &r), "failed to unmarshal response with error %s", err)
 
-	assert.Contains(string(r.Response.Patch), `{"op":"add","path":"/spec/containers/0/resources","value":{"limits":{"kubernetes.azure.com/sgx_epc_mem_in_MiB":10}}}`, "applied incorrect resource patch")
+	assert.Contains(string(r.Response.Patch), `{"op":"add","path":"/spec/containers/0/resources","value":{"limits":{"kubernetes.azure.com/sgx_epc_mem_in_MiB":"10"}}}`, "applied incorrect resource patch")
 	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env","value":[{"name":"EDG_MARBLE_COORDINATOR_ADDR","value":"coordinator-mesh-api.marblerun:2001"}]`, "failed to apply coordinator env variable patch")
 	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env/-","value":{"name":"EDG_MARBLE_TYPE","value":"test"}`, "failed to apply marble type env variable patch")
 	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env/-","value":{"name":"EDG_MARBLE_DNS_NAMES","value":"test,test.injectable,test.injectable.svc.cluster.local"}`, "failed to apply DNS name env varibale patch")
@@ -160,7 +160,7 @@ func TestPreSetValues(t *testing.T) {
 	r := v1.AdmissionReview{}
 	require.NoError(json.Unmarshal(response, &r), "failed to unmarshal response with error %s", err)
 
-	assert.Contains(string(r.Response.Patch), `{"op":"add","path":"/spec/containers/0/resources/limits/kubernetes.azure.com~1sgx_epc_mem_in_MiB","value":10}`, "applied incorrect resource patch")
+	assert.Contains(string(r.Response.Patch), `{"op":"add","path":"/spec/containers/0/resources/limits/kubernetes.azure.com~1sgx_epc_mem_in_MiB","value":"10"}`, "applied incorrect resource patch")
 	assert.NotContains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env"`, "applied coordinator env variable patch when it shouldnt have")
 	assert.NotContains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env/-"`, "applied marble type env variable patch when it shouldnt have")
 	assert.NotContains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env/-"`, "applied DNS name env varibale patch when it shouldnt have")

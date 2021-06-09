@@ -390,6 +390,12 @@ func setSGXValues(resourceKey string, values, chartValues map[string]interface{}
 
 	toRemove := fmt.Sprintf("%s %s", intelEpc.String(), azureEpc.String())
 	var needNewLimit bool
+	var limit string
+	if resourceKey == azureEpc.String() {
+		limit = "10"
+	} else {
+		limit = "10Mi"
+	}
 
 	// remove all previously set sgx resource limits
 	if presetLimits, ok := chartValues["coordinator"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{}); ok {
@@ -414,7 +420,7 @@ func setSGXValues(resourceKey string, values, chartValues map[string]interface{}
 
 	// Set the new sgx resource limit, kubernetes will automatically set a resource request equal to the limit
 	if needNewLimit {
-		values["coordinator"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})[resourceKey] = 10
+		values["coordinator"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})[resourceKey] = limit
 	}
 
 	// Make sure provision bit is set if the Intel plugin is used

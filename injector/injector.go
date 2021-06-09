@@ -14,6 +14,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const azureEPC = "kubernetes.azure.com/sgx_epc_mem_in_MiB"
+
 // Mutator struct
 type Mutator struct {
 	// CoordAddr contains the address of the marblerun coordinator
@@ -277,14 +279,20 @@ func addEnvVar(setVars, newVars []corev1.EnvVar, basePath string) []map[string]i
 
 // createResourcePatch creates a json patch for sgx resource limits
 func createResourcePatch(container corev1.Container, idx int, resourceKey string) map[string]interface{} {
+	var limit string
+	if resourceKey == azureEPC {
+		limit = "10"
+	} else {
+		limit = "10Mi"
+	}
 	// first check if neither limits nor requests have been set for the container -> we need to create the complete path
 	if len(container.Resources.Limits) <= 0 && len(container.Resources.Requests) <= 0 {
 		return map[string]interface{}{
 			"op":   "add",
 			"path": fmt.Sprintf("/spec/containers/%d/resources", idx),
 			"value": map[string]interface{}{
-				"limits": map[string]int{
-					resourceKey: 10,
+				"limits": map[string]string{
+					resourceKey: limit,
 				},
 			},
 		}
@@ -294,8 +302,8 @@ func createResourcePatch(container corev1.Container, idx int, resourceKey string
 		return map[string]interface{}{
 			"op":   "add",
 			"path": fmt.Sprintf("/spec/containers/%d/resources/limits", idx),
-			"value": map[string]int{
-				resourceKey: 10,
+			"value": map[string]string{
+				resourceKey: limit,
 			},
 		}
 	}
@@ -306,7 +314,7 @@ func createResourcePatch(container corev1.Container, idx int, resourceKey string
 	return map[string]interface{}{
 		"op":    "add",
 		"path":  fmt.Sprintf("/spec/containers/%d/resources/limits/%s", idx, newKey),
-		"value": 10,
+		"value": limit,
 	}
 }
 
