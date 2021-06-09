@@ -416,6 +416,11 @@ func setSGXValues(resourceKey string, values, chartValues map[string]interface{}
 	if needNewLimit {
 		values["coordinator"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})[resourceKey] = 10
 	}
+
+	// Make sure provision bit is set if the Intel plugin is used
+	if resourceKey == intelEpc.String() {
+		values["coordinator"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})[intelProvision.String()] = 1
+	}
 }
 
 // errorAndCleanup returns the given error and deletes resources which might have been created previously
