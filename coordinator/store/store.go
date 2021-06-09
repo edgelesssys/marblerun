@@ -8,22 +8,26 @@ package store
 
 import "fmt"
 
-// Store is the interface for state transactions and persistance
+// Store is the interface for persistence
 type Store interface {
-	// BeginTransaction starts a new transaction, allowing new data to be stored in Store
-	BeginTransaction() error
-	// Commit ends a transaction by sealing the state
-	Commit(recoveryData []byte) error
+	// BeginTransaction starts a new transaction
+	BeginTransaction() (Transaction, error)
 	// Get returns a value from store by key
 	Get(string) ([]byte, error)
-	// LoadState loads a sealed state
-	LoadState() ([]byte, error)
-	// Put saves a value to store by key, should only be called during a transaction
+	// Put saves a value to store by key
 	Put(string, []byte) error
-	// Rollback aborts a transaction by reverting to an earlier state
+}
+
+// Transaction is a Store transaction.
+type Transaction interface {
+	// Get returns a value from store by key
+	Get(string) ([]byte, error)
+	// Put saves a value to store by key
+	Put(string, []byte) error
+	// Commit ends a transaction and persists the changes
+	Commit() error
+	// Rollback aborts a transaction. Noop if already committed.
 	Rollback()
-	// SetEncryptionKey sets the key used for sealing the state
-	SetEncryptionKey([]byte) error
 }
 
 // storeValueUnset is an error raised by unset values in the store

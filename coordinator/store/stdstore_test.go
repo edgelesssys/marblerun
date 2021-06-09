@@ -22,7 +22,7 @@ func TestStdStore(t *testing.T) {
 	zap, err := zap.NewDevelopment()
 	require.NoError(err)
 	store := NewStdStore(&seal.MockSealer{}, zap)
-	recData, err := store.LoadState()
+	_, err = store.LoadState()
 	assert.NoError(err)
 
 	testData1 := []byte("test data")
@@ -33,13 +33,11 @@ func TestStdStore(t *testing.T) {
 	assert.Error(err)
 
 	// test Put method
-	err = store.BeginTransaction()
+	tx, err := store.BeginTransaction()
 	assert.NoError(err)
-	err = store.Put("test:input", testData1)
-	assert.NoError(err)
-	err = store.Put("another:input", testData2)
-	assert.NoError(err)
-	err = store.Commit(recData)
+	assert.NoError(tx.Put("test:input", testData1))
+	assert.NoError(tx.Put("another:input", testData2))
+	assert.NoError(tx.Commit())
 
 	// make sure values have been set
 	val, err := store.Get("test:input")
@@ -58,23 +56,15 @@ func TestStdStoreSealing(t *testing.T) {
 	require.NoError(err)
 	sealer := &seal.MockSealer{}
 	store := NewStdStore(sealer, zap)
-	recoveryData, err := store.LoadState()
+	_, err = store.LoadState()
 	assert.NoError(err)
 
-	err = store.BeginTransaction()
-	assert.NoError(err)
 	testData1 := []byte("test data")
-	store.Put("test:input", testData1)
-	assert.NoError(err)
-
-	err = store.Commit(recoveryData)
-	assert.NoError(err)
+	assert.NoError(store.Put("test:input", testData1))
 
 	// Check sealing with a new store initialized with the sealed state
 	store2 := NewStdStore(sealer, zap)
-	recoveryData, err = store2.LoadState()
-	assert.NoError(err)
-	err = store2.Commit(recoveryData)
+	_, err = store2.LoadState()
 	assert.NoError(err)
 	val, err := store2.Get("test:input")
 	assert.NoError(err)
@@ -88,7 +78,7 @@ func TestStdStoreRollback(t *testing.T) {
 	zap, err := zap.NewDevelopment()
 	require.NoError(err)
 	store := NewStdStore(&seal.MockSealer{}, zap)
-	recoveryData, err := store.LoadState()
+	_, err = store.LoadState()
 	assert.NoError(err)
 
 	testData1 := []byte("test data")
@@ -96,21 +86,18 @@ func TestStdStoreRollback(t *testing.T) {
 	testData3 := []byte("and even more data")
 
 	// save data to store and seal
-	err = store.BeginTransaction()
+	tx, err := store.BeginTransaction()
 	assert.NoError(err)
-	err = store.Put("test:input", testData1)
-	assert.NoError(err)
-	err = store.Commit(recoveryData)
-	assert.NoError(err)
+	assert.NoError(tx.Put("test:input", testData1))
+	assert.NoError(tx.Commit())
 
 	// save more data to store
-	err = store.BeginTransaction()
+	tx, err = store.BeginTransaction()
 	assert.NoError(err)
-	err = store.Put("another:input", testData2)
-	assert.NoError(err)
+	assert.NoError(tx.Put("another:input", testData2))
 
 	// rollback and verify only testData1 exists
-	store.Rollback()
+	tx.Rollback()
 	val, err := store.Get("test:input")
 	assert.NoError(err)
 	assert.Equal(testData1, val)
@@ -118,12 +105,10 @@ func TestStdStoreRollback(t *testing.T) {
 	assert.Error(err)
 
 	// save something new
-	err = store.BeginTransaction()
+	tx, err = store.BeginTransaction()
 	assert.NoError(err)
-	err = store.Put("last:input", testData3)
-	assert.NoError(err)
-	err = store.Commit(recoveryData)
-	assert.NoError(err)
+	assert.NoError(tx.Put("last:input", testData3))
+	assert.NoError(tx.Commit())
 
 	// verify values
 	val, err = store.Get("test:input")

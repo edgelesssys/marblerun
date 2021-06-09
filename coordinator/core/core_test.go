@@ -25,10 +25,10 @@ func TestCore(t *testing.T) {
 	assert := assert.New(t)
 
 	c := NewCoreWithMocks()
-	curState, err := c.store.getState()
+	curState, err := c.data.getState()
 	assert.NoError(err)
 	assert.Equal(stateAcceptingManifest, curState)
-	rootCert, err := c.store.getCertificate(sKCoordinatorRootCert)
+	rootCert, err := c.data.getCertificate(sKCoordinatorRootCert)
 	assert.NoError(err)
 	assert.Equal(coordinatorName, rootCert.Subject.CommonName)
 
@@ -79,13 +79,13 @@ func TestSeal(t *testing.T) {
 	signature := c.GetManifestSignature(context.TODO())
 
 	// Get secrets
-	cSecrets, err := c.store.getSecretMap()
+	cSecrets, err := c.data.getSecretMap()
 	assert.NoError(err)
 
 	// Check sealing with a new core initialized with the sealed state.
 	c2, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
 	require.NoError(err)
-	c2State, err := c2.store.getState()
+	c2State, err := c2.data.getState()
 	assert.NoError(err)
 	assert.Equal(stateAcceptingMarbles, c2State)
 
@@ -97,7 +97,7 @@ func TestSeal(t *testing.T) {
 	assert.Error(err)
 
 	// Check if the secret specified in the test manifest is unsealed correctly
-	c2Secrets, err := c2.store.getSecretMap()
+	c2Secrets, err := c2.data.getSecretMap()
 	assert.NoError(err)
 	assert.Equal(cSecrets, c2Secrets)
 
@@ -140,14 +140,14 @@ func TestRecover(t *testing.T) {
 	c2, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
 	sealer.UnsealError = nil
 	require.NoError(err)
-	c2State, err := c2.store.getState()
+	c2State, err := c2.data.getState()
 	assert.NoError(err)
 	require.Equal(stateRecovery, c2State)
 
 	// recover
 	_, err = c2.Recover(context.TODO(), key)
 	assert.NoError(err)
-	c2State, err = c2.store.getState()
+	c2State, err = c2.data.getState()
 	assert.NoError(err)
 	assert.Equal(stateAcceptingMarbles, c2State)
 }
@@ -189,9 +189,9 @@ func TestGenerateSecrets(t *testing.T) {
 
 	c := NewCoreWithMocks()
 
-	rootCert, err := c.store.getCertificate(sKCoordinatorRootCert)
+	rootCert, err := c.data.getCertificate(sKCoordinatorRootCert)
 	assert.NoError(err)
-	rootPrivK, err := c.store.getPrivK(sKCoordinatorRootKey)
+	rootPrivK, err := c.data.getPrivK(sKCoordinatorRootKey)
 	assert.NoError(err)
 
 	// This should return valid secrets

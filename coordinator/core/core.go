@@ -41,7 +41,9 @@ import (
 type Core struct {
 	quote     []byte
 	recovery  recovery.Recovery
-	store     *storeWrapper
+	store     store.Store
+	data      storeWrapper
+	sealer    seal.Sealer
 	qv        quote.Validator
 	qi        quote.Issuer
 	mux       sync.Mutex
@@ -85,7 +87,7 @@ const (
 // Needs to be paired with `defer c.mux.Unlock()`
 func (c *Core) requireState(states ...state) error {
 	c.mux.Lock()
-	curState, err := c.store.getState()
+	curState, err := c.data.getState()
 	if err != nil {
 		return err
 	}
@@ -97,43 +99,48 @@ func (c *Core) requireState(states ...state) error {
 	return errors.New("server is not in expected state")
 }
 
-func (c *Core) advanceState(newState state) error {
-	curState, err := c.store.getState()
+func (c *Core) advanceState(newState state, tx store.Transaction) error {
+	txdata := storeWrapper{tx}
+	curState, err := txdata.getState()
 	if err != nil {
 		return err
 	}
 	if !(curState < newState && newState < stateMax) {
 		panic(fmt.Errorf("cannot advance from %d to %d", curState, newState))
 	}
-	return c.store.putState(newState)
+	return txdata.putState(newState)
 }
 
 // NewCore creates and initializes a new Core object
 func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal.Sealer, recovery recovery.Recovery, zapLogger *zap.Logger) (*Core, error) {
+	stor := store.NewStdStore(sealer, zapLogger)
 	c := &Core{
 		qv:        qv,
 		qi:        qi,
 		recovery:  recovery,
-		store:     &storeWrapper{store: store.NewStdStore(sealer, zapLogger)},
+		store:     stor,
+		data:      storeWrapper{store: stor},
+		sealer:    sealer,
 		zaplogger: zapLogger,
 	}
 
 	zapLogger.Info("loading state")
-	recoveryData, loadErr := c.store.loadState()
+	recoveryData, loadErr := stor.LoadState()
 	if err := c.recovery.SetRecoveryData(recoveryData); err != nil {
 		c.zaplogger.Error("Could not retrieve recovery data from state. Recovery will be unavailable", zap.Error(err))
 	}
 
-	// start a new transaction to put values into the store
-	// transaction ends by either uploading a manifest, or recovering from a sealed state
-	if err := c.store.beginTransaction(); err != nil {
+	tx, err := c.store.BeginTransaction()
+	if err != nil {
 		return nil, err
 	}
+	defer tx.Rollback()
+	txdata := storeWrapper{tx}
 
 	// set core to uninitialized if no state is set
-	if _, err := c.store.getState(); err != nil {
+	if _, err := txdata.getState(); err != nil {
 		if store.IsStoreValueUnsetError(err) {
-			if err := c.store.putState(stateUninitialized); err != nil {
+			if err := txdata.putState(stateUninitialized); err != nil {
 				return nil, err
 			}
 		} else {
@@ -147,32 +154,33 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 		}
 		// sealed state was found but couldnt be decrypted, go to recovery mode or reset manifest
 		c.zaplogger.Error("Failed to decrypt sealed state. Processing with a new state. Use the /recover API endpoint to load an old state, or submit a new manifest to overwrite the old state. Look up the documentation for more information on how to proceed.")
-		if err := c.setCAData(dnsNames); err != nil {
-			c.store.rollback()
+		if err := c.setCAData(dnsNames, tx); err != nil {
 			return nil, err
 		}
-		if err := c.advanceState(stateRecovery); err != nil {
+		if err := c.advanceState(stateRecovery, tx); err != nil {
 			return nil, err
 		}
-	} else if _, err := c.store.getCertificate(sKCoordinatorRootCert); store.IsStoreValueUnsetError(err) {
+	} else if _, err := txdata.getManifest("main"); store.IsStoreValueUnsetError(err) {
 		// no state was found, wait for manifest
 		c.zaplogger.Info("No sealed state found. Proceeding with new state.")
-		if err := c.setCAData(dnsNames); err != nil {
-			c.store.rollback()
+		if err := c.setCAData(dnsNames, tx); err != nil {
 			return nil, err
 		}
-		if err := c.advanceState(stateAcceptingManifest); err != nil {
-			c.store.rollback()
+		if err := c.advanceState(stateAcceptingManifest, tx); err != nil {
 			return nil, err
 		}
 	} else if err != nil {
 		return nil, err
 	} else {
 		// recovered from a sealed state, finish the store transaction
-		c.store.commit(recoveryData)
+		stor.SetRecoveryData(recoveryData)
 	}
 
-	rootCert, err := c.store.getCertificate(sKCoordinatorRootCert)
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	rootCert, err := c.data.getCertificate(sKCoordinatorRootCert)
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +222,7 @@ func (c *Core) GetTLSConfig() (*tls.Config, error) {
 
 // GetTLSRootCertificate creates a TLS certificate for the Coordinators self-signed x509 certificate
 func (c *Core) GetTLSRootCertificate(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	curState, err := c.store.getState()
+	curState, err := c.data.getState()
 	if err != nil {
 		return nil, err
 	}
@@ -222,11 +230,11 @@ func (c *Core) GetTLSRootCertificate(clientHello *tls.ClientHelloInfo) (*tls.Cer
 		return nil, errors.New("don't have a cert yet")
 	}
 
-	rootCert, err := c.store.getCertificate(sKCoordinatorRootCert)
+	rootCert, err := c.data.getCertificate(sKCoordinatorRootCert)
 	if err != nil {
 		return nil, err
 	}
-	rootPrivK, err := c.store.getPrivK(sKCoordinatorRootKey)
+	rootPrivK, err := c.data.getPrivK(sKCoordinatorRootKey)
 	if err != nil {
 		return nil, err
 	}
@@ -236,7 +244,7 @@ func (c *Core) GetTLSRootCertificate(clientHello *tls.ClientHelloInfo) (*tls.Cer
 
 // GetTLSMarbleRootCertificate creates a TLS certificate for the Coordinator's x509 marbleRoot certificate
 func (c *Core) GetTLSMarbleRootCertificate(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	curState, err := c.store.getState()
+	curState, err := c.data.getState()
 	if err != nil {
 		return nil, err
 	}
@@ -244,11 +252,11 @@ func (c *Core) GetTLSMarbleRootCertificate(clientHello *tls.ClientHelloInfo) (*t
 		return nil, errors.New("don't have a cert yet")
 	}
 
-	marbleRootCert, err := c.store.getCertificate(sKMarbleRootCert)
+	marbleRootCert, err := c.data.getCertificate(sKMarbleRootCert)
 	if err != nil {
 		return nil, err
 	}
-	intermediatePrivK, err := c.store.getPrivK(sKCoordinatorIntermediateKey)
+	intermediatePrivK, err := c.data.getPrivK(sKCoordinatorIntermediateKey)
 	if err != nil {
 		return nil, err
 	}
@@ -337,7 +345,7 @@ func getClientTLSCert(ctx context.Context) *x509.Certificate {
 }
 
 func (c *Core) getStatus(ctx context.Context) (int, string, error) {
-	curState, err := c.store.getState()
+	curState, err := c.data.getState()
 	if err != nil {
 		return -1, "Cannot determine coordinator status.", err
 	}
@@ -362,7 +370,7 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]manifest.
 	// Create a new map so we do not overwrite the entries in the manifest
 	newSecrets := make(map[string]manifest.Secret)
 
-	rootPrivK, err := c.store.getPrivK(sKCoordinatorRootKey)
+	rootPrivK, err := c.data.getPrivK(sKCoordinatorRootKey)
 	if err != nil {
 		return nil, err
 	}
@@ -553,7 +561,7 @@ func (c *Core) generateCertificateForSecret(secret manifest.Secret, parentCertif
 	return secret, nil
 }
 
-func (c *Core) setCAData(dnsNames []string) error {
+func (c *Core) setCAData(dnsNames []string, tx store.Transaction) error {
 	rootCert, rootPrivK, err := generateCert(dnsNames, coordinatorName, nil, nil, nil)
 	if err != nil {
 		return err
@@ -568,19 +576,20 @@ func (c *Core) setCAData(dnsNames []string) error {
 		return err
 	}
 
-	if err := c.store.putCertificate(sKCoordinatorRootCert, rootCert); err != nil {
+	txdata := storeWrapper{tx}
+	if err := txdata.putCertificate(sKCoordinatorRootCert, rootCert); err != nil {
 		return err
 	}
-	if err := c.store.putCertificate(skCoordinatorIntermediateCert, intermediateCert); err != nil {
+	if err := txdata.putCertificate(skCoordinatorIntermediateCert, intermediateCert); err != nil {
 		return err
 	}
-	if err := c.store.putCertificate(sKMarbleRootCert, marbleRootCert); err != nil {
+	if err := txdata.putCertificate(sKMarbleRootCert, marbleRootCert); err != nil {
 		return err
 	}
-	if err := c.store.putPrivK(sKCoordinatorRootKey, rootPrivK); err != nil {
+	if err := txdata.putPrivK(sKCoordinatorRootKey, rootPrivK); err != nil {
 		return err
 	}
-	if err := c.store.putPrivK(sKCoordinatorIntermediateKey, intermediatePrivK); err != nil {
+	if err := txdata.putPrivK(sKCoordinatorIntermediateKey, intermediatePrivK); err != nil {
 		return err
 	}
 
