@@ -24,9 +24,9 @@ func TestStoreWrapper(t *testing.T) {
 	c := NewCoreWithMocks()
 
 	// creating a new core should have set root and intermediate certs/keys
-	_, err := c.store.getCertificate("root")
+	_, err := c.store.getCertificate(sKCoordinatorRootCert)
 	assert.NoError(err)
-	_, err = c.store.getPrivK("root")
+	_, err = c.store.getPrivK(sKCoordinatorRootKey)
 	assert.NoError(err)
 
 	rawManifest := []byte(test.ManifestJSON)
@@ -37,9 +37,9 @@ func TestStoreWrapper(t *testing.T) {
 		Size:   16,
 		Shared: true,
 	}
-	someCert, somePrivK, err := generateCert([]string{"example.com"}, coordinatorName, nil, nil)
+	someCert, somePrivK, err := generateCert([]string{"example.com"}, coordinatorName, nil, nil, nil)
 	require.NoError(err)
-	testUserCert, _, err := generateCert([]string{"example.com"}, "test-user", nil, nil)
+	testUserCert, _, err := generateCert([]string{"example.com"}, "test-user", nil, nil, nil)
 	require.NoError(err)
 	testUser := &marblerunUser{name: "test-user", certificate: testUserCert}
 
@@ -89,13 +89,13 @@ func TestStoreWrapperDefaults(t *testing.T) {
 	c := NewCoreWithMocks()
 
 	// values for root / intermediate and state should be set by core init function
-	_, err := c.store.getCertificate("root")
+	_, err := c.store.getCertificate(sKCoordinatorRootCert)
 	assert.NoError(err)
-	_, err = c.store.getCertificate("intermediate")
+	_, err = c.store.getCertificate(skCoordinatorIntermediateCert)
 	assert.NoError(err)
-	_, err = c.store.getPrivK("root")
+	_, err = c.store.getPrivK(sKCoordinatorRootKey)
 	assert.NoError(err)
-	_, err = c.store.getPrivK("intermediate")
+	_, err = c.store.getPrivK(sKCoordinatorIntermediateKey)
 	assert.NoError(err)
 	state, err := c.store.getState()
 	assert.NoError(err)

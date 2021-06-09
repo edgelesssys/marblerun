@@ -175,23 +175,23 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	ms.assert.Len(sealKey, 32)
 
 	// Validate Marble Key
-	p, _ := pem.Decode([]byte(params.Env[libMarble.MarbleEnvironmentPrivateKey]))
-	ms.assert.NotNil(p)
+	pMarbleKey, _ := pem.Decode([]byte(params.Env[libMarble.MarbleEnvironmentPrivateKey]))
+	ms.assert.NotNil(pMarbleKey)
 
 	// Validate Certificate Chain
 	pLeaf, rest := pem.Decode([]byte(params.Env[libMarble.MarbleEnvironmentCertificateChain]))
 	ms.assert.NotNil(pLeaf)
 	ms.assert.NotEmpty(rest)
-	pIntermediate, rest := pem.Decode(rest)
-	ms.assert.NotNil(pIntermediate)
+	pMarbleRoot, rest := pem.Decode(rest)
+	ms.assert.NotNil(pMarbleRoot)
 	ms.assert.Empty(rest)
 
-	newIntermediateCert, err := x509.ParseCertificate(pIntermediate.Bytes)
+	newMarbleRootCert, err := x509.ParseCertificate(pMarbleRoot.Bytes)
 	ms.assert.NoError(err)
 	newLeafCert, err := x509.ParseCertificate(pLeaf.Bytes)
 	ms.assert.NoError(err)
 
-	ms.assert.Equal(coordinatorName, newIntermediateCert.Issuer.CommonName)
+	ms.assert.Equal(coordinatorIntermediateName, newMarbleRootCert.Issuer.CommonName)
 	ms.assert.Equal(coordinatorIntermediateName, newLeafCert.Issuer.CommonName)
 
 	// Check CommonName for leaf certificate
@@ -205,13 +205,16 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	ms.assert.Equal(cert.DNSNames, newLeafCert.DNSNames)
 	ms.assert.Equal(cert.IPAddresses, newLeafCert.IPAddresses)
 
-	rootCert, err := ms.coreServer.store.getCertificate("root")
+	rootCert, err := ms.coreServer.store.getCertificate(sKCoordinatorRootCert)
 	ms.assert.NoError(err)
-	intermediateCert, err := ms.coreServer.store.getCertificate("intermediate")
+	intermediateCert, err := ms.coreServer.store.getCertificate(skCoordinatorIntermediateCert)
+	ms.assert.NoError(err)
+	marbleRootCert, err := ms.coreServer.store.getCertificate(sKMarbleRootCert)
 	ms.assert.NoError(err)
 	// Check Signature for both, intermediate certificate and leaf certificate
-	ms.assert.NoError(rootCert.CheckSignature(newIntermediateCert.SignatureAlgorithm, newIntermediateCert.RawTBSCertificate, newIntermediateCert.Signature))
-	ms.assert.NoError(intermediateCert.CheckSignature(newLeafCert.SignatureAlgorithm, newLeafCert.RawTBSCertificate, newLeafCert.Signature))
+	ms.assert.NoError(rootCert.CheckSignature(intermediateCert.SignatureAlgorithm, intermediateCert.RawTBSCertificate, intermediateCert.Signature))
+	ms.assert.NoError(newMarbleRootCert.CheckSignature(newMarbleRootCert.SignatureAlgorithm, newMarbleRootCert.RawTBSCertificate, newMarbleRootCert.Signature))
+	ms.assert.NoError(marbleRootCert.CheckSignature(newLeafCert.SignatureAlgorithm, newLeafCert.RawTBSCertificate, newLeafCert.Signature))
 
 	// Validate generated secret (only specified in backend_first)
 	if marbleType == "backend_first" {
@@ -222,7 +225,7 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 
 	// Check cert-chain
 	roots := x509.NewCertPool()
-	ms.assert.True(roots.AppendCertsFromPEM([]byte(params.Env[libMarble.MarbleEnvironmentIntermediateCA])), "cannot parse intermediateCA")
+	ms.assert.True(roots.AppendCertsFromPEM([]byte(params.Env[libMarble.MarbleEnvironmentRootCA])), "cannot parse rootCA")
 	opts := x509.VerifyOptions{
 		Roots:     roots,
 		DNSName:   "localhost",

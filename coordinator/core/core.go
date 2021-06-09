@@ -75,6 +75,15 @@ const coordinatorName string = "Marblerun Coordinator"
 // coordinatorIntermediateName is the name of the Coordinator. It is used as CN of the intermediate certificate which is set when setting or updating a certificate.
 const coordinatorIntermediateName string = "Marblerun Coordinator - Intermediate CA"
 
+// storage keys for the used in the Coordinator
+const (
+	sKCoordinatorRootCert         string = "coordinatorRootCert"
+	sKCoordinatorRootKey          string = "coordinatorRootKey"
+	skCoordinatorIntermediateCert string = "coordinatorIntermediateCert"
+	sKMarbleRootCert              string = "marbleRootCert"
+	sKCoordinatorIntermediateKey  string = "coordinatorIntermediateKey"
+)
+
 // Needs to be paired with `defer c.mux.Unlock()`
 func (c *Core) requireState(states ...state) error {
 	c.mux.Lock()
@@ -133,7 +142,7 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 		if err := c.advanceState(stateRecovery); err != nil {
 			return nil, err
 		}
-	} else if _, err := c.store.getCertificate("root"); store.IsStoreValueUnsetError(err) {
+	} else if _, err := c.store.getCertificate(sKCoordinatorRootCert); store.IsStoreValueUnsetError(err) {
 		// no state was found, wait for manifest
 		c.zaplogger.Info("No sealed state found. Proceeding with new state.")
 		if err := c.setCAData(dnsNames); err != nil {
@@ -146,7 +155,7 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 		return nil, err
 	}
 
-	rootCert, err := c.store.getCertificate("root")
+	rootCert, err := c.store.getCertificate(sKCoordinatorRootCert)
 	if err != nil {
 		return nil, err
 	}
@@ -196,11 +205,11 @@ func (c *Core) GetTLSRootCertificate(clientHello *tls.ClientHelloInfo) (*tls.Cer
 		return nil, errors.New("don't have a cert yet")
 	}
 
-	rootCert, err := c.store.getCertificate("root")
+	rootCert, err := c.store.getCertificate(sKCoordinatorRootCert)
 	if err != nil {
 		return nil, err
 	}
-	rootPrivK, err := c.store.getPrivK("root")
+	rootPrivK, err := c.store.getPrivK(sKCoordinatorRootKey)
 	if err != nil {
 		return nil, err
 	}
@@ -208,8 +217,8 @@ func (c *Core) GetTLSRootCertificate(clientHello *tls.ClientHelloInfo) (*tls.Cer
 	return util.TLSCertFromDER(rootCert.Raw, rootPrivK), nil
 }
 
-// GetTLSIntermediateCertificate creates a TLS certificate for the Coordinator's x509 intermediate certificate based on the self-signed x509 root certificate
-func (c *Core) GetTLSIntermediateCertificate(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+// GetTLSMarbleRootCertificate creates a TLS certificate for the Coordinator's x509 marbleRoot certificate
+func (c *Core) GetTLSMarbleRootCertificate(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
 	curState, err := c.store.getState()
 	if err != nil {
 		return nil, err
@@ -218,23 +227,26 @@ func (c *Core) GetTLSIntermediateCertificate(clientHello *tls.ClientHelloInfo) (
 		return nil, errors.New("don't have a cert yet")
 	}
 
-	intermediateCert, err := c.store.getCertificate("intermediate")
+	marbleRootCert, err := c.store.getCertificate(sKMarbleRootCert)
 	if err != nil {
 		return nil, err
 	}
-	intermediatePrivK, err := c.store.getPrivK("intermediate")
+	intermediatePrivK, err := c.store.getPrivK(sKCoordinatorIntermediateKey)
 	if err != nil {
 		return nil, err
 	}
 
-	return util.TLSCertFromDER(intermediateCert.Raw, intermediatePrivK), nil
+	return util.TLSCertFromDER(marbleRootCert.Raw, intermediatePrivK), nil
 }
 
-func generateCert(dnsNames []string, commonName string, parentCertificate *x509.Certificate, parentPrivateKey *ecdsa.PrivateKey) (*x509.Certificate, *ecdsa.PrivateKey, error) {
+func generateCert(dnsNames []string, commonName string, privk *ecdsa.PrivateKey, parentCertificate *x509.Certificate, parentPrivateKey *ecdsa.PrivateKey) (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	// Generate private key
-	privk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		return nil, nil, err
+	var err error
+	if privk == nil {
+		privk, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	// Certifcate parameter
@@ -333,7 +345,7 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]manifest.
 	// Create a new map so we do not overwrite the entries in the manifest
 	newSecrets := make(map[string]manifest.Secret)
 
-	rootPrivK, err := c.store.getPrivK("root")
+	rootPrivK, err := c.store.getPrivK(sKCoordinatorRootKey)
 	if err != nil {
 		return nil, err
 	}
@@ -525,24 +537,33 @@ func (c *Core) generateCertificateForSecret(secret manifest.Secret, parentCertif
 }
 
 func (c *Core) setCAData(dnsNames []string) error {
-	rootCert, rootPrivK, err := generateCert(dnsNames, coordinatorName, nil, nil)
+	rootCert, rootPrivK, err := generateCert(dnsNames, coordinatorName, nil, nil, nil)
 	if err != nil {
 		return err
 	}
-	intermediateCert, intermediatePrivK, err := generateCert(dnsNames, coordinatorIntermediateName, rootCert, rootPrivK)
+	// Creating a cross-signed intermediate cert. See https://github.com/edgelesssys/marblerun/issues/175
+	intermediateCert, intermediatePrivK, err := generateCert(dnsNames, coordinatorIntermediateName, nil, rootCert, rootPrivK)
 	if err != nil {
 		return err
 	}
-	if err := c.store.putCertificate("root", rootCert); err != nil {
+	marbleRootCert, _, err := generateCert(dnsNames, coordinatorIntermediateName, intermediatePrivK, nil, nil)
+	if err != nil {
 		return err
 	}
-	if err := c.store.putCertificate("intermediate", intermediateCert); err != nil {
+
+	if err := c.store.putCertificate(sKCoordinatorRootCert, rootCert); err != nil {
 		return err
 	}
-	if err := c.store.putPrivK("root", rootPrivK); err != nil {
+	if err := c.store.putCertificate(skCoordinatorIntermediateCert, intermediateCert); err != nil {
 		return err
 	}
-	if err := c.store.putPrivK("intermediate", intermediatePrivK); err != nil {
+	if err := c.store.putCertificate(sKMarbleRootCert, marbleRootCert); err != nil {
+		return err
+	}
+	if err := c.store.putPrivK(sKCoordinatorRootKey, rootPrivK); err != nil {
+		return err
+	}
+	if err := c.store.putPrivK(sKCoordinatorIntermediateKey, intermediatePrivK); err != nil {
 		return err
 	}
 
