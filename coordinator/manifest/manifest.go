@@ -31,7 +31,7 @@ type Manifest struct {
 	// Marbles contains the allowed services with their corresponding enclave and configuration parameters.
 	Marbles map[string]Marble
 	// Admins contains user-generated TLS client certificates to be used for an administrator to perform manifest updates
-	Admins map[string]string
+	Users map[string]User
 	// Clients contains TLS certificates for authenticating clients that use the ClientAPI.
 	Clients map[string][]byte
 	// Secrets holds user-specified secrets, which should be generated and later on stored in a marble (if not shared) or in the core (if shared).
@@ -69,6 +69,18 @@ type TLSTagEntry struct {
 	Addr              string
 	Cert              string
 	DisableClientAuth bool
+}
+
+// User describes the attributes of a Marblerun user
+type User struct {
+	// Certificate is the TLS certificate used by the user for authentication
+	Certificate string
+	// SetSecrets is a list of Secrets the user is allowed to set
+	SetSecrets []string
+	// ReadSecrets is a list of Secrets the user is allowed to read
+	ReadSecrets []string
+	// AllowedUpdates is a list of Packages the user is allowed to update
+	AllowedUpdates []string
 }
 
 // Check checks if the manifest is consistent.
@@ -145,6 +157,28 @@ func (m Manifest) Check(ctx context.Context, zaplogger *zap.Logger) error {
 			}
 		}
 	}
+
+	for userName, user := range m.Users {
+		if len(user.Certificate) <= 0 {
+			return fmt.Errorf("manifest does not contain a certificate for user %s", userName)
+		}
+		//for _, secretName := range user.SetSecrets {
+		//	secret, ok := m.Secrets[secretName]
+		//	if !ok {
+		//		return fmt.Errorf("manifest specifies set permission for user %s and secret %s, but no such secret exists", userName, secretName)
+		//	}
+		//	if !secret.UserDefined {
+		//		return fmt.Errorf("manifest specifies set permission for user %s and secret %s, but secret is not user-defined", userName, secretName)
+		//	}
+		//}
+		//for k := range m.Packages {
+		//	if _, ok := m.Packages[k]; !ok {
+		//		return fmt.Errorf("user %s is allowed to update package %s, but no such package is specified in the manifest", userName, k)
+		//	}
+		//
+		//}
+	}
+
 	return nil
 }
 
@@ -156,9 +190,10 @@ type PublicKey []byte
 
 // Secret defines a structure for storing certificates & encryption keys
 type Secret struct {
-	Type     string
-	Size     uint
-	Shared   bool
+	Type   string
+	Size   uint
+	Shared bool
+	//UserDefined bool
 	Cert     Certificate
 	ValidFor uint
 	Private  PrivateKey

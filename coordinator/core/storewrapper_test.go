@@ -11,6 +11,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/store"
+	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -40,7 +41,7 @@ func TestStoreWrapper(t *testing.T) {
 	require.NoError(err)
 	testUserCert, _, err := generateCert([]string{"example.com"}, "test-user", nil, nil, nil)
 	require.NoError(err)
-	testUser := &marblerunUser{name: "test-user", certificate: testUserCert}
+	testUser := user.NewMarblerunUser("test-user", testUserCert)
 
 	// save values to store
 	tx, err := c.store.BeginTransaction()

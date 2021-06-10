@@ -18,7 +18,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"math"
@@ -39,6 +38,7 @@ import (
 
 // Core implements the core logic of the Coordinator
 type Core struct {
+	mux       sync.Mutex
 	quote     []byte
 	recovery  recovery.Recovery
 	store     store.Store
@@ -46,7 +46,6 @@ type Core struct {
 	sealer    seal.Sealer
 	qv        quote.Validator
 	qi        quote.Issuer
-	mux       sync.Mutex
 	zaplogger *zap.Logger
 }
 
@@ -60,14 +59,6 @@ const (
 	stateAcceptingMarbles
 	stateMax
 )
-
-// marblerunUser represents a privileged user of Marblerun
-type marblerunUser struct {
-	// name is the username
-	name string
-	// certificate is the users certificate, used for authentication
-	certificate *x509.Certificate
-}
 
 // coordinatorName is the name of the Coordinator. It is used as CN of the root certificate.
 const coordinatorName string = "Marblerun Coordinator"
@@ -594,20 +585,4 @@ func (c *Core) setCAData(dnsNames []string, tx store.Transaction) error {
 	}
 
 	return nil
-}
-
-func generateUsersFromManifest(users map[string]string) ([]*marblerunUser, error) {
-	// Parse & write X.509 admin certificates from sealed state
-	userData := make([]*marblerunUser, 0, len(users))
-	for userName, value := range users {
-		block, _ := pem.Decode([]byte(value))
-		cert, err := x509.ParseCertificate(block.Bytes)
-		if err != nil {
-			return nil, err
-		}
-
-		userData = append(userData, &marblerunUser{name: userName, certificate: cert})
-	}
-
-	return userData, nil
 }

@@ -198,8 +198,13 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 	})
 
 	mux.HandleFunc("/update", func(w http.ResponseWriter, r *http.Request) {
-		// Abort if no admin client certificate was provided
-		if r.TLS == nil || !cc.VerifyAdmin(r.Context(), r.TLS.PeerCertificates) {
+		// Abort if no user client certificate was provided
+		if r.TLS == nil {
+			writeJSONError(w, "no client certificate provided", http.StatusUnauthorized)
+			return
+		}
+		_, err := cc.VerifyUser(r.Context(), r.TLS.PeerCertificates)
+		if err != nil {
 			writeJSONError(w, "unauthorized user", http.StatusUnauthorized)
 			return
 		}

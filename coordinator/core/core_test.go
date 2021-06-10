@@ -128,7 +128,7 @@ func TestRecover(t *testing.T) {
 	assert.Error(err)
 
 	// Set manifest. This will seal the state.
-	_, err = c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
+	_, err = c.SetManifest(context.TODO(), []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
 
 	// core does not allow recover after manifest has been set

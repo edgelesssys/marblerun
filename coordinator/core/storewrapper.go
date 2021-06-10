@@ -15,6 +15,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/store"
+	"github.com/edgelesssys/marblerun/coordinator/user"
 )
 
 const (
@@ -26,6 +27,11 @@ const (
 	requestState       = "state"
 	requestUser        = "user"
 )
+
+type sealedUser struct {
+	Certificate []byte
+	Permissions map[string]user.MarblerunPermission
+}
 
 // storeWrapper is a wrapper for the store interface
 type storeWrapper struct {
@@ -198,25 +204,38 @@ func (s storeWrapper) putState(currState state) error {
 }
 
 // getUser returns user information from store
-// will be changed in the future to return permissions etc. instead of just certificate
-func (s storeWrapper) getUser(userName string) (*marblerunUser, error) {
+func (s storeWrapper) getUser(userName string) (*user.MarblerunUser, error) {
 	request := strings.Join([]string{requestUser, userName}, ":")
-	rawCert, err := s.store.Get(request)
+	rawUserData, err := s.store.Get(request)
+	if err != nil {
+		return nil, err
+	}
+	var userData sealedUser
+	if err := json.Unmarshal(rawUserData, &userData); err != nil {
+		return nil, err
+	}
+	userCert, err := x509.ParseCertificate(userData.Certificate)
 	if err != nil {
 		return nil, err
 	}
 
-	userCert, err := x509.ParseCertificate(rawCert)
-	if err != nil {
-		return nil, err
+	loadedUser := user.NewMarblerunUser(userName, userCert)
+	for _, savedPerm := range userData.Permissions {
+		loadedUser.Assign(savedPerm)
 	}
-
-	return &marblerunUser{name: userName, certificate: userCert}, nil
+	return loadedUser, nil
 }
 
 // putUser saves user information to store
-// will be changed in the future to set permissions etc. instead of just certificate
-func (s storeWrapper) putUser(user *marblerunUser) error {
-	request := strings.Join([]string{requestUser, user.name}, ":")
-	return s.store.Put(request, user.certificate.Raw)
+func (s storeWrapper) putUser(newUser *user.MarblerunUser) error {
+	request := strings.Join([]string{requestUser, newUser.Name()}, ":")
+	userData := &sealedUser{
+		Certificate: newUser.Certificate().Raw,
+		Permissions: newUser.Permissions(),
+	}
+	rawUserData, err := json.Marshal(userData)
+	if err != nil {
+		return err
+	}
+	return s.store.Put(request, rawUserData)
 }

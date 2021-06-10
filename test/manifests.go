@@ -204,8 +204,10 @@ var ManifestJSONWithRecoveryKey string = `{
 	"Clients": {
 		"owner": [9,9,9]
 	},
-	"Admins": {
-		"admin": "` + pemToJSONString(AdminCert) + `"
+	"Users": {
+		"admin": {
+			"Certificate": "` + pemToJSONString(AdminCert) + `"
+		}
 	},
 	"RecoveryKeys": {
 		"testRecKey1": "` + pemToJSONString(RecoveryPublicKey) + `"
@@ -281,8 +283,10 @@ var IntegrationManifestJSON string = `{
 	"Clients": {
 		"owner": [9,9,9]
 	},
-	"Admins": {
-		"admin": "` + pemToJSONString(AdminCert) + `"
+	"Users": {
+		"admin": {
+			"Certificate": "` + pemToJSONString(AdminCert) + `"
+		}
 	},
 	"RecoveryKeys": {
 		"testRecKey1": "` + pemToJSONString(RecoveryPublicKey) + `"
