@@ -48,11 +48,11 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 		return nil, err
 	}
 
-	marbleRootCert, err := c.store.getCertificate(sKMarbleRootCert)
+	marbleRootCert, err := c.data.getCertificate(sKMarbleRootCert)
 	if err != nil {
 		return nil, err
 	}
-	intermediatePrivK, err := c.store.getPrivK(sKCoordinatorIntermediateKey)
+	intermediatePrivK, err := c.data.getPrivK(sKCoordinatorIntermediateKey)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +75,7 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 		c.zaplogger.Error("could not generate recovery data", zap.Error(err))
 		return nil, err
 	}
-	c.store.setEncryptionKey(encryptionKey)
+	c.sealer.SetEncryptionKey(encryptionKey)
 
 	// Parse X.509 admin certificates from manifest
 	users, err := generateUsersFromManifest(manifest.Admins)
@@ -84,21 +84,33 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 		return nil, err
 	}
 
-	if err := c.store.putRawManifest("main", rawManifest); err != nil {
+	tx, err := c.store.BeginTransaction()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	txdata := storeWrapper{tx}
+
+	if err := txdata.putRawManifest("main", rawManifest); err != nil {
 		return nil, err
 	}
 	for key, secret := range secrets {
-		if err := c.store.putSecret(key, secret); err != nil {
+		if err := txdata.putSecret(key, secret); err != nil {
 			return nil, err
 		}
 	}
 	for _, user := range users {
-		c.store.putUser(user)
+		if err := txdata.putUser(user); err != nil {
+			return nil, err
+		}
 	}
 
-	c.advanceState(stateAcceptingMarbles)
-	if err := c.store.sealState(recoveryData); err != nil {
-		c.zaplogger.Error("sealState failed", zap.Error(err))
+	c.advanceState(stateAcceptingMarbles, tx)
+	if store, ok := c.store.(*store.StdStore); ok {
+		store.SetRecoveryData(recoveryData)
+	}
+	if err := tx.Commit(); err != nil {
+		c.zaplogger.Error("sealing of state failed", zap.Error(err))
 	}
 
 	return recoverySecretMap, nil
@@ -113,11 +125,11 @@ func (c *Core) GetCertQuote(ctx context.Context) (string, []byte, error) {
 		return "", nil, err
 	}
 
-	rootCert, err := c.store.getCertificate(sKCoordinatorRootCert)
+	rootCert, err := c.data.getCertificate(sKCoordinatorRootCert)
 	if err != nil {
 		return "", nil, err
 	}
-	intermediateCert, err := c.store.getCertificate(skCoordinatorIntermediateCert)
+	intermediateCert, err := c.data.getCertificate(skCoordinatorIntermediateCert)
 	if err != nil {
 		return "", nil, err
 	}
@@ -141,7 +153,7 @@ func (c *Core) GetCertQuote(ctx context.Context) (string, []byte, error) {
 //
 // Returns a SHA256 hash of the active manifest.
 func (c *Core) GetManifestSignature(ctx context.Context) []byte {
-	rawManifest, err := c.store.getRawManifest("main")
+	rawManifest, err := c.data.getRawManifest("main")
 	if err != nil {
 		return nil
 	}
@@ -180,7 +192,7 @@ func (c *Core) GetStatus(ctx context.Context) (statusCode int, status string, er
 
 // VerifyAdmin checks if a given client certificate matches the admin certificates specified in the manifest
 func (c *Core) VerifyAdmin(ctx context.Context, clientCerts []*x509.Certificate) bool {
-	manifest, err := c.store.getManifest("main")
+	manifest, err := c.data.getManifest("main")
 	if err != nil {
 		return false
 	}
@@ -189,7 +201,7 @@ func (c *Core) VerifyAdmin(ctx context.Context, clientCerts []*x509.Certificate)
 	// NOTE: We do not use the "correct" X.509 verify here since we do not really care about expiration and chain verification here.
 	for _, suppliedCert := range clientCerts {
 		for user := range manifest.Admins {
-			userData, _ := c.store.getUser(user)
+			userData, _ := c.data.getUser(user)
 			if suppliedCert.Equal(userData.certificate) {
 				return true
 			}
@@ -213,11 +225,11 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte) err
 	if err := json.Unmarshal(rawUpdateManifest, &updateManifest); err != nil {
 		return err
 	}
-	mainManifest, err := c.store.getManifest("main")
+	mainManifest, err := c.data.getManifest("main")
 	if err != nil {
 		return err
 	}
-	oldUpdateManifest, err := c.store.getManifest("update")
+	oldUpdateManifest, err := c.data.getManifest("update")
 	if err != nil && !store.IsStoreValueUnsetError(err) {
 		return err
 	}
@@ -225,11 +237,11 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte) err
 		return err
 	}
 
-	rootCert, err := c.store.getCertificate(sKCoordinatorRootCert)
+	rootCert, err := c.data.getCertificate(sKCoordinatorRootCert)
 	if err != nil {
 		return err
 	}
-	rootPrivK, err := c.store.getPrivK(sKCoordinatorRootKey)
+	rootPrivK, err := c.data.getPrivK(sKCoordinatorRootKey)
 	if err != nil {
 		return err
 	}
@@ -267,22 +279,29 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte) err
 		return err
 	}
 
-	if err := c.store.putRawManifest("update", rawUpdateManifest); err != nil {
+	tx, err := c.store.BeginTransaction()
+	if err != nil {
 		return err
 	}
-	if err := c.store.putCertificate(skCoordinatorIntermediateCert, intermediateCert); err != nil {
+	defer tx.Rollback()
+	txdata := storeWrapper{tx}
+
+	if err := txdata.putRawManifest("update", rawUpdateManifest); err != nil {
 		return err
 	}
-	if err := c.store.putCertificate(sKMarbleRootCert, marbleRootCert); err != nil {
+	if err := txdata.putCertificate(skCoordinatorIntermediateCert, intermediateCert); err != nil {
 		return err
 	}
-	if err := c.store.putPrivK(sKCoordinatorIntermediateKey, intermediatePrivK); err != nil {
+	if err := txdata.putCertificate(sKMarbleRootCert, marbleRootCert); err != nil {
+		return err
+	}
+	if err := txdata.putPrivK(sKCoordinatorIntermediateKey, intermediatePrivK); err != nil {
 		return err
 	}
 
 	// Overwrite regenerated secrets in core
 	for name, secret := range regeneratedSecrets {
-		if err := c.store.putSecret(name, secret); err != nil {
+		if err := txdata.putSecret(name, secret); err != nil {
 			return err
 		}
 	}
@@ -290,24 +309,30 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte) err
 	c.zaplogger.Info("An update manifest overriding package settings from the original manifest was set.")
 	c.zaplogger.Info("Please restart your Marbles to enforce the update.")
 
-	return c.store.sealState(currentRecoveryData)
+	if store, ok := c.store.(*store.StdStore); ok {
+		store.SetRecoveryData(currentRecoveryData)
+	}
+	return tx.Commit()
 }
 
 func (c *Core) performRecovery(encryptionKey []byte) error {
-	if err := c.store.setEncryptionKey(encryptionKey); err != nil {
+	if err := c.sealer.SetEncryptionKey(encryptionKey); err != nil {
 		return err
 	}
 
 	// load state
-	recoveryData, err := c.store.loadState()
+	store := store.NewStdStore(c.sealer, c.zaplogger)
+	recoveryData, err := store.LoadState()
 	if err != nil {
 		return err
 	}
+	c.store = store
+	c.data = storeWrapper{store}
 	if err := c.recovery.SetRecoveryData(recoveryData); err != nil {
 		c.zaplogger.Error("Could not retrieve recovery data from state. Recovery will be unavailable", zap.Error(err))
 	}
 
-	rootCert, err := c.store.getCertificate(sKCoordinatorRootCert)
+	rootCert, err := c.data.getCertificate(sKCoordinatorRootCert)
 	if err != nil {
 		return err
 	}

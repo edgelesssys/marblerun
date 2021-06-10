@@ -223,6 +223,16 @@ func NewNoEnclaveSealer(sealDir string) *NoEnclaveSealer {
 
 // Seal writes the given data encrypted and the used key as plaintext to the disk
 func (s *NoEnclaveSealer) Seal(unencryptedData []byte, toBeEncrypted []byte) error {
+	// generate aes key if we have non
+	if err := s.loadEncryptionKey(); err != nil {
+		if !os.IsNotExist(err) {
+			return err
+		}
+		if err := s.generateNewEncryptionKey(); err != nil {
+			return err
+		}
+	}
+
 	// Encrypt data
 	sealedData, err := ecrypto.Encrypt(toBeEncrypted, s.encryptionKey)
 	if err != nil {
@@ -295,4 +305,30 @@ func (s *NoEnclaveSealer) SetEncryptionKey(key []byte) error {
 
 func (s *NoEnclaveSealer) getFname(basename string) string {
 	return filepath.Join(s.sealDir, basename)
+}
+
+func (s *NoEnclaveSealer) loadEncryptionKey() error {
+	if s.encryptionKey != nil {
+		return nil
+	}
+
+	encrytpionKey, err := ioutil.ReadFile(s.getFname(SealedKeyFname))
+	if err != nil {
+		return err
+	}
+
+	s.encryptionKey = encrytpionKey
+	return nil
+}
+
+// generateNewEncryptionKey generates a random 128 Bit (16 Byte) key to encrypt the state
+func (s *NoEnclaveSealer) generateNewEncryptionKey() error {
+	encryptionKey := make([]byte, 16)
+
+	_, err := rand.Read(encryptionKey)
+	if err != nil {
+		return err
+	}
+
+	return s.SetEncryptionKey(encryptionKey)
 }

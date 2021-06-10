@@ -16,14 +16,16 @@ import (
 
 // StdStore is the standard implementation of the Store interface
 type StdStore struct {
-	data      map[string][]byte
-	mux       sync.Mutex
-	sealer    seal.Sealer
-	zaplogger *zap.Logger
+	data         map[string][]byte
+	mux, txmux   sync.Mutex
+	sealer       seal.Sealer
+	zaplogger    *zap.Logger
+	recoveryData []byte
+	recoveryMode bool
 }
 
 // NewStdStore creates and initialises a new StdStore object
-func NewStdStore(sealer seal.Sealer, zaplogger *zap.Logger) Store {
+func NewStdStore(sealer seal.Sealer, zaplogger *zap.Logger) *StdStore {
 	s := &StdStore{
 		data:      make(map[string][]byte),
 		sealer:    sealer,
@@ -36,22 +38,50 @@ func NewStdStore(sealer seal.Sealer, zaplogger *zap.Logger) Store {
 // Get retrieves a value from StdStore by Type and Name
 func (s *StdStore) Get(request string) ([]byte, error) {
 	s.mux.Lock()
-	defer s.mux.Unlock()
-
 	value, ok := s.data[request]
-	if !ok {
-		return nil, &storeValueUnset{requestedValue: request}
+	s.mux.Unlock()
+
+	if ok {
+		return value, nil
 	}
-	return value, nil
+	return nil, &storeValueUnset{requestedValue: request}
+}
+
+// Put saves a value in StdStore by Type and Name
+func (s *StdStore) Put(request string, requestData []byte) error {
+	tx, err := s.BeginTransaction()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err := tx.Put(request, requestData); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// BeginTransaction starts a new transaction
+func (s *StdStore) BeginTransaction() (Transaction, error) {
+	tx := transaction{store: s, data: map[string][]byte{}}
+	s.txmux.Lock()
+
+	s.mux.Lock()
+	for k, v := range s.data {
+		tx.data[k] = v
+	}
+	s.mux.Unlock()
+
+	return &tx, nil
 }
 
 // LoadState loads sealed data into StdStore's data
 func (s *StdStore) LoadState() ([]byte, error) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
-	encodedRecoveryData, stateRaw, err := s.sealer.Unseal()
 
+	encodedRecoveryData, stateRaw, err := s.sealer.Unseal()
 	if err != nil {
+		s.recoveryMode = true
 		return encodedRecoveryData, err
 	}
 	if len(stateRaw) == 0 {
@@ -68,30 +98,64 @@ func (s *StdStore) LoadState() ([]byte, error) {
 	return encodedRecoveryData, nil
 }
 
-// Put saves a value in StdStore by Type and Name
-func (s *StdStore) Put(request string, requestData []byte) error {
-	s.mux.Lock()
-	defer s.mux.Unlock()
-
-	s.data[request] = requestData
-
-	return nil
+// SetRecoveryData sets the recovery data that is added to the sealed data.
+func (s *StdStore) SetRecoveryData(recoveryData []byte) {
+	s.recoveryData = recoveryData
+	s.recoveryMode = false
 }
 
-// SealState seals the state of StdStore using its sealer
-func (s *StdStore) SealState(recoveryData []byte) error {
-	s.mux.Lock()
-	defer s.mux.Unlock()
-
-	dataRaw, err := json.Marshal(s.data)
+func (s *StdStore) commit(data map[string][]byte) error {
+	dataRaw, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}
 
-	return s.sealer.Seal(recoveryData, dataRaw)
+	if !s.recoveryMode {
+		if err := s.sealer.Seal(s.recoveryData, dataRaw); err != nil {
+			return err
+		}
+	}
+
+	s.mux.Lock()
+	s.data = data
+	s.mux.Unlock()
+
+	s.txmux.Unlock()
+
+	return nil
 }
 
-// SetEncryptionKey sets the encryption key of the stores sealer
-func (s *StdStore) SetEncryptionKey(encryptionKey []byte) error {
-	return s.sealer.SetEncryptionKey(encryptionKey)
+type transaction struct {
+	store *StdStore
+	data  map[string][]byte
+}
+
+// Get retrieves a value
+func (t *transaction) Get(request string) ([]byte, error) {
+	if value, ok := t.data[request]; ok {
+		return value, nil
+	}
+	return nil, &storeValueUnset{requestedValue: request}
+}
+
+// Put saves a value
+func (t *transaction) Put(request string, requestData []byte) error {
+	t.data[request] = requestData
+	return nil
+}
+
+// Commit ends a transaction and persists the changes
+func (t *transaction) Commit() error {
+	if err := t.store.commit(t.data); err != nil {
+		return err
+	}
+	t.store = nil
+	return nil
+}
+
+// Rollback aborts a transaction
+func (t *transaction) Rollback() {
+	if t.store != nil {
+		t.store.txmux.Unlock()
+	}
 }

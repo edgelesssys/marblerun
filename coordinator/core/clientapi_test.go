@@ -48,19 +48,19 @@ func TestSetManifest(t *testing.T) {
 	c, manifest := mustSetup()
 	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
 	assert.NoError(err, "SetManifest should succed on first try")
-	cManifest, err := c.store.getManifest("main")
+	cManifest, err := c.data.getManifest("main")
 	assert.NoError(err)
 	assert.Equal(*manifest, *cManifest, "Manifest should be set correctly")
 
 	_, err = c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
 	assert.Error(err, "SetManifest should fail on the second try")
-	cManifest, err = c.store.getManifest("main")
+	cManifest, err = c.data.getManifest("main")
 	assert.NoError(err)
 	assert.Equal(*manifest, *cManifest, "Manifest should still be set correctly")
 
 	_, err = c.SetManifest(context.TODO(), []byte(test.ManifestJSON)[:len(test.ManifestJSON)-1])
 	assert.Error(err, "SetManifest should fail on broken json")
-	cManifest, err = c.store.getManifest("main")
+	cManifest, err = c.data.getManifest("main")
 	assert.NoError(err)
 	assert.Equal(*manifest, *cManifest, "Manifest should still be set correctly")
 
@@ -74,7 +74,7 @@ func TestSetManifest(t *testing.T) {
 
 	_, err = c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
 	assert.NoError(err, "SetManifest should succed after failed tries")
-	cManifest, err = c.store.getManifest("main")
+	cManifest, err = c.data.getManifest("main")
 	assert.NoError(err)
 	assert.Equal(*manifest, *cManifest, "Manifest should be set correctly")
 }
@@ -180,8 +180,7 @@ func TestGetCertQuote(t *testing.T) {
 	_, _, err = c.GetCertQuote(context.TODO())
 	assert.NoError(err, "GetCertQuote should not fail (with manifest)")
 
-	err = c.store.putState(stateRecovery)
-	assert.NoError(err)
+	assert.NoError(c.data.putState(stateRecovery))
 	_, _, err = c.GetCertQuote(context.TODO())
 	assert.NoError(err, "GetCertQuote should not fail when coordinator is in recovery mode")
 	//todo check quote
@@ -238,13 +237,13 @@ func TestUpdateManifest(t *testing.T) {
 	require.NoError(err)
 
 	// Get current certificate
-	rootCABeforeUpdate, err := c.store.getCertificate(sKCoordinatorRootCert)
+	rootCABeforeUpdate, err := c.data.getCertificate(sKCoordinatorRootCert)
 	assert.NoError(err)
-	intermediateCABeforeUpdate, err := c.store.getCertificate(skCoordinatorIntermediateCert)
+	intermediateCABeforeUpdate, err := c.data.getCertificate(skCoordinatorIntermediateCert)
 	assert.NoError(err)
-	marbleRootCABeforeUpdate, err := c.store.getCertificate(sKMarbleRootCert)
+	marbleRootCABeforeUpdate, err := c.data.getCertificate(sKMarbleRootCert)
 	assert.NoError(err)
-	secretsBeforeUpdate, err := c.store.getSecretMap()
+	secretsBeforeUpdate, err := c.data.getSecretMap()
 	assert.NoError(err)
 
 	// Update manifest
@@ -252,13 +251,13 @@ func TestUpdateManifest(t *testing.T) {
 	require.NoError(err)
 
 	// Get new certificates
-	rootCAAfterUpdate, err := c.store.getCertificate(sKCoordinatorRootCert)
+	rootCAAfterUpdate, err := c.data.getCertificate(sKCoordinatorRootCert)
 	assert.NoError(err)
-	intermediateCAAfterUpdate, err := c.store.getCertificate(skCoordinatorIntermediateCert)
+	intermediateCAAfterUpdate, err := c.data.getCertificate(skCoordinatorIntermediateCert)
 	assert.NoError(err)
-	marbleRootCABeAfterUpdate, err := c.store.getCertificate(sKMarbleRootCert)
+	marbleRootCABeAfterUpdate, err := c.data.getCertificate(sKMarbleRootCert)
 	assert.NoError(err)
-	secretsAfterUpdate, err := c.store.getSecretMap()
+	secretsAfterUpdate, err := c.data.getSecretMap()
 	assert.NoError(err)
 
 	// Check if root certificate stayed the same, but intermediate CAs changed
@@ -310,14 +309,14 @@ func TestUpdateManifestInvalid(t *testing.T) {
 	// Set manifest (frontend has SecurityVersion 3)
 	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
 	require.NoError(err)
-	cManifest, err := c.store.getManifest("main")
+	cManifest, err := c.data.getManifest("main")
 	assert.NoError(err)
 	assert.EqualValues(3, *cManifest.Packages["frontend"].SecurityVersion)
 
 	// Try to update manifest (frontend's SecurityVersion should rise from 3 to 5)
 	err = c.UpdateManifest(context.TODO(), []byte(test.UpdateManifest))
 	require.NoError(err)
-	cUpdateManifest, err := c.store.getManifest("update")
+	cUpdateManifest, err := c.data.getManifest("update")
 	assert.NoError(err)
 	assert.EqualValues(5, *cUpdateManifest.Packages["frontend"].SecurityVersion)
 

@@ -205,11 +205,11 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	ms.assert.Equal(cert.DNSNames, newLeafCert.DNSNames)
 	ms.assert.Equal(cert.IPAddresses, newLeafCert.IPAddresses)
 
-	rootCert, err := ms.coreServer.store.getCertificate(sKCoordinatorRootCert)
+	rootCert, err := ms.coreServer.data.getCertificate(sKCoordinatorRootCert)
 	ms.assert.NoError(err)
-	intermediateCert, err := ms.coreServer.store.getCertificate(skCoordinatorIntermediateCert)
+	intermediateCert, err := ms.coreServer.data.getCertificate(skCoordinatorIntermediateCert)
 	ms.assert.NoError(err)
-	marbleRootCert, err := ms.coreServer.store.getCertificate(sKMarbleRootCert)
+	marbleRootCert, err := ms.coreServer.data.getCertificate(sKMarbleRootCert)
 	ms.assert.NoError(err)
 	// Check Signature for both, intermediate certificate and leaf certificate
 	ms.assert.NoError(rootCert.CheckSignature(intermediateCert.SignatureAlgorithm, intermediateCert.RawTBSCertificate, intermediateCert.Signature))
@@ -481,9 +481,9 @@ func TestSecurityLevelUpdate(t *testing.T) {
 	// Use a new core and test if updated manifest persisted after restart
 	coreServer2, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
 	require.NoError(err)
-	coreServer2State, err := coreServer2.store.getState()
+	coreServer2State, err := coreServer2.data.getState()
 	assert.NoError(err)
-	coreServer2UpdateManifest, err := coreServer2.store.getManifest("update")
+	coreServer2UpdateManifest, err := coreServer2.data.getManifest("update")
 	assert.NoError(err)
 	assert.Equal(stateAcceptingMarbles, coreServer2State)
 	assert.EqualValues(5, *coreServer2UpdateManifest.Packages["frontend"].SecurityVersion)
@@ -531,7 +531,7 @@ func (ms *marbleSpawner) shortMarbleActivation(marbleType string, infraName stri
 	// Validate response
 	params := resp.GetParameters()
 	// Get the marble from the manifest set on the coreServer since this one sets default values for empty values
-	coreServerManifest, err := ms.coreServer.store.getManifest("main")
+	coreServerManifest, err := ms.coreServer.data.getManifest("main")
 	ms.assert.NoError(err)
 	marble = coreServerManifest.Marbles[marbleType]
 	// Validate Files

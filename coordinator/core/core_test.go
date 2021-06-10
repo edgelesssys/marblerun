@@ -25,10 +25,10 @@ func TestCore(t *testing.T) {
 	assert := assert.New(t)
 
 	c := NewCoreWithMocks()
-	curState, err := c.store.getState()
+	curState, err := c.data.getState()
 	assert.NoError(err)
 	assert.Equal(stateAcceptingManifest, curState)
-	rootCert, err := c.store.getCertificate(sKCoordinatorRootCert)
+	rootCert, err := c.data.getCertificate(sKCoordinatorRootCert)
 	assert.NoError(err)
 	assert.Equal(coordinatorName, rootCert.Subject.CommonName)
 
@@ -79,13 +79,13 @@ func TestSeal(t *testing.T) {
 	signature := c.GetManifestSignature(context.TODO())
 
 	// Get secrets
-	cSecrets, err := c.store.getSecretMap()
+	cSecrets, err := c.data.getSecretMap()
 	assert.NoError(err)
 
 	// Check sealing with a new core initialized with the sealed state.
 	c2, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
 	require.NoError(err)
-	c2State, err := c2.store.getState()
+	c2State, err := c2.data.getState()
 	assert.NoError(err)
 	assert.Equal(stateAcceptingMarbles, c2State)
 
@@ -97,7 +97,7 @@ func TestSeal(t *testing.T) {
 	assert.Error(err)
 
 	// Check if the secret specified in the test manifest is unsealed correctly
-	c2Secrets, err := c2.store.getSecretMap()
+	c2Secrets, err := c2.data.getSecretMap()
 	assert.NoError(err)
 	assert.Equal(cSecrets, c2Secrets)
 
@@ -140,14 +140,14 @@ func TestRecover(t *testing.T) {
 	c2, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
 	sealer.UnsealError = nil
 	require.NoError(err)
-	c2State, err := c2.store.getState()
+	c2State, err := c2.data.getState()
 	assert.NoError(err)
 	require.Equal(stateRecovery, c2State)
 
 	// recover
 	_, err = c2.Recover(context.TODO(), key)
 	assert.NoError(err)
-	c2State, err = c2.store.getState()
+	c2State, err = c2.data.getState()
 	assert.NoError(err)
 	assert.Equal(stateAcceptingMarbles, c2State)
 }
@@ -189,9 +189,9 @@ func TestGenerateSecrets(t *testing.T) {
 
 	c := NewCoreWithMocks()
 
-	rootCert, err := c.store.getCertificate(sKCoordinatorRootCert)
+	rootCert, err := c.data.getCertificate(sKCoordinatorRootCert)
 	assert.NoError(err)
-	rootPrivK, err := c.store.getPrivK(sKCoordinatorRootKey)
+	rootPrivK, err := c.data.getPrivK(sKCoordinatorRootKey)
 	assert.NoError(err)
 
 	// This should return valid secrets
@@ -235,4 +235,37 @@ func TestGenerateSecrets(t *testing.T) {
 	// However, for ECDSA we fail as we can have multiple curves
 	_, err = c.generateSecrets(context.TODO(), secretsECDSAWrongKeySize, uuid.Nil, rootCert, rootPrivK)
 	assert.Error(err)
+}
+
+func TestUnsetRestart(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	zapLogger, err := zap.NewDevelopment()
+	require.NoError(err)
+	defer zapLogger.Sync()
+	validator := quote.NewMockValidator()
+	issuer := quote.NewMockIssuer()
+	sealer := &seal.MockSealer{}
+	recovery := recovery.NewSinglePartyRecovery()
+
+	// create a new core, this seals the state with only certificate and keys
+	c1, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
+	require.NoError(err)
+	c1State, err := c1.data.getState()
+	assert.NoError(err)
+	assert.Equal(stateAcceptingManifest, c1State)
+	cCert, err := c1.data.getCertificate(sKCoordinatorRootCert)
+	assert.NoError(err)
+
+	// create a second core, this should overwrite the previously sealed certificate and keys since no manifest was set
+	c2, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
+	require.NoError(err)
+	c2State, err := c2.data.getState()
+	assert.NoError(err)
+	assert.Equal(stateAcceptingManifest, c2State)
+	c2Cert, err := c2.data.getCertificate(sKCoordinatorRootCert)
+	assert.NoError(err)
+
+	assert.NotEqual(*cCert, *c2Cert)
 }
