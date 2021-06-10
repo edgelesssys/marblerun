@@ -236,3 +236,36 @@ func TestGenerateSecrets(t *testing.T) {
 	_, err = c.generateSecrets(context.TODO(), secretsECDSAWrongKeySize, uuid.Nil, rootCert, rootPrivK)
 	assert.Error(err)
 }
+
+func TestUnsetRestart(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	zapLogger, err := zap.NewDevelopment()
+	require.NoError(err)
+	defer zapLogger.Sync()
+	validator := quote.NewMockValidator()
+	issuer := quote.NewMockIssuer()
+	sealer := &seal.MockSealer{}
+	recovery := recovery.NewSinglePartyRecovery()
+
+	// create a new core, this seals the state with only certificate and keys
+	c1, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
+	require.NoError(err)
+	c1State, err := c1.data.getState()
+	assert.NoError(err)
+	assert.Equal(stateAcceptingManifest, c1State)
+	cCert, err := c1.data.getCertificate(sKCoordinatorRootCert)
+	assert.NoError(err)
+
+	// create a second core, this should overwrite the previously sealed certificate and keys since no manifest was set
+	c2, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
+	require.NoError(err)
+	c2State, err := c2.data.getState()
+	assert.NoError(err)
+	assert.Equal(stateAcceptingManifest, c2State)
+	c2Cert, err := c2.data.getCertificate(sKCoordinatorRootCert)
+	assert.NoError(err)
+
+	assert.NotEqual(*cCert, *c2Cert)
+}

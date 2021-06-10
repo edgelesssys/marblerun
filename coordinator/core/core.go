@@ -166,7 +166,7 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 		if err := c.setCAData(dnsNames, tx); err != nil {
 			return nil, err
 		}
-		if err := c.advanceState(stateAcceptingManifest, tx); err != nil {
+		if err := txdata.putState(stateAcceptingManifest); err != nil {
 			return nil, err
 		}
 	} else if err != nil {
