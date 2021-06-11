@@ -9,12 +9,11 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/edgelesssys/marblerun/util"
 	v1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
-const azureEPC = "kubernetes.azure.com/sgx_epc_mem_in_MiB"
 
 // Mutator struct
 type Mutator struct {
@@ -279,12 +278,7 @@ func addEnvVar(setVars, newVars []corev1.EnvVar, basePath string) []map[string]i
 
 // createResourcePatch creates a json patch for sgx resource limits
 func createResourcePatch(container corev1.Container, idx int, resourceKey string) map[string]interface{} {
-	var limit string
-	if resourceKey == azureEPC {
-		limit = "10"
-	} else {
-		limit = "10Mi"
-	}
+	limit := util.GetEPCResourceLimit(resourceKey)
 	// first check if neither limits nor requests have been set for the container -> we need to create the complete path
 	if len(container.Resources.Limits) <= 0 && len(container.Resources.Requests) <= 0 {
 		return map[string]interface{}{

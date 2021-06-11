@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/edgelesssys/marblerun/util"
 	"github.com/gofrs/flock"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -369,15 +370,15 @@ func getSGXResourceKey(kubeClient kubernetes.Interface) (string, error) {
 
 	for _, node := range nodes.Items {
 		if nodeHasAzureDevPlugin(node.Status.Capacity) {
-			return azureEpc.String(), nil
+			return util.AzureEpc.String(), nil
 		}
 		if nodeHasIntelDevPlugin(node.Status.Capacity) {
-			return intelEpc.String(), nil
+			return util.IntelEpc.String(), nil
 		}
 	}
 
 	// assume cluster has the intel SGX device plugin by default
-	return intelEpc.String(), nil
+	return util.IntelEpc.String(), nil
 }
 
 // setSGXValues sets the needed values for the coorindator as a map[string]interface
@@ -388,14 +389,9 @@ func setSGXValues(resourceKey string, values, chartValues map[string]interface{}
 		"requests": map[string]interface{}{},
 	}
 
-	toRemove := fmt.Sprintf("%s %s", intelEpc.String(), azureEpc.String())
+	toRemove := fmt.Sprintf("%s %s", util.IntelEpc.String(), util.AzureEpc.String())
 	var needNewLimit bool
-	var limit string
-	if resourceKey == azureEpc.String() {
-		limit = "10"
-	} else {
-		limit = "10Mi"
-	}
+	limit := util.GetEPCResourceLimit(resourceKey)
 
 	// remove all previously set sgx resource limits
 	if presetLimits, ok := chartValues["coordinator"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{}); ok {
@@ -424,8 +420,8 @@ func setSGXValues(resourceKey string, values, chartValues map[string]interface{}
 	}
 
 	// Make sure provision bit is set if the Intel plugin is used
-	if resourceKey == intelEpc.String() {
-		values["coordinator"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})[intelProvision.String()] = 1
+	if resourceKey == util.IntelEpc.String() {
+		values["coordinator"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})[util.IntelProvision.String()] = 1
 	}
 }
 

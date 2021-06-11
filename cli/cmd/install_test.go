@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/edgelesssys/marblerun/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	certv1 "k8s.io/api/certificates/v1"
@@ -115,9 +116,9 @@ func TestGetSGXResourceKey(t *testing.T) {
 		},
 		Status: corev1.NodeStatus{
 			Capacity: corev1.ResourceList{
-				intelEnclave:   resource.MustParse("10"),
-				intelEpc:       resource.MustParse("500"),
-				intelProvision: resource.MustParse("10"),
+				util.IntelEnclave:   resource.MustParse("10"),
+				util.IntelEpc:       resource.MustParse("500"),
+				util.IntelProvision: resource.MustParse("10"),
 			},
 		},
 	}
@@ -126,7 +127,7 @@ func TestGetSGXResourceKey(t *testing.T) {
 
 	resourceKey, err := getSGXResourceKey(testClient)
 	assert.NoError(err)
-	assert.Equal(intelEpc.String(), resourceKey)
+	assert.Equal(util.IntelEpc.String(), resourceKey)
 }
 
 func TestErrorAndCleanup(t *testing.T) {
