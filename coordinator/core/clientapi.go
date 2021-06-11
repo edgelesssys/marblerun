@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"fmt"
 
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/store"
@@ -29,7 +30,7 @@ type ClientCore interface {
 	GetStatus(ctx context.Context) (statusCode int, status string, err error)
 	Recover(ctx context.Context, encryptionKey []byte) (int, error)
 	VerifyUser(ctx context.Context, clientCerts []*x509.Certificate) (*user.User, error)
-	UpdateManifest(ctx context.Context, rawUpdateManifest []byte) error
+	UpdateManifest(ctx context.Context, rawUpdateManifest []byte, updater *user.User) error
 }
 
 // SetManifest sets the manifest, once and for all
@@ -216,7 +217,7 @@ func (c *Core) VerifyUser(ctx context.Context, clientCerts []*x509.Certificate) 
 }
 
 // UpdateManifest allows to update certain package parameters, supplied via a JSON manifest
-func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte) error {
+func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte, updater *user.User) error {
 	defer c.mux.Unlock()
 
 	// Only accept update manifest if we already have a manifest
@@ -229,6 +230,16 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte) err
 	if err := json.Unmarshal(rawUpdateManifest, &updateManifest); err != nil {
 		return err
 	}
+
+	// verify updater is allowed to commit the update
+	var wantedPackages []string
+	for pkg := range updateManifest.Packages {
+		wantedPackages = append(wantedPackages, pkg)
+	}
+	if !updater.IsGranted(user.NewPermission(user.PermissionUpdatePackage, wantedPackages)) {
+		return fmt.Errorf("user %s is not allowed to update one or more packages of %v", updater.Name(), wantedPackages)
+	}
+
 	mainManifest, err := c.data.getManifest("main")
 	if err != nil {
 		return err
