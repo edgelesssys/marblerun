@@ -7,10 +7,12 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 
 	"github.com/spf13/cobra"
+	"github.com/tidwall/gjson"
 )
 
 func newManifestUpdate() *cobra.Command {
@@ -95,9 +97,19 @@ func cliManifestUpdate(manifest []byte, host string, clCert tls.Certificate, caC
 	case http.StatusOK:
 		fmt.Println("Manifest successfully updated")
 	case http.StatusBadRequest:
-		return fmt.Errorf("unable to update manifest: %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
+		respBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		response := gjson.GetBytes(respBody, "message")
+		return fmt.Errorf("unable to update manifest: %s", response.String())
 	case http.StatusUnauthorized:
-		return fmt.Errorf("unable to authorize user: %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
+		respBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		response := gjson.GetBytes(respBody, "message")
+		return fmt.Errorf("unable to authorize user: %s", response.String())
 	default:
 		return fmt.Errorf("error connecting to server: %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
 	}
