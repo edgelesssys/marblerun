@@ -202,6 +202,20 @@ var ManifestJSONWithRecoveryKey string = `{
 		}
 	},
 	"Secrets": {
+		"restricted_secret": {
+			"Size": 128,
+			"Shared": true,
+			"Type": "symmetric-key"
+		},
+		"symmetric_key_shared": {
+			"Size": 128,
+			"Shared": true,
+			"Type": "symmetric-key"
+		},
+		"symmetric_key_private": {
+			"Size": 256,
+			"Type": "symmetric-key"
+		},
 		"cert_private": {
 			"Size": 2048,
 			"Type": "cert-rsa",
@@ -235,6 +249,10 @@ var ManifestJSONWithRecoveryKey string = `{
 			"Certificate": "` + pemToJSONString(AdminCert) + `",
 			"UpdatePackages": [
 				"frontend"
+			],
+			"ReadSecrets": [
+				"symmetric_key_shared",
+				"cert_shared"
 			]
 		}
 	},

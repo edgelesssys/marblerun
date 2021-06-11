@@ -404,6 +404,38 @@ func TestUpdateManifestInvalid(t *testing.T) {
 	assert.Error(err)
 }
 
+func TestGetSecret(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	c, _ := mustSetup()
+	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSONWithRecoveryKey))
+	require.NoError(err)
+
+	symmetricSecret := "symmetric_key_shared"
+	certSecret := "cert_shared"
+	secret1, err := c.data.getSecret(symmetricSecret)
+	assert.NoError(err)
+	secret2, err := c.data.getSecret(certSecret)
+	assert.NoError(err)
+	admin, err := c.data.getUser("admin")
+	assert.NoError(err)
+
+	// requested secrets should be the same
+	reqSecrets, err := c.GetSecrets(context.TODO(), []string{symmetricSecret, certSecret}, admin)
+	assert.NoError(err)
+	assert.True(len(reqSecrets) == 2)
+	assert.Equal(secret1, reqSecrets[symmetricSecret])
+	assert.Equal(secret2, reqSecrets[certSecret])
+
+	// request should fail if the user lacks permissions
+	_, err = c.GetSecrets(context.TODO(), []string{symmetricSecret, "restricted_secret"}, admin)
+	assert.Error(err)
+
+	// request should fail for non shared secrets since they dont get put in store
+	_, err = c.GetSecrets(context.TODO(), []string{"symmetric_key_private", "cert_private"}, admin)
+	assert.Error(err)
+}
+
 func testManifestInvalidDebugCase(c *Core, manifest *manifest.Manifest, marblePackage quote.PackageProperties, assert *assert.Assertions, require *require.Assertions) *Core {
 	marblePackage.Debug = true
 	manifest.Packages["backend"] = marblePackage

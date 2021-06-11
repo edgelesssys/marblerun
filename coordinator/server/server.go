@@ -227,6 +227,46 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 		}
 	})
 
+	mux.HandleFunc("/secrets", func(w http.ResponseWriter, r *http.Request) {
+		// Abort if no user client certificate was provided
+		if r.TLS == nil {
+			writeJSONError(w, "no client certificate provided", http.StatusUnauthorized)
+			return
+		}
+		user, err := cc.VerifyUser(r.Context(), r.TLS.PeerCertificates)
+		if err != nil {
+			writeJSONError(w, "unauthorized user", http.StatusUnauthorized)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodPost:
+			writeJSONError(w, "not implemented", http.StatusBadRequest)
+			return
+		case http.MethodGet:
+			// Secrets are requested via the query string in the form of ?s=<secret_one>&s=<secret_two>&s=...
+			requestedSecrets := r.URL.Query()["s"]
+			if len(requestedSecrets) <= 0 {
+				writeJSONError(w, "invalid query", http.StatusBadRequest)
+				return
+			}
+			for _, req := range requestedSecrets {
+				if len(req) <= 0 {
+					writeJSONError(w, "malformed query string", http.StatusBadRequest)
+					return
+				}
+			}
+			response, err := cc.GetSecrets(r.Context(), requestedSecrets, user)
+			if err != nil {
+				writeJSONError(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			writeJSON(w, response)
+		default:
+			writeJSONError(w, "", http.StatusMethodNotAllowed)
+		}
+	})
+
 	return mux
 }
 
