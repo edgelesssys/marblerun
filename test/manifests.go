@@ -201,12 +201,41 @@ var ManifestJSONWithRecoveryKey string = `{
 			}
 		}
 	},
+	"Secrets": {
+		"cert_private": {
+			"Size": 2048,
+			"Type": "cert-rsa",
+			"Cert": {
+				"SerialNumber": 42,
+				"Subject": {
+					"SerialNumber": "42",
+					"CommonName": "Marblerun Unit Test"
+				}
+			},
+			"ValidFor": 7
+		},
+		"cert_shared": {
+			"Shared": true,
+			"Type": "cert-ed25519",
+			"Cert": {
+				"SerialNumber": 1337,
+				"Subject": {
+					"SerialNumber": "1337",
+					"CommonName": "Marblerun Unit Test"
+				}
+			},
+			"ValidFor": 7
+		}
+	},
 	"Clients": {
 		"owner": [9,9,9]
 	},
 	"Users": {
 		"admin": {
-			"Certificate": "` + pemToJSONString(AdminCert) + `"
+			"Certificate": "` + pemToJSONString(AdminCert) + `",
+			"UpdatePackages": [
+				"frontend"
+			]
 		}
 	},
 	"RecoveryKeys": {
@@ -285,7 +314,11 @@ var IntegrationManifestJSON string = `{
 	},
 	"Users": {
 		"admin": {
-			"Certificate": "` + pemToJSONString(AdminCert) + `"
+			"Certificate": "` + pemToJSONString(AdminCert) + `",
+			"UpdatePackages": [
+				"frontend",
+				"backend"
+			]
 		}
 	},
 	"RecoveryKeys": {

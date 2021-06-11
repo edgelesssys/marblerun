@@ -15,6 +15,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
+	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -237,8 +238,11 @@ func TestUpdateManifest(t *testing.T) {
 	c, _ := mustSetup()
 
 	// Set manifest
-	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
+	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
+
+	admin, err := c.data.getUser("admin")
+	assert.NoError(err)
 
 	// Get current certificate
 	rootCABeforeUpdate, err := c.data.getCertificate(sKCoordinatorRootCert)
@@ -251,7 +255,7 @@ func TestUpdateManifest(t *testing.T) {
 	assert.NoError(err)
 
 	// Update manifest
-	err = c.UpdateManifest(context.TODO(), []byte(test.UpdateManifest))
+	err = c.UpdateManifest(context.TODO(), []byte(test.UpdateManifest), admin)
 	require.NoError(err)
 
 	// Get new certificates
@@ -311,14 +315,22 @@ func TestUpdateManifestInvalid(t *testing.T) {
 
 	// Good update manifests
 	// Set manifest (frontend has SecurityVersion 3)
-	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
+	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
 	cManifest, err := c.data.getManifest("main")
 	assert.NoError(err)
 	assert.EqualValues(3, *cManifest.Packages["frontend"].SecurityVersion)
 
+	// Try to update with unregistered user
+	someUser := user.NewUser("invalid", nil)
+	err = c.UpdateManifest(context.TODO(), []byte(test.UpdateManifest), someUser)
+	assert.Error(err)
+
+	admin, err := c.data.getUser("admin")
+	assert.NoError(err)
+
 	// Try to update manifest (frontend's SecurityVersion should rise from 3 to 5)
-	err = c.UpdateManifest(context.TODO(), []byte(test.UpdateManifest))
+	err = c.UpdateManifest(context.TODO(), []byte(test.UpdateManifest), admin)
 	require.NoError(err)
 	cUpdateManifest, err := c.data.getManifest("update")
 	assert.NoError(err)
@@ -332,7 +344,7 @@ func TestUpdateManifestInvalid(t *testing.T) {
 	badUpdateManifest.Packages["nonExisting"] = badUpdateManifest.Packages["frontend"]
 	badRawManifest, err := json.Marshal(badUpdateManifest)
 	require.NoError(err)
-	err = c.UpdateManifest(context.TODO(), badRawManifest)
+	err = c.UpdateManifest(context.TODO(), badRawManifest, admin)
 	assert.Error(err)
 
 	delete(badUpdateManifest.Packages, "nonExisting")
@@ -343,7 +355,7 @@ func TestUpdateManifestInvalid(t *testing.T) {
 	badUpdateManifest.Packages["frontend"] = badModPackage
 	badRawManifest, err = json.Marshal(badUpdateManifest)
 	require.NoError(err)
-	err = c.UpdateManifest(context.TODO(), badRawManifest)
+	err = c.UpdateManifest(context.TODO(), badRawManifest, admin)
 	assert.Error(err)
 
 	badModPackage.Debug = false
@@ -353,7 +365,7 @@ func TestUpdateManifestInvalid(t *testing.T) {
 	badUpdateManifest.Packages["frontend"] = badModPackage
 	badRawManifest, err = json.Marshal(badUpdateManifest)
 	require.NoError(err)
-	err = c.UpdateManifest(context.TODO(), badRawManifest)
+	err = c.UpdateManifest(context.TODO(), badRawManifest, admin)
 	assert.Error(err)
 
 	// Test if downgrading fails
@@ -363,7 +375,7 @@ func TestUpdateManifestInvalid(t *testing.T) {
 	badUpdateManifest.Packages["frontend"] = badModPackage
 	badRawManifest, err = json.Marshal(badUpdateManifest)
 	require.NoError(err)
-	err = c.UpdateManifest(context.TODO(), badRawManifest)
+	err = c.UpdateManifest(context.TODO(), badRawManifest, admin)
 	assert.Error(err)
 
 	// Test if downgrading fails
@@ -373,7 +385,7 @@ func TestUpdateManifestInvalid(t *testing.T) {
 	badUpdateManifest.Packages["frontend"] = badModPackage
 	badRawManifest, err = json.Marshal(badUpdateManifest)
 	require.NoError(err)
-	err = c.UpdateManifest(context.TODO(), badRawManifest)
+	err = c.UpdateManifest(context.TODO(), badRawManifest, admin)
 	assert.Error(err)
 
 	// Test if removing a package from a currently existing update manifest fails
@@ -381,14 +393,14 @@ func TestUpdateManifestInvalid(t *testing.T) {
 	delete(badUpdateManifest.Packages, "frontend")
 	badRawManifest, err = json.Marshal(badUpdateManifest)
 	require.NoError(err)
-	err = c.UpdateManifest(context.TODO(), badRawManifest)
+	err = c.UpdateManifest(context.TODO(), badRawManifest, admin)
 	assert.Error(err)
 
 	// Test what happens if no packages are defined at all
 	badUpdateManifest.Packages = nil
 	badRawManifest, err = json.Marshal(badUpdateManifest)
 	require.NoError(err)
-	err = c.UpdateManifest(context.TODO(), badRawManifest)
+	err = c.UpdateManifest(context.TODO(), badRawManifest, admin)
 	assert.Error(err)
 }
 

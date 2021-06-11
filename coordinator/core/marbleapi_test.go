@@ -440,7 +440,7 @@ func TestSecurityLevelUpdate(t *testing.T) {
 
 	// parse manifest
 	var manifest manifest.Manifest
-	require.NoError(json.Unmarshal([]byte(test.ManifestJSON), &manifest))
+	require.NoError(json.Unmarshal([]byte(test.ManifestJSONWithRecoveryKey), &manifest))
 
 	// setup mock zaplogger which can be passed to Core
 	zapLogger, err := zap.NewDevelopment()
@@ -465,14 +465,17 @@ func TestSecurityLevelUpdate(t *testing.T) {
 		coreServer: coreServer,
 	}
 	// set manifest
-	_, err = coreServer.SetManifest(context.TODO(), []byte(test.ManifestJSON))
+	_, err = coreServer.SetManifest(context.TODO(), []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
+
+	admin, err := coreServer.data.getUser("admin")
+	assert.NoError(err)
 
 	// try to activate another first backend, should succeed as SecurityLevel matches the definition in the manifest
 	spawner.newMarble("frontend", "Azure", true)
 
 	// update manifest
-	err = coreServer.UpdateManifest(context.TODO(), []byte(test.UpdateManifest))
+	err = coreServer.UpdateManifest(context.TODO(), []byte(test.UpdateManifest), admin)
 	require.NoError(err)
 
 	// try to activate another first backend, should fail as required SecurityLevel is now higher after manifest update
