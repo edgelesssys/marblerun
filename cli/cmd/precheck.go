@@ -4,17 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/edgelesssys/marblerun/util"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-)
-
-const (
-	intelEpc       corev1.ResourceName = "sgx.intel.com/epc"
-	intelEnclave   corev1.ResourceName = "sgx.intel.com/enclave"
-	intelProvision corev1.ResourceName = "sgx.intel.com/provision"
-	azureEpc       corev1.ResourceName = "kubernetes.azure.com/sgx_epc_mem_in_MiB"
 )
 
 func newPrecheckCmd() *cobra.Command {
@@ -74,14 +68,14 @@ func nodeSupportsSGX(capacityInfo corev1.ResourceList) bool {
 
 // nodeHasAzureDevPlugin checks if a node has the Azures SGX device plugin installed
 func nodeHasAzureDevPlugin(capacityInfo corev1.ResourceList) bool {
-	epcQuant := capacityInfo[azureEpc]
+	epcQuant := capacityInfo[util.AzureEpc]
 	return epcQuant.Value() != 0
 }
 
 // nodeHasIntelDevPlugin checks if a node has the Intel SGX device plugin installed
 func nodeHasIntelDevPlugin(capacityInfo corev1.ResourceList) bool {
-	epcQuant := capacityInfo[intelEpc]
-	enclaveQuant := capacityInfo[intelEnclave]
-	provisionQuant := capacityInfo[intelProvision]
+	epcQuant := capacityInfo[util.IntelEpc]
+	enclaveQuant := capacityInfo[util.IntelEnclave]
+	provisionQuant := capacityInfo[util.IntelProvision]
 	return !(epcQuant.Value() == 0 || enclaveQuant.Value() == 0 || provisionQuant.Value() == 0)
 }
