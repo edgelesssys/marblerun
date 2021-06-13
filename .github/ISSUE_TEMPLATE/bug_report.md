@@ -7,25 +7,25 @@ assignees: ''
 
 ---
 
-**Describe the bug**
+
+### Issue description
 A clear and concise description of what the bug is.
 
-**To reproduce**
+### To reproduce
 Steps to reproduce the behavior:
+
 1.
 2.
 3.
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+### Expected behavior
+<!-- A clear and concise description of what you expected to happen. -->
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
-
-**Environment:**
+### Environment:
  - Marblerun version:
  - Edgeless RT version:
  - Go version:
+ - Minikube version:
 
-**Additional context**
-Add any other context about the problem here.
+### Additional info / screenshots
+<!--  Add any other context about the problem here. -->
