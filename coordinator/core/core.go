@@ -570,7 +570,7 @@ func GenerateUsersFromManifest(rawUsers map[string]manifest.User) ([]*user.User,
 		newUser := user.NewUser(name, cert)
 		newUser.Assign(user.NewPermission(user.PermissionSetSecret, userData.WriteSecrets))
 		newUser.Assign(user.NewPermission(user.PermissionReadSecret, userData.ReadSecrets))
-		newUser.Assign(user.NewPermission(user.PermissionAllowedUpdate, userData.UpdatePackages))
+		newUser.Assign(user.NewPermission(user.PermissionUpdatePackage, userData.UpdatePackages))
 		users = append(users, newUser)
 	}
 	return users, nil

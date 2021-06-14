@@ -14,7 +14,7 @@ import (
 const (
 	PermissionSetSecret     = "SetSecret"
 	PermissionReadSecret    = "ReadSecret"
-	PermissionAllowedUpdate = "Update"
+	PermissionUpdatePackage = "UpdatePackage"
 )
 
 // User represents a privileged user of Marblerun
