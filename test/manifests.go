@@ -330,12 +330,22 @@ var IntegrationManifestJSON string = `{
 	"Clients": {
 		"owner": [9,9,9]
 	},
+	"Secrets" :{
+		"symmetric_key_shared": {
+			"Size": 128,
+			"Shared": true,
+			"Type": "symmetric-key"
+		}
+	},
 	"Users": {
 		"admin": {
 			"Certificate": "` + pemToJSONString(AdminCert) + `",
 			"UpdatePackages": [
 				"frontend",
 				"backend"
+			],
+			"ReadSecrets": [
+				"symmetric_key_shared"
 			]
 		}
 	},

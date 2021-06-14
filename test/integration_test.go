@@ -237,10 +237,19 @@ func TestClientAPI(t *testing.T) {
 	cert := gjson.Get(string(quote), "data.Cert").String()
 	require.NotEmpty(cert)
 
-	// test with certificate
+	// create client with certificates
 	pool := x509.NewCertPool()
 	require.True(pool.AppendCertsFromPEM([]byte(cert)))
-	client = http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{RootCAs: pool}}}
+	privk, err := x509.MarshalPKCS8PrivateKey(RecoveryPrivateKey)
+	require.NoError(err)
+	clCert, err := tls.X509KeyPair(AdminCert, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privk}))
+	require.NoError(err)
+	client = http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{
+		Certificates: []tls.Certificate{clCert},
+		RootCAs:      pool,
+	}}}
+
+	// test with certificate
 	clientAPIURL.Path = "manifest"
 	resp, err = client.Get(clientAPIURL.String())
 	require.NoError(err)
@@ -249,6 +258,22 @@ func TestClientAPI(t *testing.T) {
 	resp.Body.Close()
 	require.NoError(err)
 	assert.JSONEq(`{"status":"success","data":{"ManifestSignature":""}}`, string(manifest))
+
+	log.Println("Setting the Manifest")
+	_, err = setManifest(testManifest)
+	require.NoError(err, "failed to set Manifest")
+
+	// test reading of secrets
+	log.Println("Requesting a secret from the Coordinator")
+	clientAPIURL.Path = "secrets"
+	clientAPIURL.RawQuery = "s=symmetric_key_shared"
+	resp, err = client.Get(clientAPIURL.String())
+	require.NoError(err)
+	require.Equal(http.StatusOK, resp.StatusCode)
+	secret, err := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	require.NoError(err)
+	assert.Contains(string(secret), `{"status":"success","data":{"symmetric_key_shared":{"Type":"symmetric-key","Size":128,`)
 }
 
 func TestRecoveryRestoreKey(t *testing.T) {
