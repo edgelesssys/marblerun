@@ -1,11 +1,11 @@
 # Occlum "Hello World!" sample
-This sample shows how to run an [Occlum](https://github.com/occlum/occlum) application in Marblerun. In essence, you have to add the `premain-occlum` process to your Occlum image, use it as an entry point for your instance and supply the original entry point as an `Argv` value in Marblerun's [manifest.json](manifest.json). `premain` will contact the Coordinator, set up the environment, and run the actual application. Take a look into the [Makefile](Makefile) for details.
+This sample shows how to run an [Occlum](https://github.com/occlum/occlum) application in Marblerun. In essence, you have to add the `premain-libos` process to your Occlum image, use it as an entry point for your instance and supply the original entry point as an `Argv` value in Marblerun's [manifest.json](manifest.json). `premain` will contact the Coordinator, set up the environment, and run the actual application. Take a look into the [Makefile](Makefile) for details.
 
 ## Requirements
 First, get Occlum and its build toolchain up and running. This can become quite complex if you run it on your existing environment. Therefore, we use the official Docker image and expose the SGX device to it:
 
 ```sh
-docker run -it --network host --device /dev/sgx occlum/occlum:0.22.0-ubuntu18.04
+docker run -it --network host --device /dev/sgx occlum/occlum:0.23.0-ubuntu18.04
 ```
 
 If you are trying to run this sample on Azure, you might want to use the provided [Dockerfile](Dockerfile) instead. It is based on the official Occlum image, but replaces the default Intel DCAP client with the [Azure DCAP Client](https://github.com/microsoft/Azure-DCAP-Client). This is required to get correct quotes on Azure's Confidential Computing virtual machines. You can build and use the image in the following way:
@@ -70,7 +70,7 @@ make run
 Or manually:
 ```sh
 cd occlum_instance
-occlum run /bin/premain-occlum
+occlum run /bin/premain-libos
 ```
 
 ## Troubleshooting
@@ -90,24 +90,14 @@ occlum run /bin/premain-occlum
     panic: "invalid entrypoint definition in argv[0]"
     ```
 
-    or:
+    Make sure you specified the correct filename of your target application.
 
-    ```
-    ERROR: Failed to spawn the target process.
-    Did you specify the correct target application in the Marblerun manifest as argv[0]?
-    Have you allocated enough memory?
-    panic: posix_spawn failed with error code -1
-    ```
-
-    Make sure you specified the correct filename of your target application. For the latter error message, also make sure enough memory is allocated. To find out the specific reason for why this error is occuring, you can set the environment variable `OCCLUM_LOG_LEVEL=error` by appending it in front of your run command like this:
-
+* If you are running into other issues, Occlum's error logging might help:
     ```sh
     OCCLUM_LOG_LEVEL=error make run
     ```
 
     or:
     ```sh
-    OCCLUM_LOG_LEVEL=error occlum run /bin/premain-occlum
+    OCCLUM_LOG_LEVEL=error occlum run /bin/premain-libos
     ```
-
-    Search for `SpawnMusl`. This entry will contain the error encountered when spawning your application from Marblerun's premain process.

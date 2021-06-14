@@ -7,7 +7,7 @@ FROM ghcr.io/edgelesssys/edgelessrt-dev AS build-premain
 COPY --from=pull /premain /premain
 WORKDIR /premain/build
 RUN cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
-RUN make premain-graphene
+RUN make premain-libos
 
 FROM ghcr.io/edgelesssys/edgelessrt-deploy:latest AS release
 RUN apt-get update && apt-get install -y git meson build-essential autoconf gawk bison wget python3 libcurl4-openssl-dev \
@@ -32,7 +32,7 @@ RUN meson build -Ddirect=disabled -Dsgx=enabled
 RUN ninja -C build
 RUN ninja -C build install
 
-COPY --from=build-premain /premain/build/premain-graphene /graphene/Examples/redis/
+COPY --from=build-premain /premain/build/premain-libos /graphene/Examples/redis/
 COPY redis-server.manifest.template /graphene/Examples/redis/
 WORKDIR /graphene/Examples/redis
 ENV BUILD_TLS yes

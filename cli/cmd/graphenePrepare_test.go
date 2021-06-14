@@ -126,7 +126,7 @@ func TestDownloadPremain(t *testing.T) {
 	testContent := []byte("this is obviously not a binary, but we gotta test this anyway!")
 
 	// We don't want to hardcode the version, so let's use a regexp match here
-	httpmock.RegisterResponder("GET", `=~^https://github\.com/edgelesssys/marblerun/releases/download/v[0-9\.]*/premain-graphene`,
+	httpmock.RegisterResponder("GET", `=~^https://github\.com/edgelesssys/marblerun/releases/download/v[0-9\.]*/premain-libos`,
 		httpmock.NewBytesResponder(200, testContent))
 
 	// Create tempdir for downloads
@@ -142,5 +142,5 @@ func TestDownloadPremain(t *testing.T) {
 
 	// We should have one download here
 	info := httpmock.GetCallCountInfo()
-	assert.Equal(1, info[`GET =~^https://github\.com/edgelesssys/marblerun/releases/download/v[0-9\.]*/premain-graphene`])
+	assert.Equal(1, info[`GET =~^https://github\.com/edgelesssys/marblerun/releases/download/v[0-9\.]*/premain-libos`])
 }

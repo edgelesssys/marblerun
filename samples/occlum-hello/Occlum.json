@@ -11,7 +11,7 @@
         "default_mmap_size": "900MB"
     },
     "entry_points": [
-        "/bin/premain-occlum"
+        "/bin/premain-libos"
     ],
     "env": {
         "default": [

@@ -11,7 +11,7 @@ We also removed certificate generation from the Makefile because it will be prov
 
 We now build the example as follows:
 ```sh
-wget https://github.com/edgelesssys/marblerun/releases/latest/download/premain-graphene
+wget https://github.com/edgelesssys/marblerun/releases/latest/download/premain-libos
 export GRAPHENEDIR=[PATH To Your Graphene Folder]
 make SGX=1
 ```

@@ -43,7 +43,7 @@ jobs:
             build/coordinator-enclave.signed
             build/coordinator-noenclave
             build/coordinator-era.json
-            build/premain-graphene
+            build/premain-libos
             build/marble-injector
             build/marblerun
 

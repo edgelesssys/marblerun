@@ -34,7 +34,7 @@ add_custom_target(coordinator-noenclave ALL
   "go" ${PROJECT_VERSION} "coordinator-noenclave"
   "${CMAKE_SOURCE_DIR}/cmd/coordinator" "main"
    ${TRIMPATH}
-  
+
 )
 
 add_executable(coordinator-enclave enclave/main.c)
@@ -126,7 +126,7 @@ add_custom_command(
 add_custom_target(sign-marble-test ALL DEPENDS marble-test-enclave.signed marble-test-config.json)
 
 #
-# Build premain-graphene
+# Build premain-libos
 #
 
-add_custom_target(premain-graphene ALL ertgo build ${TRIMPATH} -buildmode=pie ${CMAKE_SOURCE_DIR}/cmd/premain-graphene)
+add_custom_target(premain-libos ALL ertgo build ${TRIMPATH} -buildmode=pie ${CMAKE_SOURCE_DIR}/cmd/premain-libos)

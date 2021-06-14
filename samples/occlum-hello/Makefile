@@ -3,10 +3,10 @@ all: build
 .PHONY: clean all
 
 clean:
-	rm -rf occlum-instance hello premain-occlum
+	rm -rf occlum-instance hello premain-libos
 
-build: occlum-instance hello premain-occlum
-	cp premain-occlum occlum-instance/image/bin/premain-occlum
+build: occlum-instance hello premain-libos
+	cp premain-libos occlum-instance/image/bin/premain-libos
 	cp hello occlum-instance/image/bin/hello
 	cd occlum-instance; occlum build
 
@@ -21,8 +21,9 @@ occlum-instance:
 hello: hello.c
 	occlum-gcc -Os -o$@ $<
 
-premain-occlum:
-	occlum-go build -o premain-occlum ../../cmd/premain-occlum
+premain-libos:
+	wget https://github.com/edgelesssys/marblerun/releases/latest/download/premain-libos
+	chmod +x premain-libos
 
 run:
-	cd occlum-instance; occlum run /bin/premain-occlum
+	cd occlum-instance; occlum run /bin/premain-libos
