@@ -8,43 +8,41 @@ package user
 
 import (
 	"crypto/x509"
-	"encoding/pem"
-
-	"github.com/edgelesssys/marblerun/coordinator/manifest"
+	"encoding/json"
 )
 
 const (
-	permissionSetSecret     = "SetSecret"
-	permissionReadSecret    = "ReadSecret"
-	permissionAllowedUpdate = "Update"
+	PermissionSetSecret     = "SetSecret"
+	PermissionReadSecret    = "ReadSecret"
+	PermissionAllowedUpdate = "Update"
 )
 
-// MarblerunUser represents a privileged user of Marblerun
-type MarblerunUser struct {
+// User represents a privileged user of Marblerun
+type User struct {
 	name string
 	// certificate is the users certificate, used for authentication
 	certificate *x509.Certificate
 	// permissions of the user
-	permissions map[string]MarblerunPermission
+	permissions map[string]Permission
 }
 
-// NewMarblerunUser creates a new user based on data from manifest.User
-func NewMarblerunUser(name string, certificate *x509.Certificate) *MarblerunUser {
-	newUser := &MarblerunUser{
+// NewUser creates a new user
+func NewUser(name string, certificate *x509.Certificate) *User {
+	newUser := &User{
 		name:        name,
 		certificate: certificate,
-		permissions: make(map[string]MarblerunPermission),
+		permissions: make(map[string]Permission),
 	}
 	return newUser
 }
 
 // Assign adds a new permission to the user
-func (u *MarblerunUser) Assign(p MarblerunPermission) {
+func (u *User) Assign(p Permission) {
 	u.permissions[p.ID()] = p
 }
 
 // IsGranted returns true if the user has the requested permission
-func (u MarblerunUser) IsGranted(p MarblerunPermission) bool {
+func (u *User) IsGranted(p Permission) bool {
 	q, ok := u.permissions[p.ID()]
 	if !ok {
 		return false
@@ -53,71 +51,86 @@ func (u MarblerunUser) IsGranted(p MarblerunPermission) bool {
 }
 
 // Name returns the name of a user
-func (u MarblerunUser) Name() string {
+func (u *User) Name() string {
 	return u.name
 }
 
 // Permissions returns a users permissions
-func (u MarblerunUser) Permissions() map[string]MarblerunPermission {
+func (u *User) Permissions() map[string]Permission {
 	return u.permissions
 }
 
 // Certificate returns a users certificate
-func (u MarblerunUser) Certificate() *x509.Certificate {
+func (u *User) Certificate() *x509.Certificate {
 	return u.certificate
 }
 
-// MarblerunPermission represents the permissions of a Marblerun user
-type MarblerunPermission struct {
-	permissionID string
-	resourceID   map[string]bool
+// MarshalJSON implements the json.Marshaler interface
+func (u *User) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		Name        string
+		Certificate []byte
+		Permissions map[string]Permission
+	}{
+		Name:        u.name,
+		Certificate: u.certificate.Raw,
+		Permissions: u.permissions,
+	})
 }
 
-// NewMarblerunPermission creates a new permission, granting access to resources grouped by permissionID
-func NewMarblerunPermission(permissionID string, resourceIDs []string) MarblerunPermission {
-	newPermission := MarblerunPermission{
-		permissionID: permissionID,
-		resourceID:   make(map[string]bool),
+// UnmarshalJSON implements the json.Marshaler interface
+func (u *User) UnmarshalJSON(data []byte) error {
+	tmp := &struct {
+		Name        string
+		Certificate []byte
+		Permissions map[string]Permission
+	}{}
+	if err := json.Unmarshal(data, tmp); err != nil {
+		return err
+	}
+	cert, err := x509.ParseCertificate(tmp.Certificate)
+	if err != nil {
+		return err
+	}
+
+	u.name = tmp.Name
+	u.permissions = tmp.Permissions
+	u.certificate = cert
+	return nil
+}
+
+// Permission represents the permissions of a Marblerun user
+type Permission struct {
+	PermissionID string
+	ResourceID   map[string]bool
+}
+
+// NewPermission creates a new permission, granting access to resources grouped by permissionID
+func NewPermission(permissionID string, resourceIDs []string) Permission {
+	newPermission := Permission{
+		PermissionID: permissionID,
+		ResourceID:   make(map[string]bool),
 	}
 	for _, v := range resourceIDs {
-		newPermission.resourceID[v] = true
+		newPermission.ResourceID[v] = true
 	}
 	return newPermission
 }
 
 // ID returns the permissionID
-func (p MarblerunPermission) ID() string {
-	return p.permissionID
+func (p Permission) ID() string {
+	return p.PermissionID
 }
 
 // Match returns true if a is a subgroup of p
-func (p MarblerunPermission) match(q MarblerunPermission) bool {
-	if p.permissionID != q.ID() {
+func (p Permission) match(q Permission) bool {
+	if p.PermissionID != q.ID() {
 		return false
 	}
-	for k := range q.resourceID {
-		if !p.resourceID[k] {
+	for k := range q.ResourceID {
+		if !p.ResourceID[k] {
 			return false
 		}
 	}
 	return true
-}
-
-// GenerateUsersFromManifest creates users and permissions from a map of manifest.User
-func GenerateUsersFromManifest(rawUsers map[string]manifest.User) ([]*MarblerunUser, error) {
-	// Parse & write X.509 user data from manifest
-	users := make([]*MarblerunUser, 0, len(rawUsers))
-	for name, userData := range rawUsers {
-		block, _ := pem.Decode([]byte(userData.Certificate))
-		cert, err := x509.ParseCertificate(block.Bytes)
-		if err != nil {
-			return nil, err
-		}
-		newUser := NewMarblerunUser(name, cert)
-		newUser.Assign(NewMarblerunPermission(permissionSetSecret, userData.SetSecrets))
-		newUser.Assign(NewMarblerunPermission(permissionReadSecret, userData.ReadSecrets))
-		newUser.Assign(NewMarblerunPermission(permissionAllowedUpdate, userData.AllowedUpdates))
-		users = append(users, newUser)
-	}
-	return users, nil
 }

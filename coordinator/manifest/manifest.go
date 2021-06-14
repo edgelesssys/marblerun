@@ -30,7 +30,7 @@ type Manifest struct {
 	Infrastructures map[string]quote.InfrastructureProperties
 	// Marbles contains the allowed services with their corresponding enclave and configuration parameters.
 	Marbles map[string]Marble
-	// Admins contains user-generated TLS client certificates to be used for an administrator to perform manifest updates
+	// Users contains user-generated TLS client certificates to be used for an administrator to perform manifest updates
 	Users map[string]User
 	// Clients contains TLS certificates for authenticating clients that use the ClientAPI.
 	Clients map[string][]byte
@@ -75,12 +75,12 @@ type TLSTagEntry struct {
 type User struct {
 	// Certificate is the TLS certificate used by the user for authentication
 	Certificate string
-	// SetSecrets is a list of Secrets the user is allowed to set
-	SetSecrets []string
+	// WriteSecrets is a list of Secrets the user is allowed to set
+	WriteSecrets []string
 	// ReadSecrets is a list of Secrets the user is allowed to read
 	ReadSecrets []string
-	// AllowedUpdates is a list of Packages the user is allowed to update
-	AllowedUpdates []string
+	// UpdatePackages is a list of Packages the user is allowed to update
+	UpdatePackages []string
 }
 
 // Check checks if the manifest is consistent.
@@ -162,21 +162,21 @@ func (m Manifest) Check(ctx context.Context, zaplogger *zap.Logger) error {
 		if len(user.Certificate) <= 0 {
 			return fmt.Errorf("manifest does not contain a certificate for user %s", userName)
 		}
-		//for _, secretName := range user.SetSecrets {
-		//	secret, ok := m.Secrets[secretName]
-		//	if !ok {
-		//		return fmt.Errorf("manifest specifies set permission for user %s and secret %s, but no such secret exists", userName, secretName)
-		//	}
-		//	if !secret.UserDefined {
-		//		return fmt.Errorf("manifest specifies set permission for user %s and secret %s, but secret is not user-defined", userName, secretName)
-		//	}
-		//}
-		//for k := range m.Packages {
-		//	if _, ok := m.Packages[k]; !ok {
-		//		return fmt.Errorf("user %s is allowed to update package %s, but no such package is specified in the manifest", userName, k)
-		//	}
-		//
-		//}
+		for _, secretName := range user.WriteSecrets {
+			secret, ok := m.Secrets[secretName]
+			if !ok {
+				return fmt.Errorf("manifest specifies write permission for user %s and secret %s, but no such secret exists", userName, secretName)
+			}
+			if !secret.UserDefined {
+				return fmt.Errorf("manifest specifies write permission for user %s and secret %s, but secret is not user-defined", userName, secretName)
+			}
+		}
+		for _, pkg := range user.UpdatePackages {
+			if _, ok := m.Packages[pkg]; !ok {
+				return fmt.Errorf("user %s is allowed to update package %s, but no such package is specified in the manifest", userName, pkg)
+			}
+
+		}
 	}
 
 	return nil
@@ -190,14 +190,14 @@ type PublicKey []byte
 
 // Secret defines a structure for storing certificates & encryption keys
 type Secret struct {
-	Type   string
-	Size   uint
-	Shared bool
-	//UserDefined bool
-	Cert     Certificate
-	ValidFor uint
-	Private  PrivateKey
-	Public   PublicKey
+	Type        string
+	Size        uint
+	Shared      bool
+	UserDefined bool
+	Cert        Certificate
+	ValidFor    uint
+	Private     PrivateKey
+	Public      PublicKey
 }
 
 // Certificate is an x509.Certificate

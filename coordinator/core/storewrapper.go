@@ -28,11 +28,6 @@ const (
 	requestUser        = "user"
 )
 
-type sealedUser struct {
-	Certificate []byte
-	Permissions map[string]user.MarblerunPermission
-}
-
 // storeWrapper is a wrapper for the store interface
 type storeWrapper struct {
 	store interface {
@@ -204,36 +199,23 @@ func (s storeWrapper) putState(currState state) error {
 }
 
 // getUser returns user information from store
-func (s storeWrapper) getUser(userName string) (*user.MarblerunUser, error) {
+func (s storeWrapper) getUser(userName string) (*user.User, error) {
 	request := strings.Join([]string{requestUser, userName}, ":")
 	rawUserData, err := s.store.Get(request)
 	if err != nil {
 		return nil, err
 	}
-	var userData sealedUser
-	if err := json.Unmarshal(rawUserData, &userData); err != nil {
+	var loadedUser user.User
+	if err := json.Unmarshal(rawUserData, &loadedUser); err != nil {
 		return nil, err
 	}
-	userCert, err := x509.ParseCertificate(userData.Certificate)
-	if err != nil {
-		return nil, err
-	}
-
-	loadedUser := user.NewMarblerunUser(userName, userCert)
-	for _, savedPerm := range userData.Permissions {
-		loadedUser.Assign(savedPerm)
-	}
-	return loadedUser, nil
+	return &loadedUser, nil
 }
 
 // putUser saves user information to store
-func (s storeWrapper) putUser(newUser *user.MarblerunUser) error {
+func (s storeWrapper) putUser(newUser *user.User) error {
 	request := strings.Join([]string{requestUser, newUser.Name()}, ":")
-	userData := &sealedUser{
-		Certificate: newUser.Certificate().Raw,
-		Permissions: newUser.Permissions(),
-	}
-	rawUserData, err := json.Marshal(userData)
+	rawUserData, err := json.Marshal(newUser)
 	if err != nil {
 		return err
 	}

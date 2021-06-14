@@ -41,7 +41,7 @@ func TestStoreWrapper(t *testing.T) {
 	require.NoError(err)
 	testUserCert, _, err := generateCert([]string{"example.com"}, "test-user", nil, nil, nil)
 	require.NoError(err)
-	testUser := user.NewMarblerunUser("test-user", testUserCert)
+	testUser := user.NewUser("test-user", testUserCert)
 
 	// save values to store
 	tx, err := c.store.BeginTransaction()

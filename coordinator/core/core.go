@@ -18,6 +18,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"math"
@@ -29,6 +30,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
 	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/coordinator/store"
+	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -550,6 +552,28 @@ func (c *Core) generateCertificateForSecret(secret manifest.Secret, parentCertif
 	}
 
 	return secret, nil
+}
+
+// GenerateUsersFromManifest creates users and permissions from a map of manifest.User
+func GenerateUsersFromManifest(rawUsers map[string]manifest.User) ([]*user.User, error) {
+	// Parse & write X.509 user data from manifest
+	users := make([]*user.User, 0, len(rawUsers))
+	for name, userData := range rawUsers {
+		block, _ := pem.Decode([]byte(userData.Certificate))
+		if block == nil {
+			return nil, fmt.Errorf("received invalid certificate for user %s", name)
+		}
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return nil, err
+		}
+		newUser := user.NewUser(name, cert)
+		newUser.Assign(user.NewPermission(user.PermissionSetSecret, userData.WriteSecrets))
+		newUser.Assign(user.NewPermission(user.PermissionReadSecret, userData.ReadSecrets))
+		newUser.Assign(user.NewPermission(user.PermissionAllowedUpdate, userData.UpdatePackages))
+		users = append(users, newUser)
+	}
+	return users, nil
 }
 
 func (c *Core) setCAData(dnsNames []string, tx store.Transaction) error {

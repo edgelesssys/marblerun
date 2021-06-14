@@ -203,8 +203,7 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 			writeJSONError(w, "no client certificate provided", http.StatusUnauthorized)
 			return
 		}
-		_, err := cc.VerifyUser(r.Context(), r.TLS.PeerCertificates)
-		if err != nil {
+		if _, err := cc.VerifyUser(r.Context(), r.TLS.PeerCertificates); err != nil {
 			writeJSONError(w, "unauthorized user", http.StatusUnauthorized)
 			return
 		}

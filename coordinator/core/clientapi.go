@@ -28,7 +28,7 @@ type ClientCore interface {
 	GetManifestSignature(ctx context.Context) (manifestSignature []byte)
 	GetStatus(ctx context.Context) (statusCode int, status string, err error)
 	Recover(ctx context.Context, encryptionKey []byte) (int, error)
-	VerifyUser(ctx context.Context, clientCerts []*x509.Certificate) (*user.MarblerunUser, error)
+	VerifyUser(ctx context.Context, clientCerts []*x509.Certificate) (*user.User, error)
 	UpdateManifest(ctx context.Context, rawUpdateManifest []byte) error
 }
 
@@ -79,7 +79,7 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 	c.sealer.SetEncryptionKey(encryptionKey)
 
 	// Parse X.509 user certificates and permissions from manifest
-	users, err := user.GenerateUsersFromManifest(manifest.Users)
+	users, err := GenerateUsersFromManifest(manifest.Users)
 	if err != nil {
 		c.zaplogger.Error("Could not parse specified user certificate from supplied manifest", zap.Error(err))
 		return nil, err
@@ -192,7 +192,7 @@ func (c *Core) GetStatus(ctx context.Context) (statusCode int, status string, er
 }
 
 // VerifyUser checks if a given client certificate matches the admin certificates specified in the manifest
-func (c *Core) VerifyUser(ctx context.Context, clientCerts []*x509.Certificate) (*user.MarblerunUser, error) {
+func (c *Core) VerifyUser(ctx context.Context, clientCerts []*x509.Certificate) (*user.User, error) {
 	manifest, err := c.data.getManifest("main")
 	if err != nil {
 		return nil, err

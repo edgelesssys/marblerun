@@ -128,7 +128,7 @@ func TestRecover(t *testing.T) {
 	assert.Error(err)
 
 	// Set manifest. This will seal the state.
-	_, err = c.SetManifest(context.TODO(), []byte(test.ManifestJSONWithRecoveryKey))
+	_, err = c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
 	require.NoError(err)
 
 	// core does not allow recover after manifest has been set
@@ -150,6 +150,54 @@ func TestRecover(t *testing.T) {
 	c2State, err = c2.data.getState()
 	assert.NoError(err)
 	assert.Equal(stateAcceptingMarbles, c2State)
+}
+
+func TestGenerateUsersFromManifest(t *testing.T) {
+	assert := assert.New(t)
+
+	Users := map[string]manifest.User{
+		"Alice": {
+			Certificate: string(test.AdminCert),
+			WriteSecrets: []string{
+				"secret_one",
+			},
+			ReadSecrets: []string{
+				"secret_one",
+				"secret_two",
+			},
+		},
+		"Bob": {
+			Certificate: string(test.AdminCert),
+			WriteSecrets: []string{
+				"secret_one",
+			},
+			UpdatePackages: []string{
+				"frontend",
+				"backend",
+			},
+		},
+	}
+	newUsers, err := GenerateUsersFromManifest(Users)
+	assert.NoError(err)
+	assert.Equal(len(Users), len(newUsers))
+
+	// try to generate new users with missing certificate, this should always error
+	invalidUsers := map[string]manifest.User{
+		"Alice": {
+			WriteSecrets: []string{
+				"secret_one",
+			},
+		},
+		"Bob": {
+			Certificate: string(test.AdminCert),
+			UpdatePackages: []string{
+				"frontend",
+				"backend",
+			},
+		},
+	}
+	_, err = GenerateUsersFromManifest(invalidUsers)
+	assert.Error(err)
 }
 
 func TestGenerateSecrets(t *testing.T) {
