@@ -30,7 +30,7 @@ type Manifest struct {
 	Infrastructures map[string]quote.InfrastructureProperties
 	// Marbles contains the allowed services with their corresponding enclave and configuration parameters.
 	Marbles map[string]Marble
-	// Users contains user-generated TLS client certificates to be used for an administrator to perform manifest updates
+	// Users contains user definitions, including certificates used for authentication and permissions.
 	Users map[string]User
 	// Clients contains TLS certificates for authenticating clients that use the ClientAPI.
 	Clients map[string][]byte

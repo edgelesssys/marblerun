@@ -177,7 +177,7 @@ func TestGenerateUsersFromManifest(t *testing.T) {
 			},
 		},
 	}
-	newUsers, err := GenerateUsersFromManifest(Users)
+	newUsers, err := generateUsersFromManifest(Users)
 	assert.NoError(err)
 	assert.Equal(len(Users), len(newUsers))
 
@@ -196,7 +196,7 @@ func TestGenerateUsersFromManifest(t *testing.T) {
 			},
 		},
 	}
-	_, err = GenerateUsersFromManifest(invalidUsers)
+	_, err = generateUsersFromManifest(invalidUsers)
 	assert.Error(err)
 }
 

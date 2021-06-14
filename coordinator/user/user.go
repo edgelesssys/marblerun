@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	PermissionSetSecret     = "SetSecret"
+	PermissionWriteSecret   = "WriteSecret"
 	PermissionReadSecret    = "ReadSecret"
 	PermissionUpdatePackage = "UpdatePackage"
 )
