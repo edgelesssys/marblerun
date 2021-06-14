@@ -16,6 +16,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/store"
+	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
@@ -27,7 +28,7 @@ type ClientCore interface {
 	GetManifestSignature(ctx context.Context) (manifestSignature []byte)
 	GetStatus(ctx context.Context) (statusCode int, status string, err error)
 	Recover(ctx context.Context, encryptionKey []byte) (int, error)
-	VerifyAdmin(ctx context.Context, clientCerts []*x509.Certificate) bool
+	VerifyUser(ctx context.Context, clientCerts []*x509.Certificate) (*user.User, error)
 	UpdateManifest(ctx context.Context, rawUpdateManifest []byte) error
 }
 
@@ -77,10 +78,10 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 	}
 	c.sealer.SetEncryptionKey(encryptionKey)
 
-	// Parse X.509 admin certificates from manifest
-	users, err := generateUsersFromManifest(manifest.Admins)
+	// Parse X.509 user certificates and permissions from manifest
+	users, err := generateUsersFromManifest(manifest.Users)
 	if err != nil {
-		c.zaplogger.Error("Could not parse specified admin client certificate from supplied manifest", zap.Error(err))
+		c.zaplogger.Error("Could not parse specified user certificate from supplied manifest", zap.Error(err))
 		return nil, err
 	}
 
@@ -190,25 +191,28 @@ func (c *Core) GetStatus(ctx context.Context) (statusCode int, status string, er
 	return c.getStatus(ctx)
 }
 
-// VerifyAdmin checks if a given client certificate matches the admin certificates specified in the manifest
-func (c *Core) VerifyAdmin(ctx context.Context, clientCerts []*x509.Certificate) bool {
+// VerifyUser checks if a given client certificate matches the admin certificates specified in the manifest
+func (c *Core) VerifyUser(ctx context.Context, clientCerts []*x509.Certificate) (*user.User, error) {
 	manifest, err := c.data.getManifest("main")
 	if err != nil {
-		return false
+		return nil, err
 	}
 
 	// Check if a supplied client cert matches the supplied ones from the manifest stored in the core
 	// NOTE: We do not use the "correct" X.509 verify here since we do not really care about expiration and chain verification here.
 	for _, suppliedCert := range clientCerts {
-		for user := range manifest.Admins {
-			userData, _ := c.data.getUser(user)
-			if suppliedCert.Equal(userData.certificate) {
-				return true
+		for userName := range manifest.Users {
+			user, err := c.data.getUser(userName)
+			if err != nil {
+				return nil, err
+			}
+			if suppliedCert.Equal(user.Certificate()) {
+				return user, nil
 			}
 		}
 	}
 
-	return false
+	return nil, errors.New("client certificate did not match any Marblerun users")
 }
 
 // UpdateManifest allows to update certain package parameters, supplied via a JSON manifest

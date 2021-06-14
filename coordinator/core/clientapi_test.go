@@ -206,7 +206,7 @@ func TestGetStatus(t *testing.T) {
 	assert.NotEmpty(status, "Status string was empty, but should not.")
 }
 
-func TestVerifyAdmin(t *testing.T) {
+func TestVerifyUser(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	c, _ := mustSetup()
@@ -221,10 +221,14 @@ func TestVerifyAdmin(t *testing.T) {
 	adminTestCertSlice := []*x509.Certificate{adminTestCert}
 	otherTestCertSlice := []*x509.Certificate{otherTestCert}
 
-	// Check if the adminTest certificatge is deemed valid (stored in core), and the freshly generated one is deemed false
-	assert.True(c.VerifyAdmin(context.TODO(), adminTestCertSlice))
-	assert.False(c.VerifyAdmin(context.TODO(), otherTestCertSlice))
-	assert.False(c.VerifyAdmin(context.TODO(), nil))
+	// Check if the adminTest certificate is deemed valid (stored in core), and the freshly generated one is deemed false
+	user, err := c.VerifyUser(context.TODO(), adminTestCertSlice)
+	assert.NoError(err)
+	assert.Equal(*user.Certificate(), *adminTestCert)
+	_, err = c.VerifyUser(context.TODO(), otherTestCertSlice)
+	assert.Error(err)
+	_, err = c.VerifyUser(context.TODO(), nil)
+	assert.Error(err)
 }
 
 func TestUpdateManifest(t *testing.T) {

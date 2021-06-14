@@ -30,6 +30,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
 	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/coordinator/store"
+	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -39,6 +40,7 @@ import (
 
 // Core implements the core logic of the Coordinator
 type Core struct {
+	mux       sync.Mutex
 	quote     []byte
 	recovery  recovery.Recovery
 	store     store.Store
@@ -46,7 +48,6 @@ type Core struct {
 	sealer    seal.Sealer
 	qv        quote.Validator
 	qi        quote.Issuer
-	mux       sync.Mutex
 	zaplogger *zap.Logger
 }
 
@@ -60,14 +61,6 @@ const (
 	stateAcceptingMarbles
 	stateMax
 )
-
-// marblerunUser represents a privileged user of Marblerun
-type marblerunUser struct {
-	// name is the username
-	name string
-	// certificate is the users certificate, used for authentication
-	certificate *x509.Certificate
-}
 
 // coordinatorName is the name of the Coordinator. It is used as CN of the root certificate.
 const coordinatorName string = "Marblerun Coordinator"
@@ -561,6 +554,28 @@ func (c *Core) generateCertificateForSecret(secret manifest.Secret, parentCertif
 	return secret, nil
 }
 
+// generateUsersFromManifest creates users and permissions from a map of manifest.User
+func generateUsersFromManifest(rawUsers map[string]manifest.User) ([]*user.User, error) {
+	// Parse & write X.509 user data from manifest
+	users := make([]*user.User, 0, len(rawUsers))
+	for name, userData := range rawUsers {
+		block, _ := pem.Decode([]byte(userData.Certificate))
+		if block == nil {
+			return nil, fmt.Errorf("received invalid certificate for user %s", name)
+		}
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return nil, err
+		}
+		newUser := user.NewUser(name, cert)
+		newUser.Assign(user.NewPermission(user.PermissionWriteSecret, userData.WriteSecrets))
+		newUser.Assign(user.NewPermission(user.PermissionReadSecret, userData.ReadSecrets))
+		newUser.Assign(user.NewPermission(user.PermissionUpdatePackage, userData.UpdatePackages))
+		users = append(users, newUser)
+	}
+	return users, nil
+}
+
 func (c *Core) setCAData(dnsNames []string, tx store.Transaction) error {
 	rootCert, rootPrivK, err := generateCert(dnsNames, coordinatorName, nil, nil, nil)
 	if err != nil {
@@ -594,20 +609,4 @@ func (c *Core) setCAData(dnsNames []string, tx store.Transaction) error {
 	}
 
 	return nil
-}
-
-func generateUsersFromManifest(users map[string]string) ([]*marblerunUser, error) {
-	// Parse & write X.509 admin certificates from sealed state
-	userData := make([]*marblerunUser, 0, len(users))
-	for userName, value := range users {
-		block, _ := pem.Decode([]byte(value))
-		cert, err := x509.ParseCertificate(block.Bytes)
-		if err != nil {
-			return nil, err
-		}
-
-		userData = append(userData, &marblerunUser{name: userName, certificate: cert})
-	}
-
-	return userData, nil
 }

@@ -15,6 +15,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/store"
+	"github.com/edgelesssys/marblerun/coordinator/user"
 )
 
 const (
@@ -198,25 +199,25 @@ func (s storeWrapper) putState(currState state) error {
 }
 
 // getUser returns user information from store
-// will be changed in the future to return permissions etc. instead of just certificate
-func (s storeWrapper) getUser(userName string) (*marblerunUser, error) {
+func (s storeWrapper) getUser(userName string) (*user.User, error) {
 	request := strings.Join([]string{requestUser, userName}, ":")
-	rawCert, err := s.store.Get(request)
+	rawUserData, err := s.store.Get(request)
 	if err != nil {
 		return nil, err
 	}
-
-	userCert, err := x509.ParseCertificate(rawCert)
-	if err != nil {
+	var loadedUser user.User
+	if err := json.Unmarshal(rawUserData, &loadedUser); err != nil {
 		return nil, err
 	}
-
-	return &marblerunUser{name: userName, certificate: userCert}, nil
+	return &loadedUser, nil
 }
 
 // putUser saves user information to store
-// will be changed in the future to set permissions etc. instead of just certificate
-func (s storeWrapper) putUser(user *marblerunUser) error {
-	request := strings.Join([]string{requestUser, user.name}, ":")
-	return s.store.Put(request, user.certificate.Raw)
+func (s storeWrapper) putUser(newUser *user.User) error {
+	request := strings.Join([]string{requestUser, newUser.Name()}, ":")
+	rawUserData, err := json.Marshal(newUser)
+	if err != nil {
+		return err
+	}
+	return s.store.Put(request, rawUserData)
 }

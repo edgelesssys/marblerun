@@ -152,6 +152,54 @@ func TestRecover(t *testing.T) {
 	assert.Equal(stateAcceptingMarbles, c2State)
 }
 
+func TestGenerateUsersFromManifest(t *testing.T) {
+	assert := assert.New(t)
+
+	Users := map[string]manifest.User{
+		"Alice": {
+			Certificate: string(test.AdminCert),
+			WriteSecrets: []string{
+				"secret_one",
+			},
+			ReadSecrets: []string{
+				"secret_one",
+				"secret_two",
+			},
+		},
+		"Bob": {
+			Certificate: string(test.AdminCert),
+			WriteSecrets: []string{
+				"secret_one",
+			},
+			UpdatePackages: []string{
+				"frontend",
+				"backend",
+			},
+		},
+	}
+	newUsers, err := generateUsersFromManifest(Users)
+	assert.NoError(err)
+	assert.Equal(len(Users), len(newUsers))
+
+	// try to generate new users with missing certificate, this should always error
+	invalidUsers := map[string]manifest.User{
+		"Alice": {
+			WriteSecrets: []string{
+				"secret_one",
+			},
+		},
+		"Bob": {
+			Certificate: string(test.AdminCert),
+			UpdatePackages: []string{
+				"frontend",
+				"backend",
+			},
+		},
+	}
+	_, err = generateUsersFromManifest(invalidUsers)
+	assert.Error(err)
+}
+
 func TestGenerateSecrets(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
