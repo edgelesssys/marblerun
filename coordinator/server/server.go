@@ -20,6 +20,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/coordinator/core"
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
+	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/gorilla/handlers"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
@@ -198,14 +199,8 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 	})
 
 	mux.HandleFunc("/update", func(w http.ResponseWriter, r *http.Request) {
-		// Abort if no user client certificate was provided
-		if r.TLS == nil {
-			writeJSONError(w, "no client certificate provided", http.StatusUnauthorized)
-			return
-		}
-		user, err := cc.VerifyUser(r.Context(), r.TLS.PeerCertificates)
-		if err != nil {
-			writeJSONError(w, "unauthorized user", http.StatusUnauthorized)
+		user := verifyUser(w, r, cc)
+		if user == nil {
 			return
 		}
 
@@ -228,14 +223,8 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 	})
 
 	mux.HandleFunc("/secrets", func(w http.ResponseWriter, r *http.Request) {
-		// Abort if no user client certificate was provided
-		if r.TLS == nil {
-			writeJSONError(w, "no client certificate provided", http.StatusUnauthorized)
-			return
-		}
-		user, err := cc.VerifyUser(r.Context(), r.TLS.PeerCertificates)
-		if err != nil {
-			writeJSONError(w, "unauthorized user", http.StatusUnauthorized)
+		user := verifyUser(w, r, cc)
+		if user == nil {
 			return
 		}
 
@@ -268,6 +257,20 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 	})
 
 	return mux
+}
+
+func verifyUser(w http.ResponseWriter, r *http.Request, cc core.ClientCore) *user.User {
+	// Abort if no user client certificate was provided
+	if r.TLS == nil {
+		writeJSONError(w, "no client certificate provided", http.StatusUnauthorized)
+		return nil
+	}
+	verifiedUser, err := cc.VerifyUser(r.Context(), r.TLS.PeerCertificates)
+	if err != nil {
+		writeJSONError(w, "unauthorized user", http.StatusUnauthorized)
+		return nil
+	}
+	return verifiedUser
 }
 
 func writeJSON(w http.ResponseWriter, v interface{}) {
