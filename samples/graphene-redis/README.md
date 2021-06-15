@@ -26,7 +26,7 @@ First, we are installing Marblerun on your cluster.
 * Wait for the Coordinator to be ready
 
     ```bash
-    kubectl -n marblerun get pod -l edgeless.systems/control-plane-component=coordinator -o jsonpath="{.items[0].status.phase}"
+    marblerun check
     ```
 
 * Port-forward the client API service to localhost
@@ -108,18 +108,11 @@ You can now securely connect to the Redis server using the `redis-cli` and the M
 
 ## Building the Docker image
 
-*Prerequisite*: Graphene is set up and the original Redis example is working.
-
 To marbleize the example we edited [redis-server.manifest.template](redis-server.manifest.template). See comments starting with `MARBLERUN` for explanations of the required changes.
 
-Assuming you have built Graphene in `/graphene` copy the redis-server.manifest.template into the `/graphene/Examples/redis`
+
+Build the Docker image:
 
 ```bash
-cp ./redis-server.manifest.template /graphene/Examples/redis/redis-server.manifest.template
-```
-
-Next we can build the Docker image:
-
-```bash
-docker build --tag ghcr.io/edgelesssys/redis-graphene-marble -f ./Dockerfile /graphene
+docker buildx build --secret id=signingkey,src=<path to private.pem> --tag ghcr.io/edgelesssys/redis-graphene-marble -f ./Dockerfile .
 ```

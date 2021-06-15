@@ -3,22 +3,22 @@
 # This manifest was prepared and tested on Ubuntu 18.04.
 
 # MARBLERUN: entrypoint must be premain-graphene
-libos.entrypoint = "file:premain-graphene"
+libos.entrypoint = "premain-graphene"
 
 # Path to the library OS
-loader.preload = "file:$(GRAPHENEDIR)/Runtime/libsysdb.so"
+loader.preload = "file:{{ graphene.libos }}"
 
 # Graphene log level
-loader.log_level = "$(GRAPHENE_LOG_LEVEL)"
+loader.log_level = "{{ log_level }}"
 
 # Read application arguments directly from the command line. Don't use this on production!
-loader.insecure__use_cmdline_argv = 1
+loader.insecure__use_cmdline_argv = true
 
 # Environment variables
-loader.env.LD_LIBRARY_PATH = "/lib:$(ARCH_LIBDIR):/usr/local/lib:/usr/lib:/usr/$(ARCH_LIBDIR)"
+loader.env.LD_LIBRARY_PATH = "/lib:{{ arch_libdir }}:/usr/local/lib:/usr/lib:/usr/{{ arch_libdir }}"
 
 # Allow for injecting SIGTERM signal from the host.
-sys.enable_sigterm_injection = 1
+sys.enable_sigterm_injection = true
 
 # Mounted FSes. The following "chroot" FSes mount a part of the host FS into the
 # guest. Other parts of the host FS will not be available in the guest.
@@ -26,17 +26,17 @@ sys.enable_sigterm_injection = 1
 # Default glibc files, mounted from the Runtime directory in GRAPHENEDIR.
 fs.mount.lib.type = "chroot"
 fs.mount.lib.path = "/lib"
-fs.mount.lib.uri = "file:$(GRAPHENEDIR)/Runtime"
+fs.mount.lib.uri = "file:{{ graphene.runtimedir() }}"
 
 # Host-level libraries (e.g., /lib/x86_64-linux-gnu) required by Nginx.
 fs.mount.lib2.type = "chroot"
-fs.mount.lib2.path = "$(ARCH_LIBDIR)"
-fs.mount.lib2.uri = "file:$(ARCH_LIBDIR)"
+fs.mount.lib2.path = "{{ arch_libdir }}"
+fs.mount.lib2.uri = "file:{{ arch_libdir }}"
 
 # Host-level libraries (e.g., /usr/lib/x86_64-linux-gnu) required by Nginx with SSL.
 fs.mount.lib3.type = "chroot"
-fs.mount.lib3.path = "/usr$(ARCH_LIBDIR)"
-fs.mount.lib3.uri = "file:/usr$(ARCH_LIBDIR)"
+fs.mount.lib3.path = "/usr{{ arch_libdir }}"
+fs.mount.lib3.uri = "file:/usr{{ arch_libdir }}"
 
 # Host-level libraries required by Nginx with SSL.
 fs.mount.lib4.type = "chroot"
@@ -50,8 +50,8 @@ fs.mount.etc.uri = "file:/etc"
 
 # Mount the current working directory
 fs.mount.cwd.type = "chroot"
-fs.mount.cwd.path = "$(INSTALL_DIR_ABSPATH)"
-fs.mount.cwd.uri = "file:$(INSTALL_DIR)"
+fs.mount.cwd.path = "{{ install_dir_abspath }}"
+fs.mount.cwd.uri = "file:{{ install_dir }}"
 
 # SGX general options
 
@@ -61,7 +61,7 @@ fs.mount.cwd.uri = "file:$(INSTALL_DIR)"
 # MARBLERUN: enclave must have enough memory for Go runtime of premain
 sgx.enclave_size = "1024M"
 
-sgx.nonpie_binary = 1
+sgx.nonpie_binary = true
 
 # Set the maximum number of enclave threads. For SGX v1, the number of enclave
 # TCSes must be specified during signing, so the application cannot use more
@@ -77,46 +77,21 @@ sgx.thread_num = 16
 # Nginx benefits from Exitless. Uncomment the below line to use it.
 #sgx.rpc_thread_num = 4
 
+
 # SGX trusted files
-
-sgx.trusted_files.nginx = "file:$(INSTALL_DIR)/sbin/nginx"
-
-# Glibc libraries
-sgx.trusted_files.ld = "file:$(GRAPHENEDIR)/Runtime/ld-linux-x86-64.so.2"
-sgx.trusted_files.libc = "file:$(GRAPHENEDIR)/Runtime/libc.so.6"
-sgx.trusted_files.libm = "file:$(GRAPHENEDIR)/Runtime/libm.so.6"
-sgx.trusted_files.libdl = "file:$(GRAPHENEDIR)/Runtime/libdl.so.2"
-sgx.trusted_files.librt = "file:$(GRAPHENEDIR)/Runtime/librt.so.1"
-sgx.trusted_files.libutil = "file:$(GRAPHENEDIR)/Runtime/libutil.so.1"
-sgx.trusted_files.libpthread = "file:$(GRAPHENEDIR)/Runtime/libpthread.so.0"
-
-# Name Service Switch (NSS) libraries (Glibc dependencies)
-sgx.trusted_files.libnsscompat = "file:$(ARCH_LIBDIR)/libnss_compat.so.2"
-sgx.trusted_files.libnssfiles = "file:$(ARCH_LIBDIR)/libnss_files.so.2"
-sgx.trusted_files.libnssnis = "file:$(ARCH_LIBDIR)/libnss_nis.so.2"
-
-# libNSL is a dependency of libnss_compat above
-sgx.trusted_files.libnsl = "file:$(ARCH_LIBDIR)/libnsl.so.1"
-
-# Nginx configuration (trusted)
-sgx.trusted_files.conf1   = "file:$(INSTALL_DIR)/conf/nginx-graphene.conf"
-sgx.trusted_files.conf2   = "file:$(INSTALL_DIR)/conf/mime.types"
+sgx.trusted_files.nginx = "file:{{ install_dir }}/sbin/nginx"
+sgx.trusted_files.conf_dir = "file:{{ install_dir }}/conf/"
+sgx.trusted_files.html_dir = "file:{{ install_dir }}/html/"
 # MARBLERUN: these are provisioned by the Coordinator
-sgx.protected_files.cert    = "file:install/conf/server.crt"
-sgx.protected_files.privkey = "file:install/conf/server.key"
+sgx.protected_files.cert    = "file:{{ install_dir }}/conf/server.crt"
+sgx.protected_files.privkey = "file:{{ install_dir }}/conf/server.key"
 
-# Nginx HTTP documents (trusted)
-# We only specify those documents used in our tests/benchmarks
-sgx.trusted_files.htdocs1 = "file:$(INSTALL_DIR)/html/index.html"
-sgx.trusted_files.htdocs2 = "file:$(INSTALL_DIR)/html/random/100.1.html"
-sgx.trusted_files.htdocs3 = "file:$(INSTALL_DIR)/html/random/2K.1.html"
-sgx.trusted_files.htdocs4 = "file:$(INSTALL_DIR)/html/random/10K.1.html"
-sgx.trusted_files.htdocs5 = "file:$(INSTALL_DIR)/html/random/100K.1.html"
-sgx.trusted_files.htdocs6 = "file:$(INSTALL_DIR)/html/random/1M.1.html"
-sgx.trusted_files.htdocs7 = "file:$(INSTALL_DIR)/html/random/10M.1.html"
+sgx.trusted_files.runtime = "file:{{ graphene.runtimedir() }}/"
+sgx.trusted_files.arch_libdir = "file:{{ arch_libdir }}/"
+sgx.trusted_files.usr_arch_libdir = "file:/usr/{{ arch_libdir }}/"
 
 # Nginx logs directory (untrusted and allowed, since log files are not security-critical)
-sgx.allowed_files.logs = "file:$(INSTALL_DIR)/logs"
+sgx.allowed_files.logs = "file:{{ install_dir }}/logs"
 
 # Name Service Switch (NSS) files (Glibc reads these files)
 sgx.allowed_files.nsswitch = "file:/etc/nsswitch.conf"
@@ -129,7 +104,7 @@ sgx.allowed_files.passwd = "file:/etc/passwd"
 sgx.trusted_files.premain = "file:premain-graphene"
 
 # MARBLERUN: argv0 must be the path to the actual application
-loader.argv0_override = "$(INSTALL_DIR)/sbin/nginx"
+loader.argv0_override = "{{ install_dir }}/sbin/nginx"
 
 # MARBLERUN: Forward environment variables from the host. Don't use this on production!
 loader.insecure__use_host_env = 1
