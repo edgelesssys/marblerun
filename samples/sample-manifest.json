@@ -1,0 +1,181 @@
+{
+    "Packages": {
+		"backend": {
+			"SignerID": "1f1e1d1c1b1a191817161514131211100f0e0d0c0b0a09080706050403020100",
+			"ProductID": 45,
+			"SecurityVersion": 2,
+			"Debug": false
+		},
+		"frontend": {
+			"SignerID": "1f1e1d1c1b1a191817161514131211100f0e0d0c0b0a09080706050403020100",
+			"ProductID": 44,
+			"SecurityVersion": 3,
+			"Debug": false
+		}
+	},
+
+    "Marbles": {
+		"backend_first": {
+			"Package": "backend",
+			"MaxActivations": 1,
+			"Parameters": {
+				"Files": {
+					"/tmp/defg.txt": "foo",
+					"/tmp/jkl.mno": "bar"
+				},
+				"Env": {
+					"IS_FIRST": "true",
+					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
+					"TEST_SECRET_SYMMETRIC_KEY": "{{ raw .Secrets.symmetric_key_shared }}",
+					"TEST_SECRET_CERT": "{{ pem .Secrets.cert_shared.Cert }}",
+					"TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.cert_private.Cert }}"
+				},
+				"Argv": [
+					"--first",
+					"serve"
+				]
+			},
+			"TLS": [
+				"web"
+			],
+            "Roles": [
+                "cert-reader",
+                "key-reader"
+            ]
+		},
+		"backend_other": {
+			"Package": "backend",
+			"Parameters": {
+				"Env": {
+					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
+					"TEST_SECRET_CERT": "{{ pem .Secrets.cert_shared.Cert }}",
+					"TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.cert_private.Cert }}"
+				},
+				"Argv": [
+					"serve"
+				]
+			},
+			"TLS": [
+				"web", "anotherWeb"
+			],
+            "Roles": [
+                "cert-reader"
+            ]
+		},
+		"frontend": {
+			"Package": "frontend",
+			"Parameters": {
+				"Env": {
+					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}"
+				}
+			}
+		}
+	},
+
+    "Secrets": {
+        "symmetric_key_shared": {
+            "Type": "symmetric-key",
+            "Size": 128,
+            "Shared": true
+        },
+		"symmetric_key_private": {
+			"Size": 256,
+			"Type": "symmetric-key"
+		},
+		"cert_private": {
+			"Size": 2048,
+			"Type": "cert-rsa",
+			"Cert": {
+				"SerialNumber": 42,
+				"Subject": {
+					"SerialNumber": "42",
+					"CommonName": "Marblerun Unit Test"
+				}
+			},
+			"ValidFor": 7
+		},
+        "cert_shared": {
+			"Shared": true,
+			"Type": "cert-ed25519",
+			"Cert": {
+				"SerialNumber": 1337,
+				"Subject": {
+					"SerialNumber": "1337",
+					"CommonName": "Marblerun Unit Test"
+				}
+			},
+			"ValidFor": 7
+		},
+        "rsa_shared": {
+			"Shared": true,
+			"Type": "cert-rsa",
+            "Size": 2048,
+			"Cert": {
+				"SerialNumber": 4433,
+				"Subject": {
+					"SerialNumber": "4433",
+					"CommonName": "Marblerun Unit Test"
+				}
+			},
+			"ValidFor": 7
+		}
+    },
+
+    "Users": {
+        "Alice": {
+            "Certificate": "cert-alice",
+            "Roles": [
+                "frontend-updates",
+                "cert-reader",
+                "key-reader"
+            ]
+        },
+        "Bob": {
+            "Certificate": "cert-bob",
+            "Roles": [
+                "backend-updates",
+                "key-reader"
+            ]
+        },
+        "Admin": {
+            "Certificate": "cert-admin",
+            "Roles": [
+                "updates-admin",
+                "secrets-admin"
+            ]
+        }
+    },
+
+    "Roles": {
+        "frontend-updates": {
+            "Resource": "Packages",
+            "ResourceNames": ["frontend"],
+            "Actions": ["increment"]
+        },
+        "backend-updates": {
+            "Resource": "Packages",
+            "ResourceNames": ["backend"],
+            "Actions": ["increment"]
+        },
+        "updates-admin": {
+            "Resource": "Packages",
+            "ResourceNames": ["frontend", "backend"],
+            "Actions": ["increment"]
+        },
+        "cert-reader": {
+            "Resource": "Secrets",
+            "ResourceNames": ["cert_shared", "rsa_shared"],
+            "Actions": ["read"]
+        },
+        "key-reader": {
+            "Resource": "Secrets",
+            "ResourceNames": ["symmetric_key_shared"],
+            "Actions": ["read"]
+        },
+        "secrets-admin": {
+            "Resource": "Secrets",
+            "ResourceNames": ["symmetric_key_shared", "cert_shared", "rsa_shared"],
+            "Actions": ["read", "write"]
+        }
+    }
+}
