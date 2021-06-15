@@ -241,6 +241,9 @@ func EncodeSecretDataToPem(data interface{}) (string, error) {
 	case PublicKey:
 		pemData = pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: x})
 	case PrivateKey:
+		if x == nil {
+			return "", errors.New("private key not set for secret")
+		}
 		pemData = pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: x})
 	default:
 		return "", errors.New("invalid secret type")
@@ -264,6 +267,9 @@ func EncodeSecretDataToRaw(data interface{}) (string, error) {
 	case []byte:
 		return string(secret), nil
 	case PrivateKey:
+		if secret == nil {
+			return "", errors.New("private key not set for secret")
+		}
 		return string(secret), nil
 	case PublicKey:
 		return string(secret), nil
@@ -335,6 +341,79 @@ func (m Manifest) CheckUpdate(ctx context.Context, originalPackages map[string]q
 	}
 
 	return nil
+}
+
+// UserSecret is a secret uploaded by a user
+type UserSecret struct {
+	Cert    Certificate
+	Private PrivateKey
+	Key     []byte
+}
+
+// ParseUserSecrets checks if a map of UserSecrets only contains supported values and parses them to a map of Secrets
+func ParseUserSecrets(ctx context.Context, newSecrets map[string]UserSecret, originalSecrets map[string]Secret) (map[string]Secret, error) {
+	if len(newSecrets) <= 0 {
+		return nil, errors.New("no new secrets defined")
+	}
+
+	parsedSecrets := make(map[string]Secret)
+	for secretName, singleSecret := range newSecrets {
+		originalSecret, ok := originalSecrets[secretName]
+		if !ok {
+			return nil, errors.New("secret manifest specifies a secret which the original manifest does not contain")
+		}
+		if !originalSecret.UserDefined {
+			return nil, fmt.Errorf("secret %s is not writeable", secretName)
+		}
+
+		// check correctness of the supplied secrets
+		switch originalSecret.Type {
+		case "symmetric-key":
+			// verify the length specified in the original manifest is constant
+			if originalSecret.Size == 0 || originalSecret.Size%8 != 0 {
+				return nil, fmt.Errorf("invalid secret size: %s", secretName)
+			}
+			// make sure the supplied secret is actually of the specified length
+			if len(singleSecret.Key) != int(originalSecret.Size/8) {
+				return nil, fmt.Errorf("declared size and actual size don't match: %s", secretName)
+			}
+			// make sure only a symmetric key was supplied
+			if singleSecret.Cert.Raw != nil || singleSecret.Private != nil {
+				return nil, fmt.Errorf("secret %s is set to be of type symmetric-key but specified values for a certificate", secretName)
+			}
+			parsedSecret := originalSecret
+			parsedSecret.Private = singleSecret.Key
+			parsedSecret.Public = singleSecret.Key
+			parsedSecrets[secretName] = parsedSecret
+		case "cert-rsa", "cert-ecdsa", "cert-ed25519":
+			// make sure only certificate data was supplied
+			if singleSecret.Key != nil {
+				return nil, fmt.Errorf("secret %s is set to be of type %s but specified values for a symmetric-key", secretName, originalSecret.Type)
+			}
+			// correctnes of the private key is not checked here, and can even be left empty
+			// if it is left empty trying to start a marble using the key will fail
+			var err error
+			parsedSecret := originalSecret
+			parsedSecret.Cert = singleSecret.Cert
+			parsedSecret.Private = singleSecret.Private
+			parsedSecret.Public, err = x509.MarshalPKIXPublicKey(singleSecret.Cert.PublicKey)
+			if err != nil {
+				return nil, err
+			}
+			parsedSecrets[secretName] = parsedSecret
+		case "plain":
+			// make sure only a key data was supplied
+			if singleSecret.Cert.Raw != nil || singleSecret.Private != nil {
+				return nil, fmt.Errorf("secret %s is set to be of type symmetric-key but specified values for a certificate", secretName)
+			}
+			parsedSecret := originalSecret
+			parsedSecret.Private = singleSecret.Key
+			parsedSecret.Public = singleSecret.Key
+			parsedSecrets[secretName] = parsedSecret
+		}
+
+	}
+	return parsedSecrets, nil
 }
 
 func warnOrFailForMissingValue(debugMode bool, parameter string, packageName string, zaplogger *zap.Logger) error {

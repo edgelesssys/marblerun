@@ -32,6 +32,7 @@ type ClientCore interface {
 	Recover(ctx context.Context, encryptionKey []byte) (int, error)
 	VerifyUser(ctx context.Context, clientCerts []*x509.Certificate) (*user.User, error)
 	UpdateManifest(ctx context.Context, rawUpdateManifest []byte, updater *user.User) error
+	WriteSecrets(ctx context.Context, rawSecretManifest []byte, updater *user.User) error
 }
 
 // SetManifest sets the manifest, once and for all
@@ -355,6 +356,51 @@ func (c *Core) GetSecrets(ctx context.Context, requestedSecrets []string, client
 	}
 
 	return secrets, nil
+}
+
+// SetSecrets allows a user to set certain user defined secrets
+func (c *Core) WriteSecrets(ctx context.Context, rawSecretManifest []byte, updater *user.User) error {
+	defer c.mux.Unlock()
+
+	// Only accept secrets if we already have a manifest
+	if err := c.requireState(stateAcceptingMarbles); err != nil {
+		return err
+	}
+
+	// Unmarshal & check secret manifest
+	var secretManifest map[string]manifest.UserSecret
+	if err := json.Unmarshal(rawSecretManifest, &secretManifest); err != nil {
+		return err
+	}
+
+	// validate against manifest
+	mainManifest, err := c.data.getManifest("main")
+	if err != nil {
+		return err
+	}
+	newSecrets, err := manifest.ParseUserSecrets(ctx, secretManifest, mainManifest.Secrets)
+	if err != nil {
+		return err
+	}
+
+	tx, err := c.store.BeginTransaction()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	txdata := storeWrapper{tx}
+
+	for secretName, secret := range newSecrets {
+		// verify user is allowed to set the secret
+		if !updater.IsGranted(user.NewPermission(user.PermissionWriteSecret, []string{secretName})) {
+			return fmt.Errorf("user %s is not allowed to update secret: %s", updater.Name(), secretName)
+		}
+		if err := txdata.putSecret(secretName, secret); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 func (c *Core) performRecovery(encryptionKey []byte) error {

@@ -230,8 +230,17 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 
 		switch r.Method {
 		case http.MethodPost:
-			writeJSONError(w, "not implemented", http.StatusBadRequest)
-			return
+			secretManifest, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				writeJSONError(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			err = cc.WriteSecrets(r.Context(), secretManifest, user)
+			if err != nil {
+				writeJSONError(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			writeJSON(w, nil)
 		case http.MethodGet:
 			// Secrets are requested via the query string in the form of ?s=<secret_one>&s=<secret_two>&s=...
 			requestedSecrets := r.URL.Query()["s"]

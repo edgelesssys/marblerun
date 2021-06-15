@@ -15,7 +15,9 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"fmt"
 	"math"
+	"regexp"
 	"text/template"
 	"time"
 
@@ -92,14 +94,14 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 		return nil, err
 	}
 
-	// Generate user-defined unique (= per marble) secrets
+	// Generate unique (= per marble) secrets
 	secrets, err := c.generateSecrets(ctx, mainManifest.Secrets, marbleUUID, marbleRootCert, intermediatePrivK)
 	if err != nil {
 		c.zaplogger.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
 		return nil, err
 	}
 
-	// Union user-defined unique secrets with user-defined shared secrets
+	// Union unique secrets with shared secrets
 	sharedSecrets, err := c.data.getSecretMap()
 	if err != nil {
 		return nil, err
@@ -112,6 +114,20 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	if marble.Parameters == nil {
 		marble.Parameters = &rpc.Parameters{}
 	}
+
+	// Union user-defined secrets with shared and unique secrets
+	userSecrets := findUserSecrets(marble.Parameters, mainManifest.Secrets)
+	for _, k := range userSecrets {
+		secret, err := c.data.getSecret(k)
+		if err != nil {
+			if store.IsStoreValueUnsetError(err) {
+				return nil, fmt.Errorf("secret %s needed but not set", k)
+			}
+			return nil, err
+		}
+		secrets[k] = secret
+	}
+
 	// add TTLS config to Env
 	if err := c.setTTLSConfig(marble, authSecrets, secrets); err != nil {
 		c.zaplogger.Error("Could not create TTLS config.", zap.Error(err))
@@ -457,4 +473,43 @@ func (c *Core) setTTLSConfig(marble manifest.Marble, specialSecrets reservedSecr
 	marble.Parameters.Env["MARBLE_TTLS_CONFIG"] = string(ttlsConfJSON)
 
 	return nil
+}
+
+// findUserSecrets finds all user-defined secrets required by a Marble
+func findUserSecrets(params *rpc.Parameters, secrets map[string]manifest.Secret) []string {
+	// Find the name of all secrets required by the marble
+	// For each match in a Argv/Env/File the sub-strings will be as follows:
+	// 0: the complete secret injection string ({{ <encoding> .Secrets.<name>.<part> }})
+	// 1: the encoding
+	// 2: the name of the secret
+	// 3: if specified the part of the secret, empty string otherwise
+	r := regexp.MustCompile("{{\\s*(raw|hex|base64|pem)\\s+\\.Secrets\\.([\\w-]+)(\\.[\\w-]+)?\\s*}}")
+	wantedSecrets := make(map[string]bool)
+	for _, v := range params.Argv {
+		subStrings := r.FindAllStringSubmatch(v, -1)
+		for _, match := range subStrings {
+			wantedSecrets[match[2]] = true
+		}
+	}
+	for _, v := range params.Env {
+		subStrings := r.FindAllStringSubmatch(v, -1)
+		for _, match := range subStrings {
+			wantedSecrets[match[2]] = true
+		}
+	}
+	for _, v := range params.Files {
+		subStrings := r.FindAllStringSubmatch(v, -1)
+		for _, match := range subStrings {
+			wantedSecrets[match[2]] = true
+		}
+	}
+
+	var userSecrets []string
+	for secret := range wantedSecrets {
+		if secrets[secret].UserDefined {
+			userSecrets = append(userSecrets, secret)
+		}
+	}
+
+	return userSecrets
 }
