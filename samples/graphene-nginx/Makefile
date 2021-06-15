@@ -18,7 +18,8 @@ NGINX_SHA256 ?= f11c2a6dd1d3515736f0324857957db2de98be862461b5a542a3ac6188dbe32b
 
 # Mirrors for downloading the Nginx source code
 NGINX_MIRRORS ?= \
-	http://nginx.org/download/
+    http://nginx.org/download \
+    https://packages.grapheneproject.io/distfiles
 
 # Address and port for the Nginx server to listen
 LISTEN_HOST ?= 127.0.0.1
@@ -36,7 +37,7 @@ GRAPHENE_LOG_LEVEL = error
 endif
 
 .PHONY: all
-all: $(INSTALL_DIR)/sbin/nginx nginx.manifest config testdata ssldata | pal_loader
+all: $(INSTALL_DIR)/sbin/nginx nginx.manifest config testdata ssldata
 ifeq ($(SGX),1)
 all: nginx.manifest.sgx nginx.sig nginx.token
 endif
@@ -61,23 +62,16 @@ $(NGINX_SRC)/configure: $(NGINX_SRC).tar.gz
 	tar --touch -xzf $<
 
 $(NGINX_SRC).tar.gz:
-	$(GRAPHENEDIR)/Scripts/download --output $@ --sha256 $(NGINX_SHA256) $(foreach mirror,$(NGINX_MIRRORS),--url $(mirror)/$(NGINX_SRC).tar.gz)
+	$(GRAPHENEDIR)/Scripts/download --output $@ --sha256 $(NGINX_SHA256) \
+		$(foreach mirror,$(NGINX_MIRRORS),--url $(mirror)/$(NGINX_SRC).tar.gz)
 
-# Generate manifest rules for nginx dependencies.
-# We'll duplicate some Glibc libraries (which Graphene provides in a customized version), but
-# there's no harm in this.
-.INTERMEDIATE: trusted-libs
-trusted-libs: $(GRAPHENEDIR)/Examples/common_tools/get_deps.sh $(INSTALL_DIR)/sbin/nginx
-	$(GRAPHENEDIR)/Examples/common_tools/get_deps.sh $(INSTALL_DIR)/sbin/nginx > $@
-
-nginx.manifest: nginx.manifest.template trusted-libs
-	(sed -e 's|$$(GRAPHENEDIR)|'"$(GRAPHENEDIR)"'|g' \
-	     -e 's|$$(GRAPHENE_LOG_LEVEL)|'"$(GRAPHENE_LOG_LEVEL)"'|g' \
-	     -e 's|$$(INSTALL_DIR)|'"$(INSTALL_DIR)"'|g' \
-	     -e 's|$$(INSTALL_DIR_ABSPATH)|'"$(abspath $(INSTALL_DIR))"'|g' \
-	     -e 's|$$(ARCH_LIBDIR)|'"$(ARCH_LIBDIR)"'|g' \
-	     $<; \
-	cat trusted-libs) > $@
+nginx.manifest: nginx.manifest.template
+	graphene-manifest \
+		-Dlog_level=$(GRAPHENE_LOG_LEVEL) \
+		-Darch_libdir=$(ARCH_LIBDIR) \
+		-Dinstall_dir=$(INSTALL_DIR) \
+		-Dinstall_dir_abspath=$(abspath $(INSTALL_DIR)) \
+		$< >$@
 
 # Generating the SGX-specific manifest (nginx.manifest.sgx), the enclave signature,
 # and the token for enclave initialization.
@@ -85,18 +79,15 @@ nginx.manifest.sgx: nginx.manifest $(INSTALL_DIR)/sbin/nginx \
 		$(INSTALL_DIR)/conf/nginx-graphene.conf \
 		$(TEST_DATA) \
 		$(INSTALL_DIR)/conf/server.crt
-	$(GRAPHENEDIR)/Pal/src/host/Linux-SGX/signer/pal-sgx-sign \
-		-libpal $(GRAPHENEDIR)/Runtime/libpal-Linux-SGX.so \
-		-key $(SGX_SIGNER_KEY) \
-		-manifest $< -output $@
+	graphene-sgx-sign \
+		--key $(SGX_SIGNER_KEY) \
+		--manifest $< \
+		--output $@
 
 nginx.sig: nginx.manifest.sgx
 
 nginx.token: nginx.sig
-	$(GRAPHENEDIR)/Pal/src/host/Linux-SGX/signer/pal-sgx-get-token -output $@ -sig $<
-
-pal_loader:
-	ln -s $(GRAPHENEDIR)/Runtime/pal_loader $@
+	graphene-sgx-get-token --output $@ --sig $<
 
 # Nginx configuration and test data
 #
@@ -146,13 +137,19 @@ ssldata: $(INSTALL_DIR)/conf/server.crt
 start-native-server: all
 	$(INSTALL_DIR)/sbin/nginx -c conf/nginx-graphene.conf
 
+ifeq ($(SGX),)
+GRAPHENE = graphene-direct
+else
+GRAPHENE = graphene-sgx
+endif
+
 .PHONY: start-graphene-server
 start-graphene-server: all
-	./pal_loader ./nginx -c conf/nginx-graphene.conf
+	$(GRAPHENE) ./nginx -c conf/nginx-graphene.conf
 
 .PHONY: clean
 clean:
-	$(RM) *.manifest *.manifest.sgx *.token *.sig pal_loader OUTPUT result-* tmp
+	$(RM) *.manifest *.manifest.sgx *.token *.sig OUTPUT result-* tmp
 
 .PHONY: distclean
 distclean: clean

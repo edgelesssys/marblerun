@@ -1,7 +1,7 @@
 # Graphene nginx example
 This example is a slightly modified variant of the [Graphene nginx example](https://github.com/oscarlab/graphene/tree/master/Examples/nginx). These changes are required to run it in Marblerun.
 
-*Prerequisite*: Graphene is set up and the original nginx example is working. You will need hardware with Intel SGX support.
+*Prerequisite*: Graphene is set up on [commit b37ac75](https://github.com/oscarlab/graphene/tree/b37ac75efec0c1183fd42340ce2d3e04dcfb3388) and the original nginx example is working. You will need hardware with Intel SGX support.
 
 To marbleize the example we edited [nginx.manifest.template](nginx.manifest.template). See comments starting with `MARBLERUN` for explanations of the required changes.
 
@@ -35,6 +35,5 @@ EDG_MARBLE_TYPE=frontend \
 EDG_MARBLE_COORDINATOR_ADDR=localhost:2001 \
 EDG_MARBLE_UUID_FILE=uuid \
 EDG_MARBLE_DNS_NAMES=localhost \
-SGX=1 \
-./pal_loader nginx
+graphene-sgx nginx
 ```

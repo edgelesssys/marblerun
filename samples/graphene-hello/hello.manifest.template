@@ -1,8 +1,8 @@
-loader.preload = "file:$(GRAPHENEDIR)/Runtime/libsysdb.so"
+loader.preload = "file:{{ graphene.libos }}"
 loader.env.LD_LIBRARY_PATH = "/lib"
 
 # entrypoint must be premain-graphene
-libos.entrypoint = "file:premain-graphene"
+libos.entrypoint = "premain-graphene"
 sgx.trusted_files.premain = "file:premain-graphene"
 
 # argv0 must be the path to the actual application
@@ -13,11 +13,11 @@ loader.insecure__use_host_env = 1
 
 fs.mount.lib.type = "chroot"
 fs.mount.lib.path = "/lib"
-fs.mount.lib.uri = "file:$(GRAPHENEDIR)/Runtime"
+fs.mount.lib.uri = "file:{{ graphene.runtimedir() }}"
 
-sgx.trusted_files.ld = "file:$(GRAPHENEDIR)/Runtime/ld-linux-x86-64.so.2"
-sgx.trusted_files.libc = "file:$(GRAPHENEDIR)/Runtime/libc.so.6"
-sgx.trusted_files.pthread = "file:$(GRAPHENEDIR)/Runtime/libpthread.so.0"
+sgx.trusted_files.ld = "file:{{ graphene.runtimedir() }}/ld-linux-x86-64.so.2"
+sgx.trusted_files.libc = "file:{{ graphene.runtimedir() }}/libc.so.6"
+sgx.trusted_files.pthread = "file:{{ graphene.runtimedir() }}/libpthread.so.0"
 sgx.trusted_files.hello = "file:hello"
 
 # allow the marble's uuid file
@@ -34,7 +34,11 @@ sgx.thread_num = 16
 fs.mount.etc.type = "chroot"
 fs.mount.etc.path = "/etc"
 fs.mount.etc.uri = "file:/etc"
-sgx.trusted_files.nss = "file:$(GRAPHENEDIR)/Runtime/libnss_dns.so.2"
-sgx.trusted_files.resolv = "file:$(GRAPHENEDIR)/Runtime/libresolv.so.2"
+sgx.trusted_files.nss = "file:{{ graphene.runtimedir() }}/libnss_dns.so.2"
+sgx.trusted_files.resolv = "file:{{ graphene.runtimedir() }}/libresolv.so.2"
 sgx.allowed_files.hosts = "file:/etc/hosts"
 sgx.allowed_files.resolv = "file:/etc/resolv.conf"
+
+
+# Name Service Switch (NSS) files, see 'man nsswitch.conf'
+sgx.allowed_files.nsswitch  = "file:/etc/nsswitch.conf"
