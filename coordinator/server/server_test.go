@@ -107,7 +107,7 @@ func TestGetUpdateLog(t *testing.T) {
 	c := core.NewCoreWithMocks()
 	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
-	mux := CreateServeMux(c)
+	mux := CreateServeMux(c, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/update", nil)
 	resp := httptest.NewRecorder()
