@@ -27,6 +27,7 @@ type ClientCore interface {
 	SetManifest(ctx context.Context, rawManifest []byte) (recoverySecretMap map[string][]byte, err error)
 	GetCertQuote(ctx context.Context) (cert string, certQuote []byte, err error)
 	GetManifestSignature(ctx context.Context) (manifestSignature []byte)
+	GetSecrets(ctx context.Context, requestedSecrets []string, requestUser *user.User) (map[string]manifest.Secret, error)
 	GetStatus(ctx context.Context) (statusCode int, status string, err error)
 	Recover(ctx context.Context, encryptionKey []byte) (int, error)
 	VerifyUser(ctx context.Context, clientCerts []*x509.Certificate) (*user.User, error)
@@ -328,6 +329,32 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte, upd
 		store.SetRecoveryData(currentRecoveryData)
 	}
 	return tx.Commit()
+}
+
+// GetSecrets allows a user to read out secrets from the core
+func (c *Core) GetSecrets(ctx context.Context, requestedSecrets []string, client *user.User) (map[string]manifest.Secret, error) {
+	defer c.mux.Unlock()
+
+	// we can only return secrets if a manifest has already been set
+	if err := c.requireState(stateAcceptingMarbles); err != nil {
+		return nil, err
+	}
+
+	// verify user is allowed to read the requested secrets
+	if !client.IsGranted(user.NewPermission(user.PermissionReadSecret, requestedSecrets)) {
+		return nil, fmt.Errorf("user %s is not allowed to read one or more secrets of: %v", client.Name(), requestedSecrets)
+	}
+
+	secrets := make(map[string]manifest.Secret)
+	for _, requestedSecret := range requestedSecrets {
+		returnedSecret, err := c.data.getSecret(requestedSecret)
+		if err != nil {
+			return nil, err
+		}
+		secrets[requestedSecret] = returnedSecret
+	}
+
+	return secrets, nil
 }
 
 func (c *Core) performRecovery(encryptionKey []byte) error {

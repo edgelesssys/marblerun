@@ -133,6 +133,41 @@ func TestUpdate(t *testing.T) {
 	assert.Equal(http.StatusOK, resp.Code)
 }
 
+func TestReadSecret(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	// Setup mock core and set a manifest
+	c := core.NewCoreWithMocks()
+	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSONWithRecoveryKey))
+	require.NoError(err)
+	mux := CreateServeMux(c)
+
+	// Make HTTP secret request with no TLS at all, should be unauthenticated
+	req := httptest.NewRequest(http.MethodGet, "/secrets?s=symmetric_key_shared", nil)
+	resp := httptest.NewRecorder()
+	mux.ServeHTTP(resp, req)
+	assert.Equal(http.StatusUnauthorized, resp.Code)
+
+	// Get certificates to test
+	adminTestCert, otherTestCert := test.MustSetupTestCerts(test.RecoveryPrivateKey)
+	adminTestCertSlice := []*x509.Certificate{adminTestCert}
+	otherTestCertSlice := []*x509.Certificate{otherTestCert}
+
+	// Create mock TLS object and with wrong certificate, should fail
+	req.TLS = &tls.ConnectionState{}
+	req.TLS.PeerCertificates = otherTestCertSlice
+	resp = httptest.NewRecorder()
+	mux.ServeHTTP(resp, req)
+	assert.Equal(http.StatusUnauthorized, resp.Code)
+
+	// Create mock TLS connection with right certificate, should pass
+	req.TLS.PeerCertificates = adminTestCertSlice
+	resp = httptest.NewRecorder()
+	mux.ServeHTTP(resp, req)
+	assert.Equal(http.StatusOK, resp.Code)
+}
+
 func TestConcurrent(t *testing.T) {
 	// This test is used to detect data races when run with -race
 

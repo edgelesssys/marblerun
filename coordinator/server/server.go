@@ -20,6 +20,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/coordinator/core"
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
+	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/gorilla/handlers"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
@@ -198,14 +199,8 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 	})
 
 	mux.HandleFunc("/update", func(w http.ResponseWriter, r *http.Request) {
-		// Abort if no user client certificate was provided
-		if r.TLS == nil {
-			writeJSONError(w, "no client certificate provided", http.StatusUnauthorized)
-			return
-		}
-		user, err := cc.VerifyUser(r.Context(), r.TLS.PeerCertificates)
-		if err != nil {
-			writeJSONError(w, "unauthorized user", http.StatusUnauthorized)
+		user := verifyUser(w, r, cc)
+		if user == nil {
 			return
 		}
 
@@ -227,7 +222,55 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 		}
 	})
 
+	mux.HandleFunc("/secrets", func(w http.ResponseWriter, r *http.Request) {
+		user := verifyUser(w, r, cc)
+		if user == nil {
+			return
+		}
+
+		switch r.Method {
+		case http.MethodPost:
+			writeJSONError(w, "not implemented", http.StatusBadRequest)
+			return
+		case http.MethodGet:
+			// Secrets are requested via the query string in the form of ?s=<secret_one>&s=<secret_two>&s=...
+			requestedSecrets := r.URL.Query()["s"]
+			if len(requestedSecrets) <= 0 {
+				writeJSONError(w, "invalid query", http.StatusBadRequest)
+				return
+			}
+			for _, req := range requestedSecrets {
+				if len(req) <= 0 {
+					writeJSONError(w, "malformed query string", http.StatusBadRequest)
+					return
+				}
+			}
+			response, err := cc.GetSecrets(r.Context(), requestedSecrets, user)
+			if err != nil {
+				writeJSONError(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			writeJSON(w, response)
+		default:
+			writeJSONError(w, "", http.StatusMethodNotAllowed)
+		}
+	})
+
 	return mux
+}
+
+func verifyUser(w http.ResponseWriter, r *http.Request, cc core.ClientCore) *user.User {
+	// Abort if no user client certificate was provided
+	if r.TLS == nil {
+		writeJSONError(w, "no client certificate provided", http.StatusUnauthorized)
+		return nil
+	}
+	verifiedUser, err := cc.VerifyUser(r.Context(), r.TLS.PeerCertificates)
+	if err != nil {
+		writeJSONError(w, "unauthorized user", http.StatusUnauthorized)
+		return nil
+	}
+	return verifiedUser
 }
 
 func writeJSON(w http.ResponseWriter, v interface{}) {
