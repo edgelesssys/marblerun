@@ -73,7 +73,7 @@ func TestSeal(t *testing.T) {
 	sealer := &seal.MockSealer{}
 	recovery := recovery.NewSinglePartyRecovery()
 
-	c, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
+	c, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, nil)
 	require.NoError(err)
 
 	// Set manifest. This will seal the state.
@@ -90,7 +90,7 @@ func TestSeal(t *testing.T) {
 	assert.NoError(err)
 
 	// Check sealing with a new core initialized with the sealed state.
-	c2, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
+	c2, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, nil)
 	require.NoError(err)
 	c2State, err := c2.data.getState()
 	assert.NoError(err)
@@ -126,7 +126,7 @@ func TestRecover(t *testing.T) {
 	sealer := &seal.MockSealer{}
 	recovery := recovery.NewSinglePartyRecovery()
 
-	c, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
+	c, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, nil)
 	require.NoError(err)
 
 	// new core does not allow recover
@@ -144,7 +144,7 @@ func TestRecover(t *testing.T) {
 
 	// Initialize new core and let unseal fail
 	sealer.UnsealError = seal.ErrEncryptionKey
-	c2, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
+	c2, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, nil)
 	sealer.UnsealError = nil
 	require.NoError(err)
 	c2State, err := c2.data.getState()
@@ -356,7 +356,7 @@ func TestUnsetRestart(t *testing.T) {
 	recovery := recovery.NewSinglePartyRecovery()
 
 	// create a new core, this seals the state with only certificate and keys
-	c1, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
+	c1, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, nil)
 	require.NoError(err)
 	c1State, err := c1.data.getState()
 	assert.NoError(err)
@@ -365,7 +365,7 @@ func TestUnsetRestart(t *testing.T) {
 	assert.NoError(err)
 
 	// create a second core, this should overwrite the previously sealed certificate and keys since no manifest was set
-	c2, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
+	c2, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, nil)
 	require.NoError(err)
 	c2State, err := c2.data.getState()
 	assert.NoError(err)

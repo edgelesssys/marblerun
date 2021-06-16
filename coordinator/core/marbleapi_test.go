@@ -54,7 +54,7 @@ func TestActivate(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	recovery := recovery.NewSinglePartyRecovery()
-	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
+	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, nil)
 	require.NoError(err)
 	require.NotNil(coreServer)
 
@@ -118,7 +118,7 @@ type marbleSpawner struct {
 	backendOtherUniqueCert x509.Certificate
 }
 
-func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSucceed bool) {
+func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSucceed bool) string {
 	cert, csr, _ := util.MustGenerateTestMarbleCredentials()
 
 	// create mock quote using values from the manifest
@@ -143,17 +143,18 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 		AuthInfo: tlsInfo,
 	})
 
+	UUID := uuid.New().String()
 	resp, err := ms.coreServer.Activate(ctx, &rpc.ActivationReq{
 		CSR:        csr,
 		MarbleType: marbleType,
 		Quote:      quote,
-		UUID:       uuid.New().String(),
+		UUID:       UUID,
 	})
 
 	if !shouldSucceed {
 		ms.assert.Error(err)
 		ms.assert.Nil(resp)
-		return
+		return UUID
 	}
 	ms.assert.NoError(err, "Activate failed: %v", err)
 	ms.assert.NotNil(resp)
@@ -295,6 +296,7 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	} else {
 		ms.assert.Empty(configBytes)
 	}
+	return UUID
 }
 
 func (ms *marbleSpawner) newMarbleAsync(marbleType string, infraName string, shouldSucceed bool) {
@@ -457,7 +459,7 @@ func TestSecurityLevelUpdate(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	recovery := recovery.NewSinglePartyRecovery()
-	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
+	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, nil)
 	require.NoError(err)
 	require.NotNil(coreServer)
 
@@ -487,7 +489,7 @@ func TestSecurityLevelUpdate(t *testing.T) {
 	spawner.newMarble("frontend", "Azure", false)
 
 	// Use a new core and test if updated manifest persisted after restart
-	coreServer2, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
+	coreServer2, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, nil)
 	require.NoError(err)
 	coreServer2State, err := coreServer2.data.getState()
 	assert.NoError(err)
@@ -572,7 +574,7 @@ func TestActivateWithMissingParameters(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	recovery := recovery.NewSinglePartyRecovery()
-	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
+	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, nil)
 	require.NoError(err)
 	require.NotNil(coreServer)
 

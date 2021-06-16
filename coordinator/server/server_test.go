@@ -31,11 +31,11 @@ import (
 func TestQuote(t *testing.T) {
 	assert := assert.New(t)
 
-	mux := CreateServeMux(core.NewCoreWithMocks())
+	mux := CreateServeMux(core.NewCoreWithMocks(), nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/quote", nil)
 	resp := httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
+	(*mux).ServeHTTP(resp, req)
 	assert.Equal(http.StatusOK, resp.Code)
 }
 
@@ -44,18 +44,18 @@ func TestManifest(t *testing.T) {
 	require := require.New(t)
 
 	c := core.NewCoreWithMocks()
-	mux := CreateServeMux(c)
+	mux := CreateServeMux(c, nil)
 
 	// set manifest
 	req := httptest.NewRequest(http.MethodPost, "/manifest", strings.NewReader(test.ManifestJSON))
 	resp := httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
+	(*mux).ServeHTTP(resp, req)
 	require.Equal(http.StatusOK, resp.Code)
 
 	// get manifest signature
 	req = httptest.NewRequest(http.MethodGet, "/manifest", nil)
 	resp = httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
+	(*mux).ServeHTTP(resp, req)
 	require.Equal(http.StatusOK, resp.Code)
 
 	sig, manifest := c.GetManifestSignature(context.TODO())
@@ -64,7 +64,7 @@ func TestManifest(t *testing.T) {
 	// try setting manifest again, should fail
 	req = httptest.NewRequest(http.MethodPost, "/manifest", strings.NewReader(test.ManifestJSON))
 	resp = httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
+	(*mux).ServeHTTP(resp, req)
 	require.Equal(http.StatusBadRequest, resp.Code)
 }
 
@@ -72,12 +72,12 @@ func TestManifestWithRecoveryKey(t *testing.T) {
 	require := require.New(t)
 
 	c := core.NewCoreWithMocks()
-	mux := CreateServeMux(c)
+	mux := CreateServeMux(c, nil)
 
 	// set manifest
 	req := httptest.NewRequest(http.MethodPost, "/manifest", strings.NewReader(test.ManifestJSONWithRecoveryKey))
 	resp := httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
+	(*mux).ServeHTTP(resp, req)
 	require.Equal(http.StatusOK, resp.Code)
 
 	// Decode JSON response from server
@@ -124,7 +124,7 @@ func TestUpdate(t *testing.T) {
 	c := core.NewCoreWithMocks()
 	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
-	mux := CreateServeMux(c)
+	mux := CreateServeMux(c, nil)
 
 	// Make HTTP update request with no TLS at all, should be unauthenticated
 	req := httptest.NewRequest(http.MethodPost, "/update", strings.NewReader(test.UpdateManifest))
@@ -141,7 +141,7 @@ func TestReadSecret(t *testing.T) {
 	c := core.NewCoreWithMocks()
 	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
-	mux := CreateServeMux(c)
+	mux := CreateServeMux(c, nil)
 
 	// Make HTTP secret request with no TLS at all, should be unauthenticated
 	req := httptest.NewRequest(http.MethodGet, "/secrets?s=symmetric_key_shared", nil)
@@ -158,7 +158,7 @@ func TestSetSecret(t *testing.T) {
 	c := core.NewCoreWithMocks()
 	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
-	mux := CreateServeMux(c)
+	mux := CreateServeMux(c, nil)
 
 	// Make HTTP secret request with no TLS at all, should be unauthenticated
 	req := httptest.NewRequest(http.MethodPost, "/secrets", strings.NewReader(test.UserSecrets))
@@ -167,8 +167,8 @@ func TestSetSecret(t *testing.T) {
 	assert.NoError(err)
 }
 
-func testRequestWithCert(req *http.Request, resp *httptest.ResponseRecorder, mux *http.ServeMux) error {
-	mux.ServeHTTP(resp, req)
+func testRequestWithCert(req *http.Request, resp *httptest.ResponseRecorder, mux *ServeMux) error {
+	(*mux).ServeHTTP(resp, req)
 	if resp.Code != http.StatusUnauthorized {
 		return errors.New("request without certificate was not rejected")
 	}
@@ -182,7 +182,7 @@ func testRequestWithCert(req *http.Request, resp *httptest.ResponseRecorder, mux
 	req.TLS = &tls.ConnectionState{}
 	req.TLS.PeerCertificates = otherTestCertSlice
 	resp = httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
+	(*mux).ServeHTTP(resp, req)
 	if resp.Code != http.StatusUnauthorized {
 		return errors.New("request with wrong certificate was not rejected")
 	}
@@ -190,7 +190,7 @@ func testRequestWithCert(req *http.Request, resp *httptest.ResponseRecorder, mux
 	// Create mock TLS connection with right certificate, should pass
 	req.TLS.PeerCertificates = adminTestCertSlice
 	resp = httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
+	(*mux).ServeHTTP(resp, req)
 	if resp.Code != http.StatusOK {
 		return errors.New("correct request was not accepted")
 	}
@@ -202,13 +202,13 @@ func TestConcurrent(t *testing.T) {
 
 	assert := assert.New(t)
 
-	mux := CreateServeMux(core.NewCoreWithMocks())
+	mux := CreateServeMux(core.NewCoreWithMocks(), nil)
 	var wg sync.WaitGroup
 
 	getQuote := func() {
 		req := httptest.NewRequest(http.MethodGet, "/quote", nil)
 		resp := httptest.NewRecorder()
-		mux.ServeHTTP(resp, req)
+		(*mux).ServeHTTP(resp, req)
 		assert.Equal(http.StatusOK, resp.Code)
 		wg.Done()
 	}
@@ -216,7 +216,7 @@ func TestConcurrent(t *testing.T) {
 	getManifest := func() {
 		req := httptest.NewRequest(http.MethodGet, "/manifest", nil)
 		resp := httptest.NewRecorder()
-		mux.ServeHTTP(resp, req)
+		(*mux).ServeHTTP(resp, req)
 		assert.Equal(http.StatusOK, resp.Code)
 		wg.Done()
 	}
@@ -224,7 +224,7 @@ func TestConcurrent(t *testing.T) {
 	postManifest := func() {
 		req := httptest.NewRequest(http.MethodPost, "/manifest", strings.NewReader(test.ManifestJSON))
 		resp := httptest.NewRecorder()
-		mux.ServeHTTP(resp, req)
+		(*mux).ServeHTTP(resp, req)
 		wg.Done()
 	}
 

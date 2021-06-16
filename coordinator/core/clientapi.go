@@ -95,7 +95,7 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 		return nil, err
 	}
 	defer tx.Rollback()
-	txdata := storeWrapper{tx}
+	txdata := storeWrapper{tx, c.metrics.storeWarpper}
 
 	if err := txdata.putRawManifest(rawManifest); err != nil {
 		return nil, err
@@ -355,7 +355,7 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte, upd
 		return err
 	}
 	defer tx.Rollback()
-	txdata := storeWrapper{tx}
+	txdata := storeWrapper{tx, c.metrics.storeWarpper}
 
 	if err := txdata.putCertificate(skCoordinatorIntermediateCert, intermediateCert); err != nil {
 		return err
@@ -448,7 +448,7 @@ func (c *Core) WriteSecrets(ctx context.Context, rawSecretManifest []byte, updat
 		return err
 	}
 	defer tx.Rollback()
-	txdata := storeWrapper{tx}
+	txdata := storeWrapper{tx, c.metrics.storeWarpper}
 
 	c.updateLogger.Reset()
 	for secretName, secret := range newSecrets {
@@ -480,7 +480,7 @@ func (c *Core) performRecovery(encryptionKey []byte) error {
 		return err
 	}
 	c.store = store
-	c.data = storeWrapper{store}
+	c.data = storeWrapper{store, c.metrics.storeWarpper}
 	if err := c.recovery.SetRecoveryData(recoveryData); err != nil {
 		c.zaplogger.Error("Could not retrieve recovery data from state. Recovery will be unavailable", zap.Error(err))
 	}
