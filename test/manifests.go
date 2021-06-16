@@ -241,15 +241,17 @@ var ManifestJSONWithRecoveryKey string = `{
 			"ValidFor": 7
 		},
 		"symmetric_key_unset": {
-			"Shared": true,
 			"Type": "symmetric-key",
 			"Size": 128,
 			"UserDefined": true
 		},
 		"cert_unset": {
-			"Shared": true,
 			"Type": "cert-ed25519",
 			"UserDefined": true
+		},
+		"generic_secret": {
+			"UserDefined": true,
+			"Type": "plain"
 		}
 	},
 	"Clients": {
@@ -268,7 +270,8 @@ var ManifestJSONWithRecoveryKey string = `{
 			],
 			"WriteSecrets": [
 				"symmetric_key_unset",
-				"cert_unset"
+				"cert_unset",
+				"generic_secret"
 			]
 		}
 	},
@@ -314,7 +317,7 @@ var IntegrationManifestJSON string = `{
 				"Env": {
 					"IS_FIRST": "true",
 					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}"
-			}
+				}
 			}
 		},
 		"test_marble_client": {
@@ -327,7 +330,21 @@ var IntegrationManifestJSON string = `{
 				"Env": {
 					"IS_FIRST": "true",
 					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}"
+				}
 			}
+		},
+		"test_marble_unset": {
+			"Package": "backend",
+			"Parameters": {
+				"Files": {
+					"/tmp/coordinator_test/defg.txt": "foo",
+					"/tmp/coordinator_test/jkl.mno": "bar",
+					"/tmp/coordinator_test/pqr.txt": "user-defined secret: {{ raw .Secrets.symmetric_key_unset }} {{ pem .Secrets.cert_unset.Private }}"
+				},
+				"Env": {
+					"IS_FIRST": "true",
+					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}"
+				}
 			}
 		},
 		"bad_marble": {
@@ -339,8 +356,8 @@ var IntegrationManifestJSON string = `{
 				},
 				"Env": {
 					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}"
+				}
 			}
-		}
 		}
 	},
 	"Clients": {
@@ -351,6 +368,17 @@ var IntegrationManifestJSON string = `{
 			"Size": 128,
 			"Shared": true,
 			"Type": "symmetric-key"
+		},
+		"symmetric_key_unset": {
+			"Shared": true,
+			"Type": "symmetric-key",
+			"Size": 128,
+			"UserDefined": true
+		},
+		"cert_unset": {
+			"Shared": true,
+			"Type": "cert-ed25519",
+			"UserDefined": true
 		}
 	},
 	"Users": {
@@ -362,6 +390,10 @@ var IntegrationManifestJSON string = `{
 			],
 			"ReadSecrets": [
 				"symmetric_key_shared"
+			],
+			"WriteSecrets": [
+				"symmetric_key_unset",
+				"cert_unset"
 			]
 		}
 	},
@@ -425,21 +457,12 @@ const UpdateManifest = `{
 
 // SecretsManifest is a test secrets manifest to update secrets
 const SecretsManifest = `{
-	"Secrets": {
-		"symmetric_key_unset": {
-			"Type": "symmetric-key",
-			"Size": 128,
-			"Shared": true,
-			"Public": "AAECAwQFBgcICQoLDA0ODw=="
-		},
-		"cert_unset": {
-			"Type": "cert-ed25519", 
-			"Shared": true,
-			"Cert": "MIIBjDCCATOgAwIBAgICBTkwCgYIKoZIzj0EAwIwMjEwMC4GA1UEAxMnTWFyYmxlcnVuIENvb3JkaW5hdG9yIC0gSW50ZXJtZWRpYXRlIENBMB4XDTIxMDYxNTA4NTY0M1oXDTIxMDYyMjA4NTY0M1owLTEcMBoGA1UEAxMTTWFyYmxlcnVuIFVuaXQgVGVzdDENMAsGA1UEBRMEMTMzNzAqMAUGAytlcAMhAEPOc066G5XmvLizOKTENSR+U9lv3geZ0/a2+XkhJRvDo20wazAOBgNVHQ8BAf8EBAMCAoQwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMCMAwGA1UdEwEB/wQCMAAwLAYDVR0RBCUwI4IJbG9jYWxob3N0hwR/AAABhxAAAAAAAAAAAAAAAAAAAAABMAoGCCqGSM49BAMCA0cAMEQCIGOlRcynaPaj/flSr2ZEvmTmhuvtmTb4QkwPFtxFz3EJAiB77ijxAcJNxPKcKmgMB+c8NORC+6N/St2iP/oX/vqQvg==",
-			"ValidFor": 7,
-			"Private": "MC4CAQAwBQYDK2VwBCIEIPlmAOOhAStk8ytxzvekPr8zLaQa9+lxnHK+CizDrMds",
-			"Public": "MCowBQYDK2VwAyEAQ85zTroblea8uLM4pMQ1JH5T2W/eB5nT9rb5eSElG8M="
-		}
+	"symmetric_key_unset": {
+		"Key": "AAECAwQFBgcICQoLDA0ODw=="
+	},
+	"cert_unset": { 
+		"Cert": "MIIBjDCCATOgAwIBAgICBTkwCgYIKoZIzj0EAwIwMjEwMC4GA1UEAxMnTWFyYmxlcnVuIENvb3JkaW5hdG9yIC0gSW50ZXJtZWRpYXRlIENBMB4XDTIxMDYxNTA4NTY0M1oXDTIxMDYyMjA4NTY0M1owLTEcMBoGA1UEAxMTTWFyYmxlcnVuIFVuaXQgVGVzdDENMAsGA1UEBRMEMTMzNzAqMAUGAytlcAMhAEPOc066G5XmvLizOKTENSR+U9lv3geZ0/a2+XkhJRvDo20wazAOBgNVHQ8BAf8EBAMCAoQwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMCMAwGA1UdEwEB/wQCMAAwLAYDVR0RBCUwI4IJbG9jYWxob3N0hwR/AAABhxAAAAAAAAAAAAAAAAAAAAABMAoGCCqGSM49BAMCA0cAMEQCIGOlRcynaPaj/flSr2ZEvmTmhuvtmTb4QkwPFtxFz3EJAiB77ijxAcJNxPKcKmgMB+c8NORC+6N/St2iP/oX/vqQvg==",
+		"Private": "MC4CAQAwBQYDK2VwBCIEIPlmAOOhAStk8ytxzvekPr8zLaQa9+lxnHK+CizDrMds"
 	}
 }`
 

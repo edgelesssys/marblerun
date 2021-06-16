@@ -25,6 +25,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -274,6 +275,30 @@ func TestClientAPI(t *testing.T) {
 	resp.Body.Close()
 	require.NoError(err)
 	assert.Contains(string(secret), `{"status":"success","data":{"symmetric_key_shared":{"Type":"symmetric-key","Size":128,`)
+
+	// start server
+	log.Println("Starting a Server-Marble...")
+	serverCfg := newMarbleConfig(meshServerAddr, "test_marble_server", "server,backend,localhost")
+	defer serverCfg.cleanup()
+	serverProc := startMarbleServer(serverCfg)
+	require.NotNil(serverProc, "failed to start server-marble")
+	defer serverProc.Kill()
+
+	// start a marble
+	log.Println("Starting a Client-Marble with unset secret, this should fail...")
+	clientCfg := newMarbleConfig(meshServerAddr, "test_marble_unset", "client,frontend,localhost")
+	defer clientCfg.cleanup()
+	assert.False(startMarbleClient(clientCfg))
+
+	// test setting a secret
+	log.Println("Setting a custom secret")
+	clientAPIURL.RawQuery = ""
+	resp, err = client.Post(clientAPIURL.String(), "application/json", strings.NewReader(SecretsManifest))
+	require.NoError(err)
+
+	// start the marble again
+	log.Println("Starting the Client-Marble again, with the secret now set...")
+	assert.True(startMarbleClient(clientCfg))
 }
 
 func TestRecoveryRestoreKey(t *testing.T) {
