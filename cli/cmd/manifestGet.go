@@ -49,7 +49,7 @@ func newManifestGet() *cobra.Command {
 
 // cliManifestGet gets the manifest from the coordinatros rest api
 func cliManifestGet(host string, cert []*pem.Block) ([]byte, error) {
-	client, err := restClient(cert)
+	client, err := restClient(cert, nil)
 	if err != nil {
 		return nil, err
 	}

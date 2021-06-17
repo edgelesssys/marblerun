@@ -59,7 +59,7 @@ func newStatusCmd() *cobra.Command {
 
 // cliStatus requests the current status of the coordinator
 func cliStatus(host string, cert []*pem.Block) error {
-	client, err := restClient(cert)
+	client, err := restClient(cert, nil)
 	if err != nil {
 		return err
 	}

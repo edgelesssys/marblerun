@@ -53,7 +53,7 @@ func newManifestSet() *cobra.Command {
 
 // cliManifestSet sets the coordinators manifest using its rest api
 func cliManifestSet(manifest []byte, host string, cert []*pem.Block, recover string) error {
-	client, err := restClient(cert)
+	client, err := restClient(cert, nil)
 	if err != nil {
 		return err
 	}
