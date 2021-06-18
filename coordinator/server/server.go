@@ -235,8 +235,7 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 				writeJSONError(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			err = cc.WriteSecrets(r.Context(), secretManifest, user)
-			if err != nil {
+			if err := cc.WriteSecrets(r.Context(), secretManifest, user); err != nil {
 				writeJSONError(w, err.Error(), http.StatusBadRequest)
 				return
 			}

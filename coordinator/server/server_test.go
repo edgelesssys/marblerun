@@ -144,7 +144,7 @@ func TestSetSecret(t *testing.T) {
 	mux := CreateServeMux(c)
 
 	// Make HTTP secret request with no TLS at all, should be unauthenticated
-	req := httptest.NewRequest(http.MethodPost, "/secrets", strings.NewReader(test.SecretsManifest))
+	req := httptest.NewRequest(http.MethodPost, "/secrets", strings.NewReader(test.UserSecrets))
 	resp := httptest.NewRecorder()
 	err = testRequestWithCert(req, resp, mux)
 	assert.NoError(err)

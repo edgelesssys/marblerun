@@ -441,7 +441,7 @@ func TestGetSecret(t *testing.T) {
 	assert.Error(err)
 }
 
-func TestSetSecret(t *testing.T) {
+func TestWriteSecret(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	c, _ := mustSetup()
@@ -460,7 +460,7 @@ func TestSetSecret(t *testing.T) {
 	assert.Error(err)
 
 	// set a secret
-	err = c.WriteSecrets(context.TODO(), []byte(test.SecretsManifest), admin)
+	err = c.WriteSecrets(context.TODO(), []byte(test.UserSecrets), admin)
 	assert.NoError(err)
 	secret, err := c.data.getSecret(symmetricSecret)
 	assert.NoError(err)

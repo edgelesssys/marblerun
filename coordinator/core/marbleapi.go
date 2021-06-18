@@ -116,16 +116,8 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	}
 
 	// Union user-defined secrets with shared and unique secrets
-	userSecrets := findUserSecrets(marble.Parameters, mainManifest.Secrets)
-	for _, k := range userSecrets {
-		secret, err := c.data.getSecret(k)
-		if err != nil {
-			if store.IsStoreValueUnsetError(err) {
-				return nil, fmt.Errorf("secret %s needed but not set", k)
-			}
-			return nil, err
-		}
-		secrets[k] = secret
+	if err := c.addUserSecrets(secrets, marble.Parameters, mainManifest.Secrets); err != nil {
+		return nil, err
 	}
 
 	// add TTLS config to Env
@@ -344,6 +336,22 @@ func parseSecrets(data string, secretsWrapped secretsWrapper) (string, error) {
 	return templateResult.String(), nil
 }
 
+func (c *Core) addUserSecrets(secrets map[string]manifest.Secret, params *rpc.Parameters, sharedSecrets map[string]manifest.Secret) error {
+	userSecrets := findUserSecrets(params, sharedSecrets)
+	for _, k := range userSecrets {
+		secret, err := c.data.getSecret(k)
+		if err != nil {
+			if store.IsStoreValueUnsetError(err) {
+				return fmt.Errorf("secret %s needed but not set", k)
+			}
+			return err
+		}
+		secrets[k] = secret
+	}
+
+	return nil
+}
+
 func (c *Core) generateMarbleAuthSecrets(req *rpc.ActivationReq, marbleUUID uuid.UUID) (reservedSecrets, error) {
 	// generate key-pair for marble
 	privk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -483,7 +491,7 @@ func findUserSecrets(params *rpc.Parameters, secrets map[string]manifest.Secret)
 	// 1: the encoding
 	// 2: the name of the secret
 	// 3: if specified the part of the secret, empty string otherwise
-	r := regexp.MustCompile("{{\\s*(raw|hex|base64|pem)\\s+\\.Secrets\\.([\\w-]+)(\\.[\\w-]+)?\\s*}}")
+	r := regexp.MustCompile(`{{\s*(raw|hex|base64|pem)\s+\.Secrets\.([\w-]+)(\.[\w-]+)?\s*}}`)
 	wantedSecrets := make(map[string]bool)
 	for _, v := range params.Argv {
 		subStrings := r.FindAllStringSubmatch(v, -1)

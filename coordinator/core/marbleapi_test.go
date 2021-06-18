@@ -585,3 +585,33 @@ func TestActivateWithMissingParameters(t *testing.T) {
 
 	spawner.shortMarbleActivation("frontend", "Azure", true)
 }
+
+func TestFindUserSecrets(t *testing.T) {
+	assert := assert.New(t)
+
+	// Parameters containing three total requests, two unique requests, for user-defined secrets
+	testParams := &rpc.Parameters{
+		Files: map[string]string{
+			"test.txt":    "no secrets here",
+			"secret.key":  "{{ raw .Marblerun.SealKey }}",
+			"secrets.cfg": "shared={{ hex .Secrets.symmetric_key_shared }}\nuser_secret={{ hex .Secrets.symmetric_key_unset }}",
+			"generic.txt": "{{ raw .Secrets.generic_secret }}",
+		},
+		Env: map[string]string{
+			"PRIVATE_KEY": "{{ base64 .Secrets.symmetric_key_private }}",
+		},
+		Argv: []string{
+			"--config",
+			"{{ raw .Secrets.generic_secret }}",
+		},
+	}
+
+	var testManifest manifest.Manifest
+	err := json.Unmarshal([]byte(test.ManifestJSONWithRecoveryKey), &testManifest)
+	assert.NoError(err)
+
+	wantedSecrets := findUserSecrets(testParams, testManifest.Secrets)
+	assert.Equal(2, len(wantedSecrets))
+	assert.Contains(wantedSecrets, "symmetric_key_unset")
+	assert.Contains(wantedSecrets, "generic_secret")
+}

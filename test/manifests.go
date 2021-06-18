@@ -455,8 +455,8 @@ const UpdateManifest = `{
 	}
 }`
 
-// SecretsManifest is a test secrets manifest to update secrets
-const SecretsManifest = `{
+// UserSecrets is a test JSON string to update secrets
+const UserSecrets = `{
 	"symmetric_key_unset": {
 		"Key": "AAECAwQFBgcICQoLDA0ODw=="
 	},

@@ -358,7 +358,7 @@ func (c *Core) GetSecrets(ctx context.Context, requestedSecrets []string, client
 	return secrets, nil
 }
 
-// SetSecrets allows a user to set certain user defined secrets
+// WriteSecrets allows a user to set certain user defined secrets
 func (c *Core) WriteSecrets(ctx context.Context, rawSecretManifest []byte, updater *user.User) error {
 	defer c.mux.Unlock()
 
