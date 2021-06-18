@@ -28,8 +28,8 @@ func newSecretGet() *cobra.Command {
 		Short: "Retrieve secrets from the Marblerun coordinator",
 		Long: `
 Retrieve one or more secrets from the Marblerun coordinator.
-A user has to authenticate themselves using a certificate and private key,
-and has to be permitted to read the requested secrets.
+Users have to authenticate themselves using a certificate and private key,
+and need permissions in the manifest to read the requested secrets.
 `,
 		Args: cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -67,11 +67,12 @@ func cliSecretGet(o *secretGetOptions) error {
 		return err
 	}
 
-	secretQuery := fmt.Sprintf("s=%s", o.secretIDs[0])
-	for _, secret := range o.secretIDs[1:] {
-		secretQuery = fmt.Sprintf("%s&s=%s", secretQuery, secret)
+	secretQuery := url.Values{}
+
+	for _, secret := range o.secretIDs {
+		secretQuery.Add("s", secret)
 	}
-	url := url.URL{Scheme: "https", Host: o.host, Path: "secrets", RawQuery: secretQuery}
+	url := url.URL{Scheme: "https", Host: o.host, Path: "secrets", RawQuery: secretQuery.Encode()}
 	resp, err := client.Get(url.String())
 	if err != nil {
 		return err

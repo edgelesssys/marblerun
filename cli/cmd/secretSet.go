@@ -19,8 +19,8 @@ func newSecretSet() *cobra.Command {
 		Short: "Set a secret for the Marblerun coordinator",
 		Long: `
 Set a secret for the Marblerun coordinator.
-A user has to authenticate themselves using a certificate and private key,
-and has to be permitted to write the requested secrets.
+Users have to authenticate themselves using a certificate and private key
+and need permissions in the manifest to write the requested secrets.
 `,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -67,7 +67,7 @@ func cliSecretSet(host string, newSecrets []byte, clCert tls.Certificate, caCert
 
 	switch resp.StatusCode {
 	case http.StatusOK:
-		// Everything went fine, just print the sucess message
+		// Everything went fine, just print the success message
 		fmt.Println("Secret successfully set")
 	case http.StatusBadRequest:
 		// Something went wrong

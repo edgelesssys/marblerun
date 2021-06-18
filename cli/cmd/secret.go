@@ -15,7 +15,7 @@ func newSecretCmd() *cobra.Command {
 		Short: "Manages secrets for the Marblerun coordinator",
 		Long: `
 Manages secrets for the Marblerun coordinator.
-Used to either set a secret, or retrieve a secret used by the coordinator.`,
+Set or retrieve a secret defined in the manifest.`,
 	}
 
 	cmd.PersistentFlags().StringVar(&eraConfig, "era-config", "", "Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github")
