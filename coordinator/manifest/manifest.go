@@ -191,13 +191,13 @@ type PublicKey []byte
 // Secret defines a structure for storing certificates & encryption keys
 type Secret struct {
 	Type        string
-	Size        uint `json:",omitempty"`
-	Shared      bool `json:",omitempty"`
+	Size        uint
+	Shared      bool
 	UserDefined bool
 	Cert        Certificate
-	ValidFor    uint       `json:",omitempty"`
-	Private     PrivateKey `json:",omitempty"`
-	Public      PublicKey  `json:",omitempty"`
+	ValidFor    uint
+	Private     PrivateKey
+	Public      PublicKey
 }
 
 // Certificate is an x509.Certificate
