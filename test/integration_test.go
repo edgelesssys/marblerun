@@ -25,6 +25,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -318,7 +319,7 @@ func TestSettingSecrets(t *testing.T) {
 	// test setting a secret
 	log.Println("Setting a custom secret")
 	clientAPIURL := url.URL{Scheme: "https", Host: clientServerAddr, Path: "secrets"}
-	_, err = client.Post(clientAPIURL.String(), "application/json", bytes.NewReader([]byte(UserSecrets)))
+	_, err = client.Post(clientAPIURL.String(), "application/json", strings.NewReader(UserSecrets))
 	require.NoError(err)
 
 	// start the marble again
