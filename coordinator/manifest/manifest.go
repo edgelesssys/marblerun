@@ -19,6 +19,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
+	"github.com/edgelesssys/marblerun/coordinator/user"
 	"go.uber.org/zap"
 )
 
@@ -38,6 +39,8 @@ type Manifest struct {
 	Secrets map[string]Secret
 	// RecoveryKeys holds one or multiple RSA public keys to encrypt multiple secrets, which can be used to decrypt the sealed state again in case the encryption key on disk was corrupted somehow.
 	RecoveryKeys map[string]string
+	// Roles contains role definitions to manage permissions across the Marblerun mesh
+	Roles map[string]Role
 	// TLS contains tags which can be assiged to Marbles to specify which connections should be elevated to TLS
 	TLS map[string]TLStag
 }
@@ -75,12 +78,18 @@ type TLSTagEntry struct {
 type User struct {
 	// Certificate is the TLS certificate used by the user for authentication
 	Certificate string
-	// WriteSecrets is a list of Secrets the user is allowed to set
-	WriteSecrets []string
-	// ReadSecrets is a list of Secrets the user is allowed to read
-	ReadSecrets []string
-	// UpdatePackages is a list of Packages the user is allowed to update
-	UpdatePackages []string
+	// Roles is a list of roles granting permissions to the user
+	Roles []string
+}
+
+// Role describes a set of actions permitted for a specific set of resources
+type Role struct {
+	// ResourceType is the type of the affected resources
+	ResourceType string
+	// ResourceNames is a list of names of type ResourceType
+	ResourceNames []string
+	// Actions are the allowed actions for the defined resources
+	Actions []string
 }
 
 // Check checks if the manifest is consistent.
@@ -162,20 +171,54 @@ func (m Manifest) Check(ctx context.Context, zaplogger *zap.Logger) error {
 		if len(user.Certificate) <= 0 {
 			return fmt.Errorf("manifest does not contain a certificate for user %s", userName)
 		}
-		for _, secretName := range user.WriteSecrets {
-			secret, ok := m.Secrets[secretName]
-			if !ok {
-				return fmt.Errorf("manifest specifies write permission for user %s and secret %s, but no such secret exists", userName, secretName)
-			}
-			if !secret.UserDefined {
-				return fmt.Errorf("manifest specifies write permission for user %s and secret %s, but secret is not user-defined", userName, secretName)
+		for _, role := range user.Roles {
+			if _, ok := m.Roles[role]; !ok {
+				return fmt.Errorf("manifest specifies role %s for user %s, but role does not exist", role, userName)
 			}
 		}
-		for _, pkg := range user.UpdatePackages {
-			if _, ok := m.Packages[pkg]; !ok {
-				return fmt.Errorf("user %s is allowed to update package %s, but no such package is specified in the manifest", userName, pkg)
-			}
+	}
 
+	for roleName, role := range m.Roles {
+		switch role.ResourceType {
+		case "Packages":
+			for _, resource := range role.ResourceNames {
+				if _, ok := m.Packages[resource]; !ok {
+					return fmt.Errorf("role %s: resource %s of type Packages is not defined in manifest", roleName, resource)
+				}
+			}
+			for _, action := range role.Actions {
+				if !(action == user.PermissionUpdatePackage) {
+					return fmt.Errorf("unkown action: %s for type Secrets in role: %s", action, roleName)
+				}
+			}
+		case "Secrets":
+			var writeRole bool
+			var readRole bool
+			for _, action := range role.Actions {
+				if !(action == user.PermissionWriteSecret) || !(action == user.PermissionReadSecret) {
+					return fmt.Errorf("unkown action: %s for type Secrets in role: %s", action, roleName)
+				}
+				if action == user.PermissionWriteSecret {
+					writeRole = true
+				}
+				if action == user.PermissionReadSecret {
+					readRole = true
+				}
+			}
+			for _, secretName := range role.ResourceNames {
+				secret, ok := m.Secrets[secretName]
+				if !ok {
+					return fmt.Errorf("role %s: resource %s of type Secrets is not defined in manifest", roleName, secretName)
+				}
+				if !secret.UserDefined && writeRole {
+					return fmt.Errorf("manifest specifies write permission for role %s and secret %s, but secret is not user-defined", roleName, secretName)
+				}
+				if !secret.Shared && !secret.UserDefined && readRole {
+					return fmt.Errorf("manifest specifies read permission for role %s and per-marble-unique secret %s", roleName, secretName)
+				}
+			}
+		default:
+			return fmt.Errorf("unrecognized resource type: %s for role: %s", role, roleName)
 		}
 	}
 

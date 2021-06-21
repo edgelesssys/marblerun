@@ -82,7 +82,7 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 	c.sealer.SetEncryptionKey(encryptionKey)
 
 	// Parse X.509 user certificates and permissions from manifest
-	users, err := generateUsersFromManifest(manifest.Users)
+	users, err := generateUsersFromManifest(manifest.Users, manifest.Roles)
 	if err != nil {
 		c.zaplogger.Error("Could not parse specified user certificate from supplied manifest", zap.Error(err))
 		return nil, err

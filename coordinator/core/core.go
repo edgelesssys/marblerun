@@ -559,7 +559,7 @@ func (c *Core) generateCertificateForSecret(secret manifest.Secret, parentCertif
 }
 
 // generateUsersFromManifest creates users and permissions from a map of manifest.User
-func generateUsersFromManifest(rawUsers map[string]manifest.User) ([]*user.User, error) {
+func generateUsersFromManifest(rawUsers map[string]manifest.User, roles map[string]manifest.Role) ([]*user.User, error) {
 	// Parse & write X.509 user data from manifest
 	users := make([]*user.User, 0, len(rawUsers))
 	for name, userData := range rawUsers {
@@ -572,9 +572,12 @@ func generateUsersFromManifest(rawUsers map[string]manifest.User) ([]*user.User,
 			return nil, err
 		}
 		newUser := user.NewUser(name, cert)
-		newUser.Assign(user.NewPermission(user.PermissionWriteSecret, userData.WriteSecrets))
-		newUser.Assign(user.NewPermission(user.PermissionReadSecret, userData.ReadSecrets))
-		newUser.Assign(user.NewPermission(user.PermissionUpdatePackage, userData.UpdatePackages))
+		for _, assignedRole := range userData.Roles {
+			for _, action := range roles[assignedRole].Actions {
+				// correctness of roles has been verified by manifest.Check()
+				newUser.Assign(user.NewPermission(action, roles[assignedRole].ResourceNames))
+			}
+		}
 		users = append(users, newUser)
 	}
 	return users, nil

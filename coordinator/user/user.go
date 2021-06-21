@@ -12,9 +12,9 @@ import (
 )
 
 const (
-	PermissionWriteSecret   = "WriteSecret"
-	PermissionReadSecret    = "ReadSecret"
-	PermissionUpdatePackage = "UpdatePackage"
+	PermissionWriteSecret   = "write"
+	PermissionReadSecret    = "read"
+	PermissionUpdatePackage = "updateSecurityVersion"
 )
 
 // User represents a privileged user of Marblerun
@@ -38,7 +38,13 @@ func NewUser(name string, certificate *x509.Certificate) *User {
 
 // Assign adds a new permission to the user
 func (u *User) Assign(p Permission) {
-	u.permissions[p.ID()] = p
+	if _, ok := u.permissions[p.ID()]; !ok {
+		u.permissions[p.ID()] = p
+	} else {
+		for k, v := range p.ResourceID {
+			u.permissions[p.ID()].ResourceID[k] = u.permissions[p.ID()].ResourceID[k] || v
+		}
+	}
 }
 
 // IsGranted returns true if the user has the requested permission
