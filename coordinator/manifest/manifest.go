@@ -235,16 +235,22 @@ func (c *Certificate) UnmarshalJSON(data []byte) error {
 func EncodeSecretDataToPem(data interface{}) (string, error) {
 	var pemData []byte
 
-	switch x := data.(type) {
+	switch secret := data.(type) {
 	case Certificate:
-		pemData = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: x.Raw})
-	case PublicKey:
-		pemData = pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: x})
-	case PrivateKey:
-		if x == nil {
-			return "", errors.New("private key not set for secret")
+		if len(secret.Raw) <= 0 {
+			return "", errors.New("tried to parse secret with empty value")
 		}
-		pemData = pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: x})
+		pemData = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: secret.Raw})
+	case PublicKey:
+		if len(secret) <= 0 {
+			return "", errors.New("tried to parse secret with empty value")
+		}
+		pemData = pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: secret})
+	case PrivateKey:
+		if len(secret) <= 0 {
+			return "", errors.New("tried to parse secret with empty value")
+		}
+		pemData = pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: secret})
 	default:
 		return "", errors.New("invalid secret type")
 	}
@@ -265,17 +271,29 @@ func EncodeSecretDataToHex(data interface{}) (string, error) {
 func EncodeSecretDataToRaw(data interface{}) (string, error) {
 	switch secret := data.(type) {
 	case []byte:
+		if len(secret) <= 0 {
+			return "", errors.New("tried to parse secret with empty value")
+		}
 		return string(secret), nil
 	case PrivateKey:
-		if secret == nil {
-			return "", errors.New("private key not set for secret")
+		if len(secret) <= 0 {
+			return "", errors.New("tried to parse secret with empty value")
 		}
 		return string(secret), nil
 	case PublicKey:
+		if len(secret) <= 0 {
+			return "", errors.New("tried to parse secret with empty value")
+		}
 		return string(secret), nil
 	case Secret:
+		if len(secret.Public) <= 0 {
+			return "", errors.New("tried to parse secret with empty value")
+		}
 		return string(secret.Public), nil
 	case Certificate:
+		if len(secret.Raw) <= 0 {
+			return "", errors.New("tried to parse secret with empty value")
+		}
 		return string(secret.Raw), nil
 	default:
 		return "", errors.New("invalid secret type")

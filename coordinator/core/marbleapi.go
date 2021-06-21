@@ -15,9 +15,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
-	"fmt"
 	"math"
-	"regexp"
 	"text/template"
 	"time"
 
@@ -101,7 +99,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 		return nil, err
 	}
 
-	// Union unique secrets with shared secrets
+	// Union unique secrets with shared and user-defined secrets
 	sharedSecrets, err := c.data.getSecretMap()
 	if err != nil {
 		return nil, err
@@ -113,11 +111,6 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	marble := mainManifest.Marbles[req.GetMarbleType()] // existence has been checked in verifyManifestRequirement
 	if marble.Parameters == nil {
 		marble.Parameters = &rpc.Parameters{}
-	}
-
-	// Union user-defined secrets with shared and unique secrets
-	if err := c.addUserSecrets(secrets, marble.Parameters, mainManifest.Secrets); err != nil {
-		return nil, err
 	}
 
 	// add TTLS config to Env
@@ -336,22 +329,6 @@ func parseSecrets(data string, secretsWrapped secretsWrapper) (string, error) {
 	return templateResult.String(), nil
 }
 
-func (c *Core) addUserSecrets(secrets map[string]manifest.Secret, params *rpc.Parameters, sharedSecrets map[string]manifest.Secret) error {
-	userSecrets := findUserSecrets(params, sharedSecrets)
-	for _, k := range userSecrets {
-		secret, err := c.data.getSecret(k)
-		if err != nil {
-			if store.IsStoreValueUnsetError(err) {
-				return fmt.Errorf("secret %s needed but not set", k)
-			}
-			return err
-		}
-		secrets[k] = secret
-	}
-
-	return nil
-}
-
 func (c *Core) generateMarbleAuthSecrets(req *rpc.ActivationReq, marbleUUID uuid.UUID) (reservedSecrets, error) {
 	// generate key-pair for marble
 	privk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -481,43 +458,4 @@ func (c *Core) setTTLSConfig(marble manifest.Marble, specialSecrets reservedSecr
 	marble.Parameters.Env["MARBLE_TTLS_CONFIG"] = string(ttlsConfJSON)
 
 	return nil
-}
-
-// findUserSecrets finds all user-defined secrets required by a Marble
-func findUserSecrets(params *rpc.Parameters, secrets map[string]manifest.Secret) []string {
-	// Find the name of all secrets required by the marble
-	// For each match in a Argv/Env/File the sub-strings will be as follows:
-	// 0: the complete secret injection string ({{ <encoding> .Secrets.<name>.<part> }})
-	// 1: the encoding
-	// 2: the name of the secret
-	// 3: if specified the part of the secret, empty string otherwise
-	r := regexp.MustCompile(`{{\s*(raw|hex|base64|pem)\s+\.Secrets\.([\w-]+)(\.[\w-]+)?\s*}}`)
-	wantedSecrets := make(map[string]bool)
-	for _, v := range params.Argv {
-		subStrings := r.FindAllStringSubmatch(v, -1)
-		for _, match := range subStrings {
-			wantedSecrets[match[2]] = true
-		}
-	}
-	for _, v := range params.Env {
-		subStrings := r.FindAllStringSubmatch(v, -1)
-		for _, match := range subStrings {
-			wantedSecrets[match[2]] = true
-		}
-	}
-	for _, v := range params.Files {
-		subStrings := r.FindAllStringSubmatch(v, -1)
-		for _, match := range subStrings {
-			wantedSecrets[match[2]] = true
-		}
-	}
-
-	var userSecrets []string
-	for secret := range wantedSecrets {
-		if secrets[secret].UserDefined {
-			userSecrets = append(userSecrets, secret)
-		}
-	}
-
-	return userSecrets
 }
