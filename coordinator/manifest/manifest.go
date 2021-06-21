@@ -233,29 +233,24 @@ func (c *Certificate) UnmarshalJSON(data []byte) error {
 
 // EncodeSecretDataToPem encodes a secret to an appropriate PEM block
 func EncodeSecretDataToPem(data interface{}) (string, error) {
-	var pemData []byte
+	var typ string
+	var bytes []byte
 
 	switch secret := data.(type) {
 	case Certificate:
-		if len(secret.Raw) <= 0 {
-			return "", errors.New("tried to parse secret with empty value")
-		}
-		pemData = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: secret.Raw})
+		typ, bytes = "CERTIFICATE", secret.Raw
 	case PublicKey:
-		if len(secret) <= 0 {
-			return "", errors.New("tried to parse secret with empty value")
-		}
-		pemData = pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: secret})
+		typ, bytes = "PUBLIC KEY", secret
 	case PrivateKey:
-		if len(secret) <= 0 {
-			return "", errors.New("tried to parse secret with empty value")
-		}
-		pemData = pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: secret})
+		typ, bytes = "PRIVATE KEY", secret
 	default:
 		return "", errors.New("invalid secret type")
 	}
 
-	return string(pemData), nil
+	if len(bytes) <= 0 {
+		return "", errors.New("tried to parse secret with empty value")
+	}
+	return string(pem.EncodeToMemory(&pem.Block{Type: typ, Bytes: bytes})), nil
 }
 
 // EncodeSecretDataToHex encodes a secret to a hex string
@@ -269,35 +264,27 @@ func EncodeSecretDataToHex(data interface{}) (string, error) {
 
 // EncodeSecretDataToRaw encodes a secret to a raw byte string
 func EncodeSecretDataToRaw(data interface{}) (string, error) {
+	var raw []byte
+
 	switch secret := data.(type) {
 	case []byte:
-		if len(secret) <= 0 {
-			return "", errors.New("tried to parse secret with empty value")
-		}
-		return string(secret), nil
+		raw = secret
 	case PrivateKey:
-		if len(secret) <= 0 {
-			return "", errors.New("tried to parse secret with empty value")
-		}
-		return string(secret), nil
+		raw = secret
 	case PublicKey:
-		if len(secret) <= 0 {
-			return "", errors.New("tried to parse secret with empty value")
-		}
-		return string(secret), nil
+		raw = secret
 	case Secret:
-		if len(secret.Public) <= 0 {
-			return "", errors.New("tried to parse secret with empty value")
-		}
-		return string(secret.Public), nil
+		raw = secret.Public
 	case Certificate:
-		if len(secret.Raw) <= 0 {
-			return "", errors.New("tried to parse secret with empty value")
-		}
-		return string(secret.Raw), nil
+		raw = secret.Raw
 	default:
 		return "", errors.New("invalid secret type")
 	}
+
+	if len(raw) <= 0 {
+		return "", errors.New("tried to parse secret with empty value")
+	}
+	return string(raw), nil
 }
 
 // EncodeSecretDataToBase64 encodes the byte value of a secret to a Base64 string
