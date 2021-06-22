@@ -76,3 +76,27 @@ jobs:
                                 "file": "dockerfiles/Dockerfile.marble-injector",
                                 "target":"release"}}' \
           https://api.github.com/repos/edgelesssys/deployment/dispatches
+
+  occlum:
+    runs-on: ubuntu-18.04
+    container:
+      image: occlum/occlum:0.23.0-ubuntu18.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup
+        run: mkdir build
+
+      - name: Build
+        run: |
+          occlum-go build -o premain-occlum ../cmd/premain-occlum
+        working-directory: build
+
+      - name: Build artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: marblerun
+          path: |
+            build/premain-occlum
