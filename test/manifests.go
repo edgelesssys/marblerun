@@ -260,23 +260,48 @@ var ManifestJSONWithRecoveryKey string = `{
 	"Users": {
 		"admin": {
 			"Certificate": "` + pemToJSONString(AdminCert) + `",
-			"UpdatePackages": [
-				"frontend"
-			],
-			"ReadSecrets": [
-				"symmetric_key_shared",
-				"symmteric_key_unset",
-				"cert_shared"
-			],
-			"WriteSecrets": [
-				"symmetric_key_unset",
-				"cert_unset",
-				"generic_secret"
+			"Roles": [
+				"secret_manager",
+				"read_only",
+				"update_manager"
 			]
 		}
 	},
 	"RecoveryKeys": {
 		"testRecKey1": "` + pemToJSONString(RecoveryPublicKey) + `"
+	},
+	"Roles": {
+		"secret_manager": {
+			"ResourceType": "Secrets",
+			"ResourceNames": [
+				"symmetric_key_unset",
+				"cert_unset",
+				"generic_secret"
+			],
+			"Actions": [
+				"read",
+				"write"
+			]
+		},
+		"read_only": {
+			"ResourceType": "Secrets",
+			"ResourceNames": [
+				"symmetric_key_shared",
+				"cert_shared"
+			],
+			"Actions": [
+				"read"
+			]
+		},
+		"update_manager": {
+			"ResourceType": "Packages",
+			"ResourceNames": [
+				"frontend"
+			],
+			"Actions": [
+				"updateSecurityVersion"
+			]
+		}
 	}
 }`
 
@@ -384,21 +409,46 @@ var IntegrationManifestJSON string = `{
 	"Users": {
 		"admin": {
 			"Certificate": "` + pemToJSONString(AdminCert) + `",
-			"UpdatePackages": [
-				"frontend",
-				"backend"
-			],
-			"ReadSecrets": [
-				"symmetric_key_shared"
-			],
-			"WriteSecrets": [
-				"symmetric_key_unset",
-				"cert_unset"
+			"Roles": [
+				"write_role",
+				"read_role",
+				"update_role"
 			]
 		}
 	},
 	"RecoveryKeys": {
 		"testRecKey1": "` + pemToJSONString(RecoveryPublicKey) + `"
+	},
+	"Roles": {
+		"write_role": {
+			"ResourceType": "Secrets",
+			"ResourceNames": [
+				"symmetric_key_unset",
+				"cert_unset"
+			],
+			"Actions": [
+				"write"
+			]
+		},
+		"read_role": {
+			"ResourceType": "Secrets",
+			"ResourceNames": [
+				"symmetric_key_shared"
+			],
+			"Actions": [
+				"read"
+			]
+		},
+		"update_role": {
+			"ResourceType": "Packages",
+			"ResourceNames": [
+				"frontend",
+				"backend"
+			],
+			"Actions": [
+				"updateSecurityVersion"
+			]
+		}
 	}
 }`
 

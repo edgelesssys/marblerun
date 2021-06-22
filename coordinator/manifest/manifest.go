@@ -195,7 +195,7 @@ func (m Manifest) Check(ctx context.Context, zaplogger *zap.Logger) error {
 			var writeRole bool
 			var readRole bool
 			for _, action := range role.Actions {
-				if !(action == user.PermissionWriteSecret) || !(action == user.PermissionReadSecret) {
+				if !(action == user.PermissionWriteSecret || action == user.PermissionReadSecret) {
 					return fmt.Errorf("unkown action: %s for type Secrets in role: %s", action, roleName)
 				}
 				if action == user.PermissionWriteSecret {
