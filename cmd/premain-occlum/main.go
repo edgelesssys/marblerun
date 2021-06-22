@@ -6,10 +6,6 @@
 
 package main
 
-// #include <spawn.h>
-// #include <sys/wait.h>
-import "C"
-
 import (
 	"errors"
 	"fmt"
@@ -40,29 +36,11 @@ func main() {
 	service := os.Args[0]
 	os.Args[0] = filepath.Base(os.Args[0])
 
-	argv := toCArray(os.Args)
-	envp := toCArray(os.Environ())
-
-	// Occlum cannot handle nil for the PID parameter ("pointer not in user space")
-	var spawnedPID C.int
-
 	fmt.Printf("Exiting PreMain. Launching: %s\n", service)
-	// spawn service
-	if res := C.posix_spawn(&spawnedPID, C.CString(service), nil, nil, &argv[0], &envp[0]); res == -1 {
-		color.Red("ERROR: Failed to spawn the target process.")
-		color.Red("Did you specify the correct target application in the Marblerun manifest as argv[0]?")
-		color.Red("Have you allocated enough memory?")
-		panic(errors.New("posix_spawn failed with error code -1"))
-	} else if res != 0 {
-		panic(syscall.Errno(res))
-	}
-	C.wait(nil)
-}
 
-func toCArray(arr []string) []*C.char {
-	result := make([]*C.char, len(arr)+1)
-	for i, s := range arr {
-		result[i] = C.CString(s)
+	// spawn service
+	if err := syscall.Exec(service, os.Args, os.Environ()); err != nil {
+		color.Red("ERROR: Failed to spawn the target process: ", err.Error())
+		panic(err)
 	}
-	return result
 }
