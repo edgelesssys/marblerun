@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strings"
 	"sync"
 	"time"
 
@@ -575,7 +576,7 @@ func generateUsersFromManifest(rawUsers map[string]manifest.User, roles map[stri
 		for _, assignedRole := range userData.Roles {
 			for _, action := range roles[assignedRole].Actions {
 				// correctness of roles has been verified by manifest.Check()
-				newUser.Assign(user.NewPermission(action, roles[assignedRole].ResourceNames))
+				newUser.Assign(user.NewPermission(strings.ToLower(action), roles[assignedRole].ResourceNames))
 			}
 		}
 		users = append(users, newUser)

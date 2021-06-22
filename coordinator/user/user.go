@@ -12,9 +12,9 @@ import (
 )
 
 const (
-	PermissionWriteSecret   = "write"
-	PermissionReadSecret    = "read"
-	PermissionUpdatePackage = "updateSecurityVersion"
+	PermissionWriteSecret   = "writesecret"
+	PermissionReadSecret    = "readsecret"
+	PermissionUpdatePackage = "updatesecurityversion"
 )
 
 // User represents a privileged user of Marblerun

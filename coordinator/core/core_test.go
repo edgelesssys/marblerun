@@ -170,17 +170,17 @@ func TestGenerateUsersFromManifest(t *testing.T) {
 		"write_role": {
 			ResourceType:  "Secrets",
 			ResourceNames: []string{"secret_one"},
-			Actions:       []string{"write"},
+			Actions:       []string{"WriteSecret"},
 		},
 		"read_role": {
 			ResourceType:  "Secrets",
 			ResourceNames: []string{"secret_one", "secret_two"},
-			Actions:       []string{"read"},
+			Actions:       []string{"readsecret"},
 		},
 		"update_role": {
 			ResourceType:  "Packages",
 			ResourceNames: []string{"frontend", "backend"},
-			Actions:       []string{"updateSecurityVersion"},
+			Actions:       []string{"UpdateSecurityVersion"},
 		},
 	}
 	newUsers, err := generateUsersFromManifest(Users, Roles)

@@ -15,6 +15,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"strings"
 	"text/template"
 
 	"github.com/edgelesssys/marblerun/coordinator/quote"
@@ -187,21 +188,21 @@ func (m Manifest) Check(ctx context.Context, zaplogger *zap.Logger) error {
 				}
 			}
 			for _, action := range role.Actions {
-				if !(action == user.PermissionUpdatePackage) {
-					return fmt.Errorf("unkown action: %s for type Secrets in role: %s", action, roleName)
+				if !(strings.ToLower(action) == user.PermissionUpdatePackage) {
+					return fmt.Errorf("unkown action: %s for type Packages in role: %s", action, roleName)
 				}
 			}
 		case "Secrets":
 			var writeRole bool
 			var readRole bool
 			for _, action := range role.Actions {
-				if !(action == user.PermissionWriteSecret || action == user.PermissionReadSecret) {
+				if !(strings.ToLower(action) == user.PermissionWriteSecret || strings.ToLower(action) == user.PermissionReadSecret) {
 					return fmt.Errorf("unkown action: %s for type Secrets in role: %s", action, roleName)
 				}
-				if action == user.PermissionWriteSecret {
+				if strings.ToLower(action) == user.PermissionWriteSecret {
 					writeRole = true
 				}
-				if action == user.PermissionReadSecret {
+				if strings.ToLower(action) == user.PermissionReadSecret {
 					readRole = true
 				}
 			}

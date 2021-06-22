@@ -148,34 +148,34 @@
 
     "Roles": {
         "frontend-updates": {
-            "Resource": "Packages",
+            "ResourceType": "Packages",
             "ResourceNames": ["frontend"],
-            "Actions": ["increment"]
+            "Actions": ["UpdateSecurityVersion"]
         },
         "backend-updates": {
-            "Resource": "Packages",
+            "ResourceType": "Packages",
             "ResourceNames": ["backend"],
-            "Actions": ["increment"]
+            "Actions": ["UpdateSecurityVersion"]
         },
         "updates-admin": {
-            "Resource": "Packages",
+            "ResourceType": "Packages",
             "ResourceNames": ["frontend", "backend"],
-            "Actions": ["increment"]
+            "Actions": ["UpdateSecurityVersion"]
         },
         "cert-reader": {
-            "Resource": "Secrets",
+            "ResourceType": "Secrets",
             "ResourceNames": ["cert_shared", "rsa_shared"],
-            "Actions": ["read"]
+            "Actions": ["ReadSecret"]
         },
         "key-reader": {
-            "Resource": "Secrets",
+            "ResourceType": "Secrets",
             "ResourceNames": ["symmetric_key_shared"],
-            "Actions": ["read"]
+            "Actions": ["ReadSecret"]
         },
         "secrets-admin": {
             "Resource": "Secrets",
             "ResourceNames": ["symmetric_key_shared", "cert_shared", "rsa_shared"],
-            "Actions": ["read", "write"]
+            "Actions": ["ReadSecret", "WriteSecret"]
         }
     }
 }

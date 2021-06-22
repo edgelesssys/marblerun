@@ -279,8 +279,8 @@ var ManifestJSONWithRecoveryKey string = `{
 				"generic_secret"
 			],
 			"Actions": [
-				"read",
-				"write"
+				"ReadSecret",
+				"WriteSecret"
 			]
 		},
 		"read_only": {
@@ -290,7 +290,7 @@ var ManifestJSONWithRecoveryKey string = `{
 				"cert_shared"
 			],
 			"Actions": [
-				"read"
+				"ReadSecret"
 			]
 		},
 		"update_manager": {
@@ -299,7 +299,7 @@ var ManifestJSONWithRecoveryKey string = `{
 				"frontend"
 			],
 			"Actions": [
-				"updateSecurityVersion"
+				"UpdateSecurityVersion"
 			]
 		}
 	}
@@ -427,7 +427,7 @@ var IntegrationManifestJSON string = `{
 				"cert_unset"
 			],
 			"Actions": [
-				"write"
+				"WriteSecret"
 			]
 		},
 		"read_role": {
@@ -436,7 +436,7 @@ var IntegrationManifestJSON string = `{
 				"symmetric_key_shared"
 			],
 			"Actions": [
-				"read"
+				"ReadSecret"
 			]
 		},
 		"update_role": {
@@ -446,7 +446,7 @@ var IntegrationManifestJSON string = `{
 				"backend"
 			],
 			"Actions": [
-				"updateSecurityVersion"
+				"UpdateSecurityVersion"
 			]
 		}
 	}
