@@ -1,3 +1,4 @@
+SHELL := /bin/bash
 all: build
 .PHONY: clean all
 
