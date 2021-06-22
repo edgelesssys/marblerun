@@ -90,16 +90,9 @@ occlum run /bin/premain-occlum
     panic: "invalid entrypoint definition in argv[0]"
     ```
 
-    or:
+    Make sure you specified the correct filename of your target application.
 
-    ```
-    ERROR: Failed to spawn the target process.
-    Did you specify the correct target application in the Marblerun manifest as argv[0]?
-    Have you allocated enough memory?
-    panic: posix_spawn failed with error code -1
-    ```
-
-    Make sure you specified the correct filename of your target application. For the latter error message, also make sure enough memory is allocated. To find out the specific reason for why this error is occuring, you can set the environment variable `OCCLUM_LOG_LEVEL=error` by appending it in front of your run command like this:
+* If you are running into other issues, it might be helpful to enable Occlum's error logging. You can do that with the help of the environment variable `OCCLUM_LOG_LEVEL=error`, which can be set by appending it in front of your run command like this:
 
     ```sh
     OCCLUM_LOG_LEVEL=error make run
@@ -109,5 +102,3 @@ occlum run /bin/premain-occlum
     ```sh
     OCCLUM_LOG_LEVEL=error occlum run /bin/premain-occlum
     ```
-
-    Search for `SpawnMusl`. This entry will contain the error encountered when spawning your application from Marblerun's premain process.
