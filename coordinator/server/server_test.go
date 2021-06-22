@@ -13,6 +13,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -111,26 +112,8 @@ func TestUpdate(t *testing.T) {
 	// Make HTTP update request with no TLS at all, should be unauthenticated
 	req := httptest.NewRequest(http.MethodPost, "/update", strings.NewReader(test.UpdateManifest))
 	resp := httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
-	assert.Equal(http.StatusUnauthorized, resp.Code)
-
-	// Get certificates to test
-	adminTestCert, otherTestCert := test.MustSetupTestCerts(test.RecoveryPrivateKey)
-	adminTestCertSlice := []*x509.Certificate{adminTestCert}
-	otherTestCertSlice := []*x509.Certificate{otherTestCert}
-
-	// Create mock TLS object and with wrong certificate, should fail
-	req.TLS = &tls.ConnectionState{}
-	req.TLS.PeerCertificates = otherTestCertSlice
-	resp = httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
-	assert.Equal(http.StatusUnauthorized, resp.Code)
-
-	// Create mock TLS connection with right certificate, should pass
-	req.TLS.PeerCertificates = adminTestCertSlice
-	resp = httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
-	assert.Equal(http.StatusOK, resp.Code)
+	err = testRequestWithCert(req, resp, mux)
+	assert.NoError(err)
 }
 
 func TestReadSecret(t *testing.T) {
@@ -146,8 +129,32 @@ func TestReadSecret(t *testing.T) {
 	// Make HTTP secret request with no TLS at all, should be unauthenticated
 	req := httptest.NewRequest(http.MethodGet, "/secrets?s=symmetric_key_shared", nil)
 	resp := httptest.NewRecorder()
+	err = testRequestWithCert(req, resp, mux)
+	assert.NoError(err)
+}
+
+func TestSetSecret(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	// Setup mock core and set a manifest
+	c := core.NewCoreWithMocks()
+	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSONWithRecoveryKey))
+	require.NoError(err)
+	mux := CreateServeMux(c)
+
+	// Make HTTP secret request with no TLS at all, should be unauthenticated
+	req := httptest.NewRequest(http.MethodPost, "/secrets", strings.NewReader(test.UserSecrets))
+	resp := httptest.NewRecorder()
+	err = testRequestWithCert(req, resp, mux)
+	assert.NoError(err)
+}
+
+func testRequestWithCert(req *http.Request, resp *httptest.ResponseRecorder, mux *http.ServeMux) error {
 	mux.ServeHTTP(resp, req)
-	assert.Equal(http.StatusUnauthorized, resp.Code)
+	if resp.Code != http.StatusUnauthorized {
+		return errors.New("request without certificate was not rejected")
+	}
 
 	// Get certificates to test
 	adminTestCert, otherTestCert := test.MustSetupTestCerts(test.RecoveryPrivateKey)
@@ -159,13 +166,18 @@ func TestReadSecret(t *testing.T) {
 	req.TLS.PeerCertificates = otherTestCertSlice
 	resp = httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
-	assert.Equal(http.StatusUnauthorized, resp.Code)
+	if resp.Code != http.StatusUnauthorized {
+		return errors.New("request with wrong certificate was not rejected")
+	}
 
 	// Create mock TLS connection with right certificate, should pass
 	req.TLS.PeerCertificates = adminTestCertSlice
 	resp = httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
-	assert.Equal(http.StatusOK, resp.Code)
+	if resp.Code != http.StatusOK {
+		return errors.New("correct request was not accepted")
+	}
+	return nil
 }
 
 func TestConcurrent(t *testing.T) {

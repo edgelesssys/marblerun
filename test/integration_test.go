@@ -25,6 +25,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -274,6 +275,56 @@ func TestClientAPI(t *testing.T) {
 	resp.Body.Close()
 	require.NoError(err)
 	assert.Contains(string(secret), `{"status":"success","data":{"symmetric_key_shared":{"Type":"symmetric-key","Size":128,`)
+}
+
+func TestSettingSecrets(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	// start Coordinator
+	cfg := newCoordinatorConfig()
+	defer cfg.cleanup()
+	coordinatorProc := startCoordinator(cfg)
+	require.NotNil(coordinatorProc, "could not start coordinator")
+	defer coordinatorProc.Kill()
+
+	log.Println("Setting the Manifest")
+	_, err := setManifest(testManifest)
+	require.NoError(err, "failed to set Manifest")
+
+	// create client with certificates
+	privk, err := x509.MarshalPKCS8PrivateKey(RecoveryPrivateKey)
+	require.NoError(err)
+	clCert, err := tls.X509KeyPair(AdminCert, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privk}))
+	require.NoError(err)
+	client := http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{
+		Certificates:       []tls.Certificate{clCert},
+		InsecureSkipVerify: true,
+	}}}
+
+	// start server
+	log.Println("Starting a Server-Marble...")
+	serverCfg := newMarbleConfig(meshServerAddr, "test_marble_server", "server,backend,localhost")
+	defer serverCfg.cleanup()
+	serverProc := startMarbleServer(serverCfg)
+	require.NotNil(serverProc, "failed to start server-marble")
+	defer serverProc.Kill()
+
+	// start a marble
+	log.Println("Starting a Client-Marble with unset secret, this should fail...")
+	clientCfg := newMarbleConfig(meshServerAddr, "test_marble_unset", "client,frontend,localhost")
+	defer clientCfg.cleanup()
+	assert.False(startMarbleClient(clientCfg))
+
+	// test setting a secret
+	log.Println("Setting a custom secret")
+	clientAPIURL := url.URL{Scheme: "https", Host: clientServerAddr, Path: "secrets"}
+	_, err = client.Post(clientAPIURL.String(), "application/json", strings.NewReader(UserSecrets))
+	require.NoError(err)
+
+	// start the marble again
+	log.Println("Starting the Client-Marble again, with the secret now set...")
+	assert.True(startMarbleClient(clientCfg))
 }
 
 func TestRecoveryRestoreKey(t *testing.T) {

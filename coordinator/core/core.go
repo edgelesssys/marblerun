@@ -370,6 +370,10 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]manifest.
 
 	// Generate secrets
 	for name, secret := range secrets {
+		// Skip user defined secrets, these will be uploaded by a user
+		if secret.UserDefined {
+			continue
+		}
 
 		// Skip secrets from wrong context
 		if secret.Shared != (id == uuid.Nil) {
@@ -403,7 +407,7 @@ func (c *Core) generateSecrets(ctx context.Context, secrets map[string]manifest.
 				}
 			}
 
-			// Get secret object from manifest, create a copy, modify it and put in in the new map so we do not overwrite the manifest entires
+			// Get secret object from manifest, create a copy, modify it and put in in the new map so we do not overwrite the manifest entries
 			secret.Private = generatedValue
 			secret.Public = generatedValue
 

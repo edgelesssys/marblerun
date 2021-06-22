@@ -356,6 +356,7 @@ func TestParseSecrets(t *testing.T) {
 		"mysecret":          {Type: "symmetric-key", Size: 16, Public: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, Private: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}},
 		"anothercoolsecret": {Type: "symmetric-key", Size: 8, Public: []byte{7, 6, 5, 4, 3, 2, 1, 0}, Private: []byte{7, 6, 5, 4, 3, 2, 1, 0}},
 		"testcertificate":   {Type: "cert-rsa", Size: 2048, Cert: manifest.Certificate(*testCert), Public: pubKey, Private: privKey},
+		"emptysecret":       {},
 	}
 
 	testReservedSecrets := reservedSecrets{
@@ -431,6 +432,10 @@ func TestParseSecrets(t *testing.T) {
 
 	// We should get an error if we try to get a non-existing secret
 	_, err = parseSecrets("{{ hex .Secrets.idontexist }}", testWrappedSecrets)
+	assert.Error(err)
+
+	// We should get an error if we try to access an empty secret
+	_, err = parseSecrets("{{ hex .Secrets.emptysecret }}", testWrappedSecrets)
 	assert.Error(err)
 }
 

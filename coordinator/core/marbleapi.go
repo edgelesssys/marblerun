@@ -92,14 +92,14 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 		return nil, err
 	}
 
-	// Generate user-defined unique (= per marble) secrets
+	// Generate unique (= per marble) secrets
 	secrets, err := c.generateSecrets(ctx, mainManifest.Secrets, marbleUUID, marbleRootCert, intermediatePrivK)
 	if err != nil {
 		c.zaplogger.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
 		return nil, err
 	}
 
-	// Union user-defined unique secrets with user-defined shared secrets
+	// Union unique secrets with shared and user-defined secrets
 	sharedSecrets, err := c.data.getSecretMap()
 	if err != nil {
 		return nil, err
@@ -112,6 +112,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	if marble.Parameters == nil {
 		marble.Parameters = &rpc.Parameters{}
 	}
+
 	// add TTLS config to Env
 	if err := c.setTTLSConfig(marble, authSecrets, secrets); err != nil {
 		c.zaplogger.Error("Could not create TTLS config.", zap.Error(err))

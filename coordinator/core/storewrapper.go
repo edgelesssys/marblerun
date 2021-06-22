@@ -156,7 +156,7 @@ func (s storeWrapper) putSecret(secretType string, secret manifest.Secret) error
 	return s.store.Put(request, rawSecret)
 }
 
-// getSecretMap returns a map of all Marblerun secrets
+// getSecretMap returns a map of all shared and user-defined Marblerun secrets
 func (s storeWrapper) getSecretMap() (map[string]manifest.Secret, error) {
 	secretMap := map[string]manifest.Secret{}
 
@@ -165,11 +165,14 @@ func (s storeWrapper) getSecretMap() (map[string]manifest.Secret, error) {
 		return nil, err
 	}
 
-	for key := range manifest.Secrets {
-		if manifest.Secrets[key].Shared {
-			secretMap[key], err = s.getSecret(key)
+	for k, v := range manifest.Secrets {
+		if v.Shared || v.UserDefined {
+			// if a secret is not set, then this will add an empty secret
+			secretMap[k], err = s.getSecret(k)
 			if err != nil {
-				return nil, err
+				if !store.IsStoreValueUnsetError(err) {
+					return nil, err
+				}
 			}
 		}
 	}

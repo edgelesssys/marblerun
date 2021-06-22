@@ -10,6 +10,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
 	"testing"
 
@@ -434,6 +435,51 @@ func TestGetSecret(t *testing.T) {
 	// request should fail for non shared secrets since they dont get put in store
 	_, err = c.GetSecrets(context.TODO(), []string{"symmetric_key_private", "cert_private"}, admin)
 	assert.Error(err)
+
+	// requesting an unset secret should fail
+	_, err = c.GetSecrets(context.TODO(), []string{"symmetric_key_unset"}, admin)
+	assert.Error(err)
+}
+
+func TestWriteSecret(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	c, _ := mustSetup()
+	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSONWithRecoveryKey))
+	require.NoError(err)
+
+	admin, err := c.data.getUser("admin")
+	assert.NoError(err)
+	symmetricSecret := "symmetric_key_unset"
+	certSecret := "cert_unset"
+
+	// there should be no secret yet
+	_, err = c.data.getSecret(symmetricSecret)
+	assert.Error(err)
+	_, err = c.data.getSecret(certSecret)
+	assert.Error(err)
+
+	// set a secret
+	err = c.WriteSecrets(context.TODO(), []byte(test.UserSecrets), admin)
+	assert.NoError(err)
+	secret, err := c.data.getSecret(symmetricSecret)
+	assert.NoError(err)
+	assert.Equal(16, len(secret.Public))
+	secret, err = c.data.getSecret(certSecret)
+	assert.NoError(err)
+	assert.Equal("Marblerun Coordinator - Intermediate CA", secret.Cert.Issuer.CommonName)
+
+	// try to set a secret in plain format
+	genericSecret := []byte(`{
+		"generic_secret": {
+			"Key": "` + base64.StdEncoding.EncodeToString([]byte("Marblerun Unit Test")) + `"
+		}
+	}`)
+	err = c.WriteSecrets(context.TODO(), genericSecret, admin)
+	assert.NoError(err)
+	secret, err = c.data.getSecret("generic_secret")
+	assert.NoError(err)
+	assert.Equal("Marblerun Unit Test", string(secret.Public))
 }
 
 func testManifestInvalidDebugCase(c *Core, manifest *manifest.Manifest, marblePackage quote.PackageProperties, assert *assert.Assertions, require *require.Assertions) *Core {
