@@ -3,9 +3,7 @@ package cmd
 import (
 	"bytes"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/pem"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -65,25 +63,9 @@ An admin certificate specified in the original manifest is needed to verify the 
 
 // cliManifestUpdate updates the coordinators manifest using its rest api
 func cliManifestUpdate(manifest []byte, host string, clCert tls.Certificate, caCert []*pem.Block) error {
-	// Set rootCA for connection to coordinator
-	certPool := x509.NewCertPool()
-	if ok := certPool.AppendCertsFromPEM(pem.EncodeToMemory(caCert[len(caCert)-1])); !ok {
-		return errors.New("failed to parse certificate")
-	}
-	// Add intermediate cert if applicable
-	if len(caCert) > 1 {
-		if ok := certPool.AppendCertsFromPEM(pem.EncodeToMemory(caCert[0])); !ok {
-			return errors.New("failed to parse certificate")
-		}
-	}
-
-	client := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				RootCAs:      certPool,
-				Certificates: []tls.Certificate{clCert},
-			},
-		},
+	client, err := restClient(caCert, &clCert)
+	if err != nil {
+		return err
 	}
 
 	url := url.URL{Scheme: "https", Host: host, Path: "update"}

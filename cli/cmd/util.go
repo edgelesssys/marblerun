@@ -75,28 +75,36 @@ func verifyCoordinator(host string, configFilename string, insecure bool) ([]*pe
 	return era.GetCertificate(host, "era-config.json")
 }
 
-// restClient creates and returns a http client using a provided certificate to communicate with the Coordinator REST API
-func restClient(cert []*pem.Block) (*http.Client, error) {
+// restClient creates and returns a http client using a provided root certificate and optional client certificate to communicate with the Coordinator REST API
+func restClient(caCert []*pem.Block, clCert *tls.Certificate) (*http.Client, error) {
 	// Set rootCA for connection to coordinator
 	certPool := x509.NewCertPool()
-	if ok := certPool.AppendCertsFromPEM(pem.EncodeToMemory(cert[len(cert)-1])); !ok {
-		return &http.Client{}, fmt.Errorf("failed to parse root certificate")
+	if ok := certPool.AppendCertsFromPEM(pem.EncodeToMemory(caCert[len(caCert)-1])); !ok {
+		return nil, errors.New("failed to parse certificate")
 	}
 	// Add intermediate cert if applicable
-	if len(cert) > 1 {
-		if ok := certPool.AppendCertsFromPEM(pem.EncodeToMemory(cert[0])); !ok {
-			return &http.Client{}, fmt.Errorf("failed to parse intermediate certificate")
+	if len(caCert) > 1 {
+		if ok := certPool.AppendCertsFromPEM(pem.EncodeToMemory(caCert[0])); !ok {
+			return nil, errors.New("failed to parse certificate")
 		}
 	}
 
+	var tlsConfig *tls.Config
+	if clCert != nil {
+		tlsConfig = &tls.Config{
+			RootCAs:      certPool,
+			Certificates: []tls.Certificate{*clCert},
+		}
+	} else {
+		tlsConfig = &tls.Config{
+			RootCAs: certPool,
+		}
+	}
 	client := &http.Client{
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				RootCAs: certPool,
-			},
+			TLSClientConfig: tlsConfig,
 		},
 	}
-
 	return client, nil
 }
 
