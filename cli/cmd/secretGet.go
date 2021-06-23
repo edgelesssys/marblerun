@@ -93,7 +93,7 @@ func cliSecretGet(o *secretGetOptions) error {
 		}
 
 		if len(response.Map()) != len(o.secretIDs) {
-			return fmt.Errorf("Did not receive the same number of secrets as requested")
+			return fmt.Errorf("did not receive the same number of secrets as requested")
 		}
 
 		if o.output == "" {
