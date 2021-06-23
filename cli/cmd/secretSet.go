@@ -18,7 +18,7 @@ import (
 )
 
 func newSecretSet() *cobra.Command {
-	var pemFile string
+	var pemSecretName string
 
 	cmd := &cobra.Command{
 		Use:   "set <secret_file> <IP:PORT>",
@@ -27,7 +27,7 @@ func newSecretSet() *cobra.Command {
 Set a secret for the Marblerun coordinator.
 Secrets are loaded from a file in JSON format or directly from a PEM
 encoded certificate and/or key. In the later case, the name of the secret
-is assumed to be the first argument to the command.
+has to be set with the flag [--from-pem].
 Users have to authenticate themselves using a certificate and private key
 and need permissions in the manifest to write the requested secrets.
 `,
@@ -47,19 +47,13 @@ and need permissions in the manifest to write the requested secrets.
 				return err
 			}
 
-			var newSecrets []byte
+			newSecrets, err := ioutil.ReadFile(secretFile)
+			if err != nil {
+				return err
+			}
 
-			if len(pemFile) <= 0 {
-				newSecrets, err = ioutil.ReadFile(secretFile)
-				if err != nil {
-					return err
-				}
-			} else {
-				rawPEM, err := ioutil.ReadFile(pemFile)
-				if err != nil {
-					return err
-				}
-				newSecrets, err = loadSecretFromPEM(secretFile, rawPEM)
+			if len(pemSecretName) > 0 {
+				newSecrets, err = loadSecretFromPEM(pemSecretName, newSecrets)
 				if err != nil {
 					return err
 				}
@@ -70,7 +64,7 @@ and need permissions in the manifest to write the requested secrets.
 		SilenceUsage: true,
 	}
 
-	cmd.Flags().StringVar(&pemFile, "from-pem", "", "set to load a secret from a PEM encoded file")
+	cmd.Flags().StringVar(&pemSecretName, "from-pem", "", "name of the secret from a PEM encoded file")
 
 	return cmd
 }
