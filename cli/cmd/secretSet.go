@@ -3,22 +3,31 @@ package cmd
 import (
 	"bytes"
 	"crypto/tls"
+	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 
+	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/spf13/cobra"
 	"github.com/tidwall/gjson"
 )
 
 func newSecretSet() *cobra.Command {
+	var pemFile string
+
 	cmd := &cobra.Command{
-		Use:   "set <secret_name> <IP:PORT>",
+		Use:   "set <secret_file> <IP:PORT>",
 		Short: "Set a secret for the Marblerun coordinator",
 		Long: `
 Set a secret for the Marblerun coordinator.
+Secrets are loaded from a file in JSON format or directly from a PEM
+encoded certificate and/or key. In the later case, the name of the secret
+is assumed to be the first argument to the command.
 Users have to authenticate themselves using a certificate and private key
 and need permissions in the manifest to write the requested secrets.
 `,
@@ -38,15 +47,30 @@ and need permissions in the manifest to write the requested secrets.
 				return err
 			}
 
-			newSecrets, err := ioutil.ReadFile(secretFile)
-			if err != nil {
-				return err
+			var newSecrets []byte
+
+			if len(pemFile) <= 0 {
+				newSecrets, err = ioutil.ReadFile(secretFile)
+				if err != nil {
+					return err
+				}
+			} else {
+				rawPEM, err := ioutil.ReadFile(pemFile)
+				if err != nil {
+					return err
+				}
+				newSecrets, err = loadSecretFromPEM(secretFile, rawPEM)
+				if err != nil {
+					return err
+				}
 			}
 
 			return cliSecretSet(hostName, newSecrets, clCert, caCert)
 		},
 		SilenceUsage: true,
 	}
+
+	cmd.Flags().StringVar(&pemFile, "from-pem", "", "set to load a secret from a PEM encoded file")
 
 	return cmd
 }
@@ -90,4 +114,40 @@ func cliSecretSet(host string, newSecrets []byte, clCert tls.Certificate, caCert
 	}
 
 	return nil
+}
+
+// loadSecretFromPEM creates a JSON string from a certificate and/or private key in PEM format
+// if the PEM data contains more than one cert of key only the first instance will be part of the secret
+func loadSecretFromPEM(secretName string, rawPEM []byte) ([]byte, error) {
+	newSecret := manifest.UserSecret{}
+	for {
+		block, rest := pem.Decode(rawPEM)
+		// stop if no more PEM data is found or if we already have cert and key
+		if block == nil || (len(newSecret.Cert.Raw) > 0 && len(newSecret.Private) > 0) {
+			break
+		}
+
+		if block.Type == "CERTIFICATE" {
+			cert, err := x509.ParseCertificate(block.Bytes)
+			if err != nil {
+				return nil, err
+			}
+			newSecret.Cert = manifest.Certificate(*cert)
+		} else if strings.Contains(block.Type, "PRIVATE") {
+			newSecret.Private = block.Bytes
+		} else {
+			return nil, fmt.Errorf("unrecognized PEM type for secret: %s", block.Type)
+		}
+		rawPEM = rest
+	}
+
+	// error if neither cert nor key was found
+	if len(newSecret.Cert.Raw) <= 0 && len(newSecret.Private) <= 0 {
+		return nil, fmt.Errorf("found no certificate or private key in PEM data")
+	}
+
+	wrapped := map[string]manifest.UserSecret{
+		secretName: newSecret,
+	}
+	return json.Marshal(wrapped)
 }
