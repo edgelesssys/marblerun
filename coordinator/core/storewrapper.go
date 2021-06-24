@@ -106,9 +106,9 @@ func (s storeWrapper) putPrivK(keyType string, privK *ecdsa.PrivateKey) error {
 }
 
 // getManifest loads a manifest by type and marshalls it to manifest.Manifest
-func (s storeWrapper) getManifest(manifestType string) (*manifest.Manifest, error) {
+func (s storeWrapper) getManifest() (*manifest.Manifest, error) {
 	var manifest manifest.Manifest
-	rawManifest, err := s.getRawManifest(manifestType)
+	rawManifest, err := s.getRawManifest()
 	if err != nil {
 		// return uninitialized manifest if non was set with error
 		return &manifest, err
@@ -121,15 +121,13 @@ func (s storeWrapper) getManifest(manifestType string) (*manifest.Manifest, erro
 }
 
 // getRawManifest returns the raw main or update manifest from store
-func (s storeWrapper) getRawManifest(manifestType string) ([]byte, error) {
-	request := strings.Join([]string{requestManifest, manifestType}, ":")
-	return s.store.Get(request)
+func (s storeWrapper) getRawManifest() ([]byte, error) {
+	return s.store.Get(requestManifest)
 }
 
 // putRawManifest saves the raw main or update manifest to store
-func (s storeWrapper) putRawManifest(manifestType string, manifest []byte) error {
-	request := strings.Join([]string{requestManifest, manifestType}, ":")
-	return s.store.Put(request, manifest)
+func (s storeWrapper) putRawManifest(manifest []byte) error {
+	return s.store.Put(requestManifest, manifest)
 }
 
 // getSecret returns a secret from store
@@ -160,7 +158,7 @@ func (s storeWrapper) putSecret(secretType string, secret manifest.Secret) error
 func (s storeWrapper) getSecretMap() (map[string]manifest.Secret, error) {
 	secretMap := map[string]manifest.Secret{}
 
-	manifest, err := s.getManifest("main")
+	manifest, err := s.getManifest()
 	if err != nil {
 		return nil, err
 	}

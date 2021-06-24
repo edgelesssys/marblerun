@@ -87,7 +87,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	if err != nil {
 		c.zaplogger.Error("Could not retrieve marbleRootCert private key.", zap.Error(err))
 	}
-	mainManifest, err := c.data.getManifest("main")
+	mainManifest, err := c.data.getManifest()
 	if err != nil {
 		return nil, err
 	}
@@ -150,12 +150,8 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 
 // verifyManifestRequirement verifies marble attempting to register with respect to manifest
 func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, certQuote []byte, marbleType string) error {
-	mainManifest, err := c.data.getManifest("main")
+	mainManifest, err := c.data.getManifest()
 	if err != nil {
-		return err
-	}
-	updateManifest, err := c.data.getManifest("update")
-	if err != nil && !store.IsStoreValueUnsetError(err) {
 		return err
 	}
 
@@ -168,11 +164,6 @@ func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, certQuote []
 	if !ok {
 		// can't happen
 		return status.Error(codes.Internal, "undefined package")
-	}
-
-	// In case the administrator has updated a package, apply the updated security version
-	if updpkg, ok := updateManifest.Packages[marble.Package]; ok {
-		pkg.SecurityVersion = updpkg.SecurityVersion
 	}
 
 	if !c.inSimulationMode() {
@@ -406,7 +397,7 @@ func (c *Core) setTTLSConfig(marble manifest.Marble, specialSecrets reservedSecr
 	pemClientKey := pem.Block{Type: "PRIVATE KEY", Bytes: specialSecrets.MarbleCert.Private}
 	stringClientKey := string(pem.EncodeToMemory(&pemClientKey))
 
-	manifest, err := c.data.getManifest("main")
+	manifest, err := c.data.getManifest()
 	if err != nil {
 		return err
 	}

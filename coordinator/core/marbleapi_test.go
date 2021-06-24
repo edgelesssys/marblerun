@@ -491,7 +491,7 @@ func TestSecurityLevelUpdate(t *testing.T) {
 	require.NoError(err)
 	coreServer2State, err := coreServer2.data.getState()
 	assert.NoError(err)
-	coreServer2UpdateManifest, err := coreServer2.data.getManifest("update")
+	coreServer2UpdateManifest, err := coreServer2.data.getManifest()
 	assert.NoError(err)
 	assert.Equal(stateAcceptingMarbles, coreServer2State)
 	assert.EqualValues(5, *coreServer2UpdateManifest.Packages["frontend"].SecurityVersion)
@@ -539,7 +539,7 @@ func (ms *marbleSpawner) shortMarbleActivation(marbleType string, infraName stri
 	// Validate response
 	params := resp.GetParameters()
 	// Get the marble from the manifest set on the coreServer since this one sets default values for empty values
-	coreServerManifest, err := ms.coreServer.data.getManifest("main")
+	coreServerManifest, err := ms.coreServer.data.getManifest()
 	ms.assert.NoError(err)
 	marble = coreServerManifest.Marbles[marbleType]
 	// Validate Files

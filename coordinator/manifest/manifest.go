@@ -305,7 +305,7 @@ var ManifestTemplateFuncMap = template.FuncMap{
 }
 
 // CheckUpdate checks if the manifest is consistent and only contains supported values.
-func (m Manifest) CheckUpdate(ctx context.Context, originalPackages map[string]quote.PackageProperties, alreadyUpdatedPackages map[string]quote.PackageProperties) error {
+func (m Manifest) CheckUpdate(ctx context.Context, currentPackages map[string]quote.PackageProperties) error {
 	if len(m.Packages) <= 0 {
 		return errors.New("no packages defined")
 	}
@@ -313,7 +313,7 @@ func (m Manifest) CheckUpdate(ctx context.Context, originalPackages map[string]q
 	// Check if manifest update contains values which we normally should not update
 	for packageName, singlePackage := range m.Packages {
 		// Check if the original manifest does even contain the package we want to update
-		if _, ok := originalPackages[packageName]; !ok {
+		if _, ok := currentPackages[packageName]; !ok {
 			return errors.New("update manifest specifies a package which the original manifest does not contain")
 		}
 
@@ -328,20 +328,8 @@ func (m Manifest) CheckUpdate(ctx context.Context, originalPackages map[string]q
 		}
 
 		// Check based on the original manifest
-		if originalPackages[packageName].SecurityVersion != nil && *singlePackage.SecurityVersion < *originalPackages[packageName].SecurityVersion {
+		if currentPackages[packageName].SecurityVersion != nil && *singlePackage.SecurityVersion < *currentPackages[packageName].SecurityVersion {
 			return errors.New("update manifest tries to downgrade SecurityVersion of the original manifest")
-		}
-
-		// Checks if we already have an update manifest set, if it does contain the package and if it does, if it actually holds a value for SecurityVersion (which should always be the case, but let's go safe here)
-		for alreadyUpdatedPackageName, alreadyUpdatedPackage := range alreadyUpdatedPackages {
-			// Check if new update manifest contains all package entries which the current one does
-			if _, ok := m.Packages[alreadyUpdatedPackageName]; !ok {
-				return errors.New("update manifest misses package definitions of the currently set update manifest")
-			}
-			// If this is the case, check if the SecurityVersion is equal or higher than defined in the current one. No downgrades allowed
-			if alreadyUpdatedPackage.SecurityVersion != nil && (*singlePackage.SecurityVersion < *alreadyUpdatedPackage.SecurityVersion) {
-				return errors.New("update manifest tries to downgrade SecurityVersion of the currently set updated manifest")
-			}
 		}
 	}
 

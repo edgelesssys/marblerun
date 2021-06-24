@@ -50,19 +50,19 @@ func TestSetManifest(t *testing.T) {
 	c, manifest := mustSetup()
 	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
 	assert.NoError(err, "SetManifest should succed on first try")
-	cManifest, err := c.data.getManifest("main")
+	cManifest, err := c.data.getManifest()
 	assert.NoError(err)
 	assert.Equal(*manifest, *cManifest, "Manifest should be set correctly")
 
 	_, err = c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
 	assert.Error(err, "SetManifest should fail on the second try")
-	cManifest, err = c.data.getManifest("main")
+	cManifest, err = c.data.getManifest()
 	assert.NoError(err)
 	assert.Equal(*manifest, *cManifest, "Manifest should still be set correctly")
 
 	_, err = c.SetManifest(context.TODO(), []byte(test.ManifestJSON)[:len(test.ManifestJSON)-1])
 	assert.Error(err, "SetManifest should fail on broken json")
-	cManifest, err = c.data.getManifest("main")
+	cManifest, err = c.data.getManifest()
 	assert.NoError(err)
 	assert.Equal(*manifest, *cManifest, "Manifest should still be set correctly")
 
@@ -76,7 +76,7 @@ func TestSetManifest(t *testing.T) {
 
 	_, err = c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
 	assert.NoError(err, "SetManifest should succed after failed tries")
-	cManifest, err = c.data.getManifest("main")
+	cManifest, err = c.data.getManifest()
 	assert.NoError(err)
 	assert.Equal(*manifest, *cManifest, "Manifest should be set correctly")
 }
@@ -318,7 +318,7 @@ func TestUpdateManifestInvalid(t *testing.T) {
 	// Set manifest (frontend has SecurityVersion 3)
 	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
-	cManifest, err := c.data.getManifest("main")
+	cManifest, err := c.data.getManifest()
 	assert.NoError(err)
 	assert.EqualValues(3, *cManifest.Packages["frontend"].SecurityVersion)
 
@@ -333,7 +333,7 @@ func TestUpdateManifestInvalid(t *testing.T) {
 	// Try to update manifest (frontend's SecurityVersion should rise from 3 to 5)
 	err = c.UpdateManifest(context.TODO(), []byte(test.UpdateManifest), admin)
 	require.NoError(err)
-	cUpdateManifest, err := c.data.getManifest("update")
+	cUpdateManifest, err := c.data.getManifest()
 	assert.NoError(err)
 	assert.EqualValues(5, *cUpdateManifest.Packages["frontend"].SecurityVersion)
 

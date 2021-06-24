@@ -153,7 +153,7 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 		if err := c.advanceState(stateRecovery, tx); err != nil {
 			return nil, err
 		}
-	} else if _, err := txdata.getManifest("main"); store.IsStoreValueUnsetError(err) {
+	} else if _, err := txdata.getManifest(); store.IsStoreValueUnsetError(err) {
 		// no state was found, wait for manifest
 		c.zaplogger.Info("No sealed state found. Proceeding with new state.")
 		if err := c.setCAData(dnsNames, tx); err != nil {

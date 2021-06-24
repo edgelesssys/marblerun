@@ -95,7 +95,7 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 	defer tx.Rollback()
 	txdata := storeWrapper{tx}
 
-	if err := txdata.putRawManifest("main", rawManifest); err != nil {
+	if err := txdata.putRawManifest(rawManifest); err != nil {
 		return nil, err
 	}
 	for key, secret := range secrets {
@@ -157,7 +157,7 @@ func (c *Core) GetCertQuote(ctx context.Context) (string, []byte, error) {
 //
 // Returns a SHA256 hash of the active manifest.
 func (c *Core) GetManifestSignature(ctx context.Context) []byte {
-	rawManifest, err := c.data.getRawManifest("main")
+	rawManifest, err := c.data.getRawManifest()
 	if err != nil {
 		return nil
 	}
@@ -196,7 +196,7 @@ func (c *Core) GetStatus(ctx context.Context) (statusCode int, status string, er
 
 // VerifyUser checks if a given client certificate matches the admin certificates specified in the manifest
 func (c *Core) VerifyUser(ctx context.Context, clientCerts []*x509.Certificate) (*user.User, error) {
-	manifest, err := c.data.getManifest("main")
+	manifest, err := c.data.getManifest()
 	if err != nil {
 		return nil, err
 	}
@@ -242,15 +242,11 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte, upd
 		return fmt.Errorf("user %s is not allowed to update one or more packages of %v", updater.Name(), wantedPackages)
 	}
 
-	mainManifest, err := c.data.getManifest("main")
+	mainManifest, err := c.data.getManifest()
 	if err != nil {
 		return err
 	}
-	oldUpdateManifest, err := c.data.getManifest("update")
-	if err != nil && !store.IsStoreValueUnsetError(err) {
-		return err
-	}
-	if err := updateManifest.CheckUpdate(ctx, mainManifest.Packages, oldUpdateManifest.Packages); err != nil {
+	if err := updateManifest.CheckUpdate(ctx, mainManifest.Packages); err != nil {
 		return err
 	}
 
@@ -296,6 +292,15 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte, upd
 		return err
 	}
 
+	// Apply the new security versions to the manifest
+	for pkgName, pkg := range updateManifest.Packages {
+		*mainManifest.Packages[pkgName].SecurityVersion = *pkg.SecurityVersion
+	}
+	updatedManifest, err := json.Marshal(mainManifest)
+	if err != nil {
+		return err
+	}
+
 	tx, err := c.store.BeginTransaction()
 	if err != nil {
 		return err
@@ -303,7 +308,7 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte, upd
 	defer tx.Rollback()
 	txdata := storeWrapper{tx}
 
-	if err := txdata.putRawManifest("update", rawUpdateManifest); err != nil {
+	if err := txdata.putRawManifest(updatedManifest); err != nil {
 		return err
 	}
 	if err := txdata.putCertificate(skCoordinatorIntermediateCert, intermediateCert); err != nil {
@@ -374,7 +379,7 @@ func (c *Core) WriteSecrets(ctx context.Context, rawSecretManifest []byte, updat
 	}
 
 	// validate against manifest
-	mainManifest, err := c.data.getManifest("main")
+	mainManifest, err := c.data.getManifest()
 	if err != nil {
 		return err
 	}
