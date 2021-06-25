@@ -12,6 +12,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
@@ -480,6 +481,10 @@ func TestWriteSecret(t *testing.T) {
 	secret, err = c.data.getSecret("generic_secret")
 	assert.NoError(err)
 	assert.Equal("Marblerun Unit Test", string(secret.Public))
+
+	updates, err := c.data.getUpdateLog()
+	assert.NoError(err)
+	fmt.Println(updates)
 }
 
 func testManifestInvalidDebugCase(c *Core, manifest *manifest.Manifest, marblePackage quote.PackageProperties, assert *assert.Assertions, require *require.Assertions) *Core {

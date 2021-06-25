@@ -14,6 +14,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/store"
@@ -29,6 +30,7 @@ type ClientCore interface {
 	GetManifestSignature(ctx context.Context) (manifestSignature []byte)
 	GetSecrets(ctx context.Context, requestedSecrets []string, requestUser *user.User) (map[string]manifest.Secret, error)
 	GetStatus(ctx context.Context) (statusCode int, status string, err error)
+	GetUpdateLog(ctx context.Context) (updateLog string, err error)
 	Recover(ctx context.Context, encryptionKey []byte) (int, error)
 	VerifyUser(ctx context.Context, clientCerts []*x509.Certificate) (*user.User, error)
 	UpdateManifest(ctx context.Context, rawUpdateManifest []byte, updater *user.User) error
@@ -107,6 +109,12 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 		if err := txdata.putUser(user); err != nil {
 			return nil, err
 		}
+	}
+
+	updateLog := "Update History:"
+	updateLog = updateLog + formatUpdate("original manifest set")
+	if err := txdata.putUpdateLog(updateLog); err != nil {
+		return nil, err
 	}
 
 	c.advanceState(stateAcceptingMarbles, tx)
@@ -192,6 +200,15 @@ func (c *Core) Recover(ctx context.Context, secret []byte) (int, error) {
 // GetStatus returns status information about the state of the mesh.
 func (c *Core) GetStatus(ctx context.Context) (statusCode int, status string, err error) {
 	return c.getStatus(ctx)
+}
+
+// GetUpdateLog returns the update history of the coordinator
+func (c *Core) GetUpdateLog(ctx context.Context) (string, error) {
+	defer c.mux.Unlock()
+	if err := c.requireState(stateAcceptingMarbles); err != nil {
+		return "", err
+	}
+	return c.data.getUpdateLog()
 }
 
 // VerifyUser checks if a given client certificate matches the admin certificates specified in the manifest
@@ -296,6 +313,14 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte, upd
 		return err
 	}
 
+	updateLog, err := c.data.getUpdateLog()
+	if err != nil {
+		return err
+	}
+	for pkgName, pkg := range updateManifest.Packages {
+		updateLog = updateLog + formatUpdate(fmt.Sprintf("[%s] updated package [%s] to SecurityVersion %d", updater.Name(), pkgName, *pkg.SecurityVersion))
+	}
+
 	tx, err := c.store.BeginTransaction()
 	if err != nil {
 		return err
@@ -313,6 +338,9 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte, upd
 		return err
 	}
 	if err := txdata.putPrivK(sKCoordinatorIntermediateKey, intermediatePrivK); err != nil {
+		return err
+	}
+	if err := txdata.putUpdateLog(updateLog); err != nil {
 		return err
 	}
 
@@ -383,6 +411,11 @@ func (c *Core) WriteSecrets(ctx context.Context, rawSecretManifest []byte, updat
 		return err
 	}
 
+	updateLog, err := c.data.getUpdateLog()
+	if err != nil {
+		return err
+	}
+
 	tx, err := c.store.BeginTransaction()
 	if err != nil {
 		return err
@@ -398,6 +431,10 @@ func (c *Core) WriteSecrets(ctx context.Context, rawSecretManifest []byte, updat
 		if err := txdata.putSecret(secretName, secret); err != nil {
 			return err
 		}
+		updateLog = updateLog + formatUpdate(fmt.Sprintf("[%s] set secret [%s]", updater.Name(), secretName))
+	}
+	if err := txdata.putUpdateLog(updateLog); err != nil {
+		return err
 	}
 
 	return tx.Commit()
@@ -428,4 +465,9 @@ func (c *Core) performRecovery(encryptionKey []byte) error {
 	c.quote = c.generateQuote(rootCert.Raw)
 
 	return nil
+}
+
+// formatUpdate formats a string for the update log
+func formatUpdate(str string) string {
+	return fmt.Sprintf("\n%s %s", time.Now().Format("2006/01/02 15:04:05MST"), str)
 }

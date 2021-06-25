@@ -68,7 +68,7 @@ func getSignatureFromString(manifest string) (string, error) {
 
 // cliManifestVerify verifies if a signature returned by the Marblerun Coordinator is equal to one locally created
 func cliManifestVerify(localSignature string, host string, cert []*pem.Block) error {
-	remoteSignature, err := cliManifestGet(host, cert)
+	remoteSignature, err := cliManifestGet(host, "manifest", cert)
 	if err != nil {
 		return err
 	}

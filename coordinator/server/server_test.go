@@ -99,6 +99,22 @@ func TestManifestWithRecoveryKey(t *testing.T) {
 	require.NotNil(recoveryData)
 }
 
+func TestGetUpdateLog(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	// Setup mock core and set a manifest
+	c := core.NewCoreWithMocks()
+	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSONWithRecoveryKey))
+	require.NoError(err)
+	mux := CreateServeMux(c)
+
+	req := httptest.NewRequest(http.MethodGet, "/update", nil)
+	resp := httptest.NewRecorder()
+	mux.ServeHTTP(resp, req)
+	assert.Equal(http.StatusOK, resp.Code)
+}
+
 func TestUpdate(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
