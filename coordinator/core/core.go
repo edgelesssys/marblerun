@@ -214,11 +214,6 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 		return nil, err
 	} else {
 		// recovered from a sealed state, finish the store transaction
-		oldLog, err := c.data.getUpdateLog()
-		if err != nil {
-			return nil, err
-		}
-		c.updatelog.reset(oldLog)
 		stor.SetRecoveryData(recoveryData)
 	}
 
