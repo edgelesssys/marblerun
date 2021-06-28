@@ -22,6 +22,8 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -34,6 +36,7 @@ import (
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
 )
@@ -48,6 +51,7 @@ type Core struct {
 	sealer    seal.Sealer
 	qv        quote.Validator
 	qi        quote.Issuer
+	updatelog *updateLog
 	zaplogger *zap.Logger
 }
 
@@ -76,6 +80,30 @@ const (
 	sKMarbleRootCert              string = "marbleRootCert"
 	sKCoordinatorIntermediateKey  string = "coordinatorIntermediateKey"
 )
+
+// updateLog is a wrapper for the cores update log
+type updateLog struct {
+	// sink is a wrapper for strings.Builder, holding the written log
+	sink *stringSink
+	// logger writes the data to sink
+	logger *zap.Logger
+}
+
+func (u *updateLog) reset(oldLog string) {
+	u.sink.Reset()
+	u.sink.WriteString(oldLog)
+}
+
+// stringSink is a sink for writing a log to string
+type stringSink struct {
+	*strings.Builder
+}
+
+// Close implements the zap.Sink interface
+func (s *stringSink) Close() error { return nil }
+
+// Sync implements the zap.Sink interface
+func (s *stringSink) Sync() error { return nil }
 
 // Needs to be paired with `defer c.mux.Unlock()`
 func (c *Core) requireState(states ...state) error {
@@ -116,6 +144,26 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 		sealer:    sealer,
 		zaplogger: zapLogger,
 	}
+	c.updatelog = &updateLog{
+		sink: &stringSink{new(strings.Builder)},
+	}
+	err := zap.RegisterSink("string", func(*url.URL) (zap.Sink, error) {
+		return c.updatelog.sink, nil
+	})
+	c.updatelog.logger, err = zap.Config{
+		Level:         zap.NewAtomicLevelAt(zapcore.InfoLevel),
+		Development:   false,
+		DisableCaller: true,
+		Encoding:      "json",
+		EncoderConfig: zapcore.EncoderConfig{
+			MessageKey: "update",
+			TimeKey:    "time",
+			EncodeTime: zapcore.ISO8601TimeEncoder,
+		},
+		OutputPaths: []string{
+			"string://",
+		},
+	}.Build()
 
 	zapLogger.Info("loading state")
 	recoveryData, loadErr := stor.LoadState()
@@ -166,6 +214,11 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 		return nil, err
 	} else {
 		// recovered from a sealed state, finish the store transaction
+		oldLog, err := c.data.getUpdateLog()
+		if err != nil {
+			return nil, err
+		}
+		c.updatelog.reset(oldLog)
 		stor.SetRecoveryData(recoveryData)
 	}
 

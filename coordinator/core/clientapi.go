@@ -14,7 +14,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/store"
@@ -111,9 +110,8 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 		}
 	}
 
-	updateLog := "Update History:"
-	updateLog = updateLog + formatUpdate("original manifest set")
-	if err := txdata.putUpdateLog(updateLog); err != nil {
+	c.updatelog.logger.Info("original manifest set")
+	if err := txdata.putUpdateLog(c.updatelog.sink.String()); err != nil {
 		return nil, err
 	}
 
@@ -313,12 +311,13 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte, upd
 		return err
 	}
 
-	updateLog, err := c.data.getUpdateLog()
+	oldLog, err := c.data.getUpdateLog()
 	if err != nil {
 		return err
 	}
+	c.updatelog.reset(oldLog)
 	for pkgName, pkg := range updateManifest.Packages {
-		updateLog = updateLog + formatUpdate(fmt.Sprintf("[%s] updated package [%s] to SecurityVersion %d", updater.Name(), pkgName, *pkg.SecurityVersion))
+		c.updatelog.logger.Info("SecurityVersion increased", zap.String("user", updater.Name()), zap.String("package", pkgName), zap.Uint("new version", *pkg.SecurityVersion))
 	}
 
 	tx, err := c.store.BeginTransaction()
@@ -340,7 +339,7 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte, upd
 	if err := txdata.putPrivK(sKCoordinatorIntermediateKey, intermediatePrivK); err != nil {
 		return err
 	}
-	if err := txdata.putUpdateLog(updateLog); err != nil {
+	if err := txdata.putUpdateLog(c.updatelog.sink.String()); err != nil {
 		return err
 	}
 
@@ -411,10 +410,11 @@ func (c *Core) WriteSecrets(ctx context.Context, rawSecretManifest []byte, updat
 		return err
 	}
 
-	updateLog, err := c.data.getUpdateLog()
+	oldLog, err := c.data.getUpdateLog()
 	if err != nil {
 		return err
 	}
+	c.updatelog.reset(oldLog)
 
 	tx, err := c.store.BeginTransaction()
 	if err != nil {
@@ -431,9 +431,9 @@ func (c *Core) WriteSecrets(ctx context.Context, rawSecretManifest []byte, updat
 		if err := txdata.putSecret(secretName, secret); err != nil {
 			return err
 		}
-		updateLog = updateLog + formatUpdate(fmt.Sprintf("[%s] set secret [%s]", updater.Name(), secretName))
+		c.updatelog.logger.Info("secret set", zap.String("user", updater.Name()), zap.String("secret", secretName), zap.String("type", secret.Type))
 	}
-	if err := txdata.putUpdateLog(updateLog); err != nil {
+	if err := txdata.putUpdateLog(c.updatelog.sink.String()); err != nil {
 		return err
 	}
 
@@ -465,9 +465,4 @@ func (c *Core) performRecovery(encryptionKey []byte) error {
 	c.quote = c.generateQuote(rootCert.Raw)
 
 	return nil
-}
-
-// formatUpdate formats a string for the update log
-func formatUpdate(str string) string {
-	return fmt.Sprintf("\n%s %s", time.Now().Format("2006/01/02 15:04:05MST"), str)
 }
