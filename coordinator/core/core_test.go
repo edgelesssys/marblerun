@@ -8,7 +8,13 @@ package core
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"math/big"
 	"testing"
+	"time"
 
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
@@ -215,6 +221,7 @@ func TestGenerateSecrets(t *testing.T) {
 		"cert-ecdsa384-test":      {Type: "cert-ecdsa", Size: 384, ValidFor: 14, Shared: true},
 		"cert-ecdsa521-test":      {Type: "cert-ecdsa", Size: 521, ValidFor: 14, Shared: true},
 		"cert-rsa-specified-test": {Type: "cert-rsa", Size: 2048, Cert: manifest.Certificate{}, Shared: true},
+		"cert-ed25519-ca-test":    {Type: "cert-ed25519", Cert: manifest.Certificate{IsCA: true}, Shared: true},
 	}
 
 	secretsNoSize := map[string]manifest.Secret{
@@ -255,6 +262,44 @@ func TestGenerateSecrets(t *testing.T) {
 	assert.NotNil(generatedSecrets["cert-ecdsa384-test"].Cert.Raw)
 	assert.NotNil(generatedSecrets["cert-ecdsa521-test"].Cert.Raw)
 	assert.NotNil(generatedSecrets["cert-rsa-specified-test"].Cert.Raw)
+	assert.NotNil(generatedSecrets["cert-ed25519-ca-test"].Cert.Raw)
+
+	// Check if CA certificate can generate another certificate
+	pub, _, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(err)
+	template := x509.Certificate{
+		SerialNumber: big.NewInt(42),
+		Subject: pkix.Name{
+			Organization: []string{"Test leaf signed by Coordinator"},
+		},
+		NotBefore: time.Now(),
+		NotAfter:  time.Now().AddDate(1, 0, 0),
+	}
+	secretCACert := x509.Certificate(generatedSecrets["cert-ed25519-ca-test"].Cert)
+	secretCAPriv, err := x509.ParsePKCS8PrivateKey(generatedSecrets["cert-ed25519-ca-test"].Private)
+	require.NoError(err)
+
+	leafFromSecret, err := x509.CreateCertificate(rand.Reader, &template, &secretCACert, pub, secretCAPriv)
+	assert.NoError(err)
+	assert.NotNil(leafFromSecret)
+
+	// Check if we can verify the certificate based on the root CA of the coordinator and the intermediate CA secret certificate
+	leafFromSecretCert, err := x509.ParseCertificate(leafFromSecret)
+	assert.NoError(err)
+	assert.NotNil(leafFromSecretCert)
+
+	roots := x509.NewCertPool()
+	intermediate := x509.NewCertPool()
+	roots.AddCert(rootCert)
+	intermediate.AddCert(&secretCACert)
+
+	opts := x509.VerifyOptions{
+		Roots:         roots,
+		Intermediates: intermediate,
+	}
+
+	_, err = leafFromSecretCert.Verify(opts)
+	assert.NoError(err)
 
 	// Check if we get an empty secret map as output for an empty map as input
 	generatedSecrets, err = c.generateSecrets(context.TODO(), secretsEmptyMap, uuid.Nil, rootCert, rootPrivK)
