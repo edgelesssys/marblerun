@@ -110,8 +110,8 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 		}
 	}
 
-	c.updatelog.logger.Info("original manifest set")
-	if err := txdata.putUpdateLog(c.updatelog.sink.String()); err != nil {
+	c.updateLogger.Info("initial manifest set")
+	if err := txdata.putUpdateLog(c.updateLogger.String()); err != nil {
 		return nil, err
 	}
 
@@ -311,13 +311,9 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte, upd
 		return err
 	}
 
-	oldLog, err := c.data.getUpdateLog()
-	if err != nil {
-		return err
-	}
-	c.updatelog.reset(oldLog)
+	c.updateLogger.Reset()
 	for pkgName, pkg := range updateManifest.Packages {
-		c.updatelog.logger.Info("SecurityVersion increased", zap.String("user", updater.Name()), zap.String("package", pkgName), zap.Uint("new version", *pkg.SecurityVersion))
+		c.updateLogger.Info("SecurityVersion increased", zap.String("user", updater.Name()), zap.String("package", pkgName), zap.Uint("new version", *pkg.SecurityVersion))
 	}
 
 	tx, err := c.store.BeginTransaction()
@@ -339,7 +335,7 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte, upd
 	if err := txdata.putPrivK(sKCoordinatorIntermediateKey, intermediatePrivK); err != nil {
 		return err
 	}
-	if err := txdata.putUpdateLog(c.updatelog.sink.String()); err != nil {
+	if err := txdata.appendUpdateLog(c.updateLogger.String()); err != nil {
 		return err
 	}
 
@@ -410,12 +406,6 @@ func (c *Core) WriteSecrets(ctx context.Context, rawSecretManifest []byte, updat
 		return err
 	}
 
-	oldLog, err := c.data.getUpdateLog()
-	if err != nil {
-		return err
-	}
-	c.updatelog.reset(oldLog)
-
 	tx, err := c.store.BeginTransaction()
 	if err != nil {
 		return err
@@ -423,6 +413,7 @@ func (c *Core) WriteSecrets(ctx context.Context, rawSecretManifest []byte, updat
 	defer tx.Rollback()
 	txdata := storeWrapper{tx}
 
+	c.updateLogger.Reset()
 	for secretName, secret := range newSecrets {
 		// verify user is allowed to set the secret
 		if !updater.IsGranted(user.NewPermission(user.PermissionWriteSecret, []string{secretName})) {
@@ -431,9 +422,9 @@ func (c *Core) WriteSecrets(ctx context.Context, rawSecretManifest []byte, updat
 		if err := txdata.putSecret(secretName, secret); err != nil {
 			return err
 		}
-		c.updatelog.logger.Info("secret set", zap.String("user", updater.Name()), zap.String("secret", secretName), zap.String("type", secret.Type))
+		c.updateLogger.Info("secret set", zap.String("user", updater.Name()), zap.String("secret", secretName), zap.String("type", secret.Type))
 	}
-	if err := txdata.putUpdateLog(c.updatelog.sink.String()); err != nil {
+	if err := txdata.appendUpdateLog(c.updateLogger.String()); err != nil {
 		return err
 	}
 

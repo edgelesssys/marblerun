@@ -113,6 +113,7 @@ func TestGetUpdateLog(t *testing.T) {
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
 	assert.Equal(http.StatusOK, resp.Code)
+	assert.EqualValues('{', resp.Body.String()[0])
 }
 
 func TestUpdate(t *testing.T) {

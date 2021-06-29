@@ -22,8 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"net/url"
-	"strings"
 	"sync"
 	"time"
 
@@ -32,27 +30,27 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
 	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/coordinator/store"
+	"github.com/edgelesssys/marblerun/coordinator/updateLog"
 	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
 )
 
 // Core implements the core logic of the Coordinator
 type Core struct {
-	mux       sync.Mutex
-	quote     []byte
-	recovery  recovery.Recovery
-	store     store.Store
-	data      storeWrapper
-	sealer    seal.Sealer
-	qv        quote.Validator
-	qi        quote.Issuer
-	updatelog *updateLog
-	zaplogger *zap.Logger
+	mux          sync.Mutex
+	quote        []byte
+	recovery     recovery.Recovery
+	store        store.Store
+	data         storeWrapper
+	sealer       seal.Sealer
+	qv           quote.Validator
+	qi           quote.Issuer
+	updateLogger *updateLog.Logger
+	zaplogger    *zap.Logger
 }
 
 // The sequence of states a Coordinator may be in
@@ -80,30 +78,6 @@ const (
 	sKMarbleRootCert              string = "marbleRootCert"
 	sKCoordinatorIntermediateKey  string = "coordinatorIntermediateKey"
 )
-
-// updateLog is a wrapper for the cores update log
-type updateLog struct {
-	// sink is a wrapper for strings.Builder, holding the written log
-	sink *stringSink
-	// logger writes the data to sink
-	logger *zap.Logger
-}
-
-func (u *updateLog) reset(oldLog string) {
-	u.sink.Reset()
-	u.sink.WriteString(oldLog)
-}
-
-// stringSink is a sink for writing a log to string
-type stringSink struct {
-	*strings.Builder
-}
-
-// Close implements the zap.Sink interface
-func (s *stringSink) Close() error { return nil }
-
-// Sync implements the zap.Sink interface
-func (s *stringSink) Sync() error { return nil }
 
 // Needs to be paired with `defer c.mux.Unlock()`
 func (c *Core) requireState(states ...state) error {
@@ -144,26 +118,11 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 		sealer:    sealer,
 		zaplogger: zapLogger,
 	}
-	c.updatelog = &updateLog{
-		sink: &stringSink{new(strings.Builder)},
+	var err error
+	c.updateLogger, err = updateLog.New()
+	if err != nil {
+		return nil, err
 	}
-	err := zap.RegisterSink("string", func(*url.URL) (zap.Sink, error) {
-		return c.updatelog.sink, nil
-	})
-	c.updatelog.logger, err = zap.Config{
-		Level:         zap.NewAtomicLevelAt(zapcore.InfoLevel),
-		Development:   false,
-		DisableCaller: true,
-		Encoding:      "json",
-		EncoderConfig: zapcore.EncoderConfig{
-			MessageKey: "update",
-			TimeKey:    "time",
-			EncodeTime: zapcore.ISO8601TimeEncoder,
-		},
-		OutputPaths: []string{
-			"string://",
-		},
-	}.Build()
 
 	zapLogger.Info("loading state")
 	recoveryData, loadErr := stor.LoadState()

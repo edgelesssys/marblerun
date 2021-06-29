@@ -213,6 +213,15 @@ func (s storeWrapper) putUpdateLog(updateLog string) error {
 	return s.store.Put(requestUpdateLog, []byte(updateLog))
 }
 
+// appendUpdateLog appends new entries to the log and saves it to store
+func (s storeWrapper) appendUpdateLog(updateLog string) error {
+	oldLog, err := s.getUpdateLog()
+	if err != nil {
+		return err
+	}
+	return s.putUpdateLog(oldLog + updateLog)
+}
+
 // getUser returns user information from store
 func (s storeWrapper) getUser(userName string) (*user.User, error) {
 	request := strings.Join([]string{requestUser, userName}, ":")
