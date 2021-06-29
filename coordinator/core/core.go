@@ -30,7 +30,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
 	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/coordinator/store"
-	"github.com/edgelesssys/marblerun/coordinator/updateLog"
+	"github.com/edgelesssys/marblerun/coordinator/updatelog"
 	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
@@ -49,7 +49,7 @@ type Core struct {
 	sealer       seal.Sealer
 	qv           quote.Validator
 	qi           quote.Issuer
-	updateLogger *updateLog.Logger
+	updateLogger *updatelog.Logger
 	zaplogger    *zap.Logger
 }
 
@@ -119,7 +119,7 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 		zaplogger: zapLogger,
 	}
 	var err error
-	c.updateLogger, err = updateLog.New()
+	c.updateLogger, err = updatelog.New()
 	if err != nil {
 		return nil, err
 	}

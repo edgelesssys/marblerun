@@ -1,4 +1,4 @@
-package updateLog
+package updatelog
 
 import (
 	"testing"
@@ -15,8 +15,8 @@ func TestUpdateLog(t *testing.T) {
 	assert.NoError(err)
 	log.Info(testString)
 	assert.Contains(log.String(), testString)
-	err = log.StringSink.Sync()
+	err = log.Sync()
 	assert.NoError(err)
-	err = log.StringSink.Close()
+	err = log.Close()
 	assert.NoError(err)
 }
