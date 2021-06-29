@@ -14,19 +14,24 @@ import (
 	"strings"
 
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
+	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/store"
 	"github.com/edgelesssys/marblerun/coordinator/user"
 )
 
 const (
-	requestActivations = "activations"
-	requestCert        = "certificate"
-	requestManifest    = "manifest"
-	requestPrivKey     = "privateKey"
-	requestSecret      = "secret"
-	requestState       = "state"
-	requestUser        = "user"
-	requestUpdateLog   = "updateLog"
+	requestActivations    = "activations"
+	requestCert           = "certificate"
+	requestInfrastructure = "infrastructure"
+	requestManifest       = "manifest"
+	requestMarble         = "marble"
+	requestPackage        = "package"
+	requestPrivKey        = "privateKey"
+	requestSecret         = "secret"
+	requestState          = "state"
+	requestTLS            = "TLS"
+	requestUser           = "user"
+	requestUpdateLog      = "updateLog"
 )
 
 // storeWrapper is a wrapper for the store interface
@@ -84,6 +89,42 @@ func (s storeWrapper) putCertificate(certType string, cert *x509.Certificate) er
 	return s.store.Put(request, cert.Raw)
 }
 
+// getInfrastructure returns infrastructure information from store
+func (s storeWrapper) getInfrastructure(infraName string) (quote.InfrastructureProperties, error) {
+	var infra quote.InfrastructureProperties
+	err := s._get(requestInfrastructure, infraName, &infra)
+	return infra, err
+}
+
+// putInfrastructure saves infrastructure information to store
+func (s storeWrapper) putInfrastructure(infraName string, infra quote.InfrastructureProperties) error {
+	return s._put(requestInfrastructure, infraName, infra)
+}
+
+// getMarble returns information for a specific Marble from store
+func (s storeWrapper) getMarble(marbleName string) (manifest.Marble, error) {
+	var marble manifest.Marble
+	err := s._get(requestMarble, marbleName, &marble)
+	return marble, err
+}
+
+// putMarble saves Marble information to store
+func (s storeWrapper) putMarble(marbleName string, marble manifest.Marble) error {
+	return s._put(requestMarble, marbleName, marble)
+}
+
+// getPackage returns a Package from store
+func (s storeWrapper) getPackage(pkgName string) (quote.PackageProperties, error) {
+	var pkg quote.PackageProperties
+	err := s._get(requestPackage, pkgName, &pkg)
+	return pkg, err
+}
+
+// putPackage saves a Package to store
+func (s storeWrapper) putPackage(pkgName string, pkg quote.PackageProperties) error {
+	return s._put(requestPackage, pkgName, pkg)
+}
+
 // getPrivK returns a private key from store
 func (s storeWrapper) getPrivK(keyType string) (*ecdsa.PrivateKey, error) {
 	request := strings.Join([]string{requestPrivKey, keyType}, ":")
@@ -107,77 +148,54 @@ func (s storeWrapper) putPrivK(keyType string, privK *ecdsa.PrivateKey) error {
 }
 
 // getManifest loads a manifest by type and marshalls it to manifest.Manifest
-func (s storeWrapper) getManifest(manifestType string) (*manifest.Manifest, error) {
+func (s storeWrapper) getManifest() (manifest.Manifest, error) {
 	var manifest manifest.Manifest
-	rawManifest, err := s.getRawManifest(manifestType)
+	rawManifest, err := s.getRawManifest()
 	if err != nil {
 		// return uninitialized manifest if non was set with error
-		return &manifest, err
-	}
-	if err := json.Unmarshal(rawManifest, &manifest); err != nil {
-		return nil, err
+		return manifest, err
 	}
 
-	return &manifest, nil
+	err = json.Unmarshal(rawManifest, &manifest)
+	return manifest, nil
 }
 
 // getRawManifest returns the raw main or update manifest from store
-func (s storeWrapper) getRawManifest(manifestType string) ([]byte, error) {
-	request := strings.Join([]string{requestManifest, manifestType}, ":")
-	return s.store.Get(request)
+func (s storeWrapper) getRawManifest() ([]byte, error) {
+	return s.store.Get(requestManifest)
 }
 
 // putRawManifest saves the raw main or update manifest to store
-func (s storeWrapper) putRawManifest(manifestType string, manifest []byte) error {
-	request := strings.Join([]string{requestManifest, manifestType}, ":")
-	return s.store.Put(request, manifest)
+func (s storeWrapper) putRawManifest(manifest []byte) error {
+	return s.store.Put(requestManifest, manifest)
 }
 
 // getSecret returns a secret from store
-func (s storeWrapper) getSecret(secretType string) (manifest.Secret, error) {
+func (s storeWrapper) getSecret(secretName string) (manifest.Secret, error) {
 	var loadedSecret manifest.Secret
-	request := strings.Join([]string{requestSecret, secretType}, ":")
-	rawSecret, err := s.store.Get(request)
-	if err != nil {
-		return loadedSecret, err
-	}
-
-	err = json.Unmarshal(rawSecret, &loadedSecret)
+	err := s._get(requestSecret, secretName, &loadedSecret)
 	return loadedSecret, err
 }
 
 // putSecret saves a secret to store
-func (s storeWrapper) putSecret(secretType string, secret manifest.Secret) error {
-	rawSecret, err := json.Marshal(secret)
-	if err != nil {
-		return err
-	}
-
-	request := strings.Join([]string{requestSecret, secretType}, ":")
-	return s.store.Put(request, rawSecret)
+func (s storeWrapper) putSecret(secretName string, secret manifest.Secret) error {
+	return s._put(requestSecret, secretName, secret)
 }
 
-// getSecretMap returns a map of all shared and user-defined Marblerun secrets
-func (s storeWrapper) getSecretMap() (map[string]manifest.Secret, error) {
+// getSecretMap returns a map multiple secrets
+// this functions should be used with core components secret lists to retrieve secrets available for a given context
+func (s storeWrapper) getSecretMap(secretNames []string) (map[string]manifest.Secret, error) {
 	secretMap := map[string]manifest.Secret{}
+	var err error
 
-	manifest, err := s.getManifest("main")
-	if err != nil {
-		return nil, err
-	}
-
-	for k, v := range manifest.Secrets {
-		if v.Shared || v.UserDefined {
-			// if a secret is not set, then this will add an empty secret
-			secretMap[k], err = s.getSecret(k)
-			if err != nil {
-				if !store.IsStoreValueUnsetError(err) {
-					return nil, err
-				}
-			}
+	for _, name := range secretNames {
+		// all secrets (user-defined and private only as uninitialized placeholders) are set with the initial manifest
+		// if we encounter an error here something went wrong with the store, or the provided list was faulty
+		secretMap[name], err = s.getSecret(name)
+		if err != nil {
+			return nil, err
 		}
 	}
-
 	return secretMap, nil
 }
 
@@ -202,6 +220,18 @@ func (s storeWrapper) putState(currState state) error {
 	return s.store.Put("state", rawState)
 }
 
+// getTLS returns a named t-TLS config from store
+func (s storeWrapper) getTLS(tagName string) (manifest.TLStag, error) {
+	var tag manifest.TLStag
+	err := s._get(requestTLS, tagName, &tag)
+	return tag, err
+}
+
+// putTLS saves a t-TLS config to store
+func (s storeWrapper) putTLS(tagName string, tag manifest.TLStag) error {
+	return s._put(requestTLS, tagName, tag)
+}
+
 // getUpdateLog returns the update log from store
 func (s storeWrapper) getUpdateLog() (string, error) {
 	log, err := s.store.Get(requestUpdateLog)
@@ -224,24 +254,32 @@ func (s storeWrapper) appendUpdateLog(updateLog string) error {
 
 // getUser returns user information from store
 func (s storeWrapper) getUser(userName string) (*user.User, error) {
-	request := strings.Join([]string{requestUser, userName}, ":")
-	rawUserData, err := s.store.Get(request)
-	if err != nil {
-		return nil, err
-	}
-	var loadedUser user.User
-	if err := json.Unmarshal(rawUserData, &loadedUser); err != nil {
-		return nil, err
-	}
-	return &loadedUser, nil
+	loadedUser := &user.User{}
+	err := s._get(requestUser, userName, loadedUser)
+	return loadedUser, err
 }
 
 // putUser saves user information to store
 func (s storeWrapper) putUser(newUser *user.User) error {
-	request := strings.Join([]string{requestUser, newUser.Name()}, ":")
-	rawUserData, err := json.Marshal(newUser)
+	return s._put(requestUser, newUser.Name(), newUser)
+}
+
+// _put is the default method for marshaling and saving data to store
+func (s storeWrapper) _put(requestType, requestResource string, target interface{}) error {
+	request := strings.Join([]string{requestType, requestResource}, ":")
+	rawData, err := json.Marshal(target)
 	if err != nil {
 		return err
 	}
-	return s.store.Put(request, rawUserData)
+	return s.store.Put(request, rawData)
+}
+
+// _get is the default method for loading and unmarshaling data from store
+func (s storeWrapper) _get(requestType, requestResource string, target interface{}) error {
+	request := strings.Join([]string{requestType, requestResource}, ":")
+	rawData, err := s.store.Get(request)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(rawData, target)
 }
