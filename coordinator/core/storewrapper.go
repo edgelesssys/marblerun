@@ -26,6 +26,7 @@ const (
 	requestSecret      = "secret"
 	requestState       = "state"
 	requestUser        = "user"
+	requestUpdateLog   = "updateLog"
 )
 
 // storeWrapper is a wrapper for the store interface
@@ -199,6 +200,26 @@ func (s storeWrapper) getState() (state, error) {
 func (s storeWrapper) putState(currState state) error {
 	rawState := []byte(strconv.Itoa(int(currState)))
 	return s.store.Put("state", rawState)
+}
+
+// getUpdateLog returns the update log from store
+func (s storeWrapper) getUpdateLog() (string, error) {
+	log, err := s.store.Get(requestUpdateLog)
+	return string(log), err
+}
+
+// putUpdateLog saves the update log to store
+func (s storeWrapper) putUpdateLog(updateLog string) error {
+	return s.store.Put(requestUpdateLog, []byte(updateLog))
+}
+
+// appendUpdateLog appends new entries to the log and saves it to store
+func (s storeWrapper) appendUpdateLog(updateLog string) error {
+	oldLog, err := s.getUpdateLog()
+	if err != nil {
+		return err
+	}
+	return s.putUpdateLog(oldLog + updateLog)
 }
 
 // getUser returns user information from store

@@ -107,6 +107,8 @@ func TestStoreWrapperDefaults(t *testing.T) {
 	assert.True(store.IsStoreValueUnsetError(err), "[test-secret] was not unset")
 	_, err = c.data.getUser("test-user")
 	assert.True(store.IsStoreValueUnsetError(err), "[test-user] was not unset")
+	_, err = c.data.getUpdateLog()
+	assert.True(store.IsStoreValueUnsetError(err), "update log was not unset")
 }
 
 func TestStoreWrapperRollback(t *testing.T) {

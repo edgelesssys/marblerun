@@ -29,6 +29,7 @@ type ClientCore interface {
 	GetManifestSignature(ctx context.Context) (manifestSignature []byte)
 	GetSecrets(ctx context.Context, requestedSecrets []string, requestUser *user.User) (map[string]manifest.Secret, error)
 	GetStatus(ctx context.Context) (statusCode int, status string, err error)
+	GetUpdateLog(ctx context.Context) (updateLog string, err error)
 	Recover(ctx context.Context, encryptionKey []byte) (int, error)
 	VerifyUser(ctx context.Context, clientCerts []*x509.Certificate) (*user.User, error)
 	UpdateManifest(ctx context.Context, rawUpdateManifest []byte, updater *user.User) error
@@ -107,6 +108,11 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 		if err := txdata.putUser(user); err != nil {
 			return nil, err
 		}
+	}
+
+	c.updateLogger.Info("initial manifest set")
+	if err := txdata.putUpdateLog(c.updateLogger.String()); err != nil {
+		return nil, err
 	}
 
 	c.advanceState(stateAcceptingMarbles, tx)
@@ -192,6 +198,15 @@ func (c *Core) Recover(ctx context.Context, secret []byte) (int, error) {
 // GetStatus returns status information about the state of the mesh.
 func (c *Core) GetStatus(ctx context.Context) (statusCode int, status string, err error) {
 	return c.getStatus(ctx)
+}
+
+// GetUpdateLog returns the update history of the coordinator
+func (c *Core) GetUpdateLog(ctx context.Context) (string, error) {
+	defer c.mux.Unlock()
+	if err := c.requireState(stateAcceptingMarbles); err != nil {
+		return "", err
+	}
+	return c.data.getUpdateLog()
 }
 
 // VerifyUser checks if a given client certificate matches the admin certificates specified in the manifest
@@ -296,6 +311,11 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte, upd
 		return err
 	}
 
+	c.updateLogger.Reset()
+	for pkgName, pkg := range updateManifest.Packages {
+		c.updateLogger.Info("SecurityVersion increased", zap.String("user", updater.Name()), zap.String("package", pkgName), zap.Uint("new version", *pkg.SecurityVersion))
+	}
+
 	tx, err := c.store.BeginTransaction()
 	if err != nil {
 		return err
@@ -313,6 +333,9 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte, upd
 		return err
 	}
 	if err := txdata.putPrivK(sKCoordinatorIntermediateKey, intermediatePrivK); err != nil {
+		return err
+	}
+	if err := txdata.appendUpdateLog(c.updateLogger.String()); err != nil {
 		return err
 	}
 
@@ -390,6 +413,7 @@ func (c *Core) WriteSecrets(ctx context.Context, rawSecretManifest []byte, updat
 	defer tx.Rollback()
 	txdata := storeWrapper{tx}
 
+	c.updateLogger.Reset()
 	for secretName, secret := range newSecrets {
 		// verify user is allowed to set the secret
 		if !updater.IsGranted(user.NewPermission(user.PermissionWriteSecret, []string{secretName})) {
@@ -398,6 +422,10 @@ func (c *Core) WriteSecrets(ctx context.Context, rawSecretManifest []byte, updat
 		if err := txdata.putSecret(secretName, secret); err != nil {
 			return err
 		}
+		c.updateLogger.Info("secret set", zap.String("user", updater.Name()), zap.String("secret", secretName), zap.String("type", secret.Type))
+	}
+	if err := txdata.appendUpdateLog(c.updateLogger.String()); err != nil {
+		return err
 	}
 
 	return tx.Commit()

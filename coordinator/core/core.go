@@ -30,6 +30,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
 	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/coordinator/store"
+	"github.com/edgelesssys/marblerun/coordinator/updatelog"
 	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
@@ -40,15 +41,16 @@ import (
 
 // Core implements the core logic of the Coordinator
 type Core struct {
-	mux       sync.Mutex
-	quote     []byte
-	recovery  recovery.Recovery
-	store     store.Store
-	data      storeWrapper
-	sealer    seal.Sealer
-	qv        quote.Validator
-	qi        quote.Issuer
-	zaplogger *zap.Logger
+	mux          sync.Mutex
+	quote        []byte
+	recovery     recovery.Recovery
+	store        store.Store
+	data         storeWrapper
+	sealer       seal.Sealer
+	qv           quote.Validator
+	qi           quote.Issuer
+	updateLogger *updatelog.Logger
+	zaplogger    *zap.Logger
 }
 
 // The sequence of states a Coordinator may be in
@@ -115,6 +117,11 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 		data:      storeWrapper{store: stor},
 		sealer:    sealer,
 		zaplogger: zapLogger,
+	}
+	var err error
+	c.updateLogger, err = updatelog.New()
+	if err != nil {
+		return nil, err
 	}
 
 	zapLogger.Info("loading state")

@@ -199,13 +199,12 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 	})
 
 	mux.HandleFunc("/update", func(w http.ResponseWriter, r *http.Request) {
-		user := verifyUser(w, r, cc)
-		if user == nil {
-			return
-		}
-
 		switch r.Method {
 		case http.MethodPost:
+			user := verifyUser(w, r, cc)
+			if user == nil {
+				return
+			}
 			updateManifest, err := ioutil.ReadAll(r.Body)
 			if err != nil {
 				writeJSONError(w, err.Error(), http.StatusInternalServerError)
@@ -217,6 +216,12 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 				return
 			}
 			writeJSON(w, nil)
+		case http.MethodGet:
+			updateLog, err := cc.GetUpdateLog(r.Context())
+			if err != nil {
+				writeJSONError(w, err.Error(), http.StatusInternalServerError)
+			}
+			writeJSON(w, updateLog)
 		default:
 			writeJSONError(w, "", http.StatusMethodNotAllowed)
 		}

@@ -40,14 +40,14 @@ func TestCliManifestGet(t *testing.T) {
 	}))
 	defer s.Close()
 
-	resp, err := cliManifestGet(host, []*pem.Block{cert})
+	resp, err := cliDataGet(host, "manifest", "data.ManifestSignature", []*pem.Block{cert})
 	require.NoError(err)
 	assert.Equal("TestSignature", string(resp))
 
 	s.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	})
-	_, err = cliManifestGet(host, []*pem.Block{cert})
+	_, err = cliDataGet(host, "manifest", "data.ManifestSignature", []*pem.Block{cert})
 	require.Error(err)
 }
 
