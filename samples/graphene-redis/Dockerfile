@@ -11,8 +11,7 @@ RUN make premain-graphene
 
 FROM ghcr.io/edgelesssys/edgelessrt-deploy:latest AS release
 RUN apt-get update && apt-get install -y git meson build-essential autoconf gawk bison wget python3 libcurl4-openssl-dev \
-    python3-protobuf libprotobuf-c-dev protobuf-c-compiler python3-pip software-properties-common python3-click python3-jinja2 \
-    linux-headers-`uname -r`
+    python3-protobuf libprotobuf-c-dev protobuf-c-compiler python3-pip software-properties-common python3-click python3-jinja2
 RUN wget -qO- https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | apt-key add
 RUN add-apt-repository 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu bionic main'
 RUN apt-get install -y libsgx-quote-ex-dev libsgx-aesm-launch-plugin
