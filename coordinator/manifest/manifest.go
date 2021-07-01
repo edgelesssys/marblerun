@@ -24,7 +24,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// Manifest defines the rules of a mesh.
+// Manifest defines the rules of a mesh
 type Manifest struct {
 	// Packages contains the allowed enclaves and their properties.
 	Packages map[string]quote.PackageProperties
