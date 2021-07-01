@@ -147,25 +147,24 @@ func (s storeWrapper) putPrivK(keyType string, privK *ecdsa.PrivateKey) error {
 	return s.store.Put(request, rawKey)
 }
 
-// getManifest loads a manifest by type and marshalls it to manifest.Manifest
+// getManifest loads the manifest and marshalls it to manifest.Manifest
 func (s storeWrapper) getManifest() (manifest.Manifest, error) {
 	var manifest manifest.Manifest
 	rawManifest, err := s.getRawManifest()
 	if err != nil {
-		// return uninitialized manifest if non was set with error
 		return manifest, err
 	}
 
 	err = json.Unmarshal(rawManifest, &manifest)
-	return manifest, nil
+	return manifest, err
 }
 
-// getRawManifest returns the raw main or update manifest from store
+// getRawManifest returns the raw manifest from store
 func (s storeWrapper) getRawManifest() ([]byte, error) {
 	return s.store.Get(requestManifest)
 }
 
-// putRawManifest saves the raw main or update manifest to store
+// putRawManifest saves the raw manifest to store
 func (s storeWrapper) putRawManifest(manifest []byte) error {
 	return s.store.Put(requestManifest, manifest)
 }
@@ -182,8 +181,8 @@ func (s storeWrapper) putSecret(secretName string, secret manifest.Secret) error
 	return s._put(requestSecret, secretName, secret)
 }
 
-// getSecretMap returns a map multiple secrets
-// this functions should be used with core components secret lists to retrieve secrets available for a given context
+// getSecretMap returns a map of multiple secrets
+// this functions should be used with core components secret lists to retrieve all secrets available for a given context
 func (s storeWrapper) getSecretMap(secretNames []string) (map[string]manifest.Secret, error) {
 	secretMap := map[string]manifest.Secret{}
 	var err error
