@@ -33,29 +33,35 @@ import (
 )
 
 // GeneralResponse is a wrapper for all our REST API responses to follow the JSend style: https://github.com/omniti-labs/jsend
+// swagger:model
 type GeneralResponse struct {
 	Status  string      `json:"status"`
 	Data    interface{} `json:"data"`
 	Message string      `json:"message,omitempty"` // only used when status = "error"
 }
-type certQuoteResp struct {
+type CertQuoteResp struct {
 	Cert  string
 	Quote []byte
 }
-type statusResp struct {
-	StatusCode    int
+
+// StatusResp is a response
+type StatusResp struct {
+	// example: 2
+	StatusCode int
+	// example: Coordinator is ready to accept a manifest.
 	StatusMessage string
 }
-type manifestSignatureResp struct {
+type ManifestSignatureResp struct {
+	// example: 3fff78e99dd9bd801e0a3a22b7f7a24a492302c4d00546d18c7f7ed6e26e95c3
 	ManifestSignature string
 }
 
 // Contains RSA-encrypted AES state sealing key with public key specified by user in manifest
-type recoveryDataResp struct {
+type RecoveryDataResp struct {
 	RecoverySecrets map[string]string
 }
 
-type recoveryStatusResp struct {
+type RecoveryStatusResp struct {
 	StatusMessage string
 }
 
@@ -104,6 +110,19 @@ func RunMarbleServer(core *core.Core, addr string, addrChan chan string, errChan
 func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 	mux := http.NewServeMux()
 
+	// swagger:route GET /status status statusGet
+	//
+	// Get the current status of the Coordinator.
+	//
+	// The status indicates the current state of the coordinator, and can be one of the following:
+	// + **0 recovery mode**: Found a sealed state of an old seal key. Waiting for user input on [/recover](https://marblerun.sh/docs/features/recovery/).
+	// + **1 uninitialized**: Fresh start, initializing the Coordinator.
+	// + **2 waiting for a manifest**: Waiting for user input on [/manifest](https://marblerun.sh/docs/workflows/set-manifest/)
+	// + **3 accepting marbles**: Accepting Marbles through the [Marble API](https://marblerun.sh/docs/workflows/add-service/)
+	//
+	//     Responses:
+	//       200: StatusResponse
+	//		 500: ErrorResponse
 	mux.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
@@ -112,17 +131,36 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 				writeJSONError(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			writeJSON(w, statusResp{statusCode, status})
+			writeJSON(w, StatusResp{statusCode, status})
 		default:
 			writeJSONError(w, "", http.StatusMethodNotAllowed)
 		}
 	})
 
+	// swagger:route GET /manifest manifest manifestGet
+	//
+	// Get a SHA-256 hash of the currently set manifest.
+	//
+	//     Responses:
+	//       200: ManifestResponse
+	//		 500: ErrorResponse
+
+	// swagger:route POST /manifest manifest manifestPost
+	//
+	// Set a manifest.
+	//
+	// Before deploying the application to the cluster the manifest needs to be set once by the provider.
+	// On success, an array containing key-value mapping for encrypted secrets to be used for recovering the Coordinator in case of disaster recovery.
+	// The key matches each supplied key from RecoveryKeys in the Manifest.
+	//
+	//     Responses:
+	//       200: RecoveryDataResponse
+	//		 500: ErrorResponse
 	mux.HandleFunc("/manifest", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			signature := cc.GetManifestSignature(r.Context())
-			writeJSON(w, manifestSignatureResp{hex.EncodeToString(signature)})
+			writeJSON(w, ManifestSignatureResp{hex.EncodeToString(signature)})
 		case http.MethodPost:
 			manifest, err := ioutil.ReadAll(r.Body)
 			if err != nil {
@@ -142,7 +180,7 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 				for name, secret := range recoverySecretMap {
 					secretMap[name] = base64.StdEncoding.EncodeToString(secret)
 				}
-				writeJSON(w, recoveryDataResp{secretMap})
+				writeJSON(w, RecoveryDataResp{secretMap})
 			} else {
 				writeJSON(w, nil)
 			}
@@ -152,6 +190,17 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 		}
 	})
 
+	// swagger:route GET /quote quote quoteGet
+	//
+	// Retrieve a remote attestation quote.
+	//
+	// For retrieving a remote attestation quote over the whole cluster and the root certificate.
+	// The quote is an [SGX-DCAP quote](https://download.01.org/intel-sgx/sgx-dcap/1.9/linux/docs/Intel_SGX_DCAP_ECDSA_Orientation.pdf).
+	// Both the provider and the users of the confidential application can use this endpoint to verify the integrity of the Coordinator and the cluster at any time.
+	//
+	//     Responses:
+	//       200: CertQuoteResponse
+	//		 500: ErrorResponse
 	mux.HandleFunc("/quote", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
@@ -160,12 +209,23 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 				writeJSONError(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			writeJSON(w, certQuoteResp{cert, quote})
+			writeJSON(w, CertQuoteResp{cert, quote})
 		default:
 			writeJSONError(w, "", http.StatusMethodNotAllowed)
 		}
 	})
 
+	// swagger:route POST /recover recover recoverPost
+	//
+	// Recover the Coordinator when unsealing the existing state fails.
+	//
+	// This API endpoint is only available when the coordinator is in recovery mode.
+	// Before you can use the endpoint, you need to decrypt the recovery secret which you may have received when setting the manifest initially.
+	// See [Recovering the Coordinator](https://marblerun.sh/docs/workflows/recover-coordinator/) to retrieve the recovery key needed to use this API endpoint correctly.
+	//
+	//     Responses:
+	//       200: RecoveryStatusResponse
+	//		 500: ErrorResponse
 	mux.HandleFunc("/recover", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPost:
@@ -191,13 +251,35 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 				statusMessage = "Recovery successful."
 			}
 
-			writeJSON(w, recoveryStatusResp{statusMessage})
+			writeJSON(w, RecoveryStatusResp{statusMessage})
 
 		default:
 			writeJSONError(w, "", http.StatusMethodNotAllowed)
 		}
 	})
 
+	// swagger:route GET /update update updateGet
+	//
+	// Get a log over past updates.
+	//
+	// This API endpoint only works when Users were defined in the Manifest.
+	// For more information, look up [Updating a Manifest](http://localhost:1313/docs/workflows/update-manifest/).
+	//
+	//     Responses:
+	//       200: UpdateLogResponse
+	//		 500: ErrorResponse
+
+	// swagger:route POST /update update updatePost
+	//
+	// Update a specific package set in the manifest.
+	//
+	// This API endpoint only works when Users were defined in the Manifest.
+	// For more information, look up [Updating a Manifest](http://localhost:1313/docs/workflows/update-manifest/).
+	//
+	//     Responses:
+	//       200: SuccessResponse
+	//		 400: ErrorResponse
+	//		 500: ErrorResponse
 	mux.HandleFunc("/update", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPost:
@@ -227,6 +309,30 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 		}
 	})
 
+	// swagger:route GET /secret secret secretGet
+	//
+	// Retrieve secrets.
+	//
+	// Each requests allows specifying one or more secrets in the form of a query string, where each parameter s specifies one secret
+	//
+	// This API endpoint only works when Users were defined in the Manifest.
+	// For more information, look up [Managing secrets](http://localhost:1313/docs/workflows/managing-secrets/).
+	//
+	//     Responses:
+	//       200: SuccessResponse
+	//		 500: ErrorResponse
+
+	// swagger:route POST /secret secret secretPost
+	//
+	// Set secrets.
+	//
+	// This API endpoint only works when Users were defined in the Manifest.
+	// For more information, look up [Managing secrets](http://localhost:1313/docs/workflows/managing-secrets/).
+	//
+	//     Responses:
+	//       200: SecretsMapResponse
+	//		 400: ErrorResponse
+	//		 500: ErrorResponse
 	mux.HandleFunc("/secrets", func(w http.ResponseWriter, r *http.Request) {
 		user := verifyUser(w, r, cc)
 		if user == nil {

@@ -14,6 +14,7 @@ import (
 
 // PackageProperties contains the enclave package-specific properties of an OpenEnclave quote.
 // Either UniqueID or SignerID, ProductID, and SecurityVersion should be specified.
+// swagger:model
 type PackageProperties struct {
 	// Debug Flag of the Attributes
 	Debug bool
