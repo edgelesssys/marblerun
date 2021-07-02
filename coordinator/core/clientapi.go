@@ -27,7 +27,7 @@ import (
 type ClientCore interface {
 	SetManifest(ctx context.Context, rawManifest []byte) (recoverySecretMap map[string][]byte, err error)
 	GetCertQuote(ctx context.Context) (cert string, certQuote []byte, err error)
-	GetManifestSignature(ctx context.Context) (manifestSignature []byte)
+	GetManifestSignature(ctx context.Context) (manifestSignature []byte, manifest []byte)
 	GetSecrets(ctx context.Context, requestedSecrets []string, requestUser *user.User) (map[string]manifest.Secret, error)
 	GetStatus(ctx context.Context) (statusCode int, status string, err error)
 	GetUpdateLog(ctx context.Context) (updateLog string, err error)
@@ -192,13 +192,13 @@ func (c *Core) GetCertQuote(ctx context.Context) (string, []byte, error) {
 // GetManifestSignature returns the hash of the manifest
 //
 // Returns a SHA256 hash of the active manifest.
-func (c *Core) GetManifestSignature(ctx context.Context) []byte {
+func (c *Core) GetManifestSignature(ctx context.Context) ([]byte, []byte) {
 	rawManifest, err := c.data.getRawManifest()
 	if err != nil {
-		return nil
+		return nil, nil
 	}
 	hash := sha256.Sum256(rawManifest)
-	return hash[:]
+	return hash[:], rawManifest
 }
 
 // Recover sets an encryption key (ideally decrypted from the recovery data) and tries to unseal and load a saved state again.

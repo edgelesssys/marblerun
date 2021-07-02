@@ -48,6 +48,7 @@ type statusResp struct {
 }
 type manifestSignatureResp struct {
 	ManifestSignature string
+	Manifest          []byte
 }
 
 // Contains RSA-encrypted AES state sealing key with public key specified by user in manifest
@@ -121,8 +122,11 @@ func CreateServeMux(cc core.ClientCore) *http.ServeMux {
 	mux.HandleFunc("/manifest", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			signature := cc.GetManifestSignature(r.Context())
-			writeJSON(w, manifestSignatureResp{hex.EncodeToString(signature)})
+			signature, manifest := cc.GetManifestSignature(r.Context())
+			writeJSON(w, manifestSignatureResp{
+				ManifestSignature: hex.EncodeToString(signature),
+				Manifest:          manifest,
+			})
 		case http.MethodPost:
 			manifest, err := ioutil.ReadAll(r.Body)
 			if err != nil {
