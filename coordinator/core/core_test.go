@@ -14,6 +14,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
 	"github.com/edgelesssys/marblerun/coordinator/seal"
+	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -158,45 +159,57 @@ func TestGenerateUsersFromManifest(t *testing.T) {
 	Users := map[string]manifest.User{
 		"Alice": {
 			Certificate: string(test.AdminCert),
-			WriteSecrets: []string{
-				"secret_one",
-			},
-			ReadSecrets: []string{
-				"secret_one",
-				"secret_two",
-			},
+			Roles:       []string{"write_role", "read_role"},
 		},
 		"Bob": {
 			Certificate: string(test.AdminCert),
-			WriteSecrets: []string{
-				"secret_one",
-			},
-			UpdatePackages: []string{
-				"frontend",
-				"backend",
-			},
+			Roles:       []string{"write_role", "update_role"},
 		},
 	}
-	newUsers, err := generateUsersFromManifest(Users)
+	Roles := map[string]manifest.Role{
+		"write_role": {
+			ResourceType:  "Secrets",
+			ResourceNames: []string{"secret_one"},
+			Actions:       []string{"WriteSecret"},
+		},
+		"read_role": {
+			ResourceType:  "Secrets",
+			ResourceNames: []string{"secret_one", "secret_two"},
+			Actions:       []string{"readsecret"},
+		},
+		"update_role": {
+			ResourceType:  "Packages",
+			ResourceNames: []string{"frontend", "backend"},
+			Actions:       []string{"UpdateSecurityVersion"},
+		},
+	}
+	newUsers, err := generateUsersFromManifest(Users, Roles)
 	assert.NoError(err)
 	assert.Equal(len(Users), len(newUsers))
+	for _, newUser := range newUsers {
+		switch newUser.Name() {
+		case "Alice":
+			assert.True(newUser.IsGranted(user.NewPermission(user.PermissionWriteSecret, []string{"secret_one"})))
+			assert.True(newUser.IsGranted(user.NewPermission(user.PermissionReadSecret, []string{"secret_one", "secret_two"})))
+			assert.False(newUser.IsGranted(user.NewPermission(user.PermissionUpdatePackage, []string{"frontend", "backend"})))
+		case "Bob":
+			assert.True(newUser.IsGranted(user.NewPermission(user.PermissionWriteSecret, []string{"secret_one"})))
+			assert.False(newUser.IsGranted(user.NewPermission(user.PermissionReadSecret, []string{"secret_one", "secret_two"})))
+			assert.True(newUser.IsGranted(user.NewPermission(user.PermissionUpdatePackage, []string{"frontend", "backend"})))
+		}
+	}
 
 	// try to generate new users with missing certificate, this should always error
 	invalidUsers := map[string]manifest.User{
 		"Alice": {
-			WriteSecrets: []string{
-				"secret_one",
-			},
+			Roles: []string{"write_role"},
 		},
 		"Bob": {
 			Certificate: string(test.AdminCert),
-			UpdatePackages: []string{
-				"frontend",
-				"backend",
-			},
+			Roles:       []string{"update_role"},
 		},
 	}
-	_, err = generateUsersFromManifest(invalidUsers)
+	_, err = generateUsersFromManifest(invalidUsers, Roles)
 	assert.Error(err)
 }
 
