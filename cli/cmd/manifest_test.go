@@ -13,8 +13,10 @@ import (
 	"testing"
 
 	"github.com/edgelesssys/marblerun/coordinator/server"
+	"github.com/edgelesssys/marblerun/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
 )
 
 func TestCliManifestGet(t *testing.T) {
@@ -49,6 +51,35 @@ func TestCliManifestGet(t *testing.T) {
 	})
 	_, err = cliDataGet(host, "manifest", "data.ManifestSignature", []*pem.Block{cert})
 	require.Error(err)
+}
+
+func TestConsolidateManifest(t *testing.T) {
+	assert := assert.New(t)
+	log := []byte(`{"time":"1970-01-01T01:00:00.0","update":"initial manifest set"}
+{"time":"1970-01-01T02:00:00.0","update":"SecurityVersion increased","user":"admin","package":"frontend","new version":5}
+{"time":"1970-01-01T03:00:00.0","update":"SecurityVersion increased","user":"admin","package":"frontend","new version":5}
+{"time":"1970-01-01T04:00:00.0","update":"SecurityVersion increased","user":"admin","package":"frontend","new version":8}
+{"time":"1970-01-01T05:00:00.0","update":"SecurityVersion increased","user":"admin","package":"frontend","new version":12}`)
+
+	manifest, err := consolidateManifest([]byte(test.ManifestJSON), log)
+	assert.NoError(err)
+	assert.Contains(manifest, `"SecurityVersion": 12`)
+	assert.NotContains(manifest, `"RecoveryKeys"`)
+}
+
+func TestDecodeManifest(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	type responseStruct struct {
+		Manifest []byte
+	}
+
+	wrapped, err := json.Marshal(responseStruct{[]byte(test.ManifestJSON)})
+	require.NoError(err)
+
+	manifest, err := decodeManifest(false, gjson.GetBytes(wrapped, "Manifest").String(), "", nil)
+	assert.NoError(err)
+	assert.Equal(test.ManifestJSON, manifest)
 }
 
 func TestCliManifestSet(t *testing.T) {
