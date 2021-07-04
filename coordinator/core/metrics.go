@@ -11,36 +11,37 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
-type CoreMetrics struct {
-	storeWarpper *StoreWrapperMetrics
-	marbleAPI    *MarbleAPIMetrics
+type coreMetrics struct {
+	coordinatorState prometheus.Gauge
+	marbleAPI        *marbleAPIMetrics
 }
 
-func NewCoreMetrics(factory *promauto.Factory, namespace string) *CoreMetrics {
+func newCoreMetrics(factory *promauto.Factory, namespace string) *coreMetrics {
 	if factory == nil {
-		return &CoreMetrics{
-			storeWarpper: nil,
-			marbleAPI:    nil,
-		}
+		return nil
 	}
-	return &CoreMetrics{
-		storeWarpper: NewStoreWrapperMetrics(factory, namespace, ""),
-		marbleAPI:    NewMarbleAPIMetrics(factory, namespace, ""),
+	return &coreMetrics{
+		coordinatorState: factory.NewGauge(
+			prometheus.GaugeOpts{
+				Namespace: namespace,
+				Name:      "state",
+				Help:      "State of the Coordinator.",
+			}),
+		marbleAPI: newMarbleAPIMetrics(factory, namespace),
 	}
 }
 
-type MarbleAPIMetrics struct {
+type marbleAPIMetrics struct {
 	activation        *prometheus.CounterVec
 	activationSuccess *prometheus.CounterVec
 }
 
-func NewMarbleAPIMetrics(factory *promauto.Factory, namespace string, subsystem string) *MarbleAPIMetrics {
-	return &MarbleAPIMetrics{
+func newMarbleAPIMetrics(factory *promauto.Factory, namespace string) *marbleAPIMetrics {
+	return &marbleAPIMetrics{
 		activation: factory.NewCounterVec(
 			prometheus.CounterOpts{
 				Namespace: namespace,
-				Subsystem: subsystem,
-				Name:      "marble_activation_total",
+				Name:      "marble_activations_total",
 				Help:      "Number of Marble activation attempts.",
 			},
 			[]string{"type", "uuid"},
@@ -48,27 +49,10 @@ func NewMarbleAPIMetrics(factory *promauto.Factory, namespace string, subsystem 
 		activationSuccess: factory.NewCounterVec(
 			prometheus.CounterOpts{
 				Namespace: namespace,
-				Subsystem: subsystem,
-				Name:      "marble_activation_success_total",
+				Name:      "marble_activations_success_total",
 				Help:      "Number of successful Marble activations.",
 			},
 			[]string{"type", "uuid"},
 		),
-	}
-}
-
-type StoreWrapperMetrics struct {
-	coordinatorState prometheus.Gauge
-}
-
-func NewStoreWrapperMetrics(factory *promauto.Factory, namespace string, subsystem string) *StoreWrapperMetrics {
-	return &StoreWrapperMetrics{
-		coordinatorState: factory.NewGauge(
-			prometheus.GaugeOpts{
-				Namespace: namespace,
-				Subsystem: subsystem,
-				Name:      "state",
-				Help:      "State of the Coordinator.",
-			}),
 	}
 }

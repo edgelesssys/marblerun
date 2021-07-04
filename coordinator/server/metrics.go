@@ -14,16 +14,16 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-// ServeMux is an interface of an HTTP request multiplexer.
-type ServeMux interface {
+// serveMux is an interface of an HTTP request multiplexer.
+type serveMux interface {
 	Handle(pattern string, handler http.Handler)
 	HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request))
 	Handler(r *http.Request) (h http.Handler, pattern string)
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
 }
 
-//HttpMetrics is a struct of metrics for Prometheus to collect for each endpoint.
-type HttpMetrics struct {
+//httpMetrics is a struct of metrics for Prometheus to collect for each endpoint.
+type httpMetrics struct {
 	reqest       *prometheus.CounterVec
 	duration     *prometheus.HistogramVec
 	requestSize  *prometheus.HistogramVec
@@ -31,10 +31,10 @@ type HttpMetrics struct {
 	inflight     prometheus.Gauge
 }
 
-// NewHttpMetrics creates a new collection of HTTP related Prometheus metrics,
+// newHttpMetrics creates a new collection of HTTP related Prometheus metrics,
 // and registres them using the given factory.
-func NewHttpMetrics(factory *promauto.Factory, namespace string, subsystem string, constLabels map[string]string) *HttpMetrics {
-	return &HttpMetrics{
+func newHttpMetrics(factory *promauto.Factory, namespace string, subsystem string, constLabels map[string]string) *httpMetrics {
+	return &httpMetrics{
 		reqest: factory.NewCounterVec(
 			prometheus.CounterOpts{
 				Namespace:   namespace,
@@ -90,23 +90,23 @@ func NewHttpMetrics(factory *promauto.Factory, namespace string, subsystem strin
 	}
 }
 
-// PromServeMux is a wrapper around http.ServeMux with additional instrumentation to
+// promServeMux is a wrapper around http.ServeMux with additional instrumentation to
 // gather Prometheus metrics
-type PromServeMux struct {
-	ServeMux    http.ServeMux
+type promServeMux struct {
+	serveMux    http.ServeMux
 	promFactory *promauto.Factory
-	metrics     map[string]*HttpMetrics
+	metrics     map[string]*httpMetrics
 	namespace   string
 	subsystem   string
 }
 
-// NewPromServerMux allocates and returns a new PromServeMux
+// newPromServeMux allocates and returns a new PromServeMux
 // namespace and subsystem are used to name the exposed metrics
-func NewPromServeMux(factory *promauto.Factory, namespace string, subsystem string) *PromServeMux {
-	return &PromServeMux{
-		ServeMux:    *http.NewServeMux(),
+func newPromServeMux(factory *promauto.Factory, namespace string, subsystem string) *promServeMux {
+	return &promServeMux{
+		serveMux:    *http.NewServeMux(),
 		promFactory: factory,
-		metrics:     make(map[string]*HttpMetrics),
+		metrics:     make(map[string]*httpMetrics),
 		namespace:   namespace,
 		subsystem:   subsystem + "_http",
 	}
@@ -114,12 +114,12 @@ func NewPromServeMux(factory *promauto.Factory, namespace string, subsystem stri
 
 // Handle is a wrapper around (*http.ServeMux) Handle form the http package
 // A chain of prometheus instrumentation collects metrics for the given handler.
-func (mux *PromServeMux) Handle(pattern string, handler http.Handler) {
+func (mux *promServeMux) Handle(pattern string, handler http.Handler) {
 	if mux.metrics[pattern] == nil {
 		constLabels := map[string]string{
 			"path": pattern,
 		}
-		mux.metrics[pattern] = NewHttpMetrics(mux.promFactory, mux.namespace, mux.subsystem, constLabels)
+		mux.metrics[pattern] = newHttpMetrics(mux.promFactory, mux.namespace, mux.subsystem, constLabels)
 	}
 	chain := promhttp.InstrumentHandlerDuration(mux.metrics[pattern].duration,
 		promhttp.InstrumentHandlerCounter(mux.metrics[pattern].reqest,
@@ -132,11 +132,11 @@ func (mux *PromServeMux) Handle(pattern string, handler http.Handler) {
 			),
 		),
 	)
-	mux.ServeMux.Handle(pattern, chain)
+	mux.serveMux.Handle(pattern, chain)
 }
 
 // HandleFunc registers the handler function for the given pattern.
-func (mux *PromServeMux) HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request)) {
+func (mux *promServeMux) HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request)) {
 	if handler == nil {
 		panic("promServerMux: http: nil handler")
 	}
@@ -144,11 +144,11 @@ func (mux *PromServeMux) HandleFunc(pattern string, handler func(http.ResponseWr
 }
 
 // ServeHTTP is a wrapper around (*http.ServeMux) ServeHttp form the http package.
-func (mux *PromServeMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	mux.ServeMux.ServeHTTP(w, r)
+func (mux *promServeMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	mux.serveMux.ServeHTTP(w, r)
 }
 
 // Handler is a wrapper around (*http.ServeMux) Handler form the http package.
-func (mux *PromServeMux) Handler(r *http.Request) (h http.Handler, pattern string) {
-	return mux.ServeMux.Handler(r)
+func (mux *promServeMux) Handler(r *http.Request) (h http.Handler, pattern string) {
+	return mux.serveMux.Handler(r)
 }

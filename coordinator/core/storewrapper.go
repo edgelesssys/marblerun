@@ -40,7 +40,6 @@ type storeWrapper struct {
 		Get(string) ([]byte, error)
 		Put(string, []byte) error
 	}
-	metrics *StoreWrapperMetrics // can be nil
 }
 
 // getActivations returns activations for a given Marble from store
@@ -217,11 +216,7 @@ func (s storeWrapper) getState() (state, error) {
 // putState saves the state to store
 func (s storeWrapper) putState(currState state) error {
 	rawState := []byte(strconv.Itoa(int(currState)))
-	err := s.store.Put("state", rawState)
-	if err == nil && s.metrics != nil {
-		s.metrics.coordinatorState.Set(float64(currState))
-	}
-	return err
+	return s.store.Put("state", rawState)
 }
 
 // getTLS returns a named t-TLS config from store

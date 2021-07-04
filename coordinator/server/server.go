@@ -109,10 +109,10 @@ func RunMarbleServer(core *core.Core, addr string, addrChan chan string, errChan
 }
 
 // CreateServeMux creates a mux that serves the client API.
-func CreateServeMux(cc core.ClientCore, promFactory *promauto.Factory) *ServeMux {
-	var mux ServeMux
+func CreateServeMux(cc core.ClientCore, promFactory *promauto.Factory) serveMux {
+	var mux serveMux
 	if promFactory != nil {
-		mux = NewPromServeMux(promFactory, "server", "client_api")
+		mux = newPromServeMux(promFactory, "server", "client_api")
 	} else {
 		mux = http.NewServeMux()
 	}
@@ -285,7 +285,7 @@ func CreateServeMux(cc core.ClientCore, promFactory *promauto.Factory) *ServeMux
 		}
 	})
 
-	return &mux
+	return mux
 }
 
 func verifyUser(w http.ResponseWriter, r *http.Request, cc core.ClientCore) *user.User {
@@ -319,8 +319,8 @@ func writeJSONError(w http.ResponseWriter, errorString string, httpErrorCode int
 }
 
 // RunClientServer runs a HTTP server serving mux.
-func RunClientServer(mux *ServeMux, address string, tlsConfig *tls.Config, zapLogger *zap.Logger) {
-	loggedRouter := handlers.LoggingHandler(os.Stdout, *mux)
+func RunClientServer(mux serveMux, address string, tlsConfig *tls.Config, zapLogger *zap.Logger) {
+	loggedRouter := handlers.LoggingHandler(os.Stdout, mux)
 	server := http.Server{
 		Addr:      address,
 		Handler:   loggedRouter,

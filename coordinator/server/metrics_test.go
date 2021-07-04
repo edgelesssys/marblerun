@@ -7,7 +7,6 @@
 package server
 
 import (
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -26,37 +25,31 @@ func TestClientApiRequestMetrics(t *testing.T) {
 	tests := map[string]struct {
 		target             string
 		method             string // use values from http package, like http.MethodGet
-		body               io.Reader
 		expectedStatusCode string
 	}{
 		"getQuote": {
 			target:             "/quote",
 			method:             http.MethodGet,
-			body:               nil,
 			expectedStatusCode: "200",
 		},
 		"putQuote": {
 			target:             "/quote",
 			method:             http.MethodPut,
-			body:               nil,
 			expectedStatusCode: "405",
 		},
 		"getManifest": {
 			target:             "/manifest",
 			method:             http.MethodGet,
-			body:               nil,
 			expectedStatusCode: "200",
 		},
 		"getStatus": {
 			target:             "/status",
 			method:             http.MethodGet,
-			body:               nil,
 			expectedStatusCode: "200",
 		},
 		"postStatus": {
 			target:             "/status",
 			method:             http.MethodPost,
-			body:               nil,
 			expectedStatusCode: "405",
 		},
 	}
@@ -67,14 +60,14 @@ func TestClientApiRequestMetrics(t *testing.T) {
 		fac := promauto.With(reg)
 		mux := CreateServeMux(core.NewCoreWithMocks(), &fac)
 
-		metrics := (*mux).(*PromServeMux).metrics[test.target]
+		metrics := mux.(*promServeMux).metrics[test.target]
 		assert.Equal(0, promtest.CollectAndCount(metrics.reqest))
 		assert.Equal(float64(0), promtest.ToFloat64(metrics.reqest.WithLabelValues(test.expectedStatusCode, strings.ToLower(test.method))))
 
 		for i := 1; i < 6; i++ {
-			req := httptest.NewRequest(test.method, test.target, test.body)
+			req := httptest.NewRequest(test.method, test.target, nil)
 			resp := httptest.NewRecorder()
-			(*mux).ServeHTTP(resp, req)
+			mux.ServeHTTP(resp, req)
 			assert.Equal(1, promtest.CollectAndCount(metrics.reqest))
 			assert.Equal(float64(i), promtest.ToFloat64(metrics.reqest.WithLabelValues(test.expectedStatusCode, strings.ToLower(test.method))))
 		}

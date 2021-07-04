@@ -143,18 +143,18 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 		AuthInfo: tlsInfo,
 	})
 
-	UUID := uuid.New().String()
+	uuidStr := uuid.New().String()
 	resp, err := ms.coreServer.Activate(ctx, &rpc.ActivationReq{
 		CSR:        csr,
 		MarbleType: marbleType,
 		Quote:      quote,
-		UUID:       UUID,
+		UUID:       uuidStr,
 	})
 
 	if !shouldSucceed {
 		ms.assert.Error(err)
 		ms.assert.Nil(resp)
-		return UUID
+		return uuidStr
 	}
 	ms.assert.NoError(err, "Activate failed: %v", err)
 	ms.assert.NotNil(resp)
@@ -296,7 +296,7 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	} else {
 		ms.assert.Empty(configBytes)
 	}
-	return UUID
+	return uuidStr
 }
 
 func (ms *marbleSpawner) newMarbleAsync(marbleType string, infraName string, shouldSucceed bool) {

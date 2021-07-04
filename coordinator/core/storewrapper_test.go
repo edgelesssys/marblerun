@@ -46,7 +46,7 @@ func TestStoreWrapper(t *testing.T) {
 	// save values to store
 	tx, err := c.store.BeginTransaction()
 	assert.NoError(err)
-	txdata := storeWrapper{tx, nil}
+	txdata := storeWrapper{tx}
 	assert.NoError(txdata.putActivations("test-marble", testActivations))
 	assert.NoError(txdata.putCertificate("some-cert", someCert))
 	assert.NoError(txdata.putPrivK("some-key", somePrivK))
@@ -119,12 +119,12 @@ func TestStoreWrapperRollback(t *testing.T) {
 	activations := uint(15)
 	tx, err := c.store.BeginTransaction()
 	assert.NoError(err)
-	assert.NoError(storeWrapper{tx, nil}.putActivations("test-marble-1", activations))
+	assert.NoError(storeWrapper{tx}.putActivations("test-marble-1", activations))
 	assert.NoError(tx.Commit())
 
 	tx, err = c.store.BeginTransaction()
 	assert.NoError(err)
-	assert.NoError(storeWrapper{tx, nil}.putActivations("test-marble-2", uint(20)))
+	assert.NoError(storeWrapper{tx}.putActivations("test-marble-2", uint(20)))
 	tx.Rollback()
 
 	val, err := c.data.getActivations("test-marble-1")

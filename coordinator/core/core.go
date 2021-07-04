@@ -54,7 +54,7 @@ type Core struct {
 	qi           quote.Issuer
 	updateLogger *updatelog.Logger
 	zaplogger    *zap.Logger
-	metrics      *CoreMetrics
+	metrics      *coreMetrics
 }
 
 // The sequence of states a Coordinator may be in
@@ -111,7 +111,7 @@ func (c *Core) requireState(states ...state) error {
 }
 
 func (c *Core) advanceState(newState state, tx store.Transaction) error {
-	txdata := storeWrapper{tx, c.metrics.storeWarpper}
+	txdata := storeWrapper{tx}
 	curState, err := txdata.getState()
 	if err != nil {
 		return err
@@ -119,7 +119,11 @@ func (c *Core) advanceState(newState state, tx store.Transaction) error {
 	if !(curState < newState && newState < stateMax) {
 		panic(fmt.Errorf("cannot advance from %d to %d", curState, newState))
 	}
-	return txdata.putState(newState)
+	err = txdata.putState(newState)
+	if c.metrics != nil && err == nil {
+		c.metrics.coordinatorState.Set(float64(newState))
+	}
+	return err
 }
 
 // NewCore creates and initializes a new Core object
@@ -133,7 +137,7 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 		data:      storeWrapper{store: stor},
 		sealer:    sealer,
 		zaplogger: zapLogger,
-		metrics:   NewCoreMetrics(promFactory, "coordinator"),
+		metrics:   newCoreMetrics(promFactory, "coordinator"),
 	}
 	var err error
 	c.updateLogger, err = updatelog.New()
@@ -152,13 +156,16 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 		return nil, err
 	}
 	defer tx.Rollback()
-	txdata := storeWrapper{tx, c.metrics.storeWarpper}
+	txdata := storeWrapper{tx}
 
 	// set core to uninitialized if no state is set
 	if _, err := txdata.getState(); err != nil {
 		if store.IsStoreValueUnsetError(err) {
 			if err := txdata.putState(stateUninitialized); err != nil {
 				return nil, err
+			}
+			if c.metrics != nil {
+				c.metrics.coordinatorState.Set(float64(stateUninitialized))
 			}
 		} else {
 			return nil, err
@@ -185,6 +192,9 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 		}
 		if err := txdata.putState(stateAcceptingManifest); err != nil {
 			return nil, err
+		}
+		if c.metrics != nil {
+			c.metrics.coordinatorState.Set(float64(stateAcceptingManifest))
 		}
 	} else if err != nil {
 		return nil, err
@@ -654,7 +664,7 @@ func (c *Core) setCAData(dnsNames []string, tx store.Transaction) error {
 		return err
 	}
 
-	txdata := storeWrapper{tx, c.metrics.storeWarpper}
+	txdata := storeWrapper{tx}
 	if err := txdata.putCertificate(sKCoordinatorRootCert, rootCert); err != nil {
 		return err
 	}

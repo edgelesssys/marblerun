@@ -20,41 +20,48 @@ import (
 
 func TestStoreWrapperMetrics(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 
-	noStore := NoStore{}
+	zapLogger, err := zap.NewDevelopment()
+	require.NoError(err)
+	defer zapLogger.Sync()
+	validator := quote.NewMockValidator()
+	issuer := quote.NewMockIssuer()
+	sealer := &seal.MockSealer{}
+	recovery := recovery.NewSinglePartyRecovery()
+
+	//
+	// Test unset restart and set manifest.
+	//
 	reg := prometheus.NewRegistry()
 	fac := promauto.With(reg)
-	metrics := NewStoreWrapperMetrics(&fac, "test", "")
-	sw := storeWrapper{noStore, metrics}
+	c, _ := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, &fac)
+	assert.Equal(1, promtest.CollectAndCount(c.metrics.coordinatorState))
+	assert.Equal(float64(stateAcceptingManifest), promtest.ToFloat64(c.metrics.coordinatorState))
 
-	stateList := map[string]state{ // using map to get randomized order
-		"1":  stateUninitialized,
-		"2":  stateRecovery,
-		"3":  stateAcceptingManifest,
-		"4":  stateAcceptingMarbles,
-		"5":  stateMax,
-		"6":  stateUninitialized,
-		"7":  stateRecovery,
-		"8":  stateAcceptingManifest,
-		"9":  stateAcceptingMarbles,
-		"10": stateMax,
-	}
-	assert.Equal(1, promtest.CollectAndCount(metrics.coordinatorState))
-	assert.Equal(float64(0), promtest.ToFloat64(metrics.coordinatorState))
-	for _, state := range stateList {
-		sw.putState(state)
-		assert.Equal(1, promtest.CollectAndCount(metrics.coordinatorState))
-		assert.Equal(float64(state), promtest.ToFloat64(metrics.coordinatorState))
-	}
-}
+	c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
+	assert.Equal(1, promtest.CollectAndCount(c.metrics.coordinatorState))
+	assert.Equal(float64(stateAcceptingMarbles), promtest.ToFloat64(c.metrics.coordinatorState))
 
-type NoStore struct{}
+	//
+	// Test sealing and recovery.
+	//
+	reg = prometheus.NewRegistry()
+	fac = promauto.With(reg)
+	sealer.UnsealError = seal.ErrEncryptionKey
+	c, err = NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, &fac)
+	sealer.UnsealError = nil
+	require.NoError(err)
+	assert.Equal(1, promtest.CollectAndCount(c.metrics.coordinatorState))
+	assert.Equal(float64(stateRecovery), promtest.ToFloat64(c.metrics.coordinatorState))
 
-func (s NoStore) Get(str string) ([]byte, error) {
-	return []byte{}, nil
-}
-func (s NoStore) Put(str string, b []byte) error {
-	return nil
+	key := make([]byte, 16)
+	_, err = c.Recover(context.TODO(), key)
+	require.NoError(err)
+	state, err := c.data.getState()
+	require.NoError(err)
+	assert.Equal(1, promtest.CollectAndCount(c.metrics.coordinatorState))
+	assert.Equal(float64(state), promtest.ToFloat64(c.metrics.coordinatorState))
 }
 
 func TestMarbleAPIMetrics(t *testing.T) {
