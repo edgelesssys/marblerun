@@ -6,7 +6,6 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
-	"reflect"
 
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/spf13/cobra"
@@ -52,7 +51,7 @@ Optionally get the manifests signature or merge updates into the displayed manif
 
 	cmd.Flags().BoolVarP(&signature, "signature", "s", false, "Set to additionally display the manifests signature")
 	cmd.Flags().BoolVarP(&consolidate, "consolidate", "c", false, "Set to merge updates into the displayed manifest")
-	cmd.Flags().StringVarP(&output, "output", "o", "", "Save singature to file instead of printing to stdout")
+	cmd.Flags().StringVarP(&output, "output", "o", "", "Save output to file instead of printing to stdout")
 	return cmd
 }
 
@@ -105,17 +104,23 @@ func consolidateManifest(rawManifest, log []byte) (string, error) {
 	return gjson.Parse(string(updated)).Get(`@pretty:{"indent":"    "}`).String(), nil
 }
 
+// removeNil removes nil entries from a map
 func removeNil(m map[string]interface{}) {
-	partial := reflect.ValueOf(m)
-	for _, entry := range partial.MapKeys() {
-		val := partial.MapIndex(entry)
-		if val.IsNil() {
-			delete(m, entry.String())
+	for k, v := range m {
+		// remove key if value is nil
+		if v == nil {
+			delete(m, k)
 			continue
 		}
-		switch t := val.Interface().(type) {
+
+		switch t := v.(type) {
 		case map[string]interface{}:
+			// recursively remove nil keys from the map
 			removeNil(t)
+			// if the current key maps to an empty map remove it
+			if len(t) == 0 {
+				delete(m, k)
+			}
 		}
 	}
 }

@@ -82,6 +82,40 @@ func TestDecodeManifest(t *testing.T) {
 	assert.Equal(test.ManifestJSON, manifest)
 }
 
+func TestRemoveNil(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	testMap := map[string]interface{}{
+		"1": "TestValue",
+		"2": map[string]interface{}{
+			"2.1": "TestValue",
+			"2.2": nil,
+		},
+		"3": nil,
+		"4": map[string]interface{}{
+			"4.1": map[string]interface{}{
+				"4.1.1": nil,
+				"4.1.2": map[string]interface{}{},
+			},
+		},
+	}
+
+	rawMap, err := json.Marshal(testMap)
+	require.NoError(err)
+
+	removeNil(testMap)
+
+	removedMap, err := json.Marshal(testMap)
+	require.NoError(err)
+	assert.NotEqual(rawMap, removedMap)
+	// three should be removed since its nil
+	assert.NotContains(removedMap, `"3"`)
+	// 2.2 should be removed since its nil, but 2 stays since 2.1 is not nil
+	assert.NotContains(removedMap, `"2.2"`)
+	// 4 should be removed completly since it only contains empty maps
+	assert.NotContains(removedMap, `"4"`)
+}
+
 func TestCliManifestSet(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
