@@ -16,6 +16,7 @@ import (
 	"fmt"
 
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
+	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/store"
 	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/google/uuid"
@@ -96,11 +97,39 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 	defer tx.Rollback()
 	txdata := storeWrapper{tx}
 
-	if err := txdata.putRawManifest("main", rawManifest); err != nil {
+	if err := txdata.putRawManifest(rawManifest); err != nil {
 		return nil, err
 	}
-	for key, secret := range secrets {
-		if err := txdata.putSecret(key, secret); err != nil {
+	for k, v := range manifest.Packages {
+		if err := txdata.putPackage(k, v); err != nil {
+			return nil, err
+		}
+	}
+	for k, v := range manifest.Infrastructures {
+		if err := txdata.putInfrastructure(k, v); err != nil {
+			return nil, err
+		}
+	}
+	for k, v := range manifest.Marbles {
+		if err := txdata.putMarble(k, v); err != nil {
+			return nil, err
+		}
+	}
+	for k, v := range secrets {
+		if err := txdata.putSecret(k, v); err != nil {
+			return nil, err
+		}
+	}
+	// save metadata of private and user-defined secrets
+	for k, v := range manifest.Secrets {
+		if v.UserDefined || !v.Shared {
+			if err := txdata.putSecret(k, v); err != nil {
+				return nil, err
+			}
+		}
+	}
+	for k, v := range manifest.TLS {
+		if err := txdata.putTLS(k, v); err != nil {
 			return nil, err
 		}
 	}
@@ -109,6 +138,7 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 			return nil, err
 		}
 	}
+	c.loadComponents(manifest)
 
 	c.updateLogger.Info("initial manifest set")
 	if err := txdata.putUpdateLog(c.updateLogger.String()); err != nil {
@@ -163,7 +193,7 @@ func (c *Core) GetCertQuote(ctx context.Context) (string, []byte, error) {
 //
 // Returns a SHA256 hash of the active manifest.
 func (c *Core) GetManifestSignature(ctx context.Context) []byte {
-	rawManifest, err := c.data.getRawManifest("main")
+	rawManifest, err := c.data.getRawManifest()
 	if err != nil {
 		return nil
 	}
@@ -211,15 +241,10 @@ func (c *Core) GetUpdateLog(ctx context.Context) (string, error) {
 
 // VerifyUser checks if a given client certificate matches the admin certificates specified in the manifest
 func (c *Core) VerifyUser(ctx context.Context, clientCerts []*x509.Certificate) (*user.User, error) {
-	manifest, err := c.data.getManifest("main")
-	if err != nil {
-		return nil, err
-	}
-
 	// Check if a supplied client cert matches the supplied ones from the manifest stored in the core
 	// NOTE: We do not use the "correct" X.509 verify here since we do not really care about expiration and chain verification here.
 	for _, suppliedCert := range clientCerts {
-		for userName := range manifest.Users {
+		for _, userName := range c.cmp.users {
 			user, err := c.data.getUser(userName)
 			if err != nil {
 				return nil, err
@@ -257,16 +282,21 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte, upd
 		return fmt.Errorf("user %s is not allowed to update one or more packages of %v", updater.Name(), wantedPackages)
 	}
 
-	mainManifest, err := c.data.getManifest("main")
-	if err != nil {
+	currentPackages := make(map[string]quote.PackageProperties)
+	for pkgName := range updateManifest.Packages {
+		pkg, err := c.data.getPackage(pkgName)
+		if err != nil {
+			return err
+		}
+		currentPackages[pkgName] = pkg
+	}
+	if err := updateManifest.CheckUpdate(ctx, currentPackages); err != nil {
 		return err
 	}
-	oldUpdateManifest, err := c.data.getManifest("update")
-	if err != nil && !store.IsStoreValueUnsetError(err) {
-		return err
-	}
-	if err := updateManifest.CheckUpdate(ctx, mainManifest.Packages, oldUpdateManifest.Packages); err != nil {
-		return err
+
+	// update manifest was valid, increase svn and regenerate secrets
+	for pkgName, pkg := range updateManifest.Packages {
+		*currentPackages[pkgName].SecurityVersion = *pkg.SecurityVersion
 	}
 
 	rootCert, err := c.data.getCertificate(sKCoordinatorRootCert)
@@ -291,7 +321,11 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte, upd
 
 	// Gather all shared certificate secrets we need to regenerate
 	secretsToRegenerate := make(map[string]manifest.Secret)
-	for name, secret := range mainManifest.Secrets {
+	manifest, err := c.data.getManifest()
+	if err != nil {
+		return err
+	}
+	for name, secret := range manifest.Secrets {
 		if secret.Shared && secret.Type != "symmetric-key" {
 			secretsToRegenerate[name] = secret
 		}
@@ -323,9 +357,6 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte, upd
 	defer tx.Rollback()
 	txdata := storeWrapper{tx}
 
-	if err := txdata.putRawManifest("update", rawUpdateManifest); err != nil {
-		return err
-	}
 	if err := txdata.putCertificate(skCoordinatorIntermediateCert, intermediateCert); err != nil {
 		return err
 	}
@@ -339,6 +370,12 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte, upd
 		return err
 	}
 
+	// Overwrite updated packages in core
+	for name, pkg := range currentPackages {
+		if err := txdata.putPackage(name, pkg); err != nil {
+			return err
+		}
+	}
 	// Overwrite regenerated secrets in core
 	for name, secret := range regeneratedSecrets {
 		if err := txdata.putSecret(name, secret); err != nil {
@@ -381,7 +418,7 @@ func (c *Core) GetSecrets(ctx context.Context, requestedSecrets []string, client
 	return secrets, nil
 }
 
-// WriteSecrets allows a user to set certain user defined secrets
+// WriteSecrets allows a user to set certain user-defined secrets
 func (c *Core) WriteSecrets(ctx context.Context, rawSecretManifest []byte, updater *user.User) error {
 	defer c.mux.Unlock()
 
@@ -396,12 +433,12 @@ func (c *Core) WriteSecrets(ctx context.Context, rawSecretManifest []byte, updat
 		return err
 	}
 
-	// validate against manifest
-	mainManifest, err := c.data.getManifest("main")
+	// validate and parse new secrets
+	secretMeta, err := c.data.getSecretMap(c.cmp.userSecrets)
 	if err != nil {
 		return err
 	}
-	newSecrets, err := manifest.ParseUserSecrets(ctx, secretManifest, mainManifest.Secrets)
+	newSecrets, err := manifest.ParseUserSecrets(ctx, secretManifest, secretMeta)
 	if err != nil {
 		return err
 	}
@@ -448,11 +485,16 @@ func (c *Core) performRecovery(encryptionKey []byte) error {
 		c.zaplogger.Error("Could not retrieve recovery data from state. Recovery will be unavailable", zap.Error(err))
 	}
 
+	manifest, err := c.data.getManifest()
+	if err != nil {
+		return err
+	}
+	c.loadComponents(manifest)
+
 	rootCert, err := c.data.getCertificate(sKCoordinatorRootCert)
 	if err != nil {
 		return err
 	}
-
 	c.quote = c.generateQuote(rootCert.Raw)
 
 	return nil

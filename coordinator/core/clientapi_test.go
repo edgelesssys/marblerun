@@ -50,21 +50,21 @@ func TestSetManifest(t *testing.T) {
 	c, manifest := mustSetup()
 	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
 	assert.NoError(err, "SetManifest should succed on first try")
-	cManifest, err := c.data.getManifest("main")
+	cManifest, err := c.data.getManifest()
 	assert.NoError(err)
-	assert.Equal(*manifest, *cManifest, "Manifest should be set correctly")
+	assert.Equal(*manifest, cManifest, "Manifest should be set correctly")
 
 	_, err = c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
 	assert.Error(err, "SetManifest should fail on the second try")
-	cManifest, err = c.data.getManifest("main")
+	cManifest, err = c.data.getManifest()
 	assert.NoError(err)
-	assert.Equal(*manifest, *cManifest, "Manifest should still be set correctly")
+	assert.Equal(*manifest, cManifest, "Manifest should still be set correctly")
 
 	_, err = c.SetManifest(context.TODO(), []byte(test.ManifestJSON)[:len(test.ManifestJSON)-1])
 	assert.Error(err, "SetManifest should fail on broken json")
-	cManifest, err = c.data.getManifest("main")
+	cManifest, err = c.data.getManifest()
 	assert.NoError(err)
-	assert.Equal(*manifest, *cManifest, "Manifest should still be set correctly")
+	assert.Equal(*manifest, cManifest, "Manifest should still be set correctly")
 
 	// use new core
 	c, _ = mustSetup()
@@ -76,9 +76,9 @@ func TestSetManifest(t *testing.T) {
 
 	_, err = c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
 	assert.NoError(err, "SetManifest should succed after failed tries")
-	cManifest, err = c.data.getManifest("main")
+	cManifest, err = c.data.getManifest()
 	assert.NoError(err)
-	assert.Equal(*manifest, *cManifest, "Manifest should be set correctly")
+	assert.Equal(*manifest, cManifest, "Manifest should be set correctly")
 }
 
 func TestSetManifestInvalid(t *testing.T) {
@@ -252,7 +252,7 @@ func TestUpdateManifest(t *testing.T) {
 	assert.NoError(err)
 	marbleRootCABeforeUpdate, err := c.data.getCertificate(sKMarbleRootCert)
 	assert.NoError(err)
-	secretsBeforeUpdate, err := c.data.getSecretMap()
+	secretsBeforeUpdate, err := c.data.getSecretMap(c.cmp.sharedSecrets)
 	assert.NoError(err)
 
 	// Update manifest
@@ -266,7 +266,7 @@ func TestUpdateManifest(t *testing.T) {
 	assert.NoError(err)
 	marbleRootCABeAfterUpdate, err := c.data.getCertificate(sKMarbleRootCert)
 	assert.NoError(err)
-	secretsAfterUpdate, err := c.data.getSecretMap()
+	secretsAfterUpdate, err := c.data.getSecretMap(c.cmp.sharedSecrets)
 	assert.NoError(err)
 
 	// Check if root certificate stayed the same, but intermediate CAs changed
@@ -307,6 +307,11 @@ func TestUpdateManifest(t *testing.T) {
 	assert.Error(err)
 	_, err = newCert.Verify(opts)
 	assert.NoError(err)
+
+	// updating the manifest should have produced an entry for "frontend" in the updatelog
+	updateLog, err := c.GetUpdateLog(context.TODO())
+	assert.NoError(err)
+	assert.Contains(updateLog, `"package":"frontend"`)
 }
 
 func TestUpdateManifestInvalid(t *testing.T) {
@@ -318,9 +323,9 @@ func TestUpdateManifestInvalid(t *testing.T) {
 	// Set manifest (frontend has SecurityVersion 3)
 	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
-	cManifest, err := c.data.getManifest("main")
+	cPackage, err := c.data.getPackage("frontend")
 	assert.NoError(err)
-	assert.EqualValues(3, *cManifest.Packages["frontend"].SecurityVersion)
+	assert.EqualValues(3, *cPackage.SecurityVersion)
 
 	// Try to update with unregistered user
 	someUser := user.NewUser("invalid", nil)
@@ -333,9 +338,9 @@ func TestUpdateManifestInvalid(t *testing.T) {
 	// Try to update manifest (frontend's SecurityVersion should rise from 3 to 5)
 	err = c.UpdateManifest(context.TODO(), []byte(test.UpdateManifest), admin)
 	require.NoError(err)
-	cUpdateManifest, err := c.data.getManifest("update")
+	cUpdatedPackage, err := c.data.getPackage("frontend")
 	assert.NoError(err)
-	assert.EqualValues(5, *cUpdateManifest.Packages["frontend"].SecurityVersion)
+	assert.EqualValues(5, *cUpdatedPackage.SecurityVersion)
 
 	// Test invalid manifests
 	var badUpdateManifest manifest.Manifest
@@ -453,11 +458,16 @@ func TestWriteSecret(t *testing.T) {
 	symmetricSecret := "symmetric_key_unset"
 	certSecret := "cert_unset"
 
-	// there should be no secret yet
-	_, err = c.data.getSecret(symmetricSecret)
-	assert.Error(err)
-	_, err = c.data.getSecret(certSecret)
-	assert.Error(err)
+	// there should be no initialized secret yet
+	sec, err := c.data.getSecret(symmetricSecret)
+	assert.NoError(err)
+	assert.Empty(sec.Public)
+	assert.Empty(sec.Private)
+	assert.Empty(sec.Cert)
+	sec, err = c.data.getSecret(certSecret)
+	assert.NoError(err)
+	assert.Empty(sec.Public)
+	assert.Empty(sec.Private)
 
 	// set a secret
 	err = c.WriteSecrets(context.TODO(), []byte(test.UserSecrets), admin)

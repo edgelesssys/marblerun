@@ -42,6 +42,7 @@ import (
 
 // Core implements the core logic of the Coordinator
 type Core struct {
+	cmp          components
 	mux          sync.Mutex
 	quote        []byte
 	recovery     recovery.Recovery
@@ -79,6 +80,18 @@ const (
 	sKMarbleRootCert              string = "marbleRootCert"
 	sKCoordinatorIntermediateKey  string = "coordinatorIntermediateKey"
 )
+
+// components is a list of the objects stored in the Coordinators store
+type components struct {
+	packages        []string
+	infrastructures []string
+	marbles         []string
+	tls             []string
+	users           []string
+	userSecrets     []string
+	sharedSecrets   []string
+	privateSecrets  []string
+}
 
 // Needs to be paired with `defer c.mux.Unlock()`
 func (c *Core) requireState(states ...state) error {
@@ -161,7 +174,7 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 		if err := c.advanceState(stateRecovery, tx); err != nil {
 			return nil, err
 		}
-	} else if _, err := txdata.getManifest("main"); store.IsStoreValueUnsetError(err) {
+	} else if _, err := txdata.getRawManifest(); store.IsStoreValueUnsetError(err) {
 		// no state was found, wait for manifest
 		c.zaplogger.Info("No sealed state found. Proceeding with new state.")
 		if err := c.setCAData(dnsNames, tx); err != nil {
@@ -173,8 +186,13 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 	} else if err != nil {
 		return nil, err
 	} else {
-		// recovered from a sealed state, finish the store transaction
+		// recovered from a sealed state, reload components and finish the store transaction
 		stor.SetRecoveryData(recoveryData)
+		mainManifest, err := c.data.getManifest()
+		if err != nil {
+			return nil, err
+		}
+		c.loadComponents(mainManifest)
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -589,6 +607,34 @@ func generateUsersFromManifest(rawUsers map[string]manifest.User, roles map[stri
 		users = append(users, newUser)
 	}
 	return users, nil
+}
+
+// loadComponents loads components names from a manifest into the core
+func (c *Core) loadComponents(manifest manifest.Manifest) {
+	for pkg := range manifest.Packages {
+		c.cmp.packages = append(c.cmp.packages, pkg)
+	}
+	for marble := range manifest.Marbles {
+		c.cmp.marbles = append(c.cmp.marbles, marble)
+	}
+	for inf := range manifest.Infrastructures {
+		c.cmp.infrastructures = append(c.cmp.infrastructures, inf)
+	}
+	for secretName, secret := range manifest.Secrets {
+		if secret.UserDefined {
+			c.cmp.userSecrets = append(c.cmp.userSecrets, secretName)
+		} else if secret.Shared {
+			c.cmp.sharedSecrets = append(c.cmp.sharedSecrets, secretName)
+		} else {
+			c.cmp.privateSecrets = append(c.cmp.privateSecrets, secretName)
+		}
+	}
+	for tag := range manifest.TLS {
+		c.cmp.tls = append(c.cmp.tls, tag)
+	}
+	for user := range manifest.Users {
+		c.cmp.users = append(c.cmp.users, user)
+	}
 }
 
 func (c *Core) setCAData(dnsNames []string, tx store.Transaction) error {
