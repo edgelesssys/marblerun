@@ -50,19 +50,19 @@ Optionally get the manifests signature or merge updates into the displayed manif
 	}
 
 	cmd.Flags().BoolVarP(&signature, "signature", "s", false, "Set to additionally display the manifests signature")
-	cmd.Flags().BoolVarP(&consolidate, "consolidate", "c", false, "Set to merge updates into the displayed manifest")
+	cmd.Flags().BoolVarP(&consolidate, "display-update", "u", false, "Set to merge updates into the displayed manifest")
 	cmd.Flags().StringVarP(&output, "output", "o", "", "Save output to file instead of printing to stdout")
 	return cmd
 }
 
 // decodeManifest parses a base64 encoded manifest and optionally merges updates
-func decodeManifest(wantUpdate bool, encodedManifest, hostName string, cert []*pem.Block) (string, error) {
+func decodeManifest(consolidate bool, encodedManifest, hostName string, cert []*pem.Block) (string, error) {
 	manifest, err := base64.StdEncoding.DecodeString(encodedManifest)
 	if err != nil {
 		return "", err
 	}
 
-	if !wantUpdate {
+	if !consolidate {
 		return string(manifest), nil
 	}
 
