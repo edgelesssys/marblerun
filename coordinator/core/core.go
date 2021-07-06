@@ -538,7 +538,6 @@ func (c *Core) generateCertificateForSecret(secret manifest.Secret, parentCertif
 		}
 	}
 
-	template.IsCA = false
 	template.BasicConstraintsValid = true
 	template.NotBefore = time.Now()
 
