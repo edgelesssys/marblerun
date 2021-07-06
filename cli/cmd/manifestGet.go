@@ -14,7 +14,7 @@ import (
 
 func newManifestGet() *cobra.Command {
 	var output string
-	var consolidate bool
+	var displayUpdate bool
 	var signature bool
 
 	cmd := &cobra.Command{
@@ -34,7 +34,7 @@ Optionally get the manifests signature or merge updates into the displayed manif
 			if err != nil {
 				return err
 			}
-			manifest, err := decodeManifest(consolidate, gjson.GetBytes(response, "Manifest").String(), hostName, cert)
+			manifest, err := decodeManifest(displayUpdate, gjson.GetBytes(response, "Manifest").String(), hostName, cert)
 			if signature {
 				// wrap the signature and manifest into one json object
 				manifest = fmt.Sprintf("{\n\"ManifestSignature\": \"%s\",\n\"Manifest\": %s}", gjson.GetBytes(response, "ManifestSignature"), manifest)
@@ -50,19 +50,19 @@ Optionally get the manifests signature or merge updates into the displayed manif
 	}
 
 	cmd.Flags().BoolVarP(&signature, "signature", "s", false, "Set to additionally display the manifests signature")
-	cmd.Flags().BoolVarP(&consolidate, "display-update", "u", false, "Set to merge updates into the displayed manifest")
+	cmd.Flags().BoolVarP(&displayUpdate, "display-update", "u", false, "Set to merge updates into the displayed manifest")
 	cmd.Flags().StringVarP(&output, "output", "o", "", "Save output to file instead of printing to stdout")
 	return cmd
 }
 
 // decodeManifest parses a base64 encoded manifest and optionally merges updates
-func decodeManifest(consolidate bool, encodedManifest, hostName string, cert []*pem.Block) (string, error) {
+func decodeManifest(displayUpdate bool, encodedManifest, hostName string, cert []*pem.Block) (string, error) {
 	manifest, err := base64.StdEncoding.DecodeString(encodedManifest)
 	if err != nil {
 		return "", err
 	}
 
-	if !consolidate {
+	if !displayUpdate {
 		return string(manifest), nil
 	}
 
