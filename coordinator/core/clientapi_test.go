@@ -437,13 +437,11 @@ func TestGetSecret(t *testing.T) {
 	_, err = c.GetSecrets(context.TODO(), []string{symmetricSecret, "restricted_secret"}, admin)
 	assert.Error(err)
 
-	// request should fail for non shared secrets since they dont get put in store
-	_, err = c.GetSecrets(context.TODO(), []string{"symmetric_key_private", "cert_private"}, admin)
-	assert.Error(err)
-
-	// requesting an unset secret should fail
-	_, err = c.GetSecrets(context.TODO(), []string{"symmetric_key_unset"}, admin)
-	assert.Error(err)
+	// requesting an secret should return an empty secret since it was not set
+	sec, err := c.GetSecrets(context.TODO(), []string{"symmetric_key_unset"}, admin)
+	assert.NoError(err)
+	assert.Empty(sec["symmetric_key_unset"].Public)
+	assert.Empty(sec["symmetric_key_unset"].Private)
 }
 
 func TestWriteSecret(t *testing.T) {
