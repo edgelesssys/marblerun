@@ -54,9 +54,7 @@ type secretsWrapper struct {
 // Returns an error if the authentication failed.
 func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.ActivationResp, error) {
 	c.zaplogger.Info("Received activation request", zap.String("MarbleType", req.MarbleType))
-	if c.metrics != nil {
-		c.metrics.marbleAPI.activation.WithLabelValues(req.GetMarbleType(), req.GetUUID()).Inc()
-	}
+	c.metrics.marbleAPI.activation.WithLabelValues(req.GetMarbleType(), req.GetUUID()).Inc()
 
 	defer c.mux.Unlock()
 	if err := c.requireState(stateAcceptingMarbles); err != nil {
@@ -152,9 +150,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 		return nil, err
 	}
 
-	if c.metrics != nil {
-		c.metrics.marbleAPI.activationSuccess.WithLabelValues(req.GetMarbleType(), req.GetUUID()).Inc()
-	}
+	c.metrics.marbleAPI.activationSuccess.WithLabelValues(req.GetMarbleType(), req.GetUUID()).Inc()
 	c.zaplogger.Info("Successfully activated new Marble", zap.String("MarbleType", req.MarbleType), zap.String("UUID", marbleUUID.String()))
 	return resp, nil
 }

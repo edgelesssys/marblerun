@@ -18,6 +18,7 @@ require (
 	github.com/jarcoal/httpmock v1.0.8
 	github.com/pelletier/go-toml v1.8.1
 	github.com/prometheus/client_golang v1.8.0
+	github.com/prometheus/client_model v0.2.0
 	github.com/spacemonkeygo/openssl v0.0.0-20181017203307-c2dcc5cca94a
 	github.com/spf13/afero v1.5.1
 	github.com/spf13/cobra v1.1.1

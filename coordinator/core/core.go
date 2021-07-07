@@ -119,11 +119,7 @@ func (c *Core) advanceState(newState state, tx store.Transaction) error {
 	if !(curState < newState && newState < stateMax) {
 		panic(fmt.Errorf("cannot advance from %d to %d", curState, newState))
 	}
-	err = txdata.putState(newState)
-	if c.metrics != nil && err == nil {
-		c.metrics.coordinatorState.Set(float64(newState))
-	}
-	return err
+	return txdata.putState(newState)
 }
 
 // NewCore creates and initializes a new Core object
@@ -137,8 +133,9 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 		data:      storeWrapper{store: stor},
 		sealer:    sealer,
 		zaplogger: zapLogger,
-		metrics:   newCoreMetrics(promFactory, "coordinator"),
 	}
+	c.metrics = newCoreMetrics(promFactory, c, "coordinator")
+
 	var err error
 	c.updateLogger, err = updatelog.New()
 	if err != nil {
@@ -163,9 +160,6 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 		if store.IsStoreValueUnsetError(err) {
 			if err := txdata.putState(stateUninitialized); err != nil {
 				return nil, err
-			}
-			if c.metrics != nil {
-				c.metrics.coordinatorState.Set(float64(stateUninitialized))
 			}
 		} else {
 			return nil, err
@@ -192,9 +186,6 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 		}
 		if err := txdata.putState(stateAcceptingManifest); err != nil {
 			return nil, err
-		}
-		if c.metrics != nil {
-			c.metrics.coordinatorState.Set(float64(stateAcceptingManifest))
 		}
 	} else if err != nil {
 		return nil, err
