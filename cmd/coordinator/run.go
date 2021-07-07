@@ -18,6 +18,8 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/coordinator/server"
 	"github.com/edgelesssys/marblerun/util"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/zap"
 )
 
@@ -53,24 +55,38 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer 
 	meshServerAddr := util.Getenv(config.MeshAddr, config.MeshAddrDefault)
 	promServerAddr := os.Getenv(config.PromAddr)
 
+	// Create Prometheus resources and start the Prometheus server.
+	var promRegistry *prometheus.Registry
+	var promFactoryPtr *promauto.Factory
+	if promServerAddr != "" {
+		promRegistry = prometheus.NewRegistry()
+		promFactory := promauto.With(promRegistry)
+		promFactoryPtr = &promFactory
+		promFactory.NewGauge(prometheus.GaugeOpts{
+			Namespace: "coordinator",
+			Name:      "version_info",
+			Help:      "Version information of the coordinator.",
+			ConstLabels: map[string]string{
+				"version": Version,
+				"commit":  GitCommit,
+			},
+		})
+		go server.RunPrometheusServer(promServerAddr, zapLogger, promRegistry)
+	}
+
 	// creating core
 	zapLogger.Info("creating the Core object")
 	if err := os.MkdirAll(sealDir, 0700); err != nil {
 		zapLogger.Fatal("Cannot create or access sealdir. Please check the permissions for the specified path.", zap.Error(err))
 	}
-	core, err := core.NewCore(dnsNames, validator, issuer, sealer, recovery, zapLogger)
+	core, err := core.NewCore(dnsNames, validator, issuer, sealer, recovery, zapLogger, promFactoryPtr)
 	if err != nil {
 		panic(err)
 	}
 
-	// start the prometheus server
-	if promServerAddr != "" {
-		go server.RunPrometheusServer(promServerAddr, zapLogger)
-	}
-
 	// start client server
 	zapLogger.Info("starting the client server")
-	mux := server.CreateServeMux(core)
+	mux := server.CreateServeMux(core, promFactoryPtr)
 	clientServerTLSConfig, err := core.GetTLSConfig()
 	if err != nil {
 		panic(err)
@@ -81,7 +97,7 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer 
 	zapLogger.Info("starting the marble server")
 	addrChan := make(chan string)
 	errChan := make(chan error)
-	go server.RunMarbleServer(core, meshServerAddr, addrChan, errChan, zapLogger)
+	go server.RunMarbleServer(core, meshServerAddr, addrChan, errChan, zapLogger, promRegistry)
 	for {
 		select {
 		case err := <-errChan:

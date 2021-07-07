@@ -26,6 +26,8 @@ import (
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -63,7 +65,7 @@ type recoveryStatusResp struct {
 // RunMarbleServer starts a gRPC with the given Coordinator core.
 // `address` is the desired TCP address like "localhost:0".
 // The effective TCP address is returned via `addrChan`.
-func RunMarbleServer(core *core.Core, addr string, addrChan chan string, errChan chan error, zapLogger *zap.Logger) {
+func RunMarbleServer(core *core.Core, addr string, addrChan chan string, errChan chan error, zapLogger *zap.Logger, promRegistry *prometheus.Registry) {
 	tlsConfig := tls.Config{
 		GetCertificate: core.GetTLSMarbleRootCertificate,
 		// NOTE: we'll verify the cert later using the given quote
@@ -74,21 +76,26 @@ func RunMarbleServer(core *core.Core, addr string, addrChan chan string, errChan
 	// Make sure that log statements internal to gRPC library are logged using the zapLogger as well.
 	grpc_zap.ReplaceGrpcLoggerV2(zapLogger)
 
+	grpcMetrics := grpc_prometheus.NewServerMetrics()
 	grpcServer := grpc.NewServer(
 		grpc.Creds(creds),
 		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
 			grpc_ctxtags.StreamServerInterceptor(),
 			grpc_zap.StreamServerInterceptor(zapLogger),
-			grpc_prometheus.StreamServerInterceptor,
+			grpcMetrics.StreamServerInterceptor(),
 		)),
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
 			grpc_ctxtags.UnaryServerInterceptor(),
 			grpc_zap.UnaryServerInterceptor(zapLogger),
-			grpc_prometheus.UnaryServerInterceptor,
+			grpcMetrics.UnaryServerInterceptor(),
 		)),
 	)
 
 	rpc.RegisterMarbleServer(grpcServer, core)
+	if promRegistry != nil {
+		grpcMetrics.InitializeMetrics(grpcServer)
+		promRegistry.MustRegister(grpcMetrics)
+	}
 	socket, err := net.Listen("tcp", addr)
 	if err != nil {
 		errChan <- err
@@ -102,8 +109,13 @@ func RunMarbleServer(core *core.Core, addr string, addrChan chan string, errChan
 }
 
 // CreateServeMux creates a mux that serves the client API.
-func CreateServeMux(cc core.ClientCore) *http.ServeMux {
-	mux := http.NewServeMux()
+func CreateServeMux(cc core.ClientCore, promFactory *promauto.Factory) serveMux {
+	var mux serveMux
+	if promFactory != nil {
+		mux = newPromServeMux(promFactory, "server", "client_api")
+	} else {
+		mux = http.NewServeMux()
+	}
 
 	mux.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -307,7 +319,7 @@ func writeJSONError(w http.ResponseWriter, errorString string, httpErrorCode int
 }
 
 // RunClientServer runs a HTTP server serving mux.
-func RunClientServer(mux *http.ServeMux, address string, tlsConfig *tls.Config, zapLogger *zap.Logger) {
+func RunClientServer(mux serveMux, address string, tlsConfig *tls.Config, zapLogger *zap.Logger) {
 	loggedRouter := handlers.LoggingHandler(os.Stdout, mux)
 	server := http.Server{
 		Addr:      address,
@@ -320,9 +332,9 @@ func RunClientServer(mux *http.ServeMux, address string, tlsConfig *tls.Config, 
 }
 
 // RunPrometheusServer runs a HTTP server handling the prometheus metrics endpoint
-func RunPrometheusServer(address string, zapLogger *zap.Logger) {
+func RunPrometheusServer(address string, zapLogger *zap.Logger, reg *prometheus.Registry) {
 	mux := http.NewServeMux()
-	mux.Handle("/metrics", promhttp.Handler())
+	mux.Handle("/metrics", promhttp.InstrumentMetricHandler(reg, promhttp.HandlerFor(reg, promhttp.HandlerOpts{Registry: reg})))
 	zapLogger.Info("starting prometheus /metrics endpoint", zap.String("address", address))
 	err := http.ListenAndServe(address, mux)
 	zapLogger.Warn(err.Error())

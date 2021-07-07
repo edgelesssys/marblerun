@@ -46,7 +46,7 @@ type secretsWrapper struct {
 
 // Activate implements the MarbleAPI function to authenticate a marble (implements the MarbleServer interface)
 //
-// Verifies the marble's integritiy and subsequently provides the marble with a certificate for authentication and application-specific parameters as defined in the Coordinator's manifest.
+// Verifies the marble's integrity and subsequently provides the marble with a certificate for authentication and application-specific parameters as defined in the Coordinator's manifest.
 //
 // req needs to contain a MarbleType present in the Coordinator's manifest and a CSR with the Subject and DNSNames set with desired values.
 //
@@ -54,6 +54,8 @@ type secretsWrapper struct {
 // Returns an error if the authentication failed.
 func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.ActivationResp, error) {
 	c.zaplogger.Info("Received activation request", zap.String("MarbleType", req.MarbleType))
+	c.metrics.marbleAPI.activation.WithLabelValues(req.GetMarbleType(), req.GetUUID()).Inc()
+
 	defer c.mux.Unlock()
 	if err := c.requireState(stateAcceptingMarbles); err != nil {
 		return nil, status.Error(codes.FailedPrecondition, "cannot accept marbles in current state")
@@ -148,6 +150,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 		return nil, err
 	}
 
+	c.metrics.marbleAPI.activationSuccess.WithLabelValues(req.GetMarbleType(), req.GetUUID()).Inc()
 	c.zaplogger.Info("Successfully activated new Marble", zap.String("MarbleType", req.MarbleType), zap.String("UUID", marbleUUID.String()))
 	return resp, nil
 }

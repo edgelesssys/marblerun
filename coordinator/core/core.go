@@ -35,6 +35,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
@@ -53,6 +54,7 @@ type Core struct {
 	qi           quote.Issuer
 	updateLogger *updatelog.Logger
 	zaplogger    *zap.Logger
+	metrics      *coreMetrics
 }
 
 // The sequence of states a Coordinator may be in
@@ -121,7 +123,7 @@ func (c *Core) advanceState(newState state, tx store.Transaction) error {
 }
 
 // NewCore creates and initializes a new Core object
-func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal.Sealer, recovery recovery.Recovery, zapLogger *zap.Logger) (*Core, error) {
+func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal.Sealer, recovery recovery.Recovery, zapLogger *zap.Logger, promFactory *promauto.Factory) (*Core, error) {
 	stor := store.NewStdStore(sealer, zapLogger)
 	c := &Core{
 		qv:        qv,
@@ -132,6 +134,8 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 		sealer:    sealer,
 		zaplogger: zapLogger,
 	}
+	c.metrics = newCoreMetrics(promFactory, c, "coordinator")
+
 	var err error
 	c.updateLogger, err = updatelog.New()
 	if err != nil {
@@ -219,7 +223,7 @@ func NewCoreWithMocks() *Core {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	recovery := recovery.NewSinglePartyRecovery()
-	core, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger)
+	core, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, nil)
 	if err != nil {
 		panic(err)
 	}
