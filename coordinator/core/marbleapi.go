@@ -92,7 +92,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	}
 
 	// Generate unique (= per marble) secrets
-	privateSecrets, err := c.data.getSecretMap(c.cmp.privateSecrets)
+	privateSecrets, err := c.data.getSecretMap(true)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +103,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	}
 
 	// Union unique secrets with shared and user-defined secrets
-	sharedSecrets, err := c.data.getSecretMap(append(c.cmp.sharedSecrets, c.cmp.userSecrets...))
+	sharedSecrets, err := c.data.getSecretMap(false)
 	if err != nil {
 		return nil, err
 	}
@@ -173,14 +173,19 @@ func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, certQuote []
 		return status.Error(codes.Internal, fmt.Sprintf("unable to load package data: %v", err))
 	}
 
+	infraIter, err := c.data.getIterator(requestInfrastructure)
+	if err != nil {
+		return err
+	}
+
 	if !c.inSimulationMode() {
-		if len(c.cmp.infrastructures) == 0 {
+		if len(infraIter) == 0 {
 			if err := c.qv.Validate(certQuote, tlsCert.Raw, pkg, quote.InfrastructureProperties{}); err != nil {
 				return status.Errorf(codes.Unauthenticated, "invalid quote: %v", err)
 			}
 		} else {
 			infraMatch := false
-			for _, infraName := range c.cmp.infrastructures {
+			for _, infraName := range infraIter {
 				infra, err := c.data.getInfrastructure(infraName)
 				if err != nil {
 					return err

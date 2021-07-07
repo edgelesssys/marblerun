@@ -138,7 +138,6 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 			return nil, err
 		}
 	}
-	c.loadComponents(manifest)
 
 	c.updateLogger.Info("initial manifest set")
 	if err := txdata.putUpdateLog(c.updateLogger.String()); err != nil {
@@ -241,10 +240,14 @@ func (c *Core) GetUpdateLog(ctx context.Context) (string, error) {
 
 // VerifyUser checks if a given client certificate matches the admin certificates specified in the manifest
 func (c *Core) VerifyUser(ctx context.Context, clientCerts []*x509.Certificate) (*user.User, error) {
+	userIter, err := c.data.getIterator(requestUser)
+	if err != nil {
+		return nil, err
+	}
 	// Check if a supplied client cert matches the supplied ones from the manifest stored in the core
 	// NOTE: We do not use the "correct" X.509 verify here since we do not really care about expiration and chain verification here.
 	for _, suppliedCert := range clientCerts {
-		for _, userName := range c.cmp.users {
+		for _, userName := range userIter {
 			user, err := c.data.getUser(userName)
 			if err != nil {
 				return nil, err
@@ -408,7 +411,7 @@ func (c *Core) GetSecrets(ctx context.Context, requestedSecrets []string, client
 
 	secrets := make(map[string]manifest.Secret)
 	for _, requestedSecret := range requestedSecrets {
-		returnedSecret, err := c.data.getSecret(requestedSecret)
+		returnedSecret, err := c.data.getSecret(requestedSecret, false)
 		if err != nil {
 			return nil, err
 		}
@@ -434,7 +437,7 @@ func (c *Core) WriteSecrets(ctx context.Context, rawSecretManifest []byte, updat
 	}
 
 	// validate and parse new secrets
-	secretMeta, err := c.data.getSecretMap(c.cmp.userSecrets)
+	secretMeta, err := c.data.getSecretMap(false)
 	if err != nil {
 		return err
 	}
@@ -484,12 +487,6 @@ func (c *Core) performRecovery(encryptionKey []byte) error {
 	if err := c.recovery.SetRecoveryData(recoveryData); err != nil {
 		c.zaplogger.Error("Could not retrieve recovery data from state. Recovery will be unavailable", zap.Error(err))
 	}
-
-	manifest, err := c.data.getManifest()
-	if err != nil {
-		return err
-	}
-	c.loadComponents(manifest)
 
 	rootCert, err := c.data.getCertificate(sKCoordinatorRootCert)
 	if err != nil {

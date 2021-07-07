@@ -27,6 +27,7 @@ const (
 	requestMarble         = "marble"
 	requestPackage        = "package"
 	requestPrivKey        = "privateKey"
+	requestPrivSecret     = "privateSecret"
 	requestSecret         = "secret"
 	requestState          = "state"
 	requestTLS            = "TLS"
@@ -39,7 +40,24 @@ type storeWrapper struct {
 	store interface {
 		Get(string) ([]byte, error)
 		Put(string, []byte) error
+		Iterator(string) ([]string, error)
 	}
+}
+
+// getIterator returns a list of keys from store
+func (s storeWrapper) getIterator(prefix string) ([]string, error) {
+	iter, err := s.store.Iterator(prefix)
+	if err != nil {
+		return nil, err
+	}
+
+	// named values are stored with a prefix to indicate their type
+	// remove this prefix here so we have just the names
+	toTrim := prefix + ":"
+	for idx, val := range iter {
+		iter[idx] = strings.TrimPrefix(val, toTrim)
+	}
+	return iter, nil
 }
 
 // getActivations returns activations for a given Marble from store
@@ -170,27 +188,41 @@ func (s storeWrapper) putRawManifest(manifest []byte) error {
 }
 
 // getSecret returns a secret from store
-func (s storeWrapper) getSecret(secretName string) (manifest.Secret, error) {
+func (s storeWrapper) getSecret(secretName string, private bool) (manifest.Secret, error) {
 	var loadedSecret manifest.Secret
-	err := s._get(requestSecret, secretName, &loadedSecret)
+	req := requestSecret
+	if private {
+		req = requestPrivSecret
+	}
+	err := s._get(req, secretName, &loadedSecret)
 	return loadedSecret, err
 }
 
 // putSecret saves a secret to store
 func (s storeWrapper) putSecret(secretName string, secret manifest.Secret) error {
-	return s._put(requestSecret, secretName, secret)
+	req := requestSecret
+	if !secret.Shared && !secret.UserDefined {
+		req = requestPrivSecret
+	}
+	return s._put(req, secretName, secret)
 }
 
-// getSecretMap returns a map of multiple secrets
-// this functions should be used with core components secret lists to retrieve all secrets available for a given context
-func (s storeWrapper) getSecretMap(secretNames []string) (map[string]manifest.Secret, error) {
-	secretMap := map[string]manifest.Secret{}
-	var err error
+// getSecretMap returns a map of private or shared (implicitly also user-defined) secrets
+func (s storeWrapper) getSecretMap(private bool) (map[string]manifest.Secret, error) {
+	req := requestSecret
+	if private {
+		req = requestPrivSecret
+	}
+	iter, err := s.getIterator(req)
+	if err != nil {
+		return nil, err
+	}
 
-	for _, name := range secretNames {
+	secretMap := map[string]manifest.Secret{}
+	for _, name := range iter {
 		// all secrets (user-defined and private only as uninitialized placeholders) are set with the initial manifest
 		// if we encounter an error here something went wrong with the store, or the provided list was faulty
-		secretMap[name], err = s.getSecret(name)
+		secretMap[name], err = s.getSecret(name, private)
 		if err != nil {
 			return nil, err
 		}

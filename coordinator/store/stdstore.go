@@ -8,6 +8,7 @@ package store
 
 import (
 	"encoding/json"
+	"strings"
 	"sync"
 
 	"github.com/edgelesssys/marblerun/coordinator/seal"
@@ -58,6 +59,18 @@ func (s *StdStore) Put(request string, requestData []byte) error {
 		return err
 	}
 	return tx.Commit()
+}
+
+// Iterator returns a list of all keys in StdStore with a given prefix
+// For an empty prefix, this returns a list of all keys in StdStore
+func (s *StdStore) Iterator(prefix string) ([]string, error) {
+	keys := make([]string, 0)
+	for k := range s.data {
+		if strings.HasPrefix(k, prefix) {
+			keys = append(keys, k)
+		}
+	}
+	return keys, nil
 }
 
 // BeginTransaction starts a new transaction
@@ -142,6 +155,17 @@ func (t *transaction) Get(request string) ([]byte, error) {
 func (t *transaction) Put(request string, requestData []byte) error {
 	t.data[request] = requestData
 	return nil
+}
+
+// Iterator returns a list of all keys in the transaction with a given prefix
+func (t *transaction) Iterator(prefix string) ([]string, error) {
+	keys := make([]string, 0)
+	for k := range t.data {
+		if strings.HasPrefix(k, prefix) {
+			keys = append(keys, k)
+		}
+	}
+	return keys, nil
 }
 
 // Commit ends a transaction and persists the changes

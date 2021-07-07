@@ -16,6 +16,8 @@ type Store interface {
 	Get(string) ([]byte, error)
 	// Put saves a value to store by key
 	Put(string, []byte) error
+	// Iterator returns a list of keys with a given prefix
+	Iterator(string) ([]string, error)
 }
 
 // Transaction is a Store transaction.
@@ -24,6 +26,8 @@ type Transaction interface {
 	Get(string) ([]byte, error)
 	// Put saves a value to store by key
 	Put(string, []byte) error
+	// Iterator returns a list of keys with a given prefix
+	Iterator(string) ([]string, error)
 	// Commit ends a transaction and persists the changes
 	Commit() error
 	// Rollback aborts a transaction. Noop if already committed.

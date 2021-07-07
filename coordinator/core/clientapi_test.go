@@ -244,7 +244,7 @@ func TestUpdateManifest(t *testing.T) {
 	require.NoError(err)
 
 	admin, err := c.data.getUser("admin")
-	assert.NoError(err)
+	require.NoError(err)
 
 	// Get current certificate
 	rootCABeforeUpdate, err := c.data.getCertificate(sKCoordinatorRootCert)
@@ -253,7 +253,7 @@ func TestUpdateManifest(t *testing.T) {
 	assert.NoError(err)
 	marbleRootCABeforeUpdate, err := c.data.getCertificate(sKMarbleRootCert)
 	assert.NoError(err)
-	secretsBeforeUpdate, err := c.data.getSecretMap(c.cmp.sharedSecrets)
+	secretsBeforeUpdate, err := c.data.getSecretMap(false)
 	assert.NoError(err)
 
 	// Update manifest
@@ -267,7 +267,7 @@ func TestUpdateManifest(t *testing.T) {
 	assert.NoError(err)
 	marbleRootCABeAfterUpdate, err := c.data.getCertificate(sKMarbleRootCert)
 	assert.NoError(err)
-	secretsAfterUpdate, err := c.data.getSecretMap(c.cmp.sharedSecrets)
+	secretsAfterUpdate, err := c.data.getSecretMap(false)
 	assert.NoError(err)
 
 	// Check if root certificate stayed the same, but intermediate CAs changed
@@ -420,9 +420,9 @@ func TestGetSecret(t *testing.T) {
 
 	symmetricSecret := "symmetric_key_shared"
 	certSecret := "cert_shared"
-	secret1, err := c.data.getSecret(symmetricSecret)
+	secret1, err := c.data.getSecret(symmetricSecret, false)
 	assert.NoError(err)
-	secret2, err := c.data.getSecret(certSecret)
+	secret2, err := c.data.getSecret(certSecret, false)
 	assert.NoError(err)
 	admin, err := c.data.getUser("admin")
 	assert.NoError(err)
@@ -458,12 +458,12 @@ func TestWriteSecret(t *testing.T) {
 	certSecret := "cert_unset"
 
 	// there should be no initialized secret yet
-	sec, err := c.data.getSecret(symmetricSecret)
+	sec, err := c.data.getSecret(symmetricSecret, false)
 	assert.NoError(err)
 	assert.Empty(sec.Public)
 	assert.Empty(sec.Private)
 	assert.Empty(sec.Cert)
-	sec, err = c.data.getSecret(certSecret)
+	sec, err = c.data.getSecret(certSecret, false)
 	assert.NoError(err)
 	assert.Empty(sec.Public)
 	assert.Empty(sec.Private)
@@ -471,10 +471,10 @@ func TestWriteSecret(t *testing.T) {
 	// set a secret
 	err = c.WriteSecrets(context.TODO(), []byte(test.UserSecrets), admin)
 	assert.NoError(err)
-	secret, err := c.data.getSecret(symmetricSecret)
+	secret, err := c.data.getSecret(symmetricSecret, false)
 	assert.NoError(err)
 	assert.Equal(16, len(secret.Public))
-	secret, err = c.data.getSecret(certSecret)
+	secret, err = c.data.getSecret(certSecret, false)
 	assert.NoError(err)
 	assert.Equal("Marblerun Coordinator - Intermediate CA", secret.Cert.Issuer.CommonName)
 
@@ -486,9 +486,18 @@ func TestWriteSecret(t *testing.T) {
 	}`)
 	err = c.WriteSecrets(context.TODO(), genericSecret, admin)
 	assert.NoError(err)
-	secret, err = c.data.getSecret("generic_secret")
+	secret, err = c.data.getSecret("generic_secret", false)
 	assert.NoError(err)
 	assert.Equal("Marblerun Unit Test", string(secret.Public))
+
+	// try to set a secret incorrect size
+	invalidSecret := []byte(`{
+		"symmetric_key_unset": {
+			"Key": "` + base64.StdEncoding.EncodeToString([]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}) + `"
+		}	
+	}`)
+	err = c.WriteSecrets(context.TODO(), invalidSecret, admin)
+	assert.Error(err)
 }
 
 func testManifestInvalidDebugCase(c *Core, manifest *manifest.Manifest, marblePackage quote.PackageProperties, assert *assert.Assertions, require *require.Assertions) *Core {

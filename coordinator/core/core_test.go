@@ -86,7 +86,7 @@ func TestSeal(t *testing.T) {
 	signature, _ := c.GetManifestSignature(context.TODO())
 
 	// Get secrets
-	cSecrets, err := c.data.getSecretMap(c.cmp.sharedSecrets)
+	cSecrets, err := c.data.getSecretMap(false)
 	assert.NoError(err)
 
 	// Check sealing with a new core initialized with the sealed state.
@@ -104,7 +104,7 @@ func TestSeal(t *testing.T) {
 	assert.Error(err)
 
 	// Check if the secret specified in the test manifest is unsealed correctly
-	c2Secrets, err := c2.data.getSecretMap(c2.cmp.sharedSecrets)
+	c2Secrets, err := c2.data.getSecretMap(false)
 	assert.NoError(err)
 	assert.Equal(cSecrets, c2Secrets)
 

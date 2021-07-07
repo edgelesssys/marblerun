@@ -46,6 +46,15 @@ func TestStdStore(t *testing.T) {
 	val, err = store.Get("another:input")
 	assert.NoError(err)
 	assert.Equal(testData2, val)
+
+	iter, err := store.Iterator("test")
+	assert.NoError(err)
+	assert.Equal(1, len(iter))
+	assert.Contains(iter, "test:input")
+
+	_, err = store.Get("invalid:key")
+	assert.Error(err)
+	assert.True(IsStoreValueUnsetError(err))
 }
 
 func TestStdStoreSealing(t *testing.T) {
