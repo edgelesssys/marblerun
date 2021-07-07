@@ -92,7 +92,7 @@ occlum run /bin/premain-occlum
 
     Make sure you specified the correct filename of your target application.
 
-* If you are running into other issues, it might be helpful to enable Occlum's error logging. You can do that with the help of the environment variable `OCCLUM_LOG_LEVEL=error`, which can be set by appending it in front of your run command like this:
+* If you are running into other issues, Occlum's error logging might help:
 
     ```sh
     OCCLUM_LOG_LEVEL=error make run
