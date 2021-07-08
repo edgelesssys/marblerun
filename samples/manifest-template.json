@@ -64,9 +64,7 @@
             ],
             "Incoming": [
                 {
-                    "Port": "",
-                    "Cert": "",
-                    "DisableClientAuth": true
+                    "Port": ""
                 }
             ]
         }
