@@ -25,17 +25,51 @@
 
     "Secrets": {
         "<SecretName>": {
-            "Type": "symmetric-key cert-rsa cert-ecdsa cert-ed25519",
+            "Type": "symmetric-key cert-rsa cert-ecdsa cert-ed25519 plain",
             "Size": 0,
             "Shared": false,
+            "UserDefined": false,
             "ValidFor": 0,
             "Cert": {
             }
         }
     },
 
-    "Admins": {
-        "<AdminName>": ""
+    "Users": {
+        "<UserName>": {
+            "Certificate": "",
+            "Roles": []
+        }
+    },
+
+    "Roles": {
+        "<RoleName>": {
+            "ResourceType": "",
+            "ResourceNames": "",
+            "Actions": []
+        }
+    },
+
+    "TLS": {
+        "<TLSConfigName>": {
+            "Outgoing": [
+                {
+                    "Port": "",
+                    "Addr": ""
+                },
+                {
+                    "Port": "",
+                    "Addr": ""
+                }
+            ],
+            "Incoming": [
+                {
+                    "Port": "",
+                    "Cert": "",
+                    "DisableClientAuth": true
+                }
+            ]
+        }
     },
 
     "RecoveryKeys": {

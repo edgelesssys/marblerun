@@ -177,5 +177,36 @@
             "ResourceNames": ["symmetric_key_shared", "cert_shared", "rsa_shared"],
             "Actions": ["ReadSecret", "WriteSecret"]
         }
+    },
+
+	"TLS": {
+        "web": {
+            "Outgoing": [
+                {
+                    "Port": "8080",
+                    "Addr": "service.name"
+                }
+            ],
+            "Incoming": [
+                {
+                    "Port": "8443"
+                }
+            ]
+        },
+		"another_web": {
+            "Outgoing": [
+                {
+                    "Port": "4433",
+                    "Addr": "10.111.37.164"
+                }
+            ],
+            "Incoming": [
+                {
+                    "Port": "8080",
+                    "Cert": "rsa_shared",
+                    "DisableClientAuth": true
+                }
+            ]
+        }
     }
 }

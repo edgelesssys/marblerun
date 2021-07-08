@@ -1,6 +1,8 @@
-Admins:
-  # Fill in Name of the admin
-  <AdminName>: ""
+Users:
+  # Fill in User Name
+  <UserName>:
+    Certificate: <PEM encoded certificate>
+    Roles: []
 Marbles:
   # Fill in name of the Marble
   <MarbleName>:
@@ -21,13 +23,33 @@ Packages:
 RecoveryKeys:
   # Fill in Key Name
   <KeyName>: ""
+Roles:
+  # Fill in the Role Name
+  <RoleName>:
+    # Type of the resources this role applies to
+    ResourceType: ""
+    # Names of the resources
+    ResourceNames: []
+    # Actions permitted by this role for specified resources
+    Actions: []
 Secrets:
-  # Fille in Secret Name
+  # Fill in Secret Name
   <SecretName>:
     Cert: {}
     Shared: false
+    UserDefined: false
     # size of key in bits, for symmetric-key this needs to be multiple of 8, for ECDSA length needs to be supported by Go's crypto library
     Size: 0
-    # one of symmetric-key cert-rsa cert-ecdsa cert-ed25519
+    # one of symmetric-key cert-rsa cert-ecdsa cert-ed25519 plain
     Type: symmetric-key
     ValidFor: 0
+TLS:
+  # Fill in TLS Name
+  <TLSConfigName>:
+    Outgoing:
+    - Port: ""
+      Addr: ""
+    Incoming:
+    - Port: ""
+      Cert: ""
+      DisableClientAuth: true
