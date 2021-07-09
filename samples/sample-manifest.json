@@ -1,76 +1,76 @@
 {
     "Packages": {
-		"backend": {
-			"SignerID": "1f1e1d1c1b1a191817161514131211100f0e0d0c0b0a09080706050403020100",
-			"ProductID": 45,
-			"SecurityVersion": 2,
-			"Debug": false
-		},
-		"frontend": {
-			"SignerID": "1f1e1d1c1b1a191817161514131211100f0e0d0c0b0a09080706050403020100",
-			"ProductID": 44,
-			"SecurityVersion": 3,
-			"Debug": false
-		}
-	},
+        "backend": {
+            "SignerID": "1f1e1d1c1b1a191817161514131211100f0e0d0c0b0a09080706050403020100",
+            "ProductID": 45,
+            "SecurityVersion": 2,
+            "Debug": false
+        },
+        "frontend": {
+            "SignerID": "1f1e1d1c1b1a191817161514131211100f0e0d0c0b0a09080706050403020100",
+            "ProductID": 44,
+            "SecurityVersion": 3,
+            "Debug": false
+        }
+    },
 
     "Marbles": {
-		"backend_first": {
-			"Package": "backend",
-			"MaxActivations": 1,
-			"Parameters": {
-				"Files": {
-					"/tmp/defg.txt": "foo",
-					"/tmp/jkl.mno": "bar"
-				},
-				"Env": {
-					"IS_FIRST": "true",
-					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
-					"TEST_SECRET_SYMMETRIC_KEY": "{{ raw .Secrets.symmetric_key_shared }}",
-					"TEST_SECRET_CERT": "{{ pem .Secrets.cert_shared.Cert }}",
-					"TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.cert_private.Cert }}"
-				},
-				"Argv": [
-					"--first",
-					"serve"
-				]
-			},
-			"TLS": [
-				"web"
-			],
+        "backend_first": {
+            "Package": "backend",
+            "MaxActivations": 1,
+            "Parameters": {
+                "Files": {
+                    "/tmp/defg.txt": "foo",
+                    "/tmp/jkl.mno": "bar"
+                },
+                "Env": {
+                    "IS_FIRST": "true",
+                    "SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
+                    "TEST_SECRET_SYMMETRIC_KEY": "{{ raw .Secrets.symmetric_key_shared }}",
+                    "TEST_SECRET_CERT": "{{ pem .Secrets.cert_shared.Cert }}",
+                    "TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.cert_private.Cert }}"
+                },
+                "Argv": [
+                    "--first",
+                    "serve"
+                ]
+            },
+            "TLS": [
+                "web"
+            ],
             "Roles": [
                 "cert-reader",
                 "key-reader"
             ]
-		},
-		"backend_other": {
-			"Package": "backend",
-			"Parameters": {
-				"Env": {
-					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
-					"TEST_SECRET_CERT": "{{ pem .Secrets.cert_shared.Cert }}",
-					"TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.cert_private.Cert }}"
-				},
-				"Argv": [
-					"serve"
-				]
-			},
-			"TLS": [
-				"web", "anotherWeb"
-			],
+        },
+        "backend_other": {
+            "Package": "backend",
+            "Parameters": {
+                "Env": {
+                    "SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
+                    "TEST_SECRET_CERT": "{{ pem .Secrets.cert_shared.Cert }}",
+                    "TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.cert_private.Cert }}"
+                },
+                "Argv": [
+                    "serve"
+                ]
+            },
+            "TLS": [
+                "web", "anotherWeb"
+            ],
             "Roles": [
                 "cert-reader"
             ]
-		},
-		"frontend": {
-			"Package": "frontend",
-			"Parameters": {
-				"Env": {
-					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}"
-				}
-			}
-		}
-	},
+        },
+        "frontend": {
+            "Package": "frontend",
+            "Parameters": {
+                "Env": {
+                    "SEAL_KEY": "{{ hex .Marblerun.SealKey }}"
+                }
+            }
+        }
+    },
 
     "Secrets": {
         "symmetric_key_shared": {
@@ -78,47 +78,47 @@
             "Size": 128,
             "Shared": true
         },
-		"symmetric_key_private": {
-			"Size": 256,
-			"Type": "symmetric-key"
-		},
-		"cert_private": {
-			"Size": 2048,
-			"Type": "cert-rsa",
-			"Cert": {
-				"SerialNumber": 42,
-				"Subject": {
-					"SerialNumber": "42",
-					"CommonName": "Marblerun Unit Test"
-				}
-			},
-			"ValidFor": 7
-		},
-        "cert_shared": {
-			"Shared": true,
-			"Type": "cert-ed25519",
-			"Cert": {
-				"SerialNumber": 1337,
-				"Subject": {
-					"SerialNumber": "1337",
-					"CommonName": "Marblerun Unit Test"
-				}
-			},
-			"ValidFor": 7
-		},
-        "rsa_shared": {
-			"Shared": true,
-			"Type": "cert-rsa",
+        "symmetric_key_private": {
+            "Size": 256,
+            "Type": "symmetric-key"
+        },
+        "cert_private": {
             "Size": 2048,
-			"Cert": {
-				"SerialNumber": 4433,
-				"Subject": {
-					"SerialNumber": "4433",
-					"CommonName": "Marblerun Unit Test"
-				}
-			},
-			"ValidFor": 7
-		}
+            "Type": "cert-rsa",
+            "Cert": {
+                "SerialNumber": 42,
+                "Subject": {
+                    "SerialNumber": "42",
+                    "CommonName": "Marblerun Unit Test"
+                }
+            },
+            "ValidFor": 7
+        },
+        "cert_shared": {
+            "Shared": true,
+            "Type": "cert-ed25519",
+            "Cert": {
+                "SerialNumber": 1337,
+                "Subject": {
+                    "SerialNumber": "1337",
+                    "CommonName": "Marblerun Unit Test"
+                }
+            },
+            "ValidFor": 7
+        },
+        "rsa_shared": {
+            "Shared": true,
+            "Type": "cert-rsa",
+            "Size": 2048,
+            "Cert": {
+                "SerialNumber": 4433,
+                "Subject": {
+                    "SerialNumber": "4433",
+                    "CommonName": "Marblerun Unit Test"
+                }
+            },
+            "ValidFor": 7
+        }
     },
 
     "Users": {
@@ -176,6 +176,37 @@
             "Resource": "Secrets",
             "ResourceNames": ["symmetric_key_shared", "cert_shared", "rsa_shared"],
             "Actions": ["ReadSecret", "WriteSecret"]
+        }
+    },
+
+    "TLS": {
+        "web": {
+            "Outgoing": [
+                {
+                    "Port": "8080",
+                    "Addr": "service.name"
+                }
+            ],
+            "Incoming": [
+                {
+                    "Port": "8443"
+                }
+            ]
+        },
+        "another_web": {
+            "Outgoing": [
+                {
+                    "Port": "4433",
+                    "Addr": "10.111.37.164"
+                }
+            ],
+            "Incoming": [
+                {
+                    "Port": "8080",
+                    "Cert": "rsa_shared",
+                    "DisableClientAuth": true
+                }
+            ]
         }
     }
 }
