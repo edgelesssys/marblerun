@@ -69,6 +69,12 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 		c.zaplogger.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
 		return nil, err
 	}
+	// generate placeholders for private secrets specified in manifest
+	privSecrets, err := c.generateSecrets(ctx, manifest.Secrets, uuid.New(), marbleRootCert, intermediatePrivK)
+	if err != nil {
+		c.zaplogger.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
+		return nil, err
+	}
 
 	// Set encryption key & generate recovery data
 	encryptionKey, err := c.recovery.GenerateEncryptionKey(manifest.RecoveryKeys)
@@ -120,9 +126,14 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 			return nil, err
 		}
 	}
-	// save metadata of private and user-defined secrets
+	for k, v := range privSecrets {
+		if err := txdata.putSecret(k, v); err != nil {
+			return nil, err
+		}
+	}
+	// save metadata of user-defined secrets
 	for k, v := range manifest.Secrets {
-		if v.UserDefined || !v.Shared {
+		if v.UserDefined {
 			if err := txdata.putSecret(k, v); err != nil {
 				return nil, err
 			}
@@ -324,11 +335,11 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte, upd
 
 	// Gather all shared certificate secrets we need to regenerate
 	secretsToRegenerate := make(map[string]manifest.Secret)
-	manifest, err := c.data.getManifest()
+	secrets, err := c.data.getSecretMap()
 	if err != nil {
 		return err
 	}
-	for name, secret := range manifest.Secrets {
+	for name, secret := range secrets {
 		if secret.Shared && secret.Type != "symmetric-key" {
 			secretsToRegenerate[name] = secret
 		}
@@ -411,7 +422,7 @@ func (c *Core) GetSecrets(ctx context.Context, requestedSecrets []string, client
 
 	secrets := make(map[string]manifest.Secret)
 	for _, requestedSecret := range requestedSecrets {
-		returnedSecret, err := c.data.getSecret(requestedSecret, false)
+		returnedSecret, err := c.data.getSecret(requestedSecret)
 		if err != nil {
 			return nil, err
 		}
@@ -437,7 +448,7 @@ func (c *Core) WriteSecrets(ctx context.Context, rawSecretManifest []byte, updat
 	}
 
 	// validate and parse new secrets
-	secretMeta, err := c.data.getSecretMap(false)
+	secretMeta, err := c.data.getSecretMap()
 	if err != nil {
 		return err
 	}

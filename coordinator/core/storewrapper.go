@@ -27,7 +27,6 @@ const (
 	requestMarble         = "marble"
 	requestPackage        = "package"
 	requestPrivKey        = "privateKey"
-	requestPrivSecret     = "privateSecret"
 	requestSecret         = "secret"
 	requestState          = "state"
 	requestTLS            = "TLS"
@@ -188,32 +187,20 @@ func (s storeWrapper) putRawManifest(manifest []byte) error {
 }
 
 // getSecret returns a secret from store
-func (s storeWrapper) getSecret(secretName string, private bool) (manifest.Secret, error) {
+func (s storeWrapper) getSecret(secretName string) (manifest.Secret, error) {
 	var loadedSecret manifest.Secret
-	req := requestSecret
-	if private {
-		req = requestPrivSecret
-	}
-	err := s._get(req, secretName, &loadedSecret)
+	err := s._get(requestSecret, secretName, &loadedSecret)
 	return loadedSecret, err
 }
 
 // putSecret saves a secret to store
 func (s storeWrapper) putSecret(secretName string, secret manifest.Secret) error {
-	req := requestSecret
-	if !secret.Shared && !secret.UserDefined {
-		req = requestPrivSecret
-	}
-	return s._put(req, secretName, secret)
+	return s._put(requestSecret, secretName, secret)
 }
 
-// getSecretMap returns a map of private or shared (implicitly also user-defined) secrets
-func (s storeWrapper) getSecretMap(private bool) (map[string]manifest.Secret, error) {
-	req := requestSecret
-	if private {
-		req = requestPrivSecret
-	}
-	iter, err := s.getIterator(req)
+// getSecretMap returns a map of all secrets
+func (s storeWrapper) getSecretMap() (map[string]manifest.Secret, error) {
+	iter, err := s.getIterator(requestSecret)
 	if err != nil {
 		return nil, err
 	}
@@ -222,7 +209,7 @@ func (s storeWrapper) getSecretMap(private bool) (map[string]manifest.Secret, er
 	for _, name := range iter {
 		// all secrets (user-defined and private only as uninitialized placeholders) are set with the initial manifest
 		// if we encounter an error here something went wrong with the store, or the provided list was faulty
-		secretMap[name], err = s.getSecret(name, private)
+		secretMap[name], err = s.getSecret(name)
 		if err != nil {
 			return nil, err
 		}

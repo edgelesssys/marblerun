@@ -91,23 +91,20 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 		c.zaplogger.Error("Could not retrieve marbleRootCert private key.", zap.Error(err))
 	}
 
-	// Generate unique (= per marble) secrets
-	privateSecrets, err := c.data.getSecretMap(true)
+	secrets, err := c.data.getSecretMap()
 	if err != nil {
 		return nil, err
 	}
-	secrets, err := c.generateSecrets(ctx, privateSecrets, marbleUUID, marbleRootCert, intermediatePrivK)
+
+	// Generate unique (= per marble) secrets
+	privateSecrets, err := c.generateSecrets(ctx, secrets, marbleUUID, marbleRootCert, intermediatePrivK)
 	if err != nil {
 		c.zaplogger.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
 		return nil, err
 	}
 
-	// Union unique secrets with shared and user-defined secrets
-	sharedSecrets, err := c.data.getSecretMap(false)
-	if err != nil {
-		return nil, err
-	}
-	for k, v := range sharedSecrets {
+	// Union newly generated unique secrets with shared and user-defined secrets
+	for k, v := range privateSecrets {
 		secrets[k] = v
 	}
 
