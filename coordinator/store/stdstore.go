@@ -8,6 +8,7 @@ package store
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"sync"
 
@@ -58,8 +59,8 @@ func (s *StdStore) Put(request string, requestData []byte) error {
 	return tx.Commit()
 }
 
-// Iterator returns a list of all keys in StdStore with a given prefix
-// For an empty prefix, this returns a list of all keys in StdStore
+// Iterator returns an iterator for keys saved in StdStore with a given prefix
+// For an empty prefix this is an iterator for all keys in StdStore
 func (s *StdStore) Iterator(prefix string) (Iterator, error) {
 	keys := make([]string, 0)
 	for k := range s.data {
@@ -68,7 +69,7 @@ func (s *StdStore) Iterator(prefix string) (Iterator, error) {
 		}
 	}
 
-	return &StdIterator{-1, keys}, nil
+	return &StdIterator{-1, keys, nil}, nil
 }
 
 // BeginTransaction starts a new transaction
@@ -155,7 +156,7 @@ func (t *transaction) Put(request string, requestData []byte) error {
 	return nil
 }
 
-// Iterator returns a list of all keys in the transaction with a given prefix
+// Iterator returns an iterator for all keys in the transaction with a given prefix
 func (t *transaction) Iterator(prefix string) (Iterator, error) {
 	keys := make([]string, 0)
 	for k := range t.data {
@@ -164,7 +165,7 @@ func (t *transaction) Iterator(prefix string) (Iterator, error) {
 		}
 	}
 
-	return &StdIterator{-1, keys}, nil
+	return &StdIterator{-1, keys, nil}, nil
 }
 
 // Commit ends a transaction and persists the changes
@@ -187,17 +188,20 @@ func (t *transaction) Rollback() {
 type StdIterator struct {
 	idx  int
 	keys []string
+	err  error
 }
 
 // Next implements the Iterator interface
-func (i *StdIterator) Next() bool {
+func (i *StdIterator) GetNext() string {
 	i.idx++
 	if i.idx >= len(i.keys) {
-		return false
+		i.err = fmt.Errorf("index out of range [%d] with length %d", i.idx, len(i.keys))
+		return ""
 	}
-	return true
+	return i.keys[i.idx]
 }
 
+// HasNext implements the Iterator interface
 func (i *StdIterator) HasNext() bool {
 	if (i.idx + 1) < len(i.keys) {
 		return true
@@ -205,13 +209,7 @@ func (i *StdIterator) HasNext() bool {
 	return false
 }
 
-// Value implements the Iterator interface
-func (i *StdIterator) Value() string {
-	return i.keys[i.idx]
-}
-
 // Error implements the Iterator interface
-// For StdIterator this always returns nil
 func (i *StdIterator) Error() error {
-	return nil
+	return i.err
 }

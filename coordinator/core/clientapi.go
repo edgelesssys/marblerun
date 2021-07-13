@@ -258,8 +258,8 @@ func (c *Core) VerifyUser(ctx context.Context, clientCerts []*x509.Certificate) 
 	// Check if a supplied client cert matches the supplied ones from the manifest stored in the core
 	// NOTE: We do not use the "correct" X.509 verify here since we do not really care about expiration and chain verification here.
 	for _, suppliedCert := range clientCerts {
-		for userIter.Next() {
-			user, err := c.data.getUser(userIter.Value())
+		for userIter.HasNext() {
+			user, err := c.data.getUser(userIter.GetNext())
 			if err != nil {
 				return nil, err
 			}

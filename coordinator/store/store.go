@@ -36,12 +36,10 @@ type Transaction interface {
 
 // Iterator is an iterator for the store
 type Iterator interface {
-	// Next increments the iterator
-	Next() bool
+	// Returns the next element of the iterator
+	GetNext() string
 	// HasNext returns true if there is at least one more item after the current position
 	HasNext() bool
-	// Value returns the key at the current iterator position
-	Value() string
 	// Error returns errors encountered during iteration
 	Error() error
 }

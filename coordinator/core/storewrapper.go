@@ -49,16 +49,12 @@ type iteratorWrapper struct {
 	prefix   string
 }
 
-func (i iteratorWrapper) Next() bool {
-	return i.iterator.Next()
+func (i iteratorWrapper) GetNext() string {
+	return strings.TrimPrefix(i.iterator.GetNext(), i.prefix+":")
 }
 
 func (i iteratorWrapper) HasNext() bool {
 	return i.iterator.HasNext()
-}
-
-func (i iteratorWrapper) Value() string {
-	return strings.TrimPrefix(i.iterator.Value(), i.prefix+":")
 }
 
 func (i iteratorWrapper) Error() error {
@@ -218,10 +214,11 @@ func (s storeWrapper) getSecretMap() (map[string]manifest.Secret, error) {
 	}
 
 	secretMap := map[string]manifest.Secret{}
-	for iter.Next() {
+	for iter.HasNext() {
 		// all secrets (user-defined and private only as uninitialized placeholders) are set with the initial manifest
 		// if we encounter an error here something went wrong with the store, or the provided list was faulty
-		secretMap[iter.Value()], err = s.getSecret(iter.Value())
+		name := iter.GetNext()
+		secretMap[name], err = s.getSecret(name)
 		if err != nil {
 			return nil, err
 		}
