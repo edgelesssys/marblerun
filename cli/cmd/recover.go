@@ -15,8 +15,8 @@ import (
 func newRecoverCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "recover <recovery_key_decrypted> <IP:PORT>",
-		Short: "Recovers the Marblerun coordinator from a sealed state",
-		Long:  `Recovers the Marblerun coordinator from a sealed state`,
+		Short: "Recovers the Marblerun Coordinator from a sealed state",
+		Long:  `Recovers the Marblerun Coordinator from a sealed state`,
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			keyFile := args[0]
@@ -33,7 +33,7 @@ func newRecoverCmd() *cobra.Command {
 				return err
 			}
 
-			fmt.Println("Successfully verified coordinator, now uploading key")
+			fmt.Println("Successfully verified Coordinator, now uploading key")
 
 			return cliRecover(hostName, recoveryKey, cert)
 		},
@@ -46,7 +46,7 @@ func newRecoverCmd() *cobra.Command {
 	return cmd
 }
 
-// cliRecover tries to unseal the coordinator by uploading the recovery key
+// cliRecover tries to unseal the Coordinator by uploading the recovery key
 func cliRecover(host string, key []byte, cert []*pem.Block) error {
 	client, err := restClient(cert, nil)
 	if err != nil {

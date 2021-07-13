@@ -15,9 +15,9 @@ import (
 func newManifestCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "manifest",
-		Short: "Manages manifest for the Marblerun coordinator",
+		Short: "Manages manifest for the Marblerun Coordinator",
 		Long: `
-Manages manifests for the Marblerun coordinator.
+Manages manifests for the Marblerun Coordinator.
 Used to either set the manifest, update an already set manifest,
 or return a signature of the currently set manifest to the user`,
 		Example: "manifest set manifest.json example.com:4433 [--era-config=config.json] [--insecure]",
@@ -35,7 +35,7 @@ or return a signature of the currently set manifest to the user`,
 	return cmd
 }
 
-// cliDataGet requests data from the coordinators rest api
+// cliDataGet requests data from the Coordinators rest api
 func cliDataGet(host, target, jsonPath string, cert []*pem.Block) ([]byte, error) {
 	client, err := restClient(cert, nil)
 	if err != nil {

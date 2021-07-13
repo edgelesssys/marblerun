@@ -64,7 +64,7 @@ func newInstallCmd() *cobra.Command {
 		SilenceUsage: true,
 	}
 
-	cmd.Flags().StringVar(&options.hostname, "domain", "localhost", "Sets the CNAME for the coordinator certificate")
+	cmd.Flags().StringVar(&options.hostname, "domain", "localhost", "Sets the CNAME for the Coordinator certificate")
 	cmd.Flags().StringVar(&options.chartPath, "marblerun-chart-path", "", "Path to marblerun helm chart")
 	cmd.Flags().StringVar(&options.version, "version", "", "Version of the Coordinator to install, latest by default")
 	cmd.Flags().StringVar(&options.resourceKey, "resource-key", "", "Resource providing SGX, different depending on used device plugin. Use this to set tolerations/resources if your device plugin is not supported by marblerun")

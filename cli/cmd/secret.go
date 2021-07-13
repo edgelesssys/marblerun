@@ -12,9 +12,9 @@ var (
 func newSecretCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "secret",
-		Short: "Manages secrets for the Marblerun coordinator",
+		Short: "Manages secrets for the Marblerun Coordinator",
 		Long: `
-Manages secrets for the Marblerun coordinator.
+Manages secrets for the Marblerun Coordinator.
 Set or retrieve a secret defined in the manifest.`,
 	}
 

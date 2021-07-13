@@ -26,7 +26,7 @@ const promptForChanges = "Do you want to automatically apply the suggested chang
 var eraConfig string
 var insecureEra bool
 
-// verify the connection to the marblerun coordinator
+// verify the connection to the Marblerun Coordinator
 func verifyCoordinator(host string, configFilename string, insecure bool) ([]*pem.Block, error) {
 	// skip verification if specified
 	if insecure {
@@ -43,7 +43,7 @@ func verifyCoordinator(host string, configFilename string, insecure bool) ([]*pe
 	coordinatorVersion, err := getCoordinatorVersion()
 	eraURL := fmt.Sprintf("https://github.com/edgelesssys/marblerun/releases/download/%s/coordinator-era.json", coordinatorVersion)
 	if err != nil {
-		// if errors were caused by an empty kube config file or by being unable to connect to a cluster we assume the coordinator is running as a standlone
+		// if errors were caused by an empty kube config file or by being unable to connect to a cluster we assume the Coordinator is running as a standlone
 		// and we default to the latest era-config file
 		var dnsError *net.DNSError
 		if !clientcmd.IsEmptyConfig(err) && !errors.As(err, &dnsError) && !os.IsNotExist(err) {
@@ -77,7 +77,7 @@ func verifyCoordinator(host string, configFilename string, insecure bool) ([]*pe
 
 // restClient creates and returns a http client using a provided root certificate and optional client certificate to communicate with the Coordinator REST API
 func restClient(caCert []*pem.Block, clCert *tls.Certificate) (*http.Client, error) {
-	// Set rootCA for connection to coordinator
+	// Set rootCA for connection to Coordinator
 	certPool := x509.NewCertPool()
 	if ok := certPool.AppendCertsFromPEM(pem.EncodeToMemory(caCert[len(caCert)-1])); !ok {
 		return nil, errors.New("failed to parse certificate")

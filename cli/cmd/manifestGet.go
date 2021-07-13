@@ -19,8 +19,8 @@ func newManifestGet() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "get <IP:PORT>",
-		Short: "Get the manifest from the Marblerun coordinator",
-		Long: `Get the manifest from the Marblerun coordinator.
+		Short: "Get the manifest from the Marblerun Coordinator",
+		Long: `Get the manifest from the Marblerun Coordinator.
 Optionally get the manifests signature or merge updates into the displayed manifest.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -29,7 +29,7 @@ Optionally get the manifests signature or merge updates into the displayed manif
 			if err != nil {
 				return err
 			}
-			fmt.Println("Successfully verified coordinator, now requesting manifest")
+			fmt.Println("Successfully verified Coordinator, now requesting manifest")
 			response, err := cliDataGet(hostName, "manifest", "data", cert)
 			if err != nil {
 				return err
