@@ -49,16 +49,13 @@ type iteratorWrapper struct {
 	prefix   string
 }
 
-func (i iteratorWrapper) GetNext() string {
-	return strings.TrimPrefix(i.iterator.GetNext(), i.prefix+":")
+func (i iteratorWrapper) GetNext() (string, error) {
+	key, err := i.iterator.GetNext()
+	return strings.TrimPrefix(key, i.prefix+":"), err
 }
 
 func (i iteratorWrapper) HasNext() bool {
 	return i.iterator.HasNext()
-}
-
-func (i iteratorWrapper) Error() error {
-	return i.iterator.Error()
 }
 
 // getIterator returns a wrapped iterator from store
@@ -217,14 +214,14 @@ func (s storeWrapper) getSecretMap() (map[string]manifest.Secret, error) {
 	for iter.HasNext() {
 		// all secrets (user-defined and private only as uninitialized placeholders) are set with the initial manifest
 		// if we encounter an error here something went wrong with the store, or the provided list was faulty
-		name := iter.GetNext()
+		name, err := iter.GetNext()
+		if err != nil {
+			return nil, err
+		}
 		secretMap[name], err = s.getSecret(name)
 		if err != nil {
 			return nil, err
 		}
-	}
-	if iter.Error() != nil {
-		return secretMap, err
 	}
 	return secretMap, nil
 }

@@ -183,7 +183,11 @@ func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, certQuote []
 		} else {
 			infraMatch := false
 			for infraIter.HasNext() {
-				infra, err := c.data.getInfrastructure(infraIter.GetNext())
+				infraName, err := infraIter.GetNext()
+				if err != nil {
+					return err
+				}
+				infra, err := c.data.getInfrastructure(infraName)
 				if err != nil {
 					return err
 				}

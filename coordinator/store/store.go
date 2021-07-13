@@ -37,11 +37,9 @@ type Transaction interface {
 // Iterator is an iterator for the store
 type Iterator interface {
 	// Returns the next element of the iterator
-	GetNext() string
+	GetNext() (string, error)
 	// HasNext returns true if there is at least one more item after the current position
 	HasNext() bool
-	// Error returns errors encountered during iteration
-	Error() error
 }
 
 // storeValueUnset is an error raised by unset values in the store

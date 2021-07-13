@@ -65,37 +65,39 @@ func TestStdIterator(t *testing.T) {
 	idx := 0
 	for iter.HasNext() {
 		idx++
-		assert.Contains(iter.GetNext(), "test:")
+		val, err := iter.GetNext()
+		assert.NoError(err)
+		assert.Contains(val, "test:")
 	}
 	assert.EqualValues(3, idx)
-	assert.NoError(iter.Error())
 
 	iter, err = store.Iterator("value")
 	assert.NoError(err)
 	idx = 0
 	for iter.HasNext() {
 		idx++
-		assert.Contains(iter.GetNext(), "value:")
+		val, err := iter.GetNext()
+		assert.NoError(err)
+		assert.Contains(val, "value:")
 	}
 	assert.EqualValues(1, idx)
-	assert.NoError(iter.Error())
 
 	iter, err = store.Iterator("")
 	assert.NoError(err)
 	idx = 0
 	for iter.HasNext() {
-		iter.GetNext()
 		idx++
+		_, err = iter.GetNext()
+		assert.NoError(err)
 	}
 	assert.EqualValues(5, idx)
-	assert.NoError(iter.Error())
 
 	iter, err = store.Iterator("empty")
 	assert.NoError(err)
 	assert.False(iter.HasNext())
 
-	iter.GetNext()
-	assert.Error(iter.Error())
+	_, err = iter.GetNext()
+	assert.Error(err)
 }
 
 func TestStdStoreSealing(t *testing.T) {

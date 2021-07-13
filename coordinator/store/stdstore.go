@@ -69,7 +69,7 @@ func (s *StdStore) Iterator(prefix string) (Iterator, error) {
 		}
 	}
 
-	return &StdIterator{-1, keys, nil}, nil
+	return &StdIterator{0, keys}, nil
 }
 
 // BeginTransaction starts a new transaction
@@ -165,7 +165,7 @@ func (t *transaction) Iterator(prefix string) (Iterator, error) {
 		}
 	}
 
-	return &StdIterator{-1, keys, nil}, nil
+	return &StdIterator{0, keys}, nil
 }
 
 // Commit ends a transaction and persists the changes
@@ -188,28 +188,22 @@ func (t *transaction) Rollback() {
 type StdIterator struct {
 	idx  int
 	keys []string
-	err  error
 }
 
 // Next implements the Iterator interface
-func (i *StdIterator) GetNext() string {
-	i.idx++
+func (i *StdIterator) GetNext() (string, error) {
 	if i.idx >= len(i.keys) {
-		i.err = fmt.Errorf("index out of range [%d] with length %d", i.idx, len(i.keys))
-		return ""
+		return "", fmt.Errorf("index out of range [%d] with length %d", i.idx, len(i.keys))
 	}
-	return i.keys[i.idx]
+	val := i.keys[i.idx]
+	i.idx++
+	return val, nil
 }
 
 // HasNext implements the Iterator interface
 func (i *StdIterator) HasNext() bool {
-	if (i.idx + 1) < len(i.keys) {
+	if i.idx < len(i.keys) {
 		return true
 	}
 	return false
-}
-
-// Error implements the Iterator interface
-func (i *StdIterator) Error() error {
-	return i.err
 }

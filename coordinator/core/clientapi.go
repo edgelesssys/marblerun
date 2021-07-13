@@ -259,16 +259,17 @@ func (c *Core) VerifyUser(ctx context.Context, clientCerts []*x509.Certificate) 
 	// NOTE: We do not use the "correct" X.509 verify here since we do not really care about expiration and chain verification here.
 	for _, suppliedCert := range clientCerts {
 		for userIter.HasNext() {
-			user, err := c.data.getUser(userIter.GetNext())
+			name, err := userIter.GetNext()
+			if err != nil {
+				return nil, err
+			}
+			user, err := c.data.getUser(name)
 			if err != nil {
 				return nil, err
 			}
 			if suppliedCert.Equal(user.Certificate()) {
 				return user, nil
 			}
-		}
-		if userIter.Error() != nil {
-			return nil, err
 		}
 	}
 
