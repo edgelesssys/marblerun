@@ -69,6 +69,12 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 		c.zaplogger.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
 		return nil, err
 	}
+	// generate placeholders for private secrets specified in manifest
+	privSecrets, err := c.generateSecrets(ctx, manifest.Secrets, uuid.New(), marbleRootCert, intermediatePrivK)
+	if err != nil {
+		c.zaplogger.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
+		return nil, err
+	}
 
 	// Set encryption key & generate recovery data
 	encryptionKey, err := c.recovery.GenerateEncryptionKey(manifest.RecoveryKeys)
@@ -120,9 +126,14 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 			return nil, err
 		}
 	}
-	// save metadata of private and user-defined secrets
+	for k, v := range privSecrets {
+		if err := txdata.putSecret(k, v); err != nil {
+			return nil, err
+		}
+	}
+	// save metadata of user-defined secrets
 	for k, v := range manifest.Secrets {
-		if v.UserDefined || !v.Shared {
+		if v.UserDefined {
 			if err := txdata.putSecret(k, v); err != nil {
 				return nil, err
 			}
@@ -138,7 +149,6 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 			return nil, err
 		}
 	}
-	c.loadComponents(manifest)
 
 	c.updateLogger.Info("initial manifest set")
 	if err := txdata.putUpdateLog(c.updateLogger.String()); err != nil {
@@ -241,11 +251,19 @@ func (c *Core) GetUpdateLog(ctx context.Context) (string, error) {
 
 // VerifyUser checks if a given client certificate matches the admin certificates specified in the manifest
 func (c *Core) VerifyUser(ctx context.Context, clientCerts []*x509.Certificate) (*user.User, error) {
+	userIter, err := c.data.getIterator(requestUser)
+	if err != nil {
+		return nil, err
+	}
 	// Check if a supplied client cert matches the supplied ones from the manifest stored in the core
 	// NOTE: We do not use the "correct" X.509 verify here since we do not really care about expiration and chain verification here.
 	for _, suppliedCert := range clientCerts {
-		for _, userName := range c.cmp.users {
-			user, err := c.data.getUser(userName)
+		for userIter.HasNext() {
+			name, err := userIter.GetNext()
+			if err != nil {
+				return nil, err
+			}
+			user, err := c.data.getUser(name)
 			if err != nil {
 				return nil, err
 			}
@@ -321,11 +339,11 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte, upd
 
 	// Gather all shared certificate secrets we need to regenerate
 	secretsToRegenerate := make(map[string]manifest.Secret)
-	manifest, err := c.data.getManifest()
+	secrets, err := c.data.getSecretMap()
 	if err != nil {
 		return err
 	}
-	for name, secret := range manifest.Secrets {
+	for name, secret := range secrets {
 		if secret.Shared && secret.Type != "symmetric-key" {
 			secretsToRegenerate[name] = secret
 		}
@@ -434,7 +452,7 @@ func (c *Core) WriteSecrets(ctx context.Context, rawSecretManifest []byte, updat
 	}
 
 	// validate and parse new secrets
-	secretMeta, err := c.data.getSecretMap(c.cmp.userSecrets)
+	secretMeta, err := c.data.getSecretMap()
 	if err != nil {
 		return err
 	}
@@ -474,7 +492,7 @@ func (c *Core) performRecovery(encryptionKey []byte) error {
 	}
 
 	// load state
-	store := store.NewStdStore(c.sealer, c.zaplogger)
+	store := store.NewStdStore(c.sealer)
 	recoveryData, err := store.LoadState()
 	if err != nil {
 		return err
@@ -484,12 +502,6 @@ func (c *Core) performRecovery(encryptionKey []byte) error {
 	if err := c.recovery.SetRecoveryData(recoveryData); err != nil {
 		c.zaplogger.Error("Could not retrieve recovery data from state. Recovery will be unavailable", zap.Error(err))
 	}
-
-	manifest, err := c.data.getManifest()
-	if err != nil {
-		return err
-	}
-	c.loadComponents(manifest)
 
 	rootCert, err := c.data.getCertificate(sKCoordinatorRootCert)
 	if err != nil {

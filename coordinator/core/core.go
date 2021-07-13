@@ -43,7 +43,6 @@ import (
 
 // Core implements the core logic of the Coordinator
 type Core struct {
-	cmp          components
 	mux          sync.Mutex
 	quote        []byte
 	recovery     recovery.Recovery
@@ -83,18 +82,6 @@ const (
 	sKCoordinatorIntermediateKey  string = "coordinatorIntermediateKey"
 )
 
-// components is a list of the objects stored in the Coordinators store
-type components struct {
-	packages        []string
-	infrastructures []string
-	marbles         []string
-	tls             []string
-	users           []string
-	userSecrets     []string
-	sharedSecrets   []string
-	privateSecrets  []string
-}
-
 // Needs to be paired with `defer c.mux.Unlock()`
 func (c *Core) requireState(states ...state) error {
 	c.mux.Lock()
@@ -124,7 +111,7 @@ func (c *Core) advanceState(newState state, tx store.Transaction) error {
 
 // NewCore creates and initializes a new Core object
 func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal.Sealer, recovery recovery.Recovery, zapLogger *zap.Logger, promFactory *promauto.Factory) (*Core, error) {
-	stor := store.NewStdStore(sealer, zapLogger)
+	stor := store.NewStdStore(sealer)
 	c := &Core{
 		qv:        qv,
 		qi:        qi,
@@ -192,11 +179,6 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 	} else {
 		// recovered from a sealed state, reload components and finish the store transaction
 		stor.SetRecoveryData(recoveryData)
-		mainManifest, err := c.data.getManifest()
-		if err != nil {
-			return nil, err
-		}
-		c.loadComponents(mainManifest)
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -545,7 +527,7 @@ func (c *Core) generateCertificateForSecret(secret manifest.Secret, parentCertif
 	template.BasicConstraintsValid = true
 	template.NotBefore = time.Now()
 
-	// If NotAfter is not set, we will use ValidFor for the end of the certificate lifetime. If it set, we will use it (-> do not adjust it, it's already loaded). If both are set, we will throw an error as this will create ambiguity.
+	// If NotAfter is not set, we will use ValidFor for the end of the certificate lifetime. This can only happen once on initial manifest set
 	if template.NotAfter.IsZero() {
 		// User can specify a duration in days, otherwise it's one year by default
 		if secret.ValidFor == 0 {
@@ -554,7 +536,10 @@ func (c *Core) generateCertificateForSecret(secret manifest.Secret, parentCertif
 
 		template.NotAfter = time.Now().AddDate(0, 0, int(secret.ValidFor))
 	} else if secret.ValidFor != 0 {
-		return manifest.Secret{}, errors.New("ambigious certificate validity duration, both NotAfter and ValidFor are specified")
+		// reset expiration date for private secrets
+		if !secret.Shared {
+			template.NotAfter = time.Now().AddDate(0, 0, int(secret.ValidFor))
+		}
 	}
 
 	// Generate certificate with given public key
@@ -610,34 +595,6 @@ func generateUsersFromManifest(rawUsers map[string]manifest.User, roles map[stri
 		users = append(users, newUser)
 	}
 	return users, nil
-}
-
-// loadComponents loads components names from a manifest into the core
-func (c *Core) loadComponents(manifest manifest.Manifest) {
-	for pkg := range manifest.Packages {
-		c.cmp.packages = append(c.cmp.packages, pkg)
-	}
-	for marble := range manifest.Marbles {
-		c.cmp.marbles = append(c.cmp.marbles, marble)
-	}
-	for inf := range manifest.Infrastructures {
-		c.cmp.infrastructures = append(c.cmp.infrastructures, inf)
-	}
-	for secretName, secret := range manifest.Secrets {
-		if secret.UserDefined {
-			c.cmp.userSecrets = append(c.cmp.userSecrets, secretName)
-		} else if secret.Shared {
-			c.cmp.sharedSecrets = append(c.cmp.sharedSecrets, secretName)
-		} else {
-			c.cmp.privateSecrets = append(c.cmp.privateSecrets, secretName)
-		}
-	}
-	for tag := range manifest.TLS {
-		c.cmp.tls = append(c.cmp.tls, tag)
-	}
-	for user := range manifest.Users {
-		c.cmp.users = append(c.cmp.users, user)
-	}
 }
 
 func (c *Core) setCAData(dnsNames []string, tx store.Transaction) error {

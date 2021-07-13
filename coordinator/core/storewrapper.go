@@ -39,7 +39,29 @@ type storeWrapper struct {
 	store interface {
 		Get(string) ([]byte, error)
 		Put(string, []byte) error
+		Iterator(string) (store.Iterator, error)
 	}
+}
+
+// iteratorWrapper is a wrapper for the Iterator interface
+type iteratorWrapper struct {
+	iterator store.Iterator
+	prefix   string
+}
+
+func (i iteratorWrapper) GetNext() (string, error) {
+	key, err := i.iterator.GetNext()
+	return strings.TrimPrefix(key, i.prefix+":"), err
+}
+
+func (i iteratorWrapper) HasNext() bool {
+	return i.iterator.HasNext()
+}
+
+// getIterator returns a wrapped iterator from store
+func (s storeWrapper) getIterator(prefix string) (iteratorWrapper, error) {
+	iter, err := s.store.Iterator(prefix)
+	return iteratorWrapper{iter, prefix}, err
 }
 
 // getActivations returns activations for a given Marble from store
@@ -181,15 +203,21 @@ func (s storeWrapper) putSecret(secretName string, secret manifest.Secret) error
 	return s._put(requestSecret, secretName, secret)
 }
 
-// getSecretMap returns a map of multiple secrets
-// this functions should be used with core components secret lists to retrieve all secrets available for a given context
-func (s storeWrapper) getSecretMap(secretNames []string) (map[string]manifest.Secret, error) {
-	secretMap := map[string]manifest.Secret{}
-	var err error
+// getSecretMap returns a map of all secrets
+func (s storeWrapper) getSecretMap() (map[string]manifest.Secret, error) {
+	iter, err := s.getIterator(requestSecret)
+	if err != nil {
+		return nil, err
+	}
 
-	for _, name := range secretNames {
+	secretMap := map[string]manifest.Secret{}
+	for iter.HasNext() {
 		// all secrets (user-defined and private only as uninitialized placeholders) are set with the initial manifest
 		// if we encounter an error here something went wrong with the store, or the provided list was faulty
+		name, err := iter.GetNext()
+		if err != nil {
+			return nil, err
+		}
 		secretMap[name], err = s.getSecret(name)
 		if err != nil {
 			return nil, err

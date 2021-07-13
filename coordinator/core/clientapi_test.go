@@ -18,6 +18,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/edgelesssys/marblerun/test"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -244,7 +245,7 @@ func TestUpdateManifest(t *testing.T) {
 	require.NoError(err)
 
 	admin, err := c.data.getUser("admin")
-	assert.NoError(err)
+	require.NoError(err)
 
 	// Get current certificate
 	rootCABeforeUpdate, err := c.data.getCertificate(sKCoordinatorRootCert)
@@ -253,7 +254,7 @@ func TestUpdateManifest(t *testing.T) {
 	assert.NoError(err)
 	marbleRootCABeforeUpdate, err := c.data.getCertificate(sKMarbleRootCert)
 	assert.NoError(err)
-	secretsBeforeUpdate, err := c.data.getSecretMap(c.cmp.sharedSecrets)
+	secretsBeforeUpdate, err := c.data.getSecretMap()
 	assert.NoError(err)
 
 	// Update manifest
@@ -267,7 +268,7 @@ func TestUpdateManifest(t *testing.T) {
 	assert.NoError(err)
 	marbleRootCABeAfterUpdate, err := c.data.getCertificate(sKMarbleRootCert)
 	assert.NoError(err)
-	secretsAfterUpdate, err := c.data.getSecretMap(c.cmp.sharedSecrets)
+	secretsAfterUpdate, err := c.data.getSecretMap()
 	assert.NoError(err)
 
 	// Check if root certificate stayed the same, but intermediate CAs changed
@@ -489,6 +490,31 @@ func TestWriteSecret(t *testing.T) {
 	secret, err = c.data.getSecret("generic_secret")
 	assert.NoError(err)
 	assert.Equal("Marblerun Unit Test", string(secret.Public))
+
+	// try to set a secret incorrect size
+	invalidSecret := []byte(`{
+		"symmetric_key_unset": {
+			"Key": "` + base64.StdEncoding.EncodeToString([]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}) + `"
+		}	
+	}`)
+	err = c.WriteSecrets(context.TODO(), invalidSecret, admin)
+	assert.Error(err)
+
+	// make sure meta data of private secrets was saved correctly
+	secrets, err := c.data.getSecretMap()
+	assert.NoError(err)
+	priv := make(map[string]manifest.Secret)
+	for k, v := range secrets {
+		if !v.Shared && !v.UserDefined {
+			priv[k] = v
+		}
+	}
+	pC, _ := c.data.getCertificate(sKMarbleRootCert)
+	pK, _ := c.data.getPrivK(sKCoordinatorIntermediateKey)
+	priv, err = c.generateSecrets(context.TODO(), priv, uuid.New(), pC, pK)
+	assert.NoError(err)
+	assert.Equal("42", priv["cert_private"].Cert.Subject.SerialNumber)
+	assert.Equal("Marblerun Unit Test", priv["cert_private"].Cert.Subject.CommonName)
 }
 
 func testManifestInvalidDebugCase(c *Core, manifest *manifest.Manifest, marblePackage quote.PackageProperties, assert *assert.Assertions, require *require.Assertions) *Core {
