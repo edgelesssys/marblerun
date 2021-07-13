@@ -258,14 +258,17 @@ func (c *Core) VerifyUser(ctx context.Context, clientCerts []*x509.Certificate) 
 	// Check if a supplied client cert matches the supplied ones from the manifest stored in the core
 	// NOTE: We do not use the "correct" X.509 verify here since we do not really care about expiration and chain verification here.
 	for _, suppliedCert := range clientCerts {
-		for _, userName := range userIter {
-			user, err := c.data.getUser(userName)
+		for userIter.Next() {
+			user, err := c.data.getUser(userIter.Value())
 			if err != nil {
 				return nil, err
 			}
 			if suppliedCert.Equal(user.Certificate()) {
 				return user, nil
 			}
+		}
+		if userIter.Error() != nil {
+			return nil, err
 		}
 	}
 
@@ -488,7 +491,7 @@ func (c *Core) performRecovery(encryptionKey []byte) error {
 	}
 
 	// load state
-	store := store.NewStdStore(c.sealer, c.zaplogger)
+	store := store.NewStdStore(c.sealer)
 	recoveryData, err := store.LoadState()
 	if err != nil {
 		return err

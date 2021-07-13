@@ -111,7 +111,7 @@ func (c *Core) advanceState(newState state, tx store.Transaction) error {
 
 // NewCore creates and initializes a new Core object
 func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal.Sealer, recovery recovery.Recovery, zapLogger *zap.Logger, promFactory *promauto.Factory) (*Core, error) {
-	stor := store.NewStdStore(sealer, zapLogger)
+	stor := store.NewStdStore(sealer)
 	c := &Core{
 		qv:        qv,
 		qi:        qi,
@@ -525,11 +525,9 @@ func (c *Core) generateCertificateForSecret(secret manifest.Secret, parentCertif
 	}
 
 	template.BasicConstraintsValid = true
-	oldBefore := template.NotBefore
 	template.NotBefore = time.Now()
 
 	// If NotAfter is not set, we will use ValidFor for the end of the certificate lifetime. This can only happen once on initial manifest set
-	// Otherwise we check if ValidFor was set and if the duration of NotBefore to NotAfter match this, if not, we return an error
 	if template.NotAfter.IsZero() {
 		// User can specify a duration in days, otherwise it's one year by default
 		if secret.ValidFor == 0 {
@@ -538,10 +536,6 @@ func (c *Core) generateCertificateForSecret(secret manifest.Secret, parentCertif
 
 		template.NotAfter = time.Now().AddDate(0, 0, int(secret.ValidFor))
 	} else if secret.ValidFor != 0 {
-		if uint(template.NotAfter.Sub(oldBefore).Hours()/24) != secret.ValidFor {
-			// The duration of NotBefore to NotAfter did not match ValidFor, meaning both were specified in the manifest
-			return manifest.Secret{}, errors.New("ambigious certificate validity duration, both NotAfter and ValidFor are specified")
-		}
 		// reset expiration date for private secrets
 		if !secret.Shared {
 			template.NotAfter = time.Now().AddDate(0, 0, int(secret.ValidFor))

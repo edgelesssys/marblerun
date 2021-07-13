@@ -16,8 +16,8 @@ type Store interface {
 	Get(string) ([]byte, error)
 	// Put saves a value to store by key
 	Put(string, []byte) error
-	// Iterator returns a list of keys with a given prefix
-	Iterator(string) ([]string, error)
+	// Iterator returns an Iterator for a given prefix
+	Iterator(string) (Iterator, error)
 }
 
 // Transaction is a Store transaction.
@@ -26,12 +26,24 @@ type Transaction interface {
 	Get(string) ([]byte, error)
 	// Put saves a value to store by key
 	Put(string, []byte) error
-	// Iterator returns a list of keys with a given prefix
-	Iterator(string) ([]string, error)
+	// Iterator returns an Iterator for a given prefix
+	Iterator(string) (Iterator, error)
 	// Commit ends a transaction and persists the changes
 	Commit() error
 	// Rollback aborts a transaction. Noop if already committed.
 	Rollback()
+}
+
+// Iterator is an iterator for the store
+type Iterator interface {
+	// Next increments the iterator
+	Next() bool
+	// HasNext returns true if there is at least one more item after the current position
+	HasNext() bool
+	// Value returns the key at the current iterator position
+	Value() string
+	// Error returns errors encountered during iteration
+	Error() error
 }
 
 // storeValueUnset is an error raised by unset values in the store

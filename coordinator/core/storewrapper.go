@@ -39,24 +39,36 @@ type storeWrapper struct {
 	store interface {
 		Get(string) ([]byte, error)
 		Put(string, []byte) error
-		Iterator(string) ([]string, error)
+		Iterator(string) (store.Iterator, error)
 	}
 }
 
-// getIterator returns a list of keys from store
-func (s storeWrapper) getIterator(prefix string) ([]string, error) {
-	iter, err := s.store.Iterator(prefix)
-	if err != nil {
-		return nil, err
-	}
+// iteratorWrapper is a wrapper for the Iterator interface
+type iteratorWrapper struct {
+	iterator store.Iterator
+	prefix   string
+}
 
-	// named values are stored with a prefix to indicate their type
-	// remove this prefix here so we have just the names
-	toTrim := prefix + ":"
-	for idx, val := range iter {
-		iter[idx] = strings.TrimPrefix(val, toTrim)
-	}
-	return iter, nil
+func (i iteratorWrapper) Next() bool {
+	return i.iterator.Next()
+}
+
+func (i iteratorWrapper) HasNext() bool {
+	return i.iterator.HasNext()
+}
+
+func (i iteratorWrapper) Value() string {
+	return strings.TrimPrefix(i.iterator.Value(), i.prefix+":")
+}
+
+func (i iteratorWrapper) Error() error {
+	return i.iterator.Error()
+}
+
+// getIterator returns a wrapped iterator from store
+func (s storeWrapper) getIterator(prefix string) (iteratorWrapper, error) {
+	iter, err := s.store.Iterator(prefix)
+	return iteratorWrapper{iter, prefix}, err
 }
 
 // getActivations returns activations for a given Marble from store
@@ -206,13 +218,16 @@ func (s storeWrapper) getSecretMap() (map[string]manifest.Secret, error) {
 	}
 
 	secretMap := map[string]manifest.Secret{}
-	for _, name := range iter {
+	for iter.Next() {
 		// all secrets (user-defined and private only as uninitialized placeholders) are set with the initial manifest
 		// if we encounter an error here something went wrong with the store, or the provided list was faulty
-		secretMap[name], err = s.getSecret(name)
+		secretMap[iter.Value()], err = s.getSecret(iter.Value())
 		if err != nil {
 			return nil, err
 		}
+	}
+	if iter.Error() != nil {
+		return secretMap, err
 	}
 	return secretMap, nil
 }

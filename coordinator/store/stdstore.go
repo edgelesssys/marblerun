@@ -12,7 +12,6 @@ import (
 	"sync"
 
 	"github.com/edgelesssys/marblerun/coordinator/seal"
-	"go.uber.org/zap"
 )
 
 // StdStore is the standard implementation of the Store interface
@@ -20,17 +19,15 @@ type StdStore struct {
 	data         map[string][]byte
 	mux, txmux   sync.Mutex
 	sealer       seal.Sealer
-	zaplogger    *zap.Logger
 	recoveryData []byte
 	recoveryMode bool
 }
 
 // NewStdStore creates and initialises a new StdStore object
-func NewStdStore(sealer seal.Sealer, zaplogger *zap.Logger) *StdStore {
+func NewStdStore(sealer seal.Sealer) *StdStore {
 	s := &StdStore{
-		data:      make(map[string][]byte),
-		sealer:    sealer,
-		zaplogger: zaplogger,
+		data:   make(map[string][]byte),
+		sealer: sealer,
 	}
 
 	return s
@@ -63,14 +60,15 @@ func (s *StdStore) Put(request string, requestData []byte) error {
 
 // Iterator returns a list of all keys in StdStore with a given prefix
 // For an empty prefix, this returns a list of all keys in StdStore
-func (s *StdStore) Iterator(prefix string) ([]string, error) {
+func (s *StdStore) Iterator(prefix string) (Iterator, error) {
 	keys := make([]string, 0)
 	for k := range s.data {
 		if strings.HasPrefix(k, prefix) {
 			keys = append(keys, k)
 		}
 	}
-	return keys, nil
+
+	return &StdIterator{-1, keys}, nil
 }
 
 // BeginTransaction starts a new transaction
@@ -158,14 +156,15 @@ func (t *transaction) Put(request string, requestData []byte) error {
 }
 
 // Iterator returns a list of all keys in the transaction with a given prefix
-func (t *transaction) Iterator(prefix string) ([]string, error) {
+func (t *transaction) Iterator(prefix string) (Iterator, error) {
 	keys := make([]string, 0)
 	for k := range t.data {
 		if strings.HasPrefix(k, prefix) {
 			keys = append(keys, k)
 		}
 	}
-	return keys, nil
+
+	return &StdIterator{-1, keys}, nil
 }
 
 // Commit ends a transaction and persists the changes
@@ -182,4 +181,37 @@ func (t *transaction) Rollback() {
 	if t.store != nil {
 		t.store.txmux.Unlock()
 	}
+}
+
+// StdIterator is the standard Iterator implementation
+type StdIterator struct {
+	idx  int
+	keys []string
+}
+
+// Next implements the Iterator interface
+func (i *StdIterator) Next() bool {
+	i.idx++
+	if i.idx >= len(i.keys) {
+		return false
+	}
+	return true
+}
+
+func (i *StdIterator) HasNext() bool {
+	if (i.idx + 1) < len(i.keys) {
+		return true
+	}
+	return false
+}
+
+// Value implements the Iterator interface
+func (i *StdIterator) Value() string {
+	return i.keys[i.idx]
+}
+
+// Error implements the Iterator interface
+// For StdIterator this always returns nil
+func (i *StdIterator) Error() error {
+	return nil
 }

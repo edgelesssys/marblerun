@@ -223,6 +223,19 @@ func (m Manifest) Check(ctx context.Context, zaplogger *zap.Logger) error {
 		}
 	}
 
+	for name, s := range m.Secrets {
+		switch s.Type {
+		case "plain", "symmetric-key":
+			continue
+		case "cert-rsa", "cert-ed25519", "cert-ecdsa":
+			if !s.Cert.NotAfter.IsZero() && (s.ValidFor != 0) {
+				return fmt.Errorf("ambigious certificate validity duration for secret: %s, both NotAfter and ValidFor are specified", name)
+			}
+		default:
+			return fmt.Errorf("unkown type: %s for secret: %s", s.Type, name)
+		}
+	}
+
 	return nil
 }
 

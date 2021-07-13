@@ -176,14 +176,14 @@ func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, certQuote []
 	}
 
 	if !c.inSimulationMode() {
-		if len(infraIter) == 0 {
+		if !infraIter.HasNext() {
 			if err := c.qv.Validate(certQuote, tlsCert.Raw, pkg, quote.InfrastructureProperties{}); err != nil {
 				return status.Errorf(codes.Unauthenticated, "invalid quote: %v", err)
 			}
 		} else {
 			infraMatch := false
-			for _, infraName := range infraIter {
-				infra, err := c.data.getInfrastructure(infraName)
+			for infraIter.Next() {
+				infra, err := c.data.getInfrastructure(infraIter.Value())
 				if err != nil {
 					return err
 				}
