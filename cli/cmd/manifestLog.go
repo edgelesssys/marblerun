@@ -12,9 +12,9 @@ func newManifestLog() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "log <IP:PORT>",
-		Short: "Get the update log from the Marblerun coordinator",
-		Long: `Get the update log from the Marblerun coordinator.
-		The log is list of all successful changes to the coordinator,
+		Short: "Get the update log from the Marblerun Coordinator",
+		Long: `Get the update log from the Marblerun Coordinator.
+		The log is list of all successful changes to the Coordinator,
 		including a timestamp and user performing the operation.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -23,7 +23,7 @@ func newManifestLog() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Println("Successfully verified coordinator, now requesting update log")
+			fmt.Println("Successfully verified Coordinator, now requesting update log")
 			response, err := cliDataGet(hostName, "update", "data", cert)
 			if err != nil {
 				return err

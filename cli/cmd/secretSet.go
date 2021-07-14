@@ -22,9 +22,9 @@ func newSecretSet() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "set <secret_file> <IP:PORT>",
-		Short: "Set a secret for the Marblerun coordinator",
+		Short: "Set a secret for the Marblerun Coordinator",
 		Long: `
-Set a secret for the Marblerun coordinator.
+Set a secret for the Marblerun Coordinator.
 Secrets are loaded from a file in JSON format or directly from a PEM
 encoded certificate and/or key. In the later case, the name of the secret
 has to be set with the flag [--from-pem].

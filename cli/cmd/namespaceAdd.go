@@ -35,7 +35,7 @@ func newNameSpaceAdd() *cobra.Command {
 	return cmd
 }
 
-// cliNameSpaceAdd adds specified namespaces to the marblerun coordinator
+// cliNameSpaceAdd adds specified namespaces to the Marblerun Coordinator
 func cliNameSpaceAdd(namespaces []string, kubeClient kubernetes.Interface, dontInjectSgx bool) error {
 	for _, ns := range namespaces {
 		ctx, cancel := context.WithCancel(context.Background())

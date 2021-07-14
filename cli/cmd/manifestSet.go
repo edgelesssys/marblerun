@@ -19,8 +19,8 @@ func newManifestSet() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "set <manifest.json> <IP:PORT>",
-		Short: "Sets the manifest for the Marblerun coordinator",
-		Long:  "Sets the manifest for the Marblerun coordinator",
+		Short: "Sets the manifest for the Marblerun Coordinator",
+		Long:  "Sets the manifest for the Marblerun Coordinator",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			manifestFile := args[0]
@@ -31,7 +31,7 @@ func newManifestSet() *cobra.Command {
 				return err
 			}
 
-			fmt.Println("Successfully verified coordinator, now uploading manifest")
+			fmt.Println("Successfully verified Coordinator, now uploading manifest")
 
 			// Load manifest
 			manifest, err := loadManifestFile(manifestFile)
@@ -51,7 +51,7 @@ func newManifestSet() *cobra.Command {
 	return cmd
 }
 
-// cliManifestSet sets the coordinators manifest using its rest api
+// cliManifestSet sets the Coordinators manifest using its rest api
 func cliManifestSet(manifest []byte, host string, cert []*pem.Block, recover string) error {
 	client, err := restClient(cert, nil)
 	if err != nil {

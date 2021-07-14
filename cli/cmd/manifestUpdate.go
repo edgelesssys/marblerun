@@ -19,9 +19,9 @@ func newManifestUpdate() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "update <manifest.json> <IP:PORT>",
-		Short: "Updates the Marblerun coordinator with the specified manifest",
+		Short: "Updates the Marblerun Coordinator with the specified manifest",
 		Long: `
-Updates the Marblerun coordinator with the specified manifest.
+Updates the Marblerun Coordinator with the specified manifest.
 An admin certificate specified in the original manifest is needed to verify the authenticity of the update manifest.
 `,
 		Args: cobra.ExactArgs(2),
@@ -46,7 +46,7 @@ An admin certificate specified in the original manifest is needed to verify the 
 				return err
 			}
 
-			fmt.Println("Successfully verified coordinator, now uploading manifest")
+			fmt.Println("Successfully verified Coordinator, now uploading manifest")
 
 			return cliManifestUpdate(manifest, hostName, clCert, caCert)
 		},
@@ -61,7 +61,7 @@ An admin certificate specified in the original manifest is needed to verify the 
 	return cmd
 }
 
-// cliManifestUpdate updates the coordinators manifest using its rest api
+// cliManifestUpdate updates the Coordinators manifest using its rest api
 func cliManifestUpdate(manifest []byte, host string, clCert tls.Certificate, caCert []*pem.Block) error {
 	client, err := restClient(caCert, &clCert)
 	if err != nil {

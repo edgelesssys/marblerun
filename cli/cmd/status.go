@@ -12,7 +12,7 @@ import (
 )
 
 const statusDesc = `
-This command provides information about the currently running Marblerun coordinator.
+This command provides information about the currently running Marblerun Coordinator.
 Information is obtained from the /status endpoint of the Coordinators REST API.
 
 The Coordinator will be in one of these 4 states:
@@ -57,7 +57,7 @@ func newStatusCmd() *cobra.Command {
 	return cmd
 }
 
-// cliStatus requests the current status of the coordinator
+// cliStatus requests the current status of the Coordinator
 func cliStatus(host string, cert []*pem.Block) error {
 	client, err := restClient(cert, nil)
 	if err != nil {

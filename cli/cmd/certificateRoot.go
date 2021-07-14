@@ -13,8 +13,8 @@ func newCertificateRoot() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "root <IP:PORT>",
-		Short: "Returns the root certificate of the Marblerun coordinator",
-		Long:  `Returns the root certificate of the Marblerun coordinator`,
+		Short: "Returns the root certificate of the Marblerun Coordinator",
+		Long:  `Returns the root certificate of the Marblerun Coordinator`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hostName := args[0]
@@ -28,7 +28,7 @@ func newCertificateRoot() *cobra.Command {
 	return cmd
 }
 
-// cliCertificateRoot gets the root certificate of the Marblerun coordinator and saves it to a file
+// cliCertificateRoot gets the root certificate of the Marblerun Coordinator and saves it to a file
 func cliCertificateRoot(host string, output string, configFilename string, insecure bool) error {
 	var certs []*pem.Block
 	certs, err := verifyCoordinator(host, configFilename, insecure)
