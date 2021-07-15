@@ -19,7 +19,7 @@ import (
 )
 
 // premainName is the name of the premain executable used
-const premainName = "premain-graphene"
+const premainName = "premain-libos"
 
 // uuidName is the file name of a Marble's uuid
 const uuidName = "uuid"
@@ -107,7 +107,7 @@ func parseTreeForChanges(tree *toml.Tree) (map[string]interface{}, map[string]in
 		return nil, nil, errors.New("manifest already contains Marblerun changes")
 	}
 
-	// Add premain-graphene executable as trusted file & entry point
+	// Add premain-libos executable as trusted file & entry point
 	changes["libos.entrypoint"] = "file:" + premainName
 	changes["sgx.trusted_files.marblerun_premain"] = "file:" + premainName
 
@@ -246,7 +246,7 @@ func performChanges(changeDiffs []diff, fileName string) error {
 func downloadPremain(directory string) error {
 	cleanVersion := "v" + strings.Split(Version, "-")[0]
 
-	// Download premain-graphene executable
+	// Download premain-libos executable
 	resp, err := http.Get(fmt.Sprintf("https://github.com/edgelesssys/marblerun/releases/download/%s/%s", cleanVersion, premainName))
 	if err != nil {
 		return err

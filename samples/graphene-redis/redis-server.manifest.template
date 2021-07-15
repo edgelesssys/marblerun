@@ -9,8 +9,8 @@
 # to relative path to Graphene repository in the Makefile as part of the
 # build process.
 loader.preload = "file:{{ graphene.libos }}"
-# MARBLERUN: entrypoint must be premain-graphene
-libos.entrypoint = "premain-graphene"
+# MARBLERUN: entrypoint must be premain-libos
+libos.entrypoint = "premain-libos"
 
 # Verbosity of Graphene debug log (none/error/warning/debug/trace/all). Note
 # that GRAPHENE_LOG_LEVEL macro is expanded in the Makefile as part of the
@@ -125,8 +125,8 @@ sgx.trusted_files.runtime = "file:{{ graphene.runtimedir() }}/"
 sgx.trusted_files.arch_libdir = "file:{{ arch_libdir }}/"
 sgx.trusted_files.usr_arch_libdir = "file:/usr/{{ arch_libdir }}/"
 
-# MARBLERUN: must trust premain-graphene
-sgx.trusted_files.premain = "file:premain-graphene"
+# MARBLERUN: must trust premain-libos
+sgx.trusted_files.premain = "file:premain-libos"
 
 # Trusted no-library files include configuration files, read-only files, and
 # other static files. It is useful to specify such files here to make sure

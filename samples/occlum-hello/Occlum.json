@@ -1,6 +1,6 @@
 {
     "resource_limits": {
-        "kernel_space_heap_size": "32MB",
+        "kernel_space_heap_size": "64MB",
         "kernel_space_stack_size": "1MB",
         "user_space_size": "2048MB",
         "max_num_of_threads": 64
@@ -11,7 +11,7 @@
         "default_mmap_size": "900MB"
     },
     "entry_points": [
-        "/bin/premain-occlum"
+        "/bin/premain-libos"
     ],
     "env": {
         "default": [

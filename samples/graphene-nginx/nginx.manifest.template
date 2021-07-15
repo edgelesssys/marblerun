@@ -2,8 +2,8 @@
 #
 # This manifest was prepared and tested on Ubuntu 18.04.
 
-# MARBLERUN: entrypoint must be premain-graphene
-libos.entrypoint = "premain-graphene"
+# MARBLERUN: entrypoint must be premain-libos
+libos.entrypoint = "file:premain-libos"
 
 # Path to the library OS
 loader.preload = "file:{{ graphene.libos }}"
@@ -100,8 +100,8 @@ sgx.allowed_files.hosts = "file:/etc/hosts"
 sgx.allowed_files.group = "file:/etc/group"
 sgx.allowed_files.passwd = "file:/etc/passwd"
 
-# MARBLERUN: must trust premain-graphene
-sgx.trusted_files.premain = "file:premain-graphene"
+# MARBLERUN: must trust premain-libos
+sgx.trusted_files.premain = "file:premain-libos"
 
 # MARBLERUN: argv0 must be the path to the actual application
 loader.argv0_override = "{{ install_dir }}/sbin/nginx"
