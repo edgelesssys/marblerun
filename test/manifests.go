@@ -116,10 +116,8 @@ const ManifestJSON string = `{
 			"Size": 2048,
 			"Type": "cert-rsa",
 			"Cert": {
-				"SerialNumber": 42,
 				"Subject": {
-					"SerialNumber": "42",
-					"CommonName": "Marblerun Unit Test"
+					"CommonName": "Marblerun Unit Test Private"
 				}
 			},
 			"ValidFor": 7
@@ -128,10 +126,8 @@ const ManifestJSON string = `{
 			"Shared": true,
 			"Type": "cert-ed25519",
 			"Cert": {
-				"SerialNumber": 1337,
 				"Subject": {
-					"SerialNumber": "1337",
-					"CommonName": "Marblerun Unit Test"
+					"CommonName": "Marblerun Unit Test Shared"
 				}
 			},
 			"ValidFor": 7
@@ -220,10 +216,8 @@ var ManifestJSONWithRecoveryKey string = `{
 			"Size": 2048,
 			"Type": "cert-rsa",
 			"Cert": {
-				"SerialNumber": 42,
 				"Subject": {
-					"SerialNumber": "42",
-					"CommonName": "Marblerun Unit Test"
+					"CommonName": "Marblerun Unit Test Private"
 				}
 			},
 			"ValidFor": 7
@@ -232,10 +226,8 @@ var ManifestJSONWithRecoveryKey string = `{
 			"Shared": true,
 			"Type": "cert-ed25519",
 			"Cert": {
-				"SerialNumber": 1337,
 				"Subject": {
-					"SerialNumber": "1337",
-					"CommonName": "Marblerun Unit Test"
+					"CommonName": "Marblerun Unit Test Shared"
 				}
 			},
 			"ValidFor": 7

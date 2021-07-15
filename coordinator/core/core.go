@@ -515,13 +515,11 @@ func (c *Core) generateCertificateForSecret(secret manifest.Secret, parentCertif
 	if template.Subject.CommonName == "" {
 		template.Subject.CommonName = "Marblerun Generated Certificate"
 	}
-	if template.SerialNumber == nil {
-		var err error
-		template.SerialNumber, err = util.GenerateCertificateSerialNumber()
-		if err != nil {
-			c.zaplogger.Error("No serial number supplied; random number generation failed.", zap.Error(err))
-			return manifest.Secret{}, err
-		}
+	var err error
+	template.SerialNumber, err = util.GenerateCertificateSerialNumber()
+	if err != nil {
+		c.zaplogger.Error("No serial number supplied; random number generation failed.", zap.Error(err))
+		return manifest.Secret{}, err
 	}
 
 	template.BasicConstraintsValid = true
