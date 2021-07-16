@@ -8,8 +8,9 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
-	"math/big"
 	"time"
+
+	"github.com/edgelesssys/marblerun/util"
 )
 
 // certificateLegacy acts as a handler for generating signed certificates
@@ -22,10 +23,14 @@ type certificateLegacy struct {
 
 // newCertificateLegacy creates a certificate handler for kubernetes versions <=18
 func newCertificateLegacy() (*certificateLegacy, error) {
+	serial, err := util.GenerateCertificateSerialNumber()
+	if err != nil {
+		return nil, err
+	}
 	crt := &certificateLegacy{}
 
 	caCert := &x509.Certificate{
-		SerialNumber: big.NewInt(2021),
+		SerialNumber: serial,
 		Subject: pkix.Name{
 			Organization: []string{"edgeless.systems"},
 		},
@@ -81,8 +86,12 @@ func (crt *certificateLegacy) setCaBundle() ([]string, error) {
 
 // signRequest signs the webhook certificate using the rootCA
 func (crt *certificateLegacy) signRequest() error {
+	serial, err := util.GenerateCertificateSerialNumber()
+	if err != nil {
+		return err
+	}
 	serverCert := &x509.Certificate{
-		SerialNumber: big.NewInt(2022),
+		SerialNumber: serial,
 		Subject: pkix.Name{
 			CommonName:   "system:node:marble-injector.marblerun.svc",
 			Organization: []string{"system:nodes"},

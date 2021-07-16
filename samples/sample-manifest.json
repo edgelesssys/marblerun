@@ -56,7 +56,7 @@
                 ]
             },
             "TLS": [
-                "web", "anotherWeb"
+                "web", "another_web"
             ],
             "Roles": [
                 "cert-reader"
@@ -86,9 +86,7 @@
             "Size": 2048,
             "Type": "cert-rsa",
             "Cert": {
-                "SerialNumber": 42,
                 "Subject": {
-                    "SerialNumber": "42",
                     "CommonName": "Marblerun Unit Test"
                 }
             },
@@ -98,9 +96,7 @@
             "Shared": true,
             "Type": "cert-ed25519",
             "Cert": {
-                "SerialNumber": 1337,
                 "Subject": {
-                    "SerialNumber": "1337",
                     "CommonName": "Marblerun Unit Test"
                 }
             },
@@ -111,9 +107,7 @@
             "Type": "cert-rsa",
             "Size": 2048,
             "Cert": {
-                "SerialNumber": 4433,
                 "Subject": {
-                    "SerialNumber": "4433",
                     "CommonName": "Marblerun Unit Test"
                 }
             },
@@ -173,7 +167,7 @@
             "Actions": ["ReadSecret"]
         },
         "secrets-admin": {
-            "Resource": "Secrets",
+            "ResourceType": "Secrets",
             "ResourceNames": ["symmetric_key_shared", "cert_shared", "rsa_shared"],
             "Actions": ["ReadSecret", "WriteSecret"]
         }
