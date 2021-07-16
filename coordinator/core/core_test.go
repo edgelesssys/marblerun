@@ -277,6 +277,12 @@ func TestGenerateSecrets(t *testing.T) {
 	assert.NotNil(generatedSecrets["cert-rsa-specified-test"].Cert.Raw)
 	assert.NotNil(generatedSecrets["cert-ed25519-ca-test"].Cert.Raw)
 
+	// Make sure a certificate gets a new serial number if its regenerated
+	firstSerial := generatedSecrets["cert-rsa-test"].Cert.SerialNumber
+	secondGeneration, err := c.generateSecrets(context.TODO(), generatedSecrets, uuid.Nil, rootCert, rootPrivK)
+	assert.NoError(err)
+	assert.NotEqualValues(*firstSerial, *secondGeneration["cert-rsa-test"].Cert.SerialNumber)
+
 	// Check if CA certificate can generate another certificate
 	pub, _, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(err)

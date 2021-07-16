@@ -513,8 +513,7 @@ func TestWriteSecret(t *testing.T) {
 	pK, _ := c.data.getPrivK(sKCoordinatorIntermediateKey)
 	priv, err = c.generateSecrets(context.TODO(), priv, uuid.New(), pC, pK)
 	assert.NoError(err)
-	assert.Equal("42", priv["cert_private"].Cert.Subject.SerialNumber)
-	assert.Equal("Marblerun Unit Test", priv["cert_private"].Cert.Subject.CommonName)
+	assert.Equal("Marblerun Unit Test Private", priv["cert_private"].Cert.Subject.CommonName)
 }
 
 func testManifestInvalidDebugCase(c *Core, manifest *manifest.Manifest, marblePackage quote.PackageProperties, assert *assert.Assertions, require *require.Assertions) *Core {
