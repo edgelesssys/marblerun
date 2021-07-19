@@ -23,7 +23,7 @@ hello.manifest: hello.manifest.template
 
 premain-libos:
 	wget https://github.com/edgelesssys/marblerun/releases/latest/download/premain-libos
-
+	chmod u+x premain-libos
 
 run:
 	graphene-sgx hello
