@@ -15,7 +15,7 @@ import (
 )
 
 const someManifest = `
-libos.entrypoint = "file:myapplication"
+libos.entrypoint = "myapplication"
 sgx.remote_attestation = 0
 # Some comment here in between
 # This should not match: sgx.enclave_size - 2
@@ -71,7 +71,7 @@ func TestParseTreeForChanges(t *testing.T) {
 	// Verify minimum changes
 	var v datasize.ByteSize
 
-	assert.Equal("file:"+premainName, changes["libos.entrypoint"])
+	assert.Equal(premainName, changes["libos.entrypoint"])
 	assert.GreaterOrEqual(changes["sgx.thread_num"], 16)
 	require.NoError(v.UnmarshalText([]byte(changes["sgx.enclave_size"].(string))))
 	assert.GreaterOrEqual(v.GBytes(), 1.00)

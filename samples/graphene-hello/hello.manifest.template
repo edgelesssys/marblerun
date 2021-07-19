@@ -2,7 +2,7 @@ loader.preload = "file:{{ graphene.libos }}"
 loader.env.LD_LIBRARY_PATH = "/lib"
 
 # entrypoint must be premain-libos
-libos.entrypoint = "file:premain-libos"
+libos.entrypoint = "premain-libos"
 sgx.trusted_files.premain = "file:premain-libos"
 
 # argv0 must be the path to the actual application
