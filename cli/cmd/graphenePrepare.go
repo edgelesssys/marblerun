@@ -102,26 +102,18 @@ func parseTreeForChanges(tree *toml.Tree) (map[string]interface{}, map[string]in
 	}
 
 	// If Marblerun already touched the manifest, abort.
-	if original["libos.entrypoint"].(string) == "file:"+premainName || original["sgx.trusted_files.marblerun_premain"] != nil || original["sgx.allowed_files.marblerun_uuid"] != nil {
+	if original["libos.entrypoint"].(string) == premainName || original["sgx.trusted_files.marblerun_premain"] != nil || original["sgx.allowed_files.marblerun_uuid"] != nil {
 		color.Yellow("The supplied manifest already contains changes for Marblerun. Have you selected the correct file?")
 		return nil, nil, errors.New("manifest already contains Marblerun changes")
 	}
 
 	// Add premain-libos executable as trusted file & entry point
-	changes["libos.entrypoint"] = "file:" + premainName
+	changes["libos.entrypoint"] = premainName
 	changes["sgx.trusted_files.marblerun_premain"] = "file:" + premainName
 
 	// Set original endpoint as argv0. If one exists, keep the old one
 	if original["loader.argv0_override"] == nil {
-		fileEntry := strings.SplitAfter(original["libos.entrypoint"].(string), "file:")
-		if len(fileEntry) != 2 {
-			color.Red("ERROR: Cannot process the current entrypoint: %s", original["libos.entrypoint"].(string))
-			color.Red("Note: This tool only supports 'file:' URIs for automatic modifcation.")
-			color.Red("If you chose another type of path reference, please change it to 'file:' to continue.")
-			color.Red("Otherwise, please file a bug report!")
-			return nil, nil, fmt.Errorf("cannot determine entrypoint for argv0 override correctly")
-		}
-		changes["loader.argv0_override"] = fileEntry[1]
+		changes["loader.argv0_override"] = original["libos.entrypoint"].(string)
 	}
 
 	// Enable use "insecure" host env (which delegates the "secure" handling to Marblerun)
