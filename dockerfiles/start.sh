@@ -6,7 +6,7 @@ then
     mv /usr/lib/libdcap_quoteprov.so /usr/lib/libdcap_quoteprov.so.azure
     # create a link to the intel quote provider library
     mv /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so.1.intel /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so.1
-    ln -s /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so.1 /usr/lib/libdcap_quoteprov.so
+    ln -s /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so.1 /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so
 fi
 
 erthost coordinator-enclave.signed
