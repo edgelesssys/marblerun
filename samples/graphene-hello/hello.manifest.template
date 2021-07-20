@@ -2,7 +2,7 @@ loader.preload = "file:{{ graphene.libos }}"
 loader.env.LD_LIBRARY_PATH = "/lib"
 
 # entrypoint must be premain-libos
-libos.entrypoint = "file:premain-libos"
+libos.entrypoint = "premain-libos"
 sgx.trusted_files.premain = "file:premain-libos"
 
 # argv0 must be the path to the actual application
@@ -35,9 +35,13 @@ fs.mount.etc.type = "chroot"
 fs.mount.etc.path = "/etc"
 fs.mount.etc.uri = "file:/etc"
 sgx.trusted_files.nss = "file:{{ graphene.runtimedir() }}/libnss_dns.so.2"
+sgx.trusted_files.nss_files = "file:{{ graphene.runtimedir() }}/libnss_files.so.2"
 sgx.trusted_files.resolv = "file:{{ graphene.runtimedir() }}/libresolv.so.2"
 sgx.allowed_files.hosts = "file:/etc/hosts"
-sgx.allowed_files.resolv = "file:/etc/resolv.conf"
+sgx.allowed_files.host_conf = "file:/etc/host.conf"
+sgx.allowed_files.gai_conf = "file:/etc/gai.conf"
+sgx.allowed_files.resolv_conf = "file:/etc/resolv.conf"
+sgx.allowed_files.localtime = "file:/etc/localtime"
 
 
 # Name Service Switch (NSS) files, see 'man nsswitch.conf'

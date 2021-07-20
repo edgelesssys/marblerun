@@ -73,12 +73,17 @@ nginx.manifest: nginx.manifest.template
 		-Dinstall_dir_abspath=$(abspath $(INSTALL_DIR)) \
 		$< >$@
 
+premain-libos:
+	wget https://github.com/edgelesssys/marblerun/releases/latest/download/premain-libos
+	chmod u+x premain-libos
+
 # Generating the SGX-specific manifest (nginx.manifest.sgx), the enclave signature,
 # and the token for enclave initialization.
 nginx.manifest.sgx: nginx.manifest $(INSTALL_DIR)/sbin/nginx \
 		$(INSTALL_DIR)/conf/nginx-graphene.conf \
 		$(TEST_DATA) \
-		$(INSTALL_DIR)/conf/server.crt
+		$(INSTALL_DIR)/conf/server.crt \
+		premain-libos
 	graphene-sgx-sign \
 		--key $(SGX_SIGNER_KEY) \
 		--manifest $< \

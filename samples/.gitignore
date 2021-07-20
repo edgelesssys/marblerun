@@ -1,0 +1,10 @@
+*.token
+*.sgx
+uuid
+*.tar.gz
+*.sig
+premain-libos
+install/
+nginx-1.16.1/
+*.manifest
+hello
