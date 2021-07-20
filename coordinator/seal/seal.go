@@ -51,6 +51,10 @@ func (s *AESGCMSealer) Unseal() ([]byte, []byte, error) {
 	sealedData, err := ioutil.ReadFile(s.getFname(SealedDataFname))
 
 	if os.IsNotExist(err) {
+		// No sealed data found, remove sealed key if it exists
+		if err := os.Remove(s.getFname(SealedKeyFname)); err != nil && !os.IsNotExist(err) {
+			return nil, nil, err
+		}
 		return nil, nil, nil
 	} else if err != nil {
 		return nil, nil, err
