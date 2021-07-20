@@ -51,6 +51,8 @@ func (s *AESGCMSealer) Unseal() ([]byte, []byte, error) {
 	sealedData, err := ioutil.ReadFile(s.getFname(SealedDataFname))
 
 	if os.IsNotExist(err) {
+		// No sealed data found, back up any existing seal keys
+		s.backupEncryptionKey()
 		return nil, nil, nil
 	} else if err != nil {
 		return nil, nil, err
@@ -163,11 +165,7 @@ func (s *AESGCMSealer) generateNewEncryptionKey() error {
 // SetEncryptionKey sets or restores an encryption key
 func (s *AESGCMSealer) SetEncryptionKey(encryptionKey []byte) error {
 	// If there already is an existing key file stored on disk, save it
-	if sealedKeyData, err := ioutil.ReadFile(s.getFname(SealedKeyFname)); err == nil {
-		t := time.Now()
-		newFileName := s.getFname(SealedKeyFname) + "_" + t.Format("20060102150405") + ".bak"
-		ioutil.WriteFile(newFileName, sealedKeyData, 0600)
-	}
+	s.backupEncryptionKey()
 
 	// Encrypt encryption key with seal key
 	encryptedKeyData, err := ecrypto.SealWithProductKey(encryptionKey)
@@ -183,6 +181,15 @@ func (s *AESGCMSealer) SetEncryptionKey(encryptionKey []byte) error {
 	s.encryptionKey = encryptionKey
 
 	return nil
+}
+
+// backupEncryptionKey creates a backup of an existing seal key
+func (s *AESGCMSealer) backupEncryptionKey() {
+	if sealedKeyData, err := ioutil.ReadFile(s.getFname(SealedKeyFname)); err == nil {
+		t := time.Now()
+		newFileName := s.getFname(SealedKeyFname) + "_" + t.Format("20060102150405") + ".bak"
+		ioutil.WriteFile(newFileName, sealedKeyData, 0600)
+	}
 }
 
 // MockSealer is a mockup sealer
