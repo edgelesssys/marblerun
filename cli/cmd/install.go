@@ -35,6 +35,9 @@ type installOptions struct {
 	hostname         string
 	version          string
 	resourceKey      string
+	dcapQpl          string
+	pccsUrl          string
+	useSecureCert    string
 	simulation       bool
 	disableInjection bool
 	clientPort       int
@@ -68,6 +71,9 @@ func newInstallCmd() *cobra.Command {
 	cmd.Flags().StringVar(&options.chartPath, "marblerun-chart-path", "", "Path to marblerun helm chart")
 	cmd.Flags().StringVar(&options.version, "version", "", "Version of the Coordinator to install, latest by default")
 	cmd.Flags().StringVar(&options.resourceKey, "resource-key", "", "Resource providing SGX, different depending on used device plugin. Use this to set tolerations/resources if your device plugin is not supported by marblerun")
+	cmd.Flags().StringVar(&options.dcapQpl, "dcap-qpl", "azure", `Quote provider library to use by the Coordinator. One of {"azure", "intel"}`)
+	cmd.Flags().StringVar(&options.pccsUrl, "dcap-pccs-url", "https://localhost:8081/sgx/certification/v3/", "Provisioning Certificate Caching Service (PCCS) server address")
+	cmd.Flags().StringVar(&options.useSecureCert, "dcap-secure-cert", "TRUE", "To accept insecure HTTPS certificate from the PCCS, set this option to FALSE")
 	cmd.Flags().BoolVar(&options.simulation, "simulation", false, "Set marblerun to start in simulation mode")
 	cmd.Flags().BoolVar(&options.disableInjection, "disable-auto-injection", false, "Disable automatic injection of selected namespaces")
 	cmd.Flags().IntVar(&options.meshPort, "mesh-server-port", 2001, "Set the mesh server port. Needs to be configured to the same port as in the data-plane marbles")
@@ -130,10 +136,14 @@ func cliInstall(options *installOptions) error {
 			fmt.Sprintf("coordinator.simulation=%d", 1),
 			fmt.Sprintf("coordinator.resources.limits=%s", "null"),
 			fmt.Sprintf("coordinator.hostname=%s", options.hostname),
+			fmt.Sprintf("dcap=%s", "null"),
 		)
 	} else {
 		stringValues = append(stringValues,
 			fmt.Sprintf("coordinator.hostname=%s", options.hostname),
+			fmt.Sprintf("dcap.qpl=%s", options.dcapQpl),
+			fmt.Sprintf("dcap.pccsUrl=%s", options.pccsUrl),
+			fmt.Sprintf("dcap.useSecureCert=%s", options.useSecureCert),
 		)
 
 		// Helms value merge function will overwrite any preset values for "tolerations" if we set new ones here
