@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [[ "${EDG_DCAP_LIBRARY}" == "intel" ]]
+if [[ "${DCAP_LIBRARY}" == "intel" ]]
 then
     # rename the library installed by az-dcap-client
     mv /usr/lib/libdcap_quoteprov.so /usr/lib/libdcap_quoteprov.so.azure
