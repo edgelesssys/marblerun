@@ -7,9 +7,9 @@ FROM ghcr.io/edgelesssys/edgelessrt-dev AS build
 COPY --from=pull /coordinator /coordinator
 WORKDIR /coordinator/build
 RUN cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
-RUN --mount=type=secret,id=signingkey,dst=/coordinator/build/private.pem,required=true make
+RUN --mount=type=secret,id=signingkey,dst=/coordinator/build/private.pem,required=true make sign-coordinator coordinator-noenclave
 
 FROM ghcr.io/edgelesssys/edgelessrt-deploy AS release
 LABEL description="EdgelessCoordinator"
-COPY --from=build /coordinator/build/coordinator-enclave.signed /coordinator/build/coordinator-noenclave /
-ENTRYPOINT ["erthost", "coordinator-enclave.signed"]
+COPY --from=build /coordinator/build/coordinator-enclave.signed /coordinator/build/coordinator-noenclave /coordinator/dockerfiles/start.sh /
+ENTRYPOINT ["/start.sh"]
