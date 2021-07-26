@@ -143,7 +143,7 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 	txdata := storeWrapper{tx}
 
 	// set core to uninitialized if no state is set
-	if _, err := txdata.getState(); err != nil {
+	if _, err := c.data.getState(); err != nil {
 		if store.IsStoreValueUnsetError(err) {
 			if err := txdata.putState(stateUninitialized); err != nil {
 				return nil, err
@@ -165,7 +165,7 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 		if err := c.advanceState(stateRecovery, tx); err != nil {
 			return nil, err
 		}
-	} else if _, err := txdata.getRawManifest(); store.IsStoreValueUnsetError(err) {
+	} else if _, err := c.data.getRawManifest(); store.IsStoreValueUnsetError(err) {
 		// no state was found, wait for manifest
 		c.zaplogger.Info("No sealed state found. Proceeding with new state.")
 		if err := c.setCAData(dnsNames, tx); err != nil {

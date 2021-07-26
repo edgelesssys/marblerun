@@ -3,6 +3,10 @@ module github.com/edgelesssys/marblerun
 go 1.14
 
 require (
+	github.com/Azure/azure-sdk-for-go v55.7.0+incompatible
+	github.com/Azure/go-autorest/autorest/azure/auth v0.5.8 // indirect
+	github.com/Azure/go-autorest/autorest/to v0.4.0 // indirect
+	github.com/Azure/go-autorest/autorest/validation v0.3.1 // indirect
 	github.com/c2h5oh/datasize v0.0.0-20200825124411-48ed595a09d2
 	github.com/edgelesssys/ego v0.2.4-0.20210609075311-d09986cbed77
 	github.com/edgelesssys/era v0.3.0
