@@ -11,5 +11,5 @@ RUN --mount=type=secret,id=signingkey,dst=/coordinator/build/private.pem,require
 
 FROM ghcr.io/edgelesssys/edgelessrt-deploy AS release
 LABEL description="EdgelessCoordinator"
-COPY --from=build /coordinator/build/coordinator-enclave.signed /coordinator/build/coordinator-noenclave /coordinator/dockerfiles/start.sh /
+COPY --from=build /coordinator/build/coordinator-enclave.signed /coordinator/build/coordinator-noenclave /coordinator/build/coordinator-config.json /coordinator/dockerfiles/start.sh /
 ENTRYPOINT ["/start.sh"]
