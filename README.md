@@ -1,6 +1,6 @@
 # Marblerun
 
-![logo](assets/mr_logo.svg)
+![logo](assets/marblerun-logo.svg)
 
 [![GitHub Actions Status][github-actions-badge]][github-actions]
 [![GitHub license][license-badge]](LICENSE)
@@ -81,7 +81,7 @@ In case you want to see how you can integrate popular existing solutions with Ma
 The popular [Linkerd][linkerd] service mesh uses the simple and scalable *emojivoto* app as its default demo. Check out our [confidential variant][emojivoto]. Your emoji votes have never been more secure! 😉
 
 <!-- refs -->
-[docs]: https://marblerun.sh/docs/introduction/
+[docs]: https://docs.edgeless.systems/marblerun/
 [edgelessrt]: https://github.com/edgelesssys/edgelessrt
 [ego]: https://github.com/edgelesssys/ego
 [emojivoto]: https://github.com/edgelesssys/emojivoto
