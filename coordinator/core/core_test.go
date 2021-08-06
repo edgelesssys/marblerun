@@ -277,6 +277,10 @@ func TestGenerateSecrets(t *testing.T) {
 	assert.NotNil(generatedSecrets["cert-rsa-specified-test"].Cert.Raw)
 	assert.NotNil(generatedSecrets["cert-ed25519-ca-test"].Cert.Raw)
 
+	// If unspecified, CN and DNS names should be set to localhost
+	assert.Equal("localhost", generatedSecrets["cert-rsa-test"].Cert.Subject.CommonName)
+	assert.Equal([]string{"localhost"}, generatedSecrets["cert-rsa-test"].Cert.DNSNames)
+
 	// Make sure a certificate gets a new serial number if its regenerated
 	firstSerial := generatedSecrets["cert-rsa-test"].Cert.SerialNumber
 	secondGeneration, err := c.generateSecrets(context.TODO(), generatedSecrets, uuid.Nil, rootCert, rootPrivK)

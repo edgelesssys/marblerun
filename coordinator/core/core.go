@@ -513,7 +513,11 @@ func (c *Core) generateCertificateForSecret(secret manifest.Secret, parentCertif
 		template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}
 	}
 	if template.Subject.CommonName == "" {
-		template.Subject.CommonName = "Marblerun Generated Certificate"
+		if len(template.DNSNames) == 1 {
+			template.Subject.CommonName = template.DNSNames[0]
+		} else {
+			template.Subject.CommonName = "Marblerun Generated Certificate"
+		}
 	}
 	var err error
 	template.SerialNumber, err = util.GenerateCertificateSerialNumber()
