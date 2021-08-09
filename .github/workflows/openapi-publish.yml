@@ -1,0 +1,27 @@
+name: Publish OpenAPI specification to documentation
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'swagger.json'
+jobs:
+  publish-to-docs:
+    needs: make-openapi-spec
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Download swagger.json
+        uses: actions/download-artifact@v2
+        with:
+          name: swagger.json
+          path: swagger.json
+      - name: Publish file to documentation
+        uses: andstor/copycat-action@v3
+        with:
+          personal_token: ${{ secrets.CI_GITHUB_REPOSITORY }}
+          src_path: swagger.json
+          dst_owner: edgelesssys
+          dst_repo_name: docs.edgeless.systems
+          dst_branch: action/marblerun/update-swagger
+          dst_path: marblerun/_media/swagger.json
+          commit_message: OpenAPI spec of MarbleRun was updated
