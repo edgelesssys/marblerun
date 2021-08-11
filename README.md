@@ -1,4 +1,4 @@
-# Marblerun
+# MarbleRun
 
 ![logo](assets/marblerun-logo.svg)
 
@@ -8,13 +8,13 @@
 [![PkgGoDev][go-pkg-badge]][go-pkg]
 [![Discord Chat][discord-badge]][discord]
 
-[Marblerun][marblerunsh] is a framework for creating distributed confidential-computing apps.
+[MarbleRun][marblerunsh] is a framework for creating distributed confidential-computing apps.
 
-Build your confidential microservices with [EGo][ego] or another [runtime](#supported-runtimes), distribute them with Kubernetes on an SGX-enabled cluster, and let Marblerun take care of the rest. Deploy end-to-end secure and verifiable AI pipelines or crunch on sensitive big data in the cloud.
+Build your confidential microservices with [EGo][ego] or another [runtime](#supported-runtimes), distribute them with Kubernetes on an SGX-enabled cluster, and let MarbleRun take care of the rest. Deploy end-to-end secure and verifiable AI pipelines or crunch on sensitive big data in the cloud.
 
-Marblerun guarantees that the topology of your distributed app adheres to a Manifest specified in simple JSON. Marblerun verifies the integrity of services, bootstraps them, and sets up encrypted connections between them. If a node fails, Marblerun will seamlessly substitute it with respect to the rules defined in the Manifest.
+MarbleRun guarantees that the topology of your distributed app adheres to a Manifest specified in simple JSON. MarbleRun verifies the integrity of services, bootstraps them, and sets up encrypted connections between them. If a node fails, MarbleRun will seamlessly substitute it with respect to the rules defined in the Manifest.
 
-To keep things simple, Marblerun issues one concise remote attestation statement for your whole distributed app. This can be used by anyone to verify the integrity of your distributed app.
+To keep things simple, MarbleRun issues one concise remote attestation statement for your whole distributed app. This can be used by anyone to verify the integrity of your distributed app.
 
 ### Key features
 
@@ -31,7 +31,7 @@ To keep things simple, Marblerun issues one concise remote attestation statement
 <img src="assets/overview.svg" alt="overview" width="600"/>
 
 ### Supported runtimes
-Marblerun supports services built with one of the following frameworks:
+MarbleRun supports services built with one of the following frameworks:
 * [EGo][ego]
 * [Graphene][graphene]
 * [Edgeless RT][edgelessrt]
@@ -62,7 +62,7 @@ Pull requests are welcome! You need to agree to our [Contributor License Agreeme
 
 ### Hello world
 
-We provide basic examples on how to build confidential apps with Marblerun:
+We provide basic examples on how to build confidential apps with MarbleRun:
 
 * See [helloworld](samples/helloworld) for an example in Go
 * See [helloc++](samples/helloc++) for an example in C++
@@ -71,7 +71,7 @@ We provide basic examples on how to build confidential apps with Marblerun:
 
 ### Advanced
 
-In case you want to see how you can integrate popular existing solutions with Marblerun, we provide more advanced examples:
+In case you want to see how you can integrate popular existing solutions with MarbleRun, we provide more advanced examples:
 
 * See [graphene-nginx](samples/graphene-nginx) for an example of converting an existing Graphene application to a Marble
 * See [graphene-redis](samples/graphene-redis) for a distributed Redis example using Graphene
