@@ -21,23 +21,30 @@
             "Parameters": {
                 "Files": {
                     "/tmp/abc.txt": "helloworld",
-                    "/tmp/helloworld.sh": "#!/usr/bin/env bash\necho {{ raw .Secrets.hello }} {{ raw .Secrets.hello }}",
+                    "/tmp/helloworld.sh": "#!/usr/bin/env bash\necho {{ string .Secrets.hello }} {{ string .Secrets.hello }}",
                     "/tmp/defg.txt": {
                         "encoding": "string",
+                        "noTemplates": false,
                         "data": "foo"
                     },
                     "/tmp/jkl.mno": {
                         "encoding": "base64",
+                        "noTemplates": true,
                         "data": "YmFy"
                     },
                     "/tmp/enc.key": {
-                        "encoding": "bytes",
-                        "data": "{{ raw .Secrets.symmetric_key_shared }}"
+                        "encoding": "string",
+                        "noTemplates": true,
+                        "data": "{{ string .Secrets.symmetric_key_shared }}"
                 },
                 "Env": {
                     "IS_FIRST": "true",
+                    "IS_SECOND": {
+                        "encoding": "string",
+                        "data": "false"
+                    },
                     "SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
-                    "API_KEY": "{{ raw .Secrets.api_key }}",
+                    "API_KEY": "{{ string .Secrets.api_key }}",
                     "TEST_SECRET_CERT": "{{ pem .Secrets.cert_shared.Cert }}",
                     "TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.cert_private.Cert }}"
                 },
