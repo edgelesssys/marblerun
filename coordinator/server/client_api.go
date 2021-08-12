@@ -19,6 +19,7 @@ type GeneralResponse struct {
 	Data    interface{} `json:"data"`
 	Message string      `json:"message,omitempty"` // only used when status = "error"
 }
+
 type CertQuoteResp struct {
 	// A PEM-encoded certificate chain containing the Coordinator's Root CA and Intermediate CA,
 	// which can be used for trust establishment between a client and the Coordinator.
@@ -64,9 +65,9 @@ type clientAPIServer struct {
 // Get the current status of the Coordinator.
 //
 // The status indicates the current state of the coordinator, and can be one of the following:
-// 1. Coordinator is in recovery mode. Either upload a key to unseal the saved state, or set a new manifest. Waiting for user input on [/recover](features/recovery.md).
-// 1. Coordinator is ready to as.ccept a manifest on [/manifest](workflows/set-manifest.md)
-// 1. Coordinator is running correctly and ready to as.ccept marbles through the [Marble API](workflows/add-service.md)
+// 1. Coordinator is in recovery mode. Either upload a key to unseal the saved state, or set a new manifest. Waiting for user input on [/recover](../#/features/recovery.md).
+// 1. Coordinator is ready to accept a manifest on [/manifest](workflows/set-manifest.md)
+// 1. Coordinator is running correctly and ready to accept marbles through the [Marble API](../#/workflows/add-service.md)
 //
 //     Responses:
 //       200: StatusResponse
@@ -112,7 +113,7 @@ func (s *clientAPIServer) manifestGet(w http.ResponseWriter, r *http.Request) {
 // Set a manifest.
 //
 // Before deploying the application to the cluster the manifest needs to be set once by the provider.
-// On sus.ccess, an array containing key-value mapping for encrypted secrets to be used for recovering the Coordinator in case of disaster recovery.
+// On success, an array containing key-value mapping for encrypted secrets to be used for recovering the Coordinator in case of disaster recovery.
 // The key matches each supplied key from RecoveryKeys in the Manifest.
 //
 // 	Example for setting the manifest with curl:
@@ -158,7 +159,7 @@ func (s *clientAPIServer) manifestPost(w http.ResponseWriter, r *http.Request) {
 // Both the provider and the users of the confidential application can use this endpoint to verify the integrity of the Coordinator and the cluster at any time.
 //
 // The returned certificate chain is PEM-encoded, contains the Coordinator's Root CA and Intermediate CA, and can be used for trust establishment between a client and the Coordinator.
-// The quote is base64-encoded and can be used for Remote Attestation, as described in [Verifying a deployment](workflows/verification.md).
+// The quote is base64-encoded and can be used for Remote Attestation, as described in [Verifying a deployment](../#/workflows/verification.md).
 //
 // 	We provide a tool to automatically verify the quote and output the trusted certificate:
 //
@@ -174,7 +175,7 @@ func (s *clientAPIServer) manifestPost(w http.ResponseWriter, r *http.Request) {
 // era -c coordinator-era.json -h $MARBLERUN -o marblerun.crt
 // ```
 //
-// > On Ubuntu, `~/.local/bin` is only added to PATH when the directory exists when initializing your bash environment during login. You might need to re-login after creating the directory. Also, non-default shells such as `zsh` do not add this path by default. Therefore, if you receive `command not found: era` as an error message for a local user installation, either make sure `~/.local/bin` was added to your PATH sus.ccessfully or simply use the machine-wide installation method.
+// > On Ubuntu, `~/.local/bin` is only added to PATH when the directory exists when initializing your bash environment during login. You might need to re-login after creating the directory. Also, non-default shells such as `zsh` do not add this path by default. Therefore, if you receive `command not found: era` as an error message for a local user installation, either make sure `~/.local/bin` was added to your PATH successfully or simply use the machine-wide installation method.
 //
 // The file `coordinator-era.json` contains the *Packages* information for the Coordinator. For our testing image this can be pulled from our GitHub releases:
 //
@@ -200,7 +201,7 @@ func (s *clientAPIServer) quoteGet(w http.ResponseWriter, r *http.Request) {
 //
 // This API endpoint is only available when the coordinator is in recovery mode.
 // Before you can use the endpoint, you need to decrypt the recovery secret which you may have received when setting the manifest initially.
-// See [Recovering the Coordinator](workflows/recover-coordinator.md) to retrieve the recovery key needed to use this API endpoint correctly.
+// See [Recovering the Coordinator](../#/workflows/recover-coordinator.md) to retrieve the recovery key needed to use this API endpoint correctly.
 //
 // Example for recovering the Coordinator with curl:
 //
@@ -229,9 +230,9 @@ func (s *clientAPIServer) recoverPost(w http.ResponseWriter, r *http.Request) {
 	// Construct status message based on remaining keys
 	var statusMessage string
 	if remaining != 0 {
-		statusMessage = fmt.Sprintf("Secret was processed sus.ccessfully. Upload the next secret. Remaining secrets: %d", remaining)
+		statusMessage = fmt.Sprintf("Secret was processed successfully. Upload the next secret. Remaining secrets: %d", remaining)
 	} else {
-		statusMessage = "Recovery sus.ccessful."
+		statusMessage = "Recovery successful."
 	}
 
 	writeJSON(w, RecoveryStatusResp{statusMessage})
@@ -259,7 +260,7 @@ func (s *clientAPIServer) updateGet(w http.ResponseWriter, r *http.Request) {
 // Update a specific package set in the manifest.
 //
 // This API endpoint only works when Users were defined in the Manifest.
-// For more information, look up [Updating a Manifest](workflows/update-manifest.md).
+// For more information, look up [Updating a Manifest](../#/workflows/update-manifest.md).
 //
 // Example for updating the manifest with curl:
 //
@@ -268,7 +269,7 @@ func (s *clientAPIServer) updateGet(w http.ResponseWriter, r *http.Request) {
 // ```
 //
 //     Responses:
-//       200: Sus.ccessResponse
+//       200: SuccessResponse
 //		 400: ErrorResponse
 //		 500: ErrorResponse
 func (s *clientAPIServer) updatePost(w http.ResponseWriter, r *http.Request) {
@@ -302,7 +303,7 @@ func (s *clientAPIServer) updatePost(w http.ResponseWriter, r *http.Request) {
 //
 // This API endpoint only works when `Users` were defined in the manifest.
 // The user connects via mutual TLS using the user client certificate in the TLS Handshake.
-// For more information, look up [Managing secrets](workflows/managing-secrets.md).
+// For more information, look up [Managing secrets](../#/workflows/managing-secrets.md).
 //
 // Example for retrieving the secrets `symmetric_key_shared` and `cert_shared`:
 //
@@ -311,7 +312,7 @@ func (s *clientAPIServer) updatePost(w http.ResponseWriter, r *http.Request) {
 // ```
 //
 //     Responses:
-//       200: Sus.ccessResponse
+//       200: SuccessResponse
 // 		 401: ErrorResponse
 //		 500: ErrorResponse
 func (s *clientAPIServer) secretsGet(w http.ResponseWriter, r *http.Request) {
@@ -348,7 +349,7 @@ func (s *clientAPIServer) secretsGet(w http.ResponseWriter, r *http.Request) {
 //
 // This API endpoint only works when `Users` were defined in the manifest.
 // The user connects via mutual TLS using the user client certificate in the TLS Handshake.
-// For more information, look up [Managing secrets](workflows/managing-secrets.md).
+// For more information, look up [Managing secrets](../#/workflows/managing-secrets.md).
 //
 // Example for setting secrets from the file `secrets.json`:
 //
