@@ -88,13 +88,13 @@ func TestPreMain(t *testing.T) {
 	}
 	{
 		parameters = &rpc.Parameters{
-			Files: map[string]string{
-				"path1": "data1",
-				"path2": "data2",
+			Files: map[string][]byte{
+				"path1": []byte("data1"),
+				"path2": []byte("data2"),
 			},
-			Env: map[string]string{
-				"EDG_TEST_1": "env1",
-				"EDG_TEST_2": "env2",
+			Env: map[string][]byte{
+				"EDG_TEST_1": []byte("env1"),
+				"EDG_TEST_2": []byte("env2"),
 			},
 			Argv: []string{"arg0", "arg1"},
 		}

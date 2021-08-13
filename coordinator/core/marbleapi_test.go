@@ -163,7 +163,11 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	params := resp.GetParameters()
 	// Validate Files
 	if marble.Parameters.Files != nil {
-		ms.assert.Equal(marble.Parameters.Files, params.Files)
+		for k, v := range marble.Parameters.Files {
+			ms.assert.EqualValues(v, resp.Parameters.Files[k])
+		}
+		//ms.assert.Equal(marble.Parameters.Files, params.Files)
+		//ms.assert.EqualValues(marble.Parameters.Files, params.Files)
 	}
 	// Validate Argv
 	if marble.Parameters.Argv != nil {
@@ -171,16 +175,16 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	}
 
 	// Validate SealKey
-	sealKey, err := hex.DecodeString(params.Env["SEAL_KEY"])
+	sealKey, err := hex.DecodeString(string(params.Env["SEAL_KEY"]))
 	ms.assert.NoError(err)
 	ms.assert.Len(sealKey, 32)
 
 	// Validate Marble Key
-	pMarbleKey, _ := pem.Decode([]byte(params.Env[libMarble.MarbleEnvironmentPrivateKey]))
+	pMarbleKey, _ := pem.Decode(params.Env[libMarble.MarbleEnvironmentPrivateKey])
 	ms.assert.NotNil(pMarbleKey)
 
 	// Validate Certificate Chain
-	pLeaf, rest := pem.Decode([]byte(params.Env[libMarble.MarbleEnvironmentCertificateChain]))
+	pLeaf, rest := pem.Decode(params.Env[libMarble.MarbleEnvironmentCertificateChain])
 	ms.assert.NotNil(pLeaf)
 	ms.assert.NotEmpty(rest)
 	pMarbleRoot, rest := pem.Decode(rest)
@@ -545,14 +549,12 @@ func (ms *marbleSpawner) shortMarbleActivation(marbleType string, infraName stri
 	ms.assert.NoError(err)
 	marble = coreServerManifest.Marbles[marbleType]
 	// Validate Files
-	if marble.Parameters != nil {
-		if marble.Parameters.Files != nil {
-			ms.assert.Equal(marble.Parameters.Files, params.Files)
-		}
-		// Validate Argv
-		if marble.Parameters.Argv != nil {
-			ms.assert.Equal(marble.Parameters.Argv, params.Argv)
-		}
+	if marble.Parameters.Files != nil {
+		ms.assert.Equal(marble.Parameters.Files, params.Files)
+	}
+	// Validate Argv
+	if marble.Parameters.Argv != nil {
+		ms.assert.Equal(marble.Parameters.Argv, params.Argv)
 	}
 }
 

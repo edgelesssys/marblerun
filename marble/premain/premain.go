@@ -226,7 +226,7 @@ func applyParameters(params *rpc.Parameters, fs afero.Fs) error {
 	// Set environment variables
 	log.Println("setting env vars from manifest")
 	for key, value := range params.Env {
-		if err := os.Setenv(key, value); err != nil {
+		if err := os.Setenv(key, string(value)); err != nil {
 			return err
 		}
 	}

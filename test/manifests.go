@@ -325,7 +325,8 @@ var IntegrationManifestJSON string = `{
 			"Parameters": {
 				"Files": {
 					"/tmp/coordinator_test/defg.txt": "foo",
-					"/tmp/coordinator_test/jkl.mno": "bar"
+					"/tmp/coordinator_test/jkl.mno": "bar",
+					"/tmp/coordinator_test/secret.raw": "{{ raw .Secrets.symmetric_key_shared }}"
 				},
 				"Argv": [
 					"./marble",
@@ -356,7 +357,7 @@ var IntegrationManifestJSON string = `{
 				"Files": {
 					"/tmp/coordinator_test/defg.txt": "foo",
 					"/tmp/coordinator_test/jkl.mno": "bar",
-					"/tmp/coordinator_test/pqr.txt": "user-defined secret: {{ hex .Secrets.symmetric_key_unset }} {{ pem .Secrets.cert_unset.Private }}"
+					"/tmp/coordinator_test/pqr.txt": "user-defined secret: {{ raw .Secrets.symmetric_key_unset }} {{ pem .Secrets.cert_unset.Private }}"
 				},
 				"Env": {
 					"IS_FIRST": "true",
