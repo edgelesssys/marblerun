@@ -162,15 +162,11 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	// Validate response
 	params := resp.GetParameters()
 	// Validate Files
-	if marble.Parameters.Files != nil {
-		for k, v := range marble.Parameters.Files {
-			ms.assert.EqualValues(v, resp.Parameters.Files[k])
-		}
+	for k, v := range marble.Parameters.Files {
+		ms.assert.EqualValues(v.Data, resp.Parameters.Files[k])
 	}
 	// Validate Argv
-	if marble.Parameters.Argv != nil {
-		ms.assert.Equal(marble.Parameters.Argv, params.Argv)
-	}
+	ms.assert.Equal(marble.Parameters.Argv, params.Argv)
 
 	// Validate SealKey
 	sealKey, err := hex.DecodeString(string(params.Env["SEAL_KEY"]))

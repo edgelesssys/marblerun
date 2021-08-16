@@ -17,6 +17,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"math"
+	"strings"
 	"text/template"
 	"time"
 
@@ -279,20 +280,34 @@ func customizeParameters(params manifest.Parameters, specialSecrets reservedSecr
 		Secrets:   userSecrets,
 	}
 
+	var err error
+	var newValue string
+
 	// replace placeholders in files
 	for path, data := range params.Files {
-		newValue, err := parseSecrets(data, secretsWrapped)
-		if err != nil {
-			return nil, err
+		if data.NoTemplates {
+			newValue = data.Data
+		} else {
+			newValue, err = parseSecrets(data.Data, secretsWrapped)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		customParams.Files[path] = []byte(newValue)
 	}
 
 	for name, data := range params.Env {
-		newValue, err := parseSecrets(data, secretsWrapped)
-		if err != nil {
-			return nil, err
+		if data.NoTemplates {
+			newValue = data.Data
+		} else {
+			if strings.Contains(data.Data, string([]byte{0x00})) {
+				return nil, fmt.Errorf("environment variable: %s: content contains null bytes", name)
+			}
+			newValue, err = parseSecrets(data.Data, secretsWrapped)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		customParams.Env[name] = []byte(newValue)
@@ -456,9 +471,9 @@ func (c *Core) setTTLSConfig(marble manifest.Marble, specialSecrets reservedSecr
 		return err
 	}
 	if marble.Parameters.Env == nil {
-		marble.Parameters.Env = make(map[string]string)
+		marble.Parameters.Env = make(map[string]manifest.File)
 	}
-	marble.Parameters.Env["MARBLE_TTLS_CONFIG"] = string(ttlsConfJSON)
+	marble.Parameters.Env["MARBLE_TTLS_CONFIG"] = manifest.File{Data: string(ttlsConfJSON), Encoding: "UTF-8"}
 
 	return nil
 }

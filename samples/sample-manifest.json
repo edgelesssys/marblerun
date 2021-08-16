@@ -20,13 +20,32 @@
             "MaxActivations": 1,
             "Parameters": {
                 "Files": {
-                    "/tmp/defg.txt": "foo",
-                    "/tmp/jkl.mno": "bar"
+                    "/tmp/abc.txt": "helloworld",
+                    "/tmp/helloworld.sh": "#!/usr/bin/env bash\necho {{ string .Secrets.hello }} {{ string .Secrets.hello }}",
+                    "/tmp/defg.txt": {
+                        "Encoding": "string",
+                        "NoTemplates": false,
+                        "Data": "foo"
+                    },
+                    "/tmp/jkl.mno": {
+                        "Encoding": "base64",
+                        "NoTemplates": true,
+                        "Data": "YmFy"
+                    },
+                    "/tmp/enc.key": {
+                        "Encoding": "string",
+                        "NoTemplates": true,
+                        "Data": "{{ string .Secrets.symmetric_key_shared }}"
+                    }
                 },
                 "Env": {
                     "IS_FIRST": "true",
+                    "IS_SECOND": {
+                        "Encoding": "string",
+                        "Data": "false"
+                    },
                     "SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
-                    "TEST_SECRET_SYMMETRIC_KEY": "{{ raw .Secrets.symmetric_key_shared }}",
+                    "API_KEY": "{{ string .Secrets.api_key }}",
                     "TEST_SECRET_CERT": "{{ pem .Secrets.cert_shared.Cert }}",
                     "TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.cert_private.Cert }}"
                 },
@@ -73,6 +92,18 @@
     },
 
     "Secrets": {
+        "hello": {
+            "Type": "plain",
+            "UserDefined": true
+        },
+        "world": {
+            "Type": "plain",
+            "UserDefined": true
+        },
+        "api_key": {
+            "Type": "plain",
+            "UserDefined": true
+        },
         "symmetric_key_shared": {
             "Type": "symmetric-key",
             "Size": 128,

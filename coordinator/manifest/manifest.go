@@ -60,9 +60,100 @@ type Marble struct {
 
 // Parameters contains lists for files, environment variables and commandline arguments that should be passed to an application
 type Parameters struct {
-	Files map[string]string
-	Env   map[string]string
+	Files map[string]File
+	Env   map[string]File
 	Argv  []string
+}
+
+// File defines data, encoding type, and if data contains templates for a File or Env variable
+type File struct {
+	// Data is the data to be saved as a file or environment variable
+	Data string
+	// Encoding is the initial encoding of Data (as it is written in the manifest). One of {'string', 'UTF-8', 'base64'}
+	Encoding string
+	// NoTemplates specifies if Data contains templates which should be filled with information by the Coordinator
+	NoTemplates bool
+}
+
+// MarshalJSON implements the json.Marshaler interface.
+func (f File) MarshalJSON() ([]byte, error) {
+	tmp := struct {
+		Data        string
+		Encoding    string
+		NoTemplates bool
+	}{
+		Encoding:    f.Encoding,
+		NoTemplates: f.NoTemplates,
+	}
+
+	switch f.Encoding {
+	case "string", "UTF-8":
+		// just marshal f as is
+		tmp.Data = f.Data
+		return json.Marshal(tmp)
+	case "base64":
+		// encode the Data field back to base64
+		tmp.Data = base64.StdEncoding.EncodeToString([]byte(f.Data))
+		return json.Marshal(tmp)
+	default:
+		return nil, fmt.Errorf("unkown encoding type: %s", f.Encoding)
+	}
+}
+
+// UnmarshalJSON implements the json.Marshaler interface.
+func (f *File) UnmarshalJSON(data []byte) error {
+	// a File or Env in the manifest can be defined two ways:
+	//   1. as a single string: "<name>": "<content>"
+	//   2. as a struct with Data, Encoding, and NoTemplate fields: "<name>": {"Data": "<data>", "Encoding": "<encoding>", "NoTemplates": <true/false>}
+
+	var v interface{}
+	if err := json.Unmarshal(data, &v); err != nil {
+		return err
+	}
+
+	switch t := v.(type) {
+	case string:
+		// File was defined using a single string. Set NoTemplates to false and Encoding to "UTF-8"
+		f.Data = t
+		f.Encoding = "UTF-8"
+		f.NoTemplates = false
+		return nil
+	case interface{}:
+		// To avoid infinit recursion, try to unmarshal into a struct with the same datatypes as File
+		var vF struct {
+			Data        string
+			Encoding    string
+			NoTemplates bool
+		}
+		if err := json.Unmarshal(data, &vF); err != nil {
+			return err
+		}
+
+		f.Encoding = vF.Encoding
+		if f.Encoding == "" {
+			f.Encoding = "UTF-8"
+		}
+
+		// decode Data if it was encoded
+		switch f.Encoding {
+		case "UTF-8", "string":
+			f.Data = vF.Data
+		case "base64":
+			decoded, err := base64.StdEncoding.DecodeString(vF.Data)
+			if err != nil {
+				return err
+			}
+			f.Data = string(decoded)
+		default:
+			return fmt.Errorf("unkown encoding type: %s", f.Encoding)
+		}
+
+		f.NoTemplates = vF.NoTemplates
+	default:
+		return fmt.Errorf("got: %t, expected: string or interface", t)
+	}
+
+	return nil
 }
 
 // TLStag describes which entries should be used to determine the ttls connections of a marble
