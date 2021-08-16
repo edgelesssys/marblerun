@@ -29,6 +29,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
+	"github.com/edgelesssys/marblerun/coordinator/rpc"
 	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/coordinator/store"
 	"github.com/edgelesssys/marblerun/coordinator/updatelog"
@@ -54,6 +55,7 @@ type Core struct {
 	updateLogger *updatelog.Logger
 	zaplogger    *zap.Logger
 	metrics      *coreMetrics
+	rpc.UnimplementedMarbleServer
 }
 
 // The sequence of states a Coordinator may be in
