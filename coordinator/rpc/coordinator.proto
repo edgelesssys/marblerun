@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package rpc;
-option go_package = "github.com/edgelesssys/marblerun/rpc";
+option go_package = "github.com/edgelesssys/marblerun/coordinator/rpc";
 
 service Marble {
   // Activate activates a marble in the mesh.
@@ -21,7 +21,7 @@ message ActivationResp {
 }
 
 message Parameters {
-  map<string, string> Files = 1;
-  map<string, string> Env = 2;
+  map<string, bytes> Files = 1;
+  map<string, bytes> Env = 2;
   repeated string Argv = 3;
 }

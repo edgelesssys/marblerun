@@ -112,9 +112,6 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	if err != nil {
 		return nil, err
 	}
-	if marble.Parameters == nil {
-		marble.Parameters = &rpc.Parameters{}
-	}
 
 	// add TTLS config to Env
 	if err := c.setTTLSConfig(marble, authSecrets, secrets); err != nil {
@@ -269,11 +266,11 @@ func (c *Core) generateCertFromCSR(csrReq []byte, pubk ecdsa.PublicKey, marbleTy
 }
 
 // customizeParameters replaces the placeholders in the manifest's parameters with the actual values
-func customizeParameters(params *rpc.Parameters, specialSecrets reservedSecrets, userSecrets map[string]manifest.Secret) (*rpc.Parameters, error) {
+func customizeParameters(params manifest.Parameters, specialSecrets reservedSecrets, userSecrets map[string]manifest.Secret) (*rpc.Parameters, error) {
 	customParams := rpc.Parameters{
 		Argv:  params.Argv,
-		Files: make(map[string]string),
-		Env:   make(map[string]string),
+		Files: make(map[string][]byte),
+		Env:   make(map[string][]byte),
 	}
 
 	// Wrap the authentication secrets to have the "Marblerun" prefix in front of them when mentioned in a manifest
@@ -289,7 +286,7 @@ func customizeParameters(params *rpc.Parameters, specialSecrets reservedSecrets,
 			return nil, err
 		}
 
-		customParams.Files[path] = newValue
+		customParams.Files[path] = []byte(newValue)
 	}
 
 	for name, data := range params.Env {
@@ -298,7 +295,7 @@ func customizeParameters(params *rpc.Parameters, specialSecrets reservedSecrets,
 			return nil, err
 		}
 
-		customParams.Env[name] = newValue
+		customParams.Env[name] = []byte(newValue)
 	}
 
 	// Set as environment variables
@@ -315,9 +312,9 @@ func customizeParameters(params *rpc.Parameters, specialSecrets reservedSecrets,
 		return nil, err
 	}
 
-	customParams.Env[marble.MarbleEnvironmentRootCA] = rootCaPem
-	customParams.Env[marble.MarbleEnvironmentCertificateChain] = marbleCertPem + rootCaPem
-	customParams.Env[marble.MarbleEnvironmentPrivateKey] = encodedPrivKey
+	customParams.Env[marble.MarbleEnvironmentRootCA] = []byte(rootCaPem)
+	customParams.Env[marble.MarbleEnvironmentCertificateChain] = []byte(marbleCertPem + rootCaPem)
+	customParams.Env[marble.MarbleEnvironmentPrivateKey] = []byte(encodedPrivKey)
 
 	return &customParams, nil
 }

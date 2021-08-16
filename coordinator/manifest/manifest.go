@@ -19,7 +19,6 @@ import (
 	"text/template"
 
 	"github.com/edgelesssys/marblerun/coordinator/quote"
-	"github.com/edgelesssys/marblerun/coordinator/rpc"
 	"github.com/edgelesssys/marblerun/coordinator/user"
 	"go.uber.org/zap"
 )
@@ -54,9 +53,16 @@ type Marble struct {
 	MaxActivations uint
 	// Parameters contains lists for files, environment variables and commandline arguments that should be passed to the application.
 	// Placeholder variables are supported for specific assets of the marble's activation process.
-	Parameters *rpc.Parameters
+	Parameters Parameters
 	// TLS holds a list of tags which are specified in the manifest
 	TLS []string
+}
+
+// Parameters contains lists for files, environment variables and commandline arguments that should be passed to an application
+type Parameters struct {
+	Files map[string]string
+	Env   map[string]string
+	Argv  []string
 }
 
 // TLStag describes which entries should be used to determine the ttls connections of a marble
