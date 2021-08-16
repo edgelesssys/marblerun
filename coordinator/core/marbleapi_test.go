@@ -166,8 +166,6 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 		for k, v := range marble.Parameters.Files {
 			ms.assert.EqualValues(v, resp.Parameters.Files[k])
 		}
-		//ms.assert.Equal(marble.Parameters.Files, params.Files)
-		//ms.assert.EqualValues(marble.Parameters.Files, params.Files)
 	}
 	// Validate Argv
 	if marble.Parameters.Argv != nil {
@@ -549,13 +547,11 @@ func (ms *marbleSpawner) shortMarbleActivation(marbleType string, infraName stri
 	ms.assert.NoError(err)
 	marble = coreServerManifest.Marbles[marbleType]
 	// Validate Files
-	if marble.Parameters.Files != nil {
-		ms.assert.Equal(marble.Parameters.Files, params.Files)
+	for k, v := range marble.Parameters.Files {
+		ms.assert.EqualValues(v, params.Files[k])
 	}
 	// Validate Argv
-	if marble.Parameters.Argv != nil {
-		ms.assert.Equal(marble.Parameters.Argv, params.Argv)
-	}
+	ms.assert.EqualValues(marble.Parameters.Argv, params.Argv)
 }
 
 func TestActivateWithMissingParameters(t *testing.T) {
