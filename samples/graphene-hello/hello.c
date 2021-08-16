@@ -11,7 +11,7 @@ int main(int argc, char* argv[], char* envp[]) {
 
   for (int i = 0; envp[i]; i++) {
     // Print envrionment variable value until we encounter a new line
-    // This will reduce clutter from Marblerun's certificates which we do not need to print necessarily
+    // This will reduce clutter from MarbleRun's certificates which we do not need to print necessarily
     char* chr = strchr(envp[i], '\n');
 
     if (chr != NULL) {

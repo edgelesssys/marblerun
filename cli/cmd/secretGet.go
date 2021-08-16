@@ -25,9 +25,9 @@ func newSecretGet() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "get SECRETNAME ... <IP:PORT>",
-		Short: "Retrieve secrets from the Marblerun Coordinator",
+		Short: "Retrieve secrets from the MarbleRun Coordinator",
 		Long: `
-Retrieve one or more secrets from the Marblerun Coordinator.
+Retrieve one or more secrets from the MarbleRun Coordinator.
 Users have to authenticate themselves using a certificate and private key,
 and need permissions in the manifest to read the requested secrets.
 `,
@@ -60,7 +60,7 @@ and need permissions in the manifest to read the requested secrets.
 	return cmd
 }
 
-// cliSecretGet requests one or more secrets from the Marblerun Coordinator
+// cliSecretGet requests one or more secrets from the MarbleRun Coordinator
 func cliSecretGet(o *secretGetOptions) error {
 	client, err := restClient(o.caCert, &o.clCert)
 	if err != nil {

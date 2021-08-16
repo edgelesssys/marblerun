@@ -15,8 +15,8 @@ func newNameSpaceAdd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "add NAMESPACE ...",
-		Short: "Add namespaces to a Marblerun mesh",
-		Long:  `Add namespaces to a Marblerun mesh`,
+		Short: "Add namespaces to a MarbleRun mesh",
+		Long:  `Add namespaces to a MarbleRun mesh`,
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			namespaces := args
@@ -35,7 +35,7 @@ func newNameSpaceAdd() *cobra.Command {
 	return cmd
 }
 
-// cliNameSpaceAdd adds specified namespaces to the Marblerun Coordinator
+// cliNameSpaceAdd adds specified namespaces to the MarbleRun Coordinator
 func cliNameSpaceAdd(namespaces []string, kubeClient kubernetes.Interface, dontInjectSgx bool) error {
 	for _, ns := range namespaces {
 		ctx, cancel := context.WithCancel(context.Background())
@@ -68,7 +68,7 @@ func cliNameSpaceAdd(namespaces []string, kubeClient kubernetes.Interface, dontI
 			return err
 		}
 
-		fmt.Printf("Added namespace [%s] to Marblerun mesh\n", ns)
+		fmt.Printf("Added namespace [%s] to MarbleRun mesh\n", ns)
 	}
 	return nil
 }

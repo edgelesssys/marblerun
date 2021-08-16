@@ -27,7 +27,7 @@ func (r *SinglePartyRecovery) GenerateEncryptionKey(recoveryKeys map[string]stri
 
 	// Generate a single random key for single-party recovery, or generate multiple keys and XOR them together for multi-party recovery
 	if len(recoveryKeys) > 1 {
-		return nil, errors.New("multi-party recovery is not supported in this version of Marblerun")
+		return nil, errors.New("multi-party recovery is not supported in this version of MarbleRun")
 	}
 
 	var err error
@@ -61,7 +61,7 @@ func (r *SinglePartyRecovery) GenerateRecoveryData(recoveryKeys map[string]strin
 	return secretMap, nil, nil
 }
 
-// RecoverKey is called by the client api and directly returns the recovery key (this is different for multi-party recovery in other versions of Marblerun)
+// RecoverKey is called by the client api and directly returns the recovery key (this is different for multi-party recovery in other versions of MarbleRun)
 func (r *SinglePartyRecovery) RecoverKey(secret []byte) (int, []byte, error) {
 	return 0, secret, nil
 }

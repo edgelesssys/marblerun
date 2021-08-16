@@ -17,8 +17,8 @@ func newCheckCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "check",
-		Short: "Check the status of Marbleruns control plane",
-		Long:  `Check the status of Marbleruns control plane`,
+		Short: "Check the status of MarbleRun's control plane",
+		Long:  `Check the status of MarbleRun's control plane`,
 		Args:  cobra.NoArgs,
 		RunE: func(cobracmd *cobra.Command, args []string) error {
 			kubeClient, err := getKubernetesInterface()

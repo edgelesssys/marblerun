@@ -9,7 +9,7 @@ import (
 func TestUpdateLog(t *testing.T) {
 	assert := assert.New(t)
 
-	testString := "Marblerun Unit Test"
+	testString := "MarbleRun Unit Test"
 
 	log, err := New()
 	assert.NoError(err)

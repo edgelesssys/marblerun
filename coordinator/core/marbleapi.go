@@ -39,9 +39,9 @@ type reservedSecrets struct {
 	SealKey    manifest.Secret
 }
 
-// Defines the "Marblerun" prefix when mentioned in a manifest
+// Defines the "MarbleRun" prefix when mentioned in a manifest
 type secretsWrapper struct {
-	Marblerun reservedSecrets
+	MarbleRun reservedSecrets
 	Secrets   map[string]manifest.Secret
 }
 
@@ -274,9 +274,9 @@ func customizeParameters(params manifest.Parameters, specialSecrets reservedSecr
 		Env:   make(map[string][]byte),
 	}
 
-	// Wrap the authentication secrets to have the "Marblerun" prefix in front of them when mentioned in a manifest
+	// Wrap the authentication secrets to have the "MarbleRun" prefix in front of them when mentioned in a manifest
 	secretsWrapped := secretsWrapper{
-		Marblerun: specialSecrets,
+		MarbleRun: specialSecrets,
 		Secrets:   userSecrets,
 	}
 

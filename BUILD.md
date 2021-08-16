@@ -3,7 +3,7 @@
 
 ## Repo layout
 
-Marblerun is written entirely in Go and builds on Edgeless RT, which is written largely in C/C++.
+MarbleRun is written entirely in Go and builds on Edgeless RT, which is written largely in C/C++.
 
 ### Control plane
 
@@ -94,10 +94,10 @@ Here's an example that has the `SecurityVersion`, `ProductID`, and `SignerID` se
 					"serve"
 				],
 				"Env": {
-					"ROOT_CA": "{{ pem .Marblerun.RootCA.Cert }}",
-					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
-					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Cert }}",
-					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}"
+					"ROOT_CA": "{{ pem .MarbleRun.RootCA.Cert }}",
+					"SEAL_KEY": "{{ hex .MarbleRun.SealKey }}",
+					"MARBLE_CERT": "{{ pem .MarbleRun.MarbleCert.Cert }}",
+					"MARBLE_KEY": "{{ pem .MarbleRun.MarbleCert.Private }}"
 				}
 			}
 		},
@@ -108,10 +108,10 @@ Here's an example that has the `SecurityVersion`, `ProductID`, and `SignerID` se
 					"./marble"
 				],
 				"Env": {
-					"ROOT_CA": "{{ pem .Marblerun.RootCA.Cert }}",
-					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
-					"MARBLE_CERT": "{{ pem .Marblerun.MarbleCert.Cert }}",
-					"MARBLE_KEY": "{{ pem .Marblerun.MarbleCert.Private }}"
+					"ROOT_CA": "{{ pem .MarbleRun.RootCA.Cert }}",
+					"SEAL_KEY": "{{ hex .MarbleRun.SealKey }}",
+					"MARBLE_CERT": "{{ pem .MarbleRun.MarbleCert.Cert }}",
+					"MARBLE_KEY": "{{ pem .MarbleRun.MarbleCert.Private }}"
 				}
 			}
 	    }
@@ -165,7 +165,7 @@ Run a simple application.
 
 ## Marble-Injector
 
-By default a Marblerun installation ships with a Kubernetes [MutatingAdmissionWebhook](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#mutatingadmissionwebhook).
+By default a MarbleRun installation ships with a Kubernetes [MutatingAdmissionWebhook](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#mutatingadmissionwebhook).
 The admission controller monitors selected namespaces of the cluster and injects the data-plane configuration into Deployments, Pods, etc.
 The marble-injector is only useful in a Kubernetes environment.
 

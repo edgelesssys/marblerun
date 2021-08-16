@@ -10,11 +10,11 @@
             "Package": "world",
             "Parameters": {
                 "Env": {
-                    "HELLO_WORLD": "Hello World from Marblerun!"
+                    "HELLO_WORLD": "Hello World from MarbleRun!"
                 },
                 "Argv": [
                     "./hello",
-                    "Hello World from Marblerun!"
+                    "Hello World from MarbleRun!"
                 ]
             }
         }

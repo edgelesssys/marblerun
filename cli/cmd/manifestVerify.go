@@ -14,7 +14,7 @@ import (
 func newManifestVerify() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "verify <manifest/signature> <IP:PORT>",
-		Short: "Verifies the signature of a Marblerun manifest",
+		Short: "Verifies the signature of a MarbleRun manifest",
 		Long:  `Verifies that the signature returned by the Coordinator is equal to a local signature`,
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -66,7 +66,7 @@ func getSignatureFromString(manifest string) (string, error) {
 	return cliManifestSignature(rawManifest), nil
 }
 
-// cliManifestVerify verifies if a signature returned by the Marblerun Coordinator is equal to one locally created
+// cliManifestVerify verifies if a signature returned by the MarbleRun Coordinator is equal to one locally created
 func cliManifestVerify(localSignature string, host string, cert []*pem.Block) error {
 	remoteSignature, err := cliDataGet(host, "manifest", "data.ManifestSignature", cert)
 	if err != nil {

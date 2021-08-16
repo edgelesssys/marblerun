@@ -7,8 +7,8 @@ import (
 func newCertificateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "certificate",
-		Short: "Retrieves the certificate of the Marblerun Coordinator",
-		Long:  `Retrieves the certificate of the Marblerun Coordinator`,
+		Short: "Retrieves the certificate of the MarbleRun Coordinator",
+		Long:  `Retrieves the certificate of the MarbleRun Coordinator`,
 	}
 
 	cmd.PersistentFlags().StringVar(&eraConfig, "era-config", "", "Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github")

@@ -1,5 +1,5 @@
 # Graphene "Hello World!" example
-This example shows how to run a [Graphene](https://github.com/oscarlab/graphene) application in Marblerun. In essence, you have to add the `premain` process to the Graphene manifest. `premain` will contact the Coordinator, set up the environment, and run the actual application. See the commented [hello.manifest.template](hello.manifest.template) for details.
+This example shows how to run a [Graphene](https://github.com/oscarlab/graphene) application in MarbleRun. In essence, you have to add the `premain` process to the Graphene manifest. `premain` will contact the Coordinator, set up the environment, and run the actual application. See the commented [hello.manifest.template](hello.manifest.template) for details.
 
 ## Requirements
 First, install Graphene on [commit b37ac75](https://github.com/oscarlab/graphene/tree/b37ac75efec0c1183fd42340ce2d3e04dcfb3388). You can use either the [Building](https://graphene.readthedocs.io/en/latest/building.html) or [Cloud Deployment](https://graphene.readthedocs.io/en/latest/cloud-deployment.html) guide to build and initially setup Graphene. You will need hardware with Intel SGX support.

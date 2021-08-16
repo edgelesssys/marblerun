@@ -11,8 +11,8 @@ import (
 func newManifestSignature() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "signature <manifest.json>",
-		Short: "Prints the signature of a Marblerun manifest",
-		Long:  "Prints the signature of a Marblerun manifest",
+		Short: "Prints the signature of a MarbleRun manifest",
+		Long:  "Prints the signature of a MarbleRun manifest",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			manifestFile := args[0]

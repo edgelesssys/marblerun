@@ -15,8 +15,8 @@ import (
 func newRecoverCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "recover <recovery_key_decrypted> <IP:PORT>",
-		Short: "Recovers the Marblerun Coordinator from a sealed state",
-		Long:  `Recovers the Marblerun Coordinator from a sealed state`,
+		Short: "Recovers the MarbleRun Coordinator from a sealed state",
+		Long:  `Recovers the MarbleRun Coordinator from a sealed state`,
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			keyFile := args[0]

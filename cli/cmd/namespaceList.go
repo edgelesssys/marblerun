@@ -13,8 +13,8 @@ import (
 func newNameSpaceList() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "Lists all namespaces added to a Marblerun mesh",
-		Long:  `Lists all namespaces added to a Marblerun mesh`,
+		Short: "Lists all namespaces added to a MarbleRun mesh",
+		Long:  `Lists all namespaces added to a MarbleRun mesh`,
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			kubeClient, err := getKubernetesInterface()
@@ -37,7 +37,7 @@ func cliNameSpaceList(kubeClient kubernetes.Interface) error {
 	}
 
 	if len(namespaces.Items) == 0 {
-		fmt.Printf("No namespaces have been added to the Marblerun mesh\n")
+		fmt.Printf("No namespaces have been added to the MarbleRun mesh\n")
 	}
 
 	for _, ns := range namespaces.Items {

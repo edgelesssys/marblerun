@@ -1,5 +1,5 @@
 # Occlum "Hello World!" sample
-This sample shows how to run an [Occlum](https://github.com/occlum/occlum) application in Marblerun. In essence, you have to add the `premain-libos` process to your Occlum image, use it as an entry point for your instance and supply the original entry point as an `Argv` value in Marblerun's [manifest.json](manifest.json). `premain` will contact the Coordinator, set up the environment, and run the actual application. Take a look into the [Makefile](Makefile) for details.
+This sample shows how to run an [Occlum](https://github.com/occlum/occlum) application in MarbleRun. In essence, you have to add the `premain-libos` process to your Occlum image, use it as an entry point for your instance and supply the original entry point as an `Argv` value in MarbleRun's [manifest.json](manifest.json). `premain` will contact the Coordinator, set up the environment, and run the actual application. Take a look into the [Makefile](Makefile) for details.
 
 ## Requirements
 First, get Occlum and its build toolchain up and running. This can become quite complex if you run it on your existing environment. Therefore, we use the official Docker image and expose the SGX device to it:
@@ -19,7 +19,7 @@ docker run -it --network host --device /dev/sgx occlum-azure
 Note that we also chose `--network host` here, as we assume you do not run the coordinator in the same Docker instance. **This option is potentially insecure in production use**, as it disables the isolation of the container network. For a production setup, we recommend that you choose a setup that exposes the coordinator to the container.
 
 ## Build
-Inside the Docker instance, clone the Marblerun repository and run the Makefile included in this directory. It will automatically build the premain process and "Hello World" application, create the Occlum instance and run `occlum build` to create the final image.
+Inside the Docker instance, clone the MarbleRun repository and run the Makefile included in this directory. It will automatically build the premain process and "Hello World" application, create the Occlum instance and run `occlum build` to create the final image.
 
 ```sh
 git clone https://github.com/edgelesssys/marblerun.git
@@ -27,7 +27,7 @@ cd marblerun/samples/occlum-hello
 make
 ```
 
-After you build the Occlum image, you need to retrieve either the `UniqueID` or the `SignerID`/`ProductID`/`SecurityVersion` triple for Marblerun's [`manifest.json`](manifest.json). You can get the values using the Marblerun CLI tool:
+After you build the Occlum image, you need to retrieve either the `UniqueID` or the `SignerID`/`ProductID`/`SecurityVersion` triple for MarbleRun's [`manifest.json`](manifest.json). You can get the values using the MarbleRun CLI tool:
 
 ```sh
 wget https://github.com/edgelesssys/marblerun/releases/latest/download/marblerun
