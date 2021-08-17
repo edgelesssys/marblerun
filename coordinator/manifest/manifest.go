@@ -135,10 +135,10 @@ func (f *File) UnmarshalJSON(data []byte) error {
 		}
 
 		// decode Data if it was encoded
-		switch f.Encoding {
-		case "UTF-8", "string":
+		switch e := f.Encoding; {
+		case strings.ToLower(e) == "utf-8", strings.ToLower(e) == "string":
 			f.Data = vF.Data
-		case "base64":
+		case strings.ToLower(e) == "base64":
 			decoded, err := base64.StdEncoding.DecodeString(vF.Data)
 			if err != nil {
 				return err
