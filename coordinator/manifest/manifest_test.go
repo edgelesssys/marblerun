@@ -24,7 +24,7 @@ func TestFile(t *testing.T) {
 {
 	"string": "helloworld",
 	"string_struct": {
-		"Encoding": "utf-8",
+		"Encoding": "string",
 		"NoTemplates": false,
 		"Data": "foo"
 	},
@@ -34,11 +34,15 @@ func TestFile(t *testing.T) {
 		"Data": "YmFy"
 	},
 	"base64_value": {
-		"Encoding": "utf-8",
+		"Encoding": "string",
 		"Data": "YmFy"
 	},
+	"hex": {
+		"Encoding": "hex",
+		"Data": "4d6172626c6552756e"
+	},
 	"no_templates": {
-		"Encoding": "utf-8",
+		"Encoding": "string",
 		"NoTemplates": true,
 		"Data": "{{ string .Secrets.symmetric_key_shared }}"
 	}
@@ -50,10 +54,11 @@ func TestFile(t *testing.T) {
 	err := json.Unmarshal(dataJSON, &testFiles)
 	require.NoError(err)
 	assert.Equal("helloworld", testFiles["string"].Data)
-	assert.Equal("UTF-8", testFiles["string"].Encoding)
+	assert.Equal("string", testFiles["string"].Encoding)
 	assert.Equal("foo", testFiles["string_struct"].Data)
 	assert.Equal("bar", testFiles["base64"].Data)
 	assert.Equal("YmFy", testFiles["base64_value"].Data)
+	assert.Equal("MarbleRun", testFiles["hex"].Data)
 	assert.Equal("{{ string .Secrets.symmetric_key_shared }}", testFiles["no_templates"].Data)
 
 	_, err = json.Marshal(testFiles)

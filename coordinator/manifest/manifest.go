@@ -69,7 +69,7 @@ type Parameters struct {
 type File struct {
 	// Data is the data to be saved as a file or environment variable
 	Data string
-	// Encoding is the initial encoding of Data (as it is written in the manifest). One of {'string', 'UTF-8', 'base64'}
+	// Encoding is the initial encoding of Data (as it is written in the manifest). One of {'string', 'base64', 'hex'}
 	Encoding string
 	// NoTemplates specifies if Data contains templates which should be filled with information by the Coordinator
 	NoTemplates bool
@@ -87,17 +87,18 @@ func (f File) MarshalJSON() ([]byte, error) {
 	}
 
 	switch e := f.Encoding; {
-	case strings.ToLower(e) == "utf-8", strings.ToLower(e) == "string":
+	case strings.ToLower(e) == "string":
 		// just marshal f as is
 		tmp.Data = f.Data
-		return json.Marshal(tmp)
 	case strings.ToLower(e) == "base64":
 		// encode the Data field back to base64
 		tmp.Data = base64.StdEncoding.EncodeToString([]byte(f.Data))
-		return json.Marshal(tmp)
+	case strings.ToLower(e) == "hex":
+		tmp.Data = hex.EncodeToString([]byte(f.Data))
 	default:
 		return nil, fmt.Errorf("unkown encoding type: %s", f.Encoding)
 	}
+	return json.Marshal(tmp)
 }
 
 // UnmarshalJSON implements the json.Marshaler interface.
@@ -113,9 +114,9 @@ func (f *File) UnmarshalJSON(data []byte) error {
 
 	switch t := v.(type) {
 	case string:
-		// File was defined using a single string. Set NoTemplates to false and Encoding to "UTF-8"
+		// File was defined using a single string. Set NoTemplates to false and Encoding to "string"
 		f.Data = t
-		f.Encoding = "UTF-8"
+		f.Encoding = "string"
 		f.NoTemplates = false
 		return nil
 	case interface{}:
@@ -131,15 +132,21 @@ func (f *File) UnmarshalJSON(data []byte) error {
 
 		f.Encoding = vF.Encoding
 		if f.Encoding == "" {
-			f.Encoding = "UTF-8"
+			f.Encoding = "string"
 		}
 
 		// decode Data if it was encoded
 		switch e := f.Encoding; {
-		case strings.ToLower(e) == "utf-8", strings.ToLower(e) == "string":
+		case strings.ToLower(e) == "string":
 			f.Data = vF.Data
 		case strings.ToLower(e) == "base64":
 			decoded, err := base64.StdEncoding.DecodeString(vF.Data)
+			if err != nil {
+				return err
+			}
+			f.Data = string(decoded)
+		case strings.ToLower(e) == "hex":
+			decoded, err := hex.DecodeString(vF.Data)
 			if err != nil {
 				return err
 			}

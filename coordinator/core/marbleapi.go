@@ -473,7 +473,7 @@ func (c *Core) setTTLSConfig(marble manifest.Marble, specialSecrets reservedSecr
 	if marble.Parameters.Env == nil {
 		marble.Parameters.Env = make(map[string]manifest.File)
 	}
-	marble.Parameters.Env["MARBLE_TTLS_CONFIG"] = manifest.File{Data: string(ttlsConfJSON), Encoding: "UTF-8"}
+	marble.Parameters.Env["MARBLE_TTLS_CONFIG"] = manifest.File{Data: string(ttlsConfJSON), Encoding: "string"}
 
 	return nil
 }
