@@ -45,7 +45,7 @@
                         "Data": "false"
                     },
                     "SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
-                    "API_KEY": "{{ string .Secrets.api_key }}",
+                    "API_KEY": "{{ string .Secrets.apiKey }}",
                     "TEST_SECRET_CERT": "{{ pem .Secrets.cert_shared.Cert }}",
                     "TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.cert_private.Cert }}"
                 },
@@ -100,7 +100,7 @@
             "Type": "plain",
             "UserDefined": true
         },
-        "api_key": {
+        "apiKey": {
             "Type": "plain",
             "UserDefined": true
         },

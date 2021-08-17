@@ -23,7 +23,7 @@ func TestFile(t *testing.T) {
 	dataJSON := []byte(`
 {
 	"string": "helloworld",
-	"string_struct": {
+	"stringStruct": {
 		"Encoding": "string",
 		"NoTemplates": false,
 		"Data": "foo"
@@ -33,7 +33,7 @@ func TestFile(t *testing.T) {
 		"NoTemplates": true,
 		"Data": "YmFy"
 	},
-	"base64_value": {
+	"base64Value": {
 		"Encoding": "string",
 		"Data": "YmFy"
 	},
@@ -41,7 +41,7 @@ func TestFile(t *testing.T) {
 		"Encoding": "hex",
 		"Data": "4d6172626c6552756e"
 	},
-	"no_templates": {
+	"withoutTemplates": {
 		"Encoding": "string",
 		"NoTemplates": true,
 		"Data": "{{ string .Secrets.symmetric_key_shared }}"
@@ -55,11 +55,11 @@ func TestFile(t *testing.T) {
 	require.NoError(err)
 	assert.Equal("helloworld", testFiles["string"].Data)
 	assert.Equal("string", testFiles["string"].Encoding)
-	assert.Equal("foo", testFiles["string_struct"].Data)
+	assert.Equal("foo", testFiles["stringStruct"].Data)
 	assert.Equal("bar", testFiles["base64"].Data)
-	assert.Equal("YmFy", testFiles["base64_value"].Data)
+	assert.Equal("YmFy", testFiles["base64Value"].Data)
 	assert.Equal("MarbleRun", testFiles["hex"].Data)
-	assert.Equal("{{ string .Secrets.symmetric_key_shared }}", testFiles["no_templates"].Data)
+	assert.Equal("{{ string .Secrets.symmetric_key_shared }}", testFiles["withoutTemplates"].Data)
 
 	_, err = json.Marshal(testFiles)
 	assert.NoError(err)
