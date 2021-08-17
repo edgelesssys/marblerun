@@ -394,6 +394,7 @@ func (m Manifest) CheckUpdate(ctx context.Context, originalPackages map[string]q
 }
 
 // UserSecret is a secret uploaded by a user
+// swagger:model
 type UserSecret struct {
 	Cert    Certificate
 	Private PrivateKey

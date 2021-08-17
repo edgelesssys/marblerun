@@ -290,7 +290,7 @@ func (s *clientAPIServer) updatePost(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, nil)
 }
 
-// swagger:route GET /secret secret secretGet
+// swagger:route GET /secrets secrets secretsGet
 //
 // Retrieve secrets.
 //
@@ -341,7 +341,7 @@ func (s *clientAPIServer) secretsGet(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, response)
 }
 
-// swagger:route POST /secret secret secretPost
+// swagger:route POST /secrets secrets secretsPost
 //
 // Set secrets.
 //
