@@ -325,6 +325,15 @@ func EncodeSecretDataToHex(data interface{}) (string, error) {
 	return hex.EncodeToString([]byte(raw)), nil
 }
 
+// EncodeSecretDataToPemEscaped encodes a secret to a PEM block and escapes the newlines (e.g. for injecting a secret into a JSON string)
+func EncodeSecretDataToPemEscaped(data interface{}) (string, error) {
+	pem, err := EncodeSecretDataToPem(data)
+	if err != nil {
+		return "", err
+	}
+	return strings.Replace(pem, "\n", "\\n", -1), nil
+}
+
 // EncodeSecretDataToRaw encodes a secret to a raw byte string
 func EncodeSecretDataToRaw(data interface{}) (string, error) {
 	var raw []byte
@@ -361,10 +370,11 @@ func EncodeSecretDataToBase64(data interface{}) (string, error) {
 
 // ManifestTemplateFuncMap defines the functions which can be specified for secrets in the in go template format
 var ManifestTemplateFuncMap = template.FuncMap{
-	"pem":    EncodeSecretDataToPem,
-	"hex":    EncodeSecretDataToHex,
-	"raw":    EncodeSecretDataToRaw,
-	"base64": EncodeSecretDataToBase64,
+	"pem":        EncodeSecretDataToPem,
+	"pemEscaped": EncodeSecretDataToPemEscaped,
+	"hex":        EncodeSecretDataToHex,
+	"raw":        EncodeSecretDataToRaw,
+	"base64":     EncodeSecretDataToBase64,
 }
 
 // CheckUpdate checks if the manifest is consistent and only contains supported values.

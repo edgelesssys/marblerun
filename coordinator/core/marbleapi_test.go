@@ -374,6 +374,10 @@ func TestParseSecrets(t *testing.T) {
 		Secrets:   testSecrets,
 	}
 
+	type testEscapedPemForJson struct {
+		Certificate string `json:"certificate"`
+	}
+
 	// Test all formats, pem should fail for raw/symmetric secrets
 	parsedSecret, err := parseSecrets("{{ raw .Secrets.mysecret }}", testWrappedSecrets)
 	require.NoError(err)
@@ -384,6 +388,9 @@ func TestParseSecrets(t *testing.T) {
 	assert.EqualValues("000102030405060708090a0b0c0d0e0f", parsedSecret)
 
 	_, err = parseSecrets("{{ pem .Secrets.mysecret }}", testWrappedSecrets)
+	assert.Error(err)
+
+	_, err = parseSecrets("{{ pemEscaped .Secrets.anothercoolsecret }}", testWrappedSecrets)
 	assert.Error(err)
 
 	parsedSecret, err = parseSecrets("{{ base64 .Secrets.mysecret }}", testWrappedSecrets)
@@ -400,6 +407,15 @@ func TestParseSecrets(t *testing.T) {
 	parsedCertificate, err := x509.ParseCertificate(p.Bytes)
 	require.NoError(err)
 	assert.EqualValues(testCert, parsedCertificate)
+
+	// Check if we can correctly escape PEM input for use in JSON
+	parsedSecret, err = parseSecrets("{{ pemEscaped .Secrets.testcertificate.Cert }}", testWrappedSecrets)
+	require.NoError(err)
+	assert.Contains(parsedSecret, "-----BEGIN CERTIFICATE-----\\n")
+	assert.Contains(parsedSecret, "-----END CERTIFICATE-----\\n")
+	pemToMarshal := &testEscapedPemForJson{Certificate: parsedSecret}
+	_, err = json.Marshal(pemToMarshal)
+	assert.NoError(err)
 
 	// Check if we can parse a certificate from the outputted raw type
 	parsedSecret, err = parseSecrets("{{ raw .Secrets.testcertificate.Cert }}", testWrappedSecrets)
