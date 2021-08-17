@@ -86,12 +86,12 @@ func (f File) MarshalJSON() ([]byte, error) {
 		NoTemplates: f.NoTemplates,
 	}
 
-	switch f.Encoding {
-	case "string", "UTF-8":
+	switch e := f.Encoding; {
+	case strings.ToLower(e) == "utf-8", strings.ToLower(e) == "string":
 		// just marshal f as is
 		tmp.Data = f.Data
 		return json.Marshal(tmp)
-	case "base64":
+	case strings.ToLower(e) == "base64":
 		// encode the Data field back to base64
 		tmp.Data = base64.StdEncoding.EncodeToString([]byte(f.Data))
 		return json.Marshal(tmp)
