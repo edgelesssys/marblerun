@@ -217,7 +217,7 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 
 	// Validate generated secret (only specified in backend_first)
 	if marbleType == "backend_first" {
-		ms.assert.Len(params.Env["TEST_SECRET_SYMMETRIC_KEY"], 16)
+		ms.assert.Len(params.Env["TEST_SECRET_SYMMETRIC_KEY"], 32)
 	} else {
 		ms.assert.Empty(params.Env["TEST_SECRET_SYMMETRIC_KEY"])
 	}

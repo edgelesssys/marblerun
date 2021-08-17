@@ -114,13 +114,13 @@ func (f *File) UnmarshalJSON(data []byte) error {
 
 	switch t := v.(type) {
 	case string:
-		// File was defined using a single string. Set NoTemplates to false and Encoding to "string"
+		// File was defined using a single string. Set default value for NoTemplates and Encoding to "string", since we don't want to make assumptions about possible data encodings
 		f.Data = t
 		f.Encoding = "string"
 		f.NoTemplates = false
 		return nil
 	case interface{}:
-		// To avoid infinit recursion, try to unmarshal into a struct with the same datatypes as File
+		// To avoid infinite recursion, try to unmarshal into a struct with the same data types as File
 		var vF struct {
 			Data        string
 			Encoding    string

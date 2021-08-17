@@ -67,7 +67,7 @@ const ManifestJSON string = `{
 					"IS_FIRST": "true",
 					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
 					"TEST_SECRET_SYMMETRIC_KEY": {
-						"Data": "{{ raw .Secrets.symmetric_key_shared }}",
+						"Data": "{{ hex .Secrets.symmetric_key_shared }}",
 						"Encoding": "string"
 					},
 					"TEST_SECRET_CERT": "{{ pem .Secrets.cert_shared.Cert }}",
