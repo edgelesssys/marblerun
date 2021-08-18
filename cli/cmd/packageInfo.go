@@ -115,11 +115,12 @@ func parseSigStruct(sgxMetaData []byte) ([]byte, []byte, []byte, []byte, error) 
 
 	// The Intel Software Developer Manual specifies SIGSTRUCT entries up to 1808 bytes.
 	// We use this as a cutoff for our sigStruct slice.
-	if len(sgxMetaData) <= sigStructIndex+1808 {
+	const sigStructLen = 1808
+	if len(sgxMetaData) < sigStructIndex+sigStructLen {
 		return nil, nil, nil, nil, errors.New("SGX metadata/SIGSTRUCT appears to be too small")
 	}
 
-	sigStruct := sgxMetaData[sigStructIndex : sigStructIndex+1808]
+	sigStruct := sgxMetaData[sigStructIndex : sigStructIndex+sigStructLen]
 
 	// SIGSTRUCT has two headers. Let's check against the second one, too.
 	// We only use the second one to verify that we actually work on the correct struct.
