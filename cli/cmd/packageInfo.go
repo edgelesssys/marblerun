@@ -21,22 +21,50 @@ func newPackageInfoCmd() *cobra.Command {
 		Use:   "package-info",
 		Short: "Prints the package signature properties of an enclave",
 		Long:  "Prints the package signature properties of an enclave",
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			enclaveType := args[0]
-			path := args[1]
+			path := args[0]
 
-			enclaveType = strings.ToLower(enclaveType)
+			// Check if given filename is actually a directory
+			stat, err := os.Stat(path)
+			if err != nil {
+				return err
+			}
+			isDirectory := stat.IsDir()
 
-			if enclaveType == "oe" || enclaveType == "openenclave" || enclaveType == "edgeless" || enclaveType == "ego" {
-				return decodeOpenEnclaveSigStruct(path)
-			} else if enclaveType == "graphene" {
-				return decodeGrapheneSigStruct(path)
-			} else if enclaveType == "occlum" || enclaveType == "sgxsdk" {
-				return decodeSGXSDKSigStruct(path)
+			// For Open Enclave / Edgeless RT / EGo, we require to directly point to the signed enclave binary, as these do not have a specific directory structure
+			var errOpenEnclave error
+			if !isDirectory {
+				errOpenEnclave = decodeOpenEnclaveSigStruct(path)
+				if errOpenEnclave == nil {
+					return nil
+				}
 			}
 
-			return errors.New("unsupported enclave type")
+			// In every other case, try to guess if it's a directory, or expect a specific file to be pointed to
+			errGraphene := decodeGrapheneSigStruct(path, isDirectory)
+			if errGraphene == nil {
+				return nil
+			}
+			errOcclum := decodeSGXSDKSigStruct(path, isDirectory) // Either Occlum or SGX SDK
+			if errOcclum == nil {
+				return nil
+			}
+
+			color.Red("ERROR: Failed to automatically determine SGX package signature properties detection.")
+			if isDirectory {
+				color.Red("A directory was supplied, but it appears not to be a Graphene or Occlum instance.")
+				color.Red("Please either specify the .sig file (Graphene) or SGX enclave binary (Occlum / SGX SDK) directly, or the root directory of an Graphene or Occlum instance.")
+			}
+
+			fmt.Printf("\n")
+			// Output exact errors for each detection method to user
+			if errOpenEnclave != nil {
+				color.Red("Open Enclave detection error: %v\n", errOpenEnclave)
+			}
+			fmt.Printf("Error - Graphene: %v\n", errGraphene)
+			fmt.Printf("Error - Occlum / SGX SDK: %v\n", errOcclum)
+			return errors.New("unable to determine enclave properties")
 		},
 		SilenceUsage: true,
 	}
@@ -44,24 +72,15 @@ func newPackageInfoCmd() *cobra.Command {
 	return cmd
 }
 
-func decodeSGXSDKSigStruct(path string) error {
-	// Check if given filename is actually a directory
-	stat, err := os.Stat(path)
-	if err != nil {
-		return err
-	}
-
-	// If it is, we try to find out if it's an Occlum image directory
+func decodeSGXSDKSigStruct(path string, isDirectory bool) error {
+	// If the path is a directory, we try to find out if it's an Occlum image directory
 	var elfFile *elf.File
 	var isOcclumInstance bool
-	if isDirectory := stat.IsDir(); isDirectory {
+	var err error
+	if isDirectory {
 		if elfFile, err = elf.Open(filepath.Join(path, "build/lib/libocclum-libos.signed.so")); err == nil {
 			color.Green("Detected Occlum image.")
 			isOcclumInstance = true
-		} else if os.IsNotExist(err) {
-			color.Red("ERROR: A directory was supplied, but it appears not to be an Occlum instance.")
-			color.Red("Please either specify the SGX enclave binary directly, or the root of an Occlum instance.")
-			return err
 		}
 	} else {
 		elfFile, err = elf.Open(path)
@@ -143,17 +162,10 @@ func parseSigStruct(sgxMetaData []byte) ([]byte, []byte, []byte, []byte, error) 
 	return mrenclave, mrsigner[:], isvprodid, isvsvn, nil
 }
 
-func decodeGrapheneSigStruct(path string) error {
-	// Check if given filename is actually a directory
-	stat, err := os.Stat(path)
-	if err != nil {
-		return err
-	}
-
+func decodeGrapheneSigStruct(path string, isDirectory bool) error {
 	// Check if directory contains a file ending in .sig
 	var sigFile string
-	var isDirectory bool
-	if isDirectory = stat.IsDir(); isDirectory {
+	if isDirectory {
 		fsInfo, err := ioutil.ReadDir(path)
 		if err != nil {
 			return err
@@ -170,8 +182,6 @@ func decodeGrapheneSigStruct(path string) error {
 			}
 		}
 		if !foundSigFile {
-			color.Red("ERROR: A directory was supplied, but a Graphene SGX signature file cannot be found.")
-			color.Red("Please either specify a correct directory, or point to the Graphene SGX .sig file directly.")
 			return errors.New("did not find Graphene .sig file in directory")
 		}
 		sigFile = filepath.Join(path, sigFile)
