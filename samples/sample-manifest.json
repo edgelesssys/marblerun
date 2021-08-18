@@ -13,7 +13,6 @@
             "Debug": false
         }
     },
-
     "Marbles": {
         "backendFirst": {
             "Package": "backend",
@@ -44,7 +43,6 @@
                         "Encoding": "string",
                         "Data": "false"
                     },
-                    "SEAL_KEY": "{{ hex .MarbleRun.SealKey }}",
                     "API_KEY": "{{ raw .Secrets.apiKey }}",
                     "TEST_SECRET_CERT": "{{ pem .Secrets.certShared.Cert }}",
                     "TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.certPrivate.Cert }}"
@@ -66,31 +64,27 @@
             "Package": "backend",
             "Parameters": {
                 "Env": {
-                    "SEAL_KEY": "{{ hex .MarbleRun.SealKey }}",
                     "TEST_SECRET_CERT": "{{ pem .Secrets.certShared.Cert }}",
-                    "TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.certPrivate.Cert }}"
+                    "TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.certPrivate.Cert }}",
+                    "TEST_SECRET_CERT": "{{ pem .Secrets.cert_shared.Cert }}",
+                    "TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.cert_private.Cert }}"
                 },
                 "Argv": [
                     "serve"
                 ]
             },
             "TLS": [
-                "web", "anotherWeb"
+                "web",
+                "anotherWeb"
             ],
             "Roles": [
                 "cert-reader"
             ]
         },
         "frontend": {
-            "Package": "frontend",
-            "Parameters": {
-                "Env": {
-                    "SEAL_KEY": "{{ hex .MarbleRun.SealKey }}"
-                }
-            }
+            "Package": "frontend"
         }
     },
-
     "Secrets": {
         "hello": {
             "Type": "plain",
@@ -145,7 +139,6 @@
             "ValidFor": 7
         }
     },
-
     "Users": {
         "Alice": {
             "Certificate": "cert-alice",
@@ -170,40 +163,67 @@
             ]
         }
     },
-
     "Roles": {
         "frontend-updates": {
             "ResourceType": "Packages",
-            "ResourceNames": ["frontend"],
-            "Actions": ["UpdateSecurityVersion"]
+            "ResourceNames": [
+                "frontend"
+            ],
+            "Actions": [
+                "UpdateSecurityVersion"
+            ]
         },
         "backend-updates": {
             "ResourceType": "Packages",
-            "ResourceNames": ["backend"],
-            "Actions": ["UpdateSecurityVersion"]
+            "ResourceNames": [
+                "backend"
+            ],
+            "Actions": [
+                "UpdateSecurityVersion"
+            ]
         },
         "updates-admin": {
             "ResourceType": "Packages",
-            "ResourceNames": ["frontend", "backend"],
-            "Actions": ["UpdateSecurityVersion"]
+            "ResourceNames": [
+                "frontend",
+                "backend"
+            ],
+            "Actions": [
+                "UpdateSecurityVersion"
+            ]
         },
         "cert-reader": {
             "ResourceType": "Secrets",
-            "ResourceNames": ["certShared", "rsaShared"],
-            "Actions": ["ReadSecret"]
+            "ResourceNames": [
+                "certShared",
+                "rsaShared"
+            ],
+            "Actions": [
+                "ReadSecret"
+            ]
         },
         "key-reader": {
             "ResourceType": "Secrets",
-            "ResourceNames": ["symmetricKeyShared"],
-            "Actions": ["ReadSecret"]
+            "ResourceNames": [
+                "symmetricKeyShared"
+            ],
+            "Actions": [
+                "ReadSecret"
+            ]
         },
         "secrets-admin": {
             "ResourceType": "Secrets",
-            "ResourceNames": ["symmetricKeyShared", "certShared", "rsaShared"],
-            "Actions": ["ReadSecret", "WriteSecret"]
+            "ResourceNames": [
+                "symmetricKeyShared",
+                "certShared",
+                "rsaShared"
+            ],
+            "Actions": [
+                "ReadSecret",
+                "WriteSecret"
+            ]
         }
     },
-
     "TLS": {
         "web": {
             "Outgoing": [

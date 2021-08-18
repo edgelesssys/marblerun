@@ -65,7 +65,6 @@ const ManifestJSON string = `{
 				},
 				"Env": {
 					"IS_FIRST": "true",
-					"SEAL_KEY": "{{ hex .MarbleRun.SealKey }}",
 					"TEST_SECRET_SYMMETRIC_KEY": {
 						"Data": "{{ hex .Secrets.symmetricKeyShared }}",
 						"Encoding": "string"
@@ -86,7 +85,6 @@ const ManifestJSON string = `{
 			"Package": "backend",
 			"Parameters": {
 				"Env": {
-					"SEAL_KEY": "{{ hex .MarbleRun.SealKey }}",
 					"TEST_SECRET_CERT": "{{ pem .Secrets.certShared.Cert }}",
 					"TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.certPrivate.Cert }}"
 				},
@@ -95,20 +93,20 @@ const ManifestJSON string = `{
 				]
 			},
 			"TLS": [
-				"web", "anotherWeb"
+				"web",
+				"anotherWeb"
 			]
 		},
 		"frontend": {
-			"Package": "frontend",
-			"Parameters": {
-				"Env": {
-					"SEAL_KEY": "{{ hex .MarbleRun.SealKey }}"
-				}
-			}
+			"Package": "frontend"
 		}
 	},
 	"Clients": {
-		"owner": [9,9,9]
+		"owner": [
+			9,
+			9,
+			9
+		]
 	},
 	"Secrets": {
 		"symmetricKeyShared": {
@@ -197,12 +195,7 @@ var ManifestJSONWithRecoveryKey string = `{
 	},
 	"Marbles": {
 		"frontend": {
-			"Package": "frontend",
-			"Parameters": {
-				"Env": {
-					"SEAL_KEY": "{{ hex .MarbleRun.SealKey }}"
-				}
-			}
+			"Package": "frontend"
 		},
 		"envMarble": {
 			"Package": "frontend",
@@ -342,15 +335,14 @@ var IntegrationManifestJSON string = `{
 				"Files": {
 					"/tmp/coordinator_test/defg.txt": "foo",
 					"/tmp/coordinator_test/jkl.mno": "bar",
-					"/tmp/coordinator_test/secret.raw": "{{ raw .Secrets.symmetricKeyShared }}{{ raw .MarbleRun.SealKey }}"
+					"/tmp/coordinator_test/secret.raw": "{{ raw .Secrets.symmetricKeyShared }}{{ raw .Marblerun.MarbleCert.Private }}"
 				},
 				"Argv": [
 					"./marble",
 					"serve"
 				],
 				"Env": {
-					"IS_FIRST": "true",
-					"SEAL_KEY": "{{ hex .MarbleRun.SealKey }}"
+					"IS_FIRST": "true"
 				}
 			}
 		},
@@ -362,8 +354,7 @@ var IntegrationManifestJSON string = `{
 					"/tmp/coordinator_test/jkl.mno": "bar"
 				},
 				"Env": {
-					"IS_FIRST": "true",
-					"SEAL_KEY": "{{ hex .MarbleRun.SealKey }}"
+					"IS_FIRST": "true"
 				}
 			}
 		},
@@ -376,8 +367,7 @@ var IntegrationManifestJSON string = `{
 					"/tmp/coordinator_test/pqr.txt": "user-defined secret: {{ raw .Secrets.symmetricKeyUnset }} {{ pem .Secrets.certUnset.Private }}"
 				},
 				"Env": {
-					"IS_FIRST": "true",
-					"SEAL_KEY": "{{ hex .MarbleRun.SealKey }}"
+					"IS_FIRST": "true"
 				}
 			}
 		},
@@ -387,9 +377,6 @@ var IntegrationManifestJSON string = `{
 				"Files": {
 					"/tmp/coordinator_test/defg.txt": "foo",
 					"/tmp/coordinator_test/jkl.mno": "bar"
-				},
-				"Env": {
-					"SEAL_KEY": "{{ hex .MarbleRun.SealKey }}"
 				}
 			}
 		}
@@ -519,7 +506,7 @@ const UserSecrets = `{
 	"symmetricKeyUnset": {
 		"Key": "AAECAwQFBgcICQoLDA0ODw=="
 	},
-	"certUnset": { 
+	"certUnset": {
 		"Cert": "MIIBrzCCAVWgAwIBAgIQT7thUhyIwo2TVzlWFWOl6TAKBggqhkjOPQQDAjAyMTAwLgYDVQQDEydNYXJibGVSdW4gQ29vcmRpbmF0b3IgLSBJbnRlcm1lZGlhdGUgQ0EwHhcNMjEwODEyMDg0NjAzWhcNMjEwODE5MDg0NjAzWjAeMRwwGgYDVQQDExNNYXJibGVSdW4gVW5pdCBUZXN0MCowBQYDK2VwAyEAoZp0yve1E/F9KnIVzddz1dj4Rr0ufH9bjEVBpJr5fEejgY8wgYwwDgYDVR0PAQH/BAQDAgKEMB0GA1UdJQQWMBQGCCsGAQUFBwMBBggrBgEFBQcDAjAMBgNVHRMBAf8EAjAAMB8GA1UdIwQYMBaAFE0N9WzWoWzDR315bGivlMymiBBgMCwGA1UdEQQlMCOCCWxvY2FsaG9zdIcEfwAAAYcQAAAAAAAAAAAAAAAAAAAAATAKBggqhkjOPQQDAgNIADBFAiEAi0I1HVqVb8l9C8rrx2TcvEhJt9Ex8Ih1pFhdCVsc5CQCIETgi3eHKZpG+5q9AS59PxsV3zaC3mAJmsqrLbJsOo31",
 		"Private": "MC4CAQAwBQYDK2VwBCIEIMQy0nTlMFQk+NfVk0gnCYxADCw+C7tEo0Xqj7vX20dg"
 	}

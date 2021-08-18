@@ -35,7 +35,6 @@ import (
 type reservedSecrets struct {
 	RootCA     manifest.Secret
 	MarbleCert manifest.Secret
-	SealKey    manifest.Secret
 }
 
 // Defines the "MarbleRun" prefix when mentioned in a manifest
@@ -360,20 +359,7 @@ func (c *Core) generateMarbleAuthSecrets(req *rpc.ActivationReq, marbleUUID uuid
 		return reservedSecrets{}, err
 	}
 
-	// Derive sealing key for marble
-	uuidBytes, err := marbleUUID.MarshalBinary()
-	if err != nil {
-		return reservedSecrets{}, err
-	}
-	rootPrivK, err := c.data.getPrivK(sKCoordinatorRootKey)
-	if err != nil {
-		return reservedSecrets{}, err
-	}
-	sealKey, err := util.DeriveKey(rootPrivK.D.Bytes(), uuidBytes, 32)
-	if err != nil {
-		return reservedSecrets{}, err
-	}
-
+	// Generate Marble certificate
 	certRaw, err := c.generateCertFromCSR(req.GetCSR(), privk.PublicKey, req.GetMarbleType(), marbleUUID.String())
 	if err != nil {
 		return reservedSecrets{}, err
@@ -392,7 +378,6 @@ func (c *Core) generateMarbleAuthSecrets(req *rpc.ActivationReq, marbleUUID uuid
 	authSecrets := reservedSecrets{
 		RootCA:     manifest.Secret{Cert: manifest.Certificate(*marbleRootCert)},
 		MarbleCert: manifest.Secret{Cert: manifest.Certificate(*marbleCert), Public: encodedPubKey, Private: encodedPrivKey},
-		SealKey:    manifest.Secret{Public: sealKey, Private: sealKey},
 	}
 
 	return authSecrets, nil
