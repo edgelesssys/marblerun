@@ -12,7 +12,6 @@ import (
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"math/big"
@@ -167,11 +166,6 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	}
 	// Validate Argv
 	ms.assert.Equal(marble.Parameters.Argv, params.Argv)
-
-	// Validate SealKey
-	sealKey, err := hex.DecodeString(string(params.Env["SEAL_KEY"]))
-	ms.assert.NoError(err)
-	ms.assert.Len(sealKey, 32)
 
 	// Validate Marble Key
 	pMarbleKey, _ := pem.Decode(params.Env[libMarble.MarbleEnvironmentPrivateKey])
@@ -362,7 +356,6 @@ func TestParseSecrets(t *testing.T) {
 	testReservedSecrets := reservedSecrets{
 		RootCA:     manifest.Secret{Public: []byte{0, 0, 42}, Private: []byte{0, 0, 7}},
 		MarbleCert: manifest.Secret{Public: []byte{42, 0, 0}, Private: []byte{7, 0, 0}},
-		SealKey:    manifest.Secret{Public: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, Private: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}},
 	}
 
 	testWrappedSecrets := secretsWrapper{
@@ -425,10 +418,6 @@ func TestParseSecrets(t *testing.T) {
 	parsedSecret, err = parseSecrets("{{ pem .MarbleRun.MarbleCert.Private }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
 	require.NoError(err)
 	assert.EqualValues(expectedResult, parsedSecret)
-
-	parsedSecret, err = parseSecrets("{{ hex .MarbleRun.SealKey }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
-	require.NoError(err)
-	assert.EqualValues("000102030405060708090a0b0c0d0e0f", parsedSecret)
 
 	// We should get an error if we try to get a non-existing secret
 	_, err = parseSecrets("{{ hex .Secrets.idontexist }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)

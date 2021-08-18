@@ -560,10 +560,6 @@ func templateDryRun(mnf manifest.Manifest, secrets map[string]manifest.Secret) e
 				Public:  []byte{0x41},
 				Private: []byte{0x41},
 			},
-			SealKey: manifest.Secret{
-				Private: []byte{0x41},
-				Public:  []byte{0x41},
-			},
 		},
 	}
 	// make sure templates in file/env declarations can actually be executed
