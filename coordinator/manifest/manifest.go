@@ -33,8 +33,6 @@ type Manifest struct {
 	Marbles map[string]Marble
 	// Users contains user definitions, including certificates used for authentication and permissions.
 	Users map[string]User
-	// Clients contains TLS certificates for authenticating clients that use the ClientAPI.
-	Clients map[string][]byte
 	// Secrets holds user-specified secrets, which should be generated and later on stored in a marble (if not shared) or in the core (if shared).
 	Secrets map[string]Secret
 	// RecoveryKeys holds one or multiple RSA public keys to encrypt multiple secrets, which can be used to decrypt the sealed state again in case the encryption key on disk was corrupted somehow.
