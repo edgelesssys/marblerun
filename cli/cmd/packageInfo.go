@@ -26,10 +26,14 @@ func newPackageInfoCmd() *cobra.Command {
 			enclaveType := args[0]
 			path := args[1]
 
-			if enclaveType == "occlum" || enclaveType == "sgxsdk" {
-				return decodeSGXSDKSigStruct(path)
+			enclaveType = strings.ToLower(enclaveType)
+
+			if enclaveType == "oe" || enclaveType == "openenclave" || enclaveType == "edgeless" || enclaveType == "ego" {
+				return decodeOpenEnclaveSigStruct(path)
 			} else if enclaveType == "graphene" {
 				return decodeGrapheneSigStruct(path)
+			} else if enclaveType == "occlum" || enclaveType == "sgxsdk" {
+				return decodeSGXSDKSigStruct(path)
 			}
 
 			return errors.New("unsupported enclave type")
@@ -201,4 +205,37 @@ func printPackageProperties(mrenclave []byte, mrsigner []byte, isvprodid []byte,
 	fmt.Printf("SignerID (MRSIGNER)       : %s\n", hex.EncodeToString(mrsigner[:]))
 	fmt.Printf("ProductID (ISVPRODID)     : %d\n", binary.LittleEndian.Uint16(isvprodid))
 	fmt.Printf("SecurityVersion (ISVSVN)  : %d\n", binary.LittleEndian.Uint16(isvsvn))
+}
+
+func decodeOpenEnclaveSigStruct(path string) error {
+	// Open ELF file
+	elfFile, err := elf.Open(path)
+	if err != nil {
+		return err
+	}
+	defer elfFile.Close()
+
+	// Search for .oeinfo section containing which should contain SGX SIGSTRUCT section
+	oeInfo := elfFile.Section(".oeinfo")
+	if oeInfo == nil {
+		return errors.New("could not find .oeinfo ELF section in binary")
+	}
+
+	// Load binary data of .oeinfo section
+	oeInfoData, err := oeInfo.Data()
+	if err != nil {
+		return err
+	}
+
+	// Pass whole .oeinfo section to the SIGSTRUCT parser and let it search for the SIGSTRUCT section
+	mrenclave, mrsigner, isvprodid, isvsvn, err := parseSigStruct(oeInfoData)
+	if err != nil {
+		return err
+	}
+
+	// Print PackageProperties of detected SIGSTRUCT
+	color.Cyan("PackageProperties for '%s':\n", path)
+	printPackageProperties(mrenclave, mrsigner[:], isvprodid, isvsvn)
+
+	return nil
 }
