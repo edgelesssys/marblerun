@@ -404,8 +404,10 @@ func EncodeSecretDataToPem(data interface{}) (string, error) {
 		typ, bytes = "PUBLIC KEY", secret
 	case PrivateKey:
 		typ, bytes = "PRIVATE KEY", secret
+	case nil:
+		return "", errors.New("secret does not exist")
 	default:
-		return "", errors.New("invalid secret type")
+		return "", errors.New("invalid secret type for pem encoding")
 	}
 
 	if len(bytes) <= 0 {
@@ -438,6 +440,8 @@ func EncodeSecretDataToRaw(data interface{}) (string, error) {
 		raw = secret.Public
 	case Certificate:
 		raw = secret.Raw
+	case nil:
+		return "", errors.New("secret does not exist")
 	default:
 		return "", errors.New("invalid secret type")
 	}
@@ -457,11 +461,34 @@ func EncodeSecretDataToBase64(data interface{}) (string, error) {
 	return base64.StdEncoding.EncodeToString([]byte(raw)), nil
 }
 
-// ManifestTemplateFuncMap defines the functions which can be specified for secrets in the in go template format
-var ManifestTemplateFuncMap = template.FuncMap{
+// EncodeEnvSecretDataToRaw encodes only secrets of type plain to raw byte string
+func EncodeEnvSecretDataToRaw(data interface{}) (string, error) {
+	switch secret := data.(type) {
+	case Secret:
+		if secret.Type != "plain" {
+			return "", errors.New("only secrets of type plain are allowed to use raw encoding for environment variables")
+		}
+		return EncodeSecretDataToRaw(data)
+	case nil:
+		return "", errors.New("secret does not exist")
+	default:
+		return "", errors.New("only secrets of type plain are allowed to use raw encoding for environment variables")
+	}
+}
+
+// ManifestTemplateFuncMap defines the functions which can be specified for secret injections into files in the in Go template format
+var ManifestFileTemplateFuncMap = template.FuncMap{
 	"pem":    EncodeSecretDataToPem,
 	"hex":    EncodeSecretDataToHex,
 	"raw":    EncodeSecretDataToRaw,
+	"base64": EncodeSecretDataToBase64,
+}
+
+// ManifestEnvTemplateFuncMap defines the functions which can be specified for secret injections into Env variables in the Go template format
+var ManifestEnvTemplateFuncMap = template.FuncMap{
+	"pem":    EncodeSecretDataToPem,
+	"hex":    EncodeSecretDataToHex,
+	"raw":    EncodeEnvSecretDataToRaw,
 	"base64": EncodeSecretDataToBase64,
 }
 

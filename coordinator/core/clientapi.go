@@ -7,6 +7,7 @@
 package core
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"crypto/x509"
@@ -14,6 +15,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"text/template"
 
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
@@ -46,11 +48,11 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 		return nil, err
 	}
 
-	var manifest manifest.Manifest
-	if err := json.Unmarshal(rawManifest, &manifest); err != nil {
+	var mnf manifest.Manifest
+	if err := json.Unmarshal(rawManifest, &mnf); err != nil {
 		return nil, err
 	}
-	if err := manifest.Check(ctx, c.zaplogger); err != nil {
+	if err := mnf.Check(ctx, c.zaplogger); err != nil {
 		return nil, err
 	}
 
@@ -64,25 +66,25 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 	}
 
 	// Generate shared secrets specified in manifest
-	secrets, err := c.generateSecrets(ctx, manifest.Secrets, uuid.Nil, marbleRootCert, intermediatePrivK)
+	secrets, err := c.generateSecrets(ctx, mnf.Secrets, uuid.Nil, marbleRootCert, intermediatePrivK)
 	if err != nil {
 		c.zaplogger.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
 		return nil, err
 	}
 	// generate placeholders for private secrets specified in manifest
-	privSecrets, err := c.generateSecrets(ctx, manifest.Secrets, uuid.New(), marbleRootCert, intermediatePrivK)
+	privSecrets, err := c.generateSecrets(ctx, mnf.Secrets, uuid.New(), marbleRootCert, intermediatePrivK)
 	if err != nil {
 		c.zaplogger.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
 		return nil, err
 	}
 
 	// Set encryption key & generate recovery data
-	encryptionKey, err := c.recovery.GenerateEncryptionKey(manifest.RecoveryKeys)
+	encryptionKey, err := c.recovery.GenerateEncryptionKey(mnf.RecoveryKeys)
 	if err != nil {
 		c.zaplogger.Error("could not set up encryption key for sealing the state", zap.Error(err))
 		return nil, err
 	}
-	recoverySecretMap, recoveryData, err := c.recovery.GenerateRecoveryData(manifest.RecoveryKeys)
+	recoverySecretMap, recoveryData, err := c.recovery.GenerateRecoveryData(mnf.RecoveryKeys)
 	if err != nil {
 		c.zaplogger.Error("could not generate recovery data", zap.Error(err))
 		return nil, err
@@ -90,7 +92,7 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 	c.sealer.SetEncryptionKey(encryptionKey)
 
 	// Parse X.509 user certificates and permissions from manifest
-	users, err := generateUsersFromManifest(manifest.Users, manifest.Roles)
+	users, err := generateUsersFromManifest(mnf.Users, mnf.Roles)
 	if err != nil {
 		c.zaplogger.Error("Could not parse specified user certificate from supplied manifest", zap.Error(err))
 		return nil, err
@@ -103,43 +105,81 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 	defer tx.Rollback()
 	txdata := storeWrapper{tx}
 
-	if err := txdata.putRawManifest(rawManifest); err != nil {
-		return nil, err
-	}
-	for k, v := range manifest.Packages {
-		if err := txdata.putPackage(k, v); err != nil {
-			return nil, err
-		}
-	}
-	for k, v := range manifest.Infrastructures {
-		if err := txdata.putInfrastructure(k, v); err != nil {
-			return nil, err
-		}
-	}
-	for k, v := range manifest.Marbles {
-		if err := txdata.putMarble(k, v); err != nil {
-			return nil, err
-		}
+	for k, v := range privSecrets {
+		secrets[k] = v
 	}
 	for k, v := range secrets {
 		if err := txdata.putSecret(k, v); err != nil {
 			return nil, err
 		}
 	}
-	for k, v := range privSecrets {
-		if err := txdata.putSecret(k, v); err != nil {
-			return nil, err
-		}
-	}
-	// save metadata of user-defined secrets
-	for k, v := range manifest.Secrets {
+	for k, v := range mnf.Secrets {
 		if v.UserDefined {
 			if err := txdata.putSecret(k, v); err != nil {
 				return nil, err
 			}
+
+			// dummy values only used for template validation
+			v.Cert.Raw = []byte{0x41}
+			v.Private = []byte{0x41}
+			v.Public = []byte{0x41}
+			secrets[k] = v
 		}
 	}
-	for k, v := range manifest.TLS {
+
+	templateSecrets := secretsWrapper{
+		Secrets: secrets,
+		Marblerun: reservedSecrets{
+			RootCA: manifest.Secret{
+				Cert: manifest.Certificate{Raw: []byte{0x41}},
+			},
+			MarbleCert: manifest.Secret{
+				Cert:    manifest.Certificate{Raw: []byte{0x41}},
+				Public:  []byte{0x41},
+				Private: []byte{0x41},
+			},
+			SealKey: manifest.Secret{
+				Private: []byte{0x41},
+				Public:  []byte{0x41},
+			},
+		},
+	}
+	for mN, m := range mnf.Marbles {
+		for fN, file := range m.Parameters.Files {
+			if !file.NoTemplates {
+				if err := checkFileTemplates(file.Data, manifest.ManifestFileTemplateFuncMap, templateSecrets); err != nil {
+					return nil, fmt.Errorf("Marble %s: file %s: %v", mN, fN, err)
+				}
+			}
+		}
+		for eN, env := range m.Parameters.Env {
+			if !env.NoTemplates {
+				if err := checkFileTemplates(env.Data, manifest.ManifestEnvTemplateFuncMap, templateSecrets); err != nil {
+					return nil, fmt.Errorf("Marble %s: env variable %s: %v", mN, eN, err)
+				}
+			}
+		}
+	}
+
+	if err := txdata.putRawManifest(rawManifest); err != nil {
+		return nil, err
+	}
+	for k, v := range mnf.Packages {
+		if err := txdata.putPackage(k, v); err != nil {
+			return nil, err
+		}
+	}
+	for k, v := range mnf.Infrastructures {
+		if err := txdata.putInfrastructure(k, v); err != nil {
+			return nil, err
+		}
+	}
+	for k, v := range mnf.Marbles {
+		if err := txdata.putMarble(k, v); err != nil {
+			return nil, err
+		}
+	}
+	for k, v := range mnf.TLS {
 		if err := txdata.putTLS(k, v); err != nil {
 			return nil, err
 		}
@@ -510,4 +550,12 @@ func (c *Core) performRecovery(encryptionKey []byte) error {
 	c.quote = c.generateQuote(rootCert.Raw)
 
 	return nil
+}
+
+func checkFileTemplates(data string, tplFunc template.FuncMap, secrets secretsWrapper) error {
+	tpl, err := template.New("data").Funcs(tplFunc).Parse(data)
+	if err != nil {
+		return err
+	}
+	return tpl.Execute(&bytes.Buffer{}, secrets)
 }

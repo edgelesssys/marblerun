@@ -171,6 +171,109 @@ func TestSetManifestInvalid(t *testing.T) {
 	_ = testManifestInvalidDebugCase(c, manifest, backendPackage, assert, require)
 }
 
+func TestManifestTemplateChecks(t *testing.T) {
+	missingSecret := []byte(`{
+	"Packages": {
+		"backend": {
+			"UniqueID": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+			"Debug": false
+		}
+	},
+	"Marbles": {
+		"backend_first": {
+			"Package": "backend",
+			"MaxActivations": 1,
+			"Parameters": {
+				"Files": {
+					"/tmp/defg.txt": "{{ hex .Secrets.foo }}"
+				}
+			}
+		}
+	},
+	"Secrets": {
+		"bar": {
+			"Size": 128,
+			"Shared": true,
+			"Type": "symmetric-key"
+		}
+	}
+}`)
+	wrongType := []byte(`{
+	"Packages": {
+		"backend": {
+			"UniqueID": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+			"Debug": false
+		}
+	},
+	"Marbles": {
+		"backend_first": {
+			"Package": "backend",
+			"MaxActivations": 1,
+			"Parameters": {
+				"Files": {
+					"/tmp/defg.txt": "{{ pem .Secrets.foo }}"
+				}
+			}
+		}
+	},
+	"Secrets": {
+		"foo": {
+			"Size": 128,
+			"Shared": true,
+			"Type": "symmetric-key"
+		}
+	}
+}`)
+	rawInEnv := []byte(`{
+	"Packages": {
+		"backend": {
+			"UniqueID": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+			"Debug": false
+		}
+	},
+	"Marbles": {
+		"backend_first": {
+			"Package": "backend",
+			"MaxActivations": 1,
+			"Parameters": {
+				"Env": {
+					"RAW_VAR": "{{ raw .Secrets.foo }}",
+					"API_KEY": "{{ raw .Secrets.apiKey }}"
+				}
+			}
+		}
+	},
+	"Secrets": {
+		"foo": {
+			"Size": 128,
+			"Shared": true,
+			"Type": "symmetric-key"
+		},
+		"apiKey": {
+			"Type": "plain",
+			"UserDefined": true
+		}
+	}
+}`)
+	assert := assert.New(t)
+
+	c := NewCoreWithMocks()
+	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
+	assert.NoError(err)
+
+	c = NewCoreWithMocks()
+	_, err = c.SetManifest(context.TODO(), missingSecret)
+	assert.Error(err)
+
+	c = NewCoreWithMocks()
+	_, err = c.SetManifest(context.TODO(), wrongType)
+	assert.Error(err)
+
+	c = NewCoreWithMocks()
+	_, err = c.SetManifest(context.TODO(), rawInEnv)
+	assert.Error(err)
+}
+
 func TestGetCertQuote(t *testing.T) {
 	assert := assert.New(t)
 
