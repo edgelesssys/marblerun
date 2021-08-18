@@ -101,13 +101,6 @@ const ManifestJSON string = `{
 			"Package": "frontend"
 		}
 	},
-	"Clients": {
-		"owner": [
-			9,
-			9,
-			9
-		]
-	},
 	"Secrets": {
 		"symmetricKeyShared": {
 			"Size": 128,
@@ -255,9 +248,6 @@ var ManifestJSONWithRecoveryKey string = `{
 			"Type": "plain"
 		}
 	},
-	"Clients": {
-		"owner": [9,9,9]
-	},
 	"Users": {
 		"admin": {
 			"Certificate": "` + pemToJSONString(AdminCert) + `",
@@ -380,9 +370,6 @@ var IntegrationManifestJSON string = `{
 				}
 			}
 		}
-	},
-	"Clients": {
-		"owner": [9,9,9]
 	},
 	"Secrets" :{
 		"symmetricKeyShared": {
