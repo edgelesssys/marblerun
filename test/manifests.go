@@ -56,12 +56,20 @@ const ManifestJSON string = `{
 			"Parameters": {
 				"Files": {
 					"/tmp/defg.txt": "foo",
-					"/tmp/jkl.mno": "bar"
+					"/tmp/jkl.mno": "bar",
+					"/tmp/base64.txt": {
+						"Data": "TWFyYmxlUnVuIGJhc2U2NA==",
+						"Encoding": "base64",
+						"NoTemplates": true
+					}
 				},
 				"Env": {
 					"IS_FIRST": "true",
 					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
-					"TEST_SECRET_SYMMETRIC_KEY": "{{ raw .Secrets.symmetric_key_shared }}",
+					"TEST_SECRET_SYMMETRIC_KEY": {
+						"Data": "{{ hex .Secrets.symmetric_key_shared }}",
+						"Encoding": "string"
+					},
 					"TEST_SECRET_CERT": "{{ pem .Secrets.cert_shared.Cert }}",
 					"TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.cert_private.Cert }}"
 				},
