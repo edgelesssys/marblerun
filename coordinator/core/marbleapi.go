@@ -298,12 +298,12 @@ func customizeParameters(params manifest.Parameters, specialSecrets reservedSecr
 	}
 
 	for name, data := range params.Env {
+		if strings.Contains(data.Data, string([]byte{0x00})) {
+			return nil, fmt.Errorf("environment variable: %s: content contains null bytes", name)
+		}
 		if data.NoTemplates {
 			newValue = data.Data
 		} else {
-			if strings.Contains(data.Data, string([]byte{0x00})) {
-				return nil, fmt.Errorf("environment variable: %s: content contains null bytes", name)
-			}
 			newValue, err = parseSecrets(data.Data, manifest.ManifestEnvTemplateFuncMap, secretsWrapped)
 			if err != nil {
 				return nil, err

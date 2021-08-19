@@ -255,6 +255,28 @@ func TestManifestTemplateChecks(t *testing.T) {
 		}
 	}
 }`)
+	nullByte := []byte(`{
+	"Packages": {
+		"backend": {
+			"UniqueID": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+			"Debug": false
+		}
+	},
+	"Marbles": {
+		"backend_first": {
+			"Package": "backend",
+			"MaxActivations": 1,
+			"Parameters": {
+				"Env": {
+					"NULL_VAR": {
+						"Encoding": "base64",
+						"Data": "AE1hcmJsZQBSdW4A"
+					}
+				}
+			}
+		}
+	}
+}`)
 	assert := assert.New(t)
 
 	c := NewCoreWithMocks()
@@ -271,6 +293,10 @@ func TestManifestTemplateChecks(t *testing.T) {
 
 	c = NewCoreWithMocks()
 	_, err = c.SetManifest(context.TODO(), rawInEnv)
+	assert.Error(err)
+
+	c = NewCoreWithMocks()
+	_, err = c.SetManifest(context.TODO(), nullByte)
 	assert.Error(err)
 }
 

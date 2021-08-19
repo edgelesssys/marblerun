@@ -15,6 +15,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"strings"
 	"text/template"
 
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
@@ -144,6 +145,7 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 			},
 		},
 	}
+	// make sure templates in file/env declarations can actually be executed
 	for mN, m := range mnf.Marbles {
 		for fN, file := range m.Parameters.Files {
 			if !file.NoTemplates {
@@ -153,6 +155,10 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 			}
 		}
 		for eN, env := range m.Parameters.Env {
+			// make sure environment variables dont contain NULL bytes, we perform another check at runtime to catch NULL bytes in user-defined secrets
+			if strings.Contains(env.Data, string([]byte{0x00})) {
+				return nil, fmt.Errorf("Marble %s: env variable: %s: content contains null bytes", mN, eN)
+			}
 			if !env.NoTemplates {
 				if err := checkFileTemplates(env.Data, manifest.ManifestEnvTemplateFuncMap, templateSecrets); err != nil {
 					return nil, fmt.Errorf("Marble %s: env variable %s: %v", mN, eN, err)
