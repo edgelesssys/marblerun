@@ -379,6 +379,9 @@ func getSGXResourceKey(kubeClient kubernetes.Interface) (string, error) {
 	}
 
 	for _, node := range nodes.Items {
+		if nodeHasAlibabaDevPlugin(node.Status.Capacity) {
+			return util.AlibabaEpc.String(), nil
+		}
 		if nodeHasAzureDevPlugin(node.Status.Capacity) {
 			return util.AzureEpc.String(), nil
 		}

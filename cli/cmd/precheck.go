@@ -65,7 +65,13 @@ func cliCheckSGXSupport(kubeClient kubernetes.Interface) error {
 // nodeSupportsSGX checks if a single cluster node supports SGX in some way
 // Checks for different implementations of SGX device plugins should be put here (e.g. different resource definitions than the one used by Azure/Intel)
 func nodeSupportsSGX(capacityInfo corev1.ResourceList) bool {
-	return nodeHasAzureDevPlugin(capacityInfo) || nodeHasIntelDevPlugin(capacityInfo)
+	return nodeHasAlibabaDevPlugin(capacityInfo) || nodeHasAzureDevPlugin(capacityInfo) || nodeHasIntelDevPlugin(capacityInfo)
+}
+
+// nodeHasAlibabaDevPlugin checks if a node has the Alibaba device plugin installed (https://github.com/AliyunContainerService/sgx-device-plugin)
+func nodeHasAlibabaDevPlugin(capacityInfo corev1.ResourceList) bool {
+	epcQuant := capacityInfo[util.AlibabaEpc]
+	return epcQuant.Value() != 0
 }
 
 // nodeHasAzureDevPlugin checks if a node has the Azures SGX device plugin installed
@@ -74,7 +80,7 @@ func nodeHasAzureDevPlugin(capacityInfo corev1.ResourceList) bool {
 	return epcQuant.Value() != 0
 }
 
-// nodeHasIntelDevPlugin checks if a node has the Intel SGX device plugin installed
+// nodeHasIntelDevPlugin checks if a node has the Intel SGX device plugin installed (https://github.com/intel/intel-device-plugins-for-kubernetes#sgx-device-plugin)
 func nodeHasIntelDevPlugin(capacityInfo corev1.ResourceList) bool {
 	epcQuant := capacityInfo[util.IntelEpc]
 	enclaveQuant := capacityInfo[util.IntelEnclave]
