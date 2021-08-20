@@ -38,5 +38,5 @@ jobs:
       - name: commit swagger.json
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
-          commit_message: Apply swagger.json changes
+          commit_message: Update Swagger specification
           file_pattern: swagger.json
