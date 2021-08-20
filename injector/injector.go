@@ -7,12 +7,20 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/edgelesssys/marblerun/util"
 	v1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+)
+
+const (
+	envMarbleCoordinatorAddr = "EDG_MARBLE_COORDINATOR_ADDR"
+	envMarbleType            = "EDG_MARBLE_TYPE"
+	envMarbleDNSName         = "EDG_MARBLE_DNS_NAMES"
+	envMarbleUUIDFile        = "EDG_MARBLE_UUID_FILE"
 )
 
 // Mutator struct
@@ -93,26 +101,29 @@ func mutate(body []byte, coordAddr string, domainName string, resourceKey string
 		},
 	}
 
+	if pod.Annotations == nil {
+		pod.Annotations = make(map[string]string)
+	}
+
 	// get marble type from pod labels
-	marbleType := pod.Labels["marblerun/marbletype"]
+	marbleType := pod.Labels[util.MarbleTypeLabel]
 	// allow pod to start if label does not exist, but dont inject any values
 	if len(marbleType) == 0 {
+		resp := admission.PatchResponseFromRaw(admReviewReq.Request.Object.Raw, nil)
+		admReviewResponse.Response = &resp.AdmissionResponse
 		admReviewResponse.Response.Allowed = true
 		admReviewResponse.Response.Result = &metav1.Status{
 			Status:  "Success",
-			Message: "Missing [marblerun/marbletype] label, injection skipped",
+			Message: fmt.Sprintf("Missing [%s] label, injection skipped", util.MarbleTypeLabel),
 		}
 		bytes, err := json.Marshal(admReviewResponse)
 		if err != nil {
 			log.Println("Error: unable to marshal admission response")
 			return nil, errors.New("unable to marshal admission response")
 		}
-		log.Println("Pod is missing [marblerun/marbletype] label, skipping injection")
+		log.Printf("Pod is missing [%s] label, skipping injection", util.MarbleTypeLabel)
 		return bytes, nil
 	}
-
-	pT := v1.PatchTypeJSONPatch
-	admReviewResponse.Response.PatchType = &pT
 
 	// get namespace of pod
 	namespace := pod.Namespace
@@ -122,87 +133,108 @@ func mutate(body []byte, coordAddr string, domainName string, resourceKey string
 
 	newEnvVars := []corev1.EnvVar{
 		{
-			Name:  "EDG_MARBLE_COORDINATOR_ADDR",
+			Name:  envMarbleCoordinatorAddr,
 			Value: coordAddr,
 		},
 		{
-			Name:  "EDG_MARBLE_TYPE",
+			Name:  envMarbleType,
 			Value: marbleType,
 		},
 		{
-			Name:  "EDG_MARBLE_DNS_NAMES",
+			Name:  envMarbleDNSName,
 			Value: fmt.Sprintf("%s,%s.%s,%s.%s.svc.%s", marbleType, marbleType, namespace, marbleType, namespace, domainName),
 		},
 	}
 
-	var patch []map[string]interface{}
-	var needNewVolume bool
+	var needUUIDVolume bool
 
-	// create env variable patches for each container of the pod
 	for idx, container := range pod.Spec.Containers {
-		if !envIsSet(container.Env, corev1.EnvVar{Name: "EDG_MARBLE_UUID_FILE"}) {
-			needNewVolume = true
+		// check if we need to supply a UUID
+		if !envIsSet(container.Env, corev1.EnvVar{Name: envMarbleUUIDFile}) {
+			needUUIDVolume = true
 
 			newEnvVars = append(newEnvVars, corev1.EnvVar{
-				Name:  "EDG_MARBLE_UUID_FILE",
+				Name:  envMarbleUUIDFile,
 				Value: fmt.Sprintf("/%s-uid/uuid-file", marbleType),
 			})
 
 			// If we need to set the uuid env variable we also need to create a volume mount, which the variable points to
-			patch = append(patch, createMountPatch(
-				len(container.VolumeMounts),
-				fmt.Sprintf("/spec/containers/%d/volumeMounts", idx),
-				fmt.Sprintf("/%s-uid", marbleType),
-				string(admReviewReq.Request.UID),
-			))
+			container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+				MountPath: fmt.Sprintf("/%s-uid", marbleType),
+				Name:      fmt.Sprintf("uuid-file-%s", admReviewReq.Request.UID),
+			})
 		}
-		patch = append(patch, addEnvVar(container.Env, newEnvVars, fmt.Sprintf("/spec/containers/%d/env", idx))...)
 
+		// inject MarbleRun required env variables if they are not already set
+		for _, newVar := range newEnvVars {
+			if !envIsSet(container.Env, newVar) {
+				container.Env = append(container.Env, newVar)
+			}
+		}
+
+		// inject SGX resource limits depending on the used device plugin
 		if injectSgx {
-			patch = append(patch, createResourcePatch(container, idx, resourceKey))
+			if container.Resources.Limits == nil {
+				container.Resources.Limits = make(map[corev1.ResourceName]resource.Quantity)
+			}
+			switch resourceKey {
+			case util.IntelEpc.String():
+				setResourceLimit(container.Resources.Limits, util.IntelEpc, util.GetEPCResourceLimit(resourceKey))
+				setResourceLimit(container.Resources.Limits, util.IntelEnclave, "1")
+				setResourceLimit(container.Resources.Limits, util.IntelProvision, "1")
+			case util.AzureEpc.String():
+				setResourceLimit(container.Resources.Limits, util.AzureEpc, "10")
+			case util.AlibabaEpc.String():
+				setResourceLimit(container.Resources.Limits, util.AlibabaEpc, "10")
+			default:
+				log.Println("Error: Tried to inject unkown resource key")
+			}
 		}
+
+		pod.Spec.Containers[idx] = container
 	}
 
-	if needNewVolume {
-		patch = append(patch, createVolumePatch(len(pod.Spec.Volumes), string(admReviewReq.Request.UID)))
-	}
-
-	// add sgx tolerations if enabled
-	if injectSgx {
-		if len(pod.Spec.Tolerations) <= 0 {
-			// create array if this is the first toleration of the pod
-			patch = append(patch, map[string]interface{}{
-				"op":   "add",
-				"path": "/spec/tolerations",
-				"value": []corev1.Toleration{
-					{
-						Key:      resourceKey,
-						Operator: corev1.TolerationOpExists,
-						Effect:   corev1.TaintEffectNoSchedule,
+	// if we created a volume mount for the Marble's UUID we create the volume here
+	if needUUIDVolume {
+		pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{Name: fmt.Sprintf("uuid-file-%s", admReviewReq.Request.UID),
+			VolumeSource: corev1.VolumeSource{
+				// UUID of the Marble is the UUID of the Pod
+				DownwardAPI: &corev1.DownwardAPIVolumeSource{
+					Items: []corev1.DownwardAPIVolumeFile{
+						{
+							Path: "uuid-file",
+							FieldRef: &corev1.ObjectFieldSelector{
+								FieldPath: "metadata.uid",
+							},
+						},
 					},
 				},
-			})
-		} else {
-			// append as last element of the tolerations array otherwise
-			patch = append(patch, map[string]interface{}{
-				"op":   "add",
-				"path": "/spec/tolerations/-",
-				"value": corev1.Toleration{
-					Key:      resourceKey,
-					Operator: corev1.TolerationOpExists,
-					Effect:   corev1.TaintEffectNoSchedule,
-				},
-			})
-		}
+			},
+		})
 	}
 
-	// convert admission response into bytes and return
-	var err error
-	admReviewResponse.Response.Patch, err = json.Marshal(patch)
-	if err != nil {
-		log.Println("Error: unable to marshal json patch")
-		return nil, errors.New("unable to marshal json patch")
+	// inject sgx tolerations if enabled
+	if injectSgx {
+		pod.Spec.Tolerations = append(pod.Spec.Tolerations, corev1.Toleration{
+			Key:      resourceKey,
+			Operator: corev1.TolerationOpExists,
+			Effect:   corev1.TaintEffectNoSchedule,
+		})
 	}
+
+	// create the patch
+	marshaledPod, err := json.Marshal(pod)
+	if err != nil {
+		log.Println("Error: unable to marshal patched pod")
+		return nil, errors.New("unable to marshal patched pod")
+	}
+	resp := admission.PatchResponseFromRaw(admReviewReq.Request.Object.Raw, marshaledPod)
+	if err := resp.Complete(admission.Request{AdmissionRequest: *admReviewReq.Request}); err != nil {
+		log.Println("Error: patching failed")
+		return nil, errors.New("patching failed")
+	}
+
+	admReviewResponse.Response = &resp.AdmissionResponse
 	admReviewResponse.Response.Allowed = true
 	bytes, err := json.Marshal(admReviewResponse)
 	if err != nil {
@@ -214,7 +246,7 @@ func mutate(body []byte, coordAddr string, domainName string, resourceKey string
 	return bytes, nil
 }
 
-// check if http was POST and not empty
+// checkRequest verifies the request used was POST and not empty
 func checkRequest(w http.ResponseWriter, r *http.Request) []byte {
 	if r.Method != http.MethodPost {
 		http.Error(w, "unable to handle requests other than POST", http.StatusBadRequest)
@@ -249,121 +281,9 @@ func envIsSet(setVars []corev1.EnvVar, testVar corev1.EnvVar) bool {
 	return false
 }
 
-// addEnvVar creates a json patch setting all unset required environment variables
-func addEnvVar(setVars, newVars []corev1.EnvVar, basePath string) []map[string]interface{} {
-	var envPatch []map[string]interface{}
-	first := len(setVars) == 0
-	var newValue interface{}
-	for _, newVar := range newVars {
-		newValue = newVar
-		path := basePath
-		// if the to be added env variable is the first of the pod we have to create the env field of the spec as an array
-		// otherwise we append the env variable the as the last element to the array
-		if first {
-			first = false
-			newValue = []corev1.EnvVar{newVar}
-		} else {
-			path = path + "/-"
-		}
-		if !envIsSet(setVars, newVar) {
-			envPatch = append(envPatch, map[string]interface{}{
-				"op":    "add",
-				"path":  path,
-				"value": newValue,
-			})
-		}
-	}
-	return envPatch
-}
-
-// createResourcePatch creates a json patch for sgx resource limits
-func createResourcePatch(container corev1.Container, idx int, resourceKey string) map[string]interface{} {
-	limit := util.GetEPCResourceLimit(resourceKey)
-	// first check if neither limits nor requests have been set for the container -> we need to create the complete path
-	if len(container.Resources.Limits) <= 0 && len(container.Resources.Requests) <= 0 {
-		return map[string]interface{}{
-			"op":   "add",
-			"path": fmt.Sprintf("/spec/containers/%d/resources", idx),
-			"value": map[string]interface{}{
-				"limits": map[string]string{
-					resourceKey: limit,
-				},
-			},
-		}
-	}
-	// next check if only requests have been set -> we only need to create the limits path
-	if len(container.Resources.Limits) <= 0 {
-		return map[string]interface{}{
-			"op":   "add",
-			"path": fmt.Sprintf("/spec/containers/%d/resources/limits", idx),
-			"value": map[string]string{
-				resourceKey: limit,
-			},
-		}
-	}
-
-	// default case: both requests and limits have been set -> we can just add a new value
-	// replace any "/" in the added key with "~1" so JSONPatch does not interpret it as a path
-	newKey := strings.Replace(resourceKey, "/", "~1", -1)
-	return map[string]interface{}{
-		"op":    "add",
-		"path":  fmt.Sprintf("/spec/containers/%d/resources/limits/%s", idx, newKey),
-		"value": limit,
-	}
-}
-
-// createMountPatch creates a json patch to mount a volume on a pod
-func createMountPatch(mounts int, path string, mountpath string, uid string) map[string]interface{} {
-	val := corev1.VolumeMount{
-		Name:      fmt.Sprintf("uuid-file-%s", uid),
-		MountPath: mountpath,
-	}
-
-	// If no other volumeMounts exist we have to created the first one as an array
-	if mounts <= 0 {
-		return map[string]interface{}{
-			"op":    "add",
-			"path":  path,
-			"value": []corev1.VolumeMount{val},
-		}
-	}
-	return map[string]interface{}{
-		"op":    "add",
-		"path":  fmt.Sprintf("%s/-", path),
-		"value": val,
-	}
-
-}
-
-// createVolumePatch creates a json patch which creates a volume utilising the k8s downward api
-func createVolumePatch(volumes int, uid string) map[string]interface{} {
-	val := corev1.Volume{
-		Name: fmt.Sprintf("uuid-file-%s", uid),
-		VolumeSource: corev1.VolumeSource{
-			DownwardAPI: &corev1.DownwardAPIVolumeSource{
-				Items: []corev1.DownwardAPIVolumeFile{
-					{
-						Path: "uuid-file",
-						FieldRef: &corev1.ObjectFieldSelector{
-							FieldPath: "metadata.uid",
-						},
-					},
-				},
-			},
-		},
-	}
-
-	// If no other volumes exist we have to created the first one as an array
-	if volumes <= 0 {
-		return map[string]interface{}{
-			"op":    "add",
-			"path":  "/spec/volumes",
-			"value": []corev1.Volume{val},
-		}
-	}
-	return map[string]interface{}{
-		"op":    "add",
-		"path":  "/spec/volumes/-",
-		"value": val,
+// setResourceLimit sets an SGX resource limit if it has not already been set
+func setResourceLimit(target map[corev1.ResourceName]resource.Quantity, key corev1.ResourceName, value string) {
+	if _, ok := target[key]; !ok {
+		target[key] = resource.MustParse(value)
 	}
 }
