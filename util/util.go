@@ -21,13 +21,11 @@ import (
 )
 
 const (
-	IntelEpc             corev1.ResourceName = "sgx.intel.com/epc"
-	IntelEnclave         corev1.ResourceName = "sgx.intel.com/enclave"
-	IntelProvision       corev1.ResourceName = "sgx.intel.com/provision"
-	AzureEpc             corev1.ResourceName = "kubernetes.azure.com/sgx_epc_mem_in_MiB"
-	AlibabaEpc           corev1.ResourceName = "alibabacloud.com/sgx_epc_MiB"
-	MarbleTypeLabel      string              = "marblerun/marbletype"
-	MarbleContainerLabel string              = "marblerun/marblecontainer"
+	IntelEpc       corev1.ResourceName = "sgx.intel.com/epc"
+	IntelEnclave   corev1.ResourceName = "sgx.intel.com/enclave"
+	IntelProvision corev1.ResourceName = "sgx.intel.com/provision"
+	AzureEpc       corev1.ResourceName = "kubernetes.azure.com/sgx_epc_mem_in_MiB"
+	AlibabaEpc     corev1.ResourceName = "alibabacloud.com/sgx_epc_MiB"
 )
 
 // DefaultCertificateIPAddresses defines a placeholder value used for automated x509 certificate generation

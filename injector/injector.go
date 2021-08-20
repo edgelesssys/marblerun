@@ -21,6 +21,8 @@ const (
 	envMarbleType            = "EDG_MARBLE_TYPE"
 	envMarbleDNSName         = "EDG_MARBLE_DNS_NAMES"
 	envMarbleUUIDFile        = "EDG_MARBLE_UUID_FILE"
+	labelMarbleType          = "marblerun/marbletype"
+	labelMarbleContainer     = "marblerun/marblecontainer"
 )
 
 // Mutator struct
@@ -106,7 +108,7 @@ func mutate(body []byte, coordAddr string, domainName string, resourceKey string
 	}
 
 	// get marble type from pod labels
-	marbleType := pod.Labels[util.MarbleTypeLabel]
+	marbleType := pod.Labels[labelMarbleType]
 	// allow pod to start if label does not exist, but dont inject any values
 	if len(marbleType) == 0 {
 		resp := admission.PatchResponseFromRaw(admReviewReq.Request.Object.Raw, nil)
@@ -114,14 +116,14 @@ func mutate(body []byte, coordAddr string, domainName string, resourceKey string
 		admReviewResponse.Response.Allowed = true
 		admReviewResponse.Response.Result = &metav1.Status{
 			Status:  "Success",
-			Message: fmt.Sprintf("Missing [%s] label, injection skipped", util.MarbleTypeLabel),
+			Message: fmt.Sprintf("Missing [%s] label, injection skipped", labelMarbleType),
 		}
 		bytes, err := json.Marshal(admReviewResponse)
 		if err != nil {
 			log.Println("Error: unable to marshal admission response")
 			return nil, errors.New("unable to marshal admission response")
 		}
-		log.Printf("Pod is missing [%s] label, skipping injection", util.MarbleTypeLabel)
+		log.Printf("Pod is missing [%s] label, skipping injection", labelMarbleType)
 		return bytes, nil
 	}
 
@@ -147,8 +149,19 @@ func mutate(body []byte, coordAddr string, domainName string, resourceKey string
 	}
 
 	var needUUIDVolume bool
+	var injectAllContainers bool
+
+	marbleContainer := pod.Labels[labelMarbleContainer]
+	if marbleContainer == "" {
+		injectAllContainers = true
+	}
 
 	for idx, container := range pod.Spec.Containers {
+
+		if (container.Name != marbleContainer) && !injectAllContainers {
+			continue
+		}
+
 		// check if we need to supply a UUID
 		if !envIsSet(container.Env, corev1.EnvVar{Name: envMarbleUUIDFile}) {
 			needUUIDVolume = true
