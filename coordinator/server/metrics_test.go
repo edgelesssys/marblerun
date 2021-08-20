@@ -42,15 +42,15 @@ func TestClientApiRequestMetrics(t *testing.T) {
 			method:             http.MethodGet,
 			expectedStatusCode: "200",
 		},
-		"getStatus": {
-			target:             "/status",
-			method:             http.MethodGet,
-			expectedStatusCode: "200",
-		},
 		"postStatus": {
 			target:             "/status",
 			method:             http.MethodPost,
 			expectedStatusCode: "405",
+		},
+		"getStatus": {
+			target:             "/status",
+			method:             http.MethodGet,
+			expectedStatusCode: "200",
 		},
 	}
 	for testname, test := range tests {

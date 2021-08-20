@@ -23,7 +23,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// Manifest defines the rules of a mesh.
+// Manifest defines the rules of a mesh
 type Manifest struct {
 	// Packages contains the allowed enclaves and their properties.
 	Packages map[string]quote.PackageProperties
@@ -498,6 +498,7 @@ func (m Manifest) CheckUpdate(ctx context.Context, originalPackages map[string]q
 }
 
 // UserSecret is a secret uploaded by a user
+// swagger:model
 type UserSecret struct {
 	Cert    Certificate
 	Private PrivateKey

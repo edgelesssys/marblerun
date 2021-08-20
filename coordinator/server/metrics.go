@@ -9,6 +9,7 @@ package server
 import (
 	"net/http"
 
+	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -16,9 +17,8 @@ import (
 
 // serveMux is an interface of an HTTP request multiplexer.
 type serveMux interface {
-	Handle(pattern string, handler http.Handler)
-	HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request))
-	Handler(r *http.Request) (h http.Handler, pattern string)
+	Handle(pattern string, handler http.Handler) *mux.Route
+	HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request)) *mux.Route
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
 }
 
@@ -90,10 +90,10 @@ func newHttpMetrics(factory *promauto.Factory, namespace string, subsystem strin
 	}
 }
 
-// promServeMux is a wrapper around http.ServeMux with additional instrumentation to
+// promServeMux is a wrapper around mux.Router with additional instrumentation to
 // gather Prometheus metrics
 type promServeMux struct {
-	serveMux    http.ServeMux
+	router      *mux.Router
 	promFactory *promauto.Factory
 	metrics     map[string]*httpMetrics
 	namespace   string
@@ -104,7 +104,7 @@ type promServeMux struct {
 // namespace and subsystem are used to name the exposed metrics
 func newPromServeMux(factory *promauto.Factory, namespace string, subsystem string) *promServeMux {
 	return &promServeMux{
-		serveMux:    *http.NewServeMux(),
+		router:      mux.NewRouter(),
 		promFactory: factory,
 		metrics:     make(map[string]*httpMetrics),
 		namespace:   namespace,
@@ -112,43 +112,49 @@ func newPromServeMux(factory *promauto.Factory, namespace string, subsystem stri
 	}
 }
 
-// Handle is a wrapper around (*http.ServeMux) Handle form the http package
+// Handle is a wrapper around (*mux.Router) Handle form the http package
 // A chain of prometheus instrumentation collects metrics for the given handler.
-func (mux *promServeMux) Handle(pattern string, handler http.Handler) {
-	if mux.metrics[pattern] == nil {
+func (p *promServeMux) Handle(pattern string, handler http.Handler) *mux.Route {
+	if p.metrics[pattern] == nil {
 		constLabels := map[string]string{
 			"path": pattern,
 		}
-		mux.metrics[pattern] = newHttpMetrics(mux.promFactory, mux.namespace, mux.subsystem, constLabels)
+		p.metrics[pattern] = newHttpMetrics(p.promFactory, p.namespace, p.subsystem, constLabels)
 	}
-	chain := promhttp.InstrumentHandlerDuration(mux.metrics[pattern].duration,
-		promhttp.InstrumentHandlerCounter(mux.metrics[pattern].reqest,
-			promhttp.InstrumentHandlerRequestSize(mux.metrics[pattern].requestSize,
-				promhttp.InstrumentHandlerResponseSize(mux.metrics[pattern].responseSize,
-					promhttp.InstrumentHandlerInFlight(mux.metrics[pattern].inflight,
-						handler,
-					),
+	return p.router.Handle(pattern, p.metricsMiddleware(pattern, handler))
+}
+
+// HandleFunc registers the handler function for the given pattern.
+func (p *promServeMux) HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request)) *mux.Route {
+	if handler == nil {
+		panic("promServerMux: http: nil handler")
+	}
+	return p.Handle(pattern, http.HandlerFunc(handler))
+}
+
+// ServeHTTP is a wrapper around (*mux.Router) ServeHttp form the http package.
+func (p *promServeMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	p.router.ServeHTTP(w, r)
+}
+
+// metricsMiddelware returns the handed next handler wrapped in a bunch of prometheus metric handlers
+func (p *promServeMux) metricsMiddleware(pattern string, next http.Handler) http.Handler {
+	return promhttp.InstrumentHandlerDuration(p.metrics[pattern].duration,
+		promhttp.InstrumentHandlerCounter(p.metrics[pattern].reqest,
+			promhttp.InstrumentHandlerRequestSize(p.metrics[pattern].requestSize,
+				promhttp.InstrumentHandlerResponseSize(p.metrics[pattern].responseSize,
+					promhttp.InstrumentHandlerInFlight(p.metrics[pattern].inflight, next),
 				),
 			),
 		),
 	)
-	mux.serveMux.Handle(pattern, chain)
 }
 
-// HandleFunc registers the handler function for the given pattern.
-func (mux *promServeMux) HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request)) {
-	if handler == nil {
-		panic("promServerMux: http: nil handler")
-	}
-	mux.Handle(pattern, http.HandlerFunc(handler))
-}
-
-// ServeHTTP is a wrapper around (*http.ServeMux) ServeHttp form the http package.
-func (mux *promServeMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	mux.serveMux.ServeHTTP(w, r)
-}
-
-// Handler is a wrapper around (*http.ServeMux) Handler form the http package.
-func (mux *promServeMux) Handler(r *http.Request) (h http.Handler, pattern string) {
-	return mux.serveMux.Handler(r)
+// setMethodNOtAllowedHandler sets f as instrumented handler for the mux.Router
+func (p *promServeMux) setMethodNotAllowedHandler(f func(http.ResponseWriter, *http.Request)) {
+	p.router.MethodNotAllowedHandler = http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			handler := p.metricsMiddleware(r.URL.Path, http.HandlerFunc(f))
+			handler.ServeHTTP(w, r)
+		})
 }
