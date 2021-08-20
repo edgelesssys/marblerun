@@ -47,7 +47,7 @@ type ManifestSignatureResp struct {
 
 // Contains RSA-encrypted AES state sealing key with public key specified by user in manifest
 type RecoveryDataResp struct {
-	// An array containing key-value mapping for encrypted secrets to be used for recovering the Coordinator in case of disaster recovery.
+	// An array containing key-value mappings for encrypted secrets to be used for recovering the Coordinator in case of disaster recovery.
 	// The key matches each supplied key from RecoveryKeys in the manifest.
 	RecoverySecrets map[string]string
 }
@@ -66,7 +66,7 @@ type clientAPIServer struct {
 //
 // The status indicates the current state of the coordinator, and can be one of the following:
 // 1. Coordinator is in recovery mode. Either upload a key to unseal the saved state, or set a new manifest. Waiting for user input on [/recover](../#/features/recovery.md).
-// 1. Coordinator is ready to accept a manifest on [/manifest](workflows/set-manifest.md)
+// 1. Coordinator is ready to accept a manifest on [/manifest](../#/workflows/set-manifest.md)
 // 1. Coordinator is running correctly and ready to accept marbles through the [Marble API](../#/workflows/add-service.md)
 //
 //     Responses:
@@ -175,9 +175,10 @@ func (s *clientAPIServer) manifestPost(w http.ResponseWriter, r *http.Request) {
 // era -c coordinator-era.json -h $MARBLERUN -o marblerun.crt
 // ```
 //
-// > On Ubuntu, `~/.local/bin` is only added to PATH when the directory exists when initializing your bash environment during login. You might need to re-login after creating the directory. Also, non-default shells such as `zsh` do not add this path by default. Therefore, if you receive `command not found: era` as an error message for a local user installation, either make sure `~/.local/bin` was added to your PATH successfully or simply use the machine-wide installation method.
+// > On Ubuntu, `~/.local/bin` is added to PATH only if the directory exists when the bash environment is initialized during login. You might need to re-login after creating the directory. Also, non-default shells such as `zsh` do not add this path by default. Therefore, if you receive `command not found: era` as an error message for a local user installation, either make sure `~/.local/bin` was added to your PATH successfully, or simply use the machine-wide installation method.
 //
-// The file `coordinator-era.json` contains the *Packages* information for the Coordinator. For our testing image this can be pulled from our GitHub releases:
+// The file `coordinator-era.json` contains the [Packages](../#/workflows/define-manifest.md#manifestpackages) information for the Coordinator.
+// The example `coordinator-era.json` for our provided testing image can be downloaded from GitHub:
 //
 // ```bash
 // wget https://github.com/edgelesssys/marblerun/releases/latest/download/coordinator-era.json
@@ -197,7 +198,7 @@ func (s *clientAPIServer) quoteGet(w http.ResponseWriter, r *http.Request) {
 
 // swagger:route POST /recover recover recoverPost
 //
-// Recover the Coordinator when unsealing the existing state fails.
+// Recover the Coordinator when unsealing of the existing state fails.
 //
 // This API endpoint is only available when the coordinator is in recovery mode.
 // Before you can use the endpoint, you need to decrypt the recovery secret which you may have received when setting the manifest initially.
@@ -259,8 +260,8 @@ func (s *clientAPIServer) updateGet(w http.ResponseWriter, r *http.Request) {
 //
 // Update a specific package set in the manifest.
 //
-// This API endpoint only works when Users were defined in the Manifest.
-// For more information, look up [Updating a Manifest](../#/workflows/update-manifest.md).
+// This API endpoint only works if `Users` are defined in the Manifest.
+// For more information, have a look at [updating a Manifest](../#/workflows/update-manifest.md).
 //
 // Example for updating the manifest with curl:
 //
@@ -303,7 +304,7 @@ func (s *clientAPIServer) updatePost(w http.ResponseWriter, r *http.Request) {
 //
 // This API endpoint only works when `Users` were defined in the manifest.
 // The user connects via mutual TLS using the user client certificate in the TLS Handshake.
-// For more information, look up [Managing secrets](../#/workflows/managing-secrets.md).
+// For more information , look up [Managing secrets](../#/workflows/managing-secrets.md).
 //
 // Example for retrieving the secrets `symmetricKeyShared` and `certShared`:
 //
