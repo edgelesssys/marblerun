@@ -102,27 +102,27 @@ func TestMarbleAPIMetrics(t *testing.T) {
 	}
 
 	// try to activate first backend marble prematurely before manifest is set
-	uuid := spawner.newMarble("backend_first", "Azure", false)
+	uuid := spawner.newMarble("backendFirst", "Azure", false)
 	promtest.CollectAndCount(metrics.activation)
 	promtest.CollectAndCount(metrics.activationSuccess)
-	assert.Equal(float64(1), promtest.ToFloat64(metrics.activation.WithLabelValues("backend_first", uuid)))
-	assert.Equal(float64(0), promtest.ToFloat64(metrics.activationSuccess.WithLabelValues("backend_first", uuid)))
+	assert.Equal(float64(1), promtest.ToFloat64(metrics.activation.WithLabelValues("backendFirst", uuid)))
+	assert.Equal(float64(0), promtest.ToFloat64(metrics.activationSuccess.WithLabelValues("backendFirst", uuid)))
 
 	// set manifest
 	_, err = c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
 	require.NoError(err)
 
 	// activate first backend
-	uuid = spawner.newMarble("backend_first", "Azure", true)
+	uuid = spawner.newMarble("backendFirst", "Azure", true)
 	promtest.CollectAndCount(metrics.activation)
 	promtest.CollectAndCount(metrics.activationSuccess)
-	assert.Equal(float64(1), promtest.ToFloat64(metrics.activation.WithLabelValues("backend_first", uuid)))
-	assert.Equal(float64(1), promtest.ToFloat64(metrics.activationSuccess.WithLabelValues("backend_first", uuid)))
+	assert.Equal(float64(1), promtest.ToFloat64(metrics.activation.WithLabelValues("backendFirst", uuid)))
+	assert.Equal(float64(1), promtest.ToFloat64(metrics.activationSuccess.WithLabelValues("backendFirst", uuid)))
 
 	// try to activate another first backend
-	uuid = spawner.newMarble("backend_first", "Azure", false)
+	uuid = spawner.newMarble("backendFirst", "Azure", false)
 	promtest.CollectAndCount(metrics.activation)
 	promtest.CollectAndCount(metrics.activationSuccess)
-	assert.Equal(float64(1), promtest.ToFloat64(metrics.activation.WithLabelValues("backend_first", uuid)))
-	assert.Equal(float64(0), promtest.ToFloat64(metrics.activationSuccess.WithLabelValues("backend_first", uuid)))
+	assert.Equal(float64(1), promtest.ToFloat64(metrics.activation.WithLabelValues("backendFirst", uuid)))
+	assert.Equal(float64(0), promtest.ToFloat64(metrics.activationSuccess.WithLabelValues("backendFirst", uuid)))
 }

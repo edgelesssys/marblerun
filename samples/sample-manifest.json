@@ -15,7 +15,7 @@
     },
 
     "Marbles": {
-        "backend_first": {
+        "backendFirst": {
             "Package": "backend",
             "MaxActivations": 1,
             "Parameters": {
@@ -35,7 +35,7 @@
                     "/tmp/enc.key": {
                         "Encoding": "string",
                         "NoTemplates": true,
-                        "Data": "{{ raw .Secrets.symmetric_key_shared }}"
+                        "Data": "{{ raw .Secrets.symmetricKeyShared }}"
                     }
                 },
                 "Env": {
@@ -46,8 +46,8 @@
                     },
                     "SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
                     "API_KEY": "{{ raw .Secrets.apiKey }}",
-                    "TEST_SECRET_CERT": "{{ pem .Secrets.cert_shared.Cert }}",
-                    "TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.cert_private.Cert }}"
+                    "TEST_SECRET_CERT": "{{ pem .Secrets.certShared.Cert }}",
+                    "TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.certPrivate.Cert }}"
                 },
                 "Argv": [
                     "--first",
@@ -62,20 +62,20 @@
                 "key-reader"
             ]
         },
-        "backend_other": {
+        "backendOther": {
             "Package": "backend",
             "Parameters": {
                 "Env": {
                     "SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
-                    "TEST_SECRET_CERT": "{{ pem .Secrets.cert_shared.Cert }}",
-                    "TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.cert_private.Cert }}"
+                    "TEST_SECRET_CERT": "{{ pem .Secrets.certShared.Cert }}",
+                    "TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.certPrivate.Cert }}"
                 },
                 "Argv": [
                     "serve"
                 ]
             },
             "TLS": [
-                "web", "another_web"
+                "web", "anotherWeb"
             ],
             "Roles": [
                 "cert-reader"
@@ -104,16 +104,16 @@
             "Type": "plain",
             "UserDefined": true
         },
-        "symmetric_key_shared": {
+        "symmetricKeyShared": {
             "Type": "symmetric-key",
             "Size": 128,
             "Shared": true
         },
-        "symmetric_key_private": {
+        "symmetricKeyPrivate": {
             "Size": 256,
             "Type": "symmetric-key"
         },
-        "cert_private": {
+        "certPrivate": {
             "Size": 2048,
             "Type": "cert-rsa",
             "Cert": {
@@ -123,7 +123,7 @@
             },
             "ValidFor": 7
         },
-        "cert_shared": {
+        "certShared": {
             "Shared": true,
             "Type": "cert-ed25519",
             "Cert": {
@@ -133,7 +133,7 @@
             },
             "ValidFor": 7
         },
-        "rsa_shared": {
+        "rsaShared": {
             "Shared": true,
             "Type": "cert-rsa",
             "Size": 2048,
@@ -189,17 +189,17 @@
         },
         "cert-reader": {
             "ResourceType": "Secrets",
-            "ResourceNames": ["cert_shared", "rsa_shared"],
+            "ResourceNames": ["certShared", "rsaShared"],
             "Actions": ["ReadSecret"]
         },
         "key-reader": {
             "ResourceType": "Secrets",
-            "ResourceNames": ["symmetric_key_shared"],
+            "ResourceNames": ["symmetricKeyShared"],
             "Actions": ["ReadSecret"]
         },
         "secrets-admin": {
             "ResourceType": "Secrets",
-            "ResourceNames": ["symmetric_key_shared", "cert_shared", "rsa_shared"],
+            "ResourceNames": ["symmetricKeyShared", "certShared", "rsaShared"],
             "Actions": ["ReadSecret", "WriteSecret"]
         }
     },
@@ -218,7 +218,7 @@
                 }
             ]
         },
-        "another_web": {
+        "anotherWeb": {
             "Outgoing": [
                 {
                     "Port": "4433",
@@ -228,7 +228,7 @@
             "Incoming": [
                 {
                     "Port": "8080",
-                    "Cert": "rsa_shared",
+                    "Cert": "rsaShared",
                     "DisableClientAuth": true
                 }
             ]

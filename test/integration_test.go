@@ -119,7 +119,7 @@ func TestTest(t *testing.T) {
 	defer cfg.cleanup()
 	assert.Nil(startCoordinator(cfg).Kill())
 
-	marbleCfg := newMarbleConfig(meshServerAddr, "test_marble_client", "localhost")
+	marbleCfg := newMarbleConfig(meshServerAddr, "testMarbleClient", "localhost")
 	defer marbleCfg.cleanup()
 	assert.False(startMarbleClient(marbleCfg))
 }
@@ -143,7 +143,7 @@ func TestMarbleAPI(t *testing.T) {
 
 	// start server
 	log.Println("Starting a Server-Marble...")
-	serverCfg := newMarbleConfig(meshServerAddr, "test_marble_server", "server,backend,localhost")
+	serverCfg := newMarbleConfig(meshServerAddr, "testMarbleServer", "server,backend,localhost")
 	defer serverCfg.cleanup()
 	serverProc := startMarbleServer(serverCfg)
 	require.NotNil(serverProc, "failed to start server-marble")
@@ -151,13 +151,13 @@ func TestMarbleAPI(t *testing.T) {
 
 	// start clients
 	log.Println("Starting a bunch of Client-Marbles...")
-	clientCfg := newMarbleConfig(meshServerAddr, "test_marble_client", "client,frontend,localhost")
+	clientCfg := newMarbleConfig(meshServerAddr, "testMarbleClient", "client,frontend,localhost")
 	defer clientCfg.cleanup()
 	assert.True(startMarbleClient(clientCfg))
 	assert.True(startMarbleClient(clientCfg))
 	if !*simulationMode && !*noenclave {
 		// start bad marbles (would be accepted if we run in SimulationMode)
-		badCfg := newMarbleConfig(meshServerAddr, "bad_marble", "bad,localhost")
+		badCfg := newMarbleConfig(meshServerAddr, "badMarble", "bad,localhost")
 		defer badCfg.cleanup()
 		assert.False(startMarbleClient(badCfg))
 		assert.False(startMarbleClient(badCfg))
@@ -182,7 +182,7 @@ func TestRestart(t *testing.T) {
 
 	// start server
 	log.Println("Starting a Server-Marble...")
-	serverCfg := newMarbleConfig(meshServerAddr, "test_marble_server", "server,backend,localhost")
+	serverCfg := newMarbleConfig(meshServerAddr, "testMarbleServer", "server,backend,localhost")
 	defer serverCfg.cleanup()
 	serverProc := startMarbleServer(serverCfg)
 	require.NotNil(serverProc, "failed to start server-marble")
@@ -190,7 +190,7 @@ func TestRestart(t *testing.T) {
 
 	// start clients
 	log.Println("Starting a bunch of Client-Marbles...")
-	clientCfg := newMarbleConfig(meshServerAddr, "test_marble_client", "client,frontend,localhost")
+	clientCfg := newMarbleConfig(meshServerAddr, "testMarbleClient", "client,frontend,localhost")
 	defer clientCfg.cleanup()
 	assert.True(startMarbleClient(clientCfg))
 	assert.True(startMarbleClient(clientCfg))
@@ -267,14 +267,14 @@ func TestClientAPI(t *testing.T) {
 	// test reading of secrets
 	log.Println("Requesting a secret from the Coordinator")
 	clientAPIURL.Path = "secrets"
-	clientAPIURL.RawQuery = "s=symmetric_key_shared"
+	clientAPIURL.RawQuery = "s=symmetricKeyShared"
 	resp, err = client.Get(clientAPIURL.String())
 	require.NoError(err)
 	require.Equal(http.StatusOK, resp.StatusCode)
 	secret, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	require.NoError(err)
-	assert.Contains(string(secret), `{"status":"success","data":{"symmetric_key_shared":{"Type":"symmetric-key","Size":128,`)
+	assert.Contains(string(secret), `{"status":"success","data":{"symmetricKeyShared":{"Type":"symmetric-key","Size":128,`)
 }
 
 func TestSettingSecrets(t *testing.T) {
@@ -304,7 +304,7 @@ func TestSettingSecrets(t *testing.T) {
 
 	// start server
 	log.Println("Starting a Server-Marble...")
-	serverCfg := newMarbleConfig(meshServerAddr, "test_marble_server", "server,backend,localhost")
+	serverCfg := newMarbleConfig(meshServerAddr, "testMarbleServer", "server,backend,localhost")
 	defer serverCfg.cleanup()
 	serverProc := startMarbleServer(serverCfg)
 	require.NotNil(serverProc, "failed to start server-marble")
@@ -312,7 +312,7 @@ func TestSettingSecrets(t *testing.T) {
 
 	// start a marble
 	log.Println("Starting a Client-Marble with unset secret, this should fail...")
-	clientCfg := newMarbleConfig(meshServerAddr, "test_marble_unset", "client,frontend,localhost")
+	clientCfg := newMarbleConfig(meshServerAddr, "testMarbleUnset", "client,frontend,localhost")
 	defer clientCfg.cleanup()
 	assert.False(startMarbleClient(clientCfg))
 
@@ -407,7 +407,7 @@ func TestManifestUpdate(t *testing.T) {
 
 	// start server
 	log.Println("Starting a Server-Marble")
-	serverCfg := newMarbleConfig(meshServerAddr, "test_marble_server", "server,backend,localhost")
+	serverCfg := newMarbleConfig(meshServerAddr, "testMarbleServer", "server,backend,localhost")
 	defer serverCfg.cleanup()
 	serverProc := startMarbleServer(serverCfg)
 	require.NotNil(serverProc, "failed to start server-marble")
@@ -415,12 +415,12 @@ func TestManifestUpdate(t *testing.T) {
 
 	// start clients
 	log.Println("Starting a bunch of Client-Marbles (should start successfully)...")
-	clientCfg := newMarbleConfig(meshServerAddr, "test_marble_client", "client,frontend,localhost")
+	clientCfg := newMarbleConfig(meshServerAddr, "testMarbleClient", "client,frontend,localhost")
 	defer clientCfg.cleanup()
 	assert.True(startMarbleClient(clientCfg))
 	assert.True(startMarbleClient(clientCfg))
 	// start bad marbles (would be accepted if we run in SimulationMode)
-	badCfg := newMarbleConfig(meshServerAddr, "bad_marble", "bad,localhost")
+	badCfg := newMarbleConfig(meshServerAddr, "badMarble", "bad,localhost")
 	defer badCfg.cleanup()
 	assert.False(startMarbleClient(badCfg))
 	assert.False(startMarbleClient(badCfg))
@@ -745,7 +745,7 @@ func triggerRecovery(manifest manifest.Manifest, assert *assert.Assertions, requ
 
 	// start server
 	log.Println("Starting a Server-Marble")
-	serverCfg := newMarbleConfig(meshServerAddr, "test_marble_server", "server,backend,localhost")
+	serverCfg := newMarbleConfig(meshServerAddr, "testMarbleServer", "server,backend,localhost")
 	serverProc := startMarbleServer(serverCfg)
 	require.NotNil(serverProc, "failed to start server-marble")
 

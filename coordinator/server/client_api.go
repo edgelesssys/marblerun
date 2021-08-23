@@ -295,20 +295,20 @@ func (s *clientAPIServer) updatePost(w http.ResponseWriter, r *http.Request) {
 // Retrieve secrets.
 //
 // Each requests allows specifying one or more secrets in the form of a query string, where each parameter `s` specifies one secret.
-// A query string for the secrets `symmetric_key_shared` and `cert_shared` may look like the following:
+// A query string for the secrets `symmetricKeyShared` and `certShared` may look like the following:
 //
 //```
-// s=symmetric_key_shared&s=cert_shared
+// s=symmetricKeyShared&s=certShared
 // ```
 //
 // This API endpoint only works when `Users` were defined in the manifest.
 // The user connects via mutual TLS using the user client certificate in the TLS Handshake.
 // For more information, look up [Managing secrets](../#/workflows/managing-secrets.md).
 //
-// Example for retrieving the secrets `symmetric_key_shared` and `cert_shared`:
+// Example for retrieving the secrets `symmetricKeyShared` and `certShared`:
 //
 // ```bash
-// curl --cacert marblerun.crt --cert user_certificate.crt --key user_private.key https://$MARBLERUN/secrets?s=symmetric_key_shared&s=cert_shared
+// curl --cacert marblerun.crt --cert user_certificate.crt --key user_private.key https://$MARBLERUN/secrets?s=symmetricKeyShared&s=certShared
 // ```
 //
 //     Responses:
@@ -321,7 +321,7 @@ func (s *clientAPIServer) secretsGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Secrets are requested via the query string in the form of ?s=<secret_one>&s=<secret_two>&s=...
+	// Secrets are requested via the query string in the form of ?s=<secretOne>&s=<secretTwo>&s=...
 	requestedSecrets := r.URL.Query()["s"]
 	if len(requestedSecrets) <= 0 {
 		writeJSONError(w, "invalid query", http.StatusBadRequest)
