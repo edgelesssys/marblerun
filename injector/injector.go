@@ -45,7 +45,7 @@ func (m *Mutator) HandleMutate(w http.ResponseWriter, r *http.Request) {
 	// mutate the request and add sgx tolerations to pod
 	mutatedBody, err := mutate(body, m.CoordAddr, m.DomainName, m.SGXResource, true)
 	if err != nil {
-		http.Error(w, "unable to mutate request", http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("unable to mutate request: %v", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -65,7 +65,7 @@ func (m *Mutator) HandleMutateNoSgx(w http.ResponseWriter, r *http.Request) {
 	// mutate the request and add sgx tolerations to pod
 	mutatedBody, err := mutate(body, m.CoordAddr, m.DomainName, m.SGXResource, false)
 	if err != nil {
-		http.Error(w, "unable to mutate request", http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("unable to mutate request: %v", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -78,7 +78,7 @@ func mutate(body []byte, coordAddr string, domainName string, resourceKey string
 	admReviewReq := v1.AdmissionReview{}
 	if err := json.Unmarshal(body, &admReviewReq); err != nil {
 		log.Println("Unable to mutate request: invalid admission review")
-		return nil, errors.New("invalid admission review")
+		return nil, fmt.Errorf("invalid admission review: %v", err)
 	}
 
 	if admReviewReq.Request == nil {
@@ -89,7 +89,7 @@ func mutate(body []byte, coordAddr string, domainName string, resourceKey string
 	var pod corev1.Pod
 	if err := json.Unmarshal(admReviewReq.Request.Object.Raw, &pod); err != nil {
 		log.Println("Unable to mutate request: invalid pod")
-		return nil, errors.New("invalid pod")
+		return nil, fmt.Errorf("invalid pod: %v", err)
 	}
 
 	// admission response
@@ -103,28 +103,21 @@ func mutate(body []byte, coordAddr string, domainName string, resourceKey string
 		},
 	}
 
-	if pod.Annotations == nil {
-		pod.Annotations = make(map[string]string)
+	if pod.Labels == nil {
+		pod.Labels = make(map[string]string)
 	}
 
 	// get marble type from pod labels
-	marbleType := pod.Labels[labelMarbleType]
-	// allow pod to start if label does not exist, but dont inject any values
-	if len(marbleType) == 0 {
-		resp := admission.PatchResponseFromRaw(admReviewReq.Request.Object.Raw, nil)
-		admReviewResponse.Response = &resp.AdmissionResponse
-		admReviewResponse.Response.Allowed = true
-		admReviewResponse.Response.Result = &metav1.Status{
-			Status:  "Success",
-			Message: fmt.Sprintf("Missing [%s] label, injection skipped", labelMarbleType),
-		}
-		bytes, err := json.Marshal(admReviewResponse)
-		if err != nil {
-			log.Println("Error: unable to marshal admission response")
-			return nil, errors.New("unable to marshal admission response")
-		}
+	marbleType, exists := pod.Labels[labelMarbleType]
+	if !exists {
+		// allow pod to start if label does not exist, but dont inject any values
 		log.Printf("Pod is missing [%s] label, skipping injection", labelMarbleType)
-		return bytes, nil
+		return generateResponse(pod, admReviewReq, admReviewResponse, true, fmt.Sprintf("Missing [%s] label, injection skipped", labelMarbleType))
+	}
+	if len(marbleType) <= 0 {
+		// deny request if the label exists, but is empty
+		log.Printf("Empty [%s] label, request denied", labelMarbleType)
+		return generateResponse(pod, admReviewReq, admReviewResponse, false, fmt.Sprintf("Empty [%s] label, request denied", labelMarbleType))
 	}
 
 	// get namespace of pod
@@ -157,7 +150,7 @@ func mutate(body []byte, coordAddr string, domainName string, resourceKey string
 	}
 
 	for idx, container := range pod.Spec.Containers {
-
+		// skip container if the marblerun/marblecontainer label was set and the container names dont match
 		if (container.Name != marbleContainer) && !injectAllContainers {
 			continue
 		}
@@ -192,15 +185,17 @@ func mutate(body []byte, coordAddr string, domainName string, resourceKey string
 			}
 			switch resourceKey {
 			case util.IntelEpc.String():
+				// Intels device plugin offers 3 resources:
+				//  epc			: sets EPC for the container
+				//  enclave		: provides a handle to /dev/sgx_enclave
+				//  provision	: provides a handle to /dev/sgx_provision, this is not needed when the Marble utilises out-of-process quote-generation
 				setResourceLimit(container.Resources.Limits, util.IntelEpc, util.GetEPCResourceLimit(resourceKey))
 				setResourceLimit(container.Resources.Limits, util.IntelEnclave, "1")
 				setResourceLimit(container.Resources.Limits, util.IntelProvision, "1")
-			case util.AzureEpc.String():
-				setResourceLimit(container.Resources.Limits, util.AzureEpc, "10")
-			case util.AlibabaEpc.String():
-				setResourceLimit(container.Resources.Limits, util.AlibabaEpc, "10")
 			default:
-				log.Println("Error: Tried to inject unkown resource key")
+				// Azure and Alibaba Cloud plugins offer only 1 resource
+				// for custom plugins we can only inject the resource provided by the `resourceKey`
+				setResourceLimit(container.Resources.Limits, corev1.ResourceName(resourceKey), util.GetEPCResourceLimit(resourceKey))
 			}
 		}
 
@@ -235,24 +230,9 @@ func mutate(body []byte, coordAddr string, domainName string, resourceKey string
 		})
 	}
 
-	// create the patch
-	marshaledPod, err := json.Marshal(pod)
+	bytes, err := generateResponse(pod, admReviewReq, admReviewResponse, true, "")
 	if err != nil {
-		log.Println("Error: unable to marshal patched pod")
-		return nil, errors.New("unable to marshal patched pod")
-	}
-	resp := admission.PatchResponseFromRaw(admReviewReq.Request.Object.Raw, marshaledPod)
-	if err := resp.Complete(admission.Request{AdmissionRequest: *admReviewReq.Request}); err != nil {
-		log.Println("Error: patching failed")
-		return nil, errors.New("patching failed")
-	}
-
-	admReviewResponse.Response = &resp.AdmissionResponse
-	admReviewResponse.Response.Allowed = true
-	bytes, err := json.Marshal(admReviewResponse)
-	if err != nil {
-		log.Println("Error: unable to marshal admission response")
-		return nil, errors.New("unable to marshal admission response")
+		return nil, err
 	}
 
 	log.Printf("Mutation request for pod of marble type [%s] successful", marbleType)
@@ -274,7 +254,7 @@ func checkRequest(w http.ResponseWriter, r *http.Request) []byte {
 	body, err := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 	if err != nil {
-		http.Error(w, "unable to read request", http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("unable to read request: %v", err), http.StatusBadRequest)
 		return nil
 	}
 
@@ -299,4 +279,38 @@ func setResourceLimit(target map[corev1.ResourceName]resource.Quantity, key core
 	if _, ok := target[key]; !ok {
 		target[key] = resource.MustParse(value)
 	}
+}
+
+// generateResponse creates the admission response
+func generateResponse(pod corev1.Pod, request, response v1.AdmissionReview, allowed bool, message string) ([]byte, error) {
+	marshaledPod, err := json.Marshal(pod)
+	if err != nil {
+		log.Println("Error: unable to marshal patched pod")
+		return nil, fmt.Errorf("unable to marshal patched pod: %v", err)
+	}
+	resp := admission.PatchResponseFromRaw(request.Request.Object.Raw, marshaledPod)
+	if err := resp.Complete(admission.Request{AdmissionRequest: *request.Request}); err != nil {
+		log.Println("Error: patching failed")
+		return nil, fmt.Errorf("patching failed: %v", err)
+	}
+
+	response.Response = &resp.AdmissionResponse
+	response.Response.Allowed = allowed
+	var status string
+	if allowed {
+		status = "Success"
+	} else {
+		status = "Failure"
+	}
+	response.Response.Result = &metav1.Status{
+		Status:  status,
+		Message: message,
+	}
+
+	bytes, err := json.Marshal(response)
+	if err != nil {
+		log.Println("Error: unable to marshal admission response")
+		return nil, fmt.Errorf("unable to marshal admission response: %v", err)
+	}
+	return bytes, nil
 }

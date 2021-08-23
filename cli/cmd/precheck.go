@@ -74,7 +74,7 @@ func nodeHasAlibabaDevPlugin(capacityInfo corev1.ResourceList) bool {
 	return epcQuant.Value() != 0
 }
 
-// nodeHasAzureDevPlugin checks if a node has the Azures SGX device plugin installed
+// nodeHasAzureDevPlugin checks if a node has the Azures SGX device plugin installed (https://github.com/Azure/aks-engine/blob/master/docs/topics/sgx.md#deploying-the-sgx-device-plugin)
 func nodeHasAzureDevPlugin(capacityInfo corev1.ResourceList) bool {
 	epcQuant := capacityInfo[util.AzureEpc]
 	return epcQuant.Value() != 0
