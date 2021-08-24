@@ -33,7 +33,7 @@ const longDescription = `Modifies a Graphene manifest for use with Marblerun.
 This command tries to automatically adjust the required parameters in an already existing Graphene manifest template, simplifying the migration of your existing Graphene application to Marblerun.
 Please note that you still need to manually create a Marblerun manifest.
 
-For more information about the requirements and  changes performed, consult the documentation: https://docs.edgeless.systems/marblerun/#/building-services/graphene
+For more information about the requirements and  changes performed, consult the documentation: https://edglss.cc/doc-mr-graphene
 
 The parameter of this command is the path of the Graphene manifest template you want to modify.
 `
