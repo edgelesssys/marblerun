@@ -15,14 +15,14 @@
                 ],
                 "Files": {
                     "/dev/attestation/protected_files_key": "{{ hex .Marblerun.SealKey }}",
-                    "install/conf/server.crt": "{{ pem .Secrets.server_cert.Cert }}",
-                    "install/conf/server.key": "{{ pem .Secrets.server_cert.Private }}"
+                    "install/conf/server.crt": "{{ pem .Secrets.serverCert.Cert }}",
+                    "install/conf/server.key": "{{ pem .Secrets.serverCert.Private }}"
                 }
             }
         }
     },
     "Secrets": {
-        "server_cert": {
+        "serverCert": {
             "Type": "cert-ecdsa",
             "Size": 256,
             "Cert": {

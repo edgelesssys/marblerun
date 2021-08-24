@@ -61,7 +61,7 @@ func TestOpenSSLVerify(t *testing.T) {
 	require.NoError(err)
 
 	// create marble
-	marbleType := "backend_first"
+	marbleType := "backendFirst"
 	infraName := "Azure"
 	cert, csr, _ := util.MustGenerateTestMarbleCredentials()
 	// create mock quote using values from the manifest

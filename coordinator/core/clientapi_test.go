@@ -277,8 +277,8 @@ func TestUpdateManifest(t *testing.T) {
 	assert.NotEqual(marbleRootCABeforeUpdate, marbleRootCABeAfterUpdate)
 
 	// Secrets: symmetric keys should remain the same, certificates should be regenerated based on the new intermediate ca
-	assert.Equal(secretsBeforeUpdate["symmetric_key_shared"], secretsAfterUpdate["symmetric_key_shared"])
-	assert.NotEqual(secretsBeforeUpdate["cert_shared"], secretsAfterUpdate["cert_shared"])
+	assert.Equal(secretsBeforeUpdate["symmetricKeyShared"], secretsAfterUpdate["symmetricKeyShared"])
+	assert.NotEqual(secretsBeforeUpdate["certShared"], secretsAfterUpdate["certShared"])
 
 	// Verify if the old secret certificate is not correctly verified anymore by the new intermediate certificate
 	roots := x509.NewCertPool()
@@ -290,10 +290,10 @@ func TestUpdateManifest(t *testing.T) {
 		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 	}
 
-	oldCert := x509.Certificate(secretsBeforeUpdate["cert_shared"].Cert)
+	oldCert := x509.Certificate(secretsBeforeUpdate["certShared"].Cert)
 	_, err = oldCert.Verify(opts)
 	assert.Error(err)
-	newCert := x509.Certificate(secretsAfterUpdate["cert_shared"].Cert)
+	newCert := x509.Certificate(secretsAfterUpdate["certShared"].Cert)
 	_, err = newCert.Verify(opts)
 	assert.NoError(err)
 
@@ -419,8 +419,8 @@ func TestGetSecret(t *testing.T) {
 	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
 
-	symmetricSecret := "symmetric_key_shared"
-	certSecret := "cert_shared"
+	symmetricSecret := "symmetricKeyShared"
+	certSecret := "certShared"
 	secret1, err := c.data.getSecret(symmetricSecret)
 	assert.NoError(err)
 	secret2, err := c.data.getSecret(certSecret)
@@ -436,14 +436,14 @@ func TestGetSecret(t *testing.T) {
 	assert.Equal(secret2, reqSecrets[certSecret])
 
 	// request should fail if the user lacks permissions
-	_, err = c.GetSecrets(context.TODO(), []string{symmetricSecret, "restricted_secret"}, admin)
+	_, err = c.GetSecrets(context.TODO(), []string{symmetricSecret, "restrictedSecret"}, admin)
 	assert.Error(err)
 
 	// requesting an secret should return an empty secret since it was not set
-	sec, err := c.GetSecrets(context.TODO(), []string{"symmetric_key_unset"}, admin)
+	sec, err := c.GetSecrets(context.TODO(), []string{"symmetricKeyUnset"}, admin)
 	assert.NoError(err)
-	assert.Empty(sec["symmetric_key_unset"].Public)
-	assert.Empty(sec["symmetric_key_unset"].Private)
+	assert.Empty(sec["symmetricKeyUnset"].Public)
+	assert.Empty(sec["symmetricKeyUnset"].Private)
 }
 
 func TestWriteSecret(t *testing.T) {
@@ -455,8 +455,8 @@ func TestWriteSecret(t *testing.T) {
 
 	admin, err := c.data.getUser("admin")
 	assert.NoError(err)
-	symmetricSecret := "symmetric_key_unset"
-	certSecret := "cert_unset"
+	symmetricSecret := "symmetricKeyUnset"
+	certSecret := "certUnset"
 
 	// there should be no initialized secret yet
 	sec, err := c.data.getSecret(symmetricSecret)
@@ -481,19 +481,19 @@ func TestWriteSecret(t *testing.T) {
 
 	// try to set a secret in plain format
 	genericSecret := []byte(`{
-		"generic_secret": {
+		"genericSecret": {
 			"Key": "` + base64.StdEncoding.EncodeToString([]byte("Marblerun Unit Test")) + `"
 		}
 	}`)
 	err = c.WriteSecrets(context.TODO(), genericSecret, admin)
 	assert.NoError(err)
-	secret, err = c.data.getSecret("generic_secret")
+	secret, err = c.data.getSecret("genericSecret")
 	assert.NoError(err)
 	assert.Equal("Marblerun Unit Test", string(secret.Public))
 
 	// try to set a secret incorrect size
 	invalidSecret := []byte(`{
-		"symmetric_key_unset": {
+		"symmetricKeyUnset": {
 			"Key": "` + base64.StdEncoding.EncodeToString([]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}) + `"
 		}	
 	}`)
@@ -513,7 +513,7 @@ func TestWriteSecret(t *testing.T) {
 	pK, _ := c.data.getPrivK(sKCoordinatorIntermediateKey)
 	priv, err = c.generateSecrets(context.TODO(), priv, uuid.New(), pC, pK)
 	assert.NoError(err)
-	assert.Equal("Marblerun Unit Test Private", priv["cert_private"].Cert.Subject.CommonName)
+	assert.Equal("Marblerun Unit Test Private", priv["certPrivate"].Cert.Subject.CommonName)
 }
 
 func testManifestInvalidDebugCase(c *Core, manifest *manifest.Manifest, marblePackage quote.PackageProperties, assert *assert.Assertions, require *require.Assertions) *Core {

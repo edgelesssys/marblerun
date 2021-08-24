@@ -144,7 +144,7 @@ func TestReadSecret(t *testing.T) {
 	mux := CreateServeMux(c, nil)
 
 	// Make HTTP secret request with no TLS at all, should be unauthenticated
-	req := httptest.NewRequest(http.MethodGet, "/secrets?s=symmetric_key_shared", nil)
+	req := httptest.NewRequest(http.MethodGet, "/secrets?s=symmetricKeyShared", nil)
 	resp := httptest.NewRecorder()
 	err = testRequestWithCert(req, resp, mux)
 	assert.NoError(err)

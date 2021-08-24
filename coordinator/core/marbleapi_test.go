@@ -68,17 +68,17 @@ func TestActivate(t *testing.T) {
 	}
 
 	// try to activate first backend marble prematurely before manifest is set
-	spawner.newMarble("backend_first", "Azure", false)
+	spawner.newMarble("backendFirst", "Azure", false)
 
 	// set manifest
 	_, err = coreServer.SetManifest(context.TODO(), []byte(test.ManifestJSON))
 	require.NoError(err)
 
 	// activate first backend
-	spawner.newMarble("backend_first", "Azure", true)
+	spawner.newMarble("backendFirst", "Azure", true)
 
 	// try to activate another first backend
-	spawner.newMarble("backend_first", "Azure", false)
+	spawner.newMarble("backendFirst", "Azure", false)
 
 	// activate 10 other backend
 	pickInfra := func(i int) string {
@@ -88,7 +88,7 @@ func TestActivate(t *testing.T) {
 		return "Alibaba"
 	}
 	for i := 0; i < 10; i++ {
-		spawner.newMarbleAsync("backend_other", pickInfra(i), true)
+		spawner.newMarbleAsync("backendOther", pickInfra(i), true)
 	}
 
 	// activate 10 frontend
@@ -215,8 +215,8 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	ms.assert.NoError(newMarbleRootCert.CheckSignature(newMarbleRootCert.SignatureAlgorithm, newMarbleRootCert.RawTBSCertificate, newMarbleRootCert.Signature))
 	ms.assert.NoError(marbleRootCert.CheckSignature(newLeafCert.SignatureAlgorithm, newLeafCert.RawTBSCertificate, newLeafCert.Signature))
 
-	// Validate generated secret (only specified in backend_first)
-	if marbleType == "backend_first" {
+	// Validate generated secret (only specified in backendFirst)
+	if marbleType == "backendFirst" {
 		ms.assert.Len(params.Env["TEST_SECRET_SYMMETRIC_KEY"], 32)
 	} else {
 		ms.assert.Empty(params.Env["TEST_SECRET_SYMMETRIC_KEY"])
@@ -234,13 +234,13 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	ms.assert.NoError(err, "failed to verify new certificate: %v", err)
 
 	// Shared & non-shared secret checks
-	if marbleType == "backend_first" {
+	if marbleType == "backendFirst" {
 		// Validate generated shared secret certificate
-		// backend_first only runs once, so need for a mutex & checks
+		// backendFirst only runs once, so need for a mutex & checks
 		ms.backendFirstSharedCert = ms.verifyCertificateFromEnvironment("TEST_SECRET_CERT", params, opts)
 		ms.backendFirstUniqueCert = ms.verifyCertificateFromEnvironment("TEST_SECRET_PRIVATE_CERT", params, opts)
 
-	} else if marbleType == "backend_other" {
+	} else if marbleType == "backendOther" {
 		// Validate generated shared secret certificate
 		// Since we're running async and multiple times, let's avoid a race condition here and only get the certificate from one instance
 		ms.mutex.Lock()
@@ -256,7 +256,7 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	// Validate ttls conf
 	config := make(map[string]map[string]map[string]map[string]interface{})
 	configBytes := []byte(params.Env["MARBLE_TTLS_CONFIG"])
-	if marbleType == "backend_first" {
+	if marbleType == "backendFirst" {
 		ms.assert.NoError(json.Unmarshal(configBytes, &config))
 
 		ms.assert.NotEqual(nil, config["tls"]["Outgoing"]["localhost:8080"]["cacrt"])
@@ -272,7 +272,7 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 		ms.assert.NotEmpty(config["tls"]["Incoming"]["*:8080"]["clikey"])
 		ms.assert.True(config["tls"]["Incoming"]["*:8080"]["clientAuth"].(bool))
 
-	} else if marbleType == "backend_other" {
+	} else if marbleType == "backendOther" {
 		ms.assert.NoError(json.Unmarshal(configBytes, &config))
 		ms.assert.NotEqual(nil, config["tls"]["Outgoing"]["localhost:8080"]["cacrt"])
 		ms.assert.NotEqual(nil, config["tls"]["Outgoing"]["localhost:8080"]["clicrt"])

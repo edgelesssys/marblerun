@@ -23,7 +23,7 @@ func TestSetSecrets(t *testing.T) {
 		request, err := ioutil.ReadAll(r.Body)
 		assert.NoError(err)
 
-		if strings.Contains(string(request), "restricted_secret") {
+		if strings.Contains(string(request), "restrictedSecret") {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
@@ -43,7 +43,7 @@ func TestSetSecrets(t *testing.T) {
 	err := cliSecretSet(host, []byte(`{"user_secret":{"Type":"plain","Key":"Q0xJIFRlc3QK"}}`), tls.Certificate{}, []*pem.Block{cert})
 	assert.NoError(err)
 
-	err = cliSecretSet(host, []byte(`{"restricted_secret":{"Type":"plain","Key":"Q0xJIFRlc3QK"}}`), tls.Certificate{}, []*pem.Block{cert})
+	err = cliSecretSet(host, []byte(`{"restrictedSecret":{"Type":"plain","Key":"Q0xJIFRlc3QK"}}`), tls.Certificate{}, []*pem.Block{cert})
 	assert.Error(err)
 
 	err = cliSecretSet(host, []byte(`{"user_secret":{"Type":"invalid","Key":"Q0xJIFRlc3QK"}}`), tls.Certificate{}, []*pem.Block{cert})
@@ -54,7 +54,7 @@ func TestGetSecrets(t *testing.T) {
 	assert := assert.New(t)
 	s, host, cert := newTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(http.MethodGet, r.Method)
-		if "/secrets?s=plain_secret&s=cert_shared&s=secretOne" == r.RequestURI {
+		if "/secrets?s=plain_secret&s=certShared&s=secretOne" == r.RequestURI {
 			serverResp := server.GeneralResponse{
 				Status: "success",
 				Data: map[string]interface{}{
@@ -78,7 +78,7 @@ func TestGetSecrets(t *testing.T) {
 						"Private":     "base64-priv-data",
 						"Public":      "base64-priv-data",
 					},
-					"cert_shared": map[string]interface{}{
+					"certShared": map[string]interface{}{
 						"Type":        "cert-rsa",
 						"Size":        2048,
 						"Shared":      true,
@@ -93,7 +93,7 @@ func TestGetSecrets(t *testing.T) {
 			assert.NoError(json.NewEncoder(w).Encode(serverResp))
 			return
 		}
-		if "/secrets?s=restricted_secret" == r.RequestURI {
+		if "/secrets?s=restrictedSecret" == r.RequestURI {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
@@ -104,7 +104,7 @@ func TestGetSecrets(t *testing.T) {
 		host: host,
 		secretIDs: []string{
 			"plain_secret",
-			"cert_shared",
+			"certShared",
 			"secretOne",
 		},
 		output: "",
@@ -114,7 +114,7 @@ func TestGetSecrets(t *testing.T) {
 	err := cliSecretGet(options)
 	assert.NoError(err)
 
-	options.secretIDs = []string{"restricted_secret"}
+	options.secretIDs = []string{"restrictedSecret"}
 	err = cliSecretGet(options)
 	assert.Error(err)
 

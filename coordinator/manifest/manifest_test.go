@@ -44,7 +44,7 @@ func TestFile(t *testing.T) {
 	"withoutTemplates": {
 		"Encoding": "string",
 		"NoTemplates": true,
-		"Data": "{{ string .Secrets.symmetric_key_shared }}"
+		"Data": "{{ string .Secrets.symmetricKeyShared }}"
 	}
 }`)
 	assert := assert.New(t)
@@ -59,7 +59,7 @@ func TestFile(t *testing.T) {
 	assert.Equal("bar", testFiles["base64"].Data)
 	assert.Equal("YmFy", testFiles["base64Value"].Data)
 	assert.Equal("MarbleRun", testFiles["hex"].Data)
-	assert.Equal("{{ string .Secrets.symmetric_key_shared }}", testFiles["withoutTemplates"].Data)
+	assert.Equal("{{ string .Secrets.symmetricKeyShared }}", testFiles["withoutTemplates"].Data)
 
 	_, err = json.Marshal(testFiles)
 	assert.NoError(err)

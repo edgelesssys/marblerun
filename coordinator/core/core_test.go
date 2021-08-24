@@ -165,25 +165,25 @@ func TestGenerateUsersFromManifest(t *testing.T) {
 	Users := map[string]manifest.User{
 		"Alice": {
 			Certificate: string(test.AdminCert),
-			Roles:       []string{"write_role", "read_role"},
+			Roles:       []string{"writeRole", "readRole"},
 		},
 		"Bob": {
 			Certificate: string(test.AdminCert),
-			Roles:       []string{"write_role", "update_role"},
+			Roles:       []string{"writeRole", "updateRole"},
 		},
 	}
 	Roles := map[string]manifest.Role{
-		"write_role": {
+		"writeRole": {
 			ResourceType:  "Secrets",
-			ResourceNames: []string{"secret_one"},
+			ResourceNames: []string{"secretOne"},
 			Actions:       []string{"WriteSecret"},
 		},
-		"read_role": {
+		"readRole": {
 			ResourceType:  "Secrets",
-			ResourceNames: []string{"secret_one", "secret_two"},
+			ResourceNames: []string{"secretOne", "secretTwo"},
 			Actions:       []string{"readsecret"},
 		},
-		"update_role": {
+		"updateRole": {
 			ResourceType:  "Packages",
 			ResourceNames: []string{"frontend", "backend"},
 			Actions:       []string{"UpdateSecurityVersion"},
@@ -195,12 +195,12 @@ func TestGenerateUsersFromManifest(t *testing.T) {
 	for _, newUser := range newUsers {
 		switch newUser.Name() {
 		case "Alice":
-			assert.True(newUser.IsGranted(user.NewPermission(user.PermissionWriteSecret, []string{"secret_one"})))
-			assert.True(newUser.IsGranted(user.NewPermission(user.PermissionReadSecret, []string{"secret_one", "secret_two"})))
+			assert.True(newUser.IsGranted(user.NewPermission(user.PermissionWriteSecret, []string{"secretOne"})))
+			assert.True(newUser.IsGranted(user.NewPermission(user.PermissionReadSecret, []string{"secretOne", "secretTwo"})))
 			assert.False(newUser.IsGranted(user.NewPermission(user.PermissionUpdatePackage, []string{"frontend", "backend"})))
 		case "Bob":
-			assert.True(newUser.IsGranted(user.NewPermission(user.PermissionWriteSecret, []string{"secret_one"})))
-			assert.False(newUser.IsGranted(user.NewPermission(user.PermissionReadSecret, []string{"secret_one", "secret_two"})))
+			assert.True(newUser.IsGranted(user.NewPermission(user.PermissionWriteSecret, []string{"secretOne"})))
+			assert.False(newUser.IsGranted(user.NewPermission(user.PermissionReadSecret, []string{"secretOne", "secretTwo"})))
 			assert.True(newUser.IsGranted(user.NewPermission(user.PermissionUpdatePackage, []string{"frontend", "backend"})))
 		}
 	}
@@ -208,11 +208,11 @@ func TestGenerateUsersFromManifest(t *testing.T) {
 	// try to generate new users with missing certificate, this should always error
 	invalidUsers := map[string]manifest.User{
 		"Alice": {
-			Roles: []string{"write_role"},
+			Roles: []string{"writeRole"},
 		},
 		"Bob": {
 			Certificate: string(test.AdminCert),
-			Roles:       []string{"update_role"},
+			Roles:       []string{"updateRole"},
 		},
 	}
 	_, err = generateUsersFromManifest(invalidUsers, Roles)

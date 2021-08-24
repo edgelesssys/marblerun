@@ -50,7 +50,7 @@ const ManifestJSON string = `{
 		}
 	},
 	"Marbles": {
-		"backend_first": {
+		"backendFirst": {
 			"Package": "backend",
 			"MaxActivations": 1,
 			"Parameters": {
@@ -67,11 +67,11 @@ const ManifestJSON string = `{
 					"IS_FIRST": "true",
 					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
 					"TEST_SECRET_SYMMETRIC_KEY": {
-						"Data": "{{ hex .Secrets.symmetric_key_shared }}",
+						"Data": "{{ hex .Secrets.symmetricKeyShared }}",
 						"Encoding": "string"
 					},
-					"TEST_SECRET_CERT": "{{ pem .Secrets.cert_shared.Cert }}",
-					"TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.cert_private.Cert }}"
+					"TEST_SECRET_CERT": "{{ pem .Secrets.certShared.Cert }}",
+					"TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.certPrivate.Cert }}"
 				},
 				"Argv": [
 					"--first",
@@ -82,13 +82,13 @@ const ManifestJSON string = `{
 				"web"
 			]
 		},
-		"backend_other": {
+		"backendOther": {
 			"Package": "backend",
 			"Parameters": {
 				"Env": {
 					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
-					"TEST_SECRET_CERT": "{{ pem .Secrets.cert_shared.Cert }}",
-					"TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.cert_private.Cert }}"
+					"TEST_SECRET_CERT": "{{ pem .Secrets.certShared.Cert }}",
+					"TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.certPrivate.Cert }}"
 				},
 				"Argv": [
 					"serve"
@@ -111,16 +111,16 @@ const ManifestJSON string = `{
 		"owner": [9,9,9]
 	},
 	"Secrets": {
-		"symmetric_key_shared": {
+		"symmetricKeyShared": {
 			"Size": 128,
 			"Shared": true,
 			"Type": "symmetric-key"
 		},
-		"symmetric_key_private": {
+		"symmetricKeyPrivate": {
 			"Size": 256,
 			"Type": "symmetric-key"
 		},
-		"cert_private": {
+		"certPrivate": {
 			"Size": 2048,
 			"Type": "cert-rsa",
 			"Cert": {
@@ -130,7 +130,7 @@ const ManifestJSON string = `{
 			},
 			"ValidFor": 7
 		},
-		"cert_shared": {
+		"certShared": {
 			"Shared": true,
 			"Type": "cert-ed25519",
 			"Cert": {
@@ -169,7 +169,7 @@ const ManifestJSON string = `{
 			"Incoming": [
 				{
 					"Port": "8080",
-					"Cert": "cert_shared",
+					"Cert": "certShared",
 					"DisableClientAuth": true
 				}
 			]
@@ -206,21 +206,21 @@ var ManifestJSONWithRecoveryKey string = `{
 		}
 	},
 	"Secrets": {
-		"restricted_secret": {
+		"restrictedSecret": {
 			"Size": 128,
 			"Shared": true,
 			"Type": "symmetric-key"
 		},
-		"symmetric_key_shared": {
+		"symmetricKeyShared": {
 			"Size": 128,
 			"Shared": true,
 			"Type": "symmetric-key"
 		},
-		"symmetric_key_private": {
+		"symmetricKeyPrivate": {
 			"Size": 256,
 			"Type": "symmetric-key"
 		},
-		"cert_private": {
+		"certPrivate": {
 			"Size": 2048,
 			"Type": "cert-rsa",
 			"Cert": {
@@ -230,7 +230,7 @@ var ManifestJSONWithRecoveryKey string = `{
 			},
 			"ValidFor": 7
 		},
-		"cert_shared": {
+		"certShared": {
 			"Shared": true,
 			"Type": "cert-ed25519",
 			"Cert": {
@@ -240,16 +240,16 @@ var ManifestJSONWithRecoveryKey string = `{
 			},
 			"ValidFor": 7
 		},
-		"symmetric_key_unset": {
+		"symmetricKeyUnset": {
 			"Type": "symmetric-key",
 			"Size": 128,
 			"UserDefined": true
 		},
-		"cert_unset": {
+		"certUnset": {
 			"Type": "cert-ed25519",
 			"UserDefined": true
 		},
-		"generic_secret": {
+		"genericSecret": {
 			"UserDefined": true,
 			"Type": "plain"
 		}
@@ -261,9 +261,9 @@ var ManifestJSONWithRecoveryKey string = `{
 		"admin": {
 			"Certificate": "` + pemToJSONString(AdminCert) + `",
 			"Roles": [
-				"secret_manager",
-				"read_only",
-				"update_manager"
+				"secretManager",
+				"readOnly",
+				"updateManager"
 			]
 		}
 	},
@@ -271,29 +271,29 @@ var ManifestJSONWithRecoveryKey string = `{
 		"testRecKey1": "` + pemToJSONString(RecoveryPublicKey) + `"
 	},
 	"Roles": {
-		"secret_manager": {
+		"secretManager": {
 			"ResourceType": "Secrets",
 			"ResourceNames": [
-				"symmetric_key_unset",
-				"cert_unset",
-				"generic_secret"
+				"symmetricKeyUnset",
+				"certUnset",
+				"genericSecret"
 			],
 			"Actions": [
 				"ReadSecret",
 				"WriteSecret"
 			]
 		},
-		"read_only": {
+		"readOnly": {
 			"ResourceType": "Secrets",
 			"ResourceNames": [
-				"symmetric_key_shared",
-				"cert_shared"
+				"symmetricKeyShared",
+				"certShared"
 			],
 			"Actions": [
 				"ReadSecret"
 			]
 		},
-		"update_manager": {
+		"updateManager": {
 			"ResourceType": "Packages",
 			"ResourceNames": [
 				"frontend"
@@ -328,13 +328,13 @@ var IntegrationManifestJSON string = `{
 		}
 	},
 	"Marbles": {
-		"test_marble_server": {
+		"testMarbleServer": {
 			"Package": "backend",
 			"Parameters": {
 				"Files": {
 					"/tmp/coordinator_test/defg.txt": "foo",
 					"/tmp/coordinator_test/jkl.mno": "bar",
-					"/tmp/coordinator_test/secret.raw": "{{ raw .Secrets.symmetric_key_shared }}{{ raw .Marblerun.SealKey }}"
+					"/tmp/coordinator_test/secret.raw": "{{ raw .Secrets.symmetricKeyShared }}{{ raw .Marblerun.SealKey }}"
 				},
 				"Argv": [
 					"./marble",
@@ -346,7 +346,7 @@ var IntegrationManifestJSON string = `{
 				}
 			}
 		},
-		"test_marble_client": {
+		"testMarbleClient": {
 			"Package": "backend",
 			"Parameters": {
 				"Files": {
@@ -359,13 +359,13 @@ var IntegrationManifestJSON string = `{
 				}
 			}
 		},
-		"test_marble_unset": {
+		"testMarbleUnset": {
 			"Package": "backend",
 			"Parameters": {
 				"Files": {
 					"/tmp/coordinator_test/defg.txt": "foo",
 					"/tmp/coordinator_test/jkl.mno": "bar",
-					"/tmp/coordinator_test/pqr.txt": "user-defined secret: {{ raw .Secrets.symmetric_key_unset }} {{ pem .Secrets.cert_unset.Private }}"
+					"/tmp/coordinator_test/pqr.txt": "user-defined secret: {{ raw .Secrets.symmetricKeyUnset }} {{ pem .Secrets.certUnset.Private }}"
 				},
 				"Env": {
 					"IS_FIRST": "true",
@@ -373,7 +373,7 @@ var IntegrationManifestJSON string = `{
 				}
 			}
 		},
-		"bad_marble": {
+		"badMarble": {
 			"Package": "frontend",
 			"Parameters": {
 				"Files": {
@@ -390,18 +390,18 @@ var IntegrationManifestJSON string = `{
 		"owner": [9,9,9]
 	},
 	"Secrets" :{
-		"symmetric_key_shared": {
+		"symmetricKeyShared": {
 			"Size": 128,
 			"Shared": true,
 			"Type": "symmetric-key"
 		},
-		"symmetric_key_unset": {
+		"symmetricKeyUnset": {
 			"Shared": true,
 			"Type": "symmetric-key",
 			"Size": 128,
 			"UserDefined": true
 		},
-		"cert_unset": {
+		"certUnset": {
 			"Shared": true,
 			"Type": "cert-ed25519",
 			"UserDefined": true
@@ -411,9 +411,9 @@ var IntegrationManifestJSON string = `{
 		"admin": {
 			"Certificate": "` + pemToJSONString(AdminCert) + `",
 			"Roles": [
-				"write_role",
-				"read_role",
-				"update_role"
+				"writeRole",
+				"readRole",
+				"updateRole"
 			]
 		}
 	},
@@ -421,26 +421,26 @@ var IntegrationManifestJSON string = `{
 		"testRecKey1": "` + pemToJSONString(RecoveryPublicKey) + `"
 	},
 	"Roles": {
-		"write_role": {
+		"writeRole": {
 			"ResourceType": "Secrets",
 			"ResourceNames": [
-				"symmetric_key_unset",
-				"cert_unset"
+				"symmetricKeyUnset",
+				"certUnset"
 			],
 			"Actions": [
 				"WriteSecret"
 			]
 		},
-		"read_role": {
+		"readRole": {
 			"ResourceType": "Secrets",
 			"ResourceNames": [
-				"symmetric_key_shared"
+				"symmetricKeyShared"
 			],
 			"Actions": [
 				"ReadSecret"
 			]
 		},
-		"update_role": {
+		"updateRole": {
 			"ResourceType": "Packages",
 			"ResourceNames": [
 				"frontend",
@@ -508,10 +508,10 @@ const UpdateManifest = `{
 
 // UserSecrets is a test JSON string to update secrets
 const UserSecrets = `{
-	"symmetric_key_unset": {
+	"symmetricKeyUnset": {
 		"Key": "AAECAwQFBgcICQoLDA0ODw=="
 	},
-	"cert_unset": { 
+	"certUnset": { 
 		"Cert": "MIIBjDCCATOgAwIBAgICBTkwCgYIKoZIzj0EAwIwMjEwMC4GA1UEAxMnTWFyYmxlcnVuIENvb3JkaW5hdG9yIC0gSW50ZXJtZWRpYXRlIENBMB4XDTIxMDYxNTA4NTY0M1oXDTIxMDYyMjA4NTY0M1owLTEcMBoGA1UEAxMTTWFyYmxlcnVuIFVuaXQgVGVzdDENMAsGA1UEBRMEMTMzNzAqMAUGAytlcAMhAEPOc066G5XmvLizOKTENSR+U9lv3geZ0/a2+XkhJRvDo20wazAOBgNVHQ8BAf8EBAMCAoQwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMCMAwGA1UdEwEB/wQCMAAwLAYDVR0RBCUwI4IJbG9jYWxob3N0hwR/AAABhxAAAAAAAAAAAAAAAAAAAAABMAoGCCqGSM49BAMCA0cAMEQCIGOlRcynaPaj/flSr2ZEvmTmhuvtmTb4QkwPFtxFz3EJAiB77ijxAcJNxPKcKmgMB+c8NORC+6N/St2iP/oX/vqQvg==",
 		"Private": "MC4CAQAwBQYDK2VwBCIEIPlmAOOhAStk8ytxzvekPr8zLaQa9+lxnHK+CizDrMds"
 	}
