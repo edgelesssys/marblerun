@@ -1,0 +1,42 @@
+name: Create and validate OpenAPI specification
+on:
+  pull_request:
+
+jobs:
+  make-openapi-spec:
+    runs-on: ubuntu-18.04
+    container:
+      image: ghcr.io/edgelesssys/edgelessrt-dev:ci
+
+    steps:
+      - name: Install jq
+        run: apt install -y jq
+
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Create download URL
+        run: echo "download_url=$(curl -s https://api.github.com/repos/go-swagger/go-swagger/releases/latest | jq -r '.assets[] | select(.name | contains("'"$(uname | tr '[:upper:]' '[:lower:]')"'_amd64")) | .browser_download_url')" >> $GITHUB_ENV
+
+      - name: Download go-swagger
+        run: curl -o /usr/local/bin/swagger -L'#' ${{ env.download_url }}
+
+      - name: Make file executable
+        run: chmod +x /usr/local/bin/swagger
+
+      - name: Check version
+        run: swagger version
+
+      - name: Generate Swagger file from annotations
+        run: swagger generate spec -m --compact --exclude-deps -o ./swagger.json
+        env:
+          SWAGGER_GENERATE_EXTENSION: false
+
+      - name: Validate Swagger
+        run: swagger validate ./swagger.json
+
+      - name: commit swagger.json
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: Update Swagger specification
+          file_pattern: swagger.json
