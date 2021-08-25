@@ -8,7 +8,17 @@ on:
 jobs:
   publish-to-docs:
     runs-on: ubuntu-18.04
+    container:
+      image: ghcr.io/edgelesssys/edgelessrt-dev:ci
+
     steps:
+      - name: Install jq
+        run: apt install -y jq
+
+      - name: Get number of triggering PR
+        run: |
+          echo "pr_number=$(curl -s -H 'Accept: application/vnd.github.groot-preview+json' https://api.github.com/repos/edgelesssys/marblerun/commits/${{ github.sha }}/pulls | jq -r '.[].number')" >> $GITHUB_ENV
+
       - name: Checkout
         uses: actions/checkout@v2
 
@@ -21,4 +31,4 @@ jobs:
           dst_repo_name: docs.edgeless.systems
           dst_branch: action/marblerun/update-swagger
           dst_path: marblerun/_media/swagger.json
-          commit_message: OpenAPI spec of MarbleRun was updated
+          commit_message: OpenAPI spec was updated by edgelesssys/marblerun#${{ env.pr_number}}
