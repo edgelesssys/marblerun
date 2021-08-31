@@ -111,12 +111,10 @@ func mutate(body []byte, coordAddr string, domainName string, resourceKey string
 	marbleType, exists := pod.Labels[labelMarbleType]
 	if !exists {
 		// allow pod to start if label does not exist, but dont inject any values
-		log.Printf("Pod is missing [%s] label, skipping injection", labelMarbleType)
 		return generateResponse(pod, admReviewReq, admReviewResponse, true, fmt.Sprintf("Missing [%s] label, injection skipped", labelMarbleType))
 	}
 	if len(marbleType) <= 0 {
 		// deny request if the label exists, but is empty
-		log.Printf("Empty [%s] label, request denied", labelMarbleType)
 		return generateResponse(pod, admReviewReq, admReviewResponse, false, fmt.Sprintf("Empty [%s] label, request denied", labelMarbleType))
 	}
 
@@ -141,8 +139,8 @@ func mutate(body []byte, coordAddr string, domainName string, resourceKey string
 		},
 	}
 
-	var needUUIDVolume bool
-	var injectAllContainers bool
+	needUUIDVolume := false
+	injectAllContainers := false
 
 	marbleContainer := pod.Labels[labelMarbleContainer]
 	if marbleContainer == "" {
@@ -230,13 +228,7 @@ func mutate(body []byte, coordAddr string, domainName string, resourceKey string
 		})
 	}
 
-	bytes, err := generateResponse(pod, admReviewReq, admReviewResponse, true, "")
-	if err != nil {
-		return nil, err
-	}
-
-	log.Printf("Mutation request for pod of marble type [%s] successful", marbleType)
-	return bytes, nil
+	return generateResponse(pod, admReviewReq, admReviewResponse, true, fmt.Sprintf("Mutation request for pod of marble type [%s] successful", marbleType))
 }
 
 // checkRequest verifies the request used was POST and not empty
@@ -312,5 +304,8 @@ func generateResponse(pod corev1.Pod, request, response v1.AdmissionReview, allo
 		log.Println("Error: unable to marshal admission response")
 		return nil, fmt.Errorf("unable to marshal admission response: %v", err)
 	}
+
+	log.Println(message)
+
 	return bytes, nil
 }
