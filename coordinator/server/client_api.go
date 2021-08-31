@@ -304,7 +304,7 @@ func (s *clientAPIServer) updatePost(w http.ResponseWriter, r *http.Request) {
 //
 // This API endpoint only works when `Users` were defined in the manifest.
 // The user connects via mutual TLS using the user client certificate in the TLS Handshake.
-// For more information , look up [Managing secrets](../#/workflows/managing-secrets.md).
+// For more information, look up [Managing secrets](../#/workflows/managing-secrets.md).
 //
 // Example for retrieving the secrets `symmetricKeyShared` and `certShared`:
 //
