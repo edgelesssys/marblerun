@@ -186,7 +186,7 @@ func (s *AESGCMSealer) SetEncryptionKey(encryptionKey []byte) error {
 // backupEncryptionKey creates a backup of an existing seal key
 func (s *AESGCMSealer) backupEncryptionKey() {
 	if sealedKeyData, err := ioutil.ReadFile(s.getFname(SealedKeyFname)); err == nil {
-		t := time.Now()
+		t := time.Now() // TODO(katexochen): trusted time?
 		newFileName := s.getFname(SealedKeyFname) + "_" + t.Format("20060102150405") + ".bak"
 		ioutil.WriteFile(newFileName, sealedKeyData, 0600)
 	}

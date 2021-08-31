@@ -24,7 +24,6 @@ import (
 	"math"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
@@ -32,6 +31,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
 	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/coordinator/store"
+	"github.com/edgelesssys/marblerun/coordinator/ttime"
 	"github.com/edgelesssys/marblerun/coordinator/updatelog"
 	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/edgelesssys/marblerun/util"
@@ -55,6 +55,7 @@ type Core struct {
 	updateLogger *updatelog.Logger
 	zaplogger    *zap.Logger
 	metrics      *coreMetrics
+	time         ttime.Time
 	rpc.UnimplementedMarbleServer
 }
 
@@ -122,6 +123,7 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 		data:      storeWrapper{store: stor},
 		sealer:    sealer,
 		zaplogger: zapLogger,
+		time:      ttime.UntrustedTime{},
 	}
 	c.metrics = newCoreMetrics(promFactory, c, "coordinator")
 
@@ -159,7 +161,7 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 		if loadErr != seal.ErrEncryptionKey {
 			return nil, loadErr
 		}
-		// sealed state was found but couldnt be decrypted, go to recovery mode or reset manifest
+		// sealed state was found but couldn't be decrypted, go to recovery mode or reset manifest
 		c.zaplogger.Error("Failed to decrypt sealed state. Processing with a new state. Use the /recover API endpoint to load an old state, or submit a new manifest to overwrite the old state. Look up the documentation for more information on how to proceed.")
 		if err := c.setCAData(dnsNames, tx); err != nil {
 			return nil, err
@@ -185,6 +187,12 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 
 	if err := tx.Commit(); err != nil {
 		return nil, err
+	}
+
+	// TODO(katexochen): not sure if this is the right place for this
+	servers, err := c.data.getTimeServers()
+	if err == nil {
+		c.time = ttime.NewTime(servers, c.zaplogger)
 	}
 
 	rootCert, err := c.data.getCertificate(sKCoordinatorRootCert)
@@ -224,6 +232,7 @@ func (c *Core) GetTLSConfig() (*tls.Config, error) {
 	return &tls.Config{
 		GetCertificate: c.GetTLSRootCertificate,
 		ClientAuth:     tls.RequestClientCert,
+		Time:           c.time.Now,
 	}, nil
 }
 
@@ -271,7 +280,7 @@ func (c *Core) GetTLSMarbleRootCertificate(clientHello *tls.ClientHelloInfo) (*t
 	return util.TLSCertFromDER(marbleRootCert.Raw, intermediatePrivK), nil
 }
 
-func generateCert(dnsNames []string, commonName string, privk *ecdsa.PrivateKey, parentCertificate *x509.Certificate, parentPrivateKey *ecdsa.PrivateKey) (*x509.Certificate, *ecdsa.PrivateKey, error) {
+func generateCert(dnsNames []string, commonName string, privk *ecdsa.PrivateKey, parentCertificate *x509.Certificate, parentPrivateKey *ecdsa.PrivateKey, tTime ttime.Time) (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	// Generate private key
 	var err error
 	if privk == nil {
@@ -282,7 +291,7 @@ func generateCert(dnsNames []string, commonName string, privk *ecdsa.PrivateKey,
 	}
 
 	// Certifcate parameter
-	notBefore := time.Now()
+	notBefore := tTime.Now()
 	notAfter := notBefore.Add(math.MaxInt64)
 
 	serialNumber, err := util.GenerateCertificateSerialNumber()
@@ -529,7 +538,7 @@ func (c *Core) generateCertificateForSecret(secret manifest.Secret, parentCertif
 	}
 
 	template.BasicConstraintsValid = true
-	template.NotBefore = time.Now()
+	template.NotBefore = c.time.Now()
 
 	// If NotAfter is not set, we will use ValidFor for the end of the certificate lifetime. This can only happen once on initial manifest set
 	if template.NotAfter.IsZero() {
@@ -538,11 +547,11 @@ func (c *Core) generateCertificateForSecret(secret manifest.Secret, parentCertif
 			secret.ValidFor = 365
 		}
 
-		template.NotAfter = time.Now().AddDate(0, 0, int(secret.ValidFor))
+		template.NotAfter = c.time.Now().AddDate(0, 0, int(secret.ValidFor))
 	} else if secret.ValidFor != 0 {
 		// reset expiration date for private secrets
 		if !secret.Shared {
-			template.NotAfter = time.Now().AddDate(0, 0, int(secret.ValidFor))
+			template.NotAfter = c.time.Now().AddDate(0, 0, int(secret.ValidFor))
 		}
 	}
 
@@ -602,16 +611,16 @@ func generateUsersFromManifest(rawUsers map[string]manifest.User, roles map[stri
 }
 
 func (c *Core) setCAData(dnsNames []string, tx store.Transaction) error {
-	rootCert, rootPrivK, err := generateCert(dnsNames, coordinatorName, nil, nil, nil)
+	rootCert, rootPrivK, err := generateCert(dnsNames, coordinatorName, nil, nil, nil, c.time)
 	if err != nil {
 		return err
 	}
 	// Creating a cross-signed intermediate cert. See https://github.com/edgelesssys/marblerun/issues/175
-	intermediateCert, intermediatePrivK, err := generateCert(dnsNames, coordinatorIntermediateName, nil, rootCert, rootPrivK)
+	intermediateCert, intermediatePrivK, err := generateCert(dnsNames, coordinatorIntermediateName, nil, rootCert, rootPrivK, c.time)
 	if err != nil {
 		return err
 	}
-	marbleRootCert, _, err := generateCert(dnsNames, coordinatorIntermediateName, intermediatePrivK, nil, nil)
+	marbleRootCert, _, err := generateCert(dnsNames, coordinatorIntermediateName, intermediatePrivK, nil, nil, c.time)
 	if err != nil {
 		return err
 	}

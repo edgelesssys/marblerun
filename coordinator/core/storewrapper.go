@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/cloudflare/roughtime/config"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/store"
@@ -32,6 +33,7 @@ const (
 	requestTLS            = "TLS"
 	requestUser           = "user"
 	requestUpdateLog      = "updateLog"
+	requestTimeServers    = "timeServers"
 )
 
 // storeWrapper is a wrapper for the store interface
@@ -289,6 +291,18 @@ func (s storeWrapper) getUser(userName string) (*user.User, error) {
 // putUser saves user information to store
 func (s storeWrapper) putUser(newUser *user.User) error {
 	return s._put(requestUser, newUser.Name(), newUser)
+}
+
+// getTimeServers returns time server information from store
+func (s storeWrapper) getTimeServers() ([]config.Server, error) {
+	var servers []config.Server
+	err := s._get(requestTimeServers, "", servers)
+	return servers, err
+}
+
+// putTimeServers saves time server information to store
+func (s storeWrapper) putTimeServers(servers []config.Server) error {
+	return s._put(requestTimeServers, "", servers)
 }
 
 // _put is the default method for marshaling and saving data to store

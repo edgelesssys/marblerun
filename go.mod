@@ -4,6 +4,7 @@ go 1.14
 
 require (
 	github.com/c2h5oh/datasize v0.0.0-20200825124411-48ed595a09d2
+	github.com/cloudflare/roughtime v0.0.0-20210217223727-1fe56bcbcfd4
 	github.com/edgelesssys/ego v0.2.4-0.20210609075311-d09986cbed77
 	github.com/edgelesssys/era v0.3.0
 	github.com/edgelesssys/ertgolib v0.1.5-0.20210208080427-0d5e24e2f855 // indirect

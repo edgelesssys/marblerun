@@ -37,9 +37,9 @@ func TestStoreWrapper(t *testing.T) {
 		Size:   16,
 		Shared: true,
 	}
-	someCert, somePrivK, err := generateCert([]string{"example.com"}, coordinatorName, nil, nil, nil)
+	someCert, somePrivK, err := generateCert([]string{"example.com"}, coordinatorName, nil, nil, nil, c.time)
 	require.NoError(err)
-	testUserCert, _, err := generateCert([]string{"example.com"}, "test-user", nil, nil, nil)
+	testUserCert, _, err := generateCert([]string{"example.com"}, "test-user", nil, nil, nil, c.time)
 	require.NoError(err)
 	testUser := user.NewUser("test-user", testUserCert)
 

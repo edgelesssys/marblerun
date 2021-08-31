@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"math"
 	"text/template"
-	"time"
 
 	"github.com/edgelesssys/ego/marble"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
@@ -239,7 +238,7 @@ func (c *Core) generateCertFromCSR(csrReq []byte, pubk ecdsa.PublicKey, marbleTy
 	// create certificate
 	csr.Subject.CommonName = marbleUUID
 	csr.Subject.Organization = marbleRootCert.Issuer.Organization
-	notBefore := time.Now()
+	notBefore := c.time.Now()
 	// TODO: produce shorter lived certificates
 	notAfter := notBefore.Add(math.MaxInt64)
 	template := x509.Certificate{

@@ -15,9 +15,11 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"net"
 	"strings"
 	"text/template"
 
+	"github.com/cloudflare/roughtime/config"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/user"
 	"go.uber.org/zap"
@@ -41,6 +43,8 @@ type Manifest struct {
 	Roles map[string]Role
 	// TLS contains tags which can be assiged to Marbles to specify which connections should be elevated to TLS
 	TLS map[string]TLStag
+	// TimeServers contains a list of Roughtime servers that can be used to obtain a trusted time.
+	TimeServers []config.Server
 }
 
 // Marble describes a service in the mesh that should be handled and verified by the Coordinator
@@ -338,6 +342,26 @@ func (m Manifest) Check(ctx context.Context, zaplogger *zap.Logger) error {
 		}
 	}
 
+	seenNames := make(map[string]bool)
+	for _, srv := range m.TimeServers {
+		if _, ok := seenNames[srv.Name]; ok {
+			return fmt.Errorf("duplicated server name in Roughtime config: %q", srv.Name)
+		}
+		seenNames[srv.Name] = true
+
+		if srv.PublicKeyType != "ed25519" {
+			return fmt.Errorf("invalid public key type %q specified for Roughtime server %q", srv.PublicKeyType, srv.Name)
+		}
+
+		udpAddr, err := serverUDPAddr(&srv)
+		if err != nil {
+			return fmt.Errorf("Roughtime server %q lists invalid address: %s", srv.Name, err)
+		}
+		if udpAddr == nil {
+			return fmt.Errorf("no address specified for Roughtime server %q", srv.Name)
+		}
+	}
+
 	return nil
 }
 
@@ -606,4 +630,19 @@ func warnOrFailForMissingValue(debugMode bool, parameter string, packageName str
 	}
 
 	return fmt.Errorf("manifest misses value for %s in package %s", parameter, packageName)
+}
+
+// serverUDPAddr attempts to resolve the UDP address specified by the server
+// configution.
+// For validation of Roughtime config, ripped out of cloudflare/roughtime
+func serverUDPAddr(server *config.Server) (*net.UDPAddr, error) {
+	for _, addr := range server.Addresses {
+		if addr.Protocol != "udp" && addr.Protocol != "udp4" && addr.Protocol != "udp6" {
+			continue
+		}
+
+		return net.ResolveUDPAddr(addr.Protocol, addr.Address)
+	}
+
+	return nil, nil
 }

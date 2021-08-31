@@ -21,6 +21,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/store"
+	"github.com/edgelesssys/marblerun/coordinator/ttime"
 	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -65,6 +66,8 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 	if err != nil {
 		return nil, err
 	}
+
+	c.time = ttime.NewTime(mnf.TimeServers, c.zaplogger)
 
 	// Generate shared secrets specified in manifest
 	secrets, err := c.generateSecrets(ctx, mnf.Secrets, uuid.Nil, marbleRootCert, intermediatePrivK)
@@ -159,6 +162,9 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 		if err := txdata.putUser(user); err != nil {
 			return nil, err
 		}
+	}
+	if err := txdata.putTimeServers(mnf.TimeServers); err != nil {
+		return nil, err
 	}
 
 	c.updateLogger.Info("initial manifest set")
@@ -338,12 +344,12 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte, upd
 	}
 
 	// Generate new cross-signed intermediate CA for Marble gRPC authentication
-	intermediateCert, intermediatePrivK, err := generateCert(rootCert.DNSNames, coordinatorIntermediateName, nil, rootCert, rootPrivK)
+	intermediateCert, intermediatePrivK, err := generateCert(rootCert.DNSNames, coordinatorIntermediateName, nil, rootCert, rootPrivK, c.time)
 	if err != nil {
 		c.zaplogger.Error("Could not generate a new intermediate CA for Marble authentication.", zap.Error(err))
 		return err
 	}
-	marbleRootCert, _, err := generateCert(rootCert.DNSNames, coordinatorIntermediateName, intermediatePrivK, nil, nil)
+	marbleRootCert, _, err := generateCert(rootCert.DNSNames, coordinatorIntermediateName, intermediatePrivK, nil, nil, c.time)
 	if err != nil {
 		return err
 	}
