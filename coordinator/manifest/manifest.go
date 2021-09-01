@@ -39,7 +39,7 @@ type Manifest struct {
 	Secrets map[string]Secret
 	// RecoveryKeys holds one or multiple RSA public keys to encrypt multiple secrets, which can be used to decrypt the sealed state again in case the encryption key on disk was corrupted somehow.
 	RecoveryKeys map[string]string
-	// Roles contains role definitions to manage permissions across the Marblerun mesh
+	// Roles contains role definitions to manage permissions across the MarbleRun mesh
 	Roles map[string]Role
 	// TLS contains tags which can be assiged to Marbles to specify which connections should be elevated to TLS
 	TLS map[string]TLStag
@@ -179,7 +179,7 @@ type TLSTagEntry struct {
 	DisableClientAuth bool
 }
 
-// User describes the attributes of a Marblerun user
+// User describes the attributes of a MarbleRun user
 type User struct {
 	// Certificate is the TLS certificate used by the user for authentication
 	Certificate string

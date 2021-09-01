@@ -17,7 +17,7 @@ const (
 	PermissionUpdatePackage = "updatesecurityversion"
 )
 
-// User represents a privileged user of Marblerun
+// User represents a privileged user of MarbleRun
 type User struct {
 	name string
 	// certificate is the users certificate, used for authentication
@@ -105,7 +105,7 @@ func (u *User) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// Permission represents the permissions of a Marblerun user
+// Permission represents the permissions of a MarbleRun user
 type Permission struct {
 	PermissionID string
 	ResourceID   map[string]bool

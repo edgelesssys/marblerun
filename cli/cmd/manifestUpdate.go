@@ -19,9 +19,9 @@ func newManifestUpdate() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "update <manifest.json> <IP:PORT>",
-		Short: "Updates the Marblerun Coordinator with the specified manifest",
+		Short: "Updates the MarbleRun Coordinator with the specified manifest",
 		Long: `
-Updates the Marblerun Coordinator with the specified manifest.
+Updates the MarbleRun Coordinator with the specified manifest.
 An admin certificate specified in the original manifest is needed to verify the authenticity of the update manifest.
 `,
 		Args: cobra.ExactArgs(2),

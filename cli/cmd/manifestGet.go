@@ -19,8 +19,8 @@ func newManifestGet() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "get <IP:PORT>",
-		Short: "Get the manifest from the Marblerun Coordinator",
-		Long: `Get the manifest from the Marblerun Coordinator.
+		Short: "Get the manifest from the MarbleRun Coordinator",
+		Long: `Get the manifest from the MarbleRun Coordinator.
 Optionally get the manifests signature or merge updates into the displayed manifest.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

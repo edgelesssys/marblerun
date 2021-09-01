@@ -366,7 +366,7 @@ func TestParseSecrets(t *testing.T) {
 	}
 
 	testWrappedSecrets := secretsWrapper{
-		Marblerun: testReservedSecrets,
+		MarbleRun: testReservedSecrets,
 		Secrets:   testSecrets,
 	}
 
@@ -411,22 +411,22 @@ func TestParseSecrets(t *testing.T) {
 
 	// Test all the reserved placeholder secrets
 	expectedResult := "-----BEGIN PUBLIC KEY-----\nAAAq\n-----END PUBLIC KEY-----\n"
-	parsedSecret, err = parseSecrets("{{ pem .Marblerun.RootCA.Public }}", testWrappedSecrets)
+	parsedSecret, err = parseSecrets("{{ pem .MarbleRun.RootCA.Public }}", testWrappedSecrets)
 	require.NoError(err)
 	assert.EqualValues(expectedResult, parsedSecret)
 
 	expectedResult = "-----BEGIN PUBLIC KEY-----\nKgAA\n-----END PUBLIC KEY-----\n"
-	parsedSecret, err = parseSecrets("{{ pem .Marblerun.MarbleCert.Public }}", testWrappedSecrets)
+	parsedSecret, err = parseSecrets("{{ pem .MarbleRun.MarbleCert.Public }}", testWrappedSecrets)
 	require.NoError(err)
 	assert.EqualValues(expectedResult, parsedSecret)
 
 	expectedResult = "-----BEGIN PRIVATE KEY-----\nBwAA\n-----END PRIVATE KEY-----\n"
 
-	parsedSecret, err = parseSecrets("{{ pem .Marblerun.MarbleCert.Private }}", testWrappedSecrets)
+	parsedSecret, err = parseSecrets("{{ pem .MarbleRun.MarbleCert.Private }}", testWrappedSecrets)
 	require.NoError(err)
 	assert.EqualValues(expectedResult, parsedSecret)
 
-	parsedSecret, err = parseSecrets("{{ hex .Marblerun.SealKey }}", testWrappedSecrets)
+	parsedSecret, err = parseSecrets("{{ hex .MarbleRun.SealKey }}", testWrappedSecrets)
 	require.NoError(err)
 	assert.EqualValues("000102030405060708090a0b0c0d0e0f", parsedSecret)
 

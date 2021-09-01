@@ -16,11 +16,11 @@
                     "redis.conf"
                 ],
                 "Files": {
-                    "/dev/attestation/protected_files_key": "{{ hex .Marblerun.SealKey }}",
+                    "/dev/attestation/protected_files_key": "{{ hex .MarbleRun.SealKey }}",
                     "redis.conf": "bind 0.0.0.0\nprotected-mode no\nport 0\ntls-port 6379\ntls-cert-file redis.crt\ntls-key-file redis.key\ntls-ca-cert-file ca.crt\ntls-auth-clients no\ntls-replication yes\ntls-cluster yes\nsave ''",
-                    "redis.crt": "{{ pem .Marblerun.MarbleCert.Cert }}",
-                    "redis.key": "{{ pem .Marblerun.MarbleCert.Private }}",
-                    "ca.crt": "{{ pem .Marblerun.RootCA.Cert }}"
+                    "redis.crt": "{{ pem .MarbleRun.MarbleCert.Cert }}",
+                    "redis.key": "{{ pem .MarbleRun.MarbleCert.Private }}",
+                    "ca.crt": "{{ pem .MarbleRun.RootCA.Cert }}"
                 }
             }
         },
@@ -32,11 +32,11 @@
                     "redis.conf"
                 ],
                 "Files": {
-                    "/dev/attestation/protected_files_key": "{{ hex .Marblerun.SealKey }}",
+                    "/dev/attestation/protected_files_key": "{{ hex .MarbleRun.SealKey }}",
                     "redis.conf": "bind 0.0.0.0\nprotected-mode no\nport 0\ntls-port 6379\ntls-cert-file redis.crt\ntls-key-file redis.key\ntls-ca-cert-file ca.crt\ntls-auth-clients no\ntls-replication yes\ntls-cluster yes\nsave ''\nreplicaof redis-main-0.redis 6379",
-                    "redis.crt": "{{ pem .Marblerun.MarbleCert.Cert  }}",
-                    "redis.key": "{{ pem .Marblerun.MarbleCert.Private }}",
-                    "ca.crt": "{{ pem .Marblerun.RootCA.Cert }}"
+                    "redis.crt": "{{ pem .MarbleRun.MarbleCert.Cert  }}",
+                    "redis.key": "{{ pem .MarbleRun.MarbleCert.Private }}",
+                    "ca.crt": "{{ pem .MarbleRun.RootCA.Cert }}"
                 }
             }
         }

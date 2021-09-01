@@ -1,23 +1,23 @@
 # Graphene Redis example
 
 This example is a slightly modified variant of the [Graphene Redis example](https://github.com/oscarlab/graphene/tree/master/Examples/redis).
-Instead of running a single [Redis](https://redis.io/) server instance, Marblerun unleashes the full potential of Redis and takes care of distributing the Redis server in *replication* mode.
+Instead of running a single [Redis](https://redis.io/) server instance, MarbleRun unleashes the full potential of Redis and takes care of distributing the Redis server in *replication* mode.
 
 **Warning**: This sample enables `loader.insecure__use_host_env` in [redis-server.manifest.template](redis-server.manifest.template). Don't use this on production until [secure forwarding of host environment variables](https://github.com/oscarlab/graphene/issues/2356) will be available.
 
 *Prerequisite:*
 * Ensure you have access to a Kubernetes cluster with SGX-enabled nodes and kubectl installed and configured. Probably the easiest way to get started is to run Kubernetes on an [Azure Kubernetes Service (AKS)](https://docs.microsoft.com/en-us/azure/confidential-computing/confidential-nodes-aks-get-started), which offers SGX-enabled nodes.
-* Ensure you have the [Marblerun CLI](https://docs.edgeless.systems/marblerun/#/reference/cli) installed.
+* Ensure you have the [MarbleRun CLI](https://docs.edgeless.systems/marblerun/#/reference/cli) installed.
 
 ## Kubernetes deployment walkthrough
 
 We are now installing a distributed Redis server in primary/subordinate replication mode on your cluster.
 
-### Step 1: Installing Marblerun
+### Step 1: Installing MarbleRun
 
-First, we are installing Marblerun on your cluster.
+First, we are installing MarbleRun on your cluster.
 
-* Install the Marblerun Coordinator on the Cluster
+* Install the MarbleRun Coordinator on the Cluster
 
     ```bash
     marblerun install
@@ -50,7 +50,7 @@ First, we are installing Marblerun on your cluster.
 
 ### Step 2: Deploying Redis
 
-* Create and add the `redis` namespace to Marblerun
+* Create and add the `redis` namespace to MarbleRun
 
     ```bash
     kubectl create namespace redis
@@ -80,7 +80,7 @@ First, we are installing Marblerun on your cluster.
 
 ### Step 3: Using Redis
 
-You can now securely connect to the Redis server using the `redis-cli` and the Marblerun CA certificate for authentication.
+You can now securely connect to the Redis server using the `redis-cli` and the MarbleRun CA certificate for authentication.
 
 * Make sure you have the latest Redis-CLI with TLS support:
 

@@ -22,7 +22,7 @@ Steps to reproduce the behavior:
 <!-- A clear and concise description of what you expected to happen. -->
 
 ### Environment:
- - Marblerun version:
+ - MarbleRun version:
  - Edgeless RT version:
  - Go version:
  - Minikube version:

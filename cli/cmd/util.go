@@ -26,7 +26,7 @@ const promptForChanges = "Do you want to automatically apply the suggested chang
 var eraConfig string
 var insecureEra bool
 
-// verify the connection to the Marblerun Coordinator
+// verify the connection to the MarbleRun Coordinator
 func verifyCoordinator(host string, configFilename string, insecure bool) ([]*pem.Block, error) {
 	// skip verification if specified
 	if insecure {

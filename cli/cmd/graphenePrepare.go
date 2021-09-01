@@ -24,14 +24,14 @@ const premainName = "premain-libos"
 // uuidName is the file name of a Marble's uuid
 const uuidName = "uuid"
 
-// commentMarblerunAdditions holds the marker which is appended to the Graphene manifest before the performed additions
-const commentMarblerunAdditions = "\n# MARBLERUN -- auto generated configuration entries \n"
+// commentMarbleRunAdditions holds the marker which is appended to the Graphene manifest before the performed additions
+const commentMarbleRunAdditions = "\n# MARBLERUN -- auto generated configuration entries \n"
 
 // longDescription is the help text shown for this command
-const longDescription = `Modifies a Graphene manifest for use with Marblerun.
+const longDescription = `Modifies a Graphene manifest for use with MarbleRun.
 
-This command tries to automatically adjust the required parameters in an already existing Graphene manifest template, simplifying the migration of your existing Graphene application to Marblerun.
-Please note that you still need to manually create a Marblerun manifest.
+This command tries to automatically adjust the required parameters in an already existing Graphene manifest template, simplifying the migration of your existing Graphene application to MarbleRun.
+Please note that you still need to manually create a MarbleRun manifest.
 
 For more information about the requirements and  changes performed, consult the documentation: https://edglss.cc/doc-mr-graphene
 
@@ -46,7 +46,7 @@ type diff struct {
 func newGraphenePrepareCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "graphene-prepare",
-		Short: "Modifies a Graphene manifest for use with Marblerun",
+		Short: "Modifies a Graphene manifest for use with MarbleRun",
 		Long:  longDescription,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -101,10 +101,10 @@ func parseTreeForChanges(tree *toml.Tree) (map[string]interface{}, map[string]in
 		return nil, nil, errors.New("cannot find libos.entrypoint")
 	}
 
-	// If Marblerun already touched the manifest, abort.
+	// If MarbleRun already touched the manifest, abort.
 	if original["libos.entrypoint"].(string) == premainName || original["sgx.trusted_files.marblerun_premain"] != nil || original["sgx.allowed_files.marblerun_uuid"] != nil {
-		color.Yellow("The supplied manifest already contains changes for Marblerun. Have you selected the correct file?")
-		return nil, nil, errors.New("manifest already contains Marblerun changes")
+		color.Yellow("The supplied manifest already contains changes for MarbleRun. Have you selected the correct file?")
+		return nil, nil, errors.New("manifest already contains MarbleRun changes")
 	}
 
 	// Add premain-libos executable as trusted file & entry point
@@ -116,7 +116,7 @@ func parseTreeForChanges(tree *toml.Tree) (map[string]interface{}, map[string]in
 		changes["loader.argv0_override"] = original["libos.entrypoint"].(string)
 	}
 
-	// Enable use "insecure" host env (which delegates the "secure" handling to Marblerun)
+	// Enable use "insecure" host env (which delegates the "secure" handling to MarbleRun)
 	if original["loader.insecure__use_host_env"] == nil || original["loader.insecure__use_host_env"].(int64) == 0 {
 		changes["loader.insecure__use_host_env"] = 1
 	}
@@ -177,7 +177,7 @@ func calculateChanges(original map[string]interface{}, updates map[string]interf
 
 // performChanges displays the suggested changes to the user and tries to automatically perform them
 func performChanges(changeDiffs []diff, fileName string) error {
-	fmt.Println("\nMarblerun suggests the following changes to your Graphene manifest:")
+	fmt.Println("\nMarbleRun suggests the following changes to your Graphene manifest:")
 	for _, entry := range changeDiffs {
 		if entry.alreadyExists {
 			color.Yellow(entry.manifestEntry)
@@ -224,13 +224,13 @@ func performChanges(changeDiffs []diff, fileName string) error {
 		return err
 	}
 
-	fmt.Println("Downloading Marblerun premain from GitHub...")
-	// Download Marblerun premain for Graphene from GitHub
+	fmt.Println("Downloading MarbleRun premain from GitHub...")
+	// Download MarbleRun premain for Graphene from GitHub
 	if err := downloadPremain(directory); err != nil {
 		color.Red("ERROR: Cannot download '%s' from GitHub. Please add the file manually.", premainName)
 	}
 
-	fmt.Println("\nDone! You should be good to go for Marblerun!")
+	fmt.Println("\nDone! You should be good to go for MarbleRun!")
 
 	return nil
 }
@@ -286,7 +286,7 @@ func appendAndReplace(changeDiffs []diff, manifestContent []byte) ([]byte, error
 			regexMatches := regex.FindAll(newManifestContent, -1)
 			if regexMatches == nil {
 				color.Red("ERROR: Cannot find specified entry. Your Graphene config might not be flat-mapped.")
-				color.Red("Marblerun can only automatically modify manifests using a flat hierarchy, as otherwise we would lose all styling & comments.")
+				color.Red("MarbleRun can only automatically modify manifests using a flat hierarchy, as otherwise we would lose all styling & comments.")
 				color.Red("To continue, please manually perform the changes printed above in your Graphene manifest.")
 				return nil, errors.New("failed to detect position of config entry")
 			} else if len(regexMatches) > 1 {
@@ -299,7 +299,7 @@ func appendAndReplace(changeDiffs []diff, manifestContent []byte) ([]byte, error
 		} else {
 			// If a value was not defined previously, we append the new entries down below
 			if !firstAdditionDone {
-				appendToFile := commentMarblerunAdditions
+				appendToFile := commentMarbleRunAdditions
 				newManifestContent = append(newManifestContent, []byte(appendToFile)...)
 				firstAdditionDone = true
 			}

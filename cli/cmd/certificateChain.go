@@ -13,8 +13,8 @@ func newCertificateChain() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "chain <IP:PORT>",
-		Short: "Returns the certificate chain of the Marblerun Coordinator",
-		Long:  `Returns the certificate chain of the Marblerun Coordinator`,
+		Short: "Returns the certificate chain of the MarbleRun Coordinator",
+		Long:  `Returns the certificate chain of the MarbleRun Coordinator`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hostName := args[0]
@@ -28,7 +28,7 @@ func newCertificateChain() *cobra.Command {
 	return cmd
 }
 
-// cliCertificateChain gets the certificate chain of the Marblerun Coordinator
+// cliCertificateChain gets the certificate chain of the MarbleRun Coordinator
 func cliCertificateChain(host string, output string, configFilename string, insecure bool) error {
 	certs, err := verifyCoordinator(host, configFilename, insecure)
 	if err != nil {

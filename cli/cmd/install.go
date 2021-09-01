@@ -208,7 +208,7 @@ func cliInstall(options *installOptions) error {
 		return errorAndCleanup(err, options.kubeClient)
 	}
 
-	fmt.Println("Marblerun installed successfully")
+	fmt.Println("MarbleRun installed successfully")
 	return nil
 }
 
@@ -274,7 +274,7 @@ func installWebhook(kubeClient kubernetes.Interface) ([]string, error) {
 		return nil, err
 	}
 
-	fmt.Printf("Setting up Marblerun Webhook")
+	fmt.Printf("Setting up MarbleRun Webhook")
 	certificateHandler, err := getCertificateHandler(kubeClient)
 	if err != nil {
 		return nil, err

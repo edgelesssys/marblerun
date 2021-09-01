@@ -19,8 +19,8 @@ func newManifestSet() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "set <manifest.json> <IP:PORT>",
-		Short: "Sets the manifest for the Marblerun Coordinator",
-		Long:  "Sets the manifest for the Marblerun Coordinator",
+		Short: "Sets the manifest for the MarbleRun Coordinator",
+		Long:  "Sets the manifest for the MarbleRun Coordinator",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			manifestFile := args[0]

@@ -65,7 +65,7 @@ const ManifestJSON string = `{
 				},
 				"Env": {
 					"IS_FIRST": "true",
-					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
+					"SEAL_KEY": "{{ hex .MarbleRun.SealKey }}",
 					"TEST_SECRET_SYMMETRIC_KEY": {
 						"Data": "{{ hex .Secrets.symmetricKeyShared }}",
 						"Encoding": "string"
@@ -86,7 +86,7 @@ const ManifestJSON string = `{
 			"Package": "backend",
 			"Parameters": {
 				"Env": {
-					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}",
+					"SEAL_KEY": "{{ hex .MarbleRun.SealKey }}",
 					"TEST_SECRET_CERT": "{{ pem .Secrets.certShared.Cert }}",
 					"TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.certPrivate.Cert }}"
 				},
@@ -102,7 +102,7 @@ const ManifestJSON string = `{
 			"Package": "frontend",
 			"Parameters": {
 				"Env": {
-					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}"
+					"SEAL_KEY": "{{ hex .MarbleRun.SealKey }}"
 				}
 			}
 		}
@@ -125,7 +125,7 @@ const ManifestJSON string = `{
 			"Type": "cert-rsa",
 			"Cert": {
 				"Subject": {
-					"CommonName": "Marblerun Unit Test Private"
+					"CommonName": "MarbleRun Unit Test Private"
 				}
 			},
 			"ValidFor": 7
@@ -135,7 +135,7 @@ const ManifestJSON string = `{
 			"Type": "cert-ed25519",
 			"Cert": {
 				"Subject": {
-					"CommonName": "Marblerun Unit Test Shared"
+					"CommonName": "MarbleRun Unit Test Shared"
 				}
 			},
 			"ValidFor": 7
@@ -200,7 +200,7 @@ var ManifestJSONWithRecoveryKey string = `{
 			"Package": "frontend",
 			"Parameters": {
 				"Env": {
-					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}"
+					"SEAL_KEY": "{{ hex .MarbleRun.SealKey }}"
 				}
 			}
 		}
@@ -225,7 +225,7 @@ var ManifestJSONWithRecoveryKey string = `{
 			"Type": "cert-rsa",
 			"Cert": {
 				"Subject": {
-					"CommonName": "Marblerun Unit Test Private"
+					"CommonName": "MarbleRun Unit Test Private"
 				}
 			},
 			"ValidFor": 7
@@ -235,7 +235,7 @@ var ManifestJSONWithRecoveryKey string = `{
 			"Type": "cert-ed25519",
 			"Cert": {
 				"Subject": {
-					"CommonName": "Marblerun Unit Test Shared"
+					"CommonName": "MarbleRun Unit Test Shared"
 				}
 			},
 			"ValidFor": 7
@@ -334,7 +334,7 @@ var IntegrationManifestJSON string = `{
 				"Files": {
 					"/tmp/coordinator_test/defg.txt": "foo",
 					"/tmp/coordinator_test/jkl.mno": "bar",
-					"/tmp/coordinator_test/secret.raw": "{{ raw .Secrets.symmetricKeyShared }}{{ raw .Marblerun.SealKey }}"
+					"/tmp/coordinator_test/secret.raw": "{{ raw .Secrets.symmetricKeyShared }}{{ raw .MarbleRun.SealKey }}"
 				},
 				"Argv": [
 					"./marble",
@@ -342,7 +342,7 @@ var IntegrationManifestJSON string = `{
 				],
 				"Env": {
 					"IS_FIRST": "true",
-					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}"
+					"SEAL_KEY": "{{ hex .MarbleRun.SealKey }}"
 				}
 			}
 		},
@@ -355,7 +355,7 @@ var IntegrationManifestJSON string = `{
 				},
 				"Env": {
 					"IS_FIRST": "true",
-					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}"
+					"SEAL_KEY": "{{ hex .MarbleRun.SealKey }}"
 				}
 			}
 		},
@@ -369,7 +369,7 @@ var IntegrationManifestJSON string = `{
 				},
 				"Env": {
 					"IS_FIRST": "true",
-					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}"
+					"SEAL_KEY": "{{ hex .MarbleRun.SealKey }}"
 				}
 			}
 		},
@@ -381,7 +381,7 @@ var IntegrationManifestJSON string = `{
 					"/tmp/coordinator_test/jkl.mno": "bar"
 				},
 				"Env": {
-					"SEAL_KEY": "{{ hex .Marblerun.SealKey }}"
+					"SEAL_KEY": "{{ hex .MarbleRun.SealKey }}"
 				}
 			}
 		}
@@ -512,8 +512,8 @@ const UserSecrets = `{
 		"Key": "AAECAwQFBgcICQoLDA0ODw=="
 	},
 	"certUnset": { 
-		"Cert": "MIIBjDCCATOgAwIBAgICBTkwCgYIKoZIzj0EAwIwMjEwMC4GA1UEAxMnTWFyYmxlcnVuIENvb3JkaW5hdG9yIC0gSW50ZXJtZWRpYXRlIENBMB4XDTIxMDYxNTA4NTY0M1oXDTIxMDYyMjA4NTY0M1owLTEcMBoGA1UEAxMTTWFyYmxlcnVuIFVuaXQgVGVzdDENMAsGA1UEBRMEMTMzNzAqMAUGAytlcAMhAEPOc066G5XmvLizOKTENSR+U9lv3geZ0/a2+XkhJRvDo20wazAOBgNVHQ8BAf8EBAMCAoQwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMCMAwGA1UdEwEB/wQCMAAwLAYDVR0RBCUwI4IJbG9jYWxob3N0hwR/AAABhxAAAAAAAAAAAAAAAAAAAAABMAoGCCqGSM49BAMCA0cAMEQCIGOlRcynaPaj/flSr2ZEvmTmhuvtmTb4QkwPFtxFz3EJAiB77ijxAcJNxPKcKmgMB+c8NORC+6N/St2iP/oX/vqQvg==",
-		"Private": "MC4CAQAwBQYDK2VwBCIEIPlmAOOhAStk8ytxzvekPr8zLaQa9+lxnHK+CizDrMds"
+		"Cert": "MIIBrzCCAVWgAwIBAgIQT7thUhyIwo2TVzlWFWOl6TAKBggqhkjOPQQDAjAyMTAwLgYDVQQDEydNYXJibGVSdW4gQ29vcmRpbmF0b3IgLSBJbnRlcm1lZGlhdGUgQ0EwHhcNMjEwODEyMDg0NjAzWhcNMjEwODE5MDg0NjAzWjAeMRwwGgYDVQQDExNNYXJibGVSdW4gVW5pdCBUZXN0MCowBQYDK2VwAyEAoZp0yve1E/F9KnIVzddz1dj4Rr0ufH9bjEVBpJr5fEejgY8wgYwwDgYDVR0PAQH/BAQDAgKEMB0GA1UdJQQWMBQGCCsGAQUFBwMBBggrBgEFBQcDAjAMBgNVHRMBAf8EAjAAMB8GA1UdIwQYMBaAFE0N9WzWoWzDR315bGivlMymiBBgMCwGA1UdEQQlMCOCCWxvY2FsaG9zdIcEfwAAAYcQAAAAAAAAAAAAAAAAAAAAATAKBggqhkjOPQQDAgNIADBFAiEAi0I1HVqVb8l9C8rrx2TcvEhJt9Ex8Ih1pFhdCVsc5CQCIETgi3eHKZpG+5q9AS59PxsV3zaC3mAJmsqrLbJsOo31",
+		"Private": "MC4CAQAwBQYDK2VwBCIEIMQy0nTlMFQk+NfVk0gnCYxADCw+C7tEo0Xqj7vX20dg"
 	}
 }`
 

@@ -144,7 +144,7 @@ func (crt *certificateV1) signRequest() error {
 	certReturn.Status.Conditions = append(certReturn.Status.Conditions, certv1.CertificateSigningRequestCondition{
 		Type:           certv1.RequestConditionType(string(certv1.CertificateApproved)),
 		Status:         corev1.ConditionTrue,
-		Reason:         "MarblerunInstall",
+		Reason:         "MarbleRunInstall",
 		Message:        "This CSR was automatically approved after creation with marblerun install.",
 		LastUpdateTime: metav1.Now(),
 	})

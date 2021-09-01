@@ -273,7 +273,7 @@ func (c *Core) VerifyUser(ctx context.Context, clientCerts []*x509.Certificate) 
 		}
 	}
 
-	return nil, errors.New("client certificate did not match any Marblerun users")
+	return nil, errors.New("client certificate did not match any MarbleRun users")
 }
 
 // UpdateManifest allows to update certain package parameters, supplied via a JSON manifest

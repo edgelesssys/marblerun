@@ -17,8 +17,8 @@ import (
 func newUninstallCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "uninstall",
-		Short: "Removes Marblerun from a kubernetes cluster",
-		Long:  `Removes Marblerun from a kubernetes cluster`,
+		Short: "Removes MarbleRun from a kubernetes cluster",
+		Long:  `Removes MarbleRun from a kubernetes cluster`,
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			settings := cli.New()
@@ -52,7 +52,7 @@ func cliUninstall(settings *cli.EnvSettings, kubeClient kubernetes.Interface) er
 		return err
 	}
 
-	fmt.Println("Marblerun successfully removed from your cluster")
+	fmt.Println("MarbleRun successfully removed from your cluster")
 
 	return nil
 }

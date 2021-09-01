@@ -44,7 +44,7 @@ func main() {
 	case graphene:
 		log.Println("detected libOS: Graphene")
 
-		// Graphene: Get service to launch before Marblerun's premain
+		// Graphene: Get service to launch before MarbleRun's premain
 		service, err = prepareGraphene(hostfs)
 		if err != nil {
 			panic(err)
@@ -53,7 +53,7 @@ func main() {
 	case occlum:
 		log.Println("detected libOS: Occlum")
 
-		// Occlum: Get entrypoint from Marblerun manifest, adjust it to Occlum's quirks
+		// Occlum: Get entrypoint from MarbleRun manifest, adjust it to Occlum's quirks
 		service, err = prepareOcclum(hostfs)
 		if err != nil {
 			panic(err)
@@ -110,7 +110,7 @@ func prepareGraphene(hostfs afero.Fs) (string, error) {
 	// Save the passed argument which is our service to spawn
 	service := os.Args[0]
 
-	// Run Marblerun premain
+	// Run MarbleRun premain
 	if err := marblePremain.PreMainEx(marblePremain.GrapheneQuoteIssuer{}, marblePremain.GrapheneActivate, hostfs, hostfs); err != nil {
 		return "", err
 	}
@@ -119,7 +119,7 @@ func prepareGraphene(hostfs afero.Fs) (string, error) {
 }
 
 func prepareOcclum(hostfs afero.Fs) (string, error) {
-	// Run Marblerun premain
+	// Run MarbleRun premain
 	if err := marblePremain.PreMainEx(marblePremain.OcclumQuoteIssuer{}, marblePremain.ActivateRPC, hostfs, hostfs); err != nil {
 		panic(err)
 	}

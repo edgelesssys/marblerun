@@ -46,8 +46,8 @@ func cliCheckSGXSupport(kubeClient kubernetes.Interface) error {
 	}
 
 	if supportedNodes == 0 {
-		fmt.Println("Cluster does not support SGX, you may still run Marblerun in simulation mode")
-		fmt.Println("To install Marblerun run [marblerun install --simulation]")
+		fmt.Println("Cluster does not support SGX, you may still run MarbleRun in simulation mode")
+		fmt.Println("To install MarbleRun run [marblerun install --simulation]")
 		fmt.Println("If your nodes have SGX support you might be missing an SGX device plugin")
 		fmt.Println("Check https://edglss.cc/doc-mr-k8s-prereq for more information")
 	} else {
@@ -56,7 +56,7 @@ func cliCheckSGXSupport(kubeClient kubernetes.Interface) error {
 			nodeString = nodeString + "s"
 		}
 		fmt.Printf("Cluster supports SGX on %d %s\n", supportedNodes, nodeString)
-		fmt.Println("To install Marblerun run [marblerun install]")
+		fmt.Println("To install MarbleRun run [marblerun install]")
 	}
 
 	return nil

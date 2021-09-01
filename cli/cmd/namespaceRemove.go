@@ -13,8 +13,8 @@ import (
 func newNameSpaceRemove() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "remove NAMESPACE",
-		Short: "Remove namespaces from a Marblerun mesh",
-		Long:  `Remove namespaces from a Marblerun mesh`,
+		Short: "Remove namespaces from a MarbleRun mesh",
+		Long:  `Remove namespaces from a MarbleRun mesh`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			namespace := args[0]
@@ -57,12 +57,12 @@ func cliNameSpaceRemove(namespace string, kubeClient kubernetes.Interface) error
 				return err
 			}
 
-			fmt.Printf("Namespace [%s] succesfully removed from the Marblerun mesh\n", namespace)
+			fmt.Printf("Namespace [%s] succesfully removed from the MarbleRun mesh\n", namespace)
 		} else {
 			return fmt.Errorf("unexpected value in namespace label: %s", val)
 		}
 	} else {
-		return fmt.Errorf("namespace [%s] does not belong to the Marblerun mesh", namespace)
+		return fmt.Errorf("namespace [%s] does not belong to the MarbleRun mesh", namespace)
 	}
 
 	return nil

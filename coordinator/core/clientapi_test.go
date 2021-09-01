@@ -477,19 +477,19 @@ func TestWriteSecret(t *testing.T) {
 	assert.Equal(16, len(secret.Public))
 	secret, err = c.data.getSecret(certSecret)
 	assert.NoError(err)
-	assert.Equal("Marblerun Coordinator - Intermediate CA", secret.Cert.Issuer.CommonName)
+	assert.Equal("MarbleRun Coordinator - Intermediate CA", secret.Cert.Issuer.CommonName)
 
 	// try to set a secret in plain format
 	genericSecret := []byte(`{
 		"genericSecret": {
-			"Key": "` + base64.StdEncoding.EncodeToString([]byte("Marblerun Unit Test")) + `"
+			"Key": "` + base64.StdEncoding.EncodeToString([]byte("MarbleRun Unit Test")) + `"
 		}
 	}`)
 	err = c.WriteSecrets(context.TODO(), genericSecret, admin)
 	assert.NoError(err)
 	secret, err = c.data.getSecret("genericSecret")
 	assert.NoError(err)
-	assert.Equal("Marblerun Unit Test", string(secret.Public))
+	assert.Equal("MarbleRun Unit Test", string(secret.Public))
 
 	// try to set a secret incorrect size
 	invalidSecret := []byte(`{
@@ -513,7 +513,7 @@ func TestWriteSecret(t *testing.T) {
 	pK, _ := c.data.getPrivK(sKCoordinatorIntermediateKey)
 	priv, err = c.generateSecrets(context.TODO(), priv, uuid.New(), pC, pK)
 	assert.NoError(err)
-	assert.Equal("Marblerun Unit Test Private", priv["certPrivate"].Cert.Subject.CommonName)
+	assert.Equal("MarbleRun Unit Test Private", priv["certPrivate"].Cert.Subject.CommonName)
 }
 
 func testManifestInvalidDebugCase(c *Core, manifest *manifest.Manifest, marblePackage quote.PackageProperties, assert *assert.Assertions, require *require.Assertions) *Core {

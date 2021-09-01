@@ -70,10 +70,10 @@ const (
 )
 
 // coordinatorName is the name of the Coordinator. It is used as CN of the root certificate.
-const coordinatorName string = "Marblerun Coordinator"
+const coordinatorName string = "MarbleRun Coordinator"
 
 // coordinatorIntermediateName is the name of the Coordinator. It is used as CN of the intermediate certificate which is set when setting or updating a certificate.
-const coordinatorIntermediateName string = "Marblerun Coordinator - Intermediate CA"
+const coordinatorIntermediateName string = "MarbleRun Coordinator - Intermediate CA"
 
 // storage keys for the used in the Coordinator
 const (
@@ -518,7 +518,7 @@ func (c *Core) generateCertificateForSecret(secret manifest.Secret, parentCertif
 		if len(template.DNSNames) == 1 {
 			template.Subject.CommonName = template.DNSNames[0]
 		} else {
-			template.Subject.CommonName = "Marblerun Generated Certificate"
+			template.Subject.CommonName = "MarbleRun Generated Certificate"
 		}
 	}
 	var err error

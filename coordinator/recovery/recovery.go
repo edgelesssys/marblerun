@@ -16,7 +16,7 @@ import (
 	"errors"
 )
 
-// Recovery describes an interface which the core can use to choose a recoverer (e.g. only single-party recoverer, multi-party recoverer) depending on the version of Marblerun.
+// Recovery describes an interface which the core can use to choose a recoverer (e.g. only single-party recoverer, multi-party recoverer) depending on the version of MarbleRun.
 type Recovery interface {
 	GenerateEncryptionKey(recoveryKeys map[string]string) ([]byte, error)
 	GenerateRecoveryData(recoveryKeys map[string]string) (map[string][]byte, []byte, error)

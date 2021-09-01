@@ -12,8 +12,8 @@ func newManifestLog() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "log <IP:PORT>",
-		Short: "Get the update log from the Marblerun Coordinator",
-		Long: `Get the update log from the Marblerun Coordinator.
+		Short: "Get the update log from the MarbleRun Coordinator",
+		Long: `Get the update log from the MarbleRun Coordinator.
 		The log is list of all successful changes to the Coordinator,
 		including a timestamp and user performing the operation.`,
 		Args: cobra.ExactArgs(1),
