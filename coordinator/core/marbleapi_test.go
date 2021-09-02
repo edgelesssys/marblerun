@@ -439,15 +439,21 @@ func TestParseSecrets(t *testing.T) {
 	assert.Error(err)
 
 	testWrappedSecrets.Secrets = map[string]manifest.Secret{
-		"plainSecret": {Type: "plain", Public: []byte{0, 1, 2}},
-		"otherSecret": {Type: "symmetric-key", Public: []byte{0, 1, 2}},
+		"plainSecret": {Type: "plain", Public: []byte{1, 2, 3}},
+		"nullSecret":  {Type: "plain", Public: []byte{0, 1, 2}},
+		"otherSecret": {Type: "symmetric-key", Public: []byte{4, 5, 6}},
 	}
 
-	// plain secrets are allowed using raw formating
-	_, err = parseSecrets("{{ raw .Secrets.plainSecret }}", manifest.ManifestEnvTemplateFuncMap, testWrappedSecrets)
+	// plain secrets are allowed to use string formating
+	_, err = parseSecrets("{{ string .Secrets.plainSecret }}", manifest.ManifestEnvTemplateFuncMap, testWrappedSecrets)
 	assert.NoError(err)
 
-	_, err = parseSecrets("{{ raw .Secrets.otherSecret }}", manifest.ManifestEnvTemplateFuncMap, testWrappedSecrets)
+	// NULL bytes in secret results in an error
+	_, err = parseSecrets("{{ string .Secrets.nullSecret }}", manifest.ManifestEnvTemplateFuncMap, testWrappedSecrets)
+	assert.Error(err)
+
+	// non plain secrets always result in an error
+	_, err = parseSecrets("{{ string .Secrets.otherSecret }}", manifest.ManifestEnvTemplateFuncMap, testWrappedSecrets)
 	assert.Error(err)
 }
 

@@ -461,18 +461,21 @@ func EncodeSecretDataToBase64(data interface{}) (string, error) {
 	return base64.StdEncoding.EncodeToString([]byte(raw)), nil
 }
 
-// EncodeEnvSecretDataToRaw encodes only secrets of type plain to raw byte string
-func EncodeEnvSecretDataToRaw(data interface{}) (string, error) {
+// EncodeSecretDataToString encodes secrets to C type strings (no NULL bytes allowed as part of the string)
+func EncodeSecretDataToString(data interface{}) (string, error) {
 	switch secret := data.(type) {
 	case Secret:
 		if secret.Type != "plain" {
-			return "", errors.New("only secrets of type plain are allowed to use raw encoding for environment variables")
+			return "", errors.New("only secrets of type plain are allowed to use string encoding for environment variables")
+		}
+		if strings.Contains(string(secret.Public), string([]byte{0x00})) {
+			return "", errors.New("secret contains null bytes")
 		}
 		return EncodeSecretDataToRaw(data)
 	case nil:
 		return "", errors.New("secret does not exist")
 	default:
-		return "", errors.New("only secrets of type plain are allowed to use raw encoding for environment variables")
+		return "", errors.New("only secrets of type plain are allowed to use string encoding for environment variables")
 	}
 }
 
@@ -488,7 +491,7 @@ var ManifestFileTemplateFuncMap = template.FuncMap{
 var ManifestEnvTemplateFuncMap = template.FuncMap{
 	"pem":    EncodeSecretDataToPem,
 	"hex":    EncodeSecretDataToHex,
-	"raw":    EncodeEnvSecretDataToRaw,
+	"string": EncodeSecretDataToString,
 	"base64": EncodeSecretDataToBase64,
 }
 

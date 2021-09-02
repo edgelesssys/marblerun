@@ -130,7 +130,7 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 
 	templateSecrets := secretsWrapper{
 		Secrets: secrets,
-		Marblerun: reservedSecrets{
+		MarbleRun: reservedSecrets{
 			RootCA: manifest.Secret{
 				Cert: manifest.Certificate{Raw: []byte{0x41}},
 			},
@@ -155,7 +155,7 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 			}
 		}
 		for eN, env := range m.Parameters.Env {
-			// make sure environment variables dont contain NULL bytes, we perform another check at runtime to catch NULL bytes in user-defined secrets
+			// make sure environment variables dont contain NULL bytes, we perform another check at runtime to catch NULL bytes in secrets
 			if strings.Contains(env.Data, string([]byte{0x00})) {
 				return nil, fmt.Errorf("Marble %s: env variable: %s: content contains null bytes", mN, eN)
 			}
