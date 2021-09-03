@@ -17,7 +17,6 @@ import (
 	"encoding/pem"
 	"fmt"
 	"math"
-	"strings"
 	"text/template"
 	"time"
 
@@ -288,7 +287,7 @@ func customizeParameters(params manifest.Parameters, specialSecrets reservedSecr
 		if data.NoTemplates {
 			newValue = data.Data
 		} else {
-			newValue, err = parseSecrets(data.Data, secretsWrapped)
+			newValue, err = parseSecrets(data.Data, manifest.ManifestFileTemplateFuncMap, secretsWrapped)
 			if err != nil {
 				return nil, err
 			}
@@ -301,10 +300,7 @@ func customizeParameters(params manifest.Parameters, specialSecrets reservedSecr
 		if data.NoTemplates {
 			newValue = data.Data
 		} else {
-			if strings.Contains(data.Data, string([]byte{0x00})) {
-				return nil, fmt.Errorf("environment variable: %s: content contains null bytes", name)
-			}
-			newValue, err = parseSecrets(data.Data, secretsWrapped)
+			newValue, err = parseSecrets(data.Data, manifest.ManifestEnvTemplateFuncMap, secretsWrapped)
 			if err != nil {
 				return nil, err
 			}
@@ -334,10 +330,10 @@ func customizeParameters(params manifest.Parameters, specialSecrets reservedSecr
 	return &customParams, nil
 }
 
-func parseSecrets(data string, secretsWrapped secretsWrapper) (string, error) {
+func parseSecrets(data string, tplFunc template.FuncMap, secretsWrapped secretsWrapper) (string, error) {
 	var templateResult bytes.Buffer
 
-	tpl, err := template.New("data").Funcs(manifest.ManifestTemplateFuncMap).Parse(data)
+	tpl, err := template.New("data").Funcs(tplFunc).Parse(data)
 	if err != nil {
 		return "", err
 	}
