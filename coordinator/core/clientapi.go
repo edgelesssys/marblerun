@@ -567,18 +567,18 @@ func templateDryRun(mnf manifest.Manifest, secrets map[string]manifest.Secret) e
 		for fN, file := range m.Parameters.Files {
 			if !file.NoTemplates {
 				if err := checkFileTemplates(file.Data, manifest.ManifestFileTemplateFuncMap, templateSecrets); err != nil {
-					return fmt.Errorf("Marble %s: file %s: %v", mN, fN, err)
+					return fmt.Errorf("in Marble %s: file %s: %v", mN, fN, err)
 				}
 			}
 		}
 		for eN, env := range m.Parameters.Env {
 			// make sure environment variables dont contain NULL bytes, we perform another check at runtime to catch NULL bytes in secrets
 			if strings.Contains(env.Data, string([]byte{0x00})) {
-				return fmt.Errorf("Marble %s: env variable: %s: content contains null bytes", mN, eN)
+				return fmt.Errorf("in Marble %s: env variable: %s: content contains null bytes", mN, eN)
 			}
 			if !env.NoTemplates {
 				if err := checkFileTemplates(env.Data, manifest.ManifestEnvTemplateFuncMap, templateSecrets); err != nil {
-					return fmt.Errorf("Marble %s: env variable %s: %v", mN, eN, err)
+					return fmt.Errorf("in Marble %s: env variable %s: %v", mN, eN, err)
 				}
 			}
 		}

@@ -9,9 +9,7 @@ package recovery
 import (
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/sha256"
 	"crypto/x509"
-	"encoding/hex"
 	"encoding/pem"
 	"errors"
 )
@@ -52,11 +50,4 @@ func generateRandomKey() ([]byte, error) {
 	}
 
 	return generatedValue, nil
-}
-
-func hash(input []byte) string {
-	hashSum := sha256.Sum256(input)
-	hashSumString := hex.EncodeToString(hashSum[:])
-
-	return hashSumString
 }

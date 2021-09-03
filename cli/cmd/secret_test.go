@@ -54,7 +54,7 @@ func TestGetSecrets(t *testing.T) {
 	assert := assert.New(t)
 	s, host, cert := newTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(http.MethodGet, r.Method)
-		if "/secrets?s=plain_secret&s=certShared&s=secretOne" == r.RequestURI {
+		if r.RequestURI == "/secrets?s=plain_secret&s=certShared&s=secretOne" {
 			serverResp := server.GeneralResponse{
 				Status: "success",
 				Data: map[string]interface{}{
@@ -93,7 +93,7 @@ func TestGetSecrets(t *testing.T) {
 			assert.NoError(json.NewEncoder(w).Encode(serverResp))
 			return
 		}
-		if "/secrets?s=restrictedSecret" == r.RequestURI {
+		if r.RequestURI == "/secrets?s=restrictedSecret" {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
