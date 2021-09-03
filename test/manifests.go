@@ -325,7 +325,7 @@ var IntegrationManifestJSON string = `{
 				"Files": {
 					"/tmp/coordinator_test/defg.txt": "foo",
 					"/tmp/coordinator_test/jkl.mno": "bar",
-					"/tmp/coordinator_test/secret.raw": "{{ raw .Secrets.symmetricKeyShared }}{{ raw .Marblerun.MarbleCert.Private }}"
+					"/tmp/coordinator_test/secret.raw": "{{ raw .Secrets.symmetricKeyShared }}{{ raw .MarbleRun.MarbleCert.Private }}"
 				},
 				"Argv": [
 					"./marble",
