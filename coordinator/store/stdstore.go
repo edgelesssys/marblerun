@@ -202,8 +202,5 @@ func (i *StdIterator) GetNext() (string, error) {
 
 // HasNext implements the Iterator interface
 func (i *StdIterator) HasNext() bool {
-	if i.idx < len(i.keys) {
-		return true
-	}
-	return false
+	return i.idx < len(i.keys)
 }

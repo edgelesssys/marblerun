@@ -9,7 +9,6 @@ require (
 	github.com/edgelesssys/ertgolib v0.1.5-0.20210208080427-0d5e24e2f855 // indirect
 	github.com/fatih/color v1.10.0
 	github.com/gofrs/flock v0.8.0
-	github.com/golang/protobuf v1.4.3
 	github.com/google/go-cmp v0.5.6
 	github.com/google/uuid v1.1.2
 	github.com/gorilla/handlers v1.5.1

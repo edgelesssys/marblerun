@@ -35,6 +35,9 @@ Optionally get the manifests signature or merge updates into the displayed manif
 				return err
 			}
 			manifest, err := decodeManifest(displayUpdate, gjson.GetBytes(response, "Manifest").String(), hostName, cert)
+			if err != nil {
+				return err
+			}
 			if signature {
 				// wrap the signature and manifest into one json object
 				manifest = fmt.Sprintf("{\n\"ManifestSignature\": \"%s\",\n\"Manifest\": %s}", gjson.GetBytes(response, "ManifestSignature"), manifest)
