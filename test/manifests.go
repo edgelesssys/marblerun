@@ -203,6 +203,14 @@ var ManifestJSONWithRecoveryKey string = `{
 					"SEAL_KEY": "{{ hex .MarbleRun.SealKey }}"
 				}
 			}
+		},
+		"envMarble": {
+			"Package": "frontend",
+			"Parameters": {
+				"Env": {
+					"ENV_SECRET": "{{ string .Secrets.genericSecret }}"
+				}
+			}
 		}
 	},
 	"Secrets": {

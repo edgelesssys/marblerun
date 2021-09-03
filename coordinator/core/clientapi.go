@@ -128,43 +128,8 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 		}
 	}
 
-	templateSecrets := secretsWrapper{
-		Secrets: secrets,
-		MarbleRun: reservedSecrets{
-			RootCA: manifest.Secret{
-				Cert: manifest.Certificate{Raw: []byte{0x41}},
-			},
-			MarbleCert: manifest.Secret{
-				Cert:    manifest.Certificate{Raw: []byte{0x41}},
-				Public:  []byte{0x41},
-				Private: []byte{0x41},
-			},
-			SealKey: manifest.Secret{
-				Private: []byte{0x41},
-				Public:  []byte{0x41},
-			},
-		},
-	}
-	// make sure templates in file/env declarations can actually be executed
-	for mN, m := range mnf.Marbles {
-		for fN, file := range m.Parameters.Files {
-			if !file.NoTemplates {
-				if err := checkFileTemplates(file.Data, manifest.ManifestFileTemplateFuncMap, templateSecrets); err != nil {
-					return nil, fmt.Errorf("Marble %s: file %s: %v", mN, fN, err)
-				}
-			}
-		}
-		for eN, env := range m.Parameters.Env {
-			// make sure environment variables dont contain NULL bytes, we perform another check at runtime to catch NULL bytes in secrets
-			if strings.Contains(env.Data, string([]byte{0x00})) {
-				return nil, fmt.Errorf("Marble %s: env variable: %s: content contains null bytes", mN, eN)
-			}
-			if !env.NoTemplates {
-				if err := checkFileTemplates(env.Data, manifest.ManifestEnvTemplateFuncMap, templateSecrets); err != nil {
-					return nil, fmt.Errorf("Marble %s: env variable %s: %v", mN, eN, err)
-				}
-			}
-		}
+	if err := templateDryRun(mnf, secrets); err != nil {
+		return nil, err
 	}
 
 	if err := txdata.putRawManifest(rawManifest); err != nil {
@@ -507,6 +472,30 @@ func (c *Core) WriteSecrets(ctx context.Context, rawSecretManifest []byte, updat
 		return err
 	}
 
+	// perform a dry run to check if the new secrets can be parsed as env vars or files
+	//
+	// set dummy values for user-defined secrets, only used for template validation, we do not care if any of these were set before
+	for k, v := range secretMeta {
+		if v.UserDefined {
+			v.Cert.Raw = []byte{0x41}
+			v.Private = []byte{0x41}
+			v.Public = []byte{0x41}
+			secretMeta[k] = v
+		}
+	}
+	// merge new secrets with existing secrets
+	for k, v := range newSecrets {
+		secretMeta[k] = v
+	}
+	mnf, err := c.data.getManifest()
+	if err != nil {
+		return err
+	}
+	// perform the dry run
+	if err := templateDryRun(mnf, secretMeta); err != nil {
+		return err
+	}
+
 	tx, err := c.store.BeginTransaction()
 	if err != nil {
 		return err
@@ -554,6 +543,50 @@ func (c *Core) performRecovery(encryptionKey []byte) error {
 		return err
 	}
 	c.quote = c.generateQuote(rootCert.Raw)
+
+	return nil
+}
+
+// templateDryRun performs a dry run for Files and Env declarations in a manifest
+func templateDryRun(mnf manifest.Manifest, secrets map[string]manifest.Secret) error {
+	templateSecrets := secretsWrapper{
+		Secrets: secrets,
+		MarbleRun: reservedSecrets{
+			RootCA: manifest.Secret{
+				Cert: manifest.Certificate{Raw: []byte{0x41}},
+			},
+			MarbleCert: manifest.Secret{
+				Cert:    manifest.Certificate{Raw: []byte{0x41}},
+				Public:  []byte{0x41},
+				Private: []byte{0x41},
+			},
+			SealKey: manifest.Secret{
+				Private: []byte{0x41},
+				Public:  []byte{0x41},
+			},
+		},
+	}
+	// make sure templates in file/env declarations can actually be executed
+	for mN, m := range mnf.Marbles {
+		for fN, file := range m.Parameters.Files {
+			if !file.NoTemplates {
+				if err := checkFileTemplates(file.Data, manifest.ManifestFileTemplateFuncMap, templateSecrets); err != nil {
+					return fmt.Errorf("Marble %s: file %s: %v", mN, fN, err)
+				}
+			}
+		}
+		for eN, env := range m.Parameters.Env {
+			// make sure environment variables dont contain NULL bytes, we perform another check at runtime to catch NULL bytes in secrets
+			if strings.Contains(env.Data, string([]byte{0x00})) {
+				return fmt.Errorf("Marble %s: env variable: %s: content contains null bytes", mN, eN)
+			}
+			if !env.NoTemplates {
+				if err := checkFileTemplates(env.Data, manifest.ManifestEnvTemplateFuncMap, templateSecrets); err != nil {
+					return fmt.Errorf("Marble %s: env variable %s: %v", mN, eN, err)
+				}
+			}
+		}
+	}
 
 	return nil
 }

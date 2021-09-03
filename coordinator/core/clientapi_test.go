@@ -620,6 +620,15 @@ func TestWriteSecret(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal("MarbleRun Unit Test", string(secret.Public))
 
+	// try to set a secret with NULL bytes
+	genericSecret = []byte(`{
+		"genericSecret": {
+			"Key": "` + base64.StdEncoding.EncodeToString([]byte{0x41, 0x41, 0x00, 0x41}) + `"
+		}
+	}`)
+	err = c.WriteSecrets(context.TODO(), genericSecret, admin)
+	assert.Error(err)
+
 	// try to set a secret incorrect size
 	invalidSecret := []byte(`{
 		"symmetricKeyUnset": {
