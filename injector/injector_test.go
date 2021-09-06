@@ -29,7 +29,8 @@ func TestMutatesValidRequest(t *testing.T) {
 					"creationTimestamp": null,
 					"labels": {
 						"name": "testpod",
-						"marblerun/marbletype": "test"
+						"marblerun/marbletype": "test",
+						"marblerun/marblecontainer": "marble-test"
 					}
 				},
 				"spec": {
@@ -42,6 +43,14 @@ func TestMutatesValidRequest(t *testing.T) {
 							],
 							"terminationMessagePath": "/dev/termination-log",
 							"terminationMessagePolicy": "File",
+							"imagePullPolicy": "IfNotPresent"
+						},
+						{
+							"name": "marble-test",
+							"image": "test:image",
+							"command": [
+								"/bin/bash"
+							],
 							"imagePullPolicy": "IfNotPresent"
 						}
 					]
@@ -64,14 +73,18 @@ func TestMutatesValidRequest(t *testing.T) {
 	r := v1.AdmissionReview{}
 	require.NoError(json.Unmarshal(response, &r), "failed to unmarshal response with error %s", err)
 
-	assert.Contains(string(r.Response.Patch), `{"op":"add","path":"/spec/containers/0/resources","value":{"limits":{"kubernetes.azure.com/sgx_epc_mem_in_MiB":"10"}}}`, "applied incorrect resource patch")
-	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env","value":[{"name":"EDG_MARBLE_COORDINATOR_ADDR","value":"coordinator-mesh-api.marblerun:2001"}]`, "failed to apply coordinator env variable patch")
-	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env/-","value":{"name":"EDG_MARBLE_TYPE","value":"test"}`, "failed to apply marble type env variable patch")
-	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env/-","value":{"name":"EDG_MARBLE_DNS_NAMES","value":"test,test.injectable,test.injectable.svc.cluster.local"}`, "failed to apply DNS name env varibale patch")
-	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env/-","value":{"name":"EDG_MARBLE_UUID_FILE"`, "failed to apply marble UUID file env variable patch")
-	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/volumeMounts"`, "failed to apply volumeMount patch")
+	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/1/resources","value":{"limits":{"kubernetes.azure.com/sgx_epc_mem_in_MiB":"10"}}`, "applied incorrect resource patch")
+	assert.Contains(string(r.Response.Patch), `"name":"EDG_MARBLE_COORDINATOR_ADDR","value":"coordinator-mesh-api.marblerun:2001"`, "failed to apply coordinator env variable patch")
+	assert.Contains(string(r.Response.Patch), `"name":"EDG_MARBLE_TYPE","value":"test"`, "failed to apply marble type env variable patch")
+	assert.Contains(string(r.Response.Patch), `"name":"EDG_MARBLE_DNS_NAMES","value":"test,test.injectable,test.injectable.svc.cluster.local"`, "failed to apply DNS name env varibale patch")
+	assert.Contains(string(r.Response.Patch), `"name":"EDG_MARBLE_UUID_FILE"`, "failed to apply marble UUID file env variable patch")
+	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/1/volumeMounts"`, "failed to apply volumeMount patch")
 	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/volumes"`, "failed to apply volumes patch")
-	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/tolerations","value":[{"key":"kubernetes.azure.com/sgx_epc_mem_in_MiB"`, "failed to apply tolerations patch")
+	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/tolerations","value":[{`, "failed to apply tolerations patch")
+
+	assert.NotContains(string(r.Response.Patch), `"path":"/spec/containers/0/env`, "injected env variables into wrong pod")
+	assert.NotContains(string(r.Response.Patch), `"path":"/spec/containers/0/volumeMounts`, "injected volume mount into wrong pod")
+	assert.Contains(string(r.Response.Patch), `"path":"/spec/containers/0/resources","value":{}}`, "injected resources into the wrong pod")
 
 	// test if patch works without sgx values
 	response, err = mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:2001", "cluster.local", "kubernetes.azure.com/sgx_epc_mem_in_MiB", false)
@@ -119,8 +132,6 @@ func TestPreSetValues(t *testing.T) {
 									"cpu": 1000
 								}
 							},
-							"terminationMessagePath": "/dev/termination-log",
-							"terminationMessagePolicy": "File",
 							"imagePullPolicy": "IfNotPresent",
 							"env": [
 								{
@@ -160,11 +171,8 @@ func TestPreSetValues(t *testing.T) {
 	r := v1.AdmissionReview{}
 	require.NoError(json.Unmarshal(response, &r), "failed to unmarshal response with error %s", err)
 
-	assert.Contains(string(r.Response.Patch), `{"op":"add","path":"/spec/containers/0/resources/limits/kubernetes.azure.com~1sgx_epc_mem_in_MiB","value":"10"}`, "applied incorrect resource patch")
-	assert.NotContains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env"`, "applied coordinator env variable patch when it shouldnt have")
-	assert.NotContains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env/-"`, "applied marble type env variable patch when it shouldnt have")
-	assert.NotContains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env/-"`, "applied DNS name env varibale patch when it shouldnt have")
-	assert.NotContains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env/-"`, "applied marble UUID file env variable patch when it shouldnt have")
+	assert.Contains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/resources/limits/kubernetes.azure.com~1sgx_epc_mem_in_MiB","value":"10"}`, "applied incorrect resource patch")
+	assert.NotContains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/0/env"`, "applied env variable patch when it shouldnt have")
 }
 
 func TestRejectsUnsetMarbletype(t *testing.T) {
@@ -197,8 +205,6 @@ func TestRejectsUnsetMarbletype(t *testing.T) {
 							"command": [
 								"/bin/bash"
 							],
-							"terminationMessagePath": "/dev/termination-log",
-							"terminationMessagePolicy": "File",
 							"imagePullPolicy": "IfNotPresent"
 						}
 					]

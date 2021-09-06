@@ -217,3 +217,4 @@ You can build the Docker image of the marble-injector as follows:
 
 ```bash
 docker buildx build --tag ghcr.io/edgelesssys/marble-injector -f dockerfiles/Dockerfile.marble-injector .
+```
