@@ -1,0 +1,96 @@
+name: Create and validate OpenAPI specification
+on:
+  pull_request:
+
+jobs:
+  make-openapi-spec:
+    runs-on: ubuntu-18.04
+    container:
+      image: ghcr.io/edgelesssys/edgelessrt-dev:ci
+
+    steps:
+    # Install requirements
+      - name: Install jq
+        run: apt install -y jq
+
+      - name: Create download URL
+        run: echo "download_url=$(curl -s https://api.github.com/repos/go-swagger/go-swagger/releases/latest | jq -r '.assets[] | select(.name | contains("'"$(uname | tr '[:upper:]' '[:lower:]')"'_amd64")) | .browser_download_url')" >> $GITHUB_ENV
+
+      - name: Download go-swagger
+        run: curl -o /usr/local/bin/swagger -L'#' ${{ env.download_url }}
+
+      - name: Make file executable
+        run: chmod +x /usr/local/bin/swagger
+
+      - name: Check Swagger version
+        run: swagger version
+
+    # Checkout repository and merge current branch into master
+    # This ensures that a valid Swagger specification can be generated from
+    # the master branch after merging the current branch.
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Checkout master
+        run: git checkout master
+
+      - name: Merge branch into master
+        run: git merge origin/${{ github.head_ref }}
+
+    # Generate and validate Swagger file
+      - name: Generate Swagger file from annotations
+        run: swagger generate spec -m --compact --exclude-deps -o ./swagger.json
+        env:
+          SWAGGER_GENERATE_EXTENSION: false
+
+      - name: Validate Swagger
+        id: validate
+        run: |
+          OUTPUT=$(swagger validate ./swagger.json 2>&1)
+          echo "OUTPUT<<EOF" >> $GITHUB_ENV
+          echo "$OUTPUT" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+    # Truncate output (GeneralResponse warning is ignored, since it always occurs at the moment) and
+    # Create comment
+      - name: Create comment
+        id: validate_truncated
+        run: |
+          SHORT_SHA=$(echo "${{ github.event.pull_request.head.sha }}" | cut -c1-8)
+          WARNINGS=$(echo "${{ env.OUTPUT }}" | grep "WARNING:" | sed '/GeneralResponse/d' | cut -c30- | sed 's/^/:warning/')
+          echo "WARNINGS=$WARNINGS" >> $GITHUB_ENV
+          START=$(echo "Hi, I report to you the results of the Swagger specification validation for commit $SHORT_SHA.")
+          WARN=$(echo "The spec showed up some valid but possibly unwanted constructs:")
+          ALRIGHT=$(echo ":heavy_check_mark: The Swagger spec is valid and no warnings were thrown.")
+          COMMENT=$(if [ -n "$WARNINGS" ]; then echo "$START\n\n$WARN\n$WARNINGS"; else echo "$START\n\n$ALRIGHT"; fi)
+          echo "COMMENT<<EOF" >> $GITHUB_ENV
+          echo "$COMMENT" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+    # Find and update comment, if already existent
+      - name: Find comment
+        uses: peter-evans/find-comment@v1
+        id: fc
+        with:
+          issue-number: ${{ github.event.number }}
+          body-includes: Hi, I report to you the results of the Swagger specification validation
+
+      - name: Update comment
+        if: ${{ steps.fc.outputs.comment-id != 0 }}
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          edit-mode: replace
+          body: |
+            **Updated**: ${{ env.COMMENT }}
+
+    # Create new comment, if warnings exist and comment doesn't
+      - name: Create comment
+        if: ${{ steps.fc.outputs.comment-id == 0 && env.WARNINGS != 0 }}
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          issue-number: ${{ github.event.number }}
+          body: |
+            ${{ env.COMMENT }}

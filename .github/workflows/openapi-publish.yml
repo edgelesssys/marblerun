@@ -3,8 +3,7 @@ on:
   push:
     branches:
       - master
-    paths:
-      - 'swagger.json'
+
 jobs:
   publish-to-docs:
     runs-on: ubuntu-18.04
@@ -12,23 +11,58 @@ jobs:
       image: ghcr.io/edgelesssys/edgelessrt-dev:ci
 
     steps:
+    # Install requirements
       - name: Install jq
         run: apt install -y jq
 
+      - name: Create download URL
+        run: echo "download_url=$(curl -s https://api.github.com/repos/go-swagger/go-swagger/releases/latest | jq -r '.assets[] | select(.name | contains("'"$(uname | tr '[:upper:]' '[:lower:]')"'_amd64")) | .browser_download_url')" >> $GITHUB_ENV
+
+      - name: Download go-swagger
+        run: curl -o /usr/local/bin/swagger -L'#' ${{ env.download_url }}
+
+      - name: Make file executable
+        run: chmod +x /usr/local/bin/swagger
+
+      - name: Check Swagger version
+        run: swagger version
+
+    # Set up repositories
+      - name: Checkout MarbleRun
+        uses: actions/checkout@v2
+        with:
+          path: marblerun
+
+      - name: Checkout Docs
+        uses: actions/checkout@v2
+        with:
+          repository: edgelesssys/docs.edgeless.systems
+          path: docs
+
+    # Generate Swagger specification
+      - name: Generate Swagger file from annotations
+        run: swagger generate spec -m --compact --exclude-deps -w ./marblerun -o ./swagger.json
+        env:
+          SWAGGER_GENERATE_EXTENSION: false
+
+        # This could lead to a non passing master branch
+      - name: Validate Swagger
+        run: swagger validate ./swagger.json
+
+    # If spec changed, commit new spec to the documentation
       - name: Get number of triggering PR
         run: |
           echo "pr_number=$(curl -s -H 'Accept: application/vnd.github.groot-preview+json' https://api.github.com/repos/edgelesssys/marblerun/commits/${{ github.sha }}/pulls | jq -r '.[].number')" >> $GITHUB_ENV
 
-      - name: Checkout
-        uses: actions/checkout@v2
-
-      - name: Publish file to documentation
-        uses: andstor/copycat-action@v3
+      - name: Publish new specification
+        uses: dmnemec/copy_file_to_another_repo_action@v1.1.1
+        env:
+          API_TOKEN_GITHUB: ${{ secrets.CI_GITHUB_REPOSITORY }}
         with:
-          personal_token: ${{ secrets.CI_GITHUB_REPOSITORY }}
-          src_path: swagger.json
-          dst_owner: edgelesssys
-          dst_repo_name: docs.edgeless.systems
-          dst_branch: action/marblerun/update-swagger
-          dst_path: marblerun/_media/swagger.json
-          commit_message: OpenAPI spec was updated by edgelesssys/marblerun#${{ env.pr_number}}
+          source_file: 'swagger.json'
+          destination_repo: 'edgelesssys/docs.edgeless.systems'
+          destination_branch_create: 'action/marblerun/update-swagger'
+          destination_folder: 'marblerun/_media'
+          user_name: '${{ github.actor }}'
+          user_email: '${{ github.actor }}@users.noreply.github.com'
+          commit_message: 'OpenAPI spec was updated by edgelesssys/marblerun#${{ env.pr_number}}'
