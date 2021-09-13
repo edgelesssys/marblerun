@@ -25,7 +25,6 @@ func TestMutatesValidRequest(t *testing.T) {
 				"apiVersion": "v1",
 				"metadata": {
 					"name": "testpod",
-					"namespace": "injectable",
 					"creationTimestamp": null,
 					"labels": {
 						"name": "testpod",

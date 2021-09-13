@@ -119,7 +119,7 @@ func mutate(body []byte, coordAddr string, domainName string, resourceKey string
 	}
 
 	// get namespace of pod
-	namespace := pod.Namespace
+	namespace := admReviewReq.Request.Namespace
 	if len(namespace) == 0 {
 		namespace = "default"
 	}
