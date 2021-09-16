@@ -17,18 +17,18 @@ helm repo update
 * If you are deploying on a cluster with nodes that support SGX1+FLC (e.g. AKS or minikube + Azure Standard_DC*s)
 
     ```bash
-    helm install  marblerun-coordinator edgeless/marblerun-coordinator --create-namespace  --namespace marblerun
+    helm install  marblerun edgeless/marblerun --create-namespace  --namespace marblerun
     ```
 
 * Otherwise
 
     ```bash
-    helm install marblerun-coordinator edgeless/marblerun-coordinator --create-namespace --namespace marblerun --set coordinator.resources=null --set coordinator.simulation=1 --set tolerations=null
+    helm install marblerun edgeless/marblerun --create-namespace --namespace marblerun --set coordinator.resources=null --set coordinator.simulation=1 --set tolerations=null
     ```
 
 ## Configuration
 
-The following table lists the configurable parameters of the marblerun-coordinator chart and
+The following table lists the configurable parameters of the marblerun chart and
 their default values.
 
 | Parameter                                    | Type           | Description    | Default                              |
@@ -41,7 +41,7 @@ their default values.
 | `coordinator.meshServerPort`                 | int            | Port of the mesh-api server configuration | `2001` |
 | `coordinator.replicas`                       | int            | Number of replicas for each control plane pod | `1` |
 | `coordinator.sealDir`                        | string         | Path to the directory used for sealing data. Needs to be consistent with the persisten storage setup | `"/coordinator/data/"` |
-| `coordinator.simulation`                     | string         | SGX simulation settings, set to 1 if your not running on an SGX capable cluster | `"0"` |
+| `coordinator.simulation`                     | bool           | SGX simulation settings, set to `true` if your not running on an SGX capable cluster | `false` |
 | `global.coordinatorComponentLabel`           | string         | Control plane label. Do not edit | `"edgeless.systems/control-plane-component"` |
 | `global.coordinatorNamespaceLabel`           | string         | Control plane label. Do not edit | `"edgeless.systems/control-plane-ns"` |
 | `global.image`                               | object         | Image configuration for all components | `{"pullPolicy":"IfNotPresent","version":" v0.5.0","repository":"ghcr.io/edgelesssys"}` |
@@ -59,7 +59,7 @@ their default values.
 ```bash
 cd <marblerun-repo>
 helm package charts
-mv marblerun-coordinator-x.x.x.tgz <helm-repo>/stable
+mv marblerun-x.x.x.tgz <helm-repo>/stable
 cd <helm-repo>
 helm repo index stable --url https://helm.edgeless.systems/stable
 ```

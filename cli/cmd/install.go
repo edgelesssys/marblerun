@@ -93,7 +93,7 @@ func cliInstall(options *installOptions) error {
 	installer := action.NewInstall(actionConfig)
 	installer.CreateNamespace = true
 	installer.Namespace = "marblerun"
-	installer.ReleaseName = "marblerun-coordinator"
+	installer.ReleaseName = "marblerun"
 	installer.ChartPathOptions.Version = options.version
 
 	if options.chartPath == "" {
@@ -102,7 +102,7 @@ func cliInstall(options *installOptions) error {
 		if err != nil {
 			return err
 		}
-		options.chartPath, err = installer.ChartPathOptions.LocateChart("edgeless/marblerun-coordinator", options.settings)
+		options.chartPath, err = installer.ChartPathOptions.LocateChart("edgeless/marblerun", options.settings)
 		if err != nil {
 			return err
 		}
@@ -130,10 +130,10 @@ func cliInstall(options *installOptions) error {
 	stringValues = append(stringValues, fmt.Sprintf("coordinator.clientServerPort=%d", options.clientPort))
 
 	if options.simulation {
-		// simulation mode, disable tolerations and resources, set simulation to 1
+		// simulation mode, disable tolerations and resources, set simulation to true
 		stringValues = append(stringValues,
 			fmt.Sprintf("tolerations=%s", "null"),
-			fmt.Sprintf("coordinator.simulation=%d", 1),
+			fmt.Sprintf("coordinator.simulation=%t", options.simulation),
 			fmt.Sprintf("coordinator.resources.limits=%s", "null"),
 			fmt.Sprintf("coordinator.hostname=%s", options.hostname),
 			fmt.Sprintf("dcap=%s", "null"),

@@ -52,7 +52,7 @@ coordinator:
   # SEAL_DIR needs to be set according to persistent storage
   sealDir: "/coordinator/data/"
   # OE_SIMULATION needs be set to "1" when running on systems without SGX1+FLC capabilities
-  simulation: "0"
+  simulation: false
   # DCAP_LIBRARY needs to be "intel" if the libsgx-dcap-default-qpl is to be used, otherwise az-dcap-client is used by default
   dcapQpl: "azure"
 
