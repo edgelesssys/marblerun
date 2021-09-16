@@ -21,6 +21,6 @@ func TestCliCompletion(t *testing.T) {
 	assert.NoError(err)
 	assert.Contains(zshCompletion, "# zsh completion for marblerun")
 
-	_, err = cliCompletion("unsupproted-shell", rootCmd)
+	_, err = cliCompletion("unsupported-shell", rootCmd)
 	assert.Error(err)
 }

@@ -55,7 +55,7 @@ func cliCompletion(shell string, parent *cobra.Command) (string, error) {
 	case "zsh":
 		err = parent.GenZshCompletion(&buf)
 	default:
-		err = fmt.Errorf("unsopported shell type [%s]", shell)
+		err = fmt.Errorf("unsupported shell type [%s]", shell)
 	}
 
 	return buf.String(), err
