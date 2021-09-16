@@ -5,11 +5,13 @@ metadata:
   name: coordinator-dcap-config
   namespace: {{ .Release.Namespace }}
   labels:
+    app.kubernetes.io/component: dcap-config
+    app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
+    app.kubernetes.io/name: coordinator-dcap-config
     app.kubernetes.io/part-of: marblerun
     app.kubernetes.io/version: {{ .Values.global.image.version }}
     {{ .Values.global.coordinatorComponentLabel }}: dcap-config
     {{ .Values.global.coordinatorNamespaceLabel }}: {{ .Release.Namespace }}
-    {{- with .Values.global.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
 data:
   sgx_default_qcnl.conf: |
     PCCS_URL={{ .Values.dcap.pccsUrl }}

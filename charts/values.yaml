@@ -16,6 +16,8 @@ global:
   # Additional labels to add to all pods
   podLabels: {}
 
+  createdBy: Helm
+
   # control plane labels
   coordinatorComponentLabel: edgeless.systems/control-plane-component
   coordinatorNamespaceLabel: edgeless.systems/control-plane-ns

@@ -4,6 +4,8 @@ metadata:
   name: marblerun-coordinator
   namespace: {{ .Release.Namespace }}
   labels:
+    app.kubernetes.io/component: coordinator
+    app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
     app.kubernetes.io/name: coordinator
     app.kubernetes.io/part-of: marblerun
     app.kubernetes.io/version: {{ .Values.global.image.version }}
@@ -18,6 +20,11 @@ spec:
   template:
     metadata:
       labels:
+        app.kubernetes.io/component: coordinator
+        app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
+        app.kubernetes.io/name: coordinator
+        app.kubernetes.io/part-of: marblerun
+        app.kubernetes.io/version: {{ .Values.global.image.version }}
         {{ .Values.global.coordinatorComponentLabel }}: coordinator
         {{ .Values.global.coordinatorNamespaceLabel }}: {{ .Release.Namespace }}
         {{- with .Values.global.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
@@ -91,6 +98,12 @@ kind: PersistentVolumeClaim
 metadata:
   name: coordinator-pv-claim
   namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/component: persistent-storage
+    app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
+    app.kubernetes.io/name: coordinator-pv-claim
+    app.kubernetes.io/part-of: marblerun
+    app.kubernetes.io/version: {{ .Values.global.image.version }}
 spec:
   {{- with .Values.coordinator.storageClass }}
   storageClassName: {{ .Values.coordinator.storageClass }}
@@ -106,6 +119,12 @@ kind: Service
 metadata:
   name: coordinator-client-api
   namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/component: client-api
+    app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
+    app.kubernetes.io/name: coordinator-client-api
+    app.kubernetes.io/part-of: marblerun
+    app.kubernetes.io/version: {{ .Values.global.image.version }}
 spec:
   type: LoadBalancer
   selector:
@@ -121,6 +140,12 @@ kind: Service
 metadata:
   name: coordinator-mesh-api
   namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/component: mesh-api
+    app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
+    app.kubernetes.io/name: coordinator-mesh-api
+    app.kubernetes.io/part-of: marblerun
+    app.kubernetes.io/version: {{ .Values.global.image.version }}
 spec:
   type: ClusterIP
   selector:
