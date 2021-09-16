@@ -1,0 +1,158 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: marblerun-coordinator
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/component: coordinator
+    app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
+    app.kubernetes.io/name: coordinator
+    app.kubernetes.io/part-of: marblerun
+    app.kubernetes.io/version: {{ .Values.global.image.version }}
+    {{ .Values.global.coordinatorComponentLabel }}: coordinator
+    {{ .Values.global.coordinatorNamespaceLabel }}: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.coordinator.replicas }}
+  selector:
+    matchLabels:
+      {{ .Values.global.coordinatorComponentLabel }}: coordinator
+      {{ .Values.global.coordinatorNamespaceLabel }}: {{ .Release.Namespace }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: coordinator
+        app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
+        app.kubernetes.io/name: coordinator
+        app.kubernetes.io/part-of: marblerun
+        app.kubernetes.io/version: {{ .Values.global.image.version }}
+        {{ .Values.global.coordinatorComponentLabel }}: coordinator
+        {{ .Values.global.coordinatorNamespaceLabel }}: {{ .Release.Namespace }}
+        {{- with .Values.global.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+    spec:
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: marblerun-coordinator
+      containers:
+        - env:
+          - name: EDG_COORDINATOR_MESH_ADDR
+            value: "{{ .Values.coordinator.meshServerHost }}:{{ .Values.coordinator.meshServerPort }}"
+          - name: EDG_COORDINATOR_CLIENT_ADDR
+            value: "{{ .Values.coordinator.clientServerHost }}:{{ .Values.coordinator.clientServerPort }}"
+          - name: EDG_COORDINATOR_DNS_NAMES
+            value: "{{ .Values.coordinator.hostname }},coordinator-mesh-api,coordinator-client-api,coordinator-mesh-api.{{ .Release.Namespace }},coordinator-client-api.{{ .Release.Namespace }},coordinator-mesh-api.{{ .Release.Namespace }}.svc.cluster.local,coordinator-client-api.{{ .Release.Namespace }}.svc.cluster.local"
+          - name: EDG_COORDINATOR_SEAL_DIR
+            value: "{{ .Values.coordinator.sealDir }}"
+          - name: OE_SIMULATION
+            value: "{{ .Values.coordinator.simulation }}"
+          - name: DCAP_LIBRARY
+            value: "{{ .Values.coordinator.dcapQpl }}"
+          name: coordinator
+          image: "{{ .Values.global.image.repository }}/coordinator:{{ .Values.global.image.version }}"
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          livenessProbe:
+            httpGet:
+              path: /status
+              scheme: HTTPS
+              port: {{ .Values.coordinator.clientServerPort }}
+            initialDelaySeconds: 10
+          readinessProbe:
+            failureThreshold: 7
+            httpGet:
+              path: /status
+              scheme: HTTPS
+              port: {{ .Values.coordinator.clientServerPort }}
+          ports:
+            - containerPort: {{ .Values.coordinator.clientServerPort }}
+              name: http
+            - containerPort: {{ .Values.coordinator.meshServerPort }}
+              name: grcp
+
+          resources:
+          {{- toYaml .Values.coordinator.resources | nindent 12 }}
+          volumeMounts:
+          - name: coordinator-pv-storage
+            mountPath: /coordinator/data
+          {{ if .Values.dcap }}
+          - name: dcap-conf
+            mountPath: /etc/sgx_default_qcnl.conf
+            subPath: sgx_default_qcnl.conf
+          {{ end }}
+      volumes:
+        - name: coordinator-pv-storage
+          persistentVolumeClaim:
+            claimName: coordinator-pv-claim
+        {{ if .Values.dcap }}
+        - name: dcap-conf
+          configMap:
+            name: coordinator-dcap-config
+        {{ end }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: coordinator-pv-claim
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/component: persistent-storage
+    app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
+    app.kubernetes.io/name: coordinator-pv-claim
+    app.kubernetes.io/part-of: marblerun
+    app.kubernetes.io/version: {{ .Values.global.image.version }}
+spec:
+  {{- with .Values.coordinator.storageClass }}
+  storageClassName: {{ .Values.coordinator.storageClass }}
+  {{ end }}
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: coordinator-client-api
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/component: client-api
+    app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
+    app.kubernetes.io/name: coordinator-client-api
+    app.kubernetes.io/part-of: marblerun
+    app.kubernetes.io/version: {{ .Values.global.image.version }}
+spec:
+  type: LoadBalancer
+  selector:
+    {{ .Values.global.coordinatorComponentLabel }}: coordinator
+    {{ .Values.global.coordinatorNamespaceLabel }}: {{ .Release.Namespace }}
+  ports:
+  - name: http
+    port: {{ .Values.coordinator.clientServerPort }}
+    targetPort: {{ .Values.coordinator.clientServerPort }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: coordinator-mesh-api
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/component: mesh-api
+    app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
+    app.kubernetes.io/name: coordinator-mesh-api
+    app.kubernetes.io/part-of: marblerun
+    app.kubernetes.io/version: {{ .Values.global.image.version }}
+spec:
+  type: ClusterIP
+  selector:
+    {{ .Values.global.coordinatorComponentLabel }}: coordinator
+    {{ .Values.global.coordinatorNamespaceLabel }}: {{ .Release.Namespace }}
+  ports:
+  - name: grcp
+    port: {{ .Values.coordinator.meshServerPort }}
+    targetPort: {{ .Values.coordinator.meshServerPort }}
+    appProtocol: tcp
