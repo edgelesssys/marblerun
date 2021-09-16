@@ -1,0 +1,117 @@
+{{ if .Values.marbleInjector.start }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: marble-injector
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: marble-injector
+    app.kubernetes.io/part-of: marblerun
+    app.kubernetes.io/version: {{ .Values.global.image.version }}
+spec:
+  ports:
+  - port: 443
+    targetPort: 8443
+  selector:
+    app.kubernetes.io/name: marble-injector
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: marble-injector
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: marble-injector
+    app.kubernetes.io/part-of: marblerun
+    app.kubernetes.io/version: {{ .Values.global.image.version }}
+spec:
+  replicas: {{ .Values.marbleInjector.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: marble-injector
+      app.kubernetes.io/part-of: marblerun
+      app.kubernetes.io/version: {{ .Values.global.image.version }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: marble-injector
+        app.kubernetes.io/part-of: marblerun
+        app.kubernetes.io/version: {{ .Values.global.image.version }}
+        {{- with .Values.global.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+      annotations:
+        openservicemesh.io/sidecar-injection: disabled
+    spec:
+      containers:
+      - args:
+        - -coordAddr=coordinator-mesh-api.{{ .Release.Namespace }}:{{ .Values.coordinator.meshServerPort }}
+        - -tlsCertFile=/etc/webhook/certs/cert.pem
+        - -tlsKeyFile=/etc/webhook/certs/key.pem
+        - -sgxResource={{ .Values.marbleInjector.resourceKey }}
+        name: marble-injector
+        image: "{{ .Values.global.image.repository }}/marble-injector:{{ .Values.global.image.version }}"
+        imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+        volumeMounts:
+          - name: webhook-certs
+            mountPath: /etc/webhook/certs
+            readOnly: true
+        ports:
+          - containerPort: 8443
+            name: http
+
+      volumes:
+      - name: webhook-certs
+        secret:
+          secretName: marble-injector-webhook-certs
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: marble-injector
+  labels:
+    app.kubernetes.io/name: marble-injector
+    app.kubernetes.io/part-of: marblerun
+    app.kubernetes.io/version: {{ .Values.global.image.version }}
+webhooks:
+  - name: marble-injector.cluster.local
+    clientConfig:
+      {{- with .Values.marbleInjector.CABundle }}
+      caBundle: {{ . }}
+      {{- end }}
+      service:
+        name: marble-injector
+        namespace: marblerun
+        path: "/mutate"
+    rules:
+    - operations: ["CREATE"]
+      apiGroups: [""]
+      apiVersions: ["v1"]
+      resources: ["pods"]
+      scope: "Namespaced"
+    namespaceSelector:
+      matchLabels:
+        marblerun/inject: enabled
+        marblerun/inject-sgx: enabled
+    admissionReviewVersions: ["v1", "v1beta1"]
+    sideEffects: None
+  - name: marble-injector-no-sgx.cluster.local
+    clientConfig:
+      {{- with .Values.marbleInjector.CABundle }}
+      caBundle: {{ . }}
+      {{- end }}
+      service:
+        name: marble-injector
+        namespace: marblerun
+        path: "/mutate-no-sgx"
+    rules:
+    - operations: ["CREATE"]
+      apiGroups: [""]
+      apiVersions: ["v1"]
+      resources: ["pods"]
+      scope: "Namespaced"
+    namespaceSelector:
+      matchLabels:
+        marblerun/inject: enabled
+        marblerun/inject-sgx: disabled
+    admissionReviewVersions: ["v1", "v1beta1"]
+    sideEffects: None
+{{ end }}

@@ -1,0 +1,17 @@
+{{ if .Values.dcap }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coordinator-dcap-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/part-of: marblerun
+    app.kubernetes.io/version: {{ .Values.global.image.version }}
+    {{ .Values.global.coordinatorComponentLabel }}: dcap-config
+    {{ .Values.global.coordinatorNamespaceLabel }}: {{ .Release.Namespace }}
+    {{- with .Values.global.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+data:
+  sgx_default_qcnl.conf: |
+    PCCS_URL={{ .Values.dcap.pccsUrl }}
+    USE_SECURE_CERT={{ .Values.dcap.useSecureCert }}
+{{ end }}
