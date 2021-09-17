@@ -25,7 +25,7 @@ const webhookName = "marble-injector.marblerun"
 const (
 	helmChartName             = "edgeless/marblerun"
 	helmCoordinatorDeployment = "marblerun-coordinator"
-	helmInjectorDeployment    = "marbler-injector"
+	helmInjectorDeployment    = "marble-injector"
 	helmNamespace             = "marblerun"
 	helmRelease               = "marblerun"
 	helmRepoURI               = "https://helm.edgeless.systems/stable"
