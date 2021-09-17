@@ -36,7 +36,7 @@ func newCheckCmd() *cobra.Command {
 
 // cliCheck if marblerun control-plane deployments are ready to use
 func cliCheck(kubeClient kubernetes.Interface, timeout uint) error {
-	if err := checkDeploymentStatus(kubeClient, "marble-injector", helmNamespace, timeout); err != nil {
+	if err := checkDeploymentStatus(kubeClient, helmInjectorDeployment, helmNamespace, timeout); err != nil {
 		return err
 	}
 
