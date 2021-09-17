@@ -85,24 +85,24 @@ func newInstallCmd() *cobra.Command {
 // cliInstall installs marblerun on the cluster
 func cliInstall(options *installOptions) error {
 	actionConfig := new(action.Configuration)
-	if err := actionConfig.Init(options.settings.RESTClientGetter(), "marblerun", os.Getenv("HELM_DRIVER"), debug); err != nil {
+	if err := actionConfig.Init(options.settings.RESTClientGetter(), helmNamespace, os.Getenv("HELM_DRIVER"), debug); err != nil {
 		return err
 	}
 
 	// create helm installer
 	installer := action.NewInstall(actionConfig)
 	installer.CreateNamespace = true
-	installer.Namespace = "marblerun"
-	installer.ReleaseName = "marblerun"
+	installer.Namespace = helmNamespace
+	installer.ReleaseName = helmRelease
 	installer.ChartPathOptions.Version = options.version
 
 	if options.chartPath == "" {
 		// No chart was specified -> add or update edgeless helm repo
-		err := getRepo("edgeless", "https://helm.edgeless.systems/stable", options.settings)
+		err := getRepo(helmRepoName, helmRepoURI, options.settings)
 		if err != nil {
 			return err
 		}
-		options.chartPath, err = installer.ChartPathOptions.LocateChart("edgeless/marblerun", options.settings)
+		options.chartPath, err = installer.ChartPathOptions.LocateChart(helmChartName, options.settings)
 		if err != nil {
 			return err
 		}
@@ -270,7 +270,7 @@ func getRepo(name string, url string, settings *cli.EnvSettings) error {
 // installWebhook enables a mutating admission webhook to allow automatic injection of values into pods
 func installWebhook(kubeClient kubernetes.Interface) ([]string, error) {
 	// verify marblerun namespace exists, if not create it
-	if err := verifyNamespace("marblerun", kubeClient); err != nil {
+	if err := verifyNamespace(helmNamespace, kubeClient); err != nil {
 		return nil, err
 	}
 
@@ -316,7 +316,7 @@ func createSecret(privKey *rsa.PrivateKey, crt []byte, kubeClient kubernetes.Int
 	newSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "marble-injector-webhook-certs",
-			Namespace: "marblerun",
+			Namespace: helmNamespace,
 		},
 		Data: map[string][]byte{
 			"cert.pem": crt,
@@ -324,7 +324,7 @@ func createSecret(privKey *rsa.PrivateKey, crt []byte, kubeClient kubernetes.Int
 		},
 	}
 
-	_, err := kubeClient.CoreV1().Secrets("marblerun").Create(context.TODO(), newSecret, metav1.CreateOptions{})
+	_, err := kubeClient.CoreV1().Secrets(helmNamespace).Create(context.TODO(), newSecret, metav1.CreateOptions{})
 	return err
 }
 

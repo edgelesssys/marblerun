@@ -42,7 +42,7 @@ func getCoordinatorVersion() (string, error) {
 		return "", err
 	}
 
-	coordinatorDeployment, err := kubeClient.AppsV1().Deployments("marblerun").Get(context.TODO(), "marblerun-coordinator", metav1.GetOptions{})
+	coordinatorDeployment, err := kubeClient.AppsV1().Deployments(helmNamespace).Get(context.TODO(), helmCoordinatorDeployment, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}

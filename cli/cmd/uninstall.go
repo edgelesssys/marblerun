@@ -60,19 +60,19 @@ func cliUninstall(settings *cli.EnvSettings, kubeClient kubernetes.Interface) er
 // removeHelmRelease removes kubernetes resources installed using helm
 func removeHelmRelease(settings *cli.EnvSettings) error {
 	actionConfig := new(action.Configuration)
-	if err := actionConfig.Init(settings.RESTClientGetter(), "marblerun", os.Getenv("HELM_DRIVER"), debug); err != nil {
+	if err := actionConfig.Init(settings.RESTClientGetter(), helmNamespace, os.Getenv("HELM_DRIVER"), debug); err != nil {
 		return err
 	}
 
 	uninstallAction := action.NewUninstall(actionConfig)
-	_, err := uninstallAction.Run("marblerun-coordinator")
+	_, err := uninstallAction.Run(helmChartName)
 
 	return err
 }
 
 // cleanupSecrets removes secretes set for the Admission Controller
 func cleanupSecrets(kubeClient kubernetes.Interface) error {
-	return kubeClient.CoreV1().Secrets("marblerun").Delete(context.TODO(), "marble-injector-webhook-certs", metav1.DeleteOptions{})
+	return kubeClient.CoreV1().Secrets(helmNamespace).Delete(context.TODO(), "marble-injector-webhook-certs", metav1.DeleteOptions{})
 }
 
 // cleanupCSR removes a potentially leftover CSR from the Admission Controller
