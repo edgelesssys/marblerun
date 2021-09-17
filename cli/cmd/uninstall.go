@@ -65,7 +65,7 @@ func removeHelmRelease(settings *cli.EnvSettings) error {
 	}
 
 	uninstallAction := action.NewUninstall(actionConfig)
-	_, err := uninstallAction.Run(helmChartName)
+	_, err := uninstallAction.Run(helmRelease)
 
 	return err
 }
