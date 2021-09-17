@@ -21,6 +21,17 @@ import (
 
 const webhookName = "marble-injector.marblerun"
 
+// helm constants
+const (
+	helmChartName             = "edgeless/marblerun"
+	helmCoordinatorDeployment = "marblerun-coordinator"
+	helmInjectorDeployment    = "marble-injector"
+	helmNamespace             = "marblerun"
+	helmRelease               = "marblerun"
+	helmRepoURI               = "https://helm.edgeless.systems/stable"
+	helmRepoName              = "edgeless"
+)
+
 const promptForChanges = "Do you want to automatically apply the suggested changes [y/n]? "
 
 var eraConfig string

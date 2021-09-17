@@ -31,7 +31,7 @@ func TestCreateSecret(t *testing.T) {
 
 	newNamespace1 := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "marblerun",
+			Name: helmNamespace,
 		},
 	}
 	_, err = testClient.CoreV1().Namespaces().Create(context.TODO(), newNamespace1, metav1.CreateOptions{})
@@ -39,7 +39,7 @@ func TestCreateSecret(t *testing.T) {
 
 	err = createSecret(testKey, crt, testClient)
 	require.NoError(err)
-	_, err = testClient.CoreV1().Secrets("marblerun").Get(context.TODO(), "marble-injector-webhook-certs", metav1.GetOptions{})
+	_, err = testClient.CoreV1().Secrets(helmNamespace).Get(context.TODO(), "marble-injector-webhook-certs", metav1.GetOptions{})
 	require.NoError(err)
 
 	// we should get an error since the secret was already created in the previous step

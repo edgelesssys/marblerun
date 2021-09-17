@@ -6,7 +6,7 @@ keywords:
 - service-mesh
 - confidential-computing
 kubeVersion: ">=1.13.0-0"
-name: marblerun-coordinator
+name: marblerun
 sources:
 - https://github.com/edgelesssys/marblerun
 version: 0.5.0
@@ -18,4 +18,4 @@ icon: https://raw.githubusercontent.com/edgelesssys/helm/main/marblerun_icon.svg
 annotations:
   "artifacthub.io/links": |
     - name: Chart Source
-      url: https://github.com/edgelesssys/helm
+      url: https://github.com/edgelesssys/marblerun/tree/master/charts
