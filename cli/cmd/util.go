@@ -21,6 +21,8 @@ import (
 
 const webhookName = "marble-injector.marblerun"
 
+const API_TEST = "Test"
+
 const promptForChanges = "Do you want to automatically apply the suggested changes [y/n]? "
 
 var eraConfig string
