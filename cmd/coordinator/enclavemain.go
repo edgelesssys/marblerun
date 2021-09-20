@@ -15,6 +15,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/quote/ertvalidator"
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
 	"github.com/edgelesssys/marblerun/coordinator/seal"
+	"github.com/edgelesssys/marblerun/coordinator/ttime"
 	"github.com/edgelesssys/marblerun/util"
 )
 
