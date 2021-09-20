@@ -11,18 +11,15 @@ import (
 	"crypto/rand"
 	"net"
 	"testing"
-	"time"
 
 	"github.com/cloudflare/roughtime/config"
 	"github.com/cloudflare/roughtime/mjd"
 	"github.com/cloudflare/roughtime/protocol"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRoughtime(t *testing.T) {
 	require := require.New(t)
-	assert := assert.New(t)
 
 	// Create mock server.
 	server, configs, err := NewRoughtimeMockServer("127.0.0.1:2002")
@@ -36,16 +33,8 @@ func TestRoughtime(t *testing.T) {
 	tt := TrustedTime{servers: configs}
 
 	// Obtain time.
-	rt, err := tt.Roughtime()
+	_, err = tt.Roughtime()
 	require.NoError(err)
-
-	// Compare times. Obviously, this is a bidirectional test that heavily
-	// depends on the correctness of testing hardware's local time.
-	// TODO(katexochen): Maybe remove this later.
-	t1 := time.Now()
-	t0, radius := rt.Now()
-	diff := t1.Sub(t0)
-	assert.LessOrEqual(diff, radius)
 }
 
 func TestNewTime(t *testing.T) {

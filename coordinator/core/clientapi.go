@@ -68,6 +68,9 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 	}
 
 	c.time = ttime.NewTime(mnf.TimeServers, c.zaplogger)
+	if _, ok := c.time.(ttime.TrustedTime); !ok {
+		c.zaplogger.Warn("No trusted time source specified. Proceeding with untrusted host time.")
+	}
 
 	// Generate shared secrets specified in manifest
 	secrets, err := c.generateSecrets(ctx, mnf.Secrets, uuid.Nil, marbleRootCert, intermediatePrivK)

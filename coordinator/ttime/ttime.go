@@ -19,6 +19,12 @@ type Time interface {
 	Now() time.Time
 }
 
+// TimeUser is a type that uses a Time. A time user offers
+// the possibility to set the time.
+type TimeUser interface {
+	SetTime(Time)
+}
+
 // NewTime returns a trusted or untrusted time, based on
 // the servers you handed over.
 func NewTime(servers []config.Server, logger *zap.Logger) Time {
@@ -51,7 +57,7 @@ func (t TrustedTime) Now() time.Time {
 	rt, err := t.Roughtime()
 	if err != nil {
 		if t.zaplogger != nil {
-			t.zaplogger.Error("error getting Roughtime", zap.Error(err))
+			t.zaplogger.Error("could not get a trusted time", zap.Error(err))
 		}
 		return time.Time{}
 	}

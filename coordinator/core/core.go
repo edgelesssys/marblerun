@@ -189,10 +189,15 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 		return nil, err
 	}
 
-	// TODO(katexochen): not sure if this is the right place for this
 	servers, err := c.data.getTimeServers()
-	if err == nil {
+	if err != nil {
+		c.zaplogger.Warn("No trusted time source found. Proceeding with untrusted host time.")
+	} else {
 		c.time = ttime.NewTime(servers, c.zaplogger)
+		// set time of sealer, if sealer is a TimeUser
+		if _, ok := sealer.(ttime.TimeUser); ok {
+			sealer.(ttime.TimeUser).SetTime(c.time)
+		}
 	}
 
 	rootCert, err := c.data.getCertificate(sKCoordinatorRootCert)

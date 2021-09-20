@@ -13,9 +13,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/edgelesssys/ego/ecrypto"
+	"github.com/edgelesssys/marblerun/coordinator/ttime"
 )
 
 // SealedDataFname contains the file name in which the state is sealed on disk in seal_dir
@@ -38,11 +38,12 @@ type Sealer interface {
 type AESGCMSealer struct {
 	sealDir       string
 	encryptionKey []byte
+	time          ttime.Time
 }
 
 // NewAESGCMSealer creates and initializes a new AESGCMSealer object
-func NewAESGCMSealer(sealDir string) *AESGCMSealer {
-	return &AESGCMSealer{sealDir: sealDir}
+func NewAESGCMSealer(sealDir string, t ttime.Time) *AESGCMSealer {
+	return &AESGCMSealer{sealDir: sealDir, time: t}
 }
 
 // Unseal reads and decrypts stored information from the fs
@@ -123,6 +124,11 @@ func (s *AESGCMSealer) Seal(unencryptedData []byte, toBeEncrypted []byte) error 
 	return nil
 }
 
+// SetTime sets the time of the Sealer.
+func (s *AESGCMSealer) SetTime(t ttime.Time) {
+	s.time = t
+}
+
 func (s *AESGCMSealer) getFname(basename string) string {
 	return filepath.Join(s.sealDir, basename)
 }
@@ -186,7 +192,7 @@ func (s *AESGCMSealer) SetEncryptionKey(encryptionKey []byte) error {
 // backupEncryptionKey creates a backup of an existing seal key
 func (s *AESGCMSealer) backupEncryptionKey() {
 	if sealedKeyData, err := ioutil.ReadFile(s.getFname(SealedKeyFname)); err == nil {
-		t := time.Now() // TODO(katexochen): trusted time?
+		t := s.time.Now()
 		newFileName := s.getFname(SealedKeyFname) + "_" + t.Format("20060102150405") + ".bak"
 		ioutil.WriteFile(newFileName, sealedKeyData, 0600)
 	}

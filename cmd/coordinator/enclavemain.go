@@ -24,7 +24,7 @@ func main() {
 	sealDirPrefix := filepath.Join(filepath.FromSlash("/edg"), "hostfs")
 	sealDir := util.Getenv(config.SealDir, config.SealDirDefault())
 	sealDir = filepath.Join(sealDirPrefix, sealDir)
-	sealer := seal.NewAESGCMSealer(sealDir)
+	sealer := seal.NewAESGCMSealer(sealDir, ttime.UntrustedTime{})
 	recovery := recovery.NewSinglePartyRecovery()
 	run(validator, issuer, sealDir, sealer, recovery)
 }
