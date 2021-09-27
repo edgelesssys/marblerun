@@ -30,7 +30,6 @@ func main() {
 	}
 
 	mux.HandleFunc("/mutate", w.HandleMutate)
-	mux.HandleFunc("/mutate-no-sgx", w.HandleMutateNoSgx)
 
 	s := &http.Server{
 		// Addresse forwarding to 443 should be handled by the marble-injector service object

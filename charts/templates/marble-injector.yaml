@@ -99,31 +99,11 @@ webhooks:
       apiVersions: ["v1"]
       resources: ["pods"]
       scope: "Namespaced"
-    namespaceSelector:
-      matchLabels:
-        marblerun/inject: enabled
-        marblerun/inject-sgx: enabled
-    admissionReviewVersions: ["v1", "v1beta1"]
-    sideEffects: None
-  - name: marble-injector-no-sgx.cluster.local
-    clientConfig:
-      {{- with .Values.marbleInjector.CABundle }}
-      caBundle: {{ . }}
-      {{- end }}
-      service:
-        name: marble-injector
-        namespace: marblerun
-        path: "/mutate-no-sgx"
-    rules:
-    - operations: ["CREATE"]
-      apiGroups: [""]
-      apiVersions: ["v1"]
-      resources: ["pods"]
-      scope: "Namespaced"
-    namespaceSelector:
-      matchLabels:
-        marblerun/inject: enabled
-        marblerun/inject-sgx: disabled
+    objectSelector:
+      matchExpressions:
+        - key: marblerun/marbletype
+          operator: Exists
+          values: []
     admissionReviewVersions: ["v1", "v1beta1"]
     sideEffects: None
 {{ end }}
