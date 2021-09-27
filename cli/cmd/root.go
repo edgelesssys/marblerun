@@ -30,7 +30,6 @@ func init() {
 	rootCmd.AddCommand(newGraphenePrepareCmd())
 	rootCmd.AddCommand(newInstallCmd())
 	rootCmd.AddCommand(newManifestCmd())
-	rootCmd.AddCommand(newNamespaceCmd())
 	rootCmd.AddCommand(newPrecheckCmd())
 	rootCmd.AddCommand(newRecoverCmd())
 	rootCmd.AddCommand(newSecretCmd())

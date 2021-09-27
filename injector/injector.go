@@ -23,6 +23,7 @@ const (
 	envMarbleUUIDFile        = "EDG_MARBLE_UUID_FILE"
 	labelMarbleType          = "marblerun/marbletype"
 	labelMarbleContainer     = "marblerun/marblecontainer"
+	labelResourceInjection   = "marblerun/resource-injection"
 )
 
 // Mutator struct
@@ -43,27 +44,7 @@ func (m *Mutator) HandleMutate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// mutate the request and add sgx tolerations to pod
-	mutatedBody, err := mutate(body, m.CoordAddr, m.DomainName, m.SGXResource, true)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("unable to mutate request: %v", err), http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	w.Write(mutatedBody)
-}
-
-// HandleMutateNoSgx is called when the sgx injection label is not set
-func (m *Mutator) HandleMutateNoSgx(w http.ResponseWriter, r *http.Request) {
-	log.Println("Handling mutate request, omitting sgx injection")
-	body := checkRequest(w, r)
-	if body == nil {
-		// Error was already written to w
-		return
-	}
-
-	// mutate the request and add sgx tolerations to pod
-	mutatedBody, err := mutate(body, m.CoordAddr, m.DomainName, m.SGXResource, false)
+	mutatedBody, err := mutate(body, m.CoordAddr, m.DomainName, m.SGXResource)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("unable to mutate request: %v", err), http.StatusInternalServerError)
 		return
@@ -74,7 +55,7 @@ func (m *Mutator) HandleMutateNoSgx(w http.ResponseWriter, r *http.Request) {
 }
 
 // mutate handles the creation of json patches for pods
-func mutate(body []byte, coordAddr string, domainName string, resourceKey string, injectSgx bool) ([]byte, error) {
+func mutate(body []byte, coordAddr string, domainName string, resourceKey string) ([]byte, error) {
 	admReviewReq := v1.AdmissionReview{}
 	if err := json.Unmarshal(body, &admReviewReq); err != nil {
 		log.Println("Unable to mutate request: invalid admission review")
@@ -110,12 +91,17 @@ func mutate(body []byte, coordAddr string, domainName string, resourceKey string
 	// get marble type from pod labels
 	marbleType, exists := pod.Labels[labelMarbleType]
 	if !exists {
-		// allow pod to start if label does not exist, but dont inject any values
-		return generateResponse(pod, admReviewReq, admReviewResponse, true, fmt.Sprintf("Missing [%s] label, injection skipped", labelMarbleType))
+		// admission request was sent for a pod without marblerun/marbletype label, this should not happen
+		return generateResponse(pod, admReviewReq, admReviewResponse, false, fmt.Sprintf("Error: missing [%s] label, request denied", labelMarbleType))
 	}
 	if len(marbleType) <= 0 {
 		// deny request if the label exists, but is empty
-		return generateResponse(pod, admReviewReq, admReviewResponse, false, fmt.Sprintf("Empty [%s] label, request denied", labelMarbleType))
+		return generateResponse(pod, admReviewReq, admReviewResponse, false, fmt.Sprintf("Error: empty [%s] label, request denied", labelMarbleType))
+	}
+
+	injectSgx := false
+	if pod.Labels[labelResourceInjection] != "disabled" {
+		injectSgx = true
 	}
 
 	// get namespace of pod

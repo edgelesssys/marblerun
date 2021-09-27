@@ -2,6 +2,7 @@ package injector
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -29,7 +30,8 @@ func TestMutatesValidRequest(t *testing.T) {
 					"labels": {
 						"name": "testpod",
 						"marblerun/marbletype": "test",
-						"marblerun/marblecontainer": "marble-test"
+						"marblerun/marblecontainer": "marble-test",
+						"marblerun/resource-injection": "enabled"
 					}
 				},
 				"spec": {
@@ -66,7 +68,7 @@ func TestMutatesValidRequest(t *testing.T) {
 	}`
 
 	// test if patch contains all desired values
-	response, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:2001", "cluster.local", "kubernetes.azure.com/sgx_epc_mem_in_MiB", true)
+	response, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:2001", "cluster.local", "kubernetes.azure.com/sgx_epc_mem_in_MiB")
 	require.NoError(err, "failed to mutate request")
 
 	r := v1.AdmissionReview{}
@@ -86,10 +88,10 @@ func TestMutatesValidRequest(t *testing.T) {
 	assert.Contains(string(r.Response.Patch), `"path":"/spec/containers/0/resources","value":{}}`, "injected resources into the wrong pod")
 
 	// test if patch works without sgx values
-	response, err = mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:2001", "cluster.local", "kubernetes.azure.com/sgx_epc_mem_in_MiB", false)
+	response, err = mutate([]byte(strings.Replace(rawJSON, `"marblerun/resource-injection": "enabled"`, `"marblerun/resource-injection": "disabled"`, -1)), "coordinator-mesh-api.marblerun:2001", "cluster.local", "kubernetes.azure.com/sgx_epc_mem_in_MiB")
 	require.NoError(err, "failed to mutate request")
 	require.NoError(json.Unmarshal(response, &r), "failed to unmarshal response with error %s", err)
-	assert.NotContains(string(r.Response.Patch), `{"op":"add","path":"/spec/tolerations","value":{"key":"kubernetes.azure.com/sgx_epc_mem_in_MiB"}}`, "patch contained sgx tolerations, but tolerations were not supposed to be set")
+	assert.NotContains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/1/resources","value":{"limits":{"kubernetes.azure.com/sgx_epc_mem_in_MiB":"10"}}`, "patch contained sgx resources, but resources were not supposed to be set")
 }
 
 func TestPreSetValues(t *testing.T) {
@@ -164,7 +166,7 @@ func TestPreSetValues(t *testing.T) {
 		}
 	}`
 
-	response, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:2001", "cluster.local", "kubernetes.azure.com/sgx_epc_mem_in_MiB", true)
+	response, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:2001", "cluster.local", "kubernetes.azure.com/sgx_epc_mem_in_MiB")
 	require.NoError(err, "failed to mutate request")
 
 	r := v1.AdmissionReview{}
@@ -219,13 +221,12 @@ func TestRejectsUnsetMarbletype(t *testing.T) {
 		}
 	}`
 
-	response, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:2001", "cluster.local", "kubernetes.azure.com/sgx_epc_mem_in_MiB", true)
+	response, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:2001", "cluster.local", "kubernetes.azure.com/sgx_epc_mem_in_MiB")
 	require.NoError(err, "failed to mutate request")
 
 	r := v1.AdmissionReview{}
 	require.NoError(json.Unmarshal(response, &r), "failed to unmarshal response with error %s", err)
-
-	assert.Equal("Missing [marblerun/marbletype] label, injection skipped", r.Response.Result.Message, "failed to skip injection on unset marbletype")
+	assert.False(r.Response.Allowed)
 }
 
 func TestErrorsOnInvalid(t *testing.T) {
@@ -233,7 +234,7 @@ func TestErrorsOnInvalid(t *testing.T) {
 
 	rawJSON := `This should return Error`
 
-	_, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:2001", "cluster.local", "kubernetes.azure.com/sgx_epc_mem_in_MiB", true)
+	_, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:2001", "cluster.local", "kubernetes.azure.com/sgx_epc_mem_in_MiB")
 	require.Error(err, "did not fail on invalid request")
 }
 
@@ -247,6 +248,6 @@ func TestErrorsOnInvalidPod(t *testing.T) {
 			"object": "invalid"
 		}
 	}`
-	_, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:2001", "cluster.local", "kubernetes.azure.com/sgx_epc_mem_in_MiB", true)
+	_, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:2001", "cluster.local", "kubernetes.azure.com/sgx_epc_mem_in_MiB")
 	require.Error(err, "did not fail when sending invalid request")
 }
