@@ -75,7 +75,7 @@ func newInstallCmd() *cobra.Command {
 	cmd.Flags().StringVar(&options.pccsUrl, "dcap-pccs-url", "https://localhost:8081/sgx/certification/v3/", "Provisioning Certificate Caching Service (PCCS) server address")
 	cmd.Flags().StringVar(&options.useSecureCert, "dcap-secure-cert", "TRUE", "To accept insecure HTTPS certificate from the PCCS, set this option to FALSE")
 	cmd.Flags().BoolVar(&options.simulation, "simulation", false, "Set marblerun to start in simulation mode")
-	cmd.Flags().BoolVar(&options.disableInjection, "disable-auto-injection", false, "Disable automatic injection of selected namespaces")
+	cmd.Flags().BoolVar(&options.disableInjection, "disable-auto-injection", false, "Install MarbleRun without auto-injection webhook")
 	cmd.Flags().IntVar(&options.meshPort, "mesh-server-port", 2001, "Set the mesh server port. Needs to be configured to the same port as in the data-plane marbles")
 	cmd.Flags().IntVar(&options.clientPort, "client-server-port", 4433, "Set the client server port. Needs to be configured to the same port as in your client tool stack")
 
