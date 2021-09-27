@@ -48,7 +48,7 @@ func cliCertificateChain(host string, output string, configFilename string, inse
 		return err
 	}
 
-	fmt.Println("Certificate chain writen to", output)
+	fmt.Println("Certificate chain written to", output)
 
 	return nil
 }
