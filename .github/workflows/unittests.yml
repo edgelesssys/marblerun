@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Test
-        run: ertgo test -race ./...
+        run: ertgo test -race -count=3 ./...
 
       - name: Setup
         run: mkdir build
