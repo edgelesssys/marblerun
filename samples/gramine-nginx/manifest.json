@@ -11,7 +11,7 @@
                 "Argv": [
                     "./nginx",
                     "-c",
-                    "conf/nginx-graphene.conf"
+                    "conf/nginx-gramine.conf"
                 ],
                 "Files": {
                     "/dev/attestation/protected_files_key": "{{ hex .Secrets.ProtectedFilesKey }}",
