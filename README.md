@@ -43,20 +43,22 @@ More are coming soon.
 See the [Getting Started Guide][getting-started] to set up a distributed confidential-computing app in a few steps.
 See the [documentation][docs] for details.
 
+## Community & help
+
+* For user help, questions or queries about EdgelessDB please use our public [Discord channel](https://discord.com/invite/rH8QTH56JN) or file an [issue](https://github.com/edgelesssys/marblerun/issues).
+* If you see an error message or run into an issue, please make sure to create a [bug report](https://github.com/edgelesssys/marblerun/issues).
+* Get the latest news and announcements on [Twitter](https://twitter.com/EdgelessSystems), [LinkedIn](https://www.linkedin.com/company/edgeless-systems/) or sign up for our monthly [newsletter](http://eepurl.com/hmjo3H).
+* Visit our [blog](https://blog.edgeless.systems/) for technical deep-dives and tutorials.
+
 ## Contributing
 
-To report a problem or suggest a new feature, file a GitHub issue.
-
-To report a security issue, write to security@edgeless.systems
+Read [`CONTRIBUTING.md`](CONTRIBUTING.md) for information on issue reporting, code guidelines, and our PR process.
 
 [`BUILD.md`](BUILD.md) includes general information on how to work in this repo.
 
 Pull requests are welcome! You need to agree to our [Contributor License Agreement](https://cla-assistant.io/edgelesssys/marblerun).
 
-## Get involved
-
-* Follow [@EdgelessSystems][twitter] on Twitter
-* Chat with us on [Discord][discord]
+To report a security issue, write to security@edgeless.systems.
 
 ## Examples
 
