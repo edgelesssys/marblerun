@@ -1,12 +1,10 @@
-GRAPHENEDIR?=$(HOME)/graphene
-
 all: sign
 .PHONY: clean all
 
 
 sign: hello.manifest hello premain-libos
-	graphene-sgx-sign -output hello.manifest.sgx --manifest hello.manifest --key $(GRAPHENEDIR)/Pal/src/host/Linux-SGX/signer/enclave-key.pem
-	graphene-sgx-get-token -sig hello.sig -output hello.token
+	gramine-sgx-sign --output hello.manifest.sgx --manifest hello.manifest --key enclave-key.pem
+	gramine-sgx-get-token --sig hello.sig --output hello.token
 
 
 clean:
@@ -18,7 +16,7 @@ hello: hello.c
 
 
 hello.manifest: hello.manifest.template
-	graphene-manifest $< > $@
+	gramine-manifest $< > $@
 
 
 premain-libos:
@@ -26,4 +24,4 @@ premain-libos:
 	chmod u+x premain-libos
 
 run:
-	graphene-sgx hello
+	gramine-sgx hello
