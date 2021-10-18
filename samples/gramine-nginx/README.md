@@ -1,7 +1,7 @@
 # Gramine nginx example
 This example is a slightly modified variant of the [Gramine nginx example](https://github.com/gramineproject/gramine/tree/master/CI-Examples/nginx). These changes are required to run it with MarbleRun.
 
-*Prerequisite*: Gramine is installed on [release v1.0](https://github.com/gramineproject/gramine/releases/tag/v1.0) and the original nginx example is working. You will need hardware with Intel SGX support.
+*Prerequisite*: Gramine is installed on [release v1.0](https://github.com/gramineproject/gramine/releases/tag/v1.0) and the original nginx example is working. You will need hardware with Intel SGX support, and the Coordinator must not run in simulation mode.
 
 To marbleize the example we edited [nginx.manifest.template](nginx.manifest.template). See comments starting with `MARBLERUN` for explanations of the required changes.
 

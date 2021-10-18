@@ -31,13 +31,15 @@ spec:
     spec:
       serviceAccountName: redis
       containers:
-      - image: ghcr.io/edgelesssys/redis-graphene-marble:latest
+      - image: ghcr.io/edgelesssys/redis-gramine-marble:latest
         imagePullPolicy: {{ .Values.imagePullPolicy }}
         env:
         - name: SGX_AESM_ADDR
           value: "1"
         - name: EDG_MARBLE_UUID_FILE
           value: "uuid"
+        - name: EDG_MARBLE_TYPE
+          value: "redis-main"
         name: redis
         securityContext:
           privileged: true
@@ -80,13 +82,15 @@ spec:
     spec:
       serviceAccountName: redis
       containers:
-      - image: ghcr.io/edgelesssys/redis-graphene-marble:latest
+      - image: ghcr.io/edgelesssys/redis-gramine-marble:latest
         imagePullPolicy: {{ .Values.imagePullPolicy }}
         env:
         - name: SGX_AESM_ADDR
           value: "1"
         - name: EDG_MARBLE_UUID_FILE
           value: "uuid"
+        - name: EDG_MARBLE_TYPE
+          value: "redis-replica"
         name: redis
         securityContext:
           privileged: true
@@ -105,7 +109,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: redis
+  name: redis-main
   namespace: redis
 spec:
   type: ClusterIP

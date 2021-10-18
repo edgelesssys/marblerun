@@ -7,8 +7,6 @@ loader.preload = "file:{{ gramine.libos }}"
 loader.log_level = "{{ log_level }}"
 loader.env.LD_LIBRARY_PATH = "/lib:{{ arch_libdir }}:/usr/local/lib:/usr/lib:/usr/{{ arch_libdir }}"
 
-loader.insecure__use_cmdline_argv = true
-
 sys.enable_sigterm_injection = true
 
 fs.mount.lib.type = "chroot"
