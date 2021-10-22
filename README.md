@@ -33,7 +33,7 @@ To keep things simple, MarbleRun issues one concise remote attestation statement
 ### Supported runtimes
 MarbleRun supports services built with one of the following frameworks:
 * [EGo][ego]
-* [Graphene][graphene]
+* [Gramine][gramine]
 * [Edgeless RT][edgelessrt]
 
 More are coming soon.
@@ -66,15 +66,15 @@ We provide basic examples on how to build confidential apps with MarbleRun:
 
 * See [helloworld](samples/helloworld) for an example in Go
 * See [helloc++](samples/helloc++) for an example in C++
-* See [graphene-hello](samples/graphene-hello) for an example using Graphene
+* See [gramine-hello](samples/gramine-hello) for an example using Gramine
 * See [occlum-hello](samples/occlum-hello) for an example using Occlum
 
 ### Advanced
 
 In case you want to see how you can integrate popular existing solutions with MarbleRun, we provide more advanced examples:
 
-* See [graphene-nginx](samples/graphene-nginx) for an example of converting an existing Graphene application to a Marble
-* See [graphene-redis](samples/graphene-redis) for a distributed Redis example using Graphene
+* See [gramine-nginx](samples/gramine-nginx) for an example of converting an existing Gramine application to a Marble
+* See [gramine-redis](samples/gramine-redis) for a distributed Redis example using Gramine
 
 ### Confidential emoji voting
 
@@ -92,7 +92,7 @@ The popular [Linkerd][linkerd] service mesh uses the simple and scalable *emojiv
 [go-pkg-badge]: https://pkg.go.dev/badge/github.com/edgelesssys/marblerun
 [go-report-card]: https://goreportcard.com/report/github.com/edgelesssys/marblerun
 [go-report-card-badge]: https://goreportcard.com/badge/github.com/edgelesssys/marblerun
-[graphene]: https://github.com/oscarlab/graphene
+[gramine]: https://github.com/gramineproject/gramine
 [license-badge]: https://img.shields.io/github/license/edgelesssys/marblerun
 [linkerd]: https://linkerd.io
 [marblerunsh]: https://marblerun.sh

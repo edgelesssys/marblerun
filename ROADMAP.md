@@ -15,7 +15,7 @@
 * Trusted time via Roughtime
 * EdgelessDB storage-backend plugin
 * Microsoft Azure Attestation integration
-* Graphene TTLS support
+* Gramine TTLS support
 
 ## Long-term
 
