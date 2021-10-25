@@ -191,9 +191,9 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 	if err != nil {
 		return nil, err
 	}
-	c.quote = c.generateQuote(rootCert.Raw)
+	c.quote, err = c.generateQuote(rootCert.Raw)
 
-	return c, nil
+	return c, err
 }
 
 // NewCoreWithMocks creates a new core object with quote and seal mocks for testing.
@@ -325,17 +325,20 @@ func generateCert(dnsNames []string, commonName string, privk *ecdsa.PrivateKey,
 	return cert, privk, nil
 }
 
-func (c *Core) generateQuote(cert []byte) []byte {
+func (c *Core) generateQuote(cert []byte) ([]byte, error) {
 	c.zaplogger.Info("generating quote")
 	quote, err := c.qi.Issue(cert)
 	if err != nil {
-		c.zaplogger.Warn("Failed to get quote. Proceeding in simulation mode.")
-		// If we run in SimulationMode we get an error here
-		// For testing purpose we do not want to just fail here
-		// Instead we store an empty quote that will make it transparent to the client that the integrity of the mesh can not be guaranteed.
-		return []byte{}
+		if err.Error() == "OE_UNSUPPORTED" {
+			c.zaplogger.Warn("Failed to get quote. Proceeding in simulation mode.", zap.Error(err))
+			// If we run in SimulationMode we get OE_UNSUPPORTED error here
+			// For testing purpose we do not want to just fail here
+			// Instead we store an empty quote that will make it transparent to the client that the integrity of the mesh can not be guaranteed.
+			return []byte{}, nil
+		}
+		return nil, fmt.Errorf("failed to get quote: %v", err)
 	}
-	return quote
+	return quote, nil
 }
 
 func getClientTLSCert(ctx context.Context) *x509.Certificate {
