@@ -33,7 +33,7 @@ const longDescription = `Modifies a Gramine manifest for use with MarbleRun.
 This command tries to automatically adjust the required parameters in an already existing Gramine manifest template, simplifying the migration of your existing Gramine application to MarbleRun.
 Please note that you still need to manually create a MarbleRun manifest.
 
-For more information about the requirements and  changes performed, consult the documentation: https://edglss.cc/doc-mr-graphene
+For more information about the requirements and  changes performed, consult the documentation: https://edglss.cc/doc-mr-gramine
 
 The parameter of this command is the path of the Gramine manifest template you want to modify.
 `
