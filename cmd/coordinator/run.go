@@ -81,7 +81,7 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer 
 	}
 	core, err := core.NewCore(dnsNames, validator, issuer, sealer, recovery, zapLogger, promFactoryPtr)
 	if err != nil {
-		panic(err)
+		zapLogger.Fatal("Cannot create Coordinator core", zap.Error(err))
 	}
 
 	// start client server
@@ -89,7 +89,7 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer 
 	mux := server.CreateServeMux(core, promFactoryPtr)
 	clientServerTLSConfig, err := core.GetTLSConfig()
 	if err != nil {
-		panic(err)
+		zapLogger.Fatal("Cannot create TLS credentials", zap.Error(err))
 	}
 	go server.RunClientServer(mux, clientServerAddr, clientServerTLSConfig, zapLogger)
 
@@ -102,7 +102,7 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer 
 		select {
 		case err := <-errChan:
 			if err != nil {
-				panic(err)
+				zapLogger.Fatal("Error during execution", zap.Error(err))
 			}
 			return
 		case grpcAddr := <-addrChan:
