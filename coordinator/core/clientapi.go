@@ -542,9 +542,9 @@ func (c *Core) performRecovery(encryptionKey []byte) error {
 	if err != nil {
 		return err
 	}
-	c.quote = c.generateQuote(rootCert.Raw)
+	c.quote, err = c.generateQuote(rootCert.Raw)
 
-	return nil
+	return err
 }
 
 // templateDryRun performs a dry run for Files and Env declarations in a manifest

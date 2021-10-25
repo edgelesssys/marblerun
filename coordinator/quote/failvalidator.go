@@ -34,5 +34,5 @@ func NewFailIssuer() *FailIssuer {
 
 // Issue implements the Issuer interface
 func (m *FailIssuer) Issue(cert []byte) ([]byte, error) {
-	return nil, fmt.Errorf("cannot issue quote")
+	return nil, fmt.Errorf("OE_UNSUPPORTED")
 }
