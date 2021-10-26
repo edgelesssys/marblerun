@@ -336,7 +336,7 @@ func (c *Core) generateQuote(cert []byte) ([]byte, error) {
 			// Instead we store an empty quote that will make it transparent to the client that the integrity of the mesh can not be guaranteed.
 			return []byte{}, nil
 		}
-		return nil, fmt.Errorf("failed to get quote: %v", err)
+		return nil, QuoteError{err}
 	}
 	return quote, nil
 }
@@ -637,4 +637,12 @@ func (c *Core) setCAData(dnsNames []string, tx store.Transaction) error {
 	}
 
 	return nil
+}
+
+type QuoteError struct {
+	err error
+}
+
+func (e QuoteError) Error() string {
+	return fmt.Sprintf("failed to get quote: %v", e.err)
 }
