@@ -30,13 +30,14 @@ var Version = "0.0.0" // Don't touch! Automatically injected at build-time.
 var GitCommit = "0000000000000000000000000000000000000000" // Don't touch! Automatically injected at build-time.
 
 func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer seal.Sealer, recovery recovery.Recovery) {
+	devModeStr := util.Getenv(config.DevMode, config.DevModeDefault)
+	devMode := devModeStr == "1"
+
 	// Setup logging with Zap Logger
+	// Development Logger shows a stacktrace for warnings & errors, Production Logger only for errors
 	var zapLogger *zap.Logger
 	var err error
-
-	// Development Logger shows a stacktrace for warnings & errors, Production Logger only for errors
-	devMode := util.Getenv(config.DevMode, config.DevModeDefault)
-	if devMode == "1" {
+	if devMode {
 		zapLogger, err = zap.NewDevelopment()
 	} else {
 		zapLogger, err = zap.NewProduction()
@@ -79,15 +80,17 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer 
 	if err := os.MkdirAll(sealDir, 0700); err != nil {
 		zapLogger.Fatal("Cannot create or access sealdir. Please check the permissions for the specified path.", zap.Error(err))
 	}
-	core, err := core.NewCore(dnsNames, validator, issuer, sealer, recovery, zapLogger, promFactoryPtr)
+	co, err := core.NewCore(dnsNames, validator, issuer, sealer, recovery, zapLogger, promFactoryPtr)
 	if err != nil {
-		zapLogger.Fatal("Cannot create Coordinator core", zap.Error(err))
+		if _, ok := err.(core.QuoteError); !ok || !devMode {
+			zapLogger.Fatal("Cannot create Coordinator core", zap.Error(err))
+		}
 	}
 
 	// start client server
 	zapLogger.Info("starting the client server")
-	mux := server.CreateServeMux(core, promFactoryPtr)
-	clientServerTLSConfig, err := core.GetTLSConfig()
+	mux := server.CreateServeMux(co, promFactoryPtr)
+	clientServerTLSConfig, err := co.GetTLSConfig()
 	if err != nil {
 		zapLogger.Fatal("Cannot create TLS credentials", zap.Error(err))
 	}
@@ -97,7 +100,7 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer 
 	zapLogger.Info("starting the marble server")
 	addrChan := make(chan string)
 	errChan := make(chan error)
-	go server.RunMarbleServer(core, meshServerAddr, addrChan, errChan, zapLogger, promRegistry)
+	go server.RunMarbleServer(co, meshServerAddr, addrChan, errChan, zapLogger, promRegistry)
 	for {
 		select {
 		case err := <-errChan:
