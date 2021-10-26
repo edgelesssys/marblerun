@@ -41,21 +41,20 @@ func newManifestVerify() *cobra.Command {
 
 // getSignatureFromString checks if a string is a file or a valid signature
 func getSignatureFromString(manifest string) (string, error) {
-	_, err := os.Stat(manifest)
-	if err != nil {
-		if os.IsNotExist(err) {
-			// command was called with a string that is not an existing file
-			// check if the string could be a valid signature
-			if len(manifest) != hex.EncodedLen(sha256.Size) {
-				return "", fmt.Errorf("%s is not a file and of invalid length to be a signature (needs to be 32 bytes)", manifest)
-			}
-			if _, err := hex.DecodeString(manifest); err != nil {
-				return "", fmt.Errorf("%s is not a file and not a valid signature (needs to be in hex format)", manifest)
-			}
-			return manifest, nil
-		} else {
+	if _, err := os.Stat(manifest); err != nil {
+		if !os.IsNotExist(err) {
 			return "", err
 		}
+
+		// command was called with a string that is not an existing file
+		// check if the string could be a valid signature
+		if len(manifest) != hex.EncodedLen(sha256.Size) {
+			return "", fmt.Errorf("%s is not a file and of invalid length to be a signature (needs to be 32 bytes)", manifest)
+		}
+		if _, err := hex.DecodeString(manifest); err != nil {
+			return "", fmt.Errorf("%s is not a file and not a valid signature (needs to be in hex format)", manifest)
+		}
+		return manifest, nil
 	}
 
 	// manifest is an existing file -> return the signature of the file
