@@ -16,11 +16,16 @@ import (
 
 const someManifest = `
 libos.entrypoint = "myapplication"
-sgx.remote_attestation = 0
+sgx.remote_attestation = false
 # Some comment here in between
 # This should not match: sgx.enclave_size - 2
 # This should also not match: sgx.enclave_size = 24M
 sgx.enclave_size = "128M"
+sgx.trusted_files = [
+	"file:/usr/favorite.file",
+	"file:/usr/lib/important.so"
+]
+sgx.allowed_files.unimportant = "file:/usr/not_that_important.txt"
 `
 
 func TestCalculateChanges(t *testing.T) {
@@ -75,6 +80,7 @@ func TestParseTreeForChanges(t *testing.T) {
 	assert.GreaterOrEqual(changes["sgx.thread_num"], 16)
 	require.NoError(v.UnmarshalText([]byte(changes["sgx.enclave_size"].(string))))
 	assert.GreaterOrEqual(v.GBytes(), 1.00)
+	assert.Equal([]interface{}{"file:/usr/favorite.file", "file:/usr/lib/important.so", "file:premain-libos"}, changes["sgx.trusted_files"])
 }
 
 func TestAppendAndReplace(t *testing.T) {
@@ -91,11 +97,14 @@ func TestAppendAndReplace(t *testing.T) {
 	original["sgx.remote_attestation"] = tomlTree.Get("sgx.remote_attestation")
 	original["sgx.enclave_size"] = tomlTree.Get("sgx.enclave_size")
 	original["sgx.thread_num"] = tomlTree.Get("sgx.thread_num")
+	original["sgx.trusted_files"] = tomlTree.Get("sgx.trusted_files")
 
 	// Set some changes we want to perform
-	changes["sgx.remote_attestation"] = 1
+	changes["sgx.remote_attestation"] = true
 	changes["sgx.enclave_size"] = "1024M"
 	changes["sgx.thread_num"] = 16
+	changedFiles := []interface{}{"file:/usr/favorite.file", "file:/usr/lib/important.so", "file:premain-libos"}
+	changes["sgx.trusted_files"] = changedFiles
 
 	// Calculate the differences
 	diffs := calculateChanges(original, changes)
@@ -109,11 +118,13 @@ func TestAppendAndReplace(t *testing.T) {
 	newTomlTree, err := toml.Load(string(someNewManifest))
 	assert.NoError(err)
 	newRemoteAttestation := newTomlTree.Get("sgx.remote_attestation")
-	assert.EqualValues(1, newRemoteAttestation.(int64))
+	assert.EqualValues(true, newRemoteAttestation.(bool))
 	newEnclaveSize := newTomlTree.Get("sgx.enclave_size")
 	assert.EqualValues("1024M", newEnclaveSize.(string))
 	newThreadNum := newTomlTree.Get("sgx.thread_num")
 	assert.EqualValues(16, newThreadNum.(int64))
+	newTrustedFiles := newTomlTree.Get("sgx.trusted_files")
+	assert.EqualValues(changedFiles, newTrustedFiles)
 }
 
 func TestDownloadPremain(t *testing.T) {

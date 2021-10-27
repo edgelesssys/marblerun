@@ -27,7 +27,7 @@ func init() {
 	rootCmd.AddCommand(newCertificateCmd())
 	rootCmd.AddCommand(newCheckCmd())
 	rootCmd.AddCommand(newCompletionCmd())
-	rootCmd.AddCommand(newGraphenePrepareCmd())
+	rootCmd.AddCommand(newGraminePrepareCmd())
 	rootCmd.AddCommand(newInstallCmd())
 	rootCmd.AddCommand(newManifestCmd())
 	rootCmd.AddCommand(newPrecheckCmd())

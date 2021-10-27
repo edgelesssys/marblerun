@@ -22,7 +22,7 @@ import (
 // libOS constants for specific checks.
 // Use 1000 as a starting point for distinction
 const (
-	graphene = iota + 1000
+	gramine = iota + 1000
 	occlum
 )
 
@@ -41,11 +41,11 @@ func main() {
 	var service string
 	// Use different execution flows depending on libOS
 	switch libOS {
-	case graphene:
-		log.Println("detected libOS: Graphene")
+	case gramine:
+		log.Println("detected libOS: Gramine")
 
-		// Graphene: Get service to launch before MarbleRun's premain
-		service, err = prepareGraphene(hostfs)
+		// Gramine: Get service to launch before MarbleRun's premain
+		service, err = prepareGramine(hostfs)
 		if err != nil {
 			panic(err)
 		}
@@ -85,33 +85,22 @@ func detectLibOS() (int, error) {
 		return occlum, nil
 	}
 
-	// Graphene detection
+	// Gramine detection
 	// This looks like a general Linux kernel name, making it harder to detect... But it's unlikely someone is running SGX code on Linux 3.10.0.
-	// Taken from: https://github.com/oscarlab/graphene/blob/master/LibOS/shim/src/sys/shim_uname.c
+	// Taken from: https://github.com/gramineproject/gramine/blob/master/LibOS/shim/src/sys/shim_uname.c
 	if sysname == "Linux" && nodename == "localhost" && release == "3.10.0" && version == "1" && machine == "x86_64" {
-		return graphene, nil
+		return gramine, nil
 	}
 
 	return 0, errors.New("cannot detect libOS")
 }
 
-func prepareGraphene(hostfs afero.Fs) (string, error) {
-	// Filter env vars
-	// TODO: INSECURE! This is known, but for a proper solution we have to wait for environment variable filtering on the level of graphene.
-	// See: https://github.com/edgelesssys/marblerun/issues/158 & https://github.com/oscarlab/graphene/issues/2356
-	for _, env := range os.Environ() {
-		if !strings.HasPrefix(env, "EDG_") && !strings.HasPrefix(env, "LD_LIBRARY_PATH=") {
-			if err := os.Unsetenv(strings.SplitN(env, "=", 2)[0]); err != nil {
-				return "", err
-			}
-		}
-	}
-
+func prepareGramine(hostfs afero.Fs) (string, error) {
 	// Save the passed argument which is our service to spawn
 	service := os.Args[0]
 
 	// Run MarbleRun premain
-	if err := marblePremain.PreMainEx(marblePremain.GrapheneQuoteIssuer{}, marblePremain.GrapheneActivate, hostfs, hostfs); err != nil {
+	if err := marblePremain.PreMainEx(marblePremain.GramineQuoteIssuer{}, marblePremain.GramineActivate, hostfs, hostfs); err != nil {
 		return "", err
 	}
 

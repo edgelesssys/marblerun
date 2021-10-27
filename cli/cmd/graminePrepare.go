@@ -24,35 +24,38 @@ const premainName = "premain-libos"
 // uuidName is the file name of a Marble's uuid
 const uuidName = "uuid"
 
-// commentMarbleRunAdditions holds the marker which is appended to the Graphene manifest before the performed additions
+// commentMarbleRunAdditions holds the marker which is appended to the Gramine manifest before the performed additions
 const commentMarbleRunAdditions = "\n# MARBLERUN -- auto generated configuration entries \n"
 
 // longDescription is the help text shown for this command
-const longDescription = `Modifies a Graphene manifest for use with MarbleRun.
+const longDescription = `Modifies a Gramine manifest for use with MarbleRun.
 
-This command tries to automatically adjust the required parameters in an already existing Graphene manifest template, simplifying the migration of your existing Graphene application to MarbleRun.
+This command tries to automatically adjust the required parameters in an already existing Gramine manifest template, simplifying the migration of your existing Gramine application to MarbleRun.
 Please note that you still need to manually create a MarbleRun manifest.
 
-For more information about the requirements and  changes performed, consult the documentation: https://edglss.cc/doc-mr-graphene
+For more information about the requirements and  changes performed, consult the documentation: https://edglss.cc/doc-mr-gramine
 
-The parameter of this command is the path of the Graphene manifest template you want to modify.
+The parameter of this command is the path of the Gramine manifest template you want to modify.
 `
 
 type diff struct {
-	manifestEntry string
 	alreadyExists bool
+	// type of the entry, one of {'string', 'array'}
+	entryType string
+	// content of the entry
+	manifestEntry string
 }
 
-func newGraphenePrepareCmd() *cobra.Command {
+func newGraminePrepareCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "graphene-prepare",
-		Short: "Modifies a Graphene manifest for use with MarbleRun",
+		Use:   "gramine-prepare",
+		Short: "Modifies a Gramine manifest for use with MarbleRun",
 		Long:  longDescription,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			fileName := args[0]
 
-			return addToGrapheneManifest(fileName)
+			return addToGramineManifest(fileName)
 		},
 		SilenceUsage: true,
 	}
@@ -60,9 +63,21 @@ func newGraphenePrepareCmd() *cobra.Command {
 	return cmd
 }
 
-func addToGrapheneManifest(fileName string) error {
-	// Read Graphene manifest and populate TOML tree
+func addToGramineManifest(fileName string) error {
+	// Read Gramine manifest and populate TOML tree
 	fmt.Println("Reading file:", fileName)
+
+	file, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		return err
+	}
+	if strings.Contains(string(file), premainName) || strings.Contains(string(file), "EDG_MARBLE_COORDINATOR_ADDR") ||
+		strings.Contains(string(file), "EDG_MARBLE_TYPE") || strings.Contains(string(file), "EDG_MARBLE_UUID_FILE") ||
+		strings.Contains(string(file), "EDG_MARBLE_DNS_NAMES") {
+		color.Yellow("The supplied manifest already contains changes for MarbleRun. Have you selected the correct file?")
+		return errors.New("manifest already contains MarbleRun changes")
+	}
+
 	tree, err := toml.LoadFile(fileName)
 	if os.IsNotExist(err) {
 		return fmt.Errorf("file does not exist: %v", fileName)
@@ -93,37 +108,51 @@ func parseTreeForChanges(tree *toml.Tree) (map[string]interface{}, map[string]in
 	original["sgx.remote_attestation"] = tree.Get("sgx.remote_attestation")
 	original["sgx.enclave_size"] = tree.Get("sgx.enclave_size")
 	original["sgx.thread_num"] = tree.Get("sgx.thread_num")
-	original["sgx.trusted_files.marblerun_premain"] = tree.Get("sgx.trusted_files.marblerun_premain")
-	original["sgx.allowed_files.marblerun_uuid"] = tree.Get("sgx.allowed_files.marblerun_uuid")
+	original["loader.env.EDG_MARBLE_COORDINATOR_ADDR"] = tree.Get("loader.env.EDG_MARBLE_COORDINATOR_ADDR")
+	original["loader.env.EDG_MARBLE_TYPE"] = tree.Get("loader.env.EDG_MARBLE_TYPE")
+	original["loader.env.EDG_MARBLE_UUID_FILE"] = tree.Get("loader.env.EDG_MARBLE_UUID_FILE")
+	original["loader.env.EDG_MARBLE_DNS_NAMES"] = tree.Get("loader.env.EDG_MARBLE_DNS_NAMES")
 
-	// Abort, if we cannot find an endpoint
+	// Abort, if we cannot find an entrypoint
 	if original["libos.entrypoint"] == nil {
 		return nil, nil, errors.New("cannot find libos.entrypoint")
 	}
 
-	// If MarbleRun already touched the manifest, abort.
-	if original["libos.entrypoint"].(string) == premainName || original["sgx.trusted_files.marblerun_premain"] != nil || original["sgx.allowed_files.marblerun_uuid"] != nil {
-		color.Yellow("The supplied manifest already contains changes for MarbleRun. Have you selected the correct file?")
-		return nil, nil, errors.New("manifest already contains MarbleRun changes")
+	// add premain and uuid files
+	if err := insertFile(original, changes, "trusted_files", premainName, tree); err != nil {
+		return nil, nil, err
+	}
+	if err := insertFile(original, changes, "allowed_files", uuidName, tree); err != nil {
+		return nil, nil, err
 	}
 
 	// Add premain-libos executable as trusted file & entry point
 	changes["libos.entrypoint"] = premainName
-	changes["sgx.trusted_files.marblerun_premain"] = "file:" + premainName
 
-	// Set original endpoint as argv0. If one exists, keep the old one
+	// Set original entrypoint as argv0. If one exists, keep the old one
 	if original["loader.argv0_override"] == nil {
 		changes["loader.argv0_override"] = original["libos.entrypoint"].(string)
 	}
 
-	// Enable use "insecure" host env (which delegates the "secure" handling to MarbleRun)
-	if original["loader.insecure__use_host_env"] == nil || original["loader.insecure__use_host_env"].(int64) == 0 {
-		changes["loader.insecure__use_host_env"] = 1
+	// If insecure host environment is disabled (which hopefully it is), specify the required passthrough variables
+	if original["loader.insecure__use_host_env"] == nil || !original["loader.insecure__use_host_env"].(bool) {
+		if original["loader.env.EDG_MARBLE_COORDINATOR_ADDR"] == nil {
+			changes["loader.env.EDG_MARBLE_COORDINATOR_ADDR"] = "{ passthrough = true }"
+		}
+		if original["loader.env.EDG_MARBLE_TYPE"] == nil {
+			changes["loader.env.EDG_MARBLE_TYPE"] = "{ passthrough = true }"
+		}
+		if original["loader.env.EDG_MARBLE_UUID_FILE"] == nil {
+			changes["loader.env.EDG_MARBLE_UUID_FILE"] = "{ passthrough = true }"
+		}
+		if original["loader.env.EDG_MARBLE_DNS_NAMES"] == nil {
+			changes["loader.env.EDG_MARBLE_DNS_NAMES"] = "{ passthrough = true }"
+		}
 	}
 
 	// Enable remote attestation
-	if original["sgx.remote_attestation"] == nil || original["sgx.remote_attestation"].(int64) == 0 {
-		changes["sgx.remote_attestation"] = 1
+	if original["sgx.remote_attestation"] == nil || !original["sgx.remote_attestation"].(bool) {
+		changes["sgx.remote_attestation"] = true
 	}
 
 	// Ensure at least 1024 MB of enclave memory for the premain Go runtime
@@ -139,9 +168,6 @@ func parseTreeForChanges(tree *toml.Tree) (map[string]interface{}, map[string]in
 	if original["sgx.thread_num"] == nil || original["sgx.thread_num"].(int64) < 16 {
 		changes["sgx.thread_num"] = 16
 	}
-
-	// Add Marble UUID to allowed files
-	changes["sgx.allowed_files.marblerun_uuid"] = "file:" + uuidName
 
 	return original, changes, nil
 }
@@ -159,8 +185,17 @@ func calculateChanges(original map[string]interface{}, updates map[string]interf
 			// Add quotation marks for strings, direct value if not
 			switch v := changedValue.(type) {
 			case string:
+				newDiff.entryType = "string"
 				newDiff.manifestEntry = fmt.Sprintf("%s = \"%v\"", index, v)
+			case []interface{}:
+				newDiff.entryType = "array"
+				newEntry := fmt.Sprintf("%s = [\n", index)
+				for _, val := range v {
+					newEntry = fmt.Sprintf("%s  \"%v\",\n", newEntry, val)
+				}
+				newDiff.manifestEntry = fmt.Sprintf("%s]", newEntry)
 			default:
+				newDiff.entryType = "string"
 				newDiff.manifestEntry = fmt.Sprintf("%s = %v", index, v)
 			}
 			changeDiffs = append(changeDiffs, newDiff)
@@ -177,7 +212,7 @@ func calculateChanges(original map[string]interface{}, updates map[string]interf
 
 // performChanges displays the suggested changes to the user and tries to automatically perform them
 func performChanges(changeDiffs []diff, fileName string) error {
-	fmt.Println("\nMarbleRun suggests the following changes to your Graphene manifest:")
+	fmt.Println("\nMarbleRun suggests the following changes to your Gramine manifest:")
 	for _, entry := range changeDiffs {
 		if entry.alreadyExists {
 			color.Yellow(entry.manifestEntry)
@@ -197,7 +232,7 @@ func performChanges(changeDiffs []diff, fileName string) error {
 
 	directory := filepath.Dir(fileName)
 
-	// Read Graphene manifest as normal text file
+	// Read Gramine manifest as normal text file
 	manifestContentOriginal, err := ioutil.ReadFile(fileName)
 	if err != nil {
 		return err
@@ -225,7 +260,7 @@ func performChanges(changeDiffs []diff, fileName string) error {
 	}
 
 	fmt.Println("Downloading MarbleRun premain from GitHub...")
-	// Download MarbleRun premain for Graphene from GitHub
+	// Download MarbleRun premain for Gramine from GitHub
 	if err := downloadPremain(directory); err != nil {
 		color.Red("ERROR: Cannot download '%s' from GitHub. Please add the file manually.", premainName)
 	}
@@ -268,7 +303,7 @@ func downloadPremain(directory string) error {
 	For existing entries: Run a RegEx search, replace the line.
 	For new entries: Append to the end of the file.
 	NOTE: This only works for flat-mapped TOML configs.
-	These seem to be usually used for Graphene manifests.
+	These seem to be usually used for Gramine manifests.
 	However, TOML is quite flexible, and there are no TOML parsers out there which are style & comments preserving
 	So, if we do not have a flat-mapped config, this will fail at some point.
 */
@@ -281,13 +316,23 @@ func appendAndReplace(changeDiffs []diff, manifestContent []byte) ([]byte, error
 			// If a value was previously existing, we replace the existing entry
 			key := strings.Split(value.manifestEntry, " =")
 			regexKey := strings.ReplaceAll(key[0], ".", "\\.")
-			regex := regexp.MustCompile("(?m)^" + regexKey + "\\s?=.*$")
+			var regex *regexp.Regexp
+
+			switch value.entryType {
+			case "string":
+				regex = regexp.MustCompile("(?m)^" + regexKey + "\\s?=.*$")
+			case "array":
+				regex = regexp.MustCompile("(?m)^" + regexKey + "\\s?=([^\\]]*)\\]$")
+			default:
+				return nil, fmt.Errorf("unkown manifest entry type: %v", value.entryType)
+			}
+
 			// Check if we actually found the entry we searched for. If not, we might be dealing with a TOML file we cannot handle correctly without a full parser.
 			regexMatches := regex.FindAll(newManifestContent, -1)
 			if regexMatches == nil {
-				color.Red("ERROR: Cannot find specified entry. Your Graphene config might not be flat-mapped.")
+				color.Red("ERROR: Cannot find specified entry. Your Gramine config might not be flat-mapped.")
 				color.Red("MarbleRun can only automatically modify manifests using a flat hierarchy, as otherwise we would lose all styling & comments.")
-				color.Red("To continue, please manually perform the changes printed above in your Graphene manifest.")
+				color.Red("To continue, please manually perform the changes printed above in your Gramine manifest.")
 				return nil, errors.New("failed to detect position of config entry")
 			} else if len(regexMatches) > 1 {
 				color.Red("ERROR: Found multiple potential matches for automatic value substitution.")
@@ -309,4 +354,27 @@ func appendAndReplace(changeDiffs []diff, manifestContent []byte) ([]byte, error
 	}
 
 	return newManifestContent, nil
+}
+
+// insertFile checks what trusted/allowed file declaration is used in the manifest and inserts files accordingly
+// trusted/allowed files are either present in legacy 'sgx.trusted_files.identifier =  "file:/path/file"' format
+// or in TOML-array format
+func insertFile(original, changes map[string]interface{}, fileType, fileName string, tree *toml.Tree) error {
+	fileTree := tree.Get("sgx." + fileType)
+	switch fileTree.(type) {
+	case nil:
+		// No files are defined in the original manifest
+		changes["sgx."+fileType] = []interface{}{"file:" + fileName}
+		return nil
+	case *toml.Tree:
+		// legacy format
+		changes["sgx."+fileType+".marblerun_"+fileName] = "file:" + fileName
+	case []interface{}:
+		// TOML-array format, append file to the array
+		original["sgx."+fileType] = tree.Get("sgx." + fileType)
+		changes["sgx."+fileType] = append(original["sgx."+fileType].([]interface{}), "file:"+fileName)
+	default:
+		return errors.New("could not read files from Gramine manifest")
+	}
+	return nil
 }

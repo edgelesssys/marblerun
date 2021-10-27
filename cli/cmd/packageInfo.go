@@ -42,8 +42,8 @@ func newPackageInfoCmd() *cobra.Command {
 			}
 
 			// In every other case, try to guess if it's a directory, or expect a specific file to be pointed to
-			errGraphene := decodeGrapheneSigStruct(path, isDirectory)
-			if errGraphene == nil {
+			errGramine := decodeGramineSigStruct(path, isDirectory)
+			if errGramine == nil {
 				return nil
 			}
 			errOcclum := decodeSGXSDKSigStruct(path, isDirectory) // Either Occlum or SGX SDK
@@ -53,8 +53,8 @@ func newPackageInfoCmd() *cobra.Command {
 
 			color.Red("ERROR: Failed to automatically determine SGX package signature properties detection.")
 			if isDirectory {
-				color.Red("A directory was supplied, but it appears not to be a Graphene or Occlum instance.")
-				color.Red("Please either specify the .sig file (Graphene) or SGX enclave binary (Occlum / SGX SDK) directly, or the root directory of an Graphene or Occlum instance.")
+				color.Red("A directory was supplied, but it appears not to be a Gramine or Occlum instance.")
+				color.Red("Please either specify the .sig file (Gramine) or SGX enclave binary (Occlum / SGX SDK) directly, or the root directory of an Gramine or Occlum instance.")
 			}
 
 			fmt.Printf("\n")
@@ -62,7 +62,7 @@ func newPackageInfoCmd() *cobra.Command {
 			if errOpenEnclave != nil {
 				color.Red("Open Enclave detection error: %v\n", errOpenEnclave)
 			}
-			fmt.Printf("Error - Graphene: %v\n", errGraphene)
+			fmt.Printf("Error - Gramine: %v\n", errGramine)
 			fmt.Printf("Error - Occlum / SGX SDK: %v\n", errOcclum)
 			return errors.New("unable to determine enclave properties")
 		},
@@ -162,7 +162,7 @@ func parseSigStruct(sgxMetaData []byte) ([]byte, []byte, []byte, []byte, error) 
 	return mrenclave, mrsigner[:], isvprodid, isvsvn, nil
 }
 
-func decodeGrapheneSigStruct(path string, isDirectory bool) error {
+func decodeGramineSigStruct(path string, isDirectory bool) error {
 	// Check if directory contains a file ending in .sig
 	var sigFile string
 	if isDirectory {
@@ -178,11 +178,11 @@ func decodeGrapheneSigStruct(path string, isDirectory bool) error {
 				}
 				foundSigFile = true
 				sigFile = entry.Name()
-				color.Green("Detected Graphene instance.")
+				color.Green("Detected Gramine instance.")
 			}
 		}
 		if !foundSigFile {
-			return errors.New("did not find Graphene .sig file in directory")
+			return errors.New("did not find Gramine .sig file in directory")
 		}
 		sigFile = filepath.Join(path, sigFile)
 	} else {
@@ -201,7 +201,7 @@ func decodeGrapheneSigStruct(path string, isDirectory bool) error {
 	}
 
 	if isDirectory {
-		color.Cyan("PackageProperties for Graphene instance at '%s':\n", path)
+		color.Cyan("PackageProperties for Gramine instance at '%s':\n", path)
 	} else {
 		color.Cyan("PackageProperties for '%s':\n", path)
 	}

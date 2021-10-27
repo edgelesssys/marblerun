@@ -1,6 +1,6 @@
 apiVersion: v2
 name: redis
-description: redis running as a Graphene SGX Marble
+description: redis running as a Gramine SGX Marble
 
 type: application
 version: 0.1.0
