@@ -95,7 +95,6 @@ Here's an example that has the `SecurityVersion`, `ProductID`, and `SignerID` se
 				],
 				"Env": {
 					"ROOT_CA": "{{ pem .MarbleRun.RootCA.Cert }}",
-					"SEAL_KEY": "{{ hex .MarbleRun.SealKey }}",
 					"MARBLE_CERT": "{{ pem .MarbleRun.MarbleCert.Cert }}",
 					"MARBLE_KEY": "{{ pem .MarbleRun.MarbleCert.Private }}"
 				}
@@ -109,7 +108,6 @@ Here's an example that has the `SecurityVersion`, `ProductID`, and `SignerID` se
 				],
 				"Env": {
 					"ROOT_CA": "{{ pem .MarbleRun.RootCA.Cert }}",
-					"SEAL_KEY": "{{ hex .MarbleRun.SealKey }}",
 					"MARBLE_CERT": "{{ pem .MarbleRun.MarbleCert.Cert }}",
 					"MARBLE_KEY": "{{ pem .MarbleRun.MarbleCert.Private }}"
 				}
