@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/edgelesssys/marblerun/util"
 	v1 "k8s.io/api/admission/v1"
@@ -121,7 +122,7 @@ func mutate(body []byte, coordAddr string, domainName string, resourceKey string
 		},
 		{
 			Name:  envMarbleDNSName,
-			Value: fmt.Sprintf("%s,%s.%s,%s.%s.svc.%s", marbleType, marbleType, namespace, marbleType, namespace, domainName),
+			Value: strings.ToLower(fmt.Sprintf("%s,%s.%s,%s.%s.svc.%s", marbleType, marbleType, namespace, marbleType, namespace, domainName)),
 		},
 	}
 

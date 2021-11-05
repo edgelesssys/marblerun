@@ -75,7 +75,7 @@ tolerations:
 # Node selection constraints for control-plane components
 # https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector.
 nodeSelector:
-  beta.kubernetes.io/os: linux
+  kubernetes.io/os: linux
 
 # DCAP configuration settings
 dcap:
