@@ -5,14 +5,14 @@ This sample shows how to run an [Occlum](https://github.com/occlum/occlum) appli
 First, get Occlum and its build toolchain up and running. This can become quite complex if you run it on your existing environment. Therefore, we use the official Docker image and expose the SGX device to it:
 
 ```sh
-docker run -it --network host --device /dev/sgx occlum/occlum:0.23.1-ubuntu18.04
+docker run -it --network host --device /dev/sgx occlum/occlum:0.24.1-ubuntu18.04
 ```
 
 If you are trying to run this sample on Azure, you might want to use the provided [Dockerfile](Dockerfile) instead. It is based on the official Occlum image, but replaces the default Intel DCAP client with the [Azure DCAP Client](https://github.com/microsoft/Azure-DCAP-Client). This is required to get correct quotes on Azure's Confidential Computing virtual machines. You can build and use the image in the following way:
 
 ```sh
 # Assuming `samples/occlum-hello` is the current working directory
-docker build -t occlum-azure .
+docker buildx build -t occlum-azure .
 docker run -it --network host --device /dev/sgx occlum-azure
 ```
 
@@ -32,14 +32,15 @@ After you build the Occlum image, you need to retrieve either the `UniqueID` or 
 ```sh
 wget https://github.com/edgelesssys/marblerun/releases/latest/download/marblerun
 chmod +x marblerun
-./marblerun sgxsdk-package-info ./occlum-instance
+./marblerun package-info ./occlum-instance
 ```
 
-You will receive an output like this:
+The output is similar to the following:
 ```
+Detected Occlum image.
 PackageProperties for Occlum image at './occlum-instance':
 UniqueID (MRENCLAVE)      : ccad2391e0b79d9108209135c26b2c276c5a24f4f55bc67ccf5ab90fd3f5fc22
-SignerID (MRSIGNER)       : 83d719e77deaca1470f6baf62a4d774303c899db69020f9c70ee1dfc08c7ce9e
+SignerID (MRSIGNER)       : 43361affedeb75affee9baec7e054a5e14883213e5a121b67d74a0e12e9d2b7a
 ProductID (ISVPRODID)     : 0
 SecurityVersion (ISVSVN)  : 0
 ```
