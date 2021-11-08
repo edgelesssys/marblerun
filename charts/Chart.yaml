@@ -1,5 +1,5 @@
 apiVersion: v2
-appVersion: v0.5.0
+appVersion: v0.5.1
 description: The control plane for confidential computing.
 home: https://edgeless.systems
 keywords:
@@ -9,7 +9,7 @@ kubeVersion: ">=1.13.0-0"
 name: marblerun
 sources:
 - https://github.com/edgelesssys/marblerun
-version: 0.5.0
+version: 0.5.1
 maintainers:
   - name: Edgeless Systems
     email: contact@edgeless.systems
