@@ -7,7 +7,7 @@
 global:
   image:
     pullPolicy: IfNotPresent
-    version: v0.5.0
+    version: v0.5.1
     repository: ghcr.io/edgelesssys
 
   # Additional annotations to add to all pods
