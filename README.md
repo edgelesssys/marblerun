@@ -34,6 +34,7 @@ To keep things simple, MarbleRun issues one concise remote attestation statement
 MarbleRun supports services built with one of the following frameworks:
 * [EGo][ego]
 * [Gramine][gramine]
+* [Occlum][occlum]
 * [Edgeless RT][edgelessrt]
 
 More are coming soon.
@@ -96,6 +97,7 @@ The popular [Linkerd][linkerd] service mesh uses the simple and scalable *emojiv
 [license-badge]: https://img.shields.io/github/license/edgelesssys/marblerun
 [linkerd]: https://linkerd.io
 [marblerunsh]: https://marblerun.sh
+[occlum]: https://github.com/occlum/occlum
 [sgx-lkl]: https://github.com/lsds/sgx-lkl
 [slack]: https://join.slack.com/t/confidentialcloud/shared_invite/zt-ix8nzzr6-vVNb6IM76Ab8z9a_5NMJnQ
 [twitter]: https://twitter.com/EdgelessSystems
