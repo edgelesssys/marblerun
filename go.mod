@@ -4,7 +4,7 @@ go 1.14
 
 require (
 	github.com/c2h5oh/datasize v0.0.0-20200825124411-48ed595a09d2
-	github.com/containerd/containerd v1.4.11 // indirect
+	github.com/containerd/containerd v1.4.12 // indirect
 	github.com/edgelesssys/ego v0.2.4-0.20210609075311-d09986cbed77
 	github.com/edgelesssys/era v0.3.0
 	github.com/edgelesssys/ertgolib v0.1.5-0.20210208080427-0d5e24e2f855 // indirect
@@ -17,6 +17,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/jarcoal/httpmock v1.0.8
+	github.com/opencontainers/image-spec v1.0.2 //indirect
 	github.com/opencontainers/runc v1.0.2 // indirect
 	github.com/pelletier/go-toml v1.8.1
 	github.com/prometheus/client_golang v1.11.0
