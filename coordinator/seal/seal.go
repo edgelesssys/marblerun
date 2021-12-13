@@ -82,7 +82,7 @@ func (s *AESGCMSealer) Unseal() ([]byte, []byte, error) {
 	}
 
 	// Decrypt data with the unsealed encryption key and return it
-	decryptedData, err := ecrypto.Decrypt(ciphertext, s.encryptionKey)
+	decryptedData, err := ecrypto.Decrypt(ciphertext, s.encryptionKey, nil)
 	if err != nil {
 		return unencryptedData, nil, err
 	}
@@ -103,7 +103,7 @@ func (s *AESGCMSealer) Seal(unencryptedData []byte, toBeEncrypted []byte) error 
 	}
 
 	// Encrypt data to seal with generated encryption key
-	encryptedData, err := ecrypto.Encrypt(toBeEncrypted, s.encryptionKey)
+	encryptedData, err := ecrypto.Encrypt(toBeEncrypted, s.encryptionKey, nil)
 	if err != nil {
 		return err
 	}
@@ -139,7 +139,7 @@ func (s *AESGCMSealer) unsealEncryptionKey() error {
 	}
 
 	// Decrypt stored encryption key with seal key
-	encryptionKey, err := ecrypto.Unseal(sealedKeyData)
+	encryptionKey, err := ecrypto.Unseal(sealedKeyData, nil)
 	if err != nil {
 		return err
 	}
@@ -168,7 +168,7 @@ func (s *AESGCMSealer) SetEncryptionKey(encryptionKey []byte) error {
 	s.backupEncryptionKey()
 
 	// Encrypt encryption key with seal key
-	encryptedKeyData, err := ecrypto.SealWithProductKey(encryptionKey)
+	encryptedKeyData, err := ecrypto.SealWithProductKey(encryptionKey, nil)
 	if err != nil {
 		return err
 	}
@@ -241,7 +241,7 @@ func (s *NoEnclaveSealer) Seal(unencryptedData []byte, toBeEncrypted []byte) err
 	}
 
 	// Encrypt data
-	sealedData, err := ecrypto.Encrypt(toBeEncrypted, s.encryptionKey)
+	sealedData, err := ecrypto.Encrypt(toBeEncrypted, s.encryptionKey, nil)
 	if err != nil {
 		return err
 	}
@@ -296,7 +296,7 @@ func (s *NoEnclaveSealer) Unseal() ([]byte, []byte, error) {
 	ciphertext := sealedData[4+encodedUnencryptDataLength:]
 
 	// Decrypt data with key from disk
-	decryptedData, err := ecrypto.Decrypt(ciphertext, keyData)
+	decryptedData, err := ecrypto.Decrypt(ciphertext, keyData, nil)
 	if err != nil {
 		return unencryptedData, nil, ErrEncryptionKey
 	}
