@@ -47,7 +47,8 @@ func verifyCoordinator(host string, configFilename string, insecure bool) ([]*pe
 
 	// get certificate using provided config
 	if configFilename != "" {
-		return era.GetCertificate(host, configFilename)
+		pemBlock, _, err := era.GetCertificate(host, configFilename)
+		return pemBlock, err
 	}
 
 	// get latest config from github if none specified
@@ -83,7 +84,8 @@ func verifyCoordinator(host string, configFilename string, insecure bool) ([]*pe
 	}
 	fmt.Println("Got latest config")
 
-	return era.GetCertificate(host, "era-config.json")
+	pemBlock, _, err := era.GetCertificate(host, configFilename)
+	return pemBlock, err
 }
 
 // restClient creates and returns a http client using a provided root certificate and optional client certificate to communicate with the Coordinator REST API
