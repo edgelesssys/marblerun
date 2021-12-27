@@ -18,8 +18,7 @@ import (
 )
 
 // ERTValidator is a Quote validatior based on EdgelessRT.
-type ERTValidator struct {
-}
+type ERTValidator struct{}
 
 // NewERTValidator returns a new ERTValidator object.
 func NewERTValidator() *ERTValidator {

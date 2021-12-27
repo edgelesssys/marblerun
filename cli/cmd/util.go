@@ -34,8 +34,10 @@ const (
 
 const promptForChanges = "Do you want to automatically apply the suggested changes [y/n]? "
 
-var eraConfig string
-var insecureEra bool
+var (
+	eraConfig   string
+	insecureEra bool
+)
 
 // verify the connection to the MarbleRun Coordinator.
 func verifyCoordinator(host string, configFilename string, insecure bool) ([]*pem.Block, error) {
