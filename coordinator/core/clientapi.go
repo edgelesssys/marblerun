@@ -90,7 +90,10 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 		c.zaplogger.Error("could not generate recovery data", zap.Error(err))
 		return nil, err
 	}
-	c.sealer.SetEncryptionKey(encryptionKey)
+	if err := c.sealer.SetEncryptionKey(encryptionKey); err != nil {
+		c.zaplogger.Error("could not set encryption key", zap.Error(err))
+		return nil, err
+	}
 
 	// Parse X.509 user certificates and permissions from manifest
 	users, err := generateUsersFromManifest(mnf.Users, mnf.Roles)
@@ -166,7 +169,9 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 		return nil, err
 	}
 
-	c.advanceState(stateAcceptingMarbles, tx)
+	if err := c.advanceState(stateAcceptingMarbles, tx); err != nil {
+		c.zaplogger.Error("advancing state failed", zap.Error(err))
+	}
 	if store, ok := c.store.(*store.StdStore); ok {
 		store.SetRecoveryData(recoveryData)
 	}
