@@ -101,6 +101,7 @@ type BaseVec interface {
 	DeleteLabelValues(lvs ...string) bool
 	Reset()
 }
+
 type CounterVec interface {
 	BaseVec
 
@@ -109,6 +110,7 @@ type CounterVec interface {
 	With(labels prometheus.Labels) prometheus.Counter
 	WithLabelValues(lvs ...string) prometheus.Counter
 }
+
 type NullBaseVec struct {
 	NullCollector
 }
@@ -124,6 +126,7 @@ type NullCounterVec struct {
 func (NullCounterVec) GetMetricWith(labels prometheus.Labels) (prometheus.Counter, error) {
 	return NullCounter{}, nil
 }
+
 func (NullCounterVec) GetMetricWithLabelValues(lvs ...string) (prometheus.Counter, error) {
 	return NullCounter{}, nil
 }

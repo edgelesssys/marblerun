@@ -230,7 +230,6 @@ func (c *Core) Recover(ctx context.Context, secret []byte) (int, error) {
 	}
 
 	remaining, secret, err := c.recovery.RecoverKey(secret)
-
 	if err != nil {
 		return remaining, err
 	}

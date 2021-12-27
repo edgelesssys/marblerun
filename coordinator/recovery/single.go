@@ -24,7 +24,6 @@ func NewSinglePartyRecovery() *SinglePartyRecovery {
 
 // GenerateEncryptionKey generates an encryption key according to the implicitly defined recovery mode.
 func (r *SinglePartyRecovery) GenerateEncryptionKey(recoveryKeys map[string]string) ([]byte, error) {
-
 	// Generate a single random key for single-party recovery, or generate multiple keys and XOR them together for multi-party recovery
 	if len(recoveryKeys) > 1 {
 		return nil, errors.New("multi-party recovery is not supported in this version of MarbleRun")

@@ -72,5 +72,4 @@ func TestClientApiRequestMetrics(t *testing.T) {
 			assert.Equal(float64(i), promtest.ToFloat64(metrics.reqest.WithLabelValues(test.expectedStatusCode, strings.ToLower(test.method))))
 		}
 	}
-
 }

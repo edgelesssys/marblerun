@@ -37,6 +37,7 @@ type StatusResp struct {
 	// example: Coordinator is ready to accept a manifest.
 	StatusMessage string
 }
+
 type ManifestSignatureResp struct {
 	// A SHA-256 of the currently set manifest. Does not change when an update has been applied.
 	// example: 3fff78e99dd9bd801e0a3a22b7f7a24a492302c4d00546d18c7f7ed6e26e95c3
@@ -132,7 +133,6 @@ func (s *clientAPIServer) manifestPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	recoverySecretMap, err := s.cc.SetManifest(r.Context(), manifest)
-
 	if err != nil {
 		writeJSONError(w, err.Error(), http.StatusBadRequest)
 		return
@@ -222,7 +222,6 @@ func (s *clientAPIServer) recoverPost(w http.ResponseWriter, r *http.Request) {
 
 	// Perform recover and receive amount of remaining secrets (for multi-party recovery)
 	remaining, err := s.cc.Recover(r.Context(), key)
-
 	if err != nil {
 		writeJSONError(w, err.Error(), http.StatusInternalServerError)
 		return

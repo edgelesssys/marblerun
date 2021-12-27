@@ -165,5 +165,4 @@ func TestStdStoreRollback(t *testing.T) {
 	assert.Equal(testData3, val)
 	_, err = store.Get("another:input")
 	assert.Error(err)
-
 }

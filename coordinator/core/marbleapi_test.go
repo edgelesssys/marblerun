@@ -233,7 +233,6 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 		// backendFirst only runs once, so need for a mutex & checks
 		ms.backendFirstSharedCert = ms.verifyCertificateFromEnvironment("TEST_SECRET_CERT", params, opts)
 		ms.backendFirstUniqueCert = ms.verifyCertificateFromEnvironment("TEST_SECRET_PRIVATE_CERT", params, opts)
-
 	} else if marbleType == "backendOther" {
 		// Validate generated shared secret certificate
 		// Since we're running async and multiple times, let's avoid a race condition here and only get the certificate from one instance
@@ -265,7 +264,6 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 		ms.assert.NotEmpty(config["tls"]["Incoming"]["*:8080"]["clicrt"])
 		ms.assert.NotEmpty(config["tls"]["Incoming"]["*:8080"]["clikey"])
 		ms.assert.True(config["tls"]["Incoming"]["*:8080"]["clientAuth"].(bool))
-
 	} else if marbleType == "backendOther" {
 		ms.assert.NoError(json.Unmarshal(configBytes, &config))
 		ms.assert.NotEqual(nil, config["tls"]["Outgoing"]["localhost:8080"]["cacrt"])
@@ -284,7 +282,6 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 		ms.assert.NotEmpty(config["tls"]["Incoming"]["*:8080"]["clicrt"])
 		ms.assert.NotEmpty(config["tls"]["Incoming"]["*:8080"]["clikey"])
 		ms.assert.False(config["tls"]["Incoming"]["*:8080"]["clientAuth"].(bool))
-
 	} else {
 		ms.assert.Empty(configBytes)
 	}
