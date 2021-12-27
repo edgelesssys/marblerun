@@ -594,7 +594,6 @@ func ParseUserSecrets(ctx context.Context, newSecrets map[string]UserSecret, ori
 			parsedSecret.Public = singleSecret.Key
 			parsedSecrets[secretName] = parsedSecret
 		}
-
 	}
 	return parsedSecrets, nil
 }

@@ -313,7 +313,6 @@ func generateCert(dnsNames []string, commonName string, privk *ecdsa.PrivateKey,
 		parentPrivateKey = privk
 	}
 	certRaw, err := x509.CreateCertificate(rand.Reader, &template, parentCertificate, &privk.PublicKey, parentPrivateKey)
-
 	if err != nil {
 		return nil, nil, err
 	}
@@ -551,7 +550,6 @@ func (c *Core) generateCertificateForSecret(secret manifest.Secret, parentCertif
 
 	// Generate certificate with given public key
 	secretCertRaw, err := x509.CreateCertificate(rand.Reader, &template, parentCertificate, pubKey, parentPrivKey)
-
 	if err != nil {
 		c.zaplogger.Error("Failed to generate X.509 certificate", zap.Error(err))
 		return manifest.Secret{}, err
