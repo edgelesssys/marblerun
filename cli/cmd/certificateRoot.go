@@ -36,7 +36,7 @@ func cliCertificateRoot(host string, output string, configFilename string, insec
 		return err
 	}
 
-	if err := ioutil.WriteFile(output, pem.EncodeToMemory(certs[len(certs)-1]), 0644); err != nil {
+	if err := ioutil.WriteFile(output, pem.EncodeToMemory(certs[len(certs)-1]), 0o644); err != nil {
 		return err
 	}
 	fmt.Println("Root certificate written to", output)

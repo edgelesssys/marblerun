@@ -29,7 +29,7 @@ func newManifestLog() *cobra.Command {
 				return err
 			}
 			if len(output) > 0 {
-				return ioutil.WriteFile(output, response, 0644)
+				return ioutil.WriteFile(output, response, 0o644)
 			}
 			fmt.Printf("Update log:\n%s", string(response))
 			return nil

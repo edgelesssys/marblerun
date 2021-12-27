@@ -35,7 +35,7 @@ func storeUUID(appFs afero.Fs, marbleUUID uuid.UUID, filename string) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal UUID: %v", err)
 	}
-	if err := afero.WriteFile(appFs, filename, uuidBytes, 0600); err != nil {
+	if err := afero.WriteFile(appFs, filename, uuidBytes, 0o600); err != nil {
 		return fmt.Errorf("failed to store uuid to file: %v", err)
 	}
 	return nil
@@ -215,10 +215,10 @@ func applyParameters(params *rpc.Parameters, fs afero.Fs) error {
 	// Store files in file system
 	log.Println("creating files from manifest")
 	for path, data := range params.Files {
-		if err := fs.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		if err := fs.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 			return err
 		}
-		if err := afero.WriteFile(fs, path, []byte(data), 0600); err != nil {
+		if err := afero.WriteFile(fs, path, []byte(data), 0o600); err != nil {
 			return err
 		}
 	}

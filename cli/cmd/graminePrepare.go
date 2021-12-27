@@ -248,14 +248,14 @@ func performChanges(changeDiffs []diff, fileName string) error {
 	// Backup original manifest
 	backupFileName := filepath.Base(fileName) + ".bak"
 	fmt.Printf("Saving original manifest as %s...\n", backupFileName)
-	if err := ioutil.WriteFile(filepath.Join(directory, backupFileName), manifestContentOriginal, 0644); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(directory, backupFileName), manifestContentOriginal, 0o644); err != nil {
 		return err
 	}
 
 	// Write modified file to disk
 	fileNameBase := filepath.Base(fileName)
 	fmt.Printf("Saving changes to %s...\n", fileNameBase)
-	if err := ioutil.WriteFile(fileName, manifestContentModified, 0644); err != nil {
+	if err := ioutil.WriteFile(fileName, manifestContentModified, 0o644); err != nil {
 		return err
 	}
 
