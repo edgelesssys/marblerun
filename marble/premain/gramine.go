@@ -36,10 +36,10 @@ func GramineActivate(req *rpc.ActivationReq, coordAddr string, tlsCredentials cr
 	return params, nil
 }
 
-// GramineQuoteIssuer issues quotes
+// GramineQuoteIssuer issues quotes.
 type GramineQuoteIssuer struct{}
 
-// Issue issues a quote for remote attestation for a given message (usually a certificate)
+// Issue issues a quote for remote attestation for a given message (usually a certificate).
 func (GramineQuoteIssuer) Issue(cert []byte) ([]byte, error) {
 	hash := sha256.Sum256(cert)
 

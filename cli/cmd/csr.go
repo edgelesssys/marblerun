@@ -22,7 +22,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-// certificateInterface provides the interface for certificate handlers
+// certificateInterface provides the interface for certificate handlers.
 type certificateInterface interface {
 	// get the signed certificate
 	get() ([]byte, error)
@@ -33,7 +33,7 @@ type certificateInterface interface {
 	getKey() *rsa.PrivateKey
 }
 
-// certificateV1 acts as a handler for generating signed certificates
+// certificateV1 acts as a handler for generating signed certificates.
 type certificateV1 struct {
 	kubeClient kubernetes.Interface
 	privKey    *rsa.PrivateKey
@@ -41,7 +41,7 @@ type certificateV1 struct {
 	timeout    int
 }
 
-// newCertificateV1 creates a certificate handler using the certificatesv1 kubernetes api
+// newCertificateV1 creates a certificate handler using the certificatesv1 kubernetes api.
 func newCertificateV1(kubeClient kubernetes.Interface) (*certificateV1, error) {
 	crt := &certificateV1{kubeClient: kubeClient}
 	crt.timeout = 10
@@ -77,7 +77,7 @@ func newCertificateV1(kubeClient kubernetes.Interface) (*certificateV1, error) {
 	return crt, nil
 }
 
-// get returns the certificate signed by the kubernetes api server
+// get returns the certificate signed by the kubernetes api server.
 func (crt *certificateV1) get() ([]byte, error) {
 	csr, err := crt.kubeClient.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), webhookName, metav1.GetOptions{})
 	if err != nil {
@@ -86,7 +86,7 @@ func (crt *certificateV1) get() ([]byte, error) {
 	return csr.Status.Certificate, nil
 }
 
-// setCaBundle sets the CABundle field to the clusters CABundle
+// setCaBundle sets the CABundle field to the clusters CABundle.
 func (crt *certificateV1) setCaBundle() ([]string, error) {
 	path := os.Getenv(clientcmd.RecommendedConfigPathEnvVar)
 	if path == "" {
@@ -124,7 +124,7 @@ func (crt *certificateV1) setCaBundle() ([]string, error) {
 	return injectorVals, nil
 }
 
-// signRequest performs a certificate signing request to the api server and approves it
+// signRequest performs a certificate signing request to the api server and approves it.
 func (crt *certificateV1) signRequest() error {
 	// send the csr to the k8s api server for signing
 	certReturn, err := crt.kubeClient.CertificatesV1().CertificateSigningRequests().Create(context.TODO(), crt.csr, metav1.CreateOptions{})
@@ -166,12 +166,12 @@ func (crt *certificateV1) signRequest() error {
 	})
 }
 
-// getKey returns the private key of the webhook server
+// getKey returns the private key of the webhook server.
 func (crt *certificateV1) getKey() *rsa.PrivateKey {
 	return crt.privKey
 }
 
-// createCSR creates a x509 certificate signing request
+// createCSR creates a x509 certificate signing request.
 func createCSR(privKey *rsa.PrivateKey) (*pem.Block, error) {
 	subj := pkix.Name{
 		CommonName:   "system:node:marble-injector.marblerun.svc",
@@ -216,7 +216,7 @@ func createCSR(privKey *rsa.PrivateKey) (*pem.Block, error) {
 }
 
 // calls to the CertificateSigningRequests interface are non blocking, we use this function
-// to check if a resource has been created and can be used
+// to check if a resource has been created and can be used.
 func waitForResource(name string, kubeClient kubernetes.Interface, timeout int, resourceCheck func(string, kubernetes.Interface) bool) error {
 	for i := 0; i < timeout; i++ {
 		if resourceCheck(name, kubeClient) {

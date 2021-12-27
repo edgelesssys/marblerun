@@ -21,7 +21,7 @@ import (
 
 const webhookName = "marble-injector.marblerun"
 
-// helm constants
+// helm constants.
 const (
 	helmChartName             = "edgeless/marblerun"
 	helmCoordinatorDeployment = "marblerun-coordinator"
@@ -37,7 +37,7 @@ const promptForChanges = "Do you want to automatically apply the suggested chang
 var eraConfig string
 var insecureEra bool
 
-// verify the connection to the MarbleRun Coordinator
+// verify the connection to the MarbleRun Coordinator.
 func verifyCoordinator(host string, configFilename string, insecure bool) ([]*pem.Block, error) {
 	// skip verification if specified
 	if insecure {
@@ -88,7 +88,7 @@ func verifyCoordinator(host string, configFilename string, insecure bool) ([]*pe
 	return pemBlock, err
 }
 
-// restClient creates and returns a http client using a provided root certificate and optional client certificate to communicate with the Coordinator REST API
+// restClient creates and returns a http client using a provided root certificate and optional client certificate to communicate with the Coordinator REST API.
 func restClient(caCert []*pem.Block, clCert *tls.Certificate) (*http.Client, error) {
 	// Set rootCA for connection to Coordinator
 	certPool := x509.NewCertPool()
@@ -121,7 +121,7 @@ func restClient(caCert []*pem.Block, clCert *tls.Certificate) (*http.Client, err
 	return client, nil
 }
 
-// getKubernetesInterface returns the kubernetes Clientset to interact with the k8s API
+// getKubernetesInterface returns the kubernetes Clientset to interact with the k8s API.
 func getKubernetesInterface() (*kubernetes.Clientset, error) {
 	path := os.Getenv(clientcmd.RecommendedConfigPathEnvVar)
 	if path == "" {

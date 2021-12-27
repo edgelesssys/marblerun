@@ -18,16 +18,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// premainName is the name of the premain executable used
+// premainName is the name of the premain executable used.
 const premainName = "premain-libos"
 
-// uuidName is the file name of a Marble's uuid
+// uuidName is the file name of a Marble's uuid.
 const uuidName = "uuid"
 
-// commentMarbleRunAdditions holds the marker which is appended to the Gramine manifest before the performed additions
+// commentMarbleRunAdditions holds the marker which is appended to the Gramine manifest before the performed additions.
 const commentMarbleRunAdditions = "\n# MARBLERUN -- auto generated configuration entries \n"
 
-// longDescription is the help text shown for this command
+// longDescription is the help text shown for this command.
 const longDescription = `Modifies a Gramine manifest for use with MarbleRun.
 
 This command tries to automatically adjust the required parameters in an already existing Gramine manifest template, simplifying the migration of your existing Gramine application to MarbleRun.
@@ -172,7 +172,7 @@ func parseTreeForChanges(tree *toml.Tree) (map[string]interface{}, map[string]in
 	return original, changes, nil
 }
 
-// calculateChanges takes two maps with TOML indices and values as input and calculates the difference between them
+// calculateChanges takes two maps with TOML indices and values as input and calculates the difference between them.
 func calculateChanges(original map[string]interface{}, updates map[string]interface{}) []diff {
 	var changeDiffs []diff
 	// Note: This function only outputs entries which are defined in the original map.
@@ -210,7 +210,7 @@ func calculateChanges(original map[string]interface{}, updates map[string]interf
 	return changeDiffs
 }
 
-// performChanges displays the suggested changes to the user and tries to automatically perform them
+// performChanges displays the suggested changes to the user and tries to automatically perform them.
 func performChanges(changeDiffs []diff, fileName string) error {
 	fmt.Println("\nMarbleRun suggests the following changes to your Gramine manifest:")
 	for _, entry := range changeDiffs {
@@ -356,9 +356,9 @@ func appendAndReplace(changeDiffs []diff, manifestContent []byte) ([]byte, error
 	return newManifestContent, nil
 }
 
-// insertFile checks what trusted/allowed file declaration is used in the manifest and inserts files accordingly
-// trusted/allowed files are either present in legacy 'sgx.trusted_files.identifier =  "file:/path/file"' format
-// or in TOML-array format
+// insertFile checks what trusted/allowed file declaration is used in the manifest and inserts files accordingly.
+// Trusted/allowed files are either present in legacy 'sgx.trusted_files.identifier = "file:/path/file"' format
+// or in TOML-array format.
 func insertFile(original, changes map[string]interface{}, fileType, fileName string, tree *toml.Tree) error {
 	fileTree := tree.Get("sgx." + fileType)
 	switch fileTree.(type) {

@@ -18,7 +18,7 @@ var rootCmd = &cobra.Command{
 	Long:  globalUsage,
 }
 
-// Execute starts the CLI
+// Execute starts the CLI.
 func Execute() error {
 	return rootCmd.Execute()
 }

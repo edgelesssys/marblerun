@@ -28,7 +28,7 @@ func newCertificateChain() *cobra.Command {
 	return cmd
 }
 
-// cliCertificateChain gets the certificate chain of the MarbleRun Coordinator
+// cliCertificateChain gets the certificate chain of the MarbleRun Coordinator.
 func cliCertificateChain(host string, output string, configFilename string, insecure bool) error {
 	certs, err := verifyCoordinator(host, configFilename, insecure)
 	if err != nil {

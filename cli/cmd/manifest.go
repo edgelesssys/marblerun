@@ -35,7 +35,7 @@ or return a signature of the currently set manifest to the user`,
 	return cmd
 }
 
-// cliDataGet requests data from the Coordinators rest api
+// cliDataGet requests data from the Coordinators rest api.
 func cliDataGet(host, target, jsonPath string, cert []*pem.Block) ([]byte, error) {
 	client, err := restClient(cert, nil)
 	if err != nil {

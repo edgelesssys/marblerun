@@ -37,17 +37,17 @@ type reservedSecrets struct {
 	MarbleCert manifest.Secret
 }
 
-// Defines the "MarbleRun" prefix when mentioned in a manifest
+// Defines the "MarbleRun" prefix when mentioned in a manifest.
 type secretsWrapper struct {
 	MarbleRun reservedSecrets
 	Secrets   map[string]manifest.Secret
 }
 
-// Activate implements the MarbleAPI function to authenticate a marble (implements the MarbleServer interface)
+// Activate implements the MarbleAPI function to authenticate a marble (implements the MarbleServer interface).
 //
 // Verifies the marble's integrity and subsequently provides the marble with a certificate for authentication and application-specific parameters as defined in the Coordinator's manifest.
 //
-// req needs to contain a MarbleType present in the Coordinator's manifest and a CSR with the Subject and DNSNames set with desired values.
+// Parameter req needs to contain a MarbleType present in the Coordinator's manifest and a CSR with the Subject and DNSNames set with desired values.
 //
 // Returns a signed certificate-key-pair and the application's parameters if the authentication was successful.
 // Returns an error if the authentication failed.
@@ -148,7 +148,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 	return resp, nil
 }
 
-// verifyManifestRequirement verifies marble attempting to register with respect to manifest
+// verifyManifestRequirement verifies marble attempting to register with respect to manifest.
 func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, certQuote []byte, marbleType string) error {
 	marble, err := c.data.getMarble(marbleType)
 	if err != nil {
@@ -211,7 +211,7 @@ func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, certQuote []
 	return nil
 }
 
-// generateCertFromCSR signs the CSR from marble attempting to register
+// generateCertFromCSR signs the CSR from marble attempting to register.
 func (c *Core) generateCertFromCSR(csrReq []byte, pubk ecdsa.PublicKey, marbleType string, marbleUUID string) ([]byte, error) {
 	// parse and verify CSR
 	csr, err := x509.ParseCertificateRequest(csrReq)
@@ -264,7 +264,7 @@ func (c *Core) generateCertFromCSR(csrReq []byte, pubk ecdsa.PublicKey, marbleTy
 	return certRaw, nil
 }
 
-// customizeParameters replaces the placeholders in the manifest's parameters with the actual values
+// customizeParameters replaces the placeholders in the manifest's parameters with the actual values.
 func customizeParameters(params manifest.Parameters, specialSecrets reservedSecrets, userSecrets map[string]manifest.Secret) (*rpc.Parameters, error) {
 	customParams := rpc.Parameters{
 		Argv:  params.Argv,

@@ -111,7 +111,7 @@ func RunClientServer(mux http.Handler, address string, tlsConfig *tls.Config, za
 	zapLogger.Warn(err.Error())
 }
 
-// RunPrometheusServer runs a HTTP server handling the prometheus metrics endpoint
+// RunPrometheusServer runs a HTTP server handling the prometheus metrics endpoint.
 func RunPrometheusServer(address string, zapLogger *zap.Logger, reg *prometheus.Registry) {
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.InstrumentMetricHandler(reg, promhttp.HandlerFor(reg, promhttp.HandlerOpts{Registry: reg})))

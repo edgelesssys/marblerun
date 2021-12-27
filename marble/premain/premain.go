@@ -29,7 +29,7 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-// storeUUID stores the uuid to the fs
+// storeUUID stores the uuid to the fs.
 func storeUUID(appFs afero.Fs, marbleUUID uuid.UUID, filename string) error {
 	uuidBytes, err := marbleUUID.MarshalText()
 	if err != nil {
@@ -41,7 +41,7 @@ func storeUUID(appFs afero.Fs, marbleUUID uuid.UUID, filename string) error {
 	return nil
 }
 
-// readUUID reads the uuid from the fs if present
+// readUUID reads the uuid from the fs if present.
 func readUUID(appFs afero.Fs, filename string) (*uuid.UUID, error) {
 	uuidBytes, err := afero.ReadFile(appFs, filename)
 	if os.IsNotExist(err) {
@@ -58,7 +58,7 @@ func readUUID(appFs afero.Fs, filename string) (*uuid.UUID, error) {
 	return &marbleUUID, nil
 }
 
-// getUUID loads or generates the uuid
+// getUUID loads or generates the uuid.
 func getUUID(appFs afero.Fs, uuidFile string) (uuid.UUID, error) {
 	// check if we have a uuid stored in the fs (means we are restarted or it was set by the admission controller)
 	log.Println("loading UUID")
@@ -88,7 +88,7 @@ func generateCertificate() (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	return util.GenerateCert(marbleDNSNames, ipAddrs, false)
 }
 
-// PreMain runs before the App's actual main routine and authenticates with the Coordinator
+// PreMain runs before the App's actual main routine and authenticates with the Coordinator.
 //
 // It obtains a quote from the CPU and authenticates itself to the Coordinator through remote attestation.
 // After successful authentication PreMain will set the files, environment variables and commandline arguments according to the manifest.
@@ -102,7 +102,7 @@ func PreMain() error {
 	return PreMainEx(ertvalidator.NewERTIssuer(), ActivateRPC, hostfs, enclavefs)
 }
 
-// PreMainEgo works similar to PreMain, but let's EGo's premain handle the in-enclave memory filesystem mounting
+// PreMainEgo works similar to PreMain, but let's EGo's premain handle the in-enclave memory filesystem mounting.
 func PreMainEgo() error {
 	hostfs := afero.NewBasePathFs(afero.NewOsFs(), filepath.Join(filepath.FromSlash("/edg"), "hostfs"))
 	enclavefs := afero.NewOsFs()

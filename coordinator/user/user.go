@@ -17,7 +17,7 @@ const (
 	PermissionUpdatePackage = "updatesecurityversion"
 )
 
-// User represents a privileged user of MarbleRun
+// User represents a privileged user of MarbleRun.
 type User struct {
 	name string
 	// certificate is the users certificate, used for authentication
@@ -26,7 +26,7 @@ type User struct {
 	permissions map[string]Permission
 }
 
-// NewUser creates a new user
+// NewUser creates a new user.
 func NewUser(name string, certificate *x509.Certificate) *User {
 	newUser := &User{
 		name:        name,
@@ -36,7 +36,7 @@ func NewUser(name string, certificate *x509.Certificate) *User {
 	return newUser
 }
 
-// Assign adds a new permission to the user
+// Assign adds a new permission to the user.
 func (u *User) Assign(p Permission) {
 	if _, ok := u.permissions[p.ID()]; !ok {
 		u.permissions[p.ID()] = p
@@ -47,7 +47,7 @@ func (u *User) Assign(p Permission) {
 	}
 }
 
-// IsGranted returns true if the user has the requested permission
+// IsGranted returns true if the user has the requested permission.
 func (u *User) IsGranted(p Permission) bool {
 	q, ok := u.permissions[p.ID()]
 	if !ok {
@@ -56,22 +56,22 @@ func (u *User) IsGranted(p Permission) bool {
 	return q.match(p)
 }
 
-// Name returns the name of a user
+// Name returns the name of a user.
 func (u *User) Name() string {
 	return u.name
 }
 
-// Permissions returns a users permissions
+// Permissions returns a users permissions.
 func (u *User) Permissions() map[string]Permission {
 	return u.permissions
 }
 
-// Certificate returns a users certificate
+// Certificate returns a users certificate.
 func (u *User) Certificate() *x509.Certificate {
 	return u.certificate
 }
 
-// MarshalJSON implements the json.Marshaler interface
+// MarshalJSON implements the json.Marshaler interface.
 func (u *User) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct {
 		Name        string
@@ -84,7 +84,7 @@ func (u *User) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// UnmarshalJSON implements the json.Marshaler interface
+// UnmarshalJSON implements the json.Marshaler interface.
 func (u *User) UnmarshalJSON(data []byte) error {
 	tmp := &struct {
 		Name        string
@@ -105,13 +105,13 @@ func (u *User) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// Permission represents the permissions of a MarbleRun user
+// Permission represents the permissions of a MarbleRun user.
 type Permission struct {
 	PermissionID string
 	ResourceID   map[string]bool
 }
 
-// NewPermission creates a new permission, granting access to resources grouped by permissionID
+// NewPermission creates a new permission, granting access to resources grouped by permissionID.
 func NewPermission(permissionID string, resourceIDs []string) Permission {
 	newPermission := Permission{
 		PermissionID: permissionID,
@@ -123,12 +123,12 @@ func NewPermission(permissionID string, resourceIDs []string) Permission {
 	return newPermission
 }
 
-// ID returns the permissionID
+// ID returns the permissionID.
 func (p Permission) ID() string {
 	return p.PermissionID
 }
 
-// Match returns true if a is a subgroup of p
+// Match returns true if a is a subgroup of p.
 func (p Permission) match(q Permission) bool {
 	if p.PermissionID != q.ID() {
 		return false

@@ -42,7 +42,7 @@ func newCompletionCmd() *cobra.Command {
 	return cmd
 }
 
-// cliCompletion returns the autocompletion script for the specified shell
+// cliCompletion returns the autocompletion script for the specified shell.
 func cliCompletion(shell string, parent *cobra.Command) (string, error) {
 	var buf bytes.Buffer
 	var err error

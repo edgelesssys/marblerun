@@ -46,7 +46,7 @@ func newRecoverCmd() *cobra.Command {
 	return cmd
 }
 
-// cliRecover tries to unseal the Coordinator by uploading the recovery key
+// cliRecover tries to unseal the Coordinator by uploading the recovery key.
 func cliRecover(host string, key []byte, cert []*pem.Block) error {
 	client, err := restClient(cert, nil)
 	if err != nil {

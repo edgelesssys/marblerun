@@ -23,10 +23,10 @@ import (
 	"go.uber.org/zap"
 )
 
-// Version is the Coordinator version
+// Version is the Coordinator version.
 var Version = "0.0.0" // Don't touch! Automatically injected at build-time.
 
-// GitCommit is the git commit hash
+// GitCommit is the git commit hash.
 var GitCommit = "0000000000000000000000000000000000000000" // Don't touch! Automatically injected at build-time.
 
 func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer seal.Sealer, recovery recovery.Recovery) {

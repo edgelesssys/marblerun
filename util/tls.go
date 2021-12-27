@@ -23,7 +23,7 @@ import (
 
 const marbleName string = "MarbleRun Marble"
 
-// MustGenerateTestMarbleCredentials returns dummy Marble TLS credentials for testing
+// MustGenerateTestMarbleCredentials returns dummy Marble TLS credentials for testing.
 func MustGenerateTestMarbleCredentials() (cert *x509.Certificate, csrRaw []byte, privk *ecdsa.PrivateKey) {
 	dnsNames := []string{"localhost", "*.foobar.net", "*.example.org"}
 	ipAddrs := DefaultCertificateIPAddresses
@@ -41,7 +41,7 @@ func MustGenerateTestMarbleCredentials() (cert *x509.Certificate, csrRaw []byte,
 	return
 }
 
-// GenerateCert generates a new self-signed certificate associated key-pair
+// GenerateCert generates a new self-signed certificate associated key-pair.
 func GenerateCert(dnsNames []string, ipAddrs []net.IP, isCA bool) (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	privk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
@@ -85,7 +85,7 @@ func GenerateCert(dnsNames []string, ipAddrs []net.IP, isCA bool) (*x509.Certifi
 	return cert, privk, nil
 }
 
-// GenerateCSR generates a new CSR for the given DNSNames and private key
+// GenerateCSR generates a new CSR for the given DNSNames and private key.
 func GenerateCSR(dnsNames []string, privk *ecdsa.PrivateKey) (*x509.CertificateRequest, error) {
 	template := x509.CertificateRequest{
 		DNSNames:    dnsNames,
@@ -108,7 +108,7 @@ func GenerateCertificateSerialNumber() (*big.Int, error) {
 	return rand.Int(rand.Reader, serialNumberLimit)
 }
 
-// LoadGRPCTLSCredentials returns a TLS configuration based on cert and privk
+// LoadGRPCTLSCredentials returns a TLS configuration based on cert and privk.
 func LoadGRPCTLSCredentials(cert *x509.Certificate, privk *ecdsa.PrivateKey, insecureSkipVerify bool) (credentials.TransportCredentials, error) {
 	clientCert := TLSCertFromDER(cert.Raw, privk)
 	tlsConfig := &tls.Config{

@@ -28,7 +28,7 @@ func newCertificateIntermediate() *cobra.Command {
 	return cmd
 }
 
-// cliCertificateIntermediate gets the intermediate certificate of the MarbleRun Coordinator
+// cliCertificateIntermediate gets the intermediate certificate of the MarbleRun Coordinator.
 func cliCertificateIntermediate(host string, output string, configFilename string, insecure bool) error {
 	certs, err := verifyCoordinator(host, configFilename, insecure)
 	if err != nil {

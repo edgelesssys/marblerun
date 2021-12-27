@@ -20,7 +20,7 @@ import (
 )
 
 // libOS constants for specific checks.
-// Use 1000 as a starting point for distinction
+// Use 1000 as a starting point for distinction.
 const (
 	gramine = iota + 1000
 	occlum

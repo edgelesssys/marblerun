@@ -8,7 +8,7 @@ package store
 
 import "fmt"
 
-// Store is the interface for persistence
+// Store is the interface for persistence.
 type Store interface {
 	// BeginTransaction starts a new transaction
 	BeginTransaction() (Transaction, error)
@@ -34,7 +34,7 @@ type Transaction interface {
 	Rollback()
 }
 
-// Iterator is an iterator for the store
+// Iterator is an iterator for the store.
 type Iterator interface {
 	// Returns the next element of the iterator
 	GetNext() (string, error)
@@ -42,17 +42,17 @@ type Iterator interface {
 	HasNext() bool
 }
 
-// storeValueUnset is an error raised by unset values in the store
+// storeValueUnset is an error raised by unset values in the store.
 type storeValueUnset struct {
 	requestedValue string
 }
 
-// Error implements the Error interface
+// Error implements the Error interface.
 func (s *storeValueUnset) Error() string {
 	return fmt.Sprintf("requested value not set: %s", s.requestedValue)
 }
 
-// IsStoreValueUnsetError returns true if an error is of type storeValueUnset
+// IsStoreValueUnsetError returns true if an error is of type storeValueUnset.
 func IsStoreValueUnsetError(err error) bool {
 	_, ok := err.(*storeValueUnset)
 	return ok

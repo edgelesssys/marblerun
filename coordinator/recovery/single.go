@@ -12,17 +12,17 @@ import (
 	"github.com/edgelesssys/marblerun/util"
 )
 
-// SinglePartyRecovery is a recoverer with support for single-party recovery only
+// SinglePartyRecovery is a recoverer with support for single-party recovery only.
 type SinglePartyRecovery struct {
 	encryptionKey []byte
 }
 
-// NewSinglePartyRecovery generates a single-party recoverer which the core can use to call recovery functions
+// NewSinglePartyRecovery generates a single-party recoverer which the core can use to call recovery functions.
 func NewSinglePartyRecovery() *SinglePartyRecovery {
 	return &SinglePartyRecovery{}
 }
 
-// GenerateEncryptionKey generates an encryption key according to the implicitly defined recovery mode
+// GenerateEncryptionKey generates an encryption key according to the implicitly defined recovery mode.
 func (r *SinglePartyRecovery) GenerateEncryptionKey(recoveryKeys map[string]string) ([]byte, error) {
 
 	// Generate a single random key for single-party recovery, or generate multiple keys and XOR them together for multi-party recovery
@@ -39,7 +39,7 @@ func (r *SinglePartyRecovery) GenerateEncryptionKey(recoveryKeys map[string]stri
 	return r.encryptionKey, nil
 }
 
-// GenerateRecoveryData generates the recovery data which is returned to the user
+// GenerateRecoveryData generates the recovery data which is returned to the user.
 func (r *SinglePartyRecovery) GenerateRecoveryData(recoveryKeys map[string]string) (map[string][]byte, []byte, error) {
 	// For single party recovery, just create a new map here and return one single key
 	secretMap := make(map[string][]byte, 1)
@@ -61,7 +61,7 @@ func (r *SinglePartyRecovery) GenerateRecoveryData(recoveryKeys map[string]strin
 	return secretMap, nil, nil
 }
 
-// RecoverKey is called by the client api and directly returns the recovery key (this is different for multi-party recovery in other versions of MarbleRun)
+// RecoverKey is called by the client api and directly returns the recovery key (this is different for multi-party recovery in other versions of MarbleRun).
 func (r *SinglePartyRecovery) RecoverKey(secret []byte) (int, []byte, error) {
 	return 0, secret, nil
 }

@@ -69,7 +69,7 @@ and need permissions in the manifest to write the requested secrets.
 	return cmd
 }
 
-// cliSecretSet sets one or more secrets using a secrets manifest
+// cliSecretSet sets one or more secrets using a secrets manifest.
 func cliSecretSet(host string, newSecrets []byte, clCert tls.Certificate, caCert []*pem.Block) error {
 	client, err := restClient(caCert, &clCert)
 	if err != nil {
@@ -110,8 +110,8 @@ func cliSecretSet(host string, newSecrets []byte, clCert tls.Certificate, caCert
 	return nil
 }
 
-// loadSecretFromPEM creates a JSON string from a certificate and/or private key in PEM format
-// if the PEM data contains more than one cert of key only the first instance will be part of the secret
+// loadSecretFromPEM creates a JSON string from a certificate and/or private key in PEM format.
+// If the PEM data contains more than one cert of key only the first instance will be part of the secret.
 func loadSecretFromPEM(secretName string, rawPEM []byte) ([]byte, error) {
 	newSecret := manifest.UserSecret{}
 	for {

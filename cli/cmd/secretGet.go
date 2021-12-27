@@ -60,7 +60,7 @@ and need permissions in the manifest to read the requested secrets.
 	return cmd
 }
 
-// cliSecretGet requests one or more secrets from the MarbleRun Coordinator
+// cliSecretGet requests one or more secrets from the MarbleRun Coordinator.
 func cliSecretGet(o *secretGetOptions) error {
 	client, err := restClient(o.caCert, &o.clCert)
 	if err != nil {
@@ -126,7 +126,7 @@ func cliSecretGet(o *secretGetOptions) error {
 	return nil
 }
 
-// printSecrets prints secrets formated in a readable way
+// printSecrets prints secrets formated in a readable way.
 func printSecrets(response gjson.Result) error {
 	for secretName, singleResponse := range response.Map() {
 		secretType := singleResponse.Get("Type")

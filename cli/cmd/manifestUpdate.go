@@ -61,7 +61,7 @@ An admin certificate specified in the original manifest is needed to verify the 
 	return cmd
 }
 
-// cliManifestUpdate updates the Coordinators manifest using its rest api
+// cliManifestUpdate updates the Coordinators manifest using its rest api.
 func cliManifestUpdate(manifest []byte, host string, clCert tls.Certificate, caCert []*pem.Block) error {
 	client, err := restClient(caCert, &clCert)
 	if err != nil {

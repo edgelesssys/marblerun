@@ -19,20 +19,20 @@ type entry struct {
 	ip      InfrastructureProperties
 }
 
-// MockValidator is a mockup quote validator
+// MockValidator is a mockup quote validator.
 type MockValidator struct {
 	mutex sync.Mutex
 	valid map[string]entry
 }
 
-// NewMockValidator returns a new MockValidator object
+// NewMockValidator returns a new MockValidator object.
 func NewMockValidator() *MockValidator {
 	return &MockValidator{
 		valid: make(map[string]entry),
 	}
 }
 
-// Validate implements the Validator interface
+// Validate implements the Validator interface.
 func (m *MockValidator) Validate(quote []byte, message []byte, pp PackageProperties, ip InfrastructureProperties) error {
 	m.mutex.Lock()
 	entry, found := m.valid[string(quote)]
@@ -52,22 +52,22 @@ func (m *MockValidator) Validate(quote []byte, message []byte, pp PackagePropert
 	return nil
 }
 
-// AddValidQuote adds a valid quote
+// AddValidQuote adds a valid quote.
 func (m *MockValidator) AddValidQuote(quote []byte, message []byte, pp PackageProperties, ip InfrastructureProperties) {
 	m.mutex.Lock()
 	m.valid[string(quote)] = entry{message, pp, ip}
 	m.mutex.Unlock()
 }
 
-// MockIssuer is a mockup quote issuer
+// MockIssuer is a mockup quote issuer.
 type MockIssuer struct{}
 
-// NewMockIssuer returns a new MockIssuer object
+// NewMockIssuer returns a new MockIssuer object.
 func NewMockIssuer() *MockIssuer {
 	return &MockIssuer{}
 }
 
-// Issue implements the Issuer interface
+// Issue implements the Issuer interface.
 func (m *MockIssuer) Issue(message []byte) ([]byte, error) {
 	quote := sha256.Sum256(message)
 	return quote[:], nil

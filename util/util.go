@@ -28,7 +28,7 @@ const (
 	AlibabaEpc     corev1.ResourceName = "alibabacloud.com/sgx_epc_MiB"
 )
 
-// DefaultCertificateIPAddresses defines a placeholder value used for automated x509 certificate generation
+// DefaultCertificateIPAddresses defines a placeholder value used for automated x509 certificate generation.
 var DefaultCertificateIPAddresses = []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback}
 
 // DeriveKey derives a key from a secret.
@@ -41,7 +41,7 @@ func DeriveKey(secret, salt []byte, length uint) ([]byte, error) {
 	return key, nil
 }
 
-// MustGetenv returns the environment variable `name` if it exists or panics otherwise
+// MustGetenv returns the environment variable `name` if it exists or panics otherwise.
 func MustGetenv(name string) string {
 	value := os.Getenv(name)
 	if len(value) == 0 {
@@ -78,7 +78,7 @@ func MustGetLocalListenerAndAddr() (net.Listener, string) {
 	return listener, localhost + port
 }
 
-// XORBytes XORs two byte slices
+// XORBytes XORs two byte slices.
 func XORBytes(a, b []byte) ([]byte, error) {
 	if len(a) != len(b) {
 		return nil, fmt.Errorf("lengths of byte slices differ: %v != %v", len(a), len(b))
@@ -90,12 +90,12 @@ func XORBytes(a, b []byte) ([]byte, error) {
 	return result, nil
 }
 
-// EncryptOAEP is a wrapper function for rsa.EncryptOAEP for a nicer syntax
+// EncryptOAEP is a wrapper function for rsa.EncryptOAEP for a nicer syntax.
 func EncryptOAEP(pub *rsa.PublicKey, plaintext []byte) ([]byte, error) {
 	return rsa.EncryptOAEP(sha256.New(), rand.Reader, pub, plaintext, nil)
 }
 
-// DecryptOAEP is a wrapper function for rsa.DecryptOAEP for a nicer syntax
+// DecryptOAEP is a wrapper function for rsa.DecryptOAEP for a nicer syntax.
 func DecryptOAEP(priv *rsa.PrivateKey, ciphertext []byte) ([]byte, error) {
 	return rsa.DecryptOAEP(sha256.New(), rand.Reader, priv, ciphertext, nil)
 }
@@ -115,7 +115,7 @@ func MustGetwd() string {
 	panic(err)
 }
 
-// GetEPCResorceLimit returns the amount of EPC to set for k8s deployments depending on the used sgx device plugin
+// GetEPCResorceLimit returns the amount of EPC to set for k8s deployments depending on the used sgx device plugin.
 func GetEPCResourceLimit(resourceKey string) string {
 	switch resourceKey {
 	case AzureEpc.String():
