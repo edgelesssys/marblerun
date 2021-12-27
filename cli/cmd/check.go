@@ -34,7 +34,7 @@ func newCheckCmd() *cobra.Command {
 	return cmd
 }
 
-// cliCheck if marblerun control-plane deployments are ready to use
+// cliCheck if marblerun control-plane deployments are ready to use.
 func cliCheck(kubeClient kubernetes.Interface, timeout uint) error {
 	if err := checkDeploymentStatus(kubeClient, helmInjectorDeployment, helmNamespace, timeout); err != nil {
 		return err
@@ -47,9 +47,9 @@ func cliCheck(kubeClient kubernetes.Interface, timeout uint) error {
 	return nil
 }
 
-// checkDeploymentStatus checks if a deployment is installed on the cluster
-// If it is, this function will wait until all replicas have the "available" status (ready for at least minReadySeconds)
-// Current status is continuously printed on screen
+// checkDeploymentStatus checks if a deployment is installed on the cluster.
+// If it is, this function will wait until all replicas have the "available" status (ready for at least minReadySeconds).
+// Current status is continuously printed on screen.
 func checkDeploymentStatus(kubeClient kubernetes.Interface, deploymentName string, namespace string, timeout uint) error {
 	_, err := kubeClient.AppsV1().Deployments(namespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
@@ -98,7 +98,7 @@ func checkDeploymentStatus(kubeClient kubernetes.Interface, deploymentName strin
 	return nil
 }
 
-// deploymentIsReady checks on the status of a single deployment and returns the number of available pods in the form "available/total"
+// deploymentIsReady checks on the status of a single deployment and returns the number of available pods in the form "available/total".
 func deploymentIsReady(kubeClient kubernetes.Interface, deploymentName string, namespace string) (bool, string, error) {
 	deployment, err := kubeClient.AppsV1().Deployments(namespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
 	if err != nil {

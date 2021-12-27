@@ -23,7 +23,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// Manifest defines the rules of a mesh
+// Manifest defines the rules of a mesh.
 type Manifest struct {
 	// Packages contains the allowed enclaves and their properties.
 	Packages map[string]quote.PackageProperties
@@ -43,7 +43,7 @@ type Manifest struct {
 	TLS map[string]TLStag
 }
 
-// Marble describes a service in the mesh that should be handled and verified by the Coordinator
+// Marble describes a service in the mesh that should be handled and verified by the Coordinator.
 type Marble struct {
 	// Package references one of the allowed enclaves in the manifest.
 	Package string
@@ -56,14 +56,14 @@ type Marble struct {
 	TLS []string
 }
 
-// Parameters contains lists for files, environment variables and commandline arguments that should be passed to an application
+// Parameters contains lists for files, environment variables and commandline arguments that should be passed to an application.
 type Parameters struct {
 	Files map[string]File
 	Env   map[string]File
 	Argv  []string
 }
 
-// File defines data, encoding type, and if data contains templates for a File or Env variable
+// File defines data, encoding type, and if data contains templates for a File or Env variable.
 type File struct {
 	// Data is the data to be saved as a file or environment variable
 	Data string
@@ -161,7 +161,7 @@ func (f *File) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// TLStag describes which entries should be used to determine the ttls connections of a marble
+// TLStag describes which entries should be used to determine the ttls connections of a marble.
 type TLStag struct {
 	// Outgoing holds a list of all outgoing addresses that should be elevated to TLS
 	Outgoing []TLSTagEntry
@@ -169,7 +169,7 @@ type TLStag struct {
 	Incoming []TLSTagEntry
 }
 
-// TLSTagEntry describes one connection which should be elevated to ttls
+// TLSTagEntry describes one connection which should be elevated to ttls.
 type TLSTagEntry struct {
 	Port              string
 	Addr              string
@@ -177,7 +177,7 @@ type TLSTagEntry struct {
 	DisableClientAuth bool
 }
 
-// User describes the attributes of a MarbleRun user
+// User describes the attributes of a MarbleRun user.
 type User struct {
 	// Certificate is the TLS certificate used by the user for authentication
 	Certificate string
@@ -185,7 +185,7 @@ type User struct {
 	Roles []string
 }
 
-// Role describes a set of actions permitted for a specific set of resources
+// Role describes a set of actions permitted for a specific set of resources.
 type Role struct {
 	// ResourceType is the type of the affected resources
 	ResourceType string
@@ -341,13 +341,13 @@ func (m Manifest) Check(ctx context.Context, zaplogger *zap.Logger) error {
 	return nil
 }
 
-// PrivateKey is a wrapper for a binary private key, which we need for type differentiation in the PEM encoding function
+// PrivateKey is a wrapper for a binary private key, which we need for type differentiation in the PEM encoding function.
 type PrivateKey []byte
 
-// PublicKey is a wrapper for a binary public key, which we need for type differentiation in the PEM encoding function
+// PublicKey is a wrapper for a binary public key, which we need for type differentiation in the PEM encoding function.
 type PublicKey []byte
 
-// Secret defines a structure for storing certificates & encryption keys
+// Secret defines a structure for storing certificates & encryption keys.
 type Secret struct {
 	Type        string
 	Size        uint
@@ -359,7 +359,7 @@ type Secret struct {
 	Public      PublicKey
 }
 
-// Certificate is an x509.Certificate
+// Certificate is an x509.Certificate.
 type Certificate x509.Certificate
 
 // MarshalJSON implements the json.Marshaler interface.
@@ -390,7 +390,7 @@ func (c *Certificate) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// EncodeSecretDataToPem encodes a secret to an appropriate PEM block
+// EncodeSecretDataToPem encodes a secret to an appropriate PEM block.
 func EncodeSecretDataToPem(data interface{}) (string, error) {
 	var typ string
 	var bytes []byte
@@ -414,7 +414,7 @@ func EncodeSecretDataToPem(data interface{}) (string, error) {
 	return string(pem.EncodeToMemory(&pem.Block{Type: typ, Bytes: bytes})), nil
 }
 
-// EncodeSecretDataToHex encodes a secret to a hex string
+// EncodeSecretDataToHex encodes a secret to a hex string.
 func EncodeSecretDataToHex(data interface{}) (string, error) {
 	raw, err := EncodeSecretDataToRaw(data)
 	if err != nil {
@@ -423,7 +423,7 @@ func EncodeSecretDataToHex(data interface{}) (string, error) {
 	return hex.EncodeToString([]byte(raw)), nil
 }
 
-// EncodeSecretDataToRaw encodes a secret to a raw byte string
+// EncodeSecretDataToRaw encodes a secret to a raw byte string.
 func EncodeSecretDataToRaw(data interface{}) (string, error) {
 	var raw []byte
 
@@ -450,7 +450,7 @@ func EncodeSecretDataToRaw(data interface{}) (string, error) {
 	return string(raw), nil
 }
 
-// EncodeSecretDataToBase64 encodes the byte value of a secret to a Base64 string
+// EncodeSecretDataToBase64 encodes the byte value of a secret to a Base64 string.
 func EncodeSecretDataToBase64(data interface{}) (string, error) {
 	raw, err := EncodeSecretDataToRaw(data)
 	if err != nil {
@@ -459,7 +459,7 @@ func EncodeSecretDataToBase64(data interface{}) (string, error) {
 	return base64.StdEncoding.EncodeToString([]byte(raw)), nil
 }
 
-// EncodeSecretDataToString encodes secrets to C type strings (no NULL bytes allowed as part of the string)
+// EncodeSecretDataToString encodes secrets to C type strings (no NULL bytes allowed as part of the string).
 func EncodeSecretDataToString(data interface{}) (string, error) {
 	switch secret := data.(type) {
 	case Secret:
@@ -477,7 +477,7 @@ func EncodeSecretDataToString(data interface{}) (string, error) {
 	}
 }
 
-// ManifestTemplateFuncMap defines the functions which can be specified for secret injections into files in the in Go template format
+// ManifestTemplateFuncMap defines the functions which can be specified for secret injections into files in the in Go template format.
 var ManifestFileTemplateFuncMap = template.FuncMap{
 	"pem":    EncodeSecretDataToPem,
 	"hex":    EncodeSecretDataToHex,
@@ -485,7 +485,7 @@ var ManifestFileTemplateFuncMap = template.FuncMap{
 	"base64": EncodeSecretDataToBase64,
 }
 
-// ManifestEnvTemplateFuncMap defines the functions which can be specified for secret injections into Env variables in the Go template format
+// ManifestEnvTemplateFuncMap defines the functions which can be specified for secret injections into Env variables in the Go template format.
 var ManifestEnvTemplateFuncMap = template.FuncMap{
 	"pem":    EncodeSecretDataToPem,
 	"hex":    EncodeSecretDataToHex,
@@ -525,7 +525,7 @@ func (m Manifest) CheckUpdate(ctx context.Context, originalPackages map[string]q
 	return nil
 }
 
-// UserSecret is a secret uploaded by a user
+// UserSecret is a secret uploaded by a user.
 // swagger:model
 type UserSecret struct {
 	Cert    Certificate
@@ -533,7 +533,7 @@ type UserSecret struct {
 	Key     []byte
 }
 
-// ParseUserSecrets checks if a map of UserSecrets only contains supported values and parses them to a map of Secrets
+// ParseUserSecrets checks if a map of UserSecrets only contains supported values and parses them to a map of Secrets.
 func ParseUserSecrets(ctx context.Context, newSecrets map[string]UserSecret, originalSecrets map[string]Secret) (map[string]Secret, error) {
 	if len(newSecrets) <= 0 {
 		return nil, errors.New("no new secrets defined")

@@ -10,29 +10,29 @@ import (
 	"fmt"
 )
 
-// FailValidator always fails
+// FailValidator always fails.
 type FailValidator struct {
 }
 
-// NewFailValidator returns a new FailValidator object
+// NewFailValidator returns a new FailValidator object.
 func NewFailValidator() *FailValidator {
 	return &FailValidator{}
 }
 
-// Validate implements the Validator interface for FailValidator
+// Validate implements the Validator interface for FailValidator.
 func (m *FailValidator) Validate(quote []byte, cert []byte, pp PackageProperties, ip InfrastructureProperties) error {
 	return fmt.Errorf("cannot validate quote")
 }
 
-// FailIssuer always fails
+// FailIssuer always fails.
 type FailIssuer struct{}
 
-// NewFailIssuer returns a new FailIssuer object
+// NewFailIssuer returns a new FailIssuer object.
 func NewFailIssuer() *FailIssuer {
 	return &FailIssuer{}
 }
 
-// Issue implements the Issuer interface
+// Issue implements the Issuer interface.
 func (m *FailIssuer) Issue(cert []byte) ([]byte, error) {
 	return nil, fmt.Errorf("OE_UNSUPPORTED")
 }

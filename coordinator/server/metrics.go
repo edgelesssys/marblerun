@@ -91,7 +91,7 @@ func newHttpMetrics(factory *promauto.Factory, namespace string, subsystem strin
 }
 
 // promServeMux is a wrapper around mux.Router with additional instrumentation to
-// gather Prometheus metrics
+// gather Prometheus metrics.
 type promServeMux struct {
 	router      *mux.Router
 	promFactory *promauto.Factory
@@ -101,7 +101,7 @@ type promServeMux struct {
 }
 
 // newPromServeMux allocates and returns a new PromServeMux
-// namespace and subsystem are used to name the exposed metrics
+// namespace and subsystem are used to name the exposed metrics.
 func newPromServeMux(factory *promauto.Factory, namespace string, subsystem string) *promServeMux {
 	return &promServeMux{
 		router:      mux.NewRouter(),
@@ -137,7 +137,7 @@ func (p *promServeMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	p.router.ServeHTTP(w, r)
 }
 
-// metricsMiddelware returns the handed next handler wrapped in a bunch of prometheus metric handlers
+// metricsMiddelware returns the handed next handler wrapped in a bunch of prometheus metric handlers.
 func (p *promServeMux) metricsMiddleware(pattern string, next http.Handler) http.Handler {
 	return promhttp.InstrumentHandlerDuration(p.metrics[pattern].duration,
 		promhttp.InstrumentHandlerCounter(p.metrics[pattern].reqest,
@@ -150,7 +150,7 @@ func (p *promServeMux) metricsMiddleware(pattern string, next http.Handler) http
 	)
 }
 
-// setMethodNOtAllowedHandler sets f as instrumented handler for the mux.Router
+// setMethodNOtAllowedHandler sets f as instrumented handler for the mux.Router.
 func (p *promServeMux) setMethodNotAllowedHandler(f func(http.ResponseWriter, *http.Request)) {
 	p.router.MethodNotAllowedHandler = http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {

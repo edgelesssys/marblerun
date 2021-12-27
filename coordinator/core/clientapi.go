@@ -26,7 +26,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// ClientCore provides the core functionality for the client. It can be used by e.g. a http server
+// ClientCore provides the core functionality for the client. It can be used by e.g. a http server.
 type ClientCore interface {
 	SetManifest(ctx context.Context, rawManifest []byte) (recoverySecretMap map[string][]byte, err error)
 	GetCertQuote(ctx context.Context) (cert string, certQuote []byte, err error)
@@ -40,7 +40,7 @@ type ClientCore interface {
 	WriteSecrets(ctx context.Context, rawSecretManifest []byte, updater *user.User) error
 }
 
-// SetManifest sets the manifest, once and for all
+// SetManifest sets the manifest, once and for all.
 //
 // rawManifest is the manifest of type Manifest in JSON format.
 func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string][]byte, error) {
@@ -177,7 +177,7 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 	return recoverySecretMap, nil
 }
 
-// GetCertQuote gets the Coordinators certificate and corresponding quote (containing the cert)
+// GetCertQuote gets the Coordinators certificate and corresponding quote (containing the cert).
 //
 // Returns the a remote attestation quote of its own certificate alongside this certificate that allows to verify the Coordinator's integrity and authentication for use of the ClientAPI.
 func (c *Core) GetCertQuote(ctx context.Context) (string, []byte, error) {
@@ -210,7 +210,7 @@ func (c *Core) GetCertQuote(ctx context.Context) (string, []byte, error) {
 	return strCert, c.quote, nil
 }
 
-// GetManifestSignature returns the hash of the manifest
+// GetManifestSignature returns the hash of the manifest.
 //
 // Returns a SHA256 hash of the active manifest.
 func (c *Core) GetManifestSignature(ctx context.Context) ([]byte, []byte) {
@@ -251,7 +251,7 @@ func (c *Core) GetStatus(ctx context.Context) (statusCode int, status string, er
 	return c.getStatus(ctx)
 }
 
-// GetUpdateLog returns the update history of the coordinator
+// GetUpdateLog returns the update history of the coordinator.
 func (c *Core) GetUpdateLog(ctx context.Context) (string, error) {
 	defer c.mux.Unlock()
 	if err := c.requireState(stateAcceptingMarbles); err != nil {
@@ -260,7 +260,7 @@ func (c *Core) GetUpdateLog(ctx context.Context) (string, error) {
 	return c.data.getUpdateLog()
 }
 
-// VerifyUser checks if a given client certificate matches the admin certificates specified in the manifest
+// VerifyUser checks if a given client certificate matches the admin certificates specified in the manifest.
 func (c *Core) VerifyUser(ctx context.Context, clientCerts []*x509.Certificate) (*user.User, error) {
 	userIter, err := c.data.getIterator(requestUser)
 	if err != nil {
@@ -287,7 +287,7 @@ func (c *Core) VerifyUser(ctx context.Context, clientCerts []*x509.Certificate) 
 	return nil, errors.New("client certificate did not match any MarbleRun users")
 }
 
-// UpdateManifest allows to update certain package parameters, supplied via a JSON manifest
+// UpdateManifest allows to update certain package parameters, supplied via a JSON manifest.
 func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte, updater *user.User) error {
 	defer c.mux.Unlock()
 
@@ -421,7 +421,7 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte, upd
 	return tx.Commit()
 }
 
-// GetSecrets allows a user to read out secrets from the core
+// GetSecrets allows a user to read out secrets from the core.
 func (c *Core) GetSecrets(ctx context.Context, requestedSecrets []string, client *user.User) (map[string]manifest.Secret, error) {
 	defer c.mux.Unlock()
 
@@ -447,7 +447,7 @@ func (c *Core) GetSecrets(ctx context.Context, requestedSecrets []string, client
 	return secrets, nil
 }
 
-// WriteSecrets allows a user to set certain user-defined secrets
+// WriteSecrets allows a user to set certain user-defined secrets.
 func (c *Core) WriteSecrets(ctx context.Context, rawSecretManifest []byte, updater *user.User) error {
 	defer c.mux.Unlock()
 
@@ -547,7 +547,7 @@ func (c *Core) performRecovery(encryptionKey []byte) error {
 	return err
 }
 
-// templateDryRun performs a dry run for Files and Env declarations in a manifest
+// templateDryRun performs a dry run for Files and Env declarations in a manifest.
 func templateDryRun(mnf manifest.Manifest, secrets map[string]manifest.Secret) error {
 	templateSecrets := secretsWrapper{
 		Secrets: secrets,

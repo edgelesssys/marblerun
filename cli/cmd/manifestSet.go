@@ -51,7 +51,7 @@ func newManifestSet() *cobra.Command {
 	return cmd
 }
 
-// cliManifestSet sets the Coordinators manifest using its rest api
+// cliManifestSet sets the Coordinators manifest using its rest api.
 func cliManifestSet(manifest []byte, host string, cert []*pem.Block, recover string) error {
 	client, err := restClient(cert, nil)
 	if err != nil {
@@ -107,7 +107,7 @@ func cliManifestSet(manifest []byte, host string, cert []*pem.Block, recover str
 	return nil
 }
 
-// loadManifestFile loads a manifest in either json or yaml format and returns the data as json
+// loadManifestFile loads a manifest in either json or yaml format and returns the data as json.
 func loadManifestFile(filename string) ([]byte, error) {
 	manifestData, err := ioutil.ReadFile(filename)
 	if err != nil {

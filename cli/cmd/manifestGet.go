@@ -58,7 +58,7 @@ Optionally get the manifests signature or merge updates into the displayed manif
 	return cmd
 }
 
-// decodeManifest parses a base64 encoded manifest and optionally merges updates
+// decodeManifest parses a base64 encoded manifest and optionally merges updates.
 func decodeManifest(displayUpdate bool, encodedManifest, hostName string, cert []*pem.Block) (string, error) {
 	manifest, err := base64.StdEncoding.DecodeString(encodedManifest)
 	if err != nil {
@@ -77,7 +77,7 @@ func decodeManifest(displayUpdate bool, encodedManifest, hostName string, cert [
 	return consolidateManifest(manifest, log)
 }
 
-// consolidateManifest updates a base manifest with values from an update log
+// consolidateManifest updates a base manifest with values from an update log.
 func consolidateManifest(rawManifest, log []byte) (string, error) {
 	var baseManifest manifest.Manifest
 	if err := json.Unmarshal(rawManifest, &baseManifest); err != nil {
@@ -107,7 +107,7 @@ func consolidateManifest(rawManifest, log []byte) (string, error) {
 	return gjson.Parse(string(updated)).Get(`@pretty:{"indent":"    "}`).String(), nil
 }
 
-// removeNil removes nil entries from a map
+// removeNil removes nil entries from a map.
 func removeNil(m map[string]interface{}) {
 	for k, v := range m {
 		// remove key if value is nil

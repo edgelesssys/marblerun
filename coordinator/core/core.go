@@ -42,7 +42,7 @@ import (
 	"google.golang.org/grpc/peer"
 )
 
-// Core implements the core logic of the Coordinator
+// Core implements the core logic of the Coordinator.
 type Core struct {
 	mux          sync.Mutex
 	quote        []byte
@@ -58,7 +58,7 @@ type Core struct {
 	rpc.UnimplementedMarbleServer
 }
 
-// The sequence of states a Coordinator may be in
+// The sequence of states a Coordinator may be in.
 type state int
 
 const (
@@ -75,7 +75,7 @@ const coordinatorName string = "MarbleRun Coordinator"
 // coordinatorIntermediateName is the name of the Coordinator. It is used as CN of the intermediate certificate which is set when setting or updating a certificate.
 const coordinatorIntermediateName string = "MarbleRun Coordinator - Intermediate CA"
 
-// storage keys for the used in the Coordinator
+// storage keys for the used in the Coordinator.
 const (
 	sKCoordinatorRootCert         string = "coordinatorRootCert"
 	sKCoordinatorRootKey          string = "coordinatorRootKey"
@@ -84,7 +84,7 @@ const (
 	sKCoordinatorIntermediateKey  string = "coordinatorIntermediateKey"
 )
 
-// Needs to be paired with `defer c.mux.Unlock()`
+// Needs to be paired with `defer c.mux.Unlock()`.
 func (c *Core) requireState(states ...state) error {
 	c.mux.Lock()
 	curState, err := c.data.getState()
@@ -111,7 +111,7 @@ func (c *Core) advanceState(newState state, tx store.Transaction) error {
 	return txdata.putState(newState)
 }
 
-// NewCore creates and initializes a new Core object
+// NewCore creates and initializes a new Core object.
 func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal.Sealer, recovery recovery.Recovery, zapLogger *zap.Logger, promFactory *promauto.Factory) (*Core, error) {
 	stor := store.NewStdStore(sealer)
 	c := &Core{
@@ -214,12 +214,12 @@ func NewCoreWithMocks() *Core {
 	return core
 }
 
-// inSimulationMode returns true if we operate in OE_SIMULATION mode
+// inSimulationMode returns true if we operate in OE_SIMULATION mode.
 func (c *Core) inSimulationMode() bool {
 	return len(c.quote) == 0
 }
 
-// GetTLSConfig gets the core's TLS configuration
+// GetTLSConfig gets the core's TLS configuration.
 func (c *Core) GetTLSConfig() (*tls.Config, error) {
 	return &tls.Config{
 		GetCertificate: c.GetTLSRootCertificate,
@@ -227,7 +227,7 @@ func (c *Core) GetTLSConfig() (*tls.Config, error) {
 	}, nil
 }
 
-// GetTLSRootCertificate creates a TLS certificate for the Coordinators self-signed x509 certificate
+// GetTLSRootCertificate creates a TLS certificate for the Coordinators self-signed x509 certificate.
 func (c *Core) GetTLSRootCertificate(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
 	curState, err := c.data.getState()
 	if err != nil {
@@ -249,7 +249,7 @@ func (c *Core) GetTLSRootCertificate(clientHello *tls.ClientHelloInfo) (*tls.Cer
 	return util.TLSCertFromDER(rootCert.Raw, rootPrivK), nil
 }
 
-// GetTLSMarbleRootCertificate creates a TLS certificate for the Coordinator's x509 marbleRoot certificate
+// GetTLSMarbleRootCertificate creates a TLS certificate for the Coordinator's x509 marbleRoot certificate.
 func (c *Core) GetTLSMarbleRootCertificate(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
 	curState, err := c.data.getState()
 	if err != nil {
@@ -579,7 +579,7 @@ func (c *Core) generateCertificateForSecret(secret manifest.Secret, parentCertif
 	return secret, nil
 }
 
-// generateUsersFromManifest creates users and permissions from a map of manifest.User
+// generateUsersFromManifest creates users and permissions from a map of manifest.User.
 func generateUsersFromManifest(rawUsers map[string]manifest.User, roles map[string]manifest.Role) ([]*user.User, error) {
 	// Parse & write X.509 user data from manifest
 	users := make([]*user.User, 0, len(rawUsers))

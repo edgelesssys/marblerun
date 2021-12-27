@@ -18,34 +18,34 @@ import (
 	"github.com/edgelesssys/ego/ecrypto"
 )
 
-// SealedDataFname contains the file name in which the state is sealed on disk in seal_dir
+// SealedDataFname contains the file name in which the state is sealed on disk in seal_dir.
 const SealedDataFname string = "sealed_data"
 
-// SealedKeyFname contains the file name in which the key is sealed with the seal key on disk in seal_dir
+// SealedKeyFname contains the file name in which the key is sealed with the seal key on disk in seal_dir.
 const SealedKeyFname string = "sealed_key"
 
 // ErrEncryptionKey occurs if unsealing the encryption key failed.
 var ErrEncryptionKey = errors.New("cannot unseal encryption key")
 
-// Sealer is an interface for the Core object to seal information to the filesystem for persistence
+// Sealer is an interface for the Core object to seal information to the filesystem for persistence.
 type Sealer interface {
 	Seal(unencryptedData []byte, toBeEncrypted []byte) error
 	Unseal() (unencryptedData []byte, decryptedData []byte, err error)
 	SetEncryptionKey(key []byte) error
 }
 
-// AESGCMSealer implements the Sealer interface using AES-GCM for confidentiallity and authentication
+// AESGCMSealer implements the Sealer interface using AES-GCM for confidentiallity and authentication.
 type AESGCMSealer struct {
 	sealDir       string
 	encryptionKey []byte
 }
 
-// NewAESGCMSealer creates and initializes a new AESGCMSealer object
+// NewAESGCMSealer creates and initializes a new AESGCMSealer object.
 func NewAESGCMSealer(sealDir string) *AESGCMSealer {
 	return &AESGCMSealer{sealDir: sealDir}
 }
 
-// Unseal reads and decrypts stored information from the fs
+// Unseal reads and decrypts stored information from the fs.
 func (s *AESGCMSealer) Unseal() ([]byte, []byte, error) {
 	// load from fs
 	sealedData, err := ioutil.ReadFile(s.getFname(SealedDataFname))
@@ -90,7 +90,7 @@ func (s *AESGCMSealer) Unseal() ([]byte, []byte, error) {
 	return unencryptedData, decryptedData, nil
 }
 
-// Seal encrypts and stores information to the fs
+// Seal encrypts and stores information to the fs.
 func (s *AESGCMSealer) Seal(unencryptedData []byte, toBeEncrypted []byte) error {
 	// If we don't have an AES key to encrypt the state, generate one
 	if err := s.unsealEncryptionKey(); err != nil {
@@ -150,7 +150,7 @@ func (s *AESGCMSealer) unsealEncryptionKey() error {
 	return nil
 }
 
-// generateNewEncryptionKey generates a random 128 Bit (16 Byte) key to encrypt the state
+// generateNewEncryptionKey generates a random 128 Bit (16 Byte) key to encrypt the state.
 func (s *AESGCMSealer) generateNewEncryptionKey() error {
 	encryptionKey := make([]byte, 16)
 
@@ -162,7 +162,7 @@ func (s *AESGCMSealer) generateNewEncryptionKey() error {
 	return s.SetEncryptionKey(encryptionKey)
 }
 
-// SetEncryptionKey sets or restores an encryption key
+// SetEncryptionKey sets or restores an encryption key.
 func (s *AESGCMSealer) SetEncryptionKey(encryptionKey []byte) error {
 	// If there already is an existing key file stored on disk, save it
 	s.backupEncryptionKey()
@@ -183,7 +183,7 @@ func (s *AESGCMSealer) SetEncryptionKey(encryptionKey []byte) error {
 	return nil
 }
 
-// backupEncryptionKey creates a backup of an existing seal key
+// backupEncryptionKey creates a backup of an existing seal key.
 func (s *AESGCMSealer) backupEncryptionKey() {
 	if sealedKeyData, err := ioutil.ReadFile(s.getFname(SealedKeyFname)); err == nil {
 		t := time.Now()
@@ -192,7 +192,7 @@ func (s *AESGCMSealer) backupEncryptionKey() {
 	}
 }
 
-// MockSealer is a mockup sealer
+// MockSealer is a mockup sealer.
 type MockSealer struct {
 	data            []byte
 	unencryptedData []byte
@@ -200,35 +200,35 @@ type MockSealer struct {
 	UnsealError error
 }
 
-// Unseal implements the Sealer interface
+// Unseal implements the Sealer interface.
 func (s *MockSealer) Unseal() ([]byte, []byte, error) {
 	return s.unencryptedData, s.data, s.UnsealError
 }
 
-// Seal implements the Sealer interface
+// Seal implements the Sealer interface.
 func (s *MockSealer) Seal(unencryptedData []byte, toBeEncrypted []byte) error {
 	s.unencryptedData = unencryptedData
 	s.data = toBeEncrypted
 	return nil
 }
 
-// SetEncryptionKey implements the Sealer interface
+// SetEncryptionKey implements the Sealer interface.
 func (s *MockSealer) SetEncryptionKey(key []byte) error {
 	return nil
 }
 
-// NoEnclaveSealer is a sealed for a -noenclave instance and does perform encryption with a fixed key
+// NoEnclaveSealer is a sealed for a -noenclave instance and does perform encryption with a fixed key.
 type NoEnclaveSealer struct {
 	sealDir       string
 	encryptionKey []byte
 }
 
-// NewNoEnclaveSealer creates and initializes a new NoEnclaveSealer object
+// NewNoEnclaveSealer creates and initializes a new NoEnclaveSealer object.
 func NewNoEnclaveSealer(sealDir string) *NoEnclaveSealer {
 	return &NoEnclaveSealer{sealDir: sealDir}
 }
 
-// Seal writes the given data encrypted and the used key as plaintext to the disk
+// Seal writes the given data encrypted and the used key as plaintext to the disk.
 func (s *NoEnclaveSealer) Seal(unencryptedData []byte, toBeEncrypted []byte) error {
 	// generate aes key if we have non
 	if err := s.loadEncryptionKey(); err != nil {
@@ -265,7 +265,7 @@ func (s *NoEnclaveSealer) Seal(unencryptedData []byte, toBeEncrypted []byte) err
 	return nil
 }
 
-// Unseal reads the plaintext state from disk
+// Unseal reads the plaintext state from disk.
 func (s *NoEnclaveSealer) Unseal() ([]byte, []byte, error) {
 	// Read sealed data from disk
 	sealedData, err := ioutil.ReadFile(s.getFname(SealedDataFname))
@@ -304,7 +304,7 @@ func (s *NoEnclaveSealer) Unseal() ([]byte, []byte, error) {
 	return unencryptedData, decryptedData, nil
 }
 
-// SetEncryptionKey implements the Sealer interface
+// SetEncryptionKey implements the Sealer interface.
 func (s *NoEnclaveSealer) SetEncryptionKey(key []byte) error {
 	s.encryptionKey = key
 	return ioutil.WriteFile(s.getFname(SealedKeyFname), s.encryptionKey, 0600)
@@ -328,7 +328,7 @@ func (s *NoEnclaveSealer) loadEncryptionKey() error {
 	return nil
 }
 
-// generateNewEncryptionKey generates a random 128 Bit (16 Byte) key to encrypt the state
+// generateNewEncryptionKey generates a random 128 Bit (16 Byte) key to encrypt the state.
 func (s *NoEnclaveSealer) generateNewEncryptionKey() error {
 	encryptionKey := make([]byte, 16)
 

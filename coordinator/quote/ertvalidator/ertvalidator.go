@@ -17,16 +17,16 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 )
 
-// ERTValidator is a Quote validatior based on EdgelessRT
+// ERTValidator is a Quote validatior based on EdgelessRT.
 type ERTValidator struct {
 }
 
-// NewERTValidator returns a new ERTValidator object
+// NewERTValidator returns a new ERTValidator object.
 func NewERTValidator() *ERTValidator {
 	return &ERTValidator{}
 }
 
-// Validate implements the Validator interface for ERTValidator
+// Validate implements the Validator interface for ERTValidator.
 func (m *ERTValidator) Validate(givenQuote []byte, cert []byte, pp quote.PackageProperties, ip quote.InfrastructureProperties) error {
 	// Verify Quote
 	report, err := enclave.VerifyRemoteReport(givenQuote)
@@ -57,15 +57,15 @@ func (m *ERTValidator) Validate(givenQuote []byte, cert []byte, pp quote.Package
 	return nil
 }
 
-// ERTIssuer is a Quote issuer based on EdgelessRT
+// ERTIssuer is a Quote issuer based on EdgelessRT.
 type ERTIssuer struct{}
 
-// NewERTIssuer returns a new ERTIssuer object
+// NewERTIssuer returns a new ERTIssuer object.
 func NewERTIssuer() *ERTIssuer {
 	return &ERTIssuer{}
 }
 
-// Issue implements the Issuer interface
+// Issue implements the Issuer interface.
 func (m *ERTIssuer) Issue(cert []byte) ([]byte, error) {
 	hash := sha256.Sum256(cert)
 	return enclave.GetRemoteReport(hash[:])

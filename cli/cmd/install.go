@@ -82,7 +82,7 @@ func newInstallCmd() *cobra.Command {
 	return cmd
 }
 
-// cliInstall installs marblerun on the cluster
+// cliInstall installs marblerun on the cluster.
 func cliInstall(options *installOptions) error {
 	actionConfig := new(action.Configuration)
 	if err := actionConfig.Init(options.settings.RESTClientGetter(), helmNamespace, os.Getenv("HELM_DRIVER"), debug); err != nil {
@@ -212,8 +212,8 @@ func cliInstall(options *installOptions) error {
 	return nil
 }
 
-// simplified repo_add from helm cli to add marblerun repo if it does not yet exist
-// to make sure we use the newest chart we always download the needed index file
+// Simplified repo_add from helm cli to add marblerun repo if it does not yet exist.
+// To make sure we use the newest chart we always download the needed index file.
 func getRepo(name string, url string, settings *cli.EnvSettings) error {
 	repoFile := settings.RepositoryConfig
 
@@ -267,7 +267,7 @@ func getRepo(name string, url string, settings *cli.EnvSettings) error {
 	return nil
 }
 
-// installWebhook enables a mutating admission webhook to allow automatic injection of values into pods
+// installWebhook enables a mutating admission webhook to allow automatic injection of values into pods.
 func installWebhook(kubeClient kubernetes.Interface) ([]string, error) {
 	// verify marblerun namespace exists, if not create it
 	if err := verifyNamespace(helmNamespace, kubeClient); err != nil {
@@ -304,7 +304,7 @@ func installWebhook(kubeClient kubernetes.Interface) ([]string, error) {
 	return injectorValues, nil
 }
 
-// createSecret creates a secret containing the signed certificate and private key for the webhook server
+// createSecret creates a secret containing the signed certificate and private key for the webhook server.
 func createSecret(privKey *rsa.PrivateKey, crt []byte, kubeClient kubernetes.Interface) error {
 	rsaPEM := pem.EncodeToMemory(
 		&pem.Block{
@@ -371,7 +371,7 @@ func verifyNamespace(namespace string, kubeClient kubernetes.Interface) error {
 	return nil
 }
 
-// getSGXResourceKey checks what device plugin is providing SGX on the cluster and returns the corresponding resource key
+// getSGXResourceKey checks what device plugin is providing SGX on the cluster and returns the corresponding resource key.
 func getSGXResourceKey(kubeClient kubernetes.Interface) (string, error) {
 	nodes, err := kubeClient.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
@@ -394,8 +394,8 @@ func getSGXResourceKey(kubeClient kubernetes.Interface) (string, error) {
 	return util.IntelEpc.String(), nil
 }
 
-// setSGXValues sets the needed values for the coorindator as a map[string]interface
-// strvals cant parse keys which include dots, e.g. setting as a resource limit key "sgx.intel.com/epc" will lead to errors
+// setSGXValues sets the needed values for the coorindator as a map[string]interface.
+// strvals can't parse keys which include dots, e.g. setting as a resource limit key "sgx.intel.com/epc" will lead to errors.
 func setSGXValues(resourceKey string, values, chartValues map[string]interface{}) {
 	values["coordinator"].(map[string]interface{})["resources"] = map[string]interface{}{
 		"limits":   map[string]interface{}{},
@@ -438,8 +438,8 @@ func setSGXValues(resourceKey string, values, chartValues map[string]interface{}
 	}
 }
 
-// errorAndCleanup returns the given error and deletes resources which might have been created previously
-// This prevents secrets and CSRs to stay on the cluster after a failed installation attempt
+// errorAndCleanup returns the given error and deletes resources which might have been created previously.
+// This prevents secrets and CSRs to stay on the cluster after a failed installation attempt.
 func errorAndCleanup(err error, kubeClient kubernetes.Interface) error {
 	// We dont care about any additional errors here
 	cleanupCSR(kubeClient)

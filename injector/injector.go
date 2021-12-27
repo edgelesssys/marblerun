@@ -27,7 +27,7 @@ const (
 	labelResourceInjection   = "marblerun/resource-injection"
 )
 
-// Mutator struct
+// Mutator struct.
 type Mutator struct {
 	// CoordAddr contains the address of the marblerun coordinator
 	CoordAddr   string
@@ -35,7 +35,7 @@ type Mutator struct {
 	SGXResource string
 }
 
-// HandleMutate handles mutate requests and injects sgx tolerations into the request
+// HandleMutate handles mutate requests and injects sgx tolerations into the request.
 func (m *Mutator) HandleMutate(w http.ResponseWriter, r *http.Request) {
 	log.Println("Handling mutate request, injecting sgx tolerations")
 	body := checkRequest(w, r)
@@ -55,7 +55,7 @@ func (m *Mutator) HandleMutate(w http.ResponseWriter, r *http.Request) {
 	w.Write(mutatedBody)
 }
 
-// mutate handles the creation of json patches for pods
+// mutate handles the creation of json patches for pods.
 func mutate(body []byte, coordAddr string, domainName string, resourceKey string) ([]byte, error) {
 	admReviewReq := v1.AdmissionReview{}
 	if err := json.Unmarshal(body, &admReviewReq); err != nil {
@@ -218,7 +218,7 @@ func mutate(body []byte, coordAddr string, domainName string, resourceKey string
 	return generateResponse(pod, admReviewReq, admReviewResponse, true, fmt.Sprintf("Mutation request for pod of marble type [%s] successful", marbleType))
 }
 
-// checkRequest verifies the request used was POST and not empty
+// checkRequest verifies the request used was POST and not empty.
 func checkRequest(w http.ResponseWriter, r *http.Request) []byte {
 	if r.Method != http.MethodPost {
 		http.Error(w, "unable to handle requests other than POST", http.StatusBadRequest)
@@ -240,7 +240,7 @@ func checkRequest(w http.ResponseWriter, r *http.Request) []byte {
 	return body
 }
 
-// envIsSet checks if an env variable is already set
+// envIsSet checks if an env variable is already set.
 func envIsSet(setVars []corev1.EnvVar, testVar corev1.EnvVar) bool {
 	if len(setVars) == 0 {
 		return false
@@ -253,14 +253,14 @@ func envIsSet(setVars []corev1.EnvVar, testVar corev1.EnvVar) bool {
 	return false
 }
 
-// setResourceLimit sets an SGX resource limit if it has not already been set
+// setResourceLimit sets an SGX resource limit if it has not already been set.
 func setResourceLimit(target map[corev1.ResourceName]resource.Quantity, key corev1.ResourceName, value string) {
 	if _, ok := target[key]; !ok {
 		target[key] = resource.MustParse(value)
 	}
 }
 
-// generateResponse creates the admission response
+// generateResponse creates the admission response.
 func generateResponse(pod corev1.Pod, request, response v1.AdmissionReview, allowed bool, message string) ([]byte, error) {
 	marshaledPod, err := json.Marshal(pod)
 	if err != nil {

@@ -21,7 +21,7 @@ var RecoveryPublicKey, RecoveryPrivateKey = generateTestRecoveryKey()
 // AdminCert is an automatically generated test certificate used for unit tests for API features needing additional authentication.
 var AdminCert = mustGenerateAdminTestCert(RecoveryPrivateKey)
 
-// ManifestJSON is a test manifest
+// ManifestJSON is a test manifest.
 const ManifestJSON string = `{
 	"Packages": {
 		"backend": {
@@ -168,7 +168,7 @@ const ManifestJSON string = `{
 	}
 }`
 
-// ManifestJSONWithRecoveryKey is a test manifest with a dynamically generated RSA key
+// ManifestJSONWithRecoveryKey is a test manifest with a dynamically generated RSA key.
 var ManifestJSONWithRecoveryKey string = `{
 	"Packages": {
 		"frontend": {
@@ -296,7 +296,7 @@ var ManifestJSONWithRecoveryKey string = `{
 	}
 }`
 
-// IntegrationManifestJSON is a test manifest
+// IntegrationManifestJSON is a test manifest.
 var IntegrationManifestJSON string = `{
 	"Packages": {
 		"backend": {
@@ -435,7 +435,7 @@ var IntegrationManifestJSON string = `{
 	}
 }`
 
-// ManifestJSONMissingParameters is a test manifest
+// ManifestJSONMissingParameters is a test manifest.
 var ManifestJSONMissingParameters string = `{
 	"Packages": {
 		"frontend": {
@@ -479,7 +479,7 @@ func generateTestRecoveryKey() (publicKeyPem []byte, privateKey *rsa.PrivateKey)
 	return pem.EncodeToMemory(publicKeyBlock), key
 }
 
-// UpdateManifest is a test update manifest
+// UpdateManifest is a test update manifest.
 const UpdateManifest = `{
 	"Packages": {
 		"frontend": {
@@ -488,7 +488,7 @@ const UpdateManifest = `{
 	}
 }`
 
-// UserSecrets is a test JSON string to update secrets
+// UserSecrets is a test JSON string to update secrets.
 const UserSecrets = `{
 	"symmetricKeyUnset": {
 		"Key": "AAECAwQFBgcICQoLDA0ODw=="
@@ -521,7 +521,7 @@ func pemToJSONString(pem []byte) string {
 	return strings.ReplaceAll(string(pem), "\n", "\\n")
 }
 
-// MustSetupTestCerts can be used by other unit tests to test authentication features, in which one certificate matches the generated admin certificate, and the other is just a randomly generated one
+// MustSetupTestCerts can be used by other unit tests to test authentication features, in which one certificate matches the generated admin certificate, and the other is just a randomly generated one.
 func MustSetupTestCerts(key *rsa.PrivateKey) (*x509.Certificate, *x509.Certificate) {
 	// Create some demo certificate
 	template := x509.Certificate{

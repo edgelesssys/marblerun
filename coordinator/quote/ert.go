@@ -40,7 +40,7 @@ type InfrastructureProperties struct {
 	RootCA []byte
 }
 
-// IsCompliant checks if the given package properties comply with the requirements
+// IsCompliant checks if the given package properties comply with the requirements.
 func (required PackageProperties) IsCompliant(given PackageProperties) bool {
 	if required.Debug != given.Debug {
 		return false
@@ -60,7 +60,7 @@ func (required PackageProperties) IsCompliant(given PackageProperties) bool {
 	return true
 }
 
-// IsCompliant checks if the given infrastructure properties comply with the requirements
+// IsCompliant checks if the given infrastructure properties comply with the requirements.
 func (required InfrastructureProperties) IsCompliant(given InfrastructureProperties) bool {
 	// TODO: implement proper logic including SVN comparison
 	return cmp.Equal(required, given)

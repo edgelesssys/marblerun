@@ -28,7 +28,7 @@ type CertQuoteResp struct {
 	Quote []byte
 }
 
-// StatusResp is a response
+// StatusResp is a response.
 type StatusResp struct {
 	// 	A status code that matches the internal code of the Coordinator's current state.
 	// example: 2
@@ -45,7 +45,7 @@ type ManifestSignatureResp struct {
 	Manifest []byte
 }
 
-// Contains RSA-encrypted AES state sealing key with public key specified by user in manifest
+// Contains RSA-encrypted AES state sealing key with public key specified by user in manifest.
 type RecoveryDataResp struct {
 	// An array containing key-value mappings for encrypted secrets to be used for recovering the Coordinator in case of disaster recovery.
 	// The key matches each supplied key from RecoveryKeys in the manifest.

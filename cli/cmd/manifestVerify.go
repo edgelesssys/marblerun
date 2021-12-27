@@ -39,7 +39,7 @@ func newManifestVerify() *cobra.Command {
 	return cmd
 }
 
-// getSignatureFromString checks if a string is a file or a valid signature
+// getSignatureFromString checks if a string is a file or a valid signature.
 func getSignatureFromString(manifest string) (string, error) {
 	if _, err := os.Stat(manifest); err != nil {
 		if !os.IsNotExist(err) {
@@ -65,7 +65,7 @@ func getSignatureFromString(manifest string) (string, error) {
 	return cliManifestSignature(rawManifest), nil
 }
 
-// cliManifestVerify verifies if a signature returned by the MarbleRun Coordinator is equal to one locally created
+// cliManifestVerify verifies if a signature returned by the MarbleRun Coordinator is equal to one locally created.
 func cliManifestVerify(localSignature string, host string, cert []*pem.Block) error {
 	remoteSignature, err := cliDataGet(host, "manifest", "data.ManifestSignature", cert)
 	if err != nil {
