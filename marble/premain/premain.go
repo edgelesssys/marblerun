@@ -218,7 +218,7 @@ func applyParameters(params *rpc.Parameters, fs afero.Fs) error {
 		if err := fs.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 			return err
 		}
-		if err := afero.WriteFile(fs, path, []byte(data), 0o600); err != nil {
+		if err := afero.WriteFile(fs, path, data, 0o600); err != nil {
 			return err
 		}
 	}
