@@ -218,7 +218,7 @@ func getRepo(name string, url string, settings *cli.EnvSettings) error {
 	repoFile := settings.RepositoryConfig
 
 	// Ensure the file directory exists as it is required for file locking
-	err := os.MkdirAll(filepath.Dir(repoFile), 0755)
+	err := os.MkdirAll(filepath.Dir(repoFile), 0o755)
 	if err != nil && !os.IsExist(err) {
 		return err
 	}
@@ -261,7 +261,7 @@ func getRepo(name string, url string, settings *cli.EnvSettings) error {
 
 	f.Update(c)
 
-	if err := f.WriteFile(repoFile, 0644); err != nil {
+	if err := f.WriteFile(repoFile, 0o644); err != nil {
 		return err
 	}
 	return nil

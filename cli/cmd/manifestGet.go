@@ -44,7 +44,7 @@ Optionally get the manifests signature or merge updates into the displayed manif
 			}
 
 			if len(output) > 0 {
-				return ioutil.WriteFile(output, []byte(manifest), 0644)
+				return ioutil.WriteFile(output, []byte(manifest), 0o644)
 			}
 			fmt.Println(manifest)
 			return nil

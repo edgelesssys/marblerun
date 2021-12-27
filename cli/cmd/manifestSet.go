@@ -88,7 +88,7 @@ func cliManifestSet(manifest []byte, host string, cert []*pem.Block, recover str
 		if recover == "" {
 			fmt.Println(response.String())
 		} else {
-			if err := ioutil.WriteFile(recover, []byte(response.String()), 0644); err != nil {
+			if err := ioutil.WriteFile(recover, []byte(response.String()), 0o644); err != nil {
 				return err
 			}
 			fmt.Printf("Recovery data saved to: %s.\n", recover)

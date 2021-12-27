@@ -44,7 +44,7 @@ func cliCertificateChain(host string, output string, configFilename string, inse
 		chain = append(chain, pem.EncodeToMemory(cert)...)
 	}
 
-	if err := ioutil.WriteFile(output, chain, 0644); err != nil {
+	if err := ioutil.WriteFile(output, chain, 0o644); err != nil {
 		return err
 	}
 

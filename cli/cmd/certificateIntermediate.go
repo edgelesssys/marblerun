@@ -36,7 +36,7 @@ func cliCertificateIntermediate(host string, output string, configFilename strin
 	}
 
 	if len(certs) > 1 {
-		if err := ioutil.WriteFile(output, pem.EncodeToMemory(certs[0]), 0644); err != nil {
+		if err := ioutil.WriteFile(output, pem.EncodeToMemory(certs[0]), 0o644); err != nil {
 			return err
 		}
 		fmt.Println("Intermediate certificate written to", output)

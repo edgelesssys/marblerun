@@ -77,7 +77,7 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer 
 
 	// creating core
 	zapLogger.Info("creating the Core object")
-	if err := os.MkdirAll(sealDir, 0700); err != nil {
+	if err := os.MkdirAll(sealDir, 0o700); err != nil {
 		zapLogger.Fatal("Cannot create or access sealdir. Please check the permissions for the specified path.", zap.Error(err))
 	}
 	co, err := core.NewCore(dnsNames, validator, issuer, sealer, recovery, zapLogger, promFactoryPtr)

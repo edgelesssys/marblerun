@@ -116,7 +116,7 @@ func (s *AESGCMSealer) Seal(unencryptedData []byte, toBeEncrypted []byte) error 
 	encryptedData = append(unencryptedData, encryptedData...)
 
 	// store to fs
-	if err := ioutil.WriteFile(s.getFname(SealedDataFname), encryptedData, 0600); err != nil {
+	if err := ioutil.WriteFile(s.getFname(SealedDataFname), encryptedData, 0o600); err != nil {
 		return err
 	}
 
@@ -174,7 +174,7 @@ func (s *AESGCMSealer) SetEncryptionKey(encryptionKey []byte) error {
 	}
 
 	// Write the sealed encryption key to disk
-	if err = ioutil.WriteFile(s.getFname(SealedKeyFname), encryptedKeyData, 0600); err != nil {
+	if err = ioutil.WriteFile(s.getFname(SealedKeyFname), encryptedKeyData, 0o600); err != nil {
 		return err
 	}
 
@@ -188,7 +188,7 @@ func (s *AESGCMSealer) backupEncryptionKey() {
 	if sealedKeyData, err := ioutil.ReadFile(s.getFname(SealedKeyFname)); err == nil {
 		t := time.Now()
 		newFileName := s.getFname(SealedKeyFname) + "_" + t.Format("20060102150405") + ".bak"
-		ioutil.WriteFile(newFileName, sealedKeyData, 0600)
+		ioutil.WriteFile(newFileName, sealedKeyData, 0o600)
 	}
 }
 
@@ -254,12 +254,12 @@ func (s *NoEnclaveSealer) Seal(unencryptedData []byte, toBeEncrypted []byte) err
 	sealedData = append(unencryptedData, sealedData...)
 
 	// Write encrypted data to disk
-	if err := ioutil.WriteFile(s.getFname(SealedDataFname), sealedData, 0600); err != nil {
+	if err := ioutil.WriteFile(s.getFname(SealedDataFname), sealedData, 0o600); err != nil {
 		return err
 	}
 
 	// Write key in plaintext to disk
-	if err := ioutil.WriteFile(s.getFname(SealedKeyFname), s.encryptionKey, 0600); err != nil {
+	if err := ioutil.WriteFile(s.getFname(SealedKeyFname), s.encryptionKey, 0o600); err != nil {
 		return err
 	}
 	return nil
@@ -307,7 +307,7 @@ func (s *NoEnclaveSealer) Unseal() ([]byte, []byte, error) {
 // SetEncryptionKey implements the Sealer interface.
 func (s *NoEnclaveSealer) SetEncryptionKey(key []byte) error {
 	s.encryptionKey = key
-	return ioutil.WriteFile(s.getFname(SealedKeyFname), s.encryptionKey, 0600)
+	return ioutil.WriteFile(s.getFname(SealedKeyFname), s.encryptionKey, 0o600)
 }
 
 func (s *NoEnclaveSealer) getFname(basename string) string {

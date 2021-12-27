@@ -99,7 +99,7 @@ func cliSecretGet(o *secretGetOptions) error {
 		if o.output == "" {
 			return printSecrets(response)
 		}
-		if err := ioutil.WriteFile(o.output, []byte(response.String()), 0644); err != nil {
+		if err := ioutil.WriteFile(o.output, []byte(response.String()), 0o644); err != nil {
 			return err
 		}
 		fmt.Printf("Saved secret to: %s\n", o.output)
