@@ -50,7 +50,7 @@ func cliCompletion(shell string, parent *cobra.Command) (string, error) {
 	switch shell {
 	case "bash":
 		err = parent.GenBashCompletion(&buf)
-	//case "fish":
+	// case "fish":
 	//	err = parent.GenFishCompletion(&buf, false)
 	case "zsh":
 		err = parent.GenZshCompletion(&buf)

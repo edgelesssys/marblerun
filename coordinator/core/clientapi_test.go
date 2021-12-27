@@ -316,7 +316,7 @@ func TestGetCertQuote(t *testing.T) {
 	assert.NoError(c.data.putState(stateRecovery))
 	_, _, err = c.GetCertQuote(context.TODO())
 	assert.NoError(err, "GetCertQuote should not fail when coordinator is in recovery mode")
-	//todo check quote
+	// todo check quote
 }
 
 func TestGetStatus(t *testing.T) {
