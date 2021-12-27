@@ -94,7 +94,7 @@ func (f File) MarshalJSON() ([]byte, error) {
 	case strings.ToLower(e) == "hex":
 		tmp.Data = hex.EncodeToString([]byte(f.Data))
 	default:
-		return nil, fmt.Errorf("unkown encoding type: %s", f.Encoding)
+		return nil, fmt.Errorf("unknown encoding type: %s", f.Encoding)
 	}
 	return json.Marshal(tmp)
 }
@@ -150,7 +150,7 @@ func (f *File) UnmarshalJSON(data []byte) error {
 			}
 			f.Data = string(decoded)
 		default:
-			return fmt.Errorf("unkown encoding type: %s", f.Encoding)
+			return fmt.Errorf("unknown encoding type: %s", f.Encoding)
 		}
 
 		f.NoTemplates = vF.NoTemplates
@@ -291,7 +291,7 @@ func (m Manifest) Check(ctx context.Context, zaplogger *zap.Logger) error {
 			}
 			for _, action := range role.Actions {
 				if !(strings.ToLower(action) == user.PermissionUpdatePackage) {
-					return fmt.Errorf("unkown action: %s for type Packages in role: %s", action, roleName)
+					return fmt.Errorf("unknown action: %s for type Packages in role: %s", action, roleName)
 				}
 			}
 		case "Secrets":
@@ -299,7 +299,7 @@ func (m Manifest) Check(ctx context.Context, zaplogger *zap.Logger) error {
 			var readRole bool
 			for _, action := range role.Actions {
 				if !(strings.ToLower(action) == user.PermissionWriteSecret || strings.ToLower(action) == user.PermissionReadSecret) {
-					return fmt.Errorf("unkown action: %s for type Secrets in role: %s", action, roleName)
+					return fmt.Errorf("unknown action: %s for type Secrets in role: %s", action, roleName)
 				}
 				if strings.ToLower(action) == user.PermissionWriteSecret {
 					writeRole = true
@@ -334,7 +334,7 @@ func (m Manifest) Check(ctx context.Context, zaplogger *zap.Logger) error {
 				return fmt.Errorf("ambigious certificate validity duration for secret: %s, both NotAfter and ValidFor are specified", name)
 			}
 		default:
-			return fmt.Errorf("unkown type: %s for secret: %s", s.Type, name)
+			return fmt.Errorf("unknown type: %s for secret: %s", s.Type, name)
 		}
 	}
 
@@ -513,7 +513,7 @@ func (m Manifest) CheckUpdate(ctx context.Context, originalPackages map[string]q
 
 		// Check if singlePackages does actually contain a SecurityVersion value
 		if singlePackage.SecurityVersion == nil {
-			return errors.New("update manifest does not specifiy a SecurityVersion to update")
+			return errors.New("update manifest does not specify a SecurityVersion to update")
 		}
 
 		// Check based on the original manifest
