@@ -73,11 +73,11 @@ func detectLibOS() (int, error) {
 	}
 
 	// Clean utsname
-	sysname := strings.Replace(string(utsname.Sysname[:]), "\x00", "", -1)
-	nodename := strings.Replace(string(utsname.Nodename[:]), "\x00", "", -1)
-	release := strings.Replace(string(utsname.Release[:]), "\x00", "", -1)
-	version := strings.Replace(string(utsname.Version[:]), "\x00", "", -1)
-	machine := strings.Replace(string(utsname.Machine[:]), "\x00", "", -1)
+	sysname := strings.ReplaceAll(string(utsname.Sysname[:]), "\x00", "")
+	nodename := strings.ReplaceAll(string(utsname.Nodename[:]), "\x00", "")
+	release := strings.ReplaceAll(string(utsname.Release[:]), "\x00", "")
+	version := strings.ReplaceAll(string(utsname.Version[:]), "\x00", "")
+	machine := strings.ReplaceAll(string(utsname.Machine[:]), "\x00", "")
 
 	// Occlum detection
 	// Taken from: https://github.com/occlum/occlum/blob/master/src/libos/src/misc/uname.rs
