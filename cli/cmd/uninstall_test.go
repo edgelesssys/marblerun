@@ -24,7 +24,7 @@ func TestCleanupWebhook(t *testing.T) {
 		Minor: "19",
 	}
 
-	// Try to remove non existant CSR using function
+	// Try to remove non existent CSR using function
 	_, err := testClient.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), webhookName, metav1.GetOptions{})
 	require.Error(err)
 
@@ -67,7 +67,7 @@ func TestCleanupWebhook(t *testing.T) {
 	err = cleanupCSR(testClient)
 	require.NoError(err)
 
-	// Try to remove non existant Secret using function
+	// Try to remove non existent Secret using function
 	_, err = testClient.CoreV1().Secrets(helmNamespace).Get(context.TODO(), "marble-injector-webhook-certs", metav1.GetOptions{})
 	require.Error(err)
 

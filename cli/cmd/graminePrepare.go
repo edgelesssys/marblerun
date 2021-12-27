@@ -324,7 +324,7 @@ func appendAndReplace(changeDiffs []diff, manifestContent []byte) ([]byte, error
 			case "array":
 				regex = regexp.MustCompile("(?m)^" + regexKey + "\\s?=([^\\]]*)\\]$")
 			default:
-				return nil, fmt.Errorf("unkown manifest entry type: %v", value.entryType)
+				return nil, fmt.Errorf("unknown manifest entry type: %v", value.entryType)
 			}
 
 			// Check if we actually found the entry we searched for. If not, we might be dealing with a TOML file we cannot handle correctly without a full parser.

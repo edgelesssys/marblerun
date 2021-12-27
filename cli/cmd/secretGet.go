@@ -158,7 +158,7 @@ func printSecrets(response gjson.Result) error {
 		case "plain":
 			output = prettyFormat(output, "Data:", public.String())
 		default:
-			return fmt.Errorf("unkown secret type")
+			return fmt.Errorf("unknown secret type")
 		}
 		fmt.Printf("%s\n", output)
 	}
