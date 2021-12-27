@@ -11,8 +11,7 @@ import (
 )
 
 // FailValidator always fails.
-type FailValidator struct {
-}
+type FailValidator struct{}
 
 // NewFailValidator returns a new FailValidator object.
 func NewFailValidator() *FailValidator {

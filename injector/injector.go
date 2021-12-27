@@ -189,7 +189,8 @@ func mutate(body []byte, coordAddr string, domainName string, resourceKey string
 
 	// if we created a volume mount for the Marble's UUID we create the volume here
 	if needUUIDVolume {
-		pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{Name: fmt.Sprintf("uuid-file-%s", admReviewReq.Request.UID),
+		pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
+			Name: fmt.Sprintf("uuid-file-%s", admReviewReq.Request.UID),
 			VolumeSource: corev1.VolumeSource{
 				// UUID of the Marble is the UUID of the Pod
 				DownwardAPI: &corev1.DownwardAPIVolumeSource{
