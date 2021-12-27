@@ -22,7 +22,7 @@ type serveMux interface {
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
 }
 
-//httpMetrics is a struct of metrics for Prometheus to collect for each endpoint.
+// httpMetrics is a struct of metrics for Prometheus to collect for each endpoint.
 type httpMetrics struct {
 	reqest       *prometheus.CounterVec
 	duration     *prometheus.HistogramVec
