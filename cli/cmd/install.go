@@ -51,8 +51,8 @@ func newInstallCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "install",
-		Short: "Installs marblerun on a kubernetes cluster",
-		Long:  `Installs marblerun on a kubernetes cluster`,
+		Short: "Installs MarbleRun on a kubernetes cluster",
+		Long:  `Installs MarbleRun on a kubernetes cluster`,
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.settings = cli.New()
@@ -68,13 +68,13 @@ func newInstallCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&options.hostname, "domain", "localhost", "Sets the CNAME for the Coordinator certificate")
-	cmd.Flags().StringVar(&options.chartPath, "marblerun-chart-path", "", "Path to marblerun helm chart")
+	cmd.Flags().StringVar(&options.chartPath, "marblerun-chart-path", "", "Path to MarbleRun helm chart")
 	cmd.Flags().StringVar(&options.version, "version", "", "Version of the Coordinator to install, latest by default")
-	cmd.Flags().StringVar(&options.resourceKey, "resource-key", "", "Resource providing SGX, different depending on used device plugin. Use this to set tolerations/resources if your device plugin is not supported by marblerun")
+	cmd.Flags().StringVar(&options.resourceKey, "resource-key", "", "Resource providing SGX, different depending on used device plugin. Use this to set tolerations/resources if your device plugin is not supported by MarbleRun")
 	cmd.Flags().StringVar(&options.dcapQpl, "dcap-qpl", "azure", `Quote provider library to use by the Coordinator. One of {"azure", "intel"}`)
 	cmd.Flags().StringVar(&options.pccsUrl, "dcap-pccs-url", "https://localhost:8081/sgx/certification/v3/", "Provisioning Certificate Caching Service (PCCS) server address")
 	cmd.Flags().StringVar(&options.useSecureCert, "dcap-secure-cert", "TRUE", "To accept insecure HTTPS certificate from the PCCS, set this option to FALSE")
-	cmd.Flags().BoolVar(&options.simulation, "simulation", false, "Set marblerun to start in simulation mode")
+	cmd.Flags().BoolVar(&options.simulation, "simulation", false, "Set MarbleRun to start in simulation mode")
 	cmd.Flags().BoolVar(&options.disableInjection, "disable-auto-injection", false, "Install MarbleRun without auto-injection webhook")
 	cmd.Flags().IntVar(&options.meshPort, "mesh-server-port", 2001, "Set the mesh server port. Needs to be configured to the same port as in the data-plane marbles")
 	cmd.Flags().IntVar(&options.clientPort, "client-server-port", 4433, "Set the client server port. Needs to be configured to the same port as in your client tool stack")
@@ -82,7 +82,7 @@ func newInstallCmd() *cobra.Command {
 	return cmd
 }
 
-// cliInstall installs marblerun on the cluster.
+// cliInstall installs MarbleRun on the cluster.
 func cliInstall(options *installOptions) error {
 	actionConfig := new(action.Configuration)
 	if err := actionConfig.Init(options.settings.RESTClientGetter(), helmNamespace, os.Getenv("HELM_DRIVER"), debug); err != nil {
@@ -212,7 +212,7 @@ func cliInstall(options *installOptions) error {
 	return nil
 }
 
-// Simplified repo_add from helm cli to add marblerun repo if it does not yet exist.
+// Simplified repo_add from helm cli to add MarbleRun repo if it does not yet exist.
 // To make sure we use the newest chart we always download the needed index file.
 func getRepo(name string, url string, settings *cli.EnvSettings) error {
 	repoFile := settings.RepositoryConfig
@@ -269,7 +269,7 @@ func getRepo(name string, url string, settings *cli.EnvSettings) error {
 
 // installWebhook enables a mutating admission webhook to allow automatic injection of values into pods.
 func installWebhook(kubeClient kubernetes.Interface) ([]string, error) {
-	// verify marblerun namespace exists, if not create it
+	// verify 'marblerun' namespace exists, if not create it
 	if err := verifyNamespace(helmNamespace, kubeClient); err != nil {
 		return nil, err
 	}

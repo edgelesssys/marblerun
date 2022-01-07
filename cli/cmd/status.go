@@ -37,7 +37,7 @@ type statusResponse struct {
 func newStatusCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "status <IP:PORT>",
-		Short: "Gives information about the status of the marblerun Coordinator",
+		Short: "Gives information about the status of the MarbleRun Coordinator",
 		Long:  statusDesc,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

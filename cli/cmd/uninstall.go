@@ -34,7 +34,7 @@ func newUninstallCmd() *cobra.Command {
 	return cmd
 }
 
-// cliUninstall uninstalls marblerun.
+// cliUninstall uninstalls MarbleRun.
 func cliUninstall(settings *cli.EnvSettings, kubeClient kubernetes.Interface) error {
 	if err := removeHelmRelease(settings); err != nil {
 		return err
