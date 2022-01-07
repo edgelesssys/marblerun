@@ -29,7 +29,7 @@ const (
 
 // Mutator struct.
 type Mutator struct {
-	// CoordAddr contains the address of the marblerun coordinator
+	// CoordAddr contains the address of the MarbleRun coordinator
 	CoordAddr   string
 	DomainName  string
 	SGXResource string
