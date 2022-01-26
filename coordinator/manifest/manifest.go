@@ -23,7 +23,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// Manifest defines the rules of a mesh.
+// Manifest defines the rules of a mesh
 type Manifest struct {
 	// Packages contains the allowed enclaves and their properties.
 	Packages map[string]quote.PackageProperties
@@ -43,7 +43,7 @@ type Manifest struct {
 	TLS map[string]TLStag
 }
 
-// Marble describes a service in the mesh that should be handled and verified by the Coordinator.
+// Marble describes a service in the mesh that should be handled and verified by the Coordinator
 type Marble struct {
 	// Package references one of the allowed enclaves in the manifest.
 	Package string
@@ -56,14 +56,14 @@ type Marble struct {
 	TLS []string
 }
 
-// Parameters contains lists for files, environment variables and commandline arguments that should be passed to an application.
+// Parameters contains lists for files, environment variables and commandline arguments that should be passed to an application
 type Parameters struct {
 	Files map[string]File
 	Env   map[string]File
 	Argv  []string
 }
 
-// File defines data, encoding type, and if data contains templates for a File or Env variable.
+// File defines data, encoding type, and if data contains templates for a File or Env variable
 type File struct {
 	// Data is the data to be saved as a file or environment variable
 	Data string
@@ -161,7 +161,7 @@ func (f *File) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// TLStag describes which entries should be used to determine the ttls connections of a marble.
+// TLStag describes which entries should be used to determine the ttls connections of a marble
 type TLStag struct {
 	// Outgoing holds a list of all outgoing addresses that should be elevated to TLS
 	Outgoing []TLSTagEntry
@@ -169,7 +169,7 @@ type TLStag struct {
 	Incoming []TLSTagEntry
 }
 
-// TLSTagEntry describes one connection which should be elevated to ttls.
+// TLSTagEntry describes one connection which should be elevated to ttls
 type TLSTagEntry struct {
 	Port              string
 	Addr              string
@@ -177,7 +177,7 @@ type TLSTagEntry struct {
 	DisableClientAuth bool
 }
 
-// User describes the attributes of a MarbleRun user.
+// User describes the attributes of a MarbleRun user
 type User struct {
 	// Certificate is the TLS certificate used by the user for authentication
 	Certificate string
@@ -185,7 +185,7 @@ type User struct {
 	Roles []string
 }
 
-// Role describes a set of actions permitted for a specific set of resources.
+// Role describes a set of actions permitted for a specific set of resources
 type Role struct {
 	// ResourceType is the type of the affected resources
 	ResourceType string
@@ -341,13 +341,13 @@ func (m Manifest) Check(ctx context.Context, zaplogger *zap.Logger) error {
 	return nil
 }
 
-// PrivateKey is a wrapper for a binary private key, which we need for type differentiation in the PEM encoding function.
+// PrivateKey is a wrapper for a binary private key, which we need for type differentiation in the PEM encoding function
 type PrivateKey []byte
 
-// PublicKey is a wrapper for a binary public key, which we need for type differentiation in the PEM encoding function.
+// PublicKey is a wrapper for a binary public key, which we need for type differentiation in the PEM encoding function
 type PublicKey []byte
 
-// Secret defines a structure for storing certificates & encryption keys.
+// Secret defines a structure for storing certificates & encryption keys
 type Secret struct {
 	Type        string
 	Size        uint
@@ -359,7 +359,7 @@ type Secret struct {
 	Public      PublicKey
 }
 
-// Certificate is an x509.Certificate.
+// Certificate is an x509.Certificate
 type Certificate x509.Certificate
 
 // MarshalJSON implements the json.Marshaler interface.
@@ -525,7 +525,7 @@ func (m Manifest) CheckUpdate(ctx context.Context, originalPackages map[string]q
 	return nil
 }
 
-// UserSecret is a secret uploaded by a user.
+// UserSecret is a secret uploaded by a user
 // swagger:model
 type UserSecret struct {
 	Cert    Certificate
