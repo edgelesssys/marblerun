@@ -8,6 +8,7 @@ package core
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
@@ -40,9 +41,12 @@ func TestGetManifestSignature(t *testing.T) {
 
 	assert.NoError(err)
 
-	sig, manifest := c.GetManifestSignature(context.TODO())
+	sigECDSA, hash, manifest := c.GetManifestSignature(context.TODO())
 	expectedHash := sha256.Sum256([]byte(test.ManifestJSON))
-	assert.Equal(expectedHash[:], sig)
+	assert.Equal(expectedHash[:], hash)
+	intermediatePrivK, err := c.data.getPrivK(sKCoordinatorIntermediateKey)
+	assert.Equal(err, nil)
+	assert.True(ecdsa.VerifyASN1(&intermediatePrivK.PublicKey, expectedHash[:], sigECDSA))
 	assert.Equal([]byte(test.ManifestJSON), manifest)
 }
 

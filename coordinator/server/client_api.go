@@ -39,6 +39,9 @@ type StatusResp struct {
 }
 
 type ManifestSignatureResp struct {
+	// The manifest signature - signed by the intermediate ECDSA key. Changes upon each call due to a random component.
+	// example: MEYCIQCmkqOP0Jf1v5ZR0vUYNnMxmy8j9aYR3Zdemuz8EXNQ4gIhAMk6MCg00Rowilui/66tHrkETMmkPmOktMKXQqv6NmnN
+	ManifestSignatureIntermediateECDSA []byte
 	// A SHA-256 of the currently set manifest. Does not change when an update has been applied.
 	// example: 3fff78e99dd9bd801e0a3a22b7f7a24a492302c4d00546d18c7f7ed6e26e95c3
 	ManifestSignature string
@@ -86,24 +89,42 @@ func (s *clientAPIServer) statusGet(w http.ResponseWriter, r *http.Request) {
 //
 // Get the currently set manifest.
 //
-// The endpoint returns a SHA-256 of the currently set manifest.
+// The endpoint returns a manifest signature as base64 encoded bytes 
+// (signed by the intermediate ECDSA key) and a SHA-256 of the currently
+// set manifest.
 // Further, the manifest itself is returned as base64 encoded bytes.
-// Both values do not change when an update has been applied.
+// While the SHA-256 hash and the manifest itself do not change when
+// an update has been applied, the ECDSA signature changes upon each
+// request due to a random component.
 //
 // Users can retrieve and inspect the manifest through this endpoint before interacting with the application.
 //
-// Example for verifying the deployed manifest with curl:
+// Example for requesting the deployed manifest hash with curl:
 //
 // ```bash
 // curl --cacert marblerun.crt "https://$MARBLERUN/manifest" | jq '.data.ManifestSignature' --raw-output
+// ```
+//
+// Example for verifying the deployed manifest via the intermediate key signature:
+//
+// ```bash
+// # get manifest signature (signed by coordinator intermediate key)
+// curl --cacert marblerun.crt "https://$MARBLERUN/manifest" | jq '.data.ManifestSignatureIntermediateECDSA' --raw-output | base64 -d > manifest.sig
+// # extract intermediate public key from coordinator certificate chain
+// openssl x509 -in marblerun.crt -pubkey -noout > intermediate.pubkey
+// # remove newlines from manifest
+// awk 'NF {sub(/\r/, ""); printf "%s",$0;}' original.manifest.json  > formated.manifest.json
+// # verify signature
+// openssl dgst -sha256 -verify intermediate.pubkey -signature manifest.sig formated.manifest.json
 // ```
 //
 //     Responses:
 //       200: ManifestResponse
 //		 500: ErrorResponse
 func (s *clientAPIServer) manifestGet(w http.ResponseWriter, r *http.Request) {
-	signature, manifest := s.cc.GetManifestSignature(r.Context())
+	signatureIntermediateECDSA, signature, manifest := s.cc.GetManifestSignature(r.Context())
 	writeJSON(w, ManifestSignatureResp{
+		ManifestSignatureIntermediateECDSA: signatureIntermediateECDSA,
 		ManifestSignature: hex.EncodeToString(signature),
 		Manifest:          manifest,
 	})
