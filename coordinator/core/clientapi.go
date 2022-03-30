@@ -32,7 +32,7 @@ import (
 type ClientCore interface {
 	SetManifest(ctx context.Context, rawManifest []byte) (recoverySecretMap map[string][]byte, err error)
 	GetCertQuote(ctx context.Context) (cert string, certQuote []byte, err error)
-	GetManifestSignature(ctx context.Context) (manifestSignatureIntermediateECDSA []byte, manifestSignature []byte, manifest []byte)
+	GetManifestSignature(ctx context.Context) (manifestSignatureRootECDSA []byte, manifestSignature []byte, manifest []byte)
 	GetSecrets(ctx context.Context, requestedSecrets []string, requestUser *user.User) (map[string]manifest.Secret, error)
 	GetStatus(ctx context.Context) (statusCode int, status string, err error)
 	GetUpdateLog(ctx context.Context) (updateLog string, err error)
@@ -60,6 +60,10 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 	}
 
 	marbleRootCert, err := c.data.getCertificate(sKMarbleRootCert)
+	if err != nil {
+		return nil, err
+	}
+	rootPrivK, err := c.data.getPrivK(sKCoordinatorRootKey)
 	if err != nil {
 		return nil, err
 	}
@@ -101,9 +105,9 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 		return nil, err
 	}
 
-	// sign raw manifest via ECDSA intermediate key
+	// sign raw manifest via ECDSA root key
 	hash := sha256.Sum256(rawManifest)
-	signature, err := ecdsa.SignASN1(rand.Reader, intermediatePrivK, hash[:])
+	signature, err := ecdsa.SignASN1(rand.Reader, rootPrivK, hash[:])
 	if err != nil {
 		c.zaplogger.Error("Failed to create the manifest signature", zap.Error(err))
 		return nil, err

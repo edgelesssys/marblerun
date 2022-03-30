@@ -83,7 +83,7 @@ func TestSeal(t *testing.T) {
 	// Get certificate and signature.
 	cert, err := c.GetTLSRootCertificate(nil)
 	assert.NoError(err)
-	signatureIntermediateECDSA, signature, _ := c.GetManifestSignature(context.TODO())
+	signatureRootECDSA, signature, _ := c.GetManifestSignature(context.TODO())
 
 	// Get secrets
 	cSecrets, err := c.data.getSecretMap()
@@ -108,9 +108,9 @@ func TestSeal(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(cSecrets, c2Secrets)
 
-	signatureIntermediateECDSA2, signature2, _ := c2.GetManifestSignature(context.TODO())
+	signatureRootECDSA2, signature2, _ := c2.GetManifestSignature(context.TODO())
 	assert.Equal(signature, signature2, "manifest signature differs after restart")
-	assert.Equal(signatureIntermediateECDSA, signatureIntermediateECDSA2, "manifest signature intermediate ecdsa differs after restart")
+	assert.Equal(signatureRootECDSA, signatureRootECDSA2, "manifest signature root ecdsa differs after restart")
 }
 
 func TestRecover(t *testing.T) {
