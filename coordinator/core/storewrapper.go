@@ -20,18 +20,19 @@ import (
 )
 
 const (
-	requestActivations    = "activations"
-	requestCert           = "certificate"
-	requestInfrastructure = "infrastructure"
-	requestManifest       = "manifest"
-	requestMarble         = "marble"
-	requestPackage        = "package"
-	requestPrivKey        = "privateKey"
-	requestSecret         = "secret"
-	requestState          = "state"
-	requestTLS            = "TLS"
-	requestUser           = "user"
-	requestUpdateLog      = "updateLog"
+	requestActivations       = "activations"
+	requestCert              = "certificate"
+	requestInfrastructure    = "infrastructure"
+	requestManifest          = "manifest"
+	requestManifestSignature = "manifestSignature"
+	requestMarble            = "marble"
+	requestPackage           = "package"
+	requestPrivKey           = "privateKey"
+	requestSecret            = "secret"
+	requestState             = "state"
+	requestTLS               = "TLS"
+	requestUser              = "user"
+	requestUpdateLog         = "updateLog"
 )
 
 // storeWrapper is a wrapper for the store interface.
@@ -189,6 +190,16 @@ func (s storeWrapper) getRawManifest() ([]byte, error) {
 // putRawManifest saves the raw manifest to store.
 func (s storeWrapper) putRawManifest(manifest []byte) error {
 	return s.store.Put(requestManifest, manifest)
+}
+
+// getManifestSignature returns manifests signature from store.
+func (s storeWrapper) getManifestSignature() ([]byte, error) {
+	return s.store.Get(requestManifestSignature)
+}
+
+// putManifestSignature saves the manifests signature to store.
+func (s storeWrapper) putManifestSignature(manifestSignature []byte) error {
+	return s.store.Put(requestManifestSignature, manifestSignature)
 }
 
 // getSecret returns a secret from store.

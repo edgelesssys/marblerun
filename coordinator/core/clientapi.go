@@ -101,6 +101,14 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 		return nil, err
 	}
 
+	// sign raw manifest via ECDSA intermediate key
+	hash := sha256.Sum256(rawManifest)
+	signature, err := ecdsa.SignASN1(rand.Reader, intermediatePrivK, hash[:])
+	if err != nil {
+		c.zaplogger.Error("Failed to create the manifest signature", zap.Error(err))
+		return nil, err
+	}
+
 	tx, err := c.store.BeginTransaction()
 	if err != nil {
 		return nil, err
@@ -135,6 +143,9 @@ func (c *Core) SetManifest(ctx context.Context, rawManifest []byte) (map[string]
 	}
 
 	if err := txdata.putRawManifest(rawManifest); err != nil {
+		return nil, err
+	}
+	if err := txdata.putManifestSignature(signature); err != nil {
 		return nil, err
 	}
 	for k, v := range mnf.Packages {
@@ -221,11 +232,7 @@ func (c *Core) GetManifestSignature(ctx context.Context) ([]byte, []byte, []byte
 		return nil, nil, nil
 	}
 	hash := sha256.Sum256(rawManifest)
-	intermediatePrivK, err := c.data.getPrivK(sKCoordinatorIntermediateKey)
-	if err != nil {
-		return nil, nil, nil
-	}
-	signature, err := ecdsa.SignASN1(rand.Reader, intermediatePrivK, hash[:])
+	signature, err := c.data.getManifestSignature()
 	if err != nil {
 		return nil, nil, nil
 	}

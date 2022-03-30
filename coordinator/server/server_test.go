@@ -59,7 +59,7 @@ func TestManifest(t *testing.T) {
 	require.Equal(http.StatusOK, resp.Code)
 
 	sigIntermediateECDSA, sig, manifest := c.GetManifestSignature(context.TODO())
-	assert.JSONEq(`{"status":"success","data":{"ManifestSignatureIntermediateECDSA":"`+hex.EncodeToString(sigIntermediateECDSA)+`","ManifestSignature":"`+hex.EncodeToString(sig)+`","Manifest":"`+base64.StdEncoding.EncodeToString(manifest)+`"}}`, resp.Body.String())
+	assert.JSONEq(`{"status":"success","data":{"ManifestSignatureIntermediateECDSA":"`+base64.StdEncoding.EncodeToString(sigIntermediateECDSA)+`","ManifestSignature":"`+hex.EncodeToString(sig)+`","Manifest":"`+base64.StdEncoding.EncodeToString(manifest)+`"}}`, resp.Body.String())
 
 	// try setting manifest again, should fail
 	req = httptest.NewRequest(http.MethodPost, "/manifest", strings.NewReader(test.ManifestJSON))

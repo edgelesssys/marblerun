@@ -89,7 +89,7 @@ func (s *clientAPIServer) statusGet(w http.ResponseWriter, r *http.Request) {
 //
 // Get the currently set manifest.
 //
-// The endpoint returns a manifest signature as base64 encoded bytes 
+// The endpoint returns a manifest signature as base64 encoded bytes
 // (signed by the intermediate ECDSA key) and a SHA-256 of the currently
 // set manifest.
 // Further, the manifest itself is returned as base64 encoded bytes.
@@ -125,8 +125,8 @@ func (s *clientAPIServer) manifestGet(w http.ResponseWriter, r *http.Request) {
 	signatureIntermediateECDSA, signature, manifest := s.cc.GetManifestSignature(r.Context())
 	writeJSON(w, ManifestSignatureResp{
 		ManifestSignatureIntermediateECDSA: signatureIntermediateECDSA,
-		ManifestSignature: hex.EncodeToString(signature),
-		Manifest:          manifest,
+		ManifestSignature:                  hex.EncodeToString(signature),
+		Manifest:                           manifest,
 	})
 }
 
