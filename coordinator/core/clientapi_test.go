@@ -45,7 +45,7 @@ func TestGetManifestSignature(t *testing.T) {
 	expectedHash := sha256.Sum256([]byte(test.ManifestJSON))
 	assert.Equal(expectedHash[:], hash)
 	rootPrivK, err := c.data.getPrivK(sKCoordinatorRootKey)
-	assert.Equal(err, nil)
+	assert.NoError(err)
 	assert.True(ecdsa.VerifyASN1(&rootPrivK.PublicKey, expectedHash[:], sigECDSA))
 	assert.Equal([]byte(test.ManifestJSON), manifest)
 }

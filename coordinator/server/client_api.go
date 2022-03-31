@@ -124,8 +124,8 @@ func (s *clientAPIServer) manifestGet(w http.ResponseWriter, r *http.Request) {
 	signatureRootECDSA, signature, manifest := s.cc.GetManifestSignature(r.Context())
 	writeJSON(w, ManifestSignatureResp{
 		ManifestSignatureRootECDSA: signatureRootECDSA,
-		ManifestSignature:                  hex.EncodeToString(signature),
-		Manifest:                           manifest,
+		ManifestSignature:          hex.EncodeToString(signature),
+		Manifest:                   manifest,
 	})
 }
 
