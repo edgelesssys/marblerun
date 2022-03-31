@@ -39,8 +39,9 @@ type StatusResp struct {
 }
 
 type ManifestSignatureResp struct {
-	// The manifest signature - signed by the root ECDSA key. Changes upon each call due to a random component.
+	// The manifest signature - signed by the root ECDSA key.
 	// example: MEYCIQCmkqOP0Jf1v5ZR0vUYNnMxmy8j9aYR3Zdemuz8EXNQ4gIhAMk6MCg00Rowilui/66tHrkETMmkPmOktMKXQqv6NmnN
+	// swagger:strfmt byte
 	ManifestSignatureRootECDSA []byte
 	// A SHA-256 of the currently set manifest. Does not change when an update has been applied.
 	// example: 3fff78e99dd9bd801e0a3a22b7f7a24a492302c4d00546d18c7f7ed6e26e95c3
