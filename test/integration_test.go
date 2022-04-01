@@ -258,7 +258,7 @@ func TestClientAPI(t *testing.T) {
 	manifest, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	require.NoError(err)
-	assert.JSONEq(`{"status":"success","data":{"ManifestSignature":"","Manifest":null}}`, string(manifest))
+	assert.JSONEq(`{"status":"success","data":{"ManifestSignatureRootECDSA":null,"ManifestSignature":"","Manifest":null}}`, string(manifest))
 
 	log.Println("Setting the Manifest")
 	_, err = setManifest(testManifest)
