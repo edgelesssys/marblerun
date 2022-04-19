@@ -7,19 +7,21 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     container:
       image: ghcr.io/edgelesssys/edgelessrt-dev:ci
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Test
         run: ertgo test -race -count=3 ./...
 
       - name: Setup
-        run: mkdir build
+        run: | 
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          mkdir build
 
       - name: Build
         run: |

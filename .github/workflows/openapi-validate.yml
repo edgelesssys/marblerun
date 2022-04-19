@@ -4,7 +4,7 @@ on:
 
 jobs:
   make-openapi-spec:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     container:
       image: ghcr.io/edgelesssys/edgelessrt-dev:ci
 
@@ -29,12 +29,14 @@ jobs:
     # This ensures that a valid Swagger specification can be generated from
     # the master branch after merging the current branch.
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
       - name: Checkout master
-        run: git checkout master
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git checkout master
 
       - name: Merge branch into master
         run: |
