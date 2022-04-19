@@ -81,7 +81,7 @@ func detectLibOS() (int, error) {
 
 	// Occlum detection
 	// Taken from: https://github.com/occlum/occlum/blob/master/src/libos/src/misc/uname.rs
-	if sysname == "Occlum" && nodename == "occlum-node" {
+	if sysname == "Occlum" {
 		return occlum, nil
 	}
 
