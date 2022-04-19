@@ -6,7 +6,7 @@ on:
 
 jobs:
   publish-to-docs:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     container:
       image: ghcr.io/edgelesssys/edgelessrt-dev:ci
 
@@ -29,12 +29,12 @@ jobs:
 
     # Set up repositories
       - name: Checkout MarbleRun
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: marblerun
 
       - name: Checkout Docs
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: edgelesssys/docs.edgeless.systems
           path: docs
