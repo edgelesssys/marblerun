@@ -4,7 +4,7 @@ go 1.14
 
 require (
 	github.com/c2h5oh/datasize v0.0.0-20200825124411-48ed595a09d2
-	github.com/containerd/containerd v1.4.12 // indirect
+	github.com/containerd/containerd v1.4.13 // indirect
 	github.com/docker/distribution v2.8.0+incompatible // indirect
 	github.com/edgelesssys/ego v0.4.0
 	github.com/edgelesssys/era v0.3.2
