@@ -1,4 +1,4 @@
-loader.preload = "file:{{ gramine.libos }}"
+loader.entrypoint = "file:{{ gramine.libos }}"
 loader.env.LD_LIBRARY_PATH = "/lib"
 
 # entrypoint must be premain-libos
@@ -14,14 +14,10 @@ loader.env.EDG_MARBLE_UUID_FILE = { passthrough = true }
 loader.env.EDG_MARBLE_DNS_NAMES = { passthrough = true }
 
 # FS mount points
-fs.mount.lib.type = "chroot"
-fs.mount.lib.path = "/lib"
-fs.mount.lib.uri = "file:{{ gramine.runtimedir() }}"
-
-# the following is only required if you need DNS resolution
-fs.mount.etc.type = "chroot"
-fs.mount.etc.path = "/etc"
-fs.mount.etc.uri = "file:/etc"
+fs.mounts = [
+    { path = "/lib", uri = "file:{{ gramine.runtimedir() }}" },
+    { path = "/etc", uri = "file:/etc" },
+]
 
 # trusted files
 sgx.trusted_files = [
@@ -31,6 +27,7 @@ sgx.trusted_files = [
     "file:{{ gramine.runtimedir() }}/ld-linux-x86-64.so.2",
     "file:{{ gramine.runtimedir() }}/libc.so.6",
     "file:{{ gramine.runtimedir() }}/libpthread.so.0",
+    "file:{{ gramine.libos }}",
     "file:premain-libos",
     "file:hello"
 ]

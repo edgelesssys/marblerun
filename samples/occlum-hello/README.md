@@ -25,6 +25,8 @@ Note that we also chose `--network host` here, as we assume you do not run the c
 Inside the Docker instance, clone the MarbleRun repository and run the Makefile included in this directory. It will automatically build the premain process and "Hello World" application, create the Occlum instance and run `occlum build` to create the final image.
 
 ```sh
+# remove Occlum Go from path
+PATH=":$PATH:" && PATH="${PATH//:\/opt\/occlum\/toolchains\/golang\/bin:/:}" && PATH="${PATH#:}" && PATH="${PATH%:}"
 git clone https://github.com/edgelesssys/marblerun.git
 cd marblerun/samples/occlum-hello
 make
