@@ -5,8 +5,8 @@
 * Support for Alibaba's DCAP infrastructure
 * Add transparency log for manifest updates
 * Role-based access control for users and Marbles:
-    * Secrets upload/download and distribution at runtime
-    * Deployment/Package updates
+  * Secrets upload/download and distribution at runtime
+  * Deployment/Package updates
 * TTLS support for EGo Marbles
 * Plugin system for storage backends
 

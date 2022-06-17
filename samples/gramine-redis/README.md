@@ -4,6 +4,7 @@ This example is a slightly modified variant of the [Gramine Redis example](https
 Instead of running a single [Redis](https://redis.io/) server instance, MarbleRun unleashes the full potential of Redis and takes care of distributing the Redis server in *replication* mode.
 
 *Prerequisite:*
+
 * Ensure you have access to a Kubernetes cluster with SGX-enabled nodes and kubectl installed and configured. Probably the easiest way to get started is to run Kubernetes on an [Azure Kubernetes Service (AKS)](https://docs.microsoft.com/en-us/azure/confidential-computing/confidential-nodes-aks-get-started), which offers SGX-enabled nodes.
 * Ensure you have the [MarbleRun CLI](https://docs.edgeless.systems/marblerun/#/reference/cli) installed.
 
@@ -100,7 +101,6 @@ You can now securely connect to the Redis server using the `redis-cli` and the M
 ## Building the Docker image
 
 To marbleize the example we edited [redis-server.manifest.template](redis-server.manifest.template). See comments starting with `MARBLERUN` for explanations of the required changes.
-
 
 Build the Docker image:
 

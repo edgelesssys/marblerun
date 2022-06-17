@@ -16,7 +16,7 @@ MarbleRun guarantees that the topology of your distributed app adheres to a Mani
 
 To keep things simple, MarbleRun issues one concise remote attestation statement for your whole distributed app. This can be used by anyone to verify the integrity of your distributed app.
 
-### Key features
+## Key features
 
 :lock: Authentication and integrity verification of microservices with respect to a Manifest written in simple JSON
 
@@ -26,12 +26,14 @@ To keep things simple, MarbleRun issues one concise remote attestation statement
 
 :globe_with_meridians: Remote attestation of the entire cluster
 
-### Overview
+## Overview
 
-<img src="assets/overview.svg" alt="overview" width="600"/>
+![overview](./assets/overview.svg)
 
-### Supported runtimes
+## Supported runtimes
+
 MarbleRun supports services built with one of the following frameworks:
+
 * [EGo][ego]
 * [Gramine][gramine]
 * [Occlum][occlum]
