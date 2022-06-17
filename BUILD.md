@@ -8,21 +8,22 @@ MarbleRun is written entirely in Go and builds on Edgeless RT, which is written 
 ### Control plane
 
 * [`coordinator`](coordinator):
-    * [`config`](coordinator/config): Environment variables for configuration
-    * [`core`](coordinator/core): Provides the gRPC API for Marbles and HTTP-REST API for clients
-    * [`quote`](coordinator/quote): Provides remote attestation quotes
-    * [`rpc`](coordinator/rpc): Protobuf definitions for the control plane <-> data plane communication
-    * [`server`](coordinator/server): Provides the Marble and client API server
+  * [`config`](coordinator/config): Environment variables for configuration
+  * [`core`](coordinator/core): Provides the gRPC API for Marbles and HTTP-REST API for clients
+  * [`quote`](coordinator/quote): Provides remote attestation quotes
+  * [`rpc`](coordinator/rpc): Protobuf definitions for the control plane <-> data plane communication
+  * [`server`](coordinator/server): Provides the Marble and client API server
 
 ### Data plane
 
 * [`marble`](marble):
-	* [`config`](marble/config): Environment variables for configuration
-	* [`premain`](marble/premain): The data plane code that prepares the Marble's environment
+  * [`config`](marble/config): Environment variables for configuration
+  * [`premain`](marble/premain): The data plane code that prepares the Marble's environment
 
 ## Build
 
 *Prerequisites*:
+
 * [Edgeless RT](https://github.com/edgelesssys/edgelessrt) is installed and sourced
 * Go 1.14 or newer
 
@@ -36,6 +37,7 @@ make
 ```
 
 ## Run
+
 Here's how to run the Coordinator and test Marbles.
 
 ### Run the Coordinator
@@ -68,54 +70,55 @@ $ cat build/marble-test-config.json
         "UniqueID": "ac923351e562a127e7d5f58eae0787d13a1309b09893f6b6eb9eda49b1758621",
         "SignerID": "233ac7711eba0f5b8c67c4abfef811bf8ff4cbca4fc7be6fb98e0dcd7a0ddad1"
 }
-
 ```
+
 Here's an example that has the `SecurityVersion`, `ProductID`, and `SignerID` set:
 
 ```json
 {
-	"Packages": {
-		"backend": {
-			"Debug": true,
-			"SecurityVersion": 1,
-			"ProductID": 1,
-			"SignerID": "233ac7711eba0f5b8c67c4abfef811bf8ff4cbca4fc7be6fb98e0dcd7a0ddad1"
-		}
-	},
-	"Infrastructures": {
-		"localhost": {}
-	},
-	"Marbles": {
-		"server" : {
-			"Package": "backend",
-			"Parameters": {
-				"Argv": [
-					"./marble",
-					"serve"
-				],
-				"Env": {
-					"ROOT_CA": "{{ pem .MarbleRun.RootCA.Cert }}",
-					"MARBLE_CERT": "{{ pem .MarbleRun.MarbleCert.Cert }}",
-					"MARBLE_KEY": "{{ pem .MarbleRun.MarbleCert.Private }}"
-				}
-			}
-		},
-		"client": {
-			"Package": "backend",
-			"Parameters": {
-				"Argv": [
-					"./marble"
-				],
-				"Env": {
-					"ROOT_CA": "{{ pem .MarbleRun.RootCA.Cert }}",
-					"MARBLE_CERT": "{{ pem .MarbleRun.MarbleCert.Cert }}",
-					"MARBLE_KEY": "{{ pem .MarbleRun.MarbleCert.Private }}"
-				}
-			}
-	    }
-	}
+  "Packages": {
+    "backend": {
+      "Debug": true,
+      "SecurityVersion": 1,
+      "ProductID": 1,
+      "SignerID": "233ac7711eba0f5b8c67c4abfef811bf8ff4cbca4fc7be6fb98e0dcd7a0ddad1"
+    }
+  },
+  "Infrastructures": {
+    "localhost": {}
+  },
+  "Marbles": {
+    "server" : {
+      "Package": "backend",
+      "Parameters": {
+        "Argv": [
+          "./marble",
+          "serve"
+        ],
+        "Env": {
+          "ROOT_CA": "{{ pem .MarbleRun.RootCA.Cert }}",
+          "MARBLE_CERT": "{{ pem .MarbleRun.MarbleCert.Cert }}",
+          "MARBLE_KEY": "{{ pem .MarbleRun.MarbleCert.Private }}"
+        }
+      }
+    },
+    "client": {
+      "Package": "backend",
+      "Parameters": {
+        "Argv": [
+          "./marble"
+        ],
+        "Env": {
+          "ROOT_CA": "{{ pem .MarbleRun.RootCA.Cert }}",
+          "MARBLE_CERT": "{{ pem .MarbleRun.MarbleCert.Cert }}",
+          "MARBLE_KEY": "{{ pem .MarbleRun.MarbleCert.Private }}"
+        }
+      }
+    }
+  }
 }
 ```
+
 **Replace the `SignerID` with YOUR value from `build/marble-test-config.json`**
 
 *Note*: `Debug` is set to `true` here so that this example works with SGX debug enclaves. This is not secure for production.
@@ -154,12 +157,12 @@ Run a simple application.
 
 * *Note*: A Marble starts with the following default values. You can set your desired configuration by setting the environment variables.
 
-	| Setting | Default Value | Environment Variable |
-	| --- | --- | --- |
-	| network address of the Coordinator’s API for Marbles | localhost:2001 |  EDG_MARBLE_COORDINATOR_ADDR |
-	| reference on one entry from your Manifest’s `Marbles` section | - (this needs to be set every time) | EDG_MARBLE_TYPE |
-	| local file path where the Marble stores its UUID | $PWD/uuid | EDG_MARBLE_UUID_FILE |
-	| DNS names the Coordinator will issue the Marble’s certificate for | localhost | EDG_MARBLE_DNS_NAMES |
+  | Setting | Default Value | Environment Variable |
+  | --- | --- | --- |
+  | network address of the Coordinator’s API for Marbles | localhost:2001 |  EDG_MARBLE_COORDINATOR_ADDR |
+  | reference on one entry from your Manifest’s `Marbles` section | - (this needs to be set every time) | EDG_MARBLE_TYPE |
+  | local file path where the Marble stores its UUID | $PWD/uuid | EDG_MARBLE_UUID_FILE |
+  | DNS names the Coordinator will issue the Marble’s certificate for | localhost | EDG_MARBLE_DNS_NAMES |
 
 ## Marble-Injector
 
@@ -208,11 +211,11 @@ You can build the Docker image of the Coordinator by providing a signing key:
 
 ```bash
 openssl genrsa -out private.pem -3 3072
-docker buildx build --secret id=signingkey,src=private.pem --target release --tag ghcr.io/edgelesssys/coordinator -f dockerfiles/Dockerfile.coordinator .
+DOCKER_BUILDKIT=1 docker build --secret id=signingkey,src=private.pem --target release --tag ghcr.io/edgelesssys/coordinator -f dockerfiles/Dockerfile.coordinator .
 ```
 
 You can build the Docker image of the marble-injector as follows:
 
 ```bash
-docker buildx build --tag ghcr.io/edgelesssys/marble-injector -f dockerfiles/Dockerfile.marble-injector .
+DOCKER_BUILDKIT=1 docker build --tag ghcr.io/edgelesssys/marble-injector -f dockerfiles/Dockerfile.marble-injector .
 ```

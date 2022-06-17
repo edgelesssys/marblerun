@@ -65,9 +65,7 @@
             "Parameters": {
                 "Env": {
                     "TEST_SECRET_CERT": "{{ pem .Secrets.certShared.Cert }}",
-                    "TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.certPrivate.Cert }}",
-                    "TEST_SECRET_CERT": "{{ pem .Secrets.cert_shared.Cert }}",
-                    "TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.cert_private.Cert }}"
+                    "TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.certPrivate.Cert }}"
                 },
                 "Argv": [
                     "serve"
