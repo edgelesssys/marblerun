@@ -15,7 +15,7 @@ loader.env.EDG_MARBLE_DNS_NAMES = { passthrough = true }
 
 # FS mount points
 fs.mounts = [
-    { path = "/lib", uri = "file:{{ gramine." },
+    { path = "/lib", uri = "file:{{ gramine.runtimedir() }}" },
     { path = "/etc", uri = "file:/etc" },
 ]
 
