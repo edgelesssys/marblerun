@@ -12,7 +12,7 @@ If you are trying to run this sample on Azure, you might want to use the provide
 
 ```sh
 # Assuming `samples/occlum-hello` is the current working directory
-docker buildx build -t occlum-azure .
+DOCKER_BUILDKIT=1 docker build -t occlum-azure .
 docker run -it --network host --device /dev/sgx occlum-azure
 ```
 

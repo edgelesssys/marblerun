@@ -105,5 +105,5 @@ To marbleize the example we edited [redis-server.manifest.template](redis-server
 Build the Docker image:
 
 ```bash
-docker buildx build --secret id=signingkey,src=<path to private.pem> --tag ghcr.io/edgelesssys/redis-gramine-marble -f ./Dockerfile .
+DOCKER_BUILDKIT=1 docker build --secret id=signingkey,src=<path to private.pem> --tag ghcr.io/edgelesssys/redis-gramine-marble -f ./Dockerfile .
 ```
