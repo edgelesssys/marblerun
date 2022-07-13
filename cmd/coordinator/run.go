@@ -10,6 +10,8 @@ import (
 	"log"
 	"os"
 	"strings"
+	"io/ioutil"
+	"context"
 
 	"github.com/edgelesssys/marblerun/coordinator/config"
 	"github.com/edgelesssys/marblerun/coordinator/core"
@@ -55,6 +57,7 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer 
 	clientServerAddr := util.Getenv(config.ClientAddr, config.ClientAddrDefault)
 	meshServerAddr := util.Getenv(config.MeshAddr, config.MeshAddrDefault)
 	promServerAddr := os.Getenv(config.PromAddr)
+	startupManifest := os.Getenv(config.StartupManifest)
 
 	// Create Prometheus resources and start the Prometheus server.
 	var promRegistry *prometheus.Registry
@@ -84,6 +87,18 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer 
 	if err != nil {
 		if _, ok := err.(core.QuoteError); !ok || !devMode {
 			zapLogger.Fatal("Cannot create Coordinator core", zap.Error(err))
+		}
+	}
+
+	// startup manifest
+	if startupManifest != "" {
+		zapLogger.Info("setting startup manifest")
+		content, err := ioutil.ReadFile(startupManifest)
+		if err != nil {
+			zapLogger.Fatal("Cannot read startup manifest", zap.Error(err))
+		}
+		if _, err := co.SetManifest(context.TODO(), content); err != nil {
+			zapLogger.Fatal("Cannot set startup manifest", zap.Error(err))
 		}
 	}
 
