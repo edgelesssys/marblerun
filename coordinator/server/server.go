@@ -14,6 +14,7 @@ import (
 	"os"
 
 	"github.com/edgelesssys/marblerun/coordinator/core"
+	"github.com/edgelesssys/marblerun/coordinator/events"
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -112,9 +113,10 @@ func RunClientServer(mux http.Handler, address string, tlsConfig *tls.Config, za
 }
 
 // RunPrometheusServer runs a HTTP server handling the prometheus metrics endpoint.
-func RunPrometheusServer(address string, zapLogger *zap.Logger, reg *prometheus.Registry) {
+func RunPrometheusServer(address string, zapLogger *zap.Logger, reg *prometheus.Registry, eventlog *events.Log) {
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.InstrumentMetricHandler(reg, promhttp.HandlerFor(reg, promhttp.HandlerOpts{Registry: reg})))
+	mux.Handle("/events", eventlog.Handler())
 	zapLogger.Info("starting prometheus /metrics endpoint", zap.String("address", address))
 	err := http.ListenAndServe(address, mux)
 	zapLogger.Warn(err.Error())

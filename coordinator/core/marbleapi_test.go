@@ -53,7 +53,7 @@ func TestActivate(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	recovery := recovery.NewSinglePartyRecovery()
-	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, nil)
+	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	require.NotNil(coreServer)
 
@@ -461,7 +461,7 @@ func TestSecurityLevelUpdate(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	recovery := recovery.NewSinglePartyRecovery()
-	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, nil)
+	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	require.NotNil(coreServer)
 
@@ -491,7 +491,7 @@ func TestSecurityLevelUpdate(t *testing.T) {
 	spawner.newMarble("frontend", "Azure", false)
 
 	// Use a new core and test if updated manifest persisted after restart
-	coreServer2, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, nil)
+	coreServer2, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	coreServer2State, err := coreServer2.data.getState()
 	assert.NoError(err)
@@ -572,7 +572,7 @@ func TestActivateWithMissingParameters(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	recovery := recovery.NewSinglePartyRecovery()
-	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, nil)
+	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	require.NotNil(coreServer)
 

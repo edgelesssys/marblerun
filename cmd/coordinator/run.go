@@ -13,6 +13,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/coordinator/config"
 	"github.com/edgelesssys/marblerun/coordinator/core"
+	"github.com/edgelesssys/marblerun/coordinator/events"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
 	"github.com/edgelesssys/marblerun/coordinator/seal"
@@ -57,6 +58,7 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer 
 	promServerAddr := os.Getenv(config.PromAddr)
 
 	// Create Prometheus resources and start the Prometheus server.
+	var eventlog = events.NewLog()
 	var promRegistry *prometheus.Registry
 	var promFactoryPtr *promauto.Factory
 	if promServerAddr != "" {
@@ -72,7 +74,7 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer 
 				"commit":  GitCommit,
 			},
 		})
-		go server.RunPrometheusServer(promServerAddr, zapLogger, promRegistry)
+		go server.RunPrometheusServer(promServerAddr, zapLogger, promRegistry, eventlog)
 	}
 
 	// creating core
@@ -80,7 +82,7 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer 
 	if err := os.MkdirAll(sealDir, 0o700); err != nil {
 		zapLogger.Fatal("Cannot create or access sealdir. Please check the permissions for the specified path.", zap.Error(err))
 	}
-	co, err := core.NewCore(dnsNames, validator, issuer, sealer, recovery, zapLogger, promFactoryPtr)
+	co, err := core.NewCore(dnsNames, validator, issuer, sealer, recovery, zapLogger, promFactoryPtr, eventlog)
 	if err != nil {
 		if _, ok := err.(core.QuoteError); !ok || !devMode {
 			zapLogger.Fatal("Cannot create Coordinator core", zap.Error(err))

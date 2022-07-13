@@ -26,6 +26,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/edgelesssys/marblerun/coordinator/events"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
@@ -55,6 +56,7 @@ type Core struct {
 	updateLogger *updatelog.Logger
 	zaplogger    *zap.Logger
 	metrics      *coreMetrics
+	eventlog     *events.Log
 	rpc.UnimplementedMarbleServer
 }
 
@@ -112,7 +114,7 @@ func (c *Core) advanceState(newState state, tx store.Transaction) error {
 }
 
 // NewCore creates and initializes a new Core object.
-func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal.Sealer, recovery recovery.Recovery, zapLogger *zap.Logger, promFactory *promauto.Factory) (*Core, error) {
+func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal.Sealer, recovery recovery.Recovery, zapLogger *zap.Logger, promFactory *promauto.Factory, eventlog *events.Log) (*Core, error) {
 	stor := store.NewStdStore(sealer)
 	c := &Core{
 		qv:        qv,
@@ -122,6 +124,7 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, sealer seal
 		data:      storeWrapper{store: stor},
 		sealer:    sealer,
 		zaplogger: zapLogger,
+		eventlog:  eventlog,
 	}
 	c.metrics = newCoreMetrics(promFactory, c, "coordinator")
 
@@ -207,7 +210,7 @@ func NewCoreWithMocks() *Core {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	recovery := recovery.NewSinglePartyRecovery()
-	core, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, nil)
+	core, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, nil, nil)
 	if err != nil {
 		panic(err)
 	}

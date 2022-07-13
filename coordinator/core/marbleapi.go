@@ -145,6 +145,12 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 
 	c.metrics.marbleAPI.activationSuccess.WithLabelValues(req.GetMarbleType(), req.GetUUID()).Inc()
 	c.zaplogger.Info("Successfully activated new Marble", zap.String("MarbleType", req.MarbleType), zap.String("UUID", marbleUUID.String()))
+
+	if c.eventlog != nil {
+		c.eventlog.Activation(req.GetMarbleType(), req.GetUUID(), req.GetQuote())
+	}
+
+
 	return resp, nil
 }
 
