@@ -7,11 +7,11 @@
 package main
 
 import (
+	"context"
+	"io/ioutil"
 	"log"
 	"os"
 	"strings"
-	"io/ioutil"
-	"context"
 
 	"github.com/edgelesssys/marblerun/coordinator/config"
 	"github.com/edgelesssys/marblerun/coordinator/core"
