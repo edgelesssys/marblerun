@@ -44,7 +44,7 @@ func (l *Log) Activation(marbleType string, uuid string, quote []byte) {
 	})
 }
 
-// The http handler retutns the log as JSON array
+// Handler returns a http.HandlerFunc which writes the log as JSON array.
 func (l *Log) Handler() http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
