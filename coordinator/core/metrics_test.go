@@ -35,7 +35,7 @@ func TestStoreWrapperMetrics(t *testing.T) {
 	//
 	reg := prometheus.NewRegistry()
 	fac := promauto.With(reg)
-	c, _ := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, &fac)
+	c, _ := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, &fac, nil)
 	assert.Equal(1, promtest.CollectAndCount(c.metrics.coordinatorState))
 	assert.Equal(float64(stateAcceptingManifest), promtest.ToFloat64(c.metrics.coordinatorState))
 
@@ -49,7 +49,7 @@ func TestStoreWrapperMetrics(t *testing.T) {
 	reg = prometheus.NewRegistry()
 	fac = promauto.With(reg)
 	sealer.UnsealError = seal.ErrEncryptionKey
-	c, err = NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, &fac)
+	c, err = NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, &fac, nil)
 	sealer.UnsealError = nil
 	require.NoError(err)
 	assert.Equal(1, promtest.CollectAndCount(c.metrics.coordinatorState))
@@ -84,7 +84,7 @@ func TestMarbleAPIMetrics(t *testing.T) {
 	recovery := recovery.NewSinglePartyRecovery()
 	promRegistry := prometheus.NewRegistry()
 	promFactory := promauto.With(promRegistry)
-	c, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, &promFactory)
+	c, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, &promFactory, nil)
 	require.NoError(err)
 	require.NotNil(c)
 
