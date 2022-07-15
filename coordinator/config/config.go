@@ -45,3 +45,6 @@ const DevMode = "EDG_COORDINATOR_DEV_MODE"
 
 // DevModeDefault is the default logging mode.
 const DevModeDefault = "0"
+
+/// StartupManifest is a path to a manifest to start with instead of waiting for a manifest from the api
+const StartupManifest = "EDG_STARTUP_MANIFEST"
