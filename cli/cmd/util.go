@@ -86,7 +86,7 @@ func verifyCoordinator(host string, configFilename string, insecure bool) ([]*pe
 	}
 	fmt.Println("Got latest config")
 
-	pemBlock, _, err := era.GetCertificate(host, configFilename)
+	pemBlock, _, err := era.GetCertificate(host, "era-config.json")
 	return pemBlock, err
 }
 
