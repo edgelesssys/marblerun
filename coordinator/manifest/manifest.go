@@ -7,6 +7,7 @@
 package manifest
 
 import (
+	"bytes"
 	"context"
 	"crypto/x509"
 	"encoding/base64"
@@ -15,8 +16,10 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"github.com/pavlo-v-chernykh/keystore-go/v4"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/user"
@@ -477,12 +480,64 @@ func EncodeSecretDataToString(data interface{}) (string, error) {
 	}
 }
 
+// EncodeSecretsToJavaKeyStore encodes secrets as java keystore.
+func EncodeSecretsToJavaKeyStore(password string, secrets ...Secret) (string, error) {
+	ks := keystore.New()
+
+	for i, secret := range secrets {
+		if secret.Type != "cert-rsa" && secret.Type != "cert-ed25519" && secret.Type != "cert-ecdsa" {
+			return "", errors.New("only RSA, ED25519 and ECDSA certificates can be encoded as Java keystore")
+		}
+
+		if len(secret.Cert.Raw) == 0 {
+			return "", errors.New("certificate is empty")
+		}
+
+		var alias = fmt.Sprintf("a%d", i)
+
+		err := ks.SetTrustedCertificateEntry(alias, keystore.TrustedCertificateEntry{
+			Certificate: keystore.Certificate{
+				Type:    "X509",
+				Content: secret.Cert.Raw,
+			},
+		})
+		if err != nil {
+			return "", err
+		}
+
+		if secret.Private != nil {
+			pkeIn := keystore.PrivateKeyEntry{
+				CreationTime: time.Now(),
+				PrivateKey:   secret.Private,
+				CertificateChain: []keystore.Certificate{
+					{
+						Type:    "X509",
+						Content: secret.Cert.Raw,
+					},
+				},
+			}
+
+			if err := ks.SetPrivateKeyEntry(alias, pkeIn, []byte(password)); err != nil {
+				return "", err
+			}
+		}
+	}
+
+	var f bytes.Buffer
+	err := ks.Store(&f, []byte(password))
+	if err != nil {
+		return "", err
+	}
+	return f.String(), nil
+}
+
 // ManifestTemplateFuncMap defines the functions which can be specified for secret injections into files in the in Go template format.
 var ManifestFileTemplateFuncMap = template.FuncMap{
 	"pem":    EncodeSecretDataToPem,
 	"hex":    EncodeSecretDataToHex,
 	"raw":    EncodeSecretDataToRaw,
 	"base64": EncodeSecretDataToBase64,
+	"jks":    EncodeSecretsToJavaKeyStore,
 }
 
 // ManifestEnvTemplateFuncMap defines the functions which can be specified for secret injections into Env variables in the Go template format.

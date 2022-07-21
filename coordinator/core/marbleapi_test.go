@@ -424,6 +424,10 @@ func TestParseSecrets(t *testing.T) {
 	_, err = parseSecrets("{{ hex .Secrets.emptysecret }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
 	assert.Error(err)
 
+	// Test if we can encode as jks
+	parsedSecret, err = parseSecrets("{{ jks \"password\" .Secrets.testcertificate }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
+	require.NoError(err)
+
 	testWrappedSecrets.Secrets = map[string]manifest.Secret{
 		"plainSecret": {Type: "plain", Public: []byte{1, 2, 3}},
 		"nullSecret":  {Type: "plain", Public: []byte{0, 1, 2}},
@@ -440,6 +444,10 @@ func TestParseSecrets(t *testing.T) {
 
 	// non plain secrets always result in an error
 	_, err = parseSecrets("{{ string .Secrets.otherSecret }}", manifest.ManifestEnvTemplateFuncMap, testWrappedSecrets)
+	assert.Error(err)
+
+	// jks must fail encoding a symmetric key
+	_, err = parseSecrets("{{ jks \"password\" .Secrets.otherSecret }}", manifest.ManifestEnvTemplateFuncMap, testWrappedSecrets)
 	assert.Error(err)
 }
 
