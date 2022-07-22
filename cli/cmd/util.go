@@ -34,6 +34,7 @@ const (
 
 const promptForChanges = "Do you want to automatically apply the suggested changes [y/n]? "
 
+const eraDefaultConfig = "era-config.json"
 var (
 	eraConfig   string
 	insecureEra bool
@@ -75,7 +76,7 @@ func verifyCoordinator(host string, configFilename string, insecure bool) ([]*pe
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("downloading era config failed with error %d: %s", resp.StatusCode, http.StatusText(resp.StatusCode))
 	}
-	out, err := os.Create("era-config.json")
+	out, err := os.Create(eraDefaultConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +87,7 @@ func verifyCoordinator(host string, configFilename string, insecure bool) ([]*pe
 	}
 	fmt.Println("Got latest config")
 
-	pemBlock, _, err := era.GetCertificate(host, configFilename)
+	pemBlock, _, err := era.GetCertificate(host, eraDefaultConfig)
 	return pemBlock, err
 }
 
