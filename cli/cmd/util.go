@@ -34,8 +34,7 @@ const (
 
 const promptForChanges = "Do you want to automatically apply the suggested changes [y/n]? "
 
-const ERADefaultConfig = "era-config.json"
-
+const eraDefaultConfig = "era-config.json"
 var (
 	eraConfig   string
 	insecureEra bool
