@@ -76,7 +76,7 @@ func verifyCoordinator(host string, configFilename string, insecure bool) ([]*pe
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("downloading era config failed with error %d: %s", resp.StatusCode, http.StatusText(resp.StatusCode))
 	}
-	out, err := os.Create(ERADefaultConfig)
+	out, err := os.Create(eraDefaultConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +87,7 @@ func verifyCoordinator(host string, configFilename string, insecure bool) ([]*pe
 	}
 	fmt.Println("Got latest config")
 
-	pemBlock, _, err := era.GetCertificate(host, ERADefaultConfig)
+	pemBlock, _, err := era.GetCertificate(host, eraDefaultConfig)
 	return pemBlock, err
 }
 
