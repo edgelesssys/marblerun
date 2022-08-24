@@ -10,7 +10,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -27,6 +26,7 @@ import (
 	"helm.sh/helm/v3/pkg/strvals"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -329,21 +329,17 @@ func createSecret(privKey *rsa.PrivateKey, crt []byte, kubeClient kubernetes.Int
 }
 
 func getCertificateHandler(kubeClient kubernetes.Interface) (certificateInterface, error) {
-	versionInfo, err := kubeClient.Discovery().ServerVersion()
+	serverVersion, err := kubeClient.Discovery().ServerVersion()
 	if err != nil {
 		return nil, err
 	}
-	majorVersion, err := strconv.Atoi(versionInfo.Major)
-	if err != nil {
-		return nil, err
-	}
-	minorVersion, err := strconv.Atoi(versionInfo.Minor)
+	versionInfo, err := version.ParseGeneric(serverVersion.String())
 	if err != nil {
 		return nil, err
 	}
 
 	// return the legacy interface if kubernetes version is < 1.19
-	if majorVersion == 1 && minorVersion < 19 {
+	if versionInfo.Major() == 1 && versionInfo.Minor() < 19 {
 		fmt.Printf("\nKubernetes version lower than 1.19 detected, using self-signed certificates as CABundle")
 		return newCertificateLegacy()
 	}

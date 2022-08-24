@@ -53,20 +53,31 @@ func TestGetCertificateHandler(t *testing.T) {
 	testClient := fake.NewSimpleClientset()
 
 	testClient.Discovery().(*fakediscovery.FakeDiscovery).FakedServerVersion = &version.Info{
-		Major: "1",
-		Minor: "19",
+		Major:      "1",
+		Minor:      "19",
+		GitVersion: "v1.19.4",
 	}
 	testHandler, err := getCertificateHandler(testClient)
 	require.NoError(err)
-	assert.Equal(reflect.TypeOf(testHandler).String(), "*cmd.certificateV1")
+	assert.Equal("*cmd.certificateV1", reflect.TypeOf(testHandler).String())
 
 	testClient.Discovery().(*fakediscovery.FakeDiscovery).FakedServerVersion = &version.Info{
-		Major: "1",
-		Minor: "18",
+		Major:      "1",
+		Minor:      "18",
+		GitVersion: "v1.18.4",
 	}
 	testHandler, err = getCertificateHandler(testClient)
 	require.NoError(err)
-	assert.Equal(reflect.TypeOf(testHandler).String(), "*cmd.certificateLegacy")
+	assert.Equal("*cmd.certificateLegacy", reflect.TypeOf(testHandler).String())
+
+	testClient.Discovery().(*fakediscovery.FakeDiscovery).FakedServerVersion = &version.Info{
+		Major:      "1",
+		Minor:      "24+",
+		GitVersion: "v1.24.3-2+63243a96d1c393",
+	}
+	testHandler, err = getCertificateHandler(testClient)
+	require.NoError(err)
+	assert.Equal("*cmd.certificateV1", reflect.TypeOf(testHandler).String())
 }
 
 func TestVerifyNamespace(t *testing.T) {
@@ -93,8 +104,9 @@ func TestInstallWebhook(t *testing.T) {
 
 	testClient := fake.NewSimpleClientset()
 	testClient.Discovery().(*fakediscovery.FakeDiscovery).FakedServerVersion = &version.Info{
-		Major: "1",
-		Minor: "18",
+		Major:      "1",
+		Minor:      "18",
+		GitVersion: "v1.18.4",
 	}
 
 	testValues, err := installWebhook(testClient)
@@ -136,8 +148,9 @@ func TestErrorAndCleanup(t *testing.T) {
 
 	testClient := fake.NewSimpleClientset()
 	testClient.Discovery().(*fakediscovery.FakeDiscovery).FakedServerVersion = &version.Info{
-		Major: "1",
-		Minor: "19",
+		Major:      "1",
+		Minor:      "19",
+		GitVersion: "v1.19.4",
 	}
 
 	testError := errors.New("test")
