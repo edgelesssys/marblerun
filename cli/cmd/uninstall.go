@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strconv"
 
 	"github.com/spf13/cobra"
 	"helm.sh/helm/v3/pkg/action"
@@ -78,19 +77,11 @@ func cleanupSecrets(kubeClient kubernetes.Interface) error {
 // cleanupCSR removes a potentially leftover CSR from the Admission Controller.
 func cleanupCSR(kubeClient kubernetes.Interface) error {
 	// in case of kubernetes version < 1.19 no CSR was created by the install command
-	versionInfo, err := kubeClient.Discovery().ServerVersion()
+	isLegacy, err := checkLegacyKubernetesVersion(kubeClient)
 	if err != nil {
 		return err
 	}
-	majorVersion, err := strconv.Atoi(versionInfo.Major)
-	if err != nil {
-		return err
-	}
-	minorVersion, err := strconv.Atoi(versionInfo.Minor)
-	if err != nil {
-		return err
-	}
-	if majorVersion == 1 && minorVersion < 19 {
+	if isLegacy {
 		return nil
 	}
 

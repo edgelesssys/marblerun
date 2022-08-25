@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/edgelesssys/era/era"
+	"k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -35,6 +36,7 @@ const (
 const promptForChanges = "Do you want to automatically apply the suggested changes [y/n]? "
 
 const eraDefaultConfig = "era-config.json"
+
 var (
 	eraConfig   string
 	insecureEra bool
@@ -163,4 +165,22 @@ func promptYesNo(stdin io.Reader, question string) (bool, error) {
 	}
 
 	return true, nil
+}
+
+func checkLegacyKubernetesVersion(kubeClient kubernetes.Interface) (bool, error) {
+	serverVersion, err := kubeClient.Discovery().ServerVersion()
+	if err != nil {
+		return false, err
+	}
+	versionInfo, err := version.ParseGeneric(serverVersion.String())
+	if err != nil {
+		return false, err
+	}
+
+	// return the legacy if kubernetes version is < 1.19
+	if versionInfo.Major() == 1 && versionInfo.Minor() < 19 {
+		return true, nil
+	}
+
+	return false, nil
 }

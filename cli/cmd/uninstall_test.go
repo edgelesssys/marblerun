@@ -20,8 +20,9 @@ func TestCleanupWebhook(t *testing.T) {
 	require := require.New(t)
 	testClient := fake.NewSimpleClientset()
 	testClient.Discovery().(*fakediscovery.FakeDiscovery).FakedServerVersion = &version.Info{
-		Major: "1",
-		Minor: "19",
+		Major:      "1",
+		Minor:      "19",
+		GitVersion: "v1.19.4",
 	}
 
 	// Try to remove non existent CSR using function
@@ -61,8 +62,25 @@ func TestCleanupWebhook(t *testing.T) {
 
 	// try changing to version lower than 19 and removing CSR (this should always return nil)
 	testClient.Discovery().(*fakediscovery.FakeDiscovery).FakedServerVersion = &version.Info{
-		Major: "1",
-		Minor: "18",
+		Major:      "1",
+		Minor:      "18",
+		GitVersion: "v1.18.4",
+	}
+	err = cleanupCSR(testClient)
+	require.NoError(err)
+
+	// try changing to version string containing non-digit characters and removing the CSR
+
+	_, err = testClient.CertificatesV1().CertificateSigningRequests().Create(context.TODO(), csr, metav1.CreateOptions{})
+	require.NoError(err)
+
+	_, err = testClient.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), webhookName, metav1.GetOptions{})
+	require.NoError(err)
+
+	testClient.Discovery().(*fakediscovery.FakeDiscovery).FakedServerVersion = &version.Info{
+		Major:      "1",
+		Minor:      "24+",
+		GitVersion: "v1.24.3-2+63243a96d1c393",
 	}
 	err = cleanupCSR(testClient)
 	require.NoError(err)
