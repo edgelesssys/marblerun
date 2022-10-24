@@ -28,7 +28,7 @@ sgx.trusted_files = [
 After the premain is done running, it will automatically spawn your application.
 
 ### Host environment variables
-The premain needs access to some host [environment variables for configuration](workflows/add-service.md#step-3-start-your-service):
+The premain needs access to some host [environment variables for configuration](../workflows/add-service.md#step-3-start-your-service):
 ```toml
 loader.env.EDG_MARBLE_TYPE = { passthrough = true }
 loader.env.EDG_MARBLE_COORDINATOR_ADDR = { passthrough = true }

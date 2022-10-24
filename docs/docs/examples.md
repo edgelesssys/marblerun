@@ -2,10 +2,10 @@
 
 ## Hello world
 
-We have two basic examples of how to build confidential applications with MarbleRun.
+There are two basic examples of how to build confidential applications with MarbleRun.
 
-* See [helloworld](https://github.com/edgelesssys/marblerun/blob/master/samples/helloworld) for how to integrate MarbleRun with your Golang application. 🌎
-* See [helloc++](https://github.com/edgelesssys/marblerun/blob/master/samples/helloc%2B%2B) for how to integrate MarbleRun with your C++ application.
+* See [`helloworld`](https://github.com/edgelesssys/marblerun/blob/master/samples/helloworld) for how to integrate MarbleRun with your Golang application. 🌎
+* See [`helloc++`](https://github.com/edgelesssys/marblerun/blob/master/samples/helloc%2B%2B) for how to integrate MarbleRun with your C++ application.
 
 ## Emoji voting
 
@@ -22,7 +22,7 @@ We provide a hands-on example for a confidential multi-stakeholder inference ser
 ## Gramine-based examples
 We provide two examples for Gramine-based Marbles:
 * A [helloworld](https://github.com/edgelesssys/marblerun/tree/master/samples/gramine-hello) example to get you started. 🤓
-* An [NGINX webserver](https://github.com/edgelesssys/marblerun/tree/master/samples/gramine-nginx) for an example of converting an existing Gramine application to a Marble. :rocket:
+* An [nginx web server](https://github.com/edgelesssys/marblerun/tree/master/samples/gramine-nginx) for an example of converting an existing Gramine application to a Marble. :rocket:
 
 ## Occlum-based examples
 

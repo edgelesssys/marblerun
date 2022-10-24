@@ -4,7 +4,7 @@ This guide walks you through setting up MarbleRun in your Kubernetes cluster.
 
 The Kubernetes deployment is managed through the use of a [Helm chart](https://helm.sh/), which can be found in our [source repository](https://github.com/edgelesssys/marblerun/tree/master/charts) and installed via our [Helm repository.](https://helm.edgeless.systems) \
 The installation consists of a deployment for the Coordinator and an admission controller.
-For more details see our section on [Kubernetes Integration](features/kubernetes-integration.md).
+For more details see our section on [Kubernetes Integration](../features/kubernetes-integration.md).
 
 ## Prerequisites
 
@@ -17,9 +17,12 @@ The SGX device plugin can either be deployed manually or as a DaemonSet in the c
 * [Azure](https://github.com/Azure/aks-engine/blob/master/docs/topics/sgx.md#deploying-the-sgx-device-plugin)
 * [Alibaba Cloud](https://github.com/AliyunContainerService/sgx-device-plugin)
 
+:::info
 
-?> If you are using a CC-enlightened, managed Kubernetes cluster, you will usually already have an SGX device plugin installed.
+If you are using a CC-enlightened, managed Kubernetes cluster, you will usually already have an SGX device plugin installed.
 For example, creating a confidential computing cluster on AKS has a pre-configured SGX device plugin.
+
+:::
 
 ### Manually deploying an SGX device plugin
 
@@ -58,15 +61,18 @@ spec:
 
 Note, that every plugin uses its own way of injecting SGX resources into deployments. Please refer to the documentation for your plugin of choice. This is an example of the Intel plugin.
 
-MarbleRun supports [automatic injection](features/kubernetes-integration.md) of those values for a selection of popular plugins:
+MarbleRun supports [automatic injection](../features/kubernetes-integration.md) of those values for a selection of popular plugins:
 
 * [Intel](https://intel.github.io/intel-device-plugins-for-kubernetes/cmd/sgx_plugin/README.html) using `sgx.intel.com/epc`, `sgx.intel.com/enclave`, and `sgx.intel.com/provision`
 * [Azure](https://github.com/Azure/aks-engine/blob/master/docs/topics/sgx.md#deploying-the-sgx-device-plugin) using `kubernetes.azure.com/sgx_epc_mem_in_MiB`
 * [Alibaba Cloud](https://github.com/AliyunContainerService/sgx-device-plugin) using `alibabacloud.com/sgx_epc_MiB`
 * You can use the `--resource-key` flag, during installation with the CLI, to declare your own SGX resource key for injection
 
-?> If you are using a different plugin please let us know, so we can add support!
+:::tip
 
+If you are using a different plugin please let us know, so we can add support!
+
+:::
 
 ### Out-of-process attestation
 
@@ -74,14 +80,14 @@ Intel SGX supports two modes for obtaining remote attestation quotes:
 * In-process: The software generating the quote is part of the enclave application
 * Out-of-process: The software generating the quote isn't part of the actual enclave application. This requires the Intel SGX Architectural Enclave Service Manager (AESM) to run on the system
 
-While Marbles built with [Ego](building-services/ego.md) perform in-process attestation, other frameworks, such as [Gramine](building-services/gramine.md), use out-of-process attestation.
+While Marbles built with [Ego](../building-services/ego.md) perform in-process attestation, other frameworks, such as [Gramine](../building-services/gramine.md), use out-of-process attestation.
 If your confidential application uses out-of-process attestation, you will need to expose the AESM device to your container.
 
 You can follow [the AKS guide](https://docs.microsoft.com/en-us/azure/confidential-computing/confidential-nodes-aks-addon) to make your deployments able to use AESM for quote generation. Note, that in this case, your Kubernetes nodes need the AESM service installed. See the [Intel installation guide](https://download.01.org/intel-sgx/sgx-linux/2.12/docs/Intel_SGX_Installation_Guide_Linux_2.12_Open_Source.pdf) for more information.
 
 ## Option 1: Install with the MarbleRun CLI
 
-Use MarbleRun's [CLI](reference/cli.md) that facilitates the administrative tasks.
+Use MarbleRun's [CLI](../reference/cli.md) that facilitates the administrative tasks.
 You can install MarbleRun using the CLI as follows:
 
 * For a cluster with SGX support:
@@ -104,11 +110,11 @@ This certificate is used for the HTTPS communication of the Coordinator's client
 The HTTPS endpoint is exposed via a [Kubernetes LoadBalancer Service](https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer).
 The public IP and associated DNS names of load balancer services are provisioned and managed by your cloud provider.
 You need to make sure that the domain you set via `--domain` matches the one you configured for the public IPs provisioned in your cluster.
-On Azure, you can [use a static public IP address with the Azure Kubernetes Service (AKS) load balancer](https://docs.microsoft.com/en-us/azure/aks/static-ip#create-a-static-ip-address),
+On Azure, you can [use a static public IP address with the Azure Kubernetes Service (AKS) load balancer](https://docs.microsoft.com/en-us/azure/aks/static-ip#create-a-static-ip-address).
 The client API can be used by users/clients of your application to obtain one concise remote attestation statement for your cluster.
 
 The Coordinator is now in a pending state, waiting for a manifest.
-See the [how to add a service](workflows/add-service.md) documentation for more information on how to create and set a manifest.
+See the [how to add a service](../workflows/add-service.md) documentation for more information on how to create and set a manifest.
 
 ## Option 2: Install with Helm
 
@@ -152,11 +158,11 @@ This certificate is used for the HTTPS communication of the Coordinator's client
 The HTTPS endpoint is exposed via a [Kubernetes LoadBalancer Service](https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer).
 The public IP and associated DNS names of load balancer services are provisioned and managed by your cloud provider.
 You need to make sure that the domain you set via `coordinator.hostname` matches the one you configured for the public IPs provisioned in your cluster.
-On Azure, you can [use a static public IP address with the Azure Kubernetes Service (AKS) load balancer](https://docs.microsoft.com/en-us/azure/aks/static-ip#create-a-static-ip-address),
+On Azure, you can [use a static public IP address with the Azure Kubernetes Service (AKS) load balancer](https://docs.microsoft.com/en-us/azure/aks/static-ip#create-a-static-ip-address).
 The client API can be used by users/clients of your application to obtain one concise remote attestation statement for your cluster.
 
 The Coordinator is now in a pending state, waiting for a manifest.
-See the [how to add a service](workflows/add-service.md) documentation for more information on how to create and set a manifest.
+See the [how to add a service](../workflows/add-service.md) documentation for more information on how to create and set a manifest.
 ## (Optional) Exposing the client API
 
 The Coordinator creates a [`LoadBalancer`](https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer) service called `coordinator-client-api` exposing the client API on the default port 4433.

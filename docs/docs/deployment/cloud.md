@@ -14,8 +14,8 @@ The description below uses a VM running Ubuntu 18.04.
 
 ### Deploy MarbleRun
 
-You can run MarbleRun standalone on your Azure DCsv2 VM, see our [standalone guide](deployment/standalone.md).
-Alternatively, you can install a Kubernetes cluster, probably the simplest option would be [minikube](https://minikube.sigs.k8s.io/docs/start/), see our [Kubernetes guide](deployment/kubernetes.md) on how to install MarbleRun in minikube.
+You can run MarbleRun standalone on your Azure DCsv2 VM, see our [standalone guide](../deployment/standalone.md).
+Alternatively, you can install a Kubernetes cluster, probably the simplest option would be [minikube](https://minikube.sigs.k8s.io/docs/start/), see our [Kubernetes guide](../deployment/kubernetes.md) on how to install MarbleRun in minikube.
 
 ## Alibaba Cloud Elastic Compute Service
 
@@ -57,14 +57,18 @@ The description below uses a VM running Ubuntu 18.04.
         USE_SECURE_CERT=TRUE
         ```
 
-    ?> Currently, the Alibaba Cloud SGX remote attestation service is only supported within [mainland China regions](https://www.alibabacloud.com/help/doc-detail/40654.htm#concept-2459516)
+    :::note
+
+    Currently, the Alibaba Cloud SGX remote attestation service is only supported within [mainland China regions](https://www.alibabacloud.com/help/doc-detail/40654.htm#concept-2459516)
+
+    :::
 
 1. [Update and install EGo](https://github.com/edgelesssys/ego#install)
 
 ### Deploy MarbleRun
 
-You can run MarbleRun standalone on your Alibaba Cloud ECS VM, see our [standalone guide](deployment/standalone.md).
-Alternatively, you can install a Kubernetes cluster, probably the simplest option would be [minikube](https://minikube.sigs.k8s.io/docs/start/), see our [Kubernetes guide](deployment/kubernetes.md) on how to install MarbleRun in minikube.
+You can run MarbleRun standalone on your Alibaba Cloud ECS VM, see our [standalone guide](../deployment/standalone.md).
+Alternatively, you can install a Kubernetes cluster, probably the simplest option would be [minikube](https://minikube.sigs.k8s.io/docs/start/), see our [Kubernetes guide](../deployment/kubernetes.md) on how to install MarbleRun in minikube.
 
 ## Azure Kubernetes Services (AKS)
 
@@ -79,4 +83,4 @@ to provision an AKS cluster with Intel SGX enabled worker nodes.
 
 ### Deploy MarbleRun
 
-See our [Kubernetes guide](deployment/kubernetes.md) on how to install MarbleRun in your AKS cluster.
+See our [Kubernetes guide](../deployment/kubernetes.md) on how to install MarbleRun in your AKS cluster.

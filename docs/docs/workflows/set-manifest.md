@@ -5,10 +5,10 @@ It further defines what Infrastructure providers are allowed.
 You can set a manifest through MarbleRun's Client HTTP REST API.
 The endpoint for all manifest operations is `/manifest`.
 
-See [Defining a manifest](workflows/define-manifest.md) to learn how to define a manifest.
+See [Defining a manifest](../workflows/define-manifest.md) to learn how to define a manifest.
 
 To set the manifest we can use the command line interface, which performs remote attestation on the Coordinator before uploading the manifest.
-For further information see [Verifying a deployment](workflows/verification.md)
+For further information see [Verifying a deployment](../workflows/verification.md)
 
 ```bash
 marblerun manifest set manifest.json $MARBLERUN
@@ -19,4 +19,8 @@ This secret is the Coordinator's state-encryption key.
 
 `{"EncryptionKey":"[base64]"}`
 
-!> It is important that you keep this value stored somewhere safe. Without it, you will not be able to perform a recovery step in case the SGX seal key changed.
+:::caution
+
+It's important that you keep this value stored somewhere safe. Without it, you won't be able to perform a recovery step in case the SGX seal key changed.
+
+:::

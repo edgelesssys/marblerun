@@ -23,7 +23,7 @@ helm upgrade marblerun edgeless/marblerun \
 ```
 
 If the Coordinator is rescheduled on the same host as before, it will continue running with the same manifest as before.
-However, if the Coordinator gets rescheduled to another node during the updating process you need to perform the [recovery step](features/recovery.md).
+However, if the Coordinator gets rescheduled to another node during the updating process you need to perform the [recovery step](../features/recovery.md).
 
 The Marbles won't be affected by the Coordinator update and will continue running.
 New Marbles that are started can interact with existing ones.
@@ -33,7 +33,11 @@ If the Coordinator version update also affects the data plane or the Marble boot
 kubectl rollout restart deployment your_deployment_name
 ```
 
-?> Updating the Coordinator image will change its `UniqueID`, but typically not its `SignerID`.
+:::info
+
+Updating the Coordinator image will change its `UniqueID`, but typically not its `SignerID`.
+
+:::
 
 ### Updating Marbles
 

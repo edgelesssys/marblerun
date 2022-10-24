@@ -75,7 +75,7 @@ These flags apply to all `certificate` subcommands
 
 | Name, shorthand | Default | Description                                                                                                                      |
 | --------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| --era-config    |         | Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github      |
+| --era-config    |         | Path to remote attestation config file in JSON format, if none provided the newest configuration will be loaded from GitHub      |
 | --help, -h      |         | help for certificate                                                                                                             |
 | --insecure, -i  |         | simulation mode                                                                                                                  |
 | --output, -o    |         | File to save the certificate to                                                                                                  |
@@ -138,7 +138,7 @@ Supported shells are:
     ```
 
 * `zsh`:
-  * If completion is not already enabled you need to enable it first:
+  * If completion isn't already enabled you need to enable it first:
     ```bash
     echo "autoload -U compinit; compinit" >> ~/.zshrc
     ```
@@ -148,7 +148,7 @@ Supported shells are:
     ```
 
 
-Once enabled, command completion is just one keypress away:\
+Once enabled, command completion is just one keystroke away:\
   `marblerun ma`+<kbd>Tab</kbd> completes to:\
   `marblerun manifest`
 
@@ -157,13 +157,13 @@ Once enabled, command completion is just one keypress away:\
 This command helps you if you want to add Gramine-based services to your MarbleRun service mesh.
 It prepares your Gramine project to be used as a Marble by replacing the original entrypoint of your application with the bootstrapping Marble premain process which eventually spawns your application.
 Given your [Gramine manifest template](https://gramine.readthedocs.io/en/latest/manifest-syntax.html), it will suggest the required adjustments needed and adds our bootstrapping data-plane code to your Gramine image.
-See [Building a service: Gramine](building-services/gramine.md) for detailed information on MarbleRun’s Gramine integration and our changes in your Gramine manifest.
+See [Building a service: Gramine](../building-services/gramine.md) for detailed information on MarbleRun’s Gramine integration and our changes in your Gramine manifest.
 
 Please note that this only works on a best-effort basis and may not instantly work correctly.
 While suggestions should be made for every valid TOML Gramine configuration, changes can only be performed for non-hierarchically sorted configurations. as the official Gramine examples.
-The unmodified manifest is saved as a backup under the old path with an added ".bak" suffix, allowing you to try out and roll back any changes performed.
+The unmodified manifest is saved as a backup under the old path with an added `.bak` suffix, allowing you to try out and roll back any changes performed.
 
-Remember, you need to create a [MarbleRun manifest](workflows/define-manifest.md) in addition to the Gramine manifest. Adding Gramine packages to your manifest is straightforward and follows the same principles as any other SGX enclave. If you configured the arguments to your Gramine application through the [Gramine manifest](https://gramine.readthedocs.io/en/latest/manifest-syntax.html#command-line-arguments) before, you need to transfer those to the [MarbleRun manifest](workflows/define-manifest.md#manifestmarbles">}}).
+Remember, you need to create a [MarbleRun manifest](../workflows/define-manifest.md) in addition to the Gramine manifest. Adding Gramine packages to your manifest is straightforward and follows the same principles as any other SGX enclave. If you configured the arguments to your Gramine application through the [Gramine manifest](https://gramine.readthedocs.io/en/latest/manifest-syntax.html#command-line-arguments) before, you need to transfer those to the [MarbleRun manifest](../workflows/define-manifest.md#manifestmarbles).
 
   **Usage**
 
@@ -202,7 +202,7 @@ Remember, you need to create a [MarbleRun manifest](workflows/define-manifest.md
 ## Command `install`
 
 Install MarbleRun on your Kubernetes cluster.
-This command will add MarbleRun to your local helm repository if it is not present yet, optionally you can provide a path to your own helm chart.
+This command will add MarbleRun to your local helm repository if it's not present yet, optionally you can provide a path to your own helm chart.
 
 **Usage**
 
@@ -212,17 +212,17 @@ marblerun install [flags]
 
 **Flags**
 
-| Name, shorthand          | Default           | Description                                                                                                                                                  |
-| :----------------------- | :---------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| --client-server-port     | 4433              | Set the client server port. Needs to be configured to the same port as in your client tool stack                                                             |
-| --disable-auto-injection |                   | Install MarbleRun without auto-injection webhook                                                                                                             |
-| --domain                 | localhost         | Sets the CNAME for the Coordinator certificate                                                                                                               |
-| --help, -h               |                   | help for install                                                                                                                                             |
-| --marblerun-chart-path   |                   | Path to marblerun helm chart                                                                                                                                 |
-| --mesh-sever-port        | 2001              | Set the mesh server port. Needs to be configured to the same port as in the data-plane marbles                                                               |
-| --resource-key           | sgx.intel.com/epc | Resource providing SGX, different depending on used device plugin. Use this to set tolerations/resources if your device plugin is not supported by marblerun |
-| --simulation             |                   | Set MarbleRun to start in simulation mode, needed when not running on an SGX enabled cluster                                                                 |
-| --version                |                   | Version of the Coordinator to install, latest by default                                                                                                     |
+| Name, shorthand          | Default             | Description                                                                                                                                                 |
+| :----------------------- | :------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --client-server-port     | `4433`              | Set the client server port. Needs to be configured to the same port as in your client tool stack                                                            |
+| --disable-auto-injection |                     | Install MarbleRun without auto-injection webhook                                                                                                            |
+| --domain                 | `localhost`         | Sets the CNAME for the Coordinator certificate                                                                                                              |
+| --help, -h               |                     | help for install                                                                                                                                            |
+| --marblerun-chart-path   |                     | Path to MarbleRun helm chart                                                                                                                                |
+| --mesh-sever-port        | `2001`              | Set the mesh server port. Needs to be configured to the same port as in the data-plane marbles                                                              |
+| --resource-key           | `sgx.intel.com/epc` | Resource providing SGX, different depending on used device plugin. Use this to set tolerations/resources if your device plugin isn't supported by MarbleRun |
+| --simulation             |                     | Set MarbleRun to start in simulation mode, needed when not running on an SGX enabled cluster                                                                |
+| --version                |                     | Version of the Coordinator to install, latest by default                                                                                                    |
 
 **Examples**
 
@@ -263,13 +263,13 @@ These flags apply to all subcommands of manifest
 
 | Name, shorthand | Default | Description                                                                                                                      |
 | --------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| --era-config    |         | Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github      |
+| --era-config    |         | Path to remote attestation config file in JSON format, if none provided the newest configuration will be loaded from GitHub      |
 | --help, -h      |         | help for manifest                                                                                                                |
 | --insecure, -i  |         | simulation mode                                                                                                                  |
 
 * ### `set`
 
-  Uploads a manifest in json or yaml format to the MarbleRun Coordinator.
+  Uploads a manifest in JSON or YAML format to the MarbleRun Coordinator.
   If a recovery key was set in the manifest, a recovery secret will be sent back.
 
   **Usage**
@@ -280,9 +280,9 @@ These flags apply to all subcommands of manifest
 
   **Flags**
 
-  | Name, shorthand     | Default | Description                                                |
-  | ------------------- | ------- | ---------------------------------------------------------- |
-  | --recovery-data, -r |         | File to write recovery data to, print to stdout if not set |
+  | Name, shorthand     | Default | Description                                                  |
+  | ------------------- | ------- | ------------------------------------------------------------ |
+  | --recovery-data, -r |         | File to write recovery data to, print to `stdout` if not set |
 
   **Examples**
 
@@ -301,7 +301,7 @@ These flags apply to all subcommands of manifest
 
   Update a manifest by uploading an update manifest to the MarbleRun Coordinator.
   The original manifest has to define one or multiple Users who are allowed to update the manifest.
-  For more information see [Update](workflows/update-manifest.md)
+  For more information see [Update](../workflows/update-manifest.md)
 
   **Usage**
 
@@ -347,7 +347,7 @@ These flags apply to all subcommands of manifest
   | Name, shorthand      | Default | Description                                         |
   | -------------------- | --------| --------------------------------------------------- |
   | --display-update, -u |         | Set to merge updates into the displayed manifest    |
-  | --output, -o         |         | Save output to file instead of printing to stdout   |
+  | --output, -o         |         | Save output to file instead of printing to `stdout` |
   | --signature, -s      |         | Set to additionally display the manifests signature |
 
   **Examples**
@@ -380,7 +380,7 @@ These flags apply to all subcommands of manifest
 
 * ### `log`
 
-  Retrieves a structured log of updates to the manifest. This allows users to easily check what the currently supported security versions are and if certain secrets have been set by another user.
+  Retrieves a structured log of updates to the manifest. This allows users to check what the currently supported security versions are and if certain secrets have been set by another user.
 
   **Usage**
 
@@ -390,9 +390,9 @@ These flags apply to all subcommands of manifest
 
   **Flags**
 
-  | Name, shorthand | Default | Description                                    |
-  | --------------- | --------| ---------------------------------------------- |
-  | --output, -o    |         | Save log to file instead of printing to stdout |
+  | Name, shorthand | Default | Description                                      |
+  | --------------- | --------| ------------------------------------------------ |
+  | --output, -o    |         | Save log to file instead of printing to `stdout` |
 
   **Examples**
 
@@ -426,7 +426,7 @@ These flags apply to all subcommands of manifest
 
 * ### `verify`
   Verifies that the signature returned by the Coordinator is equal to a local signature.
-  Can be used to quickly verify the integrity of the installed manifest.
+  Can be used to verify the integrity of the installed manifest.
   You can provide a signature directly, or a manifest in either JSON or YAML format.
 
   **Usage**
@@ -470,7 +470,7 @@ These flags apply to all subcommands of manifest
   marblerun precheck
   ```
 
-  * If your cluster does not support SGX the output is the following:
+  * If your cluster doesn't support SGX the output is the following:
 
   ```bash
   Cluster does not support SGX, you may still run MarbleRun in simulation mode
@@ -487,7 +487,7 @@ These flags apply to all subcommands of manifest
 ## Command `recover`
 
 Recover the MarbleRun Coordinator from a sealed state by uploading a recovery key.
-For more information about Coordinator recovery see [Recovery](workflows/recover-coordinator.md)
+For more information about Coordinator recovery see [Recovery](../workflows/recover-coordinator.md)
 
 **Usage**
 
@@ -499,7 +499,7 @@ marblerun recover <recovery_key_decrypted> <IP:PORT> [flags]
 
 | Name, shorthand | Default | Description                                                                                                                      |
 | --------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| --era-config    |         | Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github      |
+| --era-config    |         | Path to remote attestation config file in JSON format, if none provided the newest configuration will be loaded from GitHub      |
 | --help, -h      |         | help for recover                                                                                                                 |
 | --insecure, -i  |         | Set to skip quote verification, needed when running in simulation mode                                                           |
 
@@ -526,7 +526,7 @@ These flags apply to all `secret` subcommands
 | Name, shorthand | Default | Description                                                                                                                 |
 | --------------- | ------- | --------------------------------------------------------------------------------------------------------------------------- |
 | --cert, -c      |         | PEM encoded MarbleRun user certificate file (required)                                                                      |
-| --era-config    |         | Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github |
+| --era-config    |         | Path to remote attestation config file in JSON format, if none provided the newest configuration will be loaded from GitHub |
 | --insecure, -i  |         | Set to skip quote verification, needed when running in simulation mode                                                      |
 | --key, -k       |         | PEM encoded MarbleRun user key file (required)                                                                              |
 
@@ -571,7 +571,7 @@ These flags apply to all `secret` subcommands
 
   Sets one or more secrets for the Coordinator. Requires credentials in the form of a private key and a self-signed certificate of the corresponding public key. The corresponding user needs to be permitted to access the requested secrets.
   Secrets to set are specified in a special secrets file in JSON format, or created by the CLI from a PEM encoded certificate and key.
-  For more information see [Managing secrets](workflows/managing-secrets.md).
+  For more information see [Managing secrets](../workflows/managing-secrets.md).
 
   **Usage**
 
@@ -614,7 +614,7 @@ marblerun status <IP:PORT> [flags]
 
 | Name, shorthand | Default | Description                                                                                                                      |
 | --------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| --era-config    |         | Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github      |
+| --era-config    |         | Path to remote attestation config file in JSON format, if none provided the newest configuration will be loaded from GitHub      |
 | --help, -h      |         | help for status                                                                                                                  |
 | --insecure, -i  |         | Set to skip quote verification, needed when running in simulation mode                                                           |
 
