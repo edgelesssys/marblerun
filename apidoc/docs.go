@@ -17,4 +17,4 @@ Responses follow the [JSend style](https://github.com/omniti-labs/jsend), though
 
 swagger:meta
 */
-package docs
+package apidoc

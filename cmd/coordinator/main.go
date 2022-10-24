@@ -15,7 +15,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/util"
 
-	_ "github.com/edgelesssys/marblerun/docs" // This line is necessary for go-swagger
+	_ "github.com/edgelesssys/marblerun/apidoc" // This line is necessary for go-swagger
 )
 
 func main() {
