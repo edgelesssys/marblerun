@@ -14,4 +14,4 @@ The Coordinator clients can be divided into two major groups.
 * The owners/providers/administrators who need to interact with the Coordinator for deploying their confidential application and administrative tasks
 * The users/customers who use the Coordinator for remote attestation and establishing trust with the application
 
-The [Client API](reference/coordinator.md) serves both use-cases with a compact HTTP REST API.
+The [Client API](../reference/coordinator.md) serves both use-cases with a compact HTTP REST API.

@@ -2,7 +2,7 @@
 slug: /
 ---
 
-# Welcome to MarbleRun! 🎉
+# Welcome to MarbleRun 🎉
 
 MarbleRun is a framework for creating distributed confidential computing apps.
 

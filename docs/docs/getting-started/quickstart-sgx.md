@@ -9,7 +9,7 @@ marblerun install
 ```
 
 The `marblerun install` command generates a Kubernetes manifest with all the necessary control plane resources.
-This includes a deployment for the Coordinator and for MarbleRun's [admission controller.](features/kubernetes-integration.md)
+This includes a deployment for the Coordinator and for MarbleRun's [admission controller.](../features/kubernetes-integration.md)
 
 Wait for the control plane to finish installing:
 
@@ -41,7 +41,7 @@ The CLI will obtain the Coordinator's remote attestation quote and verify it aga
 The SGX quote proves the integrity of the Coordinator pod.
 The CLI returns a certificate and stores it as `marblerun.crt` in your current directory.
 The certificate is bound to the quote and can be used for future verification.
-It can also be used as a root of trust for [authenticating your confidential applications](features/attestation.md).
+It can also be used as a root of trust for [authenticating your confidential applications](../features/attestation.md).
 
 ## Step 3: Deploy the demo application
 
@@ -95,7 +95,7 @@ kubectl -n emojivoto port-forward svc/web-svc 8443:443 --address 0.0.0.0
 ```
 
 Now visit [https://localhost:8443](https://localhost:8443).
-You'll be presented with a certificate warning because your browser by default does not trust certificates signed by MarbleRun.
+You'll be presented with a certificate warning because your browser by default doesn't trust certificates signed by MarbleRun.
 You can ignore this error for now and proceed to the website.\
 Voila! Your emoji votes have never been safer!
 
@@ -103,9 +103,9 @@ Voila! Your emoji votes have never been safer!
 
 Congratulations, you’re now a MarbleRun user! Here are some suggested next steps:
 
-* Explore how [MarbleRun takes care of your secrets](features/secrets-management.md)
-* [Add your own service](workflows/add-service.md) to MarbleRun
-* Learn more about [MarbleRun’s architecture](getting-started/concepts.md)
+* Explore how [MarbleRun takes care of your secrets](../features/secrets-management.md)
+* [Add your own service](../workflows/add-service.md) to MarbleRun
+* Learn more about [MarbleRun’s architecture](../getting-started/concepts.md)
 * Chat with us on [Discord](https://discord.gg/rH8QTH56JN)
 * Try out the full demo on [GitHub](https://github.com/edgelesssys/emojivoto)
 

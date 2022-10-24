@@ -2,8 +2,15 @@ name: Unit Tests
 
 on:
   push:
-    branches: [master]
+    branches:
+      - master
+    paths:
+      - "**.go"
+      - "**/go.mod"
   pull_request:
+    paths:
+      - "**.go"
+      - "**/go.mod"
 
 jobs:
   test:
@@ -19,7 +26,7 @@ jobs:
         run: ertgo test -race -count=3 ./...
 
       - name: Setup
-        run: | 
+        run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           mkdir build
 
