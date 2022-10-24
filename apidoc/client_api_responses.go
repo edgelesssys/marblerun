@@ -1,4 +1,4 @@
-package docs
+package apidoc
 
 import (
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
