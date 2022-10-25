@@ -6,7 +6,7 @@ Instead of running a single [Redis](https://redis.io/) server instance, MarbleRu
 *Prerequisite:*
 
 * Ensure you have access to a Kubernetes cluster with SGX-enabled nodes and kubectl installed and configured. Probably the easiest way to get started is to run Kubernetes on an [Azure Kubernetes Service (AKS)](https://learn.microsoft.com/en-us/azure/confidential-computing/confidential-enclave-nodes-aks-get-started), which offers SGX-enabled nodes.
-* Ensure you have the [MarbleRun CLI](https://docs.edgeless.systems/marblerun/#/reference/cli) installed.
+* Ensure you have the [MarbleRun CLI](https://docs.edgeless.systems/marblerun/reference/cli) installed.
 
 ## Kubernetes deployment walkthrough
 
