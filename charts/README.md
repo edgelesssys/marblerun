@@ -33,7 +33,6 @@ their default values.
 
 | Parameter                                    | Type           | Description    | Default                              |
 |:---------------------------------------------|:---------------|:---------------|:-------------------------------------|
-| `coordinator.dcapQpl`                        | string         | DCAP_LIBRARY needs to be "intel" if the libsgx-dcap-default-qpl is to be used, otherwise az-dcap-client is used by default | `"azure"` |
 | `coordinator.clientServerHost`               | string         | Hostname of the client-api server | `"0.0.0.0"` |
 | `coordinator.clientServerPort`               | int            | Port of the client-api server configuration | `4433` |
 | `coordinator.hostname`                       | string         | DNS-Names for the coordinator certificate | `"localhost"` |
@@ -52,7 +51,9 @@ their default values.
 | `marbleInjector.replicas`                    | int            | Replicas of the marbleInjector webhook | `1` |
 | `nodeSelector`                               | object         | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information | `{"beta.kubernetes.io/os": "linux"}` |
 | `tolerations`                                | object         | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information | `{key:"sgx.intel.com/epc",operator:"Exists",effect:"NoSchedule"}` |
-| `dcap`                                       | object         | DCAP configuration settings | `{dcap:{"pccsUrl":"https://localhost:8081/sgx/certification/v3/","useSecureCert:"TRUE"}}` |
+| `dcap.qpl`                                   | string         | SGX quote provider library (QPL) to use. Needs to be "intel" if the libsgx-dcap-default-qpl is to be used, otherwise az-dcap-client is used by default | `"azure"` |
+| `dcap.pccsUrl`                               | string         | URL of the PCCS. Only applicable if `dcap.qpl=intel` | `"https://localhost:8081/sgx/certification/v3/"`
+| `dcap.useSecureCert`                         | string         | Whether or not the TLS certificate of the PCCS should be verified | `"TRUE"`
 
 ## Add new version (maintainers)
 
