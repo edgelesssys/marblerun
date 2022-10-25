@@ -51,7 +51,7 @@ spec:
           - name: OE_SIMULATION
             value: {{ if .Values.coordinator.simulation }}"1"{{ else }}"0"{{ end }}
           - name: DCAP_LIBRARY
-            value: "{{ .Values.coordinator.dcapQpl }}"
+            value: "{{ .Values.dcap.qpl }}"
           name: coordinator
           image: "{{ .Values.global.image.repository }}/coordinator:{{ .Values.global.image.version }}"
           imagePullPolicy: {{ .Values.global.image.pullPolicy }}
