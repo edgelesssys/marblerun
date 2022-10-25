@@ -1,0 +1,19 @@
+name: Create Pull Request for OpenAPI update
+on:
+  push:
+    branches:
+    - action/update-swagger
+
+jobs:
+  pull-request:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: pull-request
+      uses: repo-sync/pull-request@v2
+      with:
+        destination_branch: "master"
+        pr_title: "Update OpenAPI specification"
+        pr_body: |
+          :robot: *This is an automated PR.* :robot:
+        github_token: ${{ secrets.GITHUB_TOKEN }}

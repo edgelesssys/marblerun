@@ -11,7 +11,7 @@ jobs:
       image: ghcr.io/edgelesssys/edgelessrt-dev:ci
 
     steps:
-    # Install requirements
+      # Install requirements
       - name: Install jq
         run: apt install -y jq
 
@@ -27,28 +27,20 @@ jobs:
       - name: Check Swagger version
         run: swagger version
 
-    # Set up repositories
+      # Set up repositories
       - name: Checkout MarbleRun
         uses: actions/checkout@v3
-        with:
-          path: marblerun
 
-      - name: Checkout Docs
-        uses: actions/checkout@v3
-        with:
-          repository: edgelesssys/docs.edgeless.systems
-          path: docs
-
-    # Generate Swagger specification
+      # Generate Swagger specification
       - name: Generate Swagger file from annotations
-        run: swagger generate spec -m --compact --exclude-deps -w ./marblerun -o ./swagger.json
+        run: swagger generate spec -m --compact --exclude-deps -o ./swagger.json
         env:
           SWAGGER_GENERATE_EXTENSION: false
 
       - name: Validate Swagger
         run: swagger validate ./swagger.json
 
-    # If spec changed, commit new spec to the documentation
+      # If spec changed, commit new spec to the documentation
       - name: Get number of triggering PR or commit sha
         run: |
           sha_short=$(echo "${{ github.sha }}" | cut -c1-8)
@@ -58,7 +50,7 @@ jobs:
 
       - name: Check if action branch exists
         run: |
-          ex=$(git --git-dir=./docs/.git ls-remote --heads origin action/marblerun/update-swagger)
+          ex=$(git ls-remote --heads origin action/update-swagger)
           echo "EXISTS=$(if [ -z "$ex" ]; then echo 0; else echo 1; fi)" >> $GITHUB_ENV
 
       - name: Publish new specification (create new branch)
@@ -67,13 +59,13 @@ jobs:
         env:
           API_TOKEN_GITHUB: ${{ secrets.CI_GITHUB_REPOSITORY }}
         with:
-          source_file: 'swagger.json'
-          destination_repo: 'edgelesssys/docs.edgeless.systems'
-          destination_branch_create: 'action/marblerun/update-swagger'
-          destination_folder: 'marblerun/_media'
-          user_name: '${{ github.actor }}'
-          user_email: '${{ github.actor }}@users.noreply.github.com'
-          commit_message: 'OpenAPI spec was updated by edgelesssys/marblerun${{ env.COMMIT_END}}'
+          source_file: "swagger.json"
+          destination_repo: "edgelesssys/marblerun"
+          destination_branch_create: "action/update-swagger"
+          destination_folder: "docs/openapi/coordinator/"
+          user_name: "${{ github.actor }}"
+          user_email: "${{ github.actor }}@users.noreply.github.com"
+          commit_message: "OpenAPI spec was updated by edgelesssys/marblerun${{ env.COMMIT_END}}"
 
       - name: Publish new specification (update branch)
         if: ${{ env.EXISTS == 1 }}
@@ -81,10 +73,10 @@ jobs:
         env:
           API_TOKEN_GITHUB: ${{ secrets.CI_GITHUB_REPOSITORY }}
         with:
-          source_file: 'swagger.json'
-          destination_repo: 'edgelesssys/docs.edgeless.systems'
-          destination_branch: 'action/marblerun/update-swagger'
-          destination_folder: 'marblerun/_media'
-          user_name: '${{ github.actor }}'
-          user_email: '${{ github.actor }}@users.noreply.github.com'
-          commit_message: 'OpenAPI spec was updated by edgelesssys/marblerun${{ env.COMMIT_END}}'
+          source_file: "swagger.json"
+          destination_repo: "edgelesssys/marblerun"
+          destination_branch: "action/update-swagger"
+          destination_folder: "docs/openapi/coordinator/"
+          user_name: "${{ github.actor }}"
+          user_email: "${{ github.actor }}@users.noreply.github.com"
+          commit_message: "OpenAPI spec was updated by edgelesssys/marblerun${{ env.COMMIT_END}}"
