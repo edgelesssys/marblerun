@@ -74,6 +74,30 @@ async function createConfig() {
           },
         }),
       ],
+      // Redocusaurus config
+      [
+        'redocusaurus',
+        {
+          // Plugin Options for loading OpenAPI files
+          specs: [
+            {
+              id: 'coordinator-swagger-json',
+              spec: 'docs/openapi/coordinator/swagger.json',
+            },
+          ],
+          // Theme Options for modifying how redoc renders them
+          theme: {
+            // Change with your site colors
+            primaryColorDark: '#90FF99', // edgeless green
+            primaryColor: '#8B04DD', // edgeless purple
+            /**
+             * Options to pass to redoc
+             * @see https://github.com/redocly/redoc#redoc-options-object
+             */
+            options: { downloadDefinitionUrl: 'https://raw.githubusercontent.com/edgelesssys/marblerun/master/docs/openapi/coordinator/swagger.json' },
+          },
+        },
+      ],
     ],
 
     themeConfig:
@@ -249,8 +273,8 @@ async function createConfig() {
             parentCategoriesBoost: 2, // Only used when indexDocSidebarParentCategories > 0
           }
         },
-      ]
-    ]
+      ],
+    ],
   }
 };
 
