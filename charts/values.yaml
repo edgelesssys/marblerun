@@ -53,12 +53,10 @@ coordinator:
   sealDir: "/coordinator/data/"
   # OE_SIMULATION needs be set to "1" when running on systems without SGX1+FLC capabilities
   simulation: false
-  # DCAP_LIBRARY needs to be "intel" if the libsgx-dcap-default-qpl is to be used, otherwise az-dcap-client is used by default
-  dcapQpl: "azure"
 
   resources:
     limits:
-      # Disable this if your running on a cluster with an SGX Device Plugin
+      # Disable this if your running on a cluster without an SGX Device Plugin
       sgx.intel.com/epc: "10Mi"
 
   # Set the storage class for your cluster
@@ -79,5 +77,7 @@ nodeSelector:
 
 # DCAP configuration settings
 dcap:
+  # DCAP_LIBRARY needs to be "intel" if the libsgx-dcap-default-qpl is to be used, otherwise az-dcap-client is used by default
+  qpl: "azure"
   pccsUrl: "https://localhost:8081/sgx/certification/v3/"
   useSecureCert: "TRUE"
