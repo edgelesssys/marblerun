@@ -59,7 +59,7 @@ The Coordinator starts with the following default values. You can set your desir
 
 ### Create a Manifest
 
-See the [how to add a service](https://docs.edgeless.systems/marblerun/#/workflows/add-service) documentation on how to create a Manifest.
+See the [how to add a service](https://docs.edgeless.systems/marblerun/workflows/add-service) documentation on how to create a Manifest.
 You can find the test enclave's specific values (MRENCLAVE, MRSIGNER, etc.) in `build/marble-test-config.json`:
 
 ```bash

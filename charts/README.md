@@ -2,8 +2,8 @@
 
 ## Documentation
 
-See the [Getting Started Guide](https://docs.edgeless.systems/marblerun/#/getting-started/quickstart) to set up a distributed confidential-computing app in a few simple steps.
-For more comprehensive documentation, start with the [docs](https://docs.edgeless.systems/marblerun/#/).
+See the [Getting Started Guide](https://docs.edgeless.systems/marblerun/getting-started/quickstart) to set up a distributed confidential-computing app in a few simple steps.
+For more comprehensive documentation, start with the [docs](https://docs.edgeless.systems/marblerun).
 
 ## Add Repository (stable)
 
