@@ -189,11 +189,11 @@ If you want to use a PCCS other than Azure's you can do so by setting the [neces
 
 * Using Helm
   ```bash
-  helm install marblerun-coordinator edgeless/marblerun-coordinator \
+  helm install marblerun edgeless/marblerun \
         --create-namespace \
         -n marblerun \
         --set coordinator.hostname=mycluster.uksouth.cloudapp.azure.com \
-        --set coordinator.dcapQpl=intel \
+        --set dcap.qpl=intel \
         --set dcap.pccsUrl=<PCCS_URL> \
         --set dcap.useSecureCert=<TRUE/FALSE>
   ```
