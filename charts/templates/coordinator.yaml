@@ -50,8 +50,10 @@ spec:
             value: "{{ .Values.coordinator.sealDir }}"
           - name: OE_SIMULATION
             value: {{ if .Values.coordinator.simulation }}"1"{{ else }}"0"{{ end }}
+          {{ if .Values.dcap  }}
           - name: DCAP_LIBRARY
             value: "{{ .Values.dcap.qpl }}"
+          {{ end }}
           name: coordinator
           image: "{{ .Values.global.image.repository }}/coordinator:{{ .Values.global.image.version }}"
           imagePullPolicy: {{ .Values.global.image.pullPolicy }}
