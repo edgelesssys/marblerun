@@ -345,7 +345,18 @@ func (c *Core) UpdateManifest(ctx context.Context, rawUpdateManifest []byte, upd
 
 	// update manifest was valid, increase svn and regenerate secrets
 	for pkgName, pkg := range updateManifest.Packages {
-		*currentPackages[pkgName].SecurityVersion = *pkg.SecurityVersion
+		if currentPackages[pkgName].SecurityVersion == nil {
+			currentPkg := currentPackages[pkgName]
+			currentPackages[pkgName] = quote.PackageProperties{
+				Debug:           currentPkg.Debug,
+				UniqueID:        currentPkg.UniqueID,
+				SecurityVersion: pkg.SecurityVersion,
+				ProductID:       currentPkg.ProductID,
+				SignerID:        currentPkg.SignerID,
+			}
+		} else {
+			*currentPackages[pkgName].SecurityVersion = *pkg.SecurityVersion
+		}
 	}
 
 	rootCert, err := c.data.getCertificate(sKCoordinatorRootCert)
