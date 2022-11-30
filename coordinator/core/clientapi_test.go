@@ -545,6 +545,62 @@ func TestUpdateManifestInvalid(t *testing.T) {
 	assert.Error(err)
 }
 
+func TestUpdateDebugMarble(t *testing.T) {
+	manifest := []byte(`{
+	"Packages": {
+		"frontend": {
+			"Debug": true
+		}
+	},
+	"Marbles": {
+		"frontend": {
+			"Package": "frontend"
+		}
+	},
+	"Users": {
+		"admin": {
+			"Certificate": "-----BEGIN CERTIFICATE-----\nMIIDfzCCAeSgAwIBAgIBKjANBgkqhkiG9w0BAQsFADAAMB4XDTIyMTEzMDEwNTM1\nMVoXDTIzMTEzMDEwNTM1MVowADCCAaUwDQYJKoZIhvcNAQEBBQADggGSADCCAY0C\nggGEAOQy5/JgSgMLipPOXiEd/6WC2dwwdbxaNTeCbw4l7kURezvoAOoD4MR2EivM\nlN1ouD/cZ3supA3QeF1yNXM+m45PYVoZGUH3zdxgsNGrUrI+A9+T9G476uF7l9tL\nrnO/XI6jMHoY8fTudFDWAK4U7/1PJAsOu3fT10ZQwUIwwf6yFrP89HsNGr+c9bfX\nHbFeIcr2mt5+PPRQC9afytOnVlOvmH5xrCTHf/4lN+JtcHAUnn6gv/0+9V6HasQL\nr6y6rWdlty6AnMP3CFG50ydEo2aRDMY/oD+QecaBqeoJPM8nphq2BjfR85PcfY9h\n7mEMhXTCmuJE6yEDR4WWeu2fdcnKgE8FZQhpKgsh2j1AvtCM3uTyPxwmGf9c/64/\n84pWLF/CJkYsHqJmXv62x4uM0Dql3dl7IjhQoMMhfWMCzTPVY6vvMo/mCecmk2w0\nmXNRoKjZ2r1YQoc+adh/bQqbxTFLVbNYAg38Gx74hbVXIifWFoJKGX1F9rGT44ra\n/YWF1IdDSwIDAQABMA0GCSqGSIb3DQEBCwUAA4IBhAAuukuzdycoloQygGj3/DB7\n+KiX9a/6m5PCVGbrafJ/93DBkdYEcs+DrSRj1ThEiZWEfSoreeeEMHtDFhoU/yT7\nl1ns7XxmKPahizxEIM+cMuZslP+LjX33ZslU1alKg3Y9+cK7qZDcMeELWpzri9jd\n1zARyJfC1qmNdjEoihr7zF7o3J/cBL0RB6Zo9ooDA9Q8fCOWPbaU0WDqwZJLk5qe\nASxWEkmj//PYKFq2xc5wMNQrew61PvRwdY/0HRJZTQADdzRC9JmAp9UqlWD80Omk\nlsO+3Jb4dyiHV5wYZuSjq9PjZ6SFeyj/o/Mv0eL+WWtifrSFWqom/hKGoCsLPFqf\noKDdWci7/S07aeAc2rZ/mR2mT5J3zMlvr9wrcAhAYct0hgiru1KYJSBVjh9bHQWj\nvJeG1rolxBAOJ1rT4CGsomf7F8nIyNFw3gWVwFncCBDQgXUp+JENWGbSbjth3+kc\nCX/mAlO2bxdWvVrGszct9zJUZ3LuETZyml5EJw7X1JGTapo=\n-----END CERTIFICATE-----\n",
+			"Roles": [
+				"updateManager"
+			]
+		}
+	},
+	"Roles": {
+		"updateManager": {
+			"ResourceType": "Packages",
+			"ResourceNames": [
+				"frontend"
+			],
+			"Actions": [
+				"UpdateSecurityVersion"
+			]
+		}
+	}
+}`)
+	assert := assert.New(t)
+	require := require.New(t)
+
+	c, _ := mustSetup()
+	// Set manifest
+	_, err := c.SetManifest(context.TODO(), manifest)
+	require.NoError(err)
+
+	admin, err := c.data.getUser("admin")
+	require.NoError(err)
+	initialPackage, err := c.data.getPackage("frontend")
+	require.NoError(err)
+	assert.Nil(initialPackage.SecurityVersion)
+
+	// Try to update manifest
+	// frontend's security version, which was previously unset, should now be set to 5
+	err = c.UpdateManifest(context.TODO(), []byte(test.UpdateManifest), admin)
+	require.NoError(err)
+
+	updatedPackage, err := c.data.getPackage("frontend")
+	require.NoError(err)
+	assert.EqualValues(5, *updatedPackage.SecurityVersion)
+}
+
 func TestGetSecret(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
