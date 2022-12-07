@@ -12,16 +12,21 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/edgelesssys/marblerun/coordinator/clientapi"
 	"github.com/edgelesssys/marblerun/coordinator/core"
+	"github.com/edgelesssys/marblerun/coordinator/quote"
+	"github.com/edgelesssys/marblerun/coordinator/recovery"
+	"github.com/edgelesssys/marblerun/coordinator/seal"
+	"github.com/edgelesssys/marblerun/coordinator/store"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	promtest "github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestClientApiRequestMetrics(t *testing.T) {
-	assert := assert.New(t)
-
 	tests := map[string]struct {
 		target             string
 		method             string // use values from http package, like http.MethodGet
@@ -53,23 +58,48 @@ func TestClientApiRequestMetrics(t *testing.T) {
 			expectedStatusCode: "200",
 		},
 	}
-	for testname, test := range tests {
-		t.Logf("Subtest: %s", testname)
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
 
-		reg := prometheus.NewRegistry()
-		fac := promauto.With(reg)
-		mux := CreateServeMux(core.NewCoreWithMocks(), &fac)
+			reg := prometheus.NewRegistry()
+			fac := promauto.With(reg)
 
-		metrics := mux.(*promServeMux).metrics[test.target]
-		assert.Equal(0, promtest.CollectAndCount(metrics.reqest))
-		assert.Equal(float64(0), promtest.ToFloat64(metrics.reqest.WithLabelValues(test.expectedStatusCode, strings.ToLower(test.method))))
+			api := newTestClientAPI(t)
+			mux := CreateServeMux(api, &fac)
 
-		for i := 1; i < 6; i++ {
-			req := httptest.NewRequest(test.method, test.target, nil)
-			resp := httptest.NewRecorder()
-			mux.ServeHTTP(resp, req)
-			assert.Equal(1, promtest.CollectAndCount(metrics.reqest))
-			assert.Equal(float64(i), promtest.ToFloat64(metrics.reqest.WithLabelValues(test.expectedStatusCode, strings.ToLower(test.method))))
-		}
+			metrics := mux.(*promServeMux).metrics[tc.target]
+			assert.Equal(0, promtest.CollectAndCount(metrics.reqest))
+			assert.Equal(float64(0), promtest.ToFloat64(metrics.reqest.WithLabelValues(tc.expectedStatusCode, strings.ToLower(tc.method))))
+
+			for i := 1; i < 6; i++ {
+				req := httptest.NewRequest(tc.method, tc.target, nil)
+				resp := httptest.NewRecorder()
+				mux.ServeHTTP(resp, req)
+				assert.Equal(1, promtest.CollectAndCount(metrics.reqest))
+				assert.Equal(float64(i), promtest.ToFloat64(metrics.reqest.WithLabelValues(tc.expectedStatusCode, strings.ToLower(tc.method))))
+			}
+		})
 	}
+}
+
+func newTestClientAPI(t *testing.T) *clientapi.ClientAPI {
+	t.Helper()
+	require := require.New(t)
+
+	log, err := zap.NewDevelopment()
+	require.NoError(err)
+	defer func() { _ = log.Sync() }()
+
+	validator := quote.NewMockValidator()
+	issuer := quote.NewMockIssuer()
+	store := store.NewStdStore(&seal.MockSealer{})
+	recovery := recovery.NewSinglePartyRecovery()
+	core, err := core.NewCore([]string{"localhost"}, validator, issuer, store, recovery, log, nil, nil)
+	require.NoError(err)
+
+	api, err := clientapi.New(store, recovery, core, log)
+	require.NoError(err)
+
+	return api
 }

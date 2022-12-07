@@ -23,6 +23,7 @@ require (
 	github.com/spf13/cobra v1.5.0
 	github.com/stretchr/testify v1.8.0
 	github.com/tidwall/gjson v1.14.3
+	go.uber.org/goleak v1.1.12
 	go.uber.org/zap v1.23.0
 	golang.org/x/crypto v0.0.0-20220824171710-5757bc0c5503
 	golang.org/x/sys v0.0.0-20220823224334-20c2bfdbfe24

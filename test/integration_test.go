@@ -4,7 +4,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-// +build integration
+//go:build integration
 
 package test
 
@@ -30,7 +30,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/edgelesssys/marblerun/coordinator/config"
+	"github.com/edgelesssys/marblerun/coordinator/constants"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/seal"
 	mconfig "github.com/edgelesssys/marblerun/marble/config"
@@ -40,14 +40,16 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-var buildDir = flag.String("b", "", "build dir")
-var simulationMode = flag.Bool("s", false, "Execute test in simulation mode (without real quoting)")
-var noenclave = flag.Bool("noenclave", false, "Do not run with erthost")
-var meshServerAddr, clientServerAddr, marbleTestAddr string
-var testManifest manifest.Manifest
-var updatedManifest manifest.Manifest
-var transportSkipVerify = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
-var simFlag string
+var (
+	buildDir                                         = flag.String("b", "", "build dir")
+	simulationMode                                   = flag.Bool("s", false, "Execute test in simulation mode (without real quoting)")
+	noenclave                                        = flag.Bool("noenclave", false, "Do not run with erthost")
+	meshServerAddr, clientServerAddr, marbleTestAddr string
+	testManifest                                     manifest.Manifest
+	updatedManifest                                  manifest.Manifest
+	transportSkipVerify                              = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+	simFlag                                          string
+)
 
 func TestMain(m *testing.M) {
 	flag.Parse()
@@ -468,10 +470,10 @@ func startCoordinator(cfg coordinatorConfig) *os.Process {
 	}
 	cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGKILL} // kill if parent dies
 	cmd.Env = []string{
-		makeEnv(config.MeshAddr, meshServerAddr),
-		makeEnv(config.ClientAddr, clientServerAddr),
-		makeEnv(config.DNSNames, cfg.dnsNames),
-		makeEnv(config.SealDir, cfg.sealDir),
+		makeEnv(constants.MeshAddr, meshServerAddr),
+		makeEnv(constants.ClientAddr, clientServerAddr),
+		makeEnv(constants.DNSNames, cfg.dnsNames),
+		makeEnv(constants.SealDir, cfg.sealDir),
 		simFlag,
 	}
 	output := startCommand(cmd)
@@ -773,7 +775,7 @@ func triggerRecovery(manifest manifest.Manifest, assert *assert.Assertions, requ
 	sealedKeyData, err := ioutil.ReadFile(pathToKeyFile)
 	require.NoError(err)
 	sealedKeyData[0] ^= byte(0x42)
-	require.NoError(ioutil.WriteFile(pathToKeyFile, sealedKeyData, 0600))
+	require.NoError(ioutil.WriteFile(pathToKeyFile, sealedKeyData, 0o600))
 
 	// Restart server, we should be in recovery mode
 	log.Println("Restarting the old instance")

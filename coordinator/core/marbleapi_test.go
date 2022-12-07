@@ -20,11 +20,15 @@ import (
 	"time"
 
 	libMarble "github.com/edgelesssys/ego/marble"
+	"github.com/edgelesssys/marblerun/coordinator/clientapi"
+	"github.com/edgelesssys/marblerun/coordinator/constants"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
 	"github.com/edgelesssys/marblerun/coordinator/seal"
+	"github.com/edgelesssys/marblerun/coordinator/state"
+	"github.com/edgelesssys/marblerun/coordinator/store"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
@@ -53,7 +57,7 @@ func TestActivate(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	recovery := recovery.NewSinglePartyRecovery()
-	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, nil, nil)
+	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, store.NewStdStore(sealer), recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	require.NotNil(coreServer)
 
@@ -70,7 +74,9 @@ func TestActivate(t *testing.T) {
 	spawner.newMarble("backendFirst", "Azure", false)
 
 	// set manifest
-	_, err = coreServer.SetManifest(context.TODO(), []byte(test.ManifestJSON))
+	clientAPI, err := clientapi.New(coreServer.store, coreServer.recovery, coreServer, zapLogger)
+	require.NoError(err)
+	_, err = clientAPI.SetManifest([]byte(test.ManifestJSON))
 	require.NoError(err)
 
 	// activate first backend
@@ -184,8 +190,8 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	newLeafCert, err := x509.ParseCertificate(pLeaf.Bytes)
 	ms.assert.NoError(err)
 
-	ms.assert.Equal(coordinatorIntermediateName, newMarbleRootCert.Issuer.CommonName)
-	ms.assert.Equal(coordinatorIntermediateName, newLeafCert.Issuer.CommonName)
+	ms.assert.Equal(constants.CoordinatorIntermediateName, newMarbleRootCert.Issuer.CommonName)
+	ms.assert.Equal(constants.CoordinatorIntermediateName, newLeafCert.Issuer.CommonName)
 
 	// Check CommonName for leaf certificate
 	_, err = uuid.Parse(newLeafCert.Subject.CommonName)
@@ -198,11 +204,11 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	ms.assert.Equal(cert.DNSNames, newLeafCert.DNSNames)
 	ms.assert.Equal(cert.IPAddresses, newLeafCert.IPAddresses)
 
-	rootCert, err := ms.coreServer.data.getCertificate(sKCoordinatorRootCert)
+	rootCert, err := ms.coreServer.data.GetCertificate(constants.SKCoordinatorRootCert)
 	ms.assert.NoError(err)
-	intermediateCert, err := ms.coreServer.data.getCertificate(skCoordinatorIntermediateCert)
+	intermediateCert, err := ms.coreServer.data.GetCertificate(constants.SKCoordinatorIntermediateCert)
 	ms.assert.NoError(err)
-	marbleRootCert, err := ms.coreServer.data.getCertificate(sKMarbleRootCert)
+	marbleRootCert, err := ms.coreServer.data.GetCertificate(constants.SKMarbleRootCert)
 	ms.assert.NoError(err)
 	// Check Signature for both, intermediate certificate and leaf certificate
 	ms.assert.NoError(rootCert.CheckSignature(intermediateCert.SignatureAlgorithm, intermediateCert.RawTBSCertificate, intermediateCert.Signature))
@@ -461,7 +467,7 @@ func TestSecurityLevelUpdate(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	recovery := recovery.NewSinglePartyRecovery()
-	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, nil, nil)
+	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, store.NewStdStore(sealer), recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	require.NotNil(coreServer)
 
@@ -474,30 +480,32 @@ func TestSecurityLevelUpdate(t *testing.T) {
 		coreServer: coreServer,
 	}
 	// set manifest
-	_, err = coreServer.SetManifest(context.TODO(), []byte(test.ManifestJSONWithRecoveryKey))
+	clientAPI, err := clientapi.New(coreServer.store, coreServer.recovery, coreServer, zapLogger)
+	require.NoError(err)
+	_, err = clientAPI.SetManifest([]byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
 
-	admin, err := coreServer.data.getUser("admin")
+	admin, err := coreServer.data.GetUser("admin")
 	assert.NoError(err)
 
 	// try to activate another first backend, should succeed as SecurityLevel matches the definition in the manifest
 	spawner.newMarble("frontend", "Azure", true)
 
 	// update manifest
-	err = coreServer.UpdateManifest(context.TODO(), []byte(test.UpdateManifest), admin)
+	err = clientAPI.UpdateManifest([]byte(test.UpdateManifest), admin)
 	require.NoError(err)
 
 	// try to activate another first backend, should fail as required SecurityLevel is now higher after manifest update
 	spawner.newMarble("frontend", "Azure", false)
 
 	// Use a new core and test if updated manifest persisted after restart
-	coreServer2, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, nil, nil)
+	coreServer2, err := NewCore([]string{"localhost"}, validator, issuer, store.NewStdStore(sealer), recovery, zapLogger, nil, nil)
 	require.NoError(err)
-	coreServer2State, err := coreServer2.data.getState()
+	coreServer2State, err := coreServer2.data.GetState()
 	assert.NoError(err)
-	coreServer2UpdatedPkg, err := coreServer2.data.getPackage("frontend")
+	coreServer2UpdatedPkg, err := coreServer2.data.GetPackage("frontend")
 	assert.NoError(err)
-	assert.Equal(stateAcceptingMarbles, coreServer2State)
+	assert.Equal(state.AcceptingMarbles, coreServer2State)
 	assert.EqualValues(5, *coreServer2UpdatedPkg.SecurityVersion)
 
 	// This should still fail after a restart, as the update manifest should have been reloaded from the sealed state correctly
@@ -543,7 +551,7 @@ func (ms *marbleSpawner) shortMarbleActivation(marbleType string, infraName stri
 	// Validate response
 	params := resp.GetParameters()
 	// Get the marble from the manifest set on the coreServer since this one sets default values for empty values
-	coreServerManifest, err := ms.coreServer.data.getManifest()
+	coreServerManifest, err := ms.coreServer.data.GetManifest()
 	ms.assert.NoError(err)
 	marble = coreServerManifest.Marbles[marbleType]
 	// Validate Files
@@ -572,7 +580,7 @@ func TestActivateWithMissingParameters(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	recovery := recovery.NewSinglePartyRecovery()
-	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, nil, nil)
+	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, store.NewStdStore(sealer), recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	require.NotNil(coreServer)
 
@@ -585,7 +593,9 @@ func TestActivateWithMissingParameters(t *testing.T) {
 		coreServer: coreServer,
 	}
 	// set manifest
-	_, err = coreServer.SetManifest(context.TODO(), []byte(test.ManifestJSONMissingParameters))
+	clientAPI, err := clientapi.New(coreServer.store, coreServer.recovery, coreServer, zapLogger)
+	require.NoError(err)
+	_, err = clientAPI.SetManifest([]byte(test.ManifestJSONMissingParameters))
 	require.NoError(err)
 
 	spawner.shortMarbleActivation("frontend", "Azure", true)

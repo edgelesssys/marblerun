@@ -11,10 +11,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
-	"github.com/edgelesssys/marblerun/coordinator/core"
 	"github.com/edgelesssys/marblerun/coordinator/user"
 )
 
@@ -68,7 +67,7 @@ type RecoveryStatusResp struct {
 }
 
 type clientAPIServer struct {
-	cc core.ClientCore
+	api clientAPI
 }
 
 // swagger:route GET /status status statusGet
@@ -84,12 +83,12 @@ type clientAPIServer struct {
 //	      200: StatusResponse
 //			 500: ErrorResponse
 func (s *clientAPIServer) statusGet(w http.ResponseWriter, r *http.Request) {
-	statusCode, status, err := s.cc.GetStatus(r.Context())
+	statusCode, status, err := s.api.GetStatus()
 	if err != nil {
 		writeJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, StatusResp{statusCode, status})
+	writeJSON(w, StatusResp{int(statusCode), status})
 }
 
 // swagger:route GET /manifest manifest manifestGet
@@ -128,7 +127,7 @@ func (s *clientAPIServer) statusGet(w http.ResponseWriter, r *http.Request) {
 //	      200: ManifestResponse
 //			 500: ErrorResponse
 func (s *clientAPIServer) manifestGet(w http.ResponseWriter, r *http.Request) {
-	signatureRootECDSA, signature, manifest := s.cc.GetManifestSignature(r.Context())
+	signatureRootECDSA, signature, manifest := s.api.GetManifestSignature()
 	writeJSON(w, ManifestSignatureResp{
 		ManifestSignatureRootECDSA: signatureRootECDSA,
 		ManifestSignature:          hex.EncodeToString(signature),
@@ -154,12 +153,12 @@ func (s *clientAPIServer) manifestGet(w http.ResponseWriter, r *http.Request) {
 //	      200: RecoveryDataResponse
 //			 500: ErrorResponse
 func (s *clientAPIServer) manifestPost(w http.ResponseWriter, r *http.Request) {
-	manifest, err := ioutil.ReadAll(r.Body)
+	manifest, err := io.ReadAll(r.Body)
 	if err != nil {
 		writeJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	recoverySecretMap, err := s.cc.SetManifest(r.Context(), manifest)
+	recoverySecretMap, err := s.api.SetManifest(manifest)
 	if err != nil {
 		writeJSONError(w, err.Error(), http.StatusBadRequest)
 		return
@@ -215,7 +214,7 @@ func (s *clientAPIServer) manifestPost(w http.ResponseWriter, r *http.Request) {
 //	      200: CertQuoteResponse
 //			 500: ErrorResponse
 func (s *clientAPIServer) quoteGet(w http.ResponseWriter, r *http.Request) {
-	cert, quote, err := s.cc.GetCertQuote(r.Context())
+	cert, quote, err := s.api.GetCertQuote()
 	if err != nil {
 		writeJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -241,14 +240,14 @@ func (s *clientAPIServer) quoteGet(w http.ResponseWriter, r *http.Request) {
 //	      200: RecoveryStatusResponse
 //			 500: ErrorResponse
 func (s *clientAPIServer) recoverPost(w http.ResponseWriter, r *http.Request) {
-	key, err := ioutil.ReadAll(r.Body)
+	key, err := io.ReadAll(r.Body)
 	if err != nil {
 		writeJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	// Perform recover and receive amount of remaining secrets (for multi-party recovery)
-	remaining, err := s.cc.Recover(r.Context(), key)
+	remaining, err := s.api.Recover(key)
 	if err != nil {
 		writeJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -275,7 +274,7 @@ func (s *clientAPIServer) recoverPost(w http.ResponseWriter, r *http.Request) {
 //	      200: UpdateLogResponse
 //			 500: ErrorResponse
 func (s *clientAPIServer) updateGet(w http.ResponseWriter, r *http.Request) {
-	updateLog, err := s.cc.GetUpdateLog(r.Context())
+	updateLog, err := s.api.GetUpdateLog()
 	if err != nil {
 		writeJSONError(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -300,16 +299,16 @@ func (s *clientAPIServer) updateGet(w http.ResponseWriter, r *http.Request) {
 //			 400: ErrorResponse
 //			 500: ErrorResponse
 func (s *clientAPIServer) updatePost(w http.ResponseWriter, r *http.Request) {
-	user := verifyUser(w, r, s.cc)
+	user := s.verifyUser(w, r)
 	if user == nil {
 		return
 	}
-	updateManifest, err := ioutil.ReadAll(r.Body)
+	updateManifest, err := io.ReadAll(r.Body)
 	if err != nil {
 		writeJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	err = s.cc.UpdateManifest(r.Context(), updateManifest, user)
+	err = s.api.UpdateManifest(updateManifest, user)
 	if err != nil {
 		writeJSONError(w, err.Error(), http.StatusBadRequest)
 		return
@@ -343,7 +342,7 @@ func (s *clientAPIServer) updatePost(w http.ResponseWriter, r *http.Request) {
 //			 401: ErrorResponse
 //			 500: ErrorResponse
 func (s *clientAPIServer) secretsGet(w http.ResponseWriter, r *http.Request) {
-	user := verifyUser(w, r, s.cc)
+	user := s.verifyUser(w, r)
 	if user == nil {
 		return
 	}
@@ -360,7 +359,7 @@ func (s *clientAPIServer) secretsGet(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	response, err := s.cc.GetSecrets(r.Context(), requestedSecrets, user)
+	response, err := s.api.GetSecrets(requestedSecrets, user)
 	if err != nil {
 		writeJSONError(w, err.Error(), http.StatusBadRequest)
 		return
@@ -390,17 +389,17 @@ func (s *clientAPIServer) secretsGet(w http.ResponseWriter, r *http.Request) {
 //			 401: ErrorResponse
 //			 500: ErrorResponse
 func (s *clientAPIServer) secretsPost(w http.ResponseWriter, r *http.Request) {
-	user := verifyUser(w, r, s.cc)
+	user := s.verifyUser(w, r)
 	if user == nil {
 		return
 	}
 
-	secretManifest, err := ioutil.ReadAll(r.Body)
+	secretManifest, err := io.ReadAll(r.Body)
 	if err != nil {
 		writeJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if err := s.cc.WriteSecrets(r.Context(), secretManifest, user); err != nil {
+	if err := s.api.WriteSecrets(secretManifest, user); err != nil {
 		writeJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -411,13 +410,13 @@ func (s *clientAPIServer) methodNotAllowedHandler(w http.ResponseWriter, r *http
 	writeJSONError(w, "", http.StatusMethodNotAllowed)
 }
 
-func verifyUser(w http.ResponseWriter, r *http.Request, cc core.ClientCore) *user.User {
+func (s *clientAPIServer) verifyUser(w http.ResponseWriter, r *http.Request) *user.User {
 	// Abort if no user client certificate was provided
 	if r.TLS == nil {
 		writeJSONError(w, "no client certificate provided", http.StatusUnauthorized)
 		return nil
 	}
-	verifiedUser, err := cc.VerifyUser(r.Context(), r.TLS.PeerCertificates)
+	verifiedUser, err := s.api.VerifyUser(r.TLS.PeerCertificates)
 	if err != nil {
 		writeJSONError(w, "unauthorized user", http.StatusUnauthorized)
 		return nil

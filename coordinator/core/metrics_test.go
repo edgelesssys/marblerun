@@ -7,14 +7,16 @@
 package core
 
 import (
-	"context"
 	"encoding/json"
 	"testing"
 
+	"github.com/edgelesssys/marblerun/coordinator/clientapi"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
 	"github.com/edgelesssys/marblerun/coordinator/seal"
+	"github.com/edgelesssys/marblerun/coordinator/state"
+	"github.com/edgelesssys/marblerun/coordinator/store"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -41,13 +43,15 @@ func TestStoreWrapperMetrics(t *testing.T) {
 	//
 	reg := prometheus.NewRegistry()
 	fac := promauto.With(reg)
-	c, _ := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, &fac, nil)
+	c, _ := NewCore([]string{"localhost"}, validator, issuer, store.NewStdStore(sealer), recovery, zapLogger, &fac, nil)
 	assert.Equal(1, promtest.CollectAndCount(c.metrics.coordinatorState))
-	assert.Equal(float64(stateAcceptingManifest), promtest.ToFloat64(c.metrics.coordinatorState))
+	assert.Equal(float64(state.AcceptingManifest), promtest.ToFloat64(c.metrics.coordinatorState))
 
-	c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
+	clientAPI, err := clientapi.New(c.store, c.recovery, c, zapLogger)
+	require.NoError(err)
+	clientAPI.SetManifest([]byte(test.ManifestJSON))
 	assert.Equal(1, promtest.CollectAndCount(c.metrics.coordinatorState))
-	assert.Equal(float64(stateAcceptingMarbles), promtest.ToFloat64(c.metrics.coordinatorState))
+	assert.Equal(float64(state.AcceptingMarbles), promtest.ToFloat64(c.metrics.coordinatorState))
 
 	//
 	// Test sealing and recovery.
@@ -55,16 +59,19 @@ func TestStoreWrapperMetrics(t *testing.T) {
 	reg = prometheus.NewRegistry()
 	fac = promauto.With(reg)
 	sealer.UnsealError = seal.ErrEncryptionKey
-	c, err = NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, &fac, nil)
+	c, err = NewCore([]string{"localhost"}, validator, issuer, store.NewStdStore(sealer), recovery, zapLogger, &fac, nil)
 	sealer.UnsealError = nil
 	require.NoError(err)
 	assert.Equal(1, promtest.CollectAndCount(c.metrics.coordinatorState))
-	assert.Equal(float64(stateRecovery), promtest.ToFloat64(c.metrics.coordinatorState))
+	assert.Equal(float64(state.Recovery), promtest.ToFloat64(c.metrics.coordinatorState))
+
+	clientAPI, err = clientapi.New(c.store, c.recovery, c, zapLogger)
+	require.NoError(err)
 
 	key := make([]byte, 16)
-	_, err = c.Recover(context.TODO(), key)
+	_, err = clientAPI.Recover(key)
 	require.NoError(err)
-	state, err := c.data.getState()
+	state, err := c.data.GetState()
 	require.NoError(err)
 	assert.Equal(1, promtest.CollectAndCount(c.metrics.coordinatorState))
 	assert.Equal(float64(state), promtest.ToFloat64(c.metrics.coordinatorState))
@@ -90,7 +97,7 @@ func TestMarbleAPIMetrics(t *testing.T) {
 	recovery := recovery.NewSinglePartyRecovery()
 	promRegistry := prometheus.NewRegistry()
 	promFactory := promauto.With(promRegistry)
-	c, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, &promFactory, nil)
+	c, err := NewCore([]string{"localhost"}, validator, issuer, store.NewStdStore(sealer), recovery, zapLogger, &promFactory, nil)
 	require.NoError(err)
 	require.NotNil(c)
 
@@ -115,7 +122,9 @@ func TestMarbleAPIMetrics(t *testing.T) {
 	assert.Equal(float64(0), promtest.ToFloat64(metrics.activationSuccess.WithLabelValues("backendFirst", uuid)))
 
 	// set manifest
-	_, err = c.SetManifest(context.TODO(), []byte(test.ManifestJSON))
+	clientAPI, err := clientapi.New(c.store, c.recovery, c, zapLogger)
+	require.NoError(err)
+	_, err = clientAPI.SetManifest([]byte(test.ManifestJSON))
 	require.NoError(err)
 
 	// activate first backend

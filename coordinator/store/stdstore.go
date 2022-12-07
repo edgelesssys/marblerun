@@ -116,6 +116,11 @@ func (s *StdStore) SetRecoveryData(recoveryData []byte) {
 	s.recoveryMode = false
 }
 
+// SetEncryptionKey sets the encryption key for sealing and unsealing.
+func (s *StdStore) SetEncryptionKey(encryptionKey []byte) error {
+	return s.sealer.SetEncryptionKey(encryptionKey)
+}
+
 func (s *StdStore) commit(data map[string][]byte) error {
 	dataRaw, err := json.Marshal(data)
 	if err != nil {

@@ -33,7 +33,7 @@ func newCoreMetrics(factory *promauto.Factory, core *Core, namespace string) *co
 				Help:      "State of the Coordinator.",
 			},
 			func() float64 {
-				state, err := core.data.getState()
+				state, err := core.data.GetState()
 				if err != nil {
 					return float64(0)
 				}

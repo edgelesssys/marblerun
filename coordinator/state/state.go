@@ -4,17 +4,16 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-//go:build enclave
+// State is the sequence of states a Coordinator may be in.
+package state
 
-package main
+// State is the sequence of states a Coordinator may be in.
+type State int
 
-import "C"
-
-//export invokemain
-func invokemain() {
-	main()
-}
-
-//export ert_meshentry_premain
-func ert_meshentry_premain(argc *C.int, argv ***C.char) {
-}
+const (
+	Uninitialized State = iota
+	Recovery
+	AcceptingManifest
+	AcceptingMarbles
+	Max
+)

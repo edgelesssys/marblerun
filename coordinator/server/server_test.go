@@ -7,7 +7,6 @@
 package server
 
 import (
-	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
@@ -20,7 +19,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/edgelesssys/marblerun/coordinator/core"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/stretchr/testify/assert"
@@ -31,7 +29,7 @@ import (
 func TestQuote(t *testing.T) {
 	assert := assert.New(t)
 
-	mux := CreateServeMux(core.NewCoreWithMocks(), nil)
+	mux := CreateServeMux(newTestClientAPI(t), nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/quote", nil)
 	resp := httptest.NewRecorder()
@@ -43,7 +41,7 @@ func TestManifest(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	c := core.NewCoreWithMocks()
+	c := newTestClientAPI(t)
 	mux := CreateServeMux(c, nil)
 
 	// set manifest
@@ -58,7 +56,7 @@ func TestManifest(t *testing.T) {
 	mux.ServeHTTP(resp, req)
 	require.Equal(http.StatusOK, resp.Code)
 
-	sigRootECDSA, sig, manifest := c.GetManifestSignature(context.TODO())
+	sigRootECDSA, sig, manifest := c.GetManifestSignature()
 	assert.JSONEq(`{"status":"success","data":{"ManifestSignatureRootECDSA":"`+base64.StdEncoding.EncodeToString(sigRootECDSA)+`","ManifestSignature":"`+hex.EncodeToString(sig)+`","Manifest":"`+base64.StdEncoding.EncodeToString(manifest)+`"}}`, resp.Body.String())
 
 	// try setting manifest again, should fail
@@ -71,7 +69,7 @@ func TestManifest(t *testing.T) {
 func TestManifestWithRecoveryKey(t *testing.T) {
 	require := require.New(t)
 
-	c := core.NewCoreWithMocks()
+	c := newTestClientAPI(t)
 	mux := CreateServeMux(c, nil)
 
 	// set manifest
@@ -104,8 +102,8 @@ func TestGetUpdateLog(t *testing.T) {
 	require := require.New(t)
 
 	// Setup mock core and set a manifest
-	c := core.NewCoreWithMocks()
-	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSONWithRecoveryKey))
+	c := newTestClientAPI(t)
+	_, err := c.SetManifest([]byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
 	mux := CreateServeMux(c, nil)
 
@@ -121,8 +119,8 @@ func TestUpdate(t *testing.T) {
 	require := require.New(t)
 
 	// Setup mock core and set a manifest
-	c := core.NewCoreWithMocks()
-	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSONWithRecoveryKey))
+	c := newTestClientAPI(t)
+	_, err := c.SetManifest([]byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
 	mux := CreateServeMux(c, nil)
 
@@ -138,8 +136,8 @@ func TestReadSecret(t *testing.T) {
 	require := require.New(t)
 
 	// Setup mock core and set a manifest
-	c := core.NewCoreWithMocks()
-	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSONWithRecoveryKey))
+	c := newTestClientAPI(t)
+	_, err := c.SetManifest([]byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
 	mux := CreateServeMux(c, nil)
 
@@ -155,8 +153,8 @@ func TestSetSecret(t *testing.T) {
 	require := require.New(t)
 
 	// Setup mock core and set a manifest
-	c := core.NewCoreWithMocks()
-	_, err := c.SetManifest(context.TODO(), []byte(test.ManifestJSONWithRecoveryKey))
+	c := newTestClientAPI(t)
+	_, err := c.SetManifest([]byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
 	mux := CreateServeMux(c, nil)
 
@@ -202,7 +200,7 @@ func TestConcurrent(t *testing.T) {
 
 	assert := assert.New(t)
 
-	mux := CreateServeMux(core.NewCoreWithMocks(), nil)
+	mux := CreateServeMux(newTestClientAPI(t), nil)
 	var wg sync.WaitGroup
 
 	getQuote := func() {
