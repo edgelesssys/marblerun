@@ -1,3 +1,9 @@
+// Copyright (c) Edgeless Systems GmbH.
+//
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 package cmd
 
 import (
@@ -299,13 +305,13 @@ func downloadPremain(directory string) error {
 }
 
 /*
-	Perform the manifest modification.
-	For existing entries: Run a RegEx search, replace the line.
-	For new entries: Append to the end of the file.
-	NOTE: This only works for flat-mapped TOML configs.
-	These seem to be usually used for Gramine manifests.
-	However, TOML is quite flexible, and there are no TOML parsers out there which are style & comments preserving
-	So, if we do not have a flat-mapped config, this will fail at some point.
+Perform the manifest modification.
+For existing entries: Run a RegEx search, replace the line.
+For new entries: Append to the end of the file.
+NOTE: This only works for flat-mapped TOML configs.
+These seem to be usually used for Gramine manifests.
+However, TOML is quite flexible, and there are no TOML parsers out there which are style & comments preserving
+So, if we do not have a flat-mapped config, this will fail at some point.
 */
 func appendAndReplace(changeDiffs []diff, manifestContent []byte) ([]byte, error) {
 	newManifestContent := manifestContent
