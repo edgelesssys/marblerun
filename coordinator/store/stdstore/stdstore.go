@@ -4,7 +4,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-package store
+package stdstore
 
 import (
 	"encoding/json"
@@ -13,6 +13,7 @@ import (
 	"sync"
 
 	"github.com/edgelesssys/marblerun/coordinator/seal"
+	"github.com/edgelesssys/marblerun/coordinator/store"
 )
 
 // StdStore is the standard implementation of the Store interface.
@@ -24,8 +25,8 @@ type StdStore struct {
 	recoveryMode bool
 }
 
-// NewStdStore creates and initialises a new StdStore object.
-func NewStdStore(sealer seal.Sealer) *StdStore {
+// New creates and initializes a new StdStore object.
+func New(sealer seal.Sealer) *StdStore {
 	s := &StdStore{
 		data:   make(map[string][]byte),
 		sealer: sealer,
@@ -43,7 +44,7 @@ func (s *StdStore) Get(request string) ([]byte, error) {
 	if ok {
 		return value, nil
 	}
-	return nil, &storeValueUnset{requestedValue: request}
+	return nil, store.ErrValueUnset
 }
 
 // Put saves a value in StdStore by Type and Name.
@@ -61,7 +62,7 @@ func (s *StdStore) Put(request string, requestData []byte) error {
 
 // Iterator returns an iterator for keys saved in StdStore with a given prefix.
 // For an empty prefix this is an iterator for all keys in StdStore.
-func (s *StdStore) Iterator(prefix string) (Iterator, error) {
+func (s *StdStore) Iterator(prefix string) (store.Iterator, error) {
 	keys := make([]string, 0)
 	for k := range s.data {
 		if strings.HasPrefix(k, prefix) {
@@ -73,8 +74,8 @@ func (s *StdStore) Iterator(prefix string) (Iterator, error) {
 }
 
 // BeginTransaction starts a new transaction.
-func (s *StdStore) BeginTransaction() (Transaction, error) {
-	tx := transaction{store: s, data: map[string][]byte{}}
+func (s *StdStore) BeginTransaction() (store.Transaction, error) {
+	tx := StdTransaction{store: s, data: map[string][]byte{}}
 	s.txmux.Lock()
 
 	s.mux.Lock()
@@ -142,27 +143,28 @@ func (s *StdStore) commit(data map[string][]byte) error {
 	return nil
 }
 
-type transaction struct {
+// StdTransaction is a transaction for StdStore.
+type StdTransaction struct {
 	store *StdStore
 	data  map[string][]byte
 }
 
 // Get retrieves a value.
-func (t *transaction) Get(request string) ([]byte, error) {
+func (t *StdTransaction) Get(request string) ([]byte, error) {
 	if value, ok := t.data[request]; ok {
 		return value, nil
 	}
-	return nil, &storeValueUnset{requestedValue: request}
+	return nil, store.ErrValueUnset
 }
 
 // Put saves a value.
-func (t *transaction) Put(request string, requestData []byte) error {
+func (t *StdTransaction) Put(request string, requestData []byte) error {
 	t.data[request] = requestData
 	return nil
 }
 
 // Iterator returns an iterator for all keys in the transaction with a given prefix.
-func (t *transaction) Iterator(prefix string) (Iterator, error) {
+func (t *StdTransaction) Iterator(prefix string) (store.Iterator, error) {
 	keys := make([]string, 0)
 	for k := range t.data {
 		if strings.HasPrefix(k, prefix) {
@@ -174,7 +176,7 @@ func (t *transaction) Iterator(prefix string) (Iterator, error) {
 }
 
 // Commit ends a transaction and persists the changes.
-func (t *transaction) Commit() error {
+func (t *StdTransaction) Commit() error {
 	if err := t.store.commit(t.data); err != nil {
 		return err
 	}
@@ -183,7 +185,7 @@ func (t *transaction) Commit() error {
 }
 
 // Rollback aborts a transaction.
-func (t *transaction) Rollback() {
+func (t *StdTransaction) Rollback() {
 	if t.store != nil {
 		t.store.txmux.Unlock()
 	}

@@ -18,7 +18,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
 	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/coordinator/server"
-	"github.com/edgelesssys/marblerun/coordinator/store"
+	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -78,7 +78,7 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer 
 		go server.RunPrometheusServer(promServerAddr, log, promRegistry, eventlog)
 	}
 
-	store := store.NewStdStore(sealer)
+	store := stdstore.New(sealer)
 
 	// creating core
 	log.Info("creating the Core object")

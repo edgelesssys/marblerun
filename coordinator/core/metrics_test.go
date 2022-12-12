@@ -16,7 +16,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
 	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/coordinator/state"
-	"github.com/edgelesssys/marblerun/coordinator/store"
+	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -43,13 +43,14 @@ func TestStoreWrapperMetrics(t *testing.T) {
 	//
 	reg := prometheus.NewRegistry()
 	fac := promauto.With(reg)
-	c, _ := NewCore([]string{"localhost"}, validator, issuer, store.NewStdStore(sealer), recovery, zapLogger, &fac, nil)
+	c, _ := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer), recovery, zapLogger, &fac, nil)
 	assert.Equal(1, promtest.CollectAndCount(c.metrics.coordinatorState))
 	assert.Equal(float64(state.AcceptingManifest), promtest.ToFloat64(c.metrics.coordinatorState))
 
 	clientAPI, err := clientapi.New(c.store, c.recovery, c, zapLogger)
 	require.NoError(err)
-	clientAPI.SetManifest([]byte(test.ManifestJSON))
+	_, err = clientAPI.SetManifest([]byte(test.ManifestJSON))
+	require.NoError(err)
 	assert.Equal(1, promtest.CollectAndCount(c.metrics.coordinatorState))
 	assert.Equal(float64(state.AcceptingMarbles), promtest.ToFloat64(c.metrics.coordinatorState))
 
@@ -59,7 +60,7 @@ func TestStoreWrapperMetrics(t *testing.T) {
 	reg = prometheus.NewRegistry()
 	fac = promauto.With(reg)
 	sealer.UnsealError = seal.ErrEncryptionKey
-	c, err = NewCore([]string{"localhost"}, validator, issuer, store.NewStdStore(sealer), recovery, zapLogger, &fac, nil)
+	c, err = NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer), recovery, zapLogger, &fac, nil)
 	sealer.UnsealError = nil
 	require.NoError(err)
 	assert.Equal(1, promtest.CollectAndCount(c.metrics.coordinatorState))
@@ -97,7 +98,7 @@ func TestMarbleAPIMetrics(t *testing.T) {
 	recovery := recovery.NewSinglePartyRecovery()
 	promRegistry := prometheus.NewRegistry()
 	promFactory := promauto.With(promRegistry)
-	c, err := NewCore([]string{"localhost"}, validator, issuer, store.NewStdStore(sealer), recovery, zapLogger, &promFactory, nil)
+	c, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer), recovery, zapLogger, &promFactory, nil)
 	require.NoError(err)
 	require.NotNil(c)
 

@@ -35,6 +35,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/coordinator/state"
 	"github.com/edgelesssys/marblerun/coordinator/store"
+	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
 	"github.com/edgelesssys/marblerun/coordinator/store/wrapper"
 	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/edgelesssys/marblerun/util"
@@ -127,7 +128,7 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, stor store.
 
 	// set core to uninitialized if no state is set
 	if _, err := txdata.GetState(); err != nil {
-		if store.IsStoreValueUnsetError(err) {
+		if errors.Is(err, store.ErrValueUnset) {
 			if err := txdata.PutState(state.Uninitialized); err != nil {
 				return nil, err
 			}
@@ -148,7 +149,7 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, stor store.
 		if err := c.AdvanceState(state.Recovery, tx); err != nil {
 			return nil, err
 		}
-	} else if _, err := txdata.GetRawManifest(); store.IsStoreValueUnsetError(err) {
+	} else if _, err := txdata.GetRawManifest(); errors.Is(err, store.ErrValueUnset) {
 		// no state was found, wait for manifest
 		c.log.Info("No sealed state found. Proceeding with new state.")
 		if err := c.setCAData(dnsNames, tx); err != nil {
@@ -188,7 +189,7 @@ func NewCoreWithMocks() *Core {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	recovery := recovery.NewSinglePartyRecovery()
-	core, err := NewCore([]string{"localhost"}, validator, issuer, store.NewStdStore(sealer), recovery, zapLogger, nil, nil)
+	core, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer), recovery, zapLogger, nil, nil)
 	if err != nil {
 		panic(err)
 	}

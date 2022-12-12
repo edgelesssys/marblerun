@@ -17,7 +17,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
 	"github.com/edgelesssys/marblerun/coordinator/seal"
-	"github.com/edgelesssys/marblerun/coordinator/store"
+	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	promtest "github.com/prometheus/client_golang/prometheus/testutil"
@@ -93,7 +93,7 @@ func newTestClientAPI(t *testing.T) *clientapi.ClientAPI {
 
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
-	store := store.NewStdStore(&seal.MockSealer{})
+	store := stdstore.New(&seal.MockSealer{})
 	recovery := recovery.NewSinglePartyRecovery()
 	core, err := core.NewCore([]string{"localhost"}, validator, issuer, store, recovery, log, nil, nil)
 	require.NoError(err)

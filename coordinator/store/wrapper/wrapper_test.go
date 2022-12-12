@@ -15,17 +15,23 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/coordinator/state"
 	"github.com/edgelesssys/marblerun/coordinator/store"
+	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
 	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 )
+
+func TestMain(m *testing.M) {
+	goleak.VerifyTestMain(m)
+}
 
 func TestStoreWrapper(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	store := store.NewStdStore(&seal.MockSealer{})
+	store := stdstore.New(&seal.MockSealer{})
 	rawManifest := []byte(test.ManifestJSON)
 	curState := state.AcceptingManifest
 	testSecret := manifest.Secret{
@@ -77,7 +83,7 @@ func TestStoreWrapperRollback(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	stor := store.NewStdStore(&seal.MockSealer{})
+	stor := stdstore.New(&seal.MockSealer{})
 	data := New(stor)
 
 	startingState := state.AcceptingManifest
@@ -96,5 +102,5 @@ func TestStoreWrapperRollback(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(startingState, val)
 	_, err = data.GetRawManifest()
-	assert.True(store.IsStoreValueUnsetError(err))
+	assert.ErrorIs(err, store.ErrValueUnset)
 }

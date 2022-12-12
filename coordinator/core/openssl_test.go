@@ -18,11 +18,13 @@ import (
 	"testing"
 
 	libMarble "github.com/edgelesssys/ego/marble"
+	"github.com/edgelesssys/marblerun/coordinator/clientapi"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
 	"github.com/edgelesssys/marblerun/coordinator/seal"
+	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
@@ -50,14 +52,16 @@ func TestOpenSSLVerify(t *testing.T) {
 	// create core
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
-	sealer := &seal.MockSealer{}
+	store := stdstore.New(&seal.MockSealer{})
 	recovery := recovery.NewSinglePartyRecovery()
-	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, sealer, recovery, zapLogger, nil, nil)
+	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, store, recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	require.NotNil(coreServer)
 
 	// set manifest
-	_, err = coreServer.SetManifest(context.TODO(), []byte(test.ManifestJSON))
+	clientAPI, err := clientapi.New(coreServer.store, coreServer.recovery, coreServer, zapLogger)
+	require.NoError(err)
+	_, err = clientAPI.SetManifest([]byte(test.ManifestJSON))
 	require.NoError(err)
 
 	// create marble

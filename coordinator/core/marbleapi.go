@@ -15,6 +15,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"math"
 	"text/template"
@@ -161,7 +162,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (*rpc.Activ
 func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, certQuote []byte, marbleType string) error {
 	marble, err := c.data.GetMarble(marbleType)
 	if err != nil {
-		if store.IsStoreValueUnsetError(err) {
+		if errors.Is(err, store.ErrValueUnset) {
 			return status.Error(codes.InvalidArgument, "unknown marble type requested")
 		}
 		return status.Error(codes.Internal, fmt.Sprintf("unable to load marble data: %v", err))
@@ -169,7 +170,7 @@ func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, certQuote []
 
 	pkg, err := c.data.GetPackage(marble.Package)
 	if err != nil {
-		if store.IsStoreValueUnsetError(err) {
+		if errors.Is(err, store.ErrValueUnset) {
 			return status.Error(codes.Internal, "undefined package")
 		}
 		return status.Error(codes.Internal, fmt.Sprintf("unable to load package data: %v", err))

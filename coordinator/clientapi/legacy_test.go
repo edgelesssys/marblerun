@@ -21,7 +21,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
 	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/coordinator/state"
-	"github.com/edgelesssys/marblerun/coordinator/store"
+	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
 	"github.com/edgelesssys/marblerun/coordinator/store/wrapper"
 	"github.com/edgelesssys/marblerun/coordinator/updatelog"
 	"github.com/edgelesssys/marblerun/coordinator/user"
@@ -591,7 +591,7 @@ func setupAPI(t *testing.T) (*ClientAPI, wrapper.Wrapper) {
 	t.Helper()
 	require := require.New(t)
 
-	store := store.NewStdStore(&seal.MockSealer{})
+	store := stdstore.New(&seal.MockSealer{})
 	log, err := zap.NewDevelopment()
 	require.NoError(err)
 

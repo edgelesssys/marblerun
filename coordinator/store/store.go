@@ -7,7 +7,7 @@
 package store
 
 import (
-	"fmt"
+	"errors"
 )
 
 // Store is the interface for persistence.
@@ -50,18 +50,5 @@ type Iterator interface {
 	HasNext() bool
 }
 
-// storeValueUnset is an error raised by unset values in the store.
-type storeValueUnset struct {
-	requestedValue string
-}
-
-// Error implements the Error interface.
-func (s *storeValueUnset) Error() string {
-	return fmt.Sprintf("requested value not set: %s", s.requestedValue)
-}
-
-// IsStoreValueUnsetError returns true if an error is of type storeValueUnset.
-func IsStoreValueUnsetError(err error) bool {
-	_, ok := err.(*storeValueUnset)
-	return ok
-}
+// ErrValueUnset is returned when a requested value is not set in the store.
+var ErrValueUnset = errors.New("requested value not set")

@@ -22,14 +22,19 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
 	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/coordinator/state"
-	"github.com/edgelesssys/marblerun/coordinator/store"
+	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
 	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 	"go.uber.org/zap"
 )
+
+func TestMain(m *testing.M) {
+	goleak.VerifyTestMain(m)
+}
 
 func TestCore(t *testing.T) {
 	assert := assert.New(t)
@@ -65,7 +70,7 @@ func TestSeal(t *testing.T) {
 	sealer := &seal.MockSealer{}
 	recovery := recovery.NewSinglePartyRecovery()
 
-	c, err := NewCore([]string{"localhost"}, validator, issuer, store.NewStdStore(sealer), recovery, zapLogger, nil, nil)
+	c, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer), recovery, zapLogger, nil, nil)
 	require.NoError(err)
 
 	// Set manifest. This will seal the state.
@@ -84,7 +89,7 @@ func TestSeal(t *testing.T) {
 	assert.NoError(err)
 
 	// Check sealing with a new core initialized with the sealed state.
-	c2, err := NewCore([]string{"localhost"}, validator, issuer, store.NewStdStore(sealer), recovery, zapLogger, nil, nil)
+	c2, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer), recovery, zapLogger, nil, nil)
 	clientAPI, err = clientapi.New(c2.store, c2.recovery, c2, zapLogger)
 	require.NoError(err)
 	require.NoError(err)
@@ -123,7 +128,7 @@ func TestRecover(t *testing.T) {
 	sealer := &seal.MockSealer{}
 	recovery := recovery.NewSinglePartyRecovery()
 
-	c, err := NewCore([]string{"localhost"}, validator, issuer, store.NewStdStore(sealer), recovery, zapLogger, nil, nil)
+	c, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer), recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	clientAPI, err := clientapi.New(c.store, c.recovery, c, zapLogger)
 	require.NoError(err)
@@ -143,7 +148,7 @@ func TestRecover(t *testing.T) {
 
 	// Initialize new core and let unseal fail
 	sealer.UnsealError = seal.ErrEncryptionKey
-	c2, err := NewCore([]string{"localhost"}, validator, issuer, store.NewStdStore(sealer), recovery, zapLogger, nil, nil)
+	c2, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer), recovery, zapLogger, nil, nil)
 	sealer.UnsealError = nil
 	require.NoError(err)
 	clientAPI, err = clientapi.New(c2.store, c2.recovery, c2, zapLogger)
@@ -367,7 +372,7 @@ func TestUnsetRestart(t *testing.T) {
 	recovery := recovery.NewSinglePartyRecovery()
 
 	// create a new core, this seals the state with only certificate and keys
-	c1, err := NewCore([]string{"localhost"}, validator, issuer, store.NewStdStore(sealer), recovery, zapLogger, nil, nil)
+	c1, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer), recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	c1State, err := c1.data.GetState()
 	assert.NoError(err)
@@ -376,7 +381,7 @@ func TestUnsetRestart(t *testing.T) {
 	assert.NoError(err)
 
 	// create a second core, this should overwrite the previously sealed certificate and keys since no manifest was set
-	c2, err := NewCore([]string{"localhost"}, validator, issuer, store.NewStdStore(sealer), recovery, zapLogger, nil, nil)
+	c2, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer), recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	c2State, err := c2.data.GetState()
 	assert.NoError(err)
