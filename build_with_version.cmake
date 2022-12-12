@@ -15,6 +15,7 @@ if("${COMPILER}" STREQUAL "go")
         COMMAND
         go build ${TRIMPATH}
         -o ${OUTPUT_NAME}
+        -buildvcs=false
         -ldflags "-X '${INJECT_PATH}.Version=${PROJECT_VERSION}' -X '${INJECT_PATH}.GitCommit=${GIT_COMMIT}'"
         ${BUILD_SOURCE}
     )
@@ -23,6 +24,7 @@ else()
         COMMAND
         ertgo build ${TRIMPATH} -buildmode=c-archive -tags enclave
         -o ${OUTPUT_NAME}
+        -buildvcs=false
         -ldflags "-X '${INJECT_PATH}.Version=${PROJECT_VERSION}' -X '${INJECT_PATH}.GitCommit=${GIT_COMMIT}'"
         ${BUILD_SOURCE})
 endif()
