@@ -15,28 +15,28 @@ import (
 // PackageProperties contains the enclave package-specific properties of an OpenEnclave quote
 // Either UniqueID or SignerID, ProductID, and SecurityVersion should be specified.
 type PackageProperties struct {
-	// Debug Flag of the Attributes
+	// Debug Flag of the Attributes.
 	Debug bool
-	// Hash of the enclave
+	// Hash of the enclave.
 	UniqueID string
-	// Hash of the enclave signer's public key
+	// Hash of the enclave signer's public key.
 	SignerID string
-	// Product ID of the package
+	// Product ID of the package.
 	ProductID *uint64
-	// Security version number of the package
+	// Security version number of the package.
 	SecurityVersion *uint
 }
 
-// InfrastructureProperties contains the infrastructure-specific properties of a SGX DCAP quote
+// InfrastructureProperties contains the infrastructure-specific properties of a SGX DCAP quote.
 type InfrastructureProperties struct {
-	// Processor model and firmware security version number
+	// Processor model and firmware security version number.
 	// NOTE: the Intel manual states that CPUSVN "cannot be compared mathematically"
 	CPUSVN []byte
-	// Quoting Enclave security version number
+	// Quoting Enclave security version number.
 	QESVN *uint16
-	// Provisioning Certification Enclave security version number
+	// Provisioning Certification Enclave security version number.
 	PCESVN *uint16
-	// Certificate of the root CA (not optional)
+	// Certificate of the root CA (not optional).
 	RootCA []byte
 }
 

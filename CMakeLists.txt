@@ -74,6 +74,7 @@ add_custom_target(marble-injector ALL
   CGO_ENABLED=0
   go build ${TRIMPATH}
   -o marble-injector
+  -buildvcs=false
   ${CMAKE_SOURCE_DIR}/cmd/marble-injector
 )
 
@@ -96,12 +97,14 @@ add_custom_target(cli ALL
 add_custom_target(marbletestlib
   ertgo build ${TRIMPATH} -buildmode=c-archive
   -tags enclave -o libmarbletest.a
+  -buildvcs=false
   ${CMAKE_SOURCE_DIR}/cmd/marble-test
 )
 
 add_custom_target(marble-test-noenclave ALL
   go build ${TRIMPATH}
   -o marble-test-noenclave
+  -buildvcs=false
   ${CMAKE_SOURCE_DIR}/cmd/marble-test)
 
 add_executable(marble-test-enclave enclave/main.c)
@@ -133,4 +136,9 @@ add_custom_target(sign-marble-test ALL DEPENDS marble-test-enclave.signed marble
 # Build premain-libos
 #
 
-add_custom_target(premain-libos ALL ertgo build ${TRIMPATH} -buildmode=pie ${CMAKE_SOURCE_DIR}/cmd/premain-libos)
+add_custom_target(
+  premain-libos ALL
+  ertgo build ${TRIMPATH}
+  -buildmode=pie
+  -buildvcs=false
+  ${CMAKE_SOURCE_DIR}/cmd/premain-libos)

@@ -9,13 +9,17 @@ package server
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"net"
 	"net/http"
 	"os"
 
 	"github.com/edgelesssys/marblerun/coordinator/core"
 	"github.com/edgelesssys/marblerun/coordinator/events"
+	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
+	"github.com/edgelesssys/marblerun/coordinator/state"
+	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
@@ -29,6 +33,19 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
+
+type clientAPI interface {
+	SetManifest(rawManifest []byte) (recoverySecretMap map[string][]byte, err error)
+	GetCertQuote() (cert string, certQuote []byte, err error)
+	GetManifestSignature() (manifestSignatureRootECDSA, manifestSignature, manifest []byte)
+	GetSecrets(requestedSecrets []string, requestUser *user.User) (map[string]manifest.Secret, error)
+	GetStatus() (statusCode state.State, status string, err error)
+	GetUpdateLog() (updateLog string, err error)
+	Recover(encryptionKey []byte) (int, error)
+	VerifyUser(clientCerts []*x509.Certificate) (*user.User, error)
+	UpdateManifest(rawUpdateManifest []byte, updater *user.User) error
+	WriteSecrets(rawSecretManifest []byte, updater *user.User) error
+}
 
 // RunMarbleServer starts a gRPC with the given Coordinator core.
 // `address` is the desired TCP address like "localhost:0".
@@ -77,8 +94,8 @@ func RunMarbleServer(core *core.Core, addr string, addrChan chan string, errChan
 }
 
 // CreateServeMux creates a mux that serves the client API.
-func CreateServeMux(cc core.ClientCore, promFactory *promauto.Factory) serveMux {
-	server := clientAPIServer{cc}
+func CreateServeMux(api clientAPI, promFactory *promauto.Factory) serveMux {
+	server := clientAPIServer{api}
 	var router serveMux
 	if promFactory != nil {
 		router = newPromServeMux(promFactory, "server", "client_api")

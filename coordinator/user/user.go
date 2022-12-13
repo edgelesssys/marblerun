@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 )
 
+// Permissions available to users.
 const (
 	PermissionWriteSecret   = "writesecret"
 	PermissionReadSecret    = "readsecret"

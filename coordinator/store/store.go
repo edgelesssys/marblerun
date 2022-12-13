@@ -6,18 +6,26 @@
 
 package store
 
-import "fmt"
+import (
+	"errors"
+)
 
 // Store is the interface for persistence.
 type Store interface {
-	// BeginTransaction starts a new transaction
+	// BeginTransaction starts a new transaction.
 	BeginTransaction() (Transaction, error)
-	// Get returns a value from store by key
+	// Get returns a value from store by key.
 	Get(string) ([]byte, error)
-	// Put saves a value to store by key
+	// Put saves a value to store by key.
 	Put(string, []byte) error
-	// Iterator returns an Iterator for a given prefix
+	// Iterator returns an Iterator for a given prefix.
 	Iterator(string) (Iterator, error)
+	// SetEncryptionKey sets the encryption key for the store.
+	SetEncryptionKey([]byte) error
+	// SetRecoveryData sets recovery data for the store.
+	SetRecoveryData([]byte)
+	// LoadState loads the sealed state of a store.
+	LoadState() ([]byte, error)
 }
 
 // Transaction is a Store transaction.
@@ -42,18 +50,5 @@ type Iterator interface {
 	HasNext() bool
 }
 
-// storeValueUnset is an error raised by unset values in the store.
-type storeValueUnset struct {
-	requestedValue string
-}
-
-// Error implements the Error interface.
-func (s *storeValueUnset) Error() string {
-	return fmt.Sprintf("requested value not set: %s", s.requestedValue)
-}
-
-// IsStoreValueUnsetError returns true if an error is of type storeValueUnset.
-func IsStoreValueUnsetError(err error) bool {
-	_, ok := err.(*storeValueUnset)
-	return ok
-}
+// ErrValueUnset is returned when a requested value is not set in the store.
+var ErrValueUnset = errors.New("requested value not set")

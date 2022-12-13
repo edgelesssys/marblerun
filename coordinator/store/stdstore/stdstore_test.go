@@ -4,54 +4,55 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-package store
+package stdstore
 
 import (
 	"testing"
 
 	"github.com/edgelesssys/marblerun/coordinator/seal"
+	"github.com/edgelesssys/marblerun/coordinator/store"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestStdStore(t *testing.T) {
 	assert := assert.New(t)
 
-	store := NewStdStore(&seal.MockSealer{})
-	_, err := store.LoadState()
+	str := New(&seal.MockSealer{})
+	_, err := str.LoadState()
 	assert.NoError(err)
 
 	testData1 := []byte("test data")
 	testData2 := []byte("more test data")
 
 	// request unset value
-	_, err = store.Get("test:input")
+	_, err = str.Get("test:input")
 	assert.Error(err)
 
 	// test Put method
-	tx, err := store.BeginTransaction()
+	tx, err := str.BeginTransaction()
 	assert.NoError(err)
 	assert.NoError(tx.Put("test:input", testData1))
 	assert.NoError(tx.Put("another:input", testData2))
 	assert.NoError(tx.Commit())
 
 	// make sure values have been set
-	val, err := store.Get("test:input")
+	val, err := str.Get("test:input")
 	assert.NoError(err)
 	assert.Equal(testData1, val)
-	val, err = store.Get("another:input")
+	val, err = str.Get("another:input")
 	assert.NoError(err)
 	assert.Equal(testData2, val)
 
-	_, err = store.Get("invalid:key")
+	_, err = str.Get("invalid:key")
 	assert.Error(err)
-	assert.True(IsStoreValueUnsetError(err))
+	assert.ErrorIs(err, store.ErrValueUnset)
 }
 
 func TestStdIterator(t *testing.T) {
 	assert := assert.New(t)
 
 	sealer := &seal.MockSealer{}
-	store := NewStdStore(sealer)
+	store := New(sealer)
 	store.data = map[string][]byte{
 		"test:1":    {0x00, 0x11},
 		"test:2":    {0x00, 0x11},
@@ -104,7 +105,7 @@ func TestStdStoreSealing(t *testing.T) {
 	assert := assert.New(t)
 
 	sealer := &seal.MockSealer{}
-	store := NewStdStore(sealer)
+	store := New(sealer)
 	_, err := store.LoadState()
 	assert.NoError(err)
 
@@ -112,7 +113,7 @@ func TestStdStoreSealing(t *testing.T) {
 	assert.NoError(store.Put("test:input", testData1))
 
 	// Check sealing with a new store initialized with the sealed state
-	store2 := NewStdStore(sealer)
+	store2 := New(sealer)
 	_, err = store2.LoadState()
 	assert.NoError(err)
 	val, err := store2.Get("test:input")
@@ -123,7 +124,7 @@ func TestStdStoreSealing(t *testing.T) {
 func TestStdStoreRollback(t *testing.T) {
 	assert := assert.New(t)
 
-	store := NewStdStore(&seal.MockSealer{})
+	store := New(&seal.MockSealer{})
 	_, err := store.LoadState()
 	assert.NoError(err)
 

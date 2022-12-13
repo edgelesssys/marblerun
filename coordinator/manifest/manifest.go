@@ -7,7 +7,7 @@
 package manifest
 
 import (
-	"context"
+	"bytes"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
@@ -23,7 +23,20 @@ import (
 	"go.uber.org/zap"
 )
 
-// Manifest defines the rules of a mesh
+const (
+	// SecretTypeCertECDSA defines the type of a secret containing an ECDSA certificate.
+	SecretTypeCertECDSA = "cert-ecdsa"
+	// SecretTypeCertED25519 defines the type of a secret containing an ED25519 certificate.
+	SecretTypeCertED25519 = "cert-ed25519"
+	// SecretTypeCertRSA defines the type of a secret containing an RSA certificate.
+	SecretTypeCertRSA = "cert-rsa"
+	// SecretTypeSymmetricKey defines the type of a secret containing a symmetric key.
+	SecretTypeSymmetricKey = "symmetric-key"
+	// SecretTypePlain defines the type of a secret containing arbitrary data.
+	SecretTypePlain = "plain"
+)
+
+// Manifest defines the rules of a MarbleRun deployment.
 type Manifest struct {
 	// Packages contains the allowed enclaves and their properties.
 	Packages map[string]quote.PackageProperties
@@ -39,11 +52,11 @@ type Manifest struct {
 	RecoveryKeys map[string]string
 	// Roles contains role definitions to manage permissions across the MarbleRun mesh
 	Roles map[string]Role
-	// TLS contains tags which can be assiged to Marbles to specify which connections should be elevated to TLS
+	// TLS contains tags which can be assigned to Marbles to specify which connections should be elevated to TLS
 	TLS map[string]TLStag
 }
 
-// Marble describes a service in the mesh that should be handled and verified by the Coordinator
+// Marble describes a service in the mesh that should be handled and verified by the Coordinator.
 type Marble struct {
 	// Package references one of the allowed enclaves in the manifest.
 	Package string
@@ -56,20 +69,20 @@ type Marble struct {
 	TLS []string
 }
 
-// Parameters contains lists for files, environment variables and commandline arguments that should be passed to an application
+// Parameters contains lists for files, environment variables and commandline arguments that should be passed to an application.
 type Parameters struct {
 	Files map[string]File
 	Env   map[string]File
 	Argv  []string
 }
 
-// File defines data, encoding type, and if data contains templates for a File or Env variable
+// File defines data, encoding type, and if data contains templates for a File or Env variable.
 type File struct {
-	// Data is the data to be saved as a file or environment variable
+	// Data is the data to be saved as a file or environment variable.
 	Data string
-	// Encoding is the initial encoding of Data (as it is written in the manifest). One of {'string', 'base64', 'hex'}
+	// Encoding is the initial encoding of Data (as it is written in the manifest). One of {'string', 'base64', 'hex'}.
 	Encoding string
-	// NoTemplates specifies if Data contains templates which should be filled with information by the Coordinator
+	// NoTemplates specifies if Data contains templates which should be filled with information by the Coordinator.
 	NoTemplates bool
 }
 
@@ -161,15 +174,15 @@ func (f *File) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// TLStag describes which entries should be used to determine the ttls connections of a marble
+// TLStag describes which entries should be used to determine the ttls connections of a marble.
 type TLStag struct {
-	// Outgoing holds a list of all outgoing addresses that should be elevated to TLS
+	// Outgoing holds a list of all outgoing addresses that should be elevated to TLS.
 	Outgoing []TLSTagEntry
-	// Incoming holds a list of all incoming addresses that should be elevated to TLS
+	// Incoming holds a list of all incoming addresses that should be elevated to TLS.
 	Incoming []TLSTagEntry
 }
 
-// TLSTagEntry describes one connection which should be elevated to ttls
+// TLSTagEntry describes one connection which should be elevated to ttls.
 type TLSTagEntry struct {
 	Port              string
 	Addr              string
@@ -177,26 +190,26 @@ type TLSTagEntry struct {
 	DisableClientAuth bool
 }
 
-// User describes the attributes of a MarbleRun user
+// User describes the attributes of a MarbleRun user.
 type User struct {
-	// Certificate is the TLS certificate used by the user for authentication
+	// Certificate is the TLS certificate used by the user for authentication.
 	Certificate string
-	// Roles is a list of roles granting permissions to the user
+	// Roles is a list of roles granting permissions to the user.
 	Roles []string
 }
 
-// Role describes a set of actions permitted for a specific set of resources
+// Role describes a set of actions permitted for a specific set of resources.
 type Role struct {
-	// ResourceType is the type of the affected resources
+	// ResourceType is the type of the affected resources.
 	ResourceType string
-	// ResourceNames is a list of names of type ResourceType
+	// ResourceNames is a list of names of type ResourceType.
 	ResourceNames []string
-	// Actions are the allowed actions for the defined resources
+	// Actions are the allowed actions for the defined resources.
 	Actions []string
 }
 
 // Check checks if the manifest is consistent.
-func (m Manifest) Check(ctx context.Context, zaplogger *zap.Logger) error {
+func (m Manifest) Check(zaplogger *zap.Logger) error {
 	if len(m.Packages) <= 0 {
 		return errors.New("no allowed packages defined")
 	}
@@ -217,7 +230,7 @@ func (m Manifest) Check(ctx context.Context, zaplogger *zap.Logger) error {
 			if singlePackage.Debug {
 				zaplogger.Warn("Manifest specifies UniqueID *and* SignerID/ProductID/SecurityVersion. This is not accepted in non-debug mode, please check your configuration.", zap.String("packageName", marble.Package))
 			} else {
-				return fmt.Errorf("manifest specfies both UniqueID *and* SignerID/ProductID/SecurityVersion in package %s", marble.Package)
+				return fmt.Errorf("manifest specifies both UniqueID *and* SignerID/ProductID/SecurityVersion in package %s", marble.Package)
 			}
 		} else if singlePackage.UniqueID == "" {
 			if singlePackage.SignerID == "" {
@@ -327,9 +340,9 @@ func (m Manifest) Check(ctx context.Context, zaplogger *zap.Logger) error {
 
 	for name, s := range m.Secrets {
 		switch s.Type {
-		case "plain", "symmetric-key":
+		case SecretTypePlain, SecretTypeSymmetricKey:
 			continue
-		case "cert-rsa", "cert-ed25519", "cert-ecdsa":
+		case SecretTypeCertRSA, SecretTypeCertED25519, SecretTypeCertECDSA:
 			if !s.Cert.NotAfter.IsZero() && (s.ValidFor != 0) {
 				return fmt.Errorf("ambigious certificate validity duration for secret: %s, both NotAfter and ValidFor are specified", name)
 			}
@@ -341,13 +354,121 @@ func (m Manifest) Check(ctx context.Context, zaplogger *zap.Logger) error {
 	return nil
 }
 
-// PrivateKey is a wrapper for a binary private key, which we need for type differentiation in the PEM encoding function
+// TemplateDryRun performs a dry run for Files and Env declarations in a manifest.
+func (m Manifest) TemplateDryRun(secrets map[string]Secret) error {
+	templateSecrets := SecretsWrapper{
+		Secrets: secrets,
+		MarbleRun: ReservedSecrets{
+			RootCA: Secret{
+				Cert: Certificate{Raw: []byte{0x41}},
+			},
+			MarbleCert: Secret{
+				Cert:    Certificate{Raw: []byte{0x41}},
+				Public:  []byte{0x41},
+				Private: []byte{0x41},
+			},
+		},
+	}
+	// make sure templates in file/env declarations can actually be executed
+	for marbleName, marble := range m.Marbles {
+		for fileName, file := range marble.Parameters.Files {
+			if !file.NoTemplates {
+				if err := checkTemplate(file.Data, ManifestFileTemplateFuncMap, templateSecrets); err != nil {
+					return fmt.Errorf("in Marble %s: file %s: %w", marbleName, fileName, err)
+				}
+			}
+		}
+		for envName, env := range marble.Parameters.Env {
+			// make sure environment variables don't contain NULL bytes, we perform another check at runtime to catch NULL bytes in secrets
+			if strings.Contains(env.Data, string([]byte{0x00})) {
+				return fmt.Errorf("in Marble %s: env variable: %s: content contains null bytes", marbleName, envName)
+			}
+			if !env.NoTemplates {
+				if err := checkTemplate(env.Data, ManifestEnvTemplateFuncMap, templateSecrets); err != nil {
+					return fmt.Errorf("in Marble %s: env variable %s: %w", marbleName, envName, err)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// GenerateUsers creates users and assigns permissions from the manifest.
+func (m Manifest) GenerateUsers() ([]*user.User, error) {
+	users := make([]*user.User, 0, len(m.Users))
+	for name, userData := range m.Users {
+		block, _ := pem.Decode([]byte(userData.Certificate))
+		if block == nil {
+			return nil, fmt.Errorf("received invalid certificate for user %s", name)
+		}
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return nil, err
+		}
+		newUser := user.NewUser(name, cert)
+		for _, assignedRole := range userData.Roles {
+			for _, action := range m.Roles[assignedRole].Actions {
+				// correctness of roles has been verified by manifest.Check()
+				newUser.Assign(user.NewPermission(strings.ToLower(action), m.Roles[assignedRole].ResourceNames))
+			}
+		}
+		users = append(users, newUser)
+	}
+	return users, nil
+}
+
+// CheckUpdate checks if the manifest is consistent and only contains supported values.
+func (m Manifest) CheckUpdate(originalPackages map[string]quote.PackageProperties) error {
+	if len(m.Packages) <= 0 {
+		return errors.New("no packages defined")
+	}
+
+	// Check if manifest update contains values which we normally should not update
+	for packageName, singlePackage := range m.Packages {
+		// Check if the original manifest does even contain the package we want to update
+		if _, ok := originalPackages[packageName]; !ok {
+			return errors.New("update manifest specifies a package which the original manifest does not contain")
+		}
+
+		// Check if singlePackages contains illegal values to update
+		if singlePackage.Debug || singlePackage.UniqueID != "" || singlePackage.SignerID != "" || singlePackage.ProductID != nil {
+			return errors.New("update manifest contains unupdatable values")
+		}
+
+		// Check if singlePackages does actually contain a SecurityVersion value
+		if singlePackage.SecurityVersion == nil {
+			return errors.New("update manifest does not specify a SecurityVersion to update")
+		}
+
+		// Check based on the original manifest
+		if originalPackages[packageName].SecurityVersion != nil && *singlePackage.SecurityVersion < *originalPackages[packageName].SecurityVersion {
+			return errors.New("update manifest tries to downgrade SecurityVersion of the original manifest")
+		}
+	}
+
+	return nil
+}
+
+// ReservedSecrets is a tuple of secrets reserved for a single Marble.
+type ReservedSecrets struct {
+	RootCA     Secret
+	MarbleCert Secret
+}
+
+// SecretsWrapper is used to define the "MarbleRun" prefix when mentioned in a manifest.
+type SecretsWrapper struct {
+	MarbleRun ReservedSecrets
+	Secrets   map[string]Secret
+}
+
+// PrivateKey is a wrapper for a binary private key, which we need for type differentiation in the PEM encoding function.
 type PrivateKey []byte
 
-// PublicKey is a wrapper for a binary public key, which we need for type differentiation in the PEM encoding function
+// PublicKey is a wrapper for a binary public key, which we need for type differentiation in the PEM encoding function.
 type PublicKey []byte
 
-// Secret defines a structure for storing certificates & encryption keys
+// Secret defines a structure for storing certificates & encryption keys.
 type Secret struct {
 	Type        string
 	Size        uint
@@ -359,7 +480,7 @@ type Secret struct {
 	Public      PublicKey
 }
 
-// Certificate is an x509.Certificate
+// Certificate is a x509.Certificate.
 type Certificate x509.Certificate
 
 // MarshalJSON implements the json.Marshaler interface.
@@ -463,7 +584,7 @@ func EncodeSecretDataToBase64(data interface{}) (string, error) {
 func EncodeSecretDataToString(data interface{}) (string, error) {
 	switch secret := data.(type) {
 	case Secret:
-		if secret.Type != "plain" {
+		if secret.Type != SecretTypePlain {
 			return "", errors.New("only secrets of type plain are allowed to use string encoding for environment variables")
 		}
 		if strings.Contains(string(secret.Public), string([]byte{0x00})) {
@@ -477,7 +598,7 @@ func EncodeSecretDataToString(data interface{}) (string, error) {
 	}
 }
 
-// ManifestTemplateFuncMap defines the functions which can be specified for secret injections into files in the in Go template format.
+// ManifestFileTemplateFuncMap defines the functions which can be specified for secret injections into files in the in Go template format.
 var ManifestFileTemplateFuncMap = template.FuncMap{
 	"pem":    EncodeSecretDataToPem,
 	"hex":    EncodeSecretDataToHex,
@@ -493,38 +614,6 @@ var ManifestEnvTemplateFuncMap = template.FuncMap{
 	"base64": EncodeSecretDataToBase64,
 }
 
-// CheckUpdate checks if the manifest is consistent and only contains supported values.
-func (m Manifest) CheckUpdate(ctx context.Context, originalPackages map[string]quote.PackageProperties) error {
-	if len(m.Packages) <= 0 {
-		return errors.New("no packages defined")
-	}
-
-	// Check if manifest update contains values which we normally should not update
-	for packageName, singlePackage := range m.Packages {
-		// Check if the original manifest does even contain the package we want to update
-		if _, ok := originalPackages[packageName]; !ok {
-			return errors.New("update manifest specifies a package which the original manifest does not contain")
-		}
-
-		// Check if singlePackages contains illegal values to update
-		if singlePackage.Debug || singlePackage.UniqueID != "" || singlePackage.SignerID != "" || singlePackage.ProductID != nil {
-			return errors.New("update manifest contains unupdatable values")
-		}
-
-		// Check if singlePackages does actually contain a SecurityVersion value
-		if singlePackage.SecurityVersion == nil {
-			return errors.New("update manifest does not specify a SecurityVersion to update")
-		}
-
-		// Check based on the original manifest
-		if originalPackages[packageName].SecurityVersion != nil && *singlePackage.SecurityVersion < *originalPackages[packageName].SecurityVersion {
-			return errors.New("update manifest tries to downgrade SecurityVersion of the original manifest")
-		}
-	}
-
-	return nil
-}
-
 // UserSecret is a secret uploaded by a user
 // swagger:model
 type UserSecret struct {
@@ -534,7 +623,7 @@ type UserSecret struct {
 }
 
 // ParseUserSecrets checks if a map of UserSecrets only contains supported values and parses them to a map of Secrets.
-func ParseUserSecrets(ctx context.Context, newSecrets map[string]UserSecret, originalSecrets map[string]Secret) (map[string]Secret, error) {
+func ParseUserSecrets(newSecrets map[string]UserSecret, originalSecrets map[string]Secret) (map[string]Secret, error) {
 	if len(newSecrets) <= 0 {
 		return nil, errors.New("no new secrets defined")
 	}
@@ -551,7 +640,7 @@ func ParseUserSecrets(ctx context.Context, newSecrets map[string]UserSecret, ori
 
 		// check correctness of the supplied secrets
 		switch originalSecret.Type {
-		case "symmetric-key":
+		case SecretTypeSymmetricKey:
 			// verify the length specified in the original manifest is constant
 			if originalSecret.Size == 0 || originalSecret.Size%8 != 0 {
 				return nil, fmt.Errorf("invalid secret size: %s", secretName)
@@ -568,12 +657,12 @@ func ParseUserSecrets(ctx context.Context, newSecrets map[string]UserSecret, ori
 			parsedSecret.Private = singleSecret.Key
 			parsedSecret.Public = singleSecret.Key
 			parsedSecrets[secretName] = parsedSecret
-		case "cert-rsa", "cert-ecdsa", "cert-ed25519":
+		case SecretTypeCertRSA, SecretTypeCertECDSA, SecretTypeCertED25519:
 			// make sure only certificate data was supplied
 			if singleSecret.Key != nil {
 				return nil, fmt.Errorf("secret %s is set to be of type %s but specified values for a symmetric-key", secretName, originalSecret.Type)
 			}
-			// correctnes of the private key is not checked here, and can even be left empty
+			// correctness of the private key is not checked here, and can even be left empty
 			// if it is left empty trying to start a marble using the key will fail
 			var err error
 			parsedSecret := originalSecret
@@ -584,7 +673,7 @@ func ParseUserSecrets(ctx context.Context, newSecrets map[string]UserSecret, ori
 				return nil, err
 			}
 			parsedSecrets[secretName] = parsedSecret
-		case "plain":
+		case SecretTypePlain:
 			// make sure only a key data was supplied
 			if singleSecret.Cert.Raw != nil || singleSecret.Private != nil {
 				return nil, fmt.Errorf("secret %s is set to be of type symmetric-key but specified values for a certificate", secretName)
@@ -605,4 +694,13 @@ func warnOrFailForMissingValue(debugMode bool, parameter string, packageName str
 	}
 
 	return fmt.Errorf("manifest misses value for %s in package %s", parameter, packageName)
+}
+
+// checkTemplate executes the template with the given data and returns an error if the template is invalid.
+func checkTemplate(data string, tplFunc template.FuncMap, secrets SecretsWrapper) error {
+	tpl, err := template.New("data").Funcs(tplFunc).Parse(data)
+	if err != nil {
+		return err
+	}
+	return tpl.Execute(&bytes.Buffer{}, secrets)
 }

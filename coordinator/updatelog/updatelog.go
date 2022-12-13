@@ -21,7 +21,7 @@ var (
 )
 
 func init() {
-	zap.RegisterSink("updatelog", func(u *url.URL) (zap.Sink, error) {
+	_ = zap.RegisterSink("updatelog", func(u *url.URL) (zap.Sink, error) {
 		return newSink, nil
 	})
 }
