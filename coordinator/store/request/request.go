@@ -7,6 +7,7 @@
 // request defines constants used to access the store.
 package request
 
+// Available store keys.
 const (
 	Activations       = "activations"
 	Certificate       = "certificate"

@@ -293,7 +293,7 @@ func (s Wrapper) get(requestType, requestResource string, target interface{}) er
 	return json.Unmarshal(rawData, target)
 }
 
-// IteratorWrapper is a wrapper for the Iterator interface.
+// Iterator is a wrapper for the Iterator interface.
 type Iterator struct {
 	iterator store.Iterator
 	prefix   string

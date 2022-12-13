@@ -76,24 +76,37 @@ func newNullMarbleAPIMetrics() *marbleAPIMetrics {
 	}
 }
 
+// NullCollector implements prometheus.Collector but does nothing.
 type NullCollector struct{}
 
+// Describe implements prometheus.Collector.
 func (NullCollector) Describe(chan<- *prometheus.Desc) {}
+
+// Collect implements prometheus.Collector.
 func (NullCollector) Collect(chan<- prometheus.Metric) {}
 
+// NullMetric implements prometheus.Metric but does nothing.
 type NullMetric struct{}
 
-func (NullMetric) Desc() *prometheus.Desc  { return nil }
+// Desc implements prometheus.Metric.
+func (NullMetric) Desc() *prometheus.Desc { return nil }
+
+// Write implements prometheus.Metric.
 func (NullMetric) Write(*dto.Metric) error { return nil }
 
+// NullCounter implements prometheus.Counter but does nothing.
 type NullCounter struct {
 	NullMetric
 	NullCollector
 }
 
-func (NullCounter) Inc()        {}
+// Inc implements prometheus.Counter.
+func (NullCounter) Inc() {}
+
+// Add implements prometheus.Counter.
 func (NullCounter) Add(float64) {}
 
+// BaseVec is a vector of metrics.
 type BaseVec interface {
 	prometheus.Collector
 
@@ -102,6 +115,7 @@ type BaseVec interface {
 	Reset()
 }
 
+// CounterVec is a vector of metrics.
 type CounterVec interface {
 	BaseVec
 
@@ -111,24 +125,37 @@ type CounterVec interface {
 	WithLabelValues(lvs ...string) prometheus.Counter
 }
 
+// NullBaseVec implements BaseVec but does nothing.
 type NullBaseVec struct {
 	NullCollector
 }
 
+// Delete implements BaseVec.
 func (NullBaseVec) Delete(labels prometheus.Labels) bool { return false }
-func (NullBaseVec) DeleteLabelValues(lvs ...string) bool { return false }
-func (NullBaseVec) Reset()                               {}
 
+// DeleteLabelValues implements BaseVec.
+func (NullBaseVec) DeleteLabelValues(lvs ...string) bool { return false }
+
+// Reset implements BaseVec.
+func (NullBaseVec) Reset() {}
+
+// NullCounterVec implements CounterVec but does nothing.
 type NullCounterVec struct {
 	NullBaseVec
 }
 
+// GetMetricWith implements CounterVec.
 func (NullCounterVec) GetMetricWith(labels prometheus.Labels) (prometheus.Counter, error) {
 	return NullCounter{}, nil
 }
 
+// GetMetricWithLabelValues implements CounterVec.
 func (NullCounterVec) GetMetricWithLabelValues(lvs ...string) (prometheus.Counter, error) {
 	return NullCounter{}, nil
 }
+
+// With implements CounterVec.
 func (NullCounterVec) With(labels prometheus.Labels) prometheus.Counter { return NullCounter{} }
+
+// WithLabelValues implements CounterVec.
 func (NullCounterVec) WithLabelValues(lvs ...string) prometheus.Counter { return NullCounter{} }

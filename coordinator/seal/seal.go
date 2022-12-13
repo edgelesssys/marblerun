@@ -187,7 +187,7 @@ func (s *AESGCMSealer) backupEncryptionKey() {
 	if sealedKeyData, err := os.ReadFile(s.getFname(SealedKeyFname)); err == nil {
 		t := time.Now()
 		newFileName := s.getFname(SealedKeyFname) + "_" + t.Format("20060102150405") + ".bak"
-		os.WriteFile(newFileName, sealedKeyData, 0o600)
+		_ = os.WriteFile(newFileName, sealedKeyData, 0o600)
 	}
 }
 

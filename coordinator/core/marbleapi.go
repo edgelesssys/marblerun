@@ -220,7 +220,7 @@ func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, certQuote []
 }
 
 // generateCertFromCSR signs the CSR from marble attempting to register.
-func (c *Core) generateCertFromCSR(csrReq []byte, pubk ecdsa.PublicKey, marbleType string, marbleUUID string) ([]byte, error) {
+func (c *Core) generateCertFromCSR(csrReq []byte, pubk ecdsa.PublicKey, marbleUUID string) ([]byte, error) {
 	// parse and verify CSR
 	csr, err := x509.ParseCertificateRequest(csrReq)
 	if err != nil {
@@ -368,7 +368,7 @@ func (c *Core) generateMarbleAuthSecrets(req *rpc.ActivationReq, marbleUUID uuid
 	}
 
 	// Generate Marble certificate
-	certRaw, err := c.generateCertFromCSR(req.GetCSR(), privk.PublicKey, req.GetMarbleType(), marbleUUID.String())
+	certRaw, err := c.generateCertFromCSR(req.GetCSR(), privk.PublicKey, marbleUUID.String())
 	if err != nil {
 		return reservedSecrets{}, err
 	}

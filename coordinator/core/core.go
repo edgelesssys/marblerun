@@ -289,6 +289,7 @@ func getClientTLSCert(ctx context.Context) *x509.Certificate {
 	return tlsInfo.State.PeerCertificates[0]
 }
 
+// GetState returns the current state of the Coordinator.
 func (c *Core) GetState() (state.State, string, error) {
 	curState, err := c.data.GetState()
 	if err != nil {
@@ -311,6 +312,7 @@ func (c *Core) GetState() (state.State, string, error) {
 	return curState, status, nil
 }
 
+// GenerateSecrets generates secrets for the given manifest and parent certificate.
 func (c *Core) GenerateSecrets(secrets map[string]manifest.Secret, id uuid.UUID, parentCertificate *x509.Certificate, parentPrivKey *ecdsa.PrivateKey) (map[string]manifest.Secret, error) {
 	// Create a new map so we do not overwrite the entries in the manifest
 	newSecrets := make(map[string]manifest.Secret)
@@ -548,10 +550,12 @@ func (c *Core) setCAData(dnsNames []string, tx store.Transaction) error {
 	return nil
 }
 
+// QuoteError is returned when the quote could not be retrieved.
 type QuoteError struct {
 	err error
 }
 
+// Error returns the error message.
 func (e QuoteError) Error() string {
 	return fmt.Sprintf("failed to get quote: %v", e.err)
 }

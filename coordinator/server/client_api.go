@@ -25,6 +25,7 @@ type GeneralResponse struct {
 	Message string      `json:"message,omitempty"` // only used when status = "error"
 }
 
+// CertQuoteResp wraps the certificate chain and quote for the client to use for remote attestation.
 type CertQuoteResp struct {
 	// A PEM-encoded certificate chain containing the Coordinator's Root CA and Intermediate CA,
 	// which can be used for trust establishment between a client and the Coordinator.
@@ -33,7 +34,7 @@ type CertQuoteResp struct {
 	Quote []byte
 }
 
-// StatusResp is a response
+// StatusResp is a response.
 type StatusResp struct {
 	// 	A status code that matches the internal code of the Coordinator's current state.
 	// example: 2
@@ -43,6 +44,7 @@ type StatusResp struct {
 	StatusMessage string
 }
 
+// ManifestSignatureResp contains the manifest signature, a sha256 hash of the manifest, and the manifest itself.
 type ManifestSignatureResp struct {
 	// The manifest signature - signed by the root ECDSA key.
 	// example: MEYCIQCmkqOP0Jf1v5ZR0vUYNnMxmy8j9aYR3Zdemuz8EXNQ4gIhAMk6MCg00Rowilui/66tHrkETMmkPmOktMKXQqv6NmnN
@@ -55,13 +57,14 @@ type ManifestSignatureResp struct {
 	Manifest []byte
 }
 
-// RecoveryDataResp contains RSA-encrypted AES state sealing key with public key specified by user in manifest
+// RecoveryDataResp contains RSA-encrypted AES state sealing key with public key specified by user in manifest.
 type RecoveryDataResp struct {
 	// An array containing key-value mappings for encrypted secrets to be used for recovering the Coordinator in case of disaster recovery.
 	// The key matches each supplied key from RecoveryKeys in the manifest.
 	RecoverySecrets map[string]string
 }
 
+// RecoveryStatusResp contains the status of the recovery process.
 type RecoveryStatusResp struct {
 	StatusMessage string
 }

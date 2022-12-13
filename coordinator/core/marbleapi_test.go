@@ -224,7 +224,7 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 
 	// Check cert-chain
 	roots := x509.NewCertPool()
-	ms.assert.True(roots.AppendCertsFromPEM([]byte(params.Env[libMarble.MarbleEnvironmentRootCA])), "cannot parse rootCA")
+	ms.assert.True(roots.AppendCertsFromPEM(params.Env[libMarble.MarbleEnvironmentRootCA]), "cannot parse rootCA")
 	opts := x509.VerifyOptions{
 		Roots:     roots,
 		DNSName:   "localhost",
@@ -254,7 +254,7 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 
 	// Validate ttls conf
 	config := make(map[string]map[string]map[string]map[string]interface{})
-	configBytes := []byte(params.Env["MARBLE_TTLS_CONFIG"])
+	configBytes := params.Env["MARBLE_TTLS_CONFIG"]
 	if marbleType == "backendFirst" {
 		ms.assert.NoError(json.Unmarshal(configBytes, &config))
 
@@ -303,7 +303,7 @@ func (ms *marbleSpawner) newMarbleAsync(marbleType string, infraName string, sho
 }
 
 func (ms *marbleSpawner) verifyCertificateFromEnvironment(envName string, params *rpc.Parameters, opts x509.VerifyOptions) x509.Certificate {
-	p, _ := pem.Decode([]byte(params.Env[envName]))
+	p, _ := pem.Decode(params.Env[envName])
 	ms.require.NotNil(p)
 	certificate, err := x509.ParseCertificate(p.Bytes)
 	ms.require.NoError(err)
@@ -513,7 +513,7 @@ func TestSecurityLevelUpdate(t *testing.T) {
 	spawner.newMarble("frontend", "Azure", false)
 }
 
-func (ms *marbleSpawner) shortMarbleActivation(marbleType string, infraName string, shouldSucceed bool) {
+func (ms *marbleSpawner) shortMarbleActivation(marbleType string, infraName string) {
 	cert, csr, _ := util.MustGenerateTestMarbleCredentials()
 
 	// create mock quote using values from the manifest
@@ -598,5 +598,5 @@ func TestActivateWithMissingParameters(t *testing.T) {
 	_, err = clientAPI.SetManifest([]byte(test.ManifestJSONMissingParameters))
 	require.NoError(err)
 
-	spawner.shortMarbleActivation("frontend", "Azure", true)
+	spawner.shortMarbleActivation("frontend", "Azure")
 }

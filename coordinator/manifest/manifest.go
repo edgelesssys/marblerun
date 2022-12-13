@@ -24,14 +24,19 @@ import (
 )
 
 const (
-	SecretTypeCertECDSA    = "cert-ecdsa"
-	SecretTypeCertED25519  = "cert-ed25519"
-	SecretTypeCertRSA      = "cert-rsa"
+	// SecretTypeCertECDSA defines the type of a secret containing an ECDSA certificate.
+	SecretTypeCertECDSA = "cert-ecdsa"
+	// SecretTypeCertED25519 defines the type of a secret containing an ED25519 certificate.
+	SecretTypeCertED25519 = "cert-ed25519"
+	// SecretTypeCertRSA defines the type of a secret containing an RSA certificate.
+	SecretTypeCertRSA = "cert-rsa"
+	// SecretTypeSymmetricKey defines the type of a secret containing a symmetric key.
 	SecretTypeSymmetricKey = "symmetric-key"
-	SecretTypePlain        = "plain"
+	// SecretTypePlain defines the type of a secret containing arbitrary data.
+	SecretTypePlain = "plain"
 )
 
-// Manifest defines the rules of a mesh
+// Manifest defines the rules of a MarbleRun deployment.
 type Manifest struct {
 	// Packages contains the allowed enclaves and their properties.
 	Packages map[string]quote.PackageProperties
@@ -51,7 +56,7 @@ type Manifest struct {
 	TLS map[string]TLStag
 }
 
-// Marble describes a service in the mesh that should be handled and verified by the Coordinator
+// Marble describes a service in the mesh that should be handled and verified by the Coordinator.
 type Marble struct {
 	// Package references one of the allowed enclaves in the manifest.
 	Package string
@@ -64,20 +69,20 @@ type Marble struct {
 	TLS []string
 }
 
-// Parameters contains lists for files, environment variables and commandline arguments that should be passed to an application
+// Parameters contains lists for files, environment variables and commandline arguments that should be passed to an application.
 type Parameters struct {
 	Files map[string]File
 	Env   map[string]File
 	Argv  []string
 }
 
-// File defines data, encoding type, and if data contains templates for a File or Env variable
+// File defines data, encoding type, and if data contains templates for a File or Env variable.
 type File struct {
-	// Data is the data to be saved as a file or environment variable
+	// Data is the data to be saved as a file or environment variable.
 	Data string
-	// Encoding is the initial encoding of Data (as it is written in the manifest). One of {'string', 'base64', 'hex'}
+	// Encoding is the initial encoding of Data (as it is written in the manifest). One of {'string', 'base64', 'hex'}.
 	Encoding string
-	// NoTemplates specifies if Data contains templates which should be filled with information by the Coordinator
+	// NoTemplates specifies if Data contains templates which should be filled with information by the Coordinator.
 	NoTemplates bool
 }
 
@@ -169,15 +174,15 @@ func (f *File) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// TLStag describes which entries should be used to determine the ttls connections of a marble
+// TLStag describes which entries should be used to determine the ttls connections of a marble.
 type TLStag struct {
-	// Outgoing holds a list of all outgoing addresses that should be elevated to TLS
+	// Outgoing holds a list of all outgoing addresses that should be elevated to TLS.
 	Outgoing []TLSTagEntry
-	// Incoming holds a list of all incoming addresses that should be elevated to TLS
+	// Incoming holds a list of all incoming addresses that should be elevated to TLS.
 	Incoming []TLSTagEntry
 }
 
-// TLSTagEntry describes one connection which should be elevated to ttls
+// TLSTagEntry describes one connection which should be elevated to ttls.
 type TLSTagEntry struct {
 	Port              string
 	Addr              string
@@ -185,21 +190,21 @@ type TLSTagEntry struct {
 	DisableClientAuth bool
 }
 
-// User describes the attributes of a MarbleRun user
+// User describes the attributes of a MarbleRun user.
 type User struct {
-	// Certificate is the TLS certificate used by the user for authentication
+	// Certificate is the TLS certificate used by the user for authentication.
 	Certificate string
-	// Roles is a list of roles granting permissions to the user
+	// Roles is a list of roles granting permissions to the user.
 	Roles []string
 }
 
-// Role describes a set of actions permitted for a specific set of resources
+// Role describes a set of actions permitted for a specific set of resources.
 type Role struct {
-	// ResourceType is the type of the affected resources
+	// ResourceType is the type of the affected resources.
 	ResourceType string
-	// ResourceNames is a list of names of type ResourceType
+	// ResourceNames is a list of names of type ResourceType.
 	ResourceNames []string
-	// Actions are the allowed actions for the defined resources
+	// Actions are the allowed actions for the defined resources.
 	Actions []string
 }
 
@@ -457,13 +462,13 @@ type SecretsWrapper struct {
 	Secrets   map[string]Secret
 }
 
-// PrivateKey is a wrapper for a binary private key, which we need for type differentiation in the PEM encoding function
+// PrivateKey is a wrapper for a binary private key, which we need for type differentiation in the PEM encoding function.
 type PrivateKey []byte
 
-// PublicKey is a wrapper for a binary public key, which we need for type differentiation in the PEM encoding function
+// PublicKey is a wrapper for a binary public key, which we need for type differentiation in the PEM encoding function.
 type PublicKey []byte
 
-// Secret defines a structure for storing certificates & encryption keys
+// Secret defines a structure for storing certificates & encryption keys.
 type Secret struct {
 	Type        string
 	Size        uint
@@ -475,7 +480,7 @@ type Secret struct {
 	Public      PublicKey
 }
 
-// Certificate is an x509.Certificate
+// Certificate is a x509.Certificate.
 type Certificate x509.Certificate
 
 // MarshalJSON implements the json.Marshaler interface.
@@ -593,7 +598,7 @@ func EncodeSecretDataToString(data interface{}) (string, error) {
 	}
 }
 
-// ManifestTemplateFuncMap defines the functions which can be specified for secret injections into files in the in Go template format.
+// ManifestFileTemplateFuncMap defines the functions which can be specified for secret injections into files in the in Go template format.
 var ManifestFileTemplateFuncMap = template.FuncMap{
 	"pem":    EncodeSecretDataToPem,
 	"hex":    EncodeSecretDataToHex,

@@ -89,7 +89,7 @@ func newTestClientAPI(t *testing.T) *clientapi.ClientAPI {
 
 	log, err := zap.NewDevelopment()
 	require.NoError(err)
-	defer func() { _ = log.Sync() }()
+	defer log.Sync()
 
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()

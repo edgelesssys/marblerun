@@ -33,7 +33,7 @@ type httpMetrics struct {
 
 // newHttpMetrics creates a new collection of HTTP related Prometheus metrics,
 // and registres them using the given factory.
-func newHttpMetrics(factory *promauto.Factory, namespace string, subsystem string, constLabels map[string]string) *httpMetrics {
+func newHTTPMetrics(factory *promauto.Factory, namespace string, subsystem string, constLabels map[string]string) *httpMetrics {
 	return &httpMetrics{
 		reqest: factory.NewCounterVec(
 			prometheus.CounterOpts{
@@ -119,7 +119,7 @@ func (p *promServeMux) Handle(pattern string, handler http.Handler) *mux.Route {
 		constLabels := map[string]string{
 			"path": pattern,
 		}
-		p.metrics[pattern] = newHttpMetrics(p.promFactory, p.namespace, p.subsystem, constLabels)
+		p.metrics[pattern] = newHTTPMetrics(p.promFactory, p.namespace, p.subsystem, constLabels)
 	}
 	return p.router.Handle(pattern, p.metricsMiddleware(pattern, handler))
 }

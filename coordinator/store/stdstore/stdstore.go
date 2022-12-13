@@ -197,7 +197,7 @@ type StdIterator struct {
 	keys []string
 }
 
-// Next implements the Iterator interface.
+// GetNext implements the Iterator interface.
 func (i *StdIterator) GetNext() (string, error) {
 	if i.idx >= len(i.keys) {
 		return "", fmt.Errorf("index out of range [%d] with length %d", i.idx, len(i.keys))

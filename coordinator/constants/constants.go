@@ -30,7 +30,7 @@ const (
 	SKCoordinatorRootKey = "coordinatorRootKey"
 	// SKCoordinatorIntermediateCert is the key for the Coordinator's intermediate certificate.
 	SKCoordinatorIntermediateCert = "coordinatorIntermediateCert"
-	// SKCoordinatorRootKey is the key for private key corresponding to the Coordinator's root certificate.
+	// SKCoordinatorIntermediateKey is the key for private key corresponding to the Coordinator's root certificate.
 	SKCoordinatorIntermediateKey = "coordinatorIntermediateKey"
 	// SKMarbleRootCert is the key for the root certificate for Marble certificates.
 	SKMarbleRootCert = "marbleRootCert"
@@ -59,7 +59,7 @@ const (
 	// DevModeDefault is the default logging mode.
 	DevModeDefault = "0"
 
-	/// StartupManifest is a path to a manifest to start with instead of waiting for a manifest from the api
+	// StartupManifest is a path to a manifest to start with instead of waiting for a manifest from the api.
 	StartupManifest = "EDG_STARTUP_MANIFEST"
 )
 

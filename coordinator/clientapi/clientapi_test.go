@@ -161,7 +161,7 @@ func TestGetCertQuote(t *testing.T) {
 
 			log, err := zap.NewDevelopment()
 			require.NoError(err)
-			defer func() { _ = log.Sync() }()
+			defer log.Sync()
 
 			api := &ClientAPI{
 				core: tc.core,
@@ -220,7 +220,7 @@ func TestGetManifestSignature(t *testing.T) {
 
 			log, err := zap.NewDevelopment()
 			require.NoError(err)
-			defer func() { _ = log.Sync() }()
+			defer log.Sync()
 
 			api := &ClientAPI{
 				data: tc.data,
@@ -396,7 +396,7 @@ func TestRecover(t *testing.T) {
 
 			log, err := zap.NewDevelopment()
 			require.NoError(err)
-			defer func() { _ = log.Sync() }()
+			defer log.Sync()
 
 			api := &ClientAPI{
 				data:     tc.data,
@@ -442,12 +442,12 @@ func TestWriteSecrets(t *testing.T) {
 }
 
 type fakeCore struct {
-	unlockCalled       bool
-	state              state.State
-	requireStateErr    error
-	advanceStateErr    error
-	getStateMsg        string
-	recoveryErr        error
+	unlockCalled    bool
+	state           state.State
+	requireStateErr error
+	advanceStateErr error
+	getStateMsg     string
+	// recoveryErr        error
 	quote              []byte
 	generateQuoteErr   error
 	getStateErr        error
