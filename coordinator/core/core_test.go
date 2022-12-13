@@ -23,7 +23,6 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/coordinator/state"
 	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
-	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -90,8 +89,8 @@ func TestSeal(t *testing.T) {
 
 	// Check sealing with a new core initialized with the sealed state.
 	c2, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer), recovery, zapLogger, nil, nil)
-	clientAPI, err = clientapi.New(c2.store, c2.recovery, c2, zapLogger)
 	require.NoError(err)
+	clientAPI, err = clientapi.New(c2.store, c2.recovery, c2, zapLogger)
 	require.NoError(err)
 	c2State, err := c2.data.GetState()
 	assert.NoError(err)
@@ -165,86 +164,26 @@ func TestRecover(t *testing.T) {
 	assert.Equal(state.AcceptingMarbles, c2State)
 }
 
-func TestGenerateUsersFromManifest(t *testing.T) {
-	assert := assert.New(t)
-
-	Users := map[string]manifest.User{
-		"Alice": {
-			Certificate: string(test.AdminCert),
-			Roles:       []string{"writeRole", "readRole"},
-		},
-		"Bob": {
-			Certificate: string(test.AdminCert),
-			Roles:       []string{"writeRole", "updateRole"},
-		},
-	}
-	Roles := map[string]manifest.Role{
-		"writeRole": {
-			ResourceType:  "Secrets",
-			ResourceNames: []string{"secretOne"},
-			Actions:       []string{"WriteSecret"},
-		},
-		"readRole": {
-			ResourceType:  "Secrets",
-			ResourceNames: []string{"secretOne", "secretTwo"},
-			Actions:       []string{"readsecret"},
-		},
-		"updateRole": {
-			ResourceType:  "Packages",
-			ResourceNames: []string{"frontend", "backend"},
-			Actions:       []string{"UpdateSecurityVersion"},
-		},
-	}
-	newUsers, err := generateUsersFromManifest(Users, Roles)
-	assert.NoError(err)
-	assert.Equal(len(Users), len(newUsers))
-	for _, newUser := range newUsers {
-		switch newUser.Name() {
-		case "Alice":
-			assert.True(newUser.IsGranted(user.NewPermission(user.PermissionWriteSecret, []string{"secretOne"})))
-			assert.True(newUser.IsGranted(user.NewPermission(user.PermissionReadSecret, []string{"secretOne", "secretTwo"})))
-			assert.False(newUser.IsGranted(user.NewPermission(user.PermissionUpdatePackage, []string{"frontend", "backend"})))
-		case "Bob":
-			assert.True(newUser.IsGranted(user.NewPermission(user.PermissionWriteSecret, []string{"secretOne"})))
-			assert.False(newUser.IsGranted(user.NewPermission(user.PermissionReadSecret, []string{"secretOne", "secretTwo"})))
-			assert.True(newUser.IsGranted(user.NewPermission(user.PermissionUpdatePackage, []string{"frontend", "backend"})))
-		}
-	}
-
-	// try to generate new users with missing certificate, this should always error
-	invalidUsers := map[string]manifest.User{
-		"Alice": {
-			Roles: []string{"writeRole"},
-		},
-		"Bob": {
-			Certificate: string(test.AdminCert),
-			Roles:       []string{"updateRole"},
-		},
-	}
-	_, err = generateUsersFromManifest(invalidUsers, Roles)
-	assert.Error(err)
-}
-
 func TestGenerateSecrets(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
 	// Some secret maps which should represent secret entries from an unmarshaled JSON manifest
 	secretsToGenerate := map[string]manifest.Secret{
-		"rawTest1":                {Type: "symmetric-key", Size: 128, Shared: true},
-		"rawTest2":                {Type: "symmetric-key", Size: 256, Shared: true},
-		"cert-rsa-test":           {Type: "cert-rsa", Size: 2048, ValidFor: 365, Shared: true},
-		"cert-ed25519-test":       {Type: "cert-ed25519", Shared: true},
-		"cert-ecdsa224-test":      {Type: "cert-ecdsa", Size: 224, ValidFor: 14, Shared: true},
-		"cert-ecdsa256-test":      {Type: "cert-ecdsa", Size: 256, ValidFor: 14, Shared: true},
-		"cert-ecdsa384-test":      {Type: "cert-ecdsa", Size: 384, ValidFor: 14, Shared: true},
-		"cert-ecdsa521-test":      {Type: "cert-ecdsa", Size: 521, ValidFor: 14, Shared: true},
-		"cert-rsa-specified-test": {Type: "cert-rsa", Size: 2048, Cert: manifest.Certificate{}, Shared: true},
-		"cert-ed25519-ca-test":    {Type: "cert-ed25519", Cert: manifest.Certificate{IsCA: true}, Shared: true},
+		"rawTest1":                {Type: manifest.SecretTypeSymmetricKey, Size: 128, Shared: true},
+		"rawTest2":                {Type: manifest.SecretTypeSymmetricKey, Size: 256, Shared: true},
+		"cert-rsa-test":           {Type: manifest.SecretTypeCertRSA, Size: 2048, ValidFor: 365, Shared: true},
+		"cert-ed25519-test":       {Type: manifest.SecretTypeCertED25519, Shared: true},
+		"cert-ecdsa224-test":      {Type: manifest.SecretTypeCertECDSA, Size: 224, ValidFor: 14, Shared: true},
+		"cert-ecdsa256-test":      {Type: manifest.SecretTypeCertECDSA, Size: 256, ValidFor: 14, Shared: true},
+		"cert-ecdsa384-test":      {Type: manifest.SecretTypeCertECDSA, Size: 384, ValidFor: 14, Shared: true},
+		"cert-ecdsa521-test":      {Type: manifest.SecretTypeCertECDSA, Size: 521, ValidFor: 14, Shared: true},
+		"cert-rsa-specified-test": {Type: manifest.SecretTypeCertRSA, Size: 2048, Cert: manifest.Certificate{}, Shared: true},
+		"cert-ed25519-ca-test":    {Type: manifest.SecretTypeCertED25519, Cert: manifest.Certificate{IsCA: true}, Shared: true},
 	}
 
 	secretsNoSize := map[string]manifest.Secret{
-		"noSize": {Type: "symmetric-key", Shared: true},
+		"noSize": {Type: manifest.SecretTypeSymmetricKey, Shared: true},
 	}
 
 	secretsInvalidType := map[string]manifest.Secret{
@@ -252,11 +191,11 @@ func TestGenerateSecrets(t *testing.T) {
 	}
 
 	secretsEd25519WrongKeySize := map[string]manifest.Secret{
-		"cert-ed25519-invalidsize": {Type: "cert-ed25519", Size: 384, Shared: true},
+		"cert-ed25519-invalidsize": {Type: manifest.SecretTypeCertED25519, Size: 384, Shared: true},
 	}
 
 	secretsECDSAWrongKeySize := map[string]manifest.Secret{
-		"cert-ecdsa-invalidsize": {Type: "cert-ecdsa", Size: 512, Shared: true},
+		"cert-ecdsa-invalidsize": {Type: manifest.SecretTypeCertECDSA, Size: 512, Shared: true},
 	}
 
 	secretsEmptyMap := map[string]manifest.Secret{}

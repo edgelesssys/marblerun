@@ -350,9 +350,9 @@ func TestParseSecrets(t *testing.T) {
 
 	// Define secrets
 	testSecrets := map[string]manifest.Secret{
-		"mysecret":          {Type: "symmetric-key", Size: 16, Public: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, Private: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}},
-		"anothercoolsecret": {Type: "symmetric-key", Size: 8, Public: []byte{7, 6, 5, 4, 3, 2, 1, 0}, Private: []byte{7, 6, 5, 4, 3, 2, 1, 0}},
-		"testcertificate":   {Type: "cert-rsa", Size: 2048, Cert: manifest.Certificate(*testCert), Public: pubKey, Private: privKey},
+		"mysecret":          {Type: manifest.SecretTypeSymmetricKey, Size: 16, Public: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, Private: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}},
+		"anothercoolsecret": {Type: manifest.SecretTypeSymmetricKey, Size: 8, Public: []byte{7, 6, 5, 4, 3, 2, 1, 0}, Private: []byte{7, 6, 5, 4, 3, 2, 1, 0}},
+		"testcertificate":   {Type: manifest.SecretTypeCertRSA, Size: 2048, Cert: manifest.Certificate(*testCert), Public: pubKey, Private: privKey},
 		"emptysecret":       {},
 	}
 
@@ -431,9 +431,9 @@ func TestParseSecrets(t *testing.T) {
 	assert.Error(err)
 
 	testWrappedSecrets.Secrets = map[string]manifest.Secret{
-		"plainSecret": {Type: "plain", Public: []byte{1, 2, 3}},
-		"nullSecret":  {Type: "plain", Public: []byte{0, 1, 2}},
-		"otherSecret": {Type: "symmetric-key", Public: []byte{4, 5, 6}},
+		"plainSecret": {Type: manifest.SecretTypePlain, Public: []byte{1, 2, 3}},
+		"nullSecret":  {Type: manifest.SecretTypePlain, Public: []byte{0, 1, 2}},
+		"otherSecret": {Type: manifest.SecretTypeSymmetricKey, Public: []byte{4, 5, 6}},
 	}
 
 	// plain secrets are allowed to use string formating

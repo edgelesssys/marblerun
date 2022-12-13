@@ -35,7 +35,7 @@ func TestStoreWrapper(t *testing.T) {
 	rawManifest := []byte(test.ManifestJSON)
 	curState := state.AcceptingManifest
 	testSecret := manifest.Secret{
-		Type:   "symmetric-key",
+		Type:   manifest.SecretTypeSymmetricKey,
 		Size:   16,
 		Shared: true,
 	}

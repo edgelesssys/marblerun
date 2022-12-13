@@ -65,7 +65,7 @@ func TestGetSecrets(t *testing.T) {
 				Status: "success",
 				Data: map[string]interface{}{
 					"plain_secret": map[string]interface{}{
-						"Type":        "plain",
+						"Type":        manifest.SecretTypePlain,
 						"Size":        0,
 						"Shared":      false,
 						"UserDefined": true,
@@ -75,7 +75,7 @@ func TestGetSecrets(t *testing.T) {
 						"Public":      "base64-data",
 					},
 					"secretOne": map[string]interface{}{
-						"Type":        "symmetric-key",
+						"Type":        manifest.SecretTypeSymmetricKey,
 						"Size":        128,
 						"Shared":      true,
 						"UserDefined": false,
@@ -85,7 +85,7 @@ func TestGetSecrets(t *testing.T) {
 						"Public":      "base64-priv-data",
 					},
 					"certShared": map[string]interface{}{
-						"Type":        "cert-rsa",
+						"Type":        manifest.SecretTypeCertRSA,
 						"Size":        2048,
 						"Shared":      true,
 						"UserDefined": false,

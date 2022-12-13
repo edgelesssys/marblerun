@@ -25,9 +25,10 @@ import (
 
 const (
 	SecretTypeCertECDSA    = "cert-ecdsa"
-	SecretTypeED25519      = "cert-ed25519"
+	SecretTypeCertED25519  = "cert-ed25519"
 	SecretTypeCertRSA      = "cert-rsa"
 	SecretTypeSymmetricKey = "symmetric-key"
+	SecretTypePlain        = "plain"
 )
 
 // Manifest defines the rules of a mesh
@@ -334,9 +335,9 @@ func (m Manifest) Check(zaplogger *zap.Logger) error {
 
 	for name, s := range m.Secrets {
 		switch s.Type {
-		case "plain", "symmetric-key":
+		case SecretTypePlain, SecretTypeSymmetricKey:
 			continue
-		case "cert-rsa", "cert-ed25519", "cert-ecdsa":
+		case SecretTypeCertRSA, SecretTypeCertED25519, SecretTypeCertECDSA:
 			if !s.Cert.NotAfter.IsZero() && (s.ValidFor != 0) {
 				return fmt.Errorf("ambigious certificate validity duration for secret: %s, both NotAfter and ValidFor are specified", name)
 			}
@@ -578,7 +579,7 @@ func EncodeSecretDataToBase64(data interface{}) (string, error) {
 func EncodeSecretDataToString(data interface{}) (string, error) {
 	switch secret := data.(type) {
 	case Secret:
-		if secret.Type != "plain" {
+		if secret.Type != SecretTypePlain {
 			return "", errors.New("only secrets of type plain are allowed to use string encoding for environment variables")
 		}
 		if strings.Contains(string(secret.Public), string([]byte{0x00})) {
@@ -634,7 +635,7 @@ func ParseUserSecrets(newSecrets map[string]UserSecret, originalSecrets map[stri
 
 		// check correctness of the supplied secrets
 		switch originalSecret.Type {
-		case "symmetric-key":
+		case SecretTypeSymmetricKey:
 			// verify the length specified in the original manifest is constant
 			if originalSecret.Size == 0 || originalSecret.Size%8 != 0 {
 				return nil, fmt.Errorf("invalid secret size: %s", secretName)
@@ -651,7 +652,7 @@ func ParseUserSecrets(newSecrets map[string]UserSecret, originalSecrets map[stri
 			parsedSecret.Private = singleSecret.Key
 			parsedSecret.Public = singleSecret.Key
 			parsedSecrets[secretName] = parsedSecret
-		case "cert-rsa", "cert-ecdsa", "cert-ed25519":
+		case SecretTypeCertRSA, SecretTypeCertECDSA, SecretTypeCertED25519:
 			// make sure only certificate data was supplied
 			if singleSecret.Key != nil {
 				return nil, fmt.Errorf("secret %s is set to be of type %s but specified values for a symmetric-key", secretName, originalSecret.Type)
@@ -667,7 +668,7 @@ func ParseUserSecrets(newSecrets map[string]UserSecret, originalSecrets map[stri
 				return nil, err
 			}
 			parsedSecrets[secretName] = parsedSecret
-		case "plain":
+		case SecretTypePlain:
 			// make sure only a key data was supplied
 			if singleSecret.Cert.Raw != nil || singleSecret.Private != nil {
 				return nil, fmt.Errorf("secret %s is set to be of type symmetric-key but specified values for a certificate", secretName)

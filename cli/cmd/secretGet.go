@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/spf13/cobra"
 	"github.com/tidwall/gjson"
 )
@@ -148,20 +149,20 @@ func printSecrets(response gjson.Result) error {
 		output = prettyFormat(output, "Type:", secretType.String())
 
 		switch secretType.String() {
-		case "cert-rsa", "cert-ecdsa", "cert-ed25519":
+		case manifest.SecretTypeCertRSA, manifest.SecretTypeCertECDSA, manifest.SecretTypeCertED25519:
 			output = prettyFormat(output, "UserDefined:", userDefined.String())
-			if secretType.String() == "cert-rsa" || secretType.String() == "cert-ecdsa" {
+			if secretType.String() == manifest.SecretTypeCertRSA || secretType.String() == manifest.SecretTypeCertECDSA {
 				output = prettyFormat(output, "Size:", secretSize.String())
 			}
 			output = prettyFormat(output, "Valid For:", validFor.String())
 			output = prettyFormat(output, "Certificate:", cert.String())
 			output = prettyFormat(output, "Public Key:", public.String())
 			output = prettyFormat(output, "Private Key:", private.String())
-		case "symmetric-key":
+		case manifest.SecretTypeSymmetricKey:
 			output = prettyFormat(output, "UserDefined:", userDefined.String())
 			output = prettyFormat(output, "Size:", secretSize.String())
 			output = prettyFormat(output, "Key:", public.String())
-		case "plain":
+		case manifest.SecretTypePlain:
 			output = prettyFormat(output, "Data:", public.String())
 		default:
 			return fmt.Errorf("unknown secret type")

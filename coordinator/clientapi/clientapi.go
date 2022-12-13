@@ -531,7 +531,7 @@ func (a *ClientAPI) UpdateManifest(rawUpdateManifest []byte, updater *user.User)
 		return fmt.Errorf("loading existing shared secrets from store: %w", err)
 	}
 	for name, secret := range secrets {
-		if secret.Shared && secret.Type != "symmetric-key" {
+		if secret.Shared && secret.Type != manifest.SecretTypeSymmetricKey {
 			secretsToRegenerate[name] = secret
 		}
 	}

@@ -500,7 +500,7 @@ func (c *fakeCore) GenerateSecrets(newSecrets map[string]manifest.Secret, _ uuid
 		case manifest.SecretTypeSymmetricKey:
 			secret.Public = bytes.Repeat([]byte{0x00}, 32)
 			secret.Private = bytes.Repeat([]byte{0x01}, 32)
-		case manifest.SecretTypeCertECDSA, manifest.SecretTypeED25519, manifest.SecretTypeCertRSA:
+		case manifest.SecretTypeCertECDSA, manifest.SecretTypeCertED25519, manifest.SecretTypeCertRSA:
 			cert, key, err := crypto.GenerateCert([]string{"localhost"}, name, nil, rootCert, privK)
 			if err != nil {
 				return nil, err

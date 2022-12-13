@@ -17,16 +17,13 @@ import (
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
-	"crypto/x509/pkix"
-	"encoding/pem"
 	"errors"
 	"fmt"
-	"math"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/edgelesssys/marblerun/coordinator/constants"
+	corecrypto "github.com/edgelesssys/marblerun/coordinator/crypto"
 	"github.com/edgelesssys/marblerun/coordinator/events"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
@@ -37,7 +34,6 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/store"
 	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
 	"github.com/edgelesssys/marblerun/coordinator/store/wrapper"
-	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -253,59 +249,6 @@ func (c *Core) GetTLSMarbleRootCertificate(clientHello *tls.ClientHelloInfo) (*t
 	return util.TLSCertFromDER(marbleRootCert.Raw, intermediatePrivK), nil
 }
 
-func generateCert(dnsNames []string, commonName string, privk *ecdsa.PrivateKey, parentCertificate *x509.Certificate, parentPrivateKey *ecdsa.PrivateKey) (*x509.Certificate, *ecdsa.PrivateKey, error) {
-	// Generate private key
-	var err error
-	if privk == nil {
-		privk, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-		if err != nil {
-			return nil, nil, err
-		}
-	}
-
-	// Certifcate parameter
-	notBefore := time.Now()
-	notAfter := notBefore.Add(math.MaxInt64)
-
-	serialNumber, err := util.GenerateCertificateSerialNumber()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// TODO: what else do we need to set here?
-	// Do we need x509.KeyUsageKeyEncipherment?
-	template := x509.Certificate{
-		SerialNumber: serialNumber,
-		Subject: pkix.Name{
-			CommonName: commonName,
-		},
-		DNSNames:    dnsNames,
-		IPAddresses: util.DefaultCertificateIPAddresses,
-		NotBefore:   notBefore,
-		NotAfter:    notAfter,
-
-		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
-		BasicConstraintsValid: true,
-		IsCA:                  true,
-	}
-
-	if parentCertificate == nil {
-		parentCertificate = &template
-		parentPrivateKey = privk
-	}
-	certRaw, err := x509.CreateCertificate(rand.Reader, &template, parentCertificate, &privk.PublicKey, parentPrivateKey)
-	if err != nil {
-		return nil, nil, err
-	}
-	cert, err := x509.ParseCertificate(certRaw)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return cert, privk, nil
-}
-
 // GetQuote returns the quote of the Coordinator.
 func (c *Core) GetQuote() []byte {
 	return c.quote
@@ -392,7 +335,7 @@ func (c *Core) GenerateSecrets(secrets map[string]manifest.Secret, id uuid.UUID,
 		c.log.Info("generating secret", zap.String("name", name), zap.String("type", secret.Type), zap.Uint("size", secret.Size))
 		switch secret.Type {
 		// Raw = Symmetric Key
-		case "symmetric-key":
+		case manifest.SecretTypeSymmetricKey:
 			// Check secret size
 			if secret.Size == 0 || secret.Size%8 != 0 {
 				return nil, fmt.Errorf("invalid secret size: %v", name)
@@ -422,7 +365,7 @@ func (c *Core) GenerateSecrets(secrets map[string]manifest.Secret, id uuid.UUID,
 
 			newSecrets[name] = secret
 
-		case "cert-rsa":
+		case manifest.SecretTypeCertRSA:
 			// Generate keys
 			privKey, err := rsa.GenerateKey(rand.Reader, int(secret.Size))
 			if err != nil {
@@ -436,7 +379,7 @@ func (c *Core) GenerateSecrets(secrets map[string]manifest.Secret, id uuid.UUID,
 				return nil, err
 			}
 
-		case "cert-ed25519":
+		case manifest.SecretTypeCertED25519:
 			if secret.Size != 0 {
 				return nil, fmt.Errorf("invalid secret size for cert-ed25519, none is expected. given: %v", name)
 			}
@@ -454,7 +397,7 @@ func (c *Core) GenerateSecrets(secrets map[string]manifest.Secret, id uuid.UUID,
 				return nil, err
 			}
 
-		case "cert-ecdsa":
+		case manifest.SecretTypeCertECDSA:
 			var curve elliptic.Curve
 
 			switch secret.Size {
@@ -570,42 +513,17 @@ func (c *Core) generateCertificateForSecret(secret manifest.Secret, parentCertif
 	return secret, nil
 }
 
-// generateUsersFromManifest creates users and permissions from a map of manifest.User.
-func generateUsersFromManifest(rawUsers map[string]manifest.User, roles map[string]manifest.Role) ([]*user.User, error) {
-	// Parse & write X.509 user data from manifest
-	users := make([]*user.User, 0, len(rawUsers))
-	for name, userData := range rawUsers {
-		block, _ := pem.Decode([]byte(userData.Certificate))
-		if block == nil {
-			return nil, fmt.Errorf("received invalid certificate for user %s", name)
-		}
-		cert, err := x509.ParseCertificate(block.Bytes)
-		if err != nil {
-			return nil, err
-		}
-		newUser := user.NewUser(name, cert)
-		for _, assignedRole := range userData.Roles {
-			for _, action := range roles[assignedRole].Actions {
-				// correctness of roles has been verified by manifest.Check()
-				newUser.Assign(user.NewPermission(strings.ToLower(action), roles[assignedRole].ResourceNames))
-			}
-		}
-		users = append(users, newUser)
-	}
-	return users, nil
-}
-
 func (c *Core) setCAData(dnsNames []string, tx store.Transaction) error {
-	rootCert, rootPrivK, err := generateCert(dnsNames, constants.CoordinatorName, nil, nil, nil)
+	rootCert, rootPrivK, err := corecrypto.GenerateCert(dnsNames, constants.CoordinatorName, nil, nil, nil)
 	if err != nil {
 		return err
 	}
 	// Creating a cross-signed intermediate cert. See https://github.com/edgelesssys/marblerun/issues/175
-	intermediateCert, intermediatePrivK, err := generateCert(dnsNames, constants.CoordinatorIntermediateName, nil, rootCert, rootPrivK)
+	intermediateCert, intermediatePrivK, err := corecrypto.GenerateCert(dnsNames, constants.CoordinatorIntermediateName, nil, rootCert, rootPrivK)
 	if err != nil {
 		return err
 	}
-	marbleRootCert, _, err := generateCert(dnsNames, constants.CoordinatorIntermediateName, intermediatePrivK, nil, nil)
+	marbleRootCert, _, err := corecrypto.GenerateCert(dnsNames, constants.CoordinatorIntermediateName, intermediatePrivK, nil, nil)
 	if err != nil {
 		return err
 	}
