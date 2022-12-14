@@ -445,7 +445,3 @@ Incoming connections are defined by `Port`. For services used by external client
     }
 }
 ```
-
-## Infrastructures
-
-Future versions of MarbleRun will allow you to define certain trusted infrastructures and hardware configurations under `Infrastructures`.

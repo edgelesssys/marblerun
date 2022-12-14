@@ -99,11 +99,6 @@ const sidebars = {
           label: 'Supported runtimes',
           id: 'features/runtimes',
         },
-        {
-          type: 'doc',
-          label: 'Planned features',
-          id: 'features/planned-features',
-        },
       ],
     },
     {
