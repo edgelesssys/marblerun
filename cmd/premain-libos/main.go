@@ -74,7 +74,6 @@ func detectLibOS() (int, error) {
 
 	// Clean utsname
 	sysname := strings.ReplaceAll(string(utsname.Sysname[:]), "\x00", "")
-	nodename := strings.ReplaceAll(string(utsname.Nodename[:]), "\x00", "")
 	release := strings.ReplaceAll(string(utsname.Release[:]), "\x00", "")
 	version := strings.ReplaceAll(string(utsname.Version[:]), "\x00", "")
 	machine := strings.ReplaceAll(string(utsname.Machine[:]), "\x00", "")
@@ -88,7 +87,7 @@ func detectLibOS() (int, error) {
 	// Gramine detection
 	// This looks like a general Linux kernel name, making it harder to detect... But it's unlikely someone is running SGX code on Linux 3.10.0.
 	// Taken from: https://github.com/gramineproject/gramine/blob/master/LibOS/shim/src/sys/shim_uname.c
-	if sysname == "Linux" && nodename == "localhost" && release == "3.10.0" && version == "1" && machine == "x86_64" {
+	if sysname == "Linux" && release == "3.10.0" && version == "1" && machine == "x86_64" {
 		return gramine, nil
 	}
 
