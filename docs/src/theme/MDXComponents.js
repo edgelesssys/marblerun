@@ -3,6 +3,7 @@ import React from 'react';
 import MDXComponents from '@theme-original/MDXComponents';
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import EnterpriseBanner from '@site/src/components/enterprise-banner.md';
 
 export default {
     // Re-use the default mapping
@@ -11,4 +12,5 @@ export default {
     // `Highlight` will receive all props that were passed to `highlight` in MDX
     tabs: Tabs,
     tabItem: TabItem,
+    enterpriseBanner: EnterpriseBanner,
 };

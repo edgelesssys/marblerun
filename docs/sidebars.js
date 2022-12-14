@@ -76,7 +76,7 @@ const sidebars = {
         },
         {
           type: 'doc',
-          label: 'Recovery',
+          label: 'State and recovery',
           id: 'features/recovery',
         },
         {
