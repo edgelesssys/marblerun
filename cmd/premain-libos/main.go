@@ -86,7 +86,7 @@ func detectLibOS() (int, error) {
 
 	// Gramine detection
 	// This looks like a general Linux kernel name, making it harder to detect... But it's unlikely someone is running SGX code on Linux 3.10.0.
-	// Taken from: https://github.com/gramineproject/gramine/blob/master/LibOS/shim/src/sys/shim_uname.c
+	// Taken from: https://github.com/gramineproject/gramine/blob/c83ec08f10cdbb3a258d18b118dd95602a55abc9/libos/src/sys/libos_uname.c
 	if sysname == "Linux" && release == "3.10.0" && version == "1" && machine == "x86_64" {
 		return gramine, nil
 	}
