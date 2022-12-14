@@ -8,7 +8,6 @@ MarbleRun is written entirely in Go and builds on Edgeless RT, which is written 
 ### Control plane
 
 * [`coordinator`](coordinator):
-  * [`config`](coordinator/config): Environment variables for configuration
   * [`core`](coordinator/core): Provides the gRPC API for Marbles and HTTP-REST API for clients
   * [`quote`](coordinator/quote): Provides remote attestation quotes
   * [`rpc`](coordinator/rpc): Protobuf definitions for the control plane <-> data plane communication
