@@ -3,12 +3,12 @@
 Different situations require the [recovery](../features/recovery.md) of the Coordinator.
 If the Coordinator fails to unseal its state, it will enter recovery mode.
 
-You need the corresponding private key to the [`RecoveryKeys` defined in the manifest](define-manifest.md#recoverykeys), and the [recovery secret returned to you during the initial upload of the manifest](set-manifest.md).
+You need the corresponding private key to the [`RecoveryKeys` defined in the manifest](define-manifest.md#recoverykeys) and the [recovery secret returned to you during the initial upload of the manifest](set-manifest.md).
 
 :::info
 
 If you don't want or can't recover the old state, you can also dismiss it by [uploading a new manifest](set-manifest.md).
-The old state will be overwritten on disk and the `/recover` endpoint won't be available anymore.
+The old state will be overwritten on disk, and the `/recover` endpoint won't be available anymore.
 
 :::
 
@@ -40,10 +40,10 @@ era -c coordinator-era.json -h $MARBLERUN -output-root marblerun-temp.pem
 curl --cacert marblerun-temp.pem --data-binary @recovery_key_decrypted https://$MARBLERUN/recover
 ```
 
-On success, the Coordinator applies the sealed state again. If the Coordinator can't restore the state with the uploaded key, an error will be returned in the logs and the `/recover` endpoint will stay open for further interaction.
+On success, the Coordinator applies the sealed state again. If the Coordinator can't restore the state with the uploaded key, an error will be returned in the logs, and the `/recover` endpoint will stay open for further interaction.
 
 ## Multi-party recovery
 
 <enterpriseBanner/>
 
-If you've [configured your MarbleRun deployment for multi-party recovery](define-manifest.md#multi-party-recovery), send each party the corresponding [recovery secret](set-manifest.md). Ask them to perform the steps above. Once all parties have uploaded their secrets, the Coordinator recovers the sealed state and continues operation.
+If you've [configured your MarbleRun deployment for multi-party recovery](define-manifest.md#multi-party-recovery), send each party the corresponding [recovery secret](set-manifest.md). Ask them to perform the steps above. Once all parties have uploaded their secrets, the Coordinator recovers the sealed state and continues its operations.
