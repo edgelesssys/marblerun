@@ -49,12 +49,25 @@ func (s *StdStore) Get(request string) ([]byte, error) {
 
 // Put saves a value in StdStore by Type and Name.
 func (s *StdStore) Put(request string, requestData []byte) error {
-	tx, err := s.BeginTransaction()
+	tx, err := s.beginTransaction()
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 	if err := tx.Put(request, requestData); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// Delete removes a value from StdStore.
+func (s *StdStore) Delete(request string) error {
+	tx, err := s.beginTransaction()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err := tx.Delete(request); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -75,16 +88,7 @@ func (s *StdStore) Iterator(prefix string) (store.Iterator, error) {
 
 // BeginTransaction starts a new transaction.
 func (s *StdStore) BeginTransaction() (store.Transaction, error) {
-	tx := StdTransaction{store: s, data: map[string][]byte{}}
-	s.txmux.Lock()
-
-	s.mux.Lock()
-	for k, v := range s.data {
-		tx.data[k] = v
-	}
-	s.mux.Unlock()
-
-	return &tx, nil
+	return s.beginTransaction()
 }
 
 // LoadState loads sealed data into StdStore's data.
@@ -120,6 +124,19 @@ func (s *StdStore) SetRecoveryData(recoveryData []byte) {
 // SetEncryptionKey sets the encryption key for sealing and unsealing.
 func (s *StdStore) SetEncryptionKey(encryptionKey []byte) error {
 	return s.sealer.SetEncryptionKey(encryptionKey)
+}
+
+func (s *StdStore) beginTransaction() (*StdTransaction, error) {
+	tx := StdTransaction{store: s, data: map[string][]byte{}}
+	s.txmux.Lock()
+
+	s.mux.Lock()
+	for k, v := range s.data {
+		tx.data[k] = v
+	}
+	s.mux.Unlock()
+
+	return &tx, nil
 }
 
 func (s *StdStore) commit(data map[string][]byte) error {
@@ -160,6 +177,12 @@ func (t *StdTransaction) Get(request string) ([]byte, error) {
 // Put saves a value.
 func (t *StdTransaction) Put(request string, requestData []byte) error {
 	t.data[request] = requestData
+	return nil
+}
+
+// Delete removes a value.
+func (t *StdTransaction) Delete(request string) error {
+	delete(t.data, request)
 	return nil
 }
 
