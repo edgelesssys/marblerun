@@ -48,7 +48,7 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer 
 	}
 	defer log.Sync() // flushes buffer, if any
 
-	log.Info("starting coordinator", zap.String("version", Version), zap.String("commit", GitCommit))
+	log.Info("Starting coordinator", zap.String("version", Version), zap.String("commit", GitCommit))
 
 	// fetching env vars
 	dnsNamesString := util.Getenv(constants.DNSNames, constants.DNSNamesDefault)
@@ -93,9 +93,13 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer 
 	}
 
 	clientServer, err := clientapi.New(store, recovery, co, log)
+	if err != nil {
+		log.Fatal("Creating client server failed", zap.Error(err))
+	}
+
 	// startup manifest
 	if startupManifest != "" {
-		log.Info("setting startup manifest")
+		log.Info("Setting startup manifest")
 		content, err := os.ReadFile(startupManifest)
 		if err != nil {
 			log.Fatal("Cannot read startup manifest", zap.Error(err))
@@ -115,7 +119,7 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer 
 	go server.RunClientServer(mux, clientServerAddr, clientServerTLSConfig, log)
 
 	// run marble server
-	log.Info("starting the marble server")
+	log.Info("Starting the marble server")
 	addrChan := make(chan string)
 	errChan := make(chan error)
 	go server.RunMarbleServer(co, meshServerAddr, addrChan, errChan, log, promRegistry)
@@ -127,7 +131,7 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer 
 			}
 			return
 		case grpcAddr := <-addrChan:
-			log.Info("started gRPC server", zap.String("grpcAddr", grpcAddr))
+			log.Info("Started gRPC server", zap.String("grpcAddr", grpcAddr))
 		}
 	}
 }
