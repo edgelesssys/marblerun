@@ -163,7 +163,7 @@ Please note that this only works on a best-effort basis and may not instantly wo
 While suggestions should be made for every valid TOML Gramine configuration, changes can only be performed for non-hierarchically sorted configurations. as the official Gramine examples.
 The unmodified manifest is saved as a backup under the old path with an added `.bak` suffix, allowing you to try out and roll back any changes performed.
 
-Remember, you need to create a [MarbleRun manifest](../workflows/define-manifest.md) in addition to the Gramine manifest. Adding Gramine packages to your manifest is straightforward and follows the same principles as any other SGX enclave. If you configured the arguments to your Gramine application through the [Gramine manifest](https://gramine.readthedocs.io/en/latest/manifest-syntax.html#command-line-arguments) before, you need to transfer those to the [MarbleRun manifest](../workflows/define-manifest.md#manifestmarbles).
+Remember, you need to create a [MarbleRun manifest](../workflows/define-manifest.md) in addition to the Gramine manifest. Adding Gramine packages to your manifest is straightforward and follows the same principles as any other SGX enclave. If you configured the arguments to your Gramine application through the [Gramine manifest](https://gramine.readthedocs.io/en/latest/manifest-syntax.html#command-line-arguments) before, you need to transfer those to the [MarbleRun manifest](../workflows/define-manifest.md#marbles).
 
   **Usage**
 

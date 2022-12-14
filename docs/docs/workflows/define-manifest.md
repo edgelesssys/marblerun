@@ -94,7 +94,7 @@ Marbles represent the actual services in your mesh. They're defined in the `Marb
 }
 ```
 
-Each Marble corresponds to a `Package` (see the [previous section](#manifestpackages)) and defines a set of optional [`TLS` Tags](#manifesttls) and `Parameters`:
+Each Marble corresponds to a [`Package`](#packages) and defines a set of optional [`TLS` Tags](#tls) and `Parameters`:
 
 * `Files`: Files and their contents
 * `Env`: Environment variables
@@ -165,7 +165,7 @@ Finally, the optional field `MaxActivations` can be used to restrict the number 
 
 ## Secrets
 
-In the [previous section](#manifestmarbles), we discussed how certain cryptographic keys and certificates can be injected into a Marble's `Parameters` using Go Templates. In addition, MarbleRun also allows for the specification of custom cryptographic keys and certificates in the `Secrets` section. A typical `Secrets` section looks like the following.
+In the [previous section](#marbles), we discussed how certain cryptographic keys and certificates can be injected into a Marble's `Parameters` using Go Templates. In addition, MarbleRun also allows for the specification of custom cryptographic keys and certificates in the `Secrets` section. A typical `Secrets` section looks like the following.
 
 ```javascript
 {
@@ -270,7 +270,7 @@ Keys and certificates defined in the `Secrets` section can be injected via `Para
 
 `{{ <encoding> .Secrets.<name>.<part> }}`
 
-Refer to the [previous section](#manifestmarbles) for a list of supported encodings. `<part>` can be any of the following.
+Refer to the [previous section](#marbles) for a list of supported encodings. `<part>` can be any of the following.
 
 * *empty*: for secret type `symmetric-key`, returns the symmetric key. For secret type `plain`, returns the secret data. For other types, returns the public key.
 * `Cert`: returns the certificate.
@@ -410,7 +410,7 @@ The TLS entry holds a list of tags which can be used in a Marble's definition. E
 
 Outgoing connections are defined by `Port` and `Addr`. For `Addr`, you can use both IP addresses and domains, e.g., the DNS names of other services.
 
-Incoming connections are defined by `Port`. For services used by external clients, you must disable client authentication by setting `DisableClientAuth` to `true` and set `Cert`. Use the name of a certificate defined in the [Secrets section](#manifestsecrets).
+Incoming connections are defined by `Port`. For services used by external clients, you must disable client authentication by setting `DisableClientAuth` to `true` and set `Cert`. Use the name of a certificate defined in the [Secrets section](#secrets).
 
 ```javascript
 {

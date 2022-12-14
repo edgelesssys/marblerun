@@ -4,8 +4,8 @@ To ensure the confidentiality of a deployed application, MarbleRun uses a manife
 Yet, updates play an important role to ensure your software stays secure. To avoid having to redeploy your application from scratch, MarbleRun allows uploading a separate "update manifest" which increases the minimum `SecurityVersion` of one or multiple already deployed packages. After such an update is performed, an old version of a defined software package can't be loaded anymore under the current manifest.
 
 ## Requirements
-To deploy an update, you need the certificate/private key pair belonging to a user from the `Users` section of the original manifest, as described in ["defining a manifest."](../workflows/define-manifest.md#manifestmarbles)
-Furthermore the user needs to be [permitted to update](../workflows/define-manifest.md#manifestroles) the chosen packages.
+To deploy an update, you need the certificate/private key pair belonging to a user from the `Users` section of the original manifest, as described in ["defining a manifest."](../workflows/define-manifest.md#marbles)
+Furthermore the user needs to be [permitted to update](../workflows/define-manifest.md#roles) the chosen packages.
 
 If no user with the permission for updates has been initially set up, no updates can be applied.
 
