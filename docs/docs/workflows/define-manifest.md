@@ -372,7 +372,7 @@ The same applies for setting user-defined secrets.
 
 ## RecoveryKeys
 
-The optional entry `RecoveryKeys` holds PEM-encoded RSA public keys which can be used to recover a failed MarbleRun deployment. (The process of recovering a MarbleRun instance is described in our [recovery chapter](../features/recovery.md)). So far, only one public key entry is supported in the current release of MarbleRun.
+The optional entry `RecoveryKeys` holds PEM-encoded RSA public keys that can be used to [recover](../features/recovery.md) a failed MarbleRun deployment.
 
 ```javascript
 {
@@ -385,17 +385,38 @@ The optional entry `RecoveryKeys` holds PEM-encoded RSA public keys which can be
 }
 ```
 
-This key can be generated with the help of OpenSSL.
+You can generate this key with OpenSSL:
 
 ```bash
 openssl genrsa -out private_key.pem 4096
-openssl rsa -in private_key.pem -outform PEM -pubout -out public_key.pem
+openssl rsa -in private_key.pem -pubout -out public_key.pem
 ```
 
 Use the following command to preserve newlines correctly:
 
 ```bash
-awk 'NF {sub(/\r/, ""); printf "%s\\n",$0;}' public_key.pem
+awk 1 ORS='\\n' public_key.pem
+```
+
+### Multi-party recovery
+
+<enterpriseBanner/>
+
+To enable [multi-party recovery](../features/recovery.md#multi-party-recovery), first ask the other parties to generate key pairs as described above and receive their public keys via an authenticated channel.
+
+Add all public keys to the manifest:
+
+```javascript
+{
+    //...
+    "RecoveryKeys":
+    {
+        "admin": "-----BEGIN PUBLIC KEY-----\n...",
+        "dataProtectionOfficer": "-----BEGIN PUBLIC KEY-----\n...",
+        "collaborator": "-----BEGIN PUBLIC KEY-----\n..."
+    }
+    //...
+}
 ```
 
 ## TLS

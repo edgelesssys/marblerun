@@ -1,26 +1,19 @@
 # Setting a manifest
 
-The manifest is a JSON document that defines which services span the mesh and how they should be configured.
-It further defines what Infrastructure providers are allowed.
-You can set a manifest through MarbleRun's Client HTTP REST API.
-The endpoint for all manifest operations is `/manifest`.
+After you've [defined a manifest](define-manifest.md), use it to initialize your MarbleRun deployment.
 
-See [Defining a manifest](../workflows/define-manifest.md) to learn how to define a manifest.
-
-To set the manifest we can use the command line interface, which performs remote attestation on the Coordinator before uploading the manifest.
-For further information see [Verifying a deployment](../workflows/verification.md)
+Set the manifest using the MarbleRun CLI:
 
 ```bash
 marblerun manifest set manifest.json $MARBLERUN
 ```
 
-If the manifest contains a `RecoveryKeys` entry, you will receive a JSON reply including a recovery secret, encrypted with the public key supplied in `RecoveryKeys`. The reply will look like this, with `[base64]` as your encrypted recovery secret.
-This secret is the Coordinator's state-encryption key.
+The command first performs [remote attestation on the Coordinator](../features/attestation.md#coordinator-deployment) before uploading the manifest.
 
-`{"EncryptionKey":"[base64]"}`
+If the manifest contains a `RecoveryKeys` entry, you will receive a JSON reply including the recovery secrets, encrypted with the public keys supplied in `RecoveryKeys`.
 
 :::caution
 
-It's important that you keep this value stored somewhere safe. Without it, you won't be able to perform a recovery step in case the SGX seal key changed.
+Keep these values somewhere safe. Without it, you can't recover the Coordinator in case the SGX seal key changed.
 
 :::
