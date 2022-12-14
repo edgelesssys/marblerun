@@ -62,7 +62,7 @@ func (m *Mutator) HandleMutate(w http.ResponseWriter, r *http.Request) {
 }
 
 // mutate handles the creation of json patches for pods.
-func mutate(body []byte, coordAddr string, domainName string, resourceKey string) ([]byte, error) {
+func mutate(body []byte, coordAddr, domainName, resourceKey string) ([]byte, error) {
 	admReviewReq := v1.AdmissionReview{}
 	if err := json.Unmarshal(body, &admReviewReq); err != nil {
 		log.Println("Unable to mutate request: invalid admission review")
@@ -149,12 +149,21 @@ func mutate(body []byte, coordAddr string, domainName string, resourceKey string
 		// check if we need to supply a UUID
 		if !envIsSet(container.Env, corev1.EnvVar{Name: envMarbleUUIDFile}) {
 			needUUIDVolume = true
-
 			newEnvVars = append(newEnvVars, corev1.EnvVar{
 				Name:  envMarbleUUIDFile,
 				Value: fmt.Sprintf("/%s-uid/uuid-file", marbleType),
 			})
+		}
 
+		// Verify no volume mount exists for the UUID file
+		for _, volumeMount := range container.VolumeMounts {
+			if volumeMount.MountPath == fmt.Sprintf("/%s-uid", marbleType) {
+				needUUIDVolume = false
+				break
+			}
+		}
+
+		if needUUIDVolume {
 			// If we need to set the uuid env variable we also need to create a volume mount, which the variable points to
 			container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
 				MountPath: fmt.Sprintf("/%s-uid", marbleType),

@@ -257,3 +257,75 @@ func TestErrorsOnInvalidPod(t *testing.T) {
 	_, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:2001", "cluster.local", "kubernetes.azure.com/sgx_epc_mem_in_MiB")
 	require.Error(err, "did not fail when sending invalid request")
 }
+
+func TestDoesNotCreateDoubleVolumeMounts(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	rawJSON := `{
+		"apiVersion": "admission.k8s.io/v1",
+		"kind": "AdmissionReview",
+		"request": {
+			"uid": "705ab4f5-6393-11e8-b7cc-42010a800002",
+			"namespace": "injectable",
+			"operation": "CREATE",
+			"object": {
+				"kind": "Pod",
+				"apiVersion": "v1",
+				"metadata": {
+					"name": "testpod",
+					"creationTimestamp": null,
+					"labels": {
+						"name": "testpod",
+						"marblerun/marbletype": "test",
+						"marblerun/marblecontainer": "marble-test",
+						"marblerun/resource-injection": "enabled"
+					}
+				},
+				"spec": {
+					"containers": [
+						{
+							"name": "marble-test",
+							"image": "test:image",
+							"command": [
+								"/bin/bash"
+							],
+							"imagePullPolicy": "IfNotPresent",
+							"volumeMounts": [
+								{
+									"mountPath": "/test-uid",
+									"name": "test-uid"
+								}
+							]
+						}
+					],
+					"volumes": [
+						{
+							"name": "marble-test-uid",
+							"volumeSource": {
+								"hostPath": {
+									"path": "/test-uid"
+								}
+							}
+						}
+					]
+				},
+				"status": {}
+			},
+			"oldObject": null,
+			"dryRun": false,
+			"options": {
+				"kind": "CreateOptions",
+				"apiVersion": "meta.k8s.io/v1"
+			}
+		}
+	}`
+
+	response, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:2001", "cluster.local", "kubernetes.azure.com/sgx_epc_mem_in_MiB")
+	require.NoError(err)
+
+	r := v1.AdmissionReview{}
+	require.NoError(json.Unmarshal(response, &r))
+	assert.NotContains(string(r.Response.Patch), `"path":"/spec/containers/0/volumeMounts`)
+	assert.NotContains(string(r.Response.Patch), `"op":"add","path":"/spec/volumes"`)
+}
