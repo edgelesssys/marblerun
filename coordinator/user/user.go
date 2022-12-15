@@ -13,9 +13,10 @@ import (
 
 // Permissions available to users.
 const (
-	PermissionWriteSecret   = "writesecret"
-	PermissionReadSecret    = "readsecret"
-	PermissionUpdatePackage = "updatesecurityversion"
+	PermissionWriteSecret    = "writesecret"
+	PermissionReadSecret     = "readsecret"
+	PermissionUpdatePackage  = "updatesecurityversion"
+	PermissionUpdateManifest = "updatemanifest"
 )
 
 // User represents a privileged user of MarbleRun.
