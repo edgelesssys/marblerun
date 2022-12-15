@@ -333,6 +333,15 @@ func (m Manifest) Check(zaplogger *zap.Logger) error {
 					return fmt.Errorf("manifest specifies read permission for role %s and per-marble-unique secret %s", roleName, secretName)
 				}
 			}
+		case "Manifest":
+			if len(role.ResourceNames) != 0 {
+				return fmt.Errorf("role %s: resource names are not allowed for type Manifest", roleName)
+			}
+			for _, action := range role.Actions {
+				if !(strings.ToLower(action) == user.PermissionUpdateManifest) {
+					return fmt.Errorf("unknown action: %s for type Manifest in role: %s", action, roleName)
+				}
+			}
 		default:
 			return fmt.Errorf("unrecognized resource type: %s for role: %s", role, roleName)
 		}
@@ -344,7 +353,7 @@ func (m Manifest) Check(zaplogger *zap.Logger) error {
 			continue
 		case SecretTypeCertRSA, SecretTypeCertED25519, SecretTypeCertECDSA:
 			if !s.Cert.NotAfter.IsZero() && (s.ValidFor != 0) {
-				return fmt.Errorf("ambigious certificate validity duration for secret: %s, both NotAfter and ValidFor are specified", name)
+				return fmt.Errorf("ambiguous certificate validity duration for secret: %s, both NotAfter and ValidFor are specified", name)
 			}
 		default:
 			return fmt.Errorf("unknown type: %s for secret: %s", s.Type, name)
