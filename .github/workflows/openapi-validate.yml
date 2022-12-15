@@ -1,6 +1,6 @@
 name: Create and validate OpenAPI specification
-on:
-  pull_request:
+on: {}
+#  pull_request:
 
 jobs:
   make-openapi-spec:

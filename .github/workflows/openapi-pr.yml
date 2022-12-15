@@ -1,8 +1,8 @@
 name: Create Pull Request for OpenAPI update
-on:
-  push:
-    branches:
-    - action/update-swagger
+on: {}
+  #push:
+  #  branches:
+  #  - action/update-swagger
 
 jobs:
   pull-request:
