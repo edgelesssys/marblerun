@@ -41,7 +41,7 @@ and need permissions in the manifest to read the requested secrets.
 		Args: cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hostName := args[len(args)-1]
-			caCert, err := verifyCoordinator(hostName, eraConfig, insecureEra)
+			caCert, err := verifyCoordinator(hostName, eraConfig, insecureEra, acceptedTCBStatuses)
 			if err != nil {
 				return err
 			}

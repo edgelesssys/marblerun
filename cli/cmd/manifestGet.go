@@ -31,7 +31,7 @@ Optionally get the manifests signature or merge updates into the displayed manif
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hostName := args[0]
-			cert, err := verifyCoordinator(hostName, eraConfig, insecureEra)
+			cert, err := verifyCoordinator(hostName, eraConfig, insecureEra, acceptedTCBStatuses)
 			if err != nil {
 				return err
 			}

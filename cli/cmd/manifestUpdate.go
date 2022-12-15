@@ -35,7 +35,7 @@ An admin certificate specified in the original manifest is needed to verify the 
 			manifestFile := args[0]
 			hostName := args[1]
 
-			caCert, err := verifyCoordinator(hostName, eraConfig, insecureEra)
+			caCert, err := verifyCoordinator(hostName, eraConfig, insecureEra, acceptedTCBStatuses)
 			if err != nil {
 				return err
 			}

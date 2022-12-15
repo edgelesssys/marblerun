@@ -42,7 +42,7 @@ and need permissions in the manifest to write the requested secrets.
 			secretFile := args[0]
 			hostName := args[1]
 
-			caCert, err := verifyCoordinator(hostName, eraConfig, insecureEra)
+			caCert, err := verifyCoordinator(hostName, eraConfig, insecureEra, acceptedTCBStatuses)
 			if err != nil {
 				return err
 			}

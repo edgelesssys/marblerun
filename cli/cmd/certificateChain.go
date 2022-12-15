@@ -24,7 +24,7 @@ func newCertificateChain() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hostName := args[0]
-			return cliCertificateChain(hostName, certFilename, eraConfig, insecureEra)
+			return cliCertificateChain(hostName, certFilename, eraConfig, insecureEra, acceptedTCBStatuses)
 		},
 		SilenceUsage: true,
 	}
@@ -35,8 +35,8 @@ func newCertificateChain() *cobra.Command {
 }
 
 // cliCertificateChain gets the certificate chain of the MarbleRun Coordinator.
-func cliCertificateChain(host string, output string, configFilename string, insecure bool) error {
-	certs, err := verifyCoordinator(host, configFilename, insecure)
+func cliCertificateChain(host string, output string, configFilename string, insecure bool, acceptedTCBStatuses []string) error {
+	certs, err := verifyCoordinator(host, configFilename, insecure, acceptedTCBStatuses)
 	if err != nil {
 		return err
 	}

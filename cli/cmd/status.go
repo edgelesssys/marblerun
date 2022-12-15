@@ -48,7 +48,7 @@ func newStatusCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hostname := args[0]
-			cert, err := verifyCoordinator(hostname, eraConfig, insecureEra)
+			cert, err := verifyCoordinator(hostname, eraConfig, insecureEra, acceptedTCBStatuses)
 			if err != nil {
 				return err
 			}
@@ -59,6 +59,7 @@ func newStatusCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(&eraConfig, "era-config", "", "Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github")
 	cmd.Flags().BoolVarP(&insecureEra, "insecure", "i", false, "Set to skip quote verification, needed when running in simulation mode")
+	cmd.PersistentFlags().StringSliceVar(&acceptedTCBStatuses, "accepted-tcb-statuses", []string{"UpToDate"}, "Coma seperated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded)")
 
 	return cmd
 }

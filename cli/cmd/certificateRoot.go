@@ -24,7 +24,7 @@ func newCertificateRoot() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hostName := args[0]
-			return cliCertificateRoot(hostName, certFilename, eraConfig, insecureEra)
+			return cliCertificateRoot(hostName, certFilename, eraConfig, insecureEra, acceptedTCBStatuses)
 		},
 		SilenceUsage: true,
 	}
@@ -35,9 +35,9 @@ func newCertificateRoot() *cobra.Command {
 }
 
 // cliCertificateRoot gets the root certificate of the MarbleRun Coordinator and saves it to a file.
-func cliCertificateRoot(host string, output string, configFilename string, insecure bool) error {
+func cliCertificateRoot(host string, output string, configFilename string, insecure bool, acceptedTCBStatuses []string) error {
 	var certs []*pem.Block
-	certs, err := verifyCoordinator(host, configFilename, insecure)
+	certs, err := verifyCoordinator(host, configFilename, insecure, acceptedTCBStatuses)
 	if err != nil {
 		return err
 	}
