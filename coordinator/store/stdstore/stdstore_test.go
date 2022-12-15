@@ -167,3 +167,24 @@ func TestStdStoreRollback(t *testing.T) {
 	_, err = store.Get("another:input")
 	assert.Error(err)
 }
+
+func TestStdStoreDelete(t *testing.T) {
+	assert := assert.New(t)
+
+	str := New(&seal.MockSealer{})
+
+	inputName := "test:input"
+	inputData := []byte("test data")
+
+	assert.NoError(str.Delete(inputName))
+
+	assert.NoError(str.Put(inputName, inputData))
+	out, err := str.Get("test:input")
+	assert.NoError(err)
+	assert.Equal(inputData, out)
+
+	assert.NoError(str.Delete(inputName))
+	_, err = str.Get(inputName)
+	assert.Error(err)
+	assert.ErrorIs(err, store.ErrValueUnset)
+}
