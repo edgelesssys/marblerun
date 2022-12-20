@@ -75,10 +75,16 @@ func (m Marble) Equal(other Marble) bool {
 	if len(m.TLS) != len(other.TLS) {
 		return false
 	}
-	sort.Strings(m.TLS)
-	sort.Strings(other.TLS)
-	for i := range m.TLS {
-		if m.TLS[i] != other.TLS[i] {
+
+	mTLS := make([]string, len(m.TLS))
+	copy(mTLS, m.TLS)
+	otherTLS := make([]string, len(other.TLS))
+	copy(otherTLS, other.TLS)
+
+	sort.Strings(mTLS)
+	sort.Strings(otherTLS)
+	for i := range mTLS {
+		if mTLS[i] != otherTLS[i] {
 			return false
 		}
 	}
@@ -251,18 +257,27 @@ func (t TLStag) Equal(other TLStag) bool {
 		return false
 	}
 
-	sortTLSTagEntries(other.Incoming)
-	sortTLSTagEntries(other.Outgoing)
-	sortTLSTagEntries(t.Incoming)
-	sortTLSTagEntries(t.Outgoing)
+	otherIncoming := make([]TLSTagEntry, len(other.Incoming))
+	copy(otherIncoming, other.Incoming)
+	otherOutgoing := make([]TLSTagEntry, len(other.Outgoing))
+	copy(otherOutgoing, other.Outgoing)
+	tOutgoing := make([]TLSTagEntry, len(t.Outgoing))
+	copy(tOutgoing, t.Outgoing)
+	tIncoming := make([]TLSTagEntry, len(t.Incoming))
+	copy(tIncoming, t.Incoming)
 
-	for i, tag := range t.Outgoing {
-		if !tag.Equal(other.Outgoing[i]) {
+	sortTLSTagEntries(otherIncoming)
+	sortTLSTagEntries(otherOutgoing)
+	sortTLSTagEntries(tIncoming)
+	sortTLSTagEntries(tOutgoing)
+
+	for i, tag := range tOutgoing {
+		if !tag.Equal(otherOutgoing[i]) {
 			return false
 		}
 	}
-	for i, tag := range t.Incoming {
-		if !tag.Equal(other.Incoming[i]) {
+	for i, tag := range tIncoming {
+		if !tag.Equal(otherIncoming[i]) {
 			return false
 		}
 	}
@@ -288,6 +303,7 @@ type TLSTagEntry struct {
 	DisableClientAuth bool
 }
 
+// Equal returns true if two TLSTagEntries are equal.
 func (t TLSTagEntry) Equal(other TLSTagEntry) bool {
 	return t.Addr == other.Addr && t.Port == other.Port && t.Cert == other.Cert && t.DisableClientAuth == other.DisableClientAuth
 }
@@ -606,12 +622,8 @@ func (s Secret) Equal(other Secret) bool {
 	cert := x509.Certificate(s.Cert)
 	otherCert := x509.Certificate(other.Cert)
 
-	return s.Type == other.Type &&
-		s.Size == other.Size &&
-		s.Shared == other.Shared &&
-		s.UserDefined == other.UserDefined &&
+	return s.EqualDefinition(other) &&
 		cert.Equal(&otherCert) &&
-		s.ValidFor == other.ValidFor &&
 		bytes.Equal(s.Private, other.Private) &&
 		bytes.Equal(s.Public, other.Public)
 }

@@ -137,23 +137,6 @@ func TestEqual(t *testing.T) {
 			},
 			wantEqual: false,
 		},
-		"user2 lacks user1 resource permissions": {
-			user1: &User{
-				name:        "test-user",
-				certificate: &x509.Certificate{Raw: []byte("test")},
-				permissions: map[string]Permission{
-					"perm-1": NewPermission("perm-1", []string{"res-1", "res-2", "res-3"}),
-				},
-			},
-			user2: &User{
-				name:        "test-user",
-				certificate: &x509.Certificate{Raw: []byte("test")},
-				permissions: map[string]Permission{
-					"perm-1": NewPermission("perm-1", []string{"res-1", "res-2"}),
-				},
-			},
-			wantEqual: false,
-		},
 		"user1 has more permissions than user2": {
 			user1: &User{
 				name:        "test-user",
@@ -168,24 +151,6 @@ func TestEqual(t *testing.T) {
 				certificate: &x509.Certificate{Raw: []byte("test")},
 				permissions: map[string]Permission{
 					"perm-1": NewPermission("perm-1", []string{"res-1", "res-2"}),
-				},
-			},
-			wantEqual: false,
-		},
-		"user2 has more permissions than user1": {
-			user1: &User{
-				name:        "test-user",
-				certificate: &x509.Certificate{Raw: []byte("test")},
-				permissions: map[string]Permission{
-					"perm-1": NewPermission("perm-1", []string{"res-1", "res-2"}),
-				},
-			},
-			user2: &User{
-				name:        "test-user",
-				certificate: &x509.Certificate{Raw: []byte("test")},
-				permissions: map[string]Permission{
-					"perm-1": NewPermission("perm-1", []string{"res-1", "res-2"}),
-					"perm-2": NewPermission("perm-2", []string{"res-3", "res-4"}),
 				},
 			},
 			wantEqual: false,
@@ -229,6 +194,7 @@ func TestEqual(t *testing.T) {
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			assert.Equal(t, tc.wantEqual, tc.user1.Equal(tc.user2))
+			assert.Equal(t, tc.wantEqual, tc.user2.Equal(tc.user1))
 		})
 	}
 }

@@ -558,6 +558,7 @@ func TestTLSTagEqual(t *testing.T) {
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			assert.Equal(t, tc.wantEqual, tc.a.Equal(tc.b))
+			assert.Equal(t, tc.wantEqual, tc.b.Equal(tc.a))
 		})
 	}
 }
@@ -602,6 +603,7 @@ func TestFileEqual(t *testing.T) {
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			assert.Equal(t, tc.wantEqual, tc.a.Equal(tc.b))
+			assert.Equal(t, tc.wantEqual, tc.b.Equal(tc.a))
 		})
 	}
 }
@@ -662,6 +664,7 @@ func TestParametersEqual(t *testing.T) {
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			assert.Equal(t, tc.wantEqual, tc.a.Equal(tc.b))
+			assert.Equal(t, tc.wantEqual, tc.b.Equal(tc.a))
 		})
 	}
 }
@@ -729,6 +732,7 @@ func TestMarbleEqual(t *testing.T) {
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			assert.Equal(t, tc.wantEqual, tc.a.Equal(tc.b))
+			assert.Equal(t, tc.wantEqual, tc.b.Equal(tc.a))
 		})
 	}
 }
@@ -845,6 +849,9 @@ func TestSecretEqual(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			assert.Equal(t, tc.wantEqual, tc.a.Equal(tc.b))
 			assert.Equal(t, tc.wantEqualDefinition, tc.a.EqualDefinition(tc.b))
+
+			assert.Equal(t, tc.wantEqual, tc.b.Equal(tc.a))
+			assert.Equal(t, tc.wantEqualDefinition, tc.b.EqualDefinition(tc.a))
 		})
 	}
 }
