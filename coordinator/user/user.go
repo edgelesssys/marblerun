@@ -107,6 +107,26 @@ func (u *User) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// Equal returns true if both users are the same.
+func (u *User) Equal(other *User) bool {
+	// Check if the other user is granted
+	// all permissions of the current user
+	for _, perm := range u.permissions {
+		if !other.IsGranted(perm) {
+			return false
+		}
+	}
+	// Check if the current user is granted
+	// all permissions of the other user
+	for _, perm := range other.permissions {
+		if !u.IsGranted(perm) {
+			return false
+		}
+	}
+
+	return u.name == other.name && u.certificate.Equal(other.certificate)
+}
+
 // Permission represents the permissions of a MarbleRun user.
 type Permission struct {
 	PermissionID string
