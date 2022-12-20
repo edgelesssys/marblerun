@@ -7,6 +7,7 @@
 package quote
 
 import (
+	"bytes"
 	"strings"
 
 	"github.com/google/go-cmp/cmp"
@@ -40,6 +41,29 @@ type InfrastructureProperties struct {
 	RootCA []byte
 }
 
+// Equal returns true if both packages are equal.
+func (p PackageProperties) Equal(other PackageProperties) bool {
+	if p.Debug != other.Debug || p.UniqueID != other.UniqueID || p.SignerID != other.SignerID {
+		return false
+	}
+
+	if p.ProductID == nil && other.ProductID != nil || p.ProductID != nil && other.ProductID == nil {
+		return false
+	}
+	if p.ProductID != nil && other.ProductID != nil && *p.ProductID != *other.ProductID {
+		return false
+	}
+
+	if p.SecurityVersion == nil && other.SecurityVersion != nil || p.SecurityVersion != nil && other.SecurityVersion == nil {
+		return false
+	}
+	if p.SecurityVersion != nil && other.SecurityVersion != nil && *p.SecurityVersion != *other.SecurityVersion {
+		return false
+	}
+
+	return true
+}
+
 // IsCompliant checks if the given package properties comply with the requirements.
 func (required PackageProperties) IsCompliant(given PackageProperties) bool {
 	if required.Debug != given.Debug {
@@ -57,6 +81,29 @@ func (required PackageProperties) IsCompliant(given PackageProperties) bool {
 	if required.SecurityVersion != nil && *required.SecurityVersion > *given.SecurityVersion {
 		return false
 	}
+	return true
+}
+
+// Equal returns true if both infrastructures are equal.
+func (p InfrastructureProperties) Equal(other InfrastructureProperties) bool {
+	if !bytes.Equal(p.CPUSVN, other.CPUSVN) || !bytes.Equal(p.RootCA, other.RootCA) {
+		return false
+	}
+
+	if p.QESVN == nil && other.QESVN != nil || p.QESVN != nil && other.QESVN == nil {
+		return false
+	}
+	if p.QESVN != nil && other.QESVN != nil && *p.QESVN != *other.QESVN {
+		return false
+	}
+
+	if p.PCESVN == nil && other.PCESVN != nil || p.PCESVN != nil && other.PCESVN == nil {
+		return false
+	}
+	if p.PCESVN != nil && other.PCESVN != nil && *p.PCESVN != *other.PCESVN {
+		return false
+	}
+
 	return true
 }
 

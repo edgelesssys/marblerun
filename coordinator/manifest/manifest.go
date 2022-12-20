@@ -15,6 +15,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"text/template"
 
@@ -69,11 +70,63 @@ type Marble struct {
 	TLS []string
 }
 
+// Equal returns true if two Marble definitions are equal.
+func (m Marble) Equal(other Marble) bool {
+	if len(m.TLS) != len(other.TLS) {
+		return false
+	}
+	sort.Strings(m.TLS)
+	sort.Strings(other.TLS)
+	for i := range m.TLS {
+		if m.TLS[i] != other.TLS[i] {
+			return false
+		}
+	}
+
+	return m.Package == other.Package &&
+		m.MaxActivations == other.MaxActivations &&
+		m.Parameters.Equal(other.Parameters)
+}
+
 // Parameters contains lists for files, environment variables and commandline arguments that should be passed to an application.
 type Parameters struct {
 	Files map[string]File
 	Env   map[string]File
 	Argv  []string
+}
+
+// Equal returns true if two Parameters are equal.
+// This checks if all Files and Env definitions are equal,
+// and if the Argv lists are in the same order, and contain the same arguments.
+func (p Parameters) Equal(other Parameters) bool {
+	if len(p.Argv) != len(other.Argv) {
+		return false
+	}
+	for i := range p.Argv {
+		if p.Argv[i] != other.Argv[i] {
+			return false
+		}
+	}
+
+	if len(p.Files) != len(other.Files) {
+		return false
+	}
+	for k, v := range p.Files {
+		if !v.Equal(other.Files[k]) {
+			return false
+		}
+	}
+
+	if len(p.Env) != len(other.Env) {
+		return false
+	}
+	for k, v := range p.Env {
+		if !v.Equal(other.Env[k]) {
+			return false
+		}
+	}
+
+	return true
 }
 
 // File defines data, encoding type, and if data contains templates for a File or Env variable.
@@ -84,6 +137,13 @@ type File struct {
 	Encoding string
 	// NoTemplates specifies if Data contains templates which should be filled with information by the Coordinator.
 	NoTemplates bool
+}
+
+// Equal returns true if two File definitions are equal.
+func (f File) Equal(other File) bool {
+	return f.Data == other.Data &&
+		f.Encoding == other.Encoding &&
+		f.NoTemplates == other.NoTemplates
 }
 
 // MarshalJSON implements the json.Marshaler interface.
@@ -182,12 +242,54 @@ type TLStag struct {
 	Incoming []TLSTagEntry
 }
 
+// Equal checks if two TLStags are equal.
+func (t TLStag) Equal(other TLStag) bool {
+	if len(t.Outgoing) != len(other.Outgoing) {
+		return false
+	}
+	if len(t.Incoming) != len(other.Incoming) {
+		return false
+	}
+
+	sortTLSTagEntries(other.Incoming)
+	sortTLSTagEntries(other.Outgoing)
+	sortTLSTagEntries(t.Incoming)
+	sortTLSTagEntries(t.Outgoing)
+
+	for i, tag := range t.Outgoing {
+		if !tag.Equal(other.Outgoing[i]) {
+			return false
+		}
+	}
+	for i, tag := range t.Incoming {
+		if !tag.Equal(other.Incoming[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func sortTLSTagEntries(entries []TLSTagEntry) {
+	sort.SliceStable(entries, func(i, j int) bool {
+		if entries[i].Addr == entries[j].Addr {
+			return entries[i].Port < entries[j].Port
+		}
+
+		return entries[i].Addr < entries[j].Addr
+	})
+}
+
 // TLSTagEntry describes one connection which should be elevated to ttls.
 type TLSTagEntry struct {
 	Port              string
 	Addr              string
 	Cert              string
 	DisableClientAuth bool
+}
+
+func (t TLSTagEntry) Equal(other TLSTagEntry) bool {
+	return t.Addr == other.Addr && t.Port == other.Port && t.Cert == other.Cert && t.DisableClientAuth == other.DisableClientAuth
 }
 
 // User describes the attributes of a MarbleRun user.
@@ -427,6 +529,15 @@ func (m Manifest) GenerateUsers() ([]*user.User, error) {
 	return users, nil
 }
 
+// IsUpdateManifest returns true if the manifest specifies only packages.
+// The Manifest still needs to be check for consistency, e.g. by calling CheckUpdate.
+func (m Manifest) IsUpdateManifest() bool {
+	return len(m.Infrastructures) == 0 && len(m.Marbles) == 0 &&
+		len(m.Users) == 0 && len(m.RecoveryKeys) == 0 &&
+		len(m.Roles) == 0 && len(m.Secrets) == 0 &&
+		len(m.TLS) == 0
+}
+
 // CheckUpdate checks if the manifest is consistent and only contains supported values.
 func (m Manifest) CheckUpdate(originalPackages map[string]quote.PackageProperties) error {
 	if len(m.Packages) <= 0 {
@@ -487,6 +598,33 @@ type Secret struct {
 	ValidFor    uint
 	Private     PrivateKey
 	Public      PublicKey
+}
+
+// Equal returns true if the two secrets are equal.
+// This checks if the secrets are equal in all fields.
+func (s Secret) Equal(other Secret) bool {
+	cert := x509.Certificate(s.Cert)
+	otherCert := x509.Certificate(other.Cert)
+
+	return s.Type == other.Type &&
+		s.Size == other.Size &&
+		s.Shared == other.Shared &&
+		s.UserDefined == other.UserDefined &&
+		cert.Equal(&otherCert) &&
+		s.ValidFor == other.ValidFor &&
+		bytes.Equal(s.Private, other.Private) &&
+		bytes.Equal(s.Public, other.Public)
+}
+
+// EqualDefinition returns true if the two secrets are equal.
+// This only checks if the secret definitions are equal,
+// i.e. if the secrets are equal in all fields except for the actual secret data.
+func (s Secret) EqualDefinition(other Secret) bool {
+	return s.Type == other.Type &&
+		s.Size == other.Size &&
+		s.Shared == other.Shared &&
+		s.UserDefined == other.UserDefined &&
+		s.ValidFor == other.ValidFor
 }
 
 // Certificate is a x509.Certificate.

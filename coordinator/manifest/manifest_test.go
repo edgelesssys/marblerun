@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/stretchr/testify/assert"
@@ -346,4 +347,504 @@ func TestGenerateUsers(t *testing.T) {
 	}
 	_, err = mnf.GenerateUsers()
 	assert.Error(err)
+}
+
+func TestIsUpdateManifest(t *testing.T) {
+	one := uint(1)
+	packages := map[string]quote.PackageProperties{
+		"foo": {
+			SecurityVersion: &one,
+		},
+	}
+
+	testCases := map[string]struct {
+		manifest Manifest
+		wantTrue bool
+	}{
+		"empty": {
+			manifest: Manifest{},
+			wantTrue: true,
+		},
+		"update": {
+			manifest: Manifest{
+				Packages: packages,
+			},
+			wantTrue: true,
+		},
+		"contains marbles": {
+			manifest: Manifest{
+				Packages: packages,
+				Marbles: map[string]Marble{
+					"foo": {
+						Package: "foo",
+					},
+				},
+			},
+		},
+		"contains secrets": {
+			manifest: Manifest{
+				Packages: packages,
+				Secrets: map[string]Secret{
+					"foo": {
+						Type: SecretTypePlain,
+					},
+				},
+			},
+		},
+		"contains users": {
+			manifest: Manifest{
+				Packages: packages,
+				Users: map[string]User{
+					"foo": {
+						Certificate: string(test.AdminCert),
+					},
+				},
+			},
+		},
+		"contains roles": {
+			manifest: Manifest{
+				Packages: packages,
+				Roles: map[string]Role{
+					"foo": {
+						ResourceType:  "Secrets",
+						ResourceNames: []string{"foo"},
+						Actions:       []string{"ReadSecret"},
+					},
+				},
+			},
+		},
+		"contains recovery keys": {
+			manifest: Manifest{
+				Packages: packages,
+				RecoveryKeys: map[string]string{
+					"foo": "bar",
+				},
+			},
+		},
+		"contains TLS tags": {
+			manifest: Manifest{
+				Packages: packages,
+				TLS: map[string]TLStag{
+					"foo": {
+						Outgoing: []TLSTagEntry{},
+						Incoming: []TLSTagEntry{},
+					},
+				},
+			},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, tc.wantTrue, tc.manifest.IsUpdateManifest())
+		})
+	}
+}
+
+func TestTLSTagEqual(t *testing.T) {
+	testCases := map[string]struct {
+		a, b      TLStag
+		wantEqual bool
+	}{
+		"equal minimal": {
+			a:         TLStag{Outgoing: []TLSTagEntry{{Addr: "foo"}}},
+			b:         TLStag{Outgoing: []TLSTagEntry{{Addr: "foo"}}},
+			wantEqual: true,
+		},
+		"equal multiple entries": {
+			a: TLStag{
+				Outgoing: []TLSTagEntry{
+					{Addr: "foo", Port: "123"},
+					{Addr: "bar", Port: "456"},
+					{Addr: "foo", Port: "456"},
+				},
+			},
+			b: TLStag{
+				Outgoing: []TLSTagEntry{
+					{Addr: "bar", Port: "456"},
+					{Addr: "foo", Port: "456"},
+					{Addr: "foo", Port: "123"},
+				},
+			},
+			wantEqual: true,
+		},
+		"equal full": {
+			a: TLStag{
+				Outgoing: []TLSTagEntry{
+					{
+						Addr:              "foo",
+						Port:              "123",
+						Cert:              "cert-1",
+						DisableClientAuth: true,
+					},
+				},
+				Incoming: []TLSTagEntry{
+					{
+						Addr:              "bar",
+						Port:              "456",
+						Cert:              "cert-2",
+						DisableClientAuth: true,
+					},
+				},
+			},
+			b: TLStag{
+				Outgoing: []TLSTagEntry{
+					{
+						Addr:              "foo",
+						Port:              "123",
+						Cert:              "cert-1",
+						DisableClientAuth: true,
+					},
+				},
+				Incoming: []TLSTagEntry{
+					{
+						Addr:              "bar",
+						Port:              "456",
+						Cert:              "cert-2",
+						DisableClientAuth: true,
+					},
+				},
+			},
+			wantEqual: true,
+		},
+		"different outgoing addr": {
+			a: TLStag{Outgoing: []TLSTagEntry{{Addr: "foo"}}},
+			b: TLStag{Outgoing: []TLSTagEntry{{Addr: "bar"}}},
+		},
+		"different incoming addr": {
+			a: TLStag{Incoming: []TLSTagEntry{{Addr: "foo"}}},
+			b: TLStag{Incoming: []TLSTagEntry{{Addr: "bar"}}},
+		},
+		"different outgoing port": {
+			a: TLStag{Outgoing: []TLSTagEntry{{
+				Addr: "foo",
+				Port: "123",
+			}}},
+			b: TLStag{Outgoing: []TLSTagEntry{{
+				Addr: "foo",
+				Port: "456",
+			}}},
+		},
+		"different outgoing cert": {
+			a: TLStag{Outgoing: []TLSTagEntry{{
+				Addr: "foo",
+				Cert: "cert-1",
+			}}},
+			b: TLStag{Outgoing: []TLSTagEntry{{
+				Addr: "foo",
+				Cert: "cert-2",
+			}}},
+		},
+		"different outgoing disable client auth": {
+			a: TLStag{Outgoing: []TLSTagEntry{{
+				Addr:              "foo",
+				DisableClientAuth: true,
+			}}},
+			b: TLStag{Outgoing: []TLSTagEntry{{
+				Addr:              "foo",
+				DisableClientAuth: false,
+			}}},
+		},
+		"different number of outgoing entries": {
+			a: TLStag{Outgoing: []TLSTagEntry{{Addr: "foo"}}},
+			b: TLStag{Outgoing: []TLSTagEntry{{Addr: "foo"}, {Addr: "bar"}}},
+		},
+		"different number of incoming entries": {
+			a: TLStag{Incoming: []TLSTagEntry{{Addr: "foo"}}},
+			b: TLStag{Incoming: []TLSTagEntry{{Addr: "foo"}, {Addr: "bar"}}},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, tc.wantEqual, tc.a.Equal(tc.b))
+		})
+	}
+}
+
+func TestFileEqual(t *testing.T) {
+	testCases := map[string]struct {
+		a, b      File
+		wantEqual bool
+	}{
+		"equal minimal": {
+			a:         File{Data: "foo"},
+			b:         File{Data: "foo"},
+			wantEqual: true,
+		},
+		"equal full": {
+			a: File{
+				Data:        "foo",
+				Encoding:    "hex",
+				NoTemplates: false,
+			},
+			b: File{
+				Data:        "foo",
+				Encoding:    "hex",
+				NoTemplates: false,
+			},
+			wantEqual: true,
+		},
+		"different data": {
+			a: File{Data: "foo"},
+			b: File{Data: "bar"},
+		},
+		"different encoding": {
+			a: File{Encoding: "hex"},
+			b: File{Encoding: "base64"},
+		},
+		"different templating policy": {
+			a: File{NoTemplates: true},
+			b: File{NoTemplates: false},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, tc.wantEqual, tc.a.Equal(tc.b))
+		})
+	}
+}
+
+func TestParametersEqual(t *testing.T) {
+	testCases := map[string]struct {
+		a, b      Parameters
+		wantEqual bool
+	}{
+		"equal minimal": {
+			a:         Parameters{Argv: []string{"foo"}},
+			b:         Parameters{Argv: []string{"foo"}},
+			wantEqual: true,
+		},
+		"equal full": {
+			a: Parameters{
+				Argv:  []string{"foo"},
+				Env:   map[string]File{"bar": {Data: "baz"}},
+				Files: map[string]File{"bar": {Data: "baz"}},
+			},
+			b: Parameters{
+				Argv:  []string{"foo"},
+				Env:   map[string]File{"bar": {Data: "baz"}},
+				Files: map[string]File{"bar": {Data: "baz"}},
+			},
+			wantEqual: true,
+		},
+		"different argv": {
+			a: Parameters{Argv: []string{"foo"}},
+			b: Parameters{Argv: []string{"bar"}},
+		},
+		"different argv length": {
+			a: Parameters{Argv: []string{"foo"}},
+			b: Parameters{Argv: []string{"foo", "bar"}},
+		},
+		"different argv order": {
+			a: Parameters{Argv: []string{"foo", "bar"}},
+			b: Parameters{Argv: []string{"bar", "foo"}},
+		},
+		"different env": {
+			a: Parameters{Env: map[string]File{"foo": {Data: "bar"}}},
+			b: Parameters{Env: map[string]File{"foo": {Data: "baz"}}},
+		},
+		"different env length": {
+			a: Parameters{Env: map[string]File{"foo": {Data: "bar"}}},
+			b: Parameters{Env: map[string]File{"foo": {Data: "bar"}, "bar": {Data: "baz"}}},
+		},
+		"different files": {
+			a: Parameters{Files: map[string]File{"foo": {Data: "bar"}}},
+			b: Parameters{Files: map[string]File{"foo": {Data: "baz"}}},
+		},
+		"different files length": {
+			a: Parameters{Files: map[string]File{"foo": {Data: "bar"}, "bar": {Data: "baz"}}},
+			b: Parameters{Files: map[string]File{"foo": {Data: "bar"}}},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, tc.wantEqual, tc.a.Equal(tc.b))
+		})
+	}
+}
+
+func TestMarbleEqual(t *testing.T) {
+	testCases := map[string]struct {
+		a, b      Marble
+		wantEqual bool
+	}{
+		"equal minimal": {
+			a:         Marble{Package: "foo"},
+			b:         Marble{Package: "foo"},
+			wantEqual: true,
+		},
+		"equal full": {
+			a: Marble{
+				Package:        "foo",
+				MaxActivations: 3,
+				Parameters: Parameters{
+					Argv:  []string{"foo"},
+					Env:   map[string]File{"bar": {Data: "baz"}},
+					Files: map[string]File{"bar": {Data: "baz"}},
+				},
+				TLS: []string{"foo", "bar"},
+			},
+			b: Marble{
+				Package:        "foo",
+				MaxActivations: 3,
+				Parameters: Parameters{
+					Argv:  []string{"foo"},
+					Env:   map[string]File{"bar": {Data: "baz"}},
+					Files: map[string]File{"bar": {Data: "baz"}},
+				},
+				TLS: []string{"foo", "bar"},
+			},
+			wantEqual: true,
+		},
+		"different package": {
+			a: Marble{Package: "foo"},
+			b: Marble{Package: "bar"},
+		},
+		"different max activations": {
+			a: Marble{MaxActivations: 3},
+			b: Marble{MaxActivations: 4},
+		},
+		"different parameters": {
+			a: Marble{Parameters: Parameters{Argv: []string{"foo"}}},
+			b: Marble{Parameters: Parameters{Argv: []string{"bar"}}},
+		},
+		"different tls": {
+			a: Marble{TLS: []string{"foo"}},
+			b: Marble{TLS: []string{"bar"}},
+		},
+		"different tls length": {
+			a: Marble{TLS: []string{"foo"}},
+			b: Marble{TLS: []string{"foo", "bar"}},
+		},
+		"different tls order": {
+			a:         Marble{TLS: []string{"foo", "bar"}},
+			b:         Marble{TLS: []string{"bar", "foo"}},
+			wantEqual: true,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, tc.wantEqual, tc.a.Equal(tc.b))
+		})
+	}
+}
+
+func TestSecretEqual(t *testing.T) {
+	testCases := map[string]struct {
+		a, b                Secret
+		wantEqual           bool
+		wantEqualDefinition bool
+	}{
+		"equal symmetric key": {
+			a: Secret{
+				Type: SecretTypeSymmetricKey,
+				Size: 32,
+			},
+			b: Secret{
+				Type: SecretTypeSymmetricKey,
+				Size: 32,
+			},
+			wantEqual:           true,
+			wantEqualDefinition: true,
+		},
+		"symmetric key different size": {
+			a: Secret{
+				Type: SecretTypeSymmetricKey,
+				Size: 32,
+			},
+			b: Secret{
+				Type: SecretTypeSymmetricKey,
+				Size: 64,
+			},
+		},
+		"different secret data": {
+			a: Secret{
+				Type:    SecretTypeSymmetricKey,
+				Size:    32,
+				Private: bytes.Repeat([]byte{0x00}, 32),
+				Public:  bytes.Repeat([]byte{0x00}, 32),
+			},
+			b: Secret{
+				Type:    SecretTypeSymmetricKey,
+				Size:    32,
+				Private: bytes.Repeat([]byte{0xFF}, 32),
+				Public:  bytes.Repeat([]byte{0xFF}, 32),
+			},
+			wantEqual:           false,
+			wantEqualDefinition: true,
+		},
+		"equal cert": {
+			a: Secret{
+				Type:     SecretTypeCertRSA,
+				Size:     2048,
+				ValidFor: 356,
+			},
+			b: Secret{
+				Type:     SecretTypeCertRSA,
+				Size:     2048,
+				ValidFor: 356,
+			},
+			wantEqual:           true,
+			wantEqualDefinition: true,
+		},
+		"cert different size": {
+			a: Secret{
+				Type:     SecretTypeCertRSA,
+				Size:     2048,
+				ValidFor: 356,
+			},
+			b: Secret{
+				Type:     SecretTypeCertRSA,
+				Size:     4096,
+				ValidFor: 356,
+			},
+		},
+		"cert different validity": {
+			a: Secret{
+				Type:     SecretTypeCertRSA,
+				Size:     2048,
+				ValidFor: 356,
+			},
+			b: Secret{
+				Type:     SecretTypeCertRSA,
+				Size:     2048,
+				ValidFor: 365,
+			},
+		},
+		"cert secret data does not matter": {
+			a: Secret{
+				Type:     SecretTypeCertRSA,
+				Size:     2048,
+				ValidFor: 356,
+				Cert:     Certificate{Raw: []byte("foo")},
+				Private:  bytes.Repeat([]byte{0x00}, 32),
+				Public:   bytes.Repeat([]byte{0x00}, 32),
+			},
+			b: Secret{
+				Type:     SecretTypeCertRSA,
+				Size:     2048,
+				ValidFor: 356,
+				Cert:     Certificate{Raw: []byte("bar")},
+				Private:  bytes.Repeat([]byte{0xFF}, 32),
+				Public:   bytes.Repeat([]byte{0xFF}, 32),
+			},
+			wantEqual:           false,
+			wantEqualDefinition: true,
+		},
+		"different type": {
+			a: Secret{Type: SecretTypeSymmetricKey},
+			b: Secret{Type: SecretTypeCertRSA},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, tc.wantEqual, tc.a.Equal(tc.b))
+			assert.Equal(t, tc.wantEqualDefinition, tc.a.EqualDefinition(tc.b))
+		})
+	}
 }
