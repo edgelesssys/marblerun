@@ -31,5 +31,5 @@ In contrast, distributed confidential apps require a more comprehensive approach
 In summary, MarbleRun takes the following approach.
 
 * Instead of relying on separate sidecars, MarbleRun injects the data-plane logic directly into the application logic running inside secure enclaves. Through this tight coupling, secure connections always terminate inside secure enclaves. We refer to containers running such enclaves as *Marbles*.
-* Before bootstrapping Marbles, MarbleRun verifies their integrity using Intel SGX remote attestation primitives. This way, MarbleRun is able to guarantee that the topology of a  distributed confidential app adheres to the cluster's effective *manifest*. Such a manifest is defined in simple JSON and is set once.
+* Before bootstrapping Marbles, MarbleRun verifies their integrity using Intel SGX remote attestation primitives. This way, MarbleRun is able to guarantee that the topology of a  distributed confidential app adheres to the cluster's effective [manifest](../features/manifest.md).
 * MarbleRun acts as a certificate authority for all Marble-based services and issues one concise remote attestation statement for the entire cluster. This can be used by anyone to verify the integrity of a distributed confidential app.

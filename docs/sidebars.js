@@ -71,6 +71,11 @@ const sidebars = {
       items: [
         {
           type: 'doc',
+          label: 'Manifest',
+          id: 'features/manifest',
+        },
+        {
+          type: 'doc',
           label: 'Attestation',
           id: 'features/attestation',
         },

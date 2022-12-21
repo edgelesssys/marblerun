@@ -27,5 +27,6 @@ subcommand
 Tensorflow
 toleration
 toolchain
+updatable
 walkthrough
 Xeon
