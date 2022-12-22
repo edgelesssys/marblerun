@@ -401,24 +401,7 @@ func (i IntegrationTest) StartMarbleClient(cfg MarbleConfig) bool {
 }
 
 // TriggerRecovery starts a Coordinator, sets the manifest, and triggers a recovery.
-func (i IntegrationTest) TriggerRecovery(manifest manifest.Manifest) ([]byte, *os.Process, *os.Process, CoordinatorConfig, MarbleConfig, string) {
-	// start Coordinator
-	log.Println("Starting a coordinator enclave")
-	cfg := NewCoordinatorConfig()
-	coordinatorProc := i.StartCoordinator(cfg)
-	i.require.NotNil(coordinatorProc)
-
-	// set Manifest
-	log.Println("Setting the Manifest")
-	recoveryResponse, err := i.SetManifest(manifest)
-	i.require.NoError(err, "failed to set Manifest")
-
-	// start server
-	log.Println("Starting a Server-Marble")
-	serverCfg := NewMarbleConfig(i.MeshServerAddr, "testMarbleServer", "server,backend,localhost")
-	serverProc := i.StartMarbleServer(serverCfg)
-	i.require.NotNil(serverProc, "failed to start server-marble")
-
+func (i IntegrationTest) TriggerRecovery(coordinatorCfg CoordinatorConfig, coordinatorProc *os.Process) (*os.Process, string) {
 	// get certificate
 	log.Println("Save certificate before we try to recover.")
 	client := http.Client{Transport: i.transportSkipVerify}
@@ -441,7 +424,7 @@ func (i IntegrationTest) TriggerRecovery(manifest manifest.Manifest) ([]byte, *o
 
 	// Garble encryption key to trigger recovery state
 	log.Println("Purposely corrupt sealed key to trigger recovery state...")
-	pathToKeyFile := filepath.Join(cfg.sealDir, seal.SealedKeyFname)
+	pathToKeyFile := filepath.Join(coordinatorCfg.sealDir, seal.SealedKeyFname)
 	sealedKeyData, err := os.ReadFile(pathToKeyFile)
 	i.require.NoError(err)
 	sealedKeyData[0] ^= byte(0x42)
@@ -449,7 +432,7 @@ func (i IntegrationTest) TriggerRecovery(manifest manifest.Manifest) ([]byte, *o
 
 	// Restart server, we should be in recovery mode
 	log.Println("Restarting the old instance")
-	coordinatorProc = i.StartCoordinator(cfg)
+	coordinatorProc = i.StartCoordinator(coordinatorCfg)
 	i.require.NotNil(coordinatorProc)
 
 	// Query status API, check if status response begins with Code 1 (recovery state)
@@ -458,7 +441,7 @@ func (i IntegrationTest) TriggerRecovery(manifest manifest.Manifest) ([]byte, *o
 	i.require.NoError(err)
 	i.assert.EqualValues(1, gjson.Get(statusResponse, "data.StatusCode").Int(), "Server is not in recovery state, but should be.")
 
-	return recoveryResponse, coordinatorProc, serverProc, cfg, serverCfg, cert
+	return coordinatorProc, cert
 }
 
 // VerifyCertAfterRecovery verifies the certificate after a recovery.

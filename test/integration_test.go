@@ -300,12 +300,28 @@ func TestRecoveryRestoreKey(t *testing.T) {
 	f.UpdateManifest()
 
 	log.Println("Testing recovery...")
+	log.Println("Starting a coordinator enclave")
+	cfg := framework.NewCoordinatorConfig()
+	defer cfg.Cleanup()
+	coordinatorProc := f.StartCoordinator(cfg)
+	require.NotNil(coordinatorProc, "could not start coordinator")
+	defer coordinatorProc.Kill()
+
+	// set Manifest
+	log.Println("Setting the Manifest")
+	recoveryResponse, err := f.SetManifest(f.TestManifest)
+	require.NoError(err, "failed to set Manifest")
+
+	// start server
+	log.Println("Starting a Server-Marble")
+	serverCfg := framework.NewMarbleConfig(f.MeshServerAddr, "testMarbleServer", "server,backend,localhost")
+	defer serverCfg.Cleanup()
+	serverProc := f.StartMarbleServer(serverCfg)
+	require.NotNil(serverProc, "failed to start server-marble")
+	defer serverProc.Kill()
 
 	// Trigger recovery mode
-	recoveryResponse, coordinatorProc, serverProc, cfg, serverCfg, cert := f.TriggerRecovery(f.TestManifest)
-	defer cfg.Cleanup()
-	defer serverCfg.Cleanup()
-	defer serverProc.Kill()
+	coordinatorProc, cert := f.TriggerRecovery(cfg, coordinatorProc)
 	defer coordinatorProc.Kill()
 
 	// Decode & Decrypt recovery data from when we set the manifest
@@ -333,17 +349,33 @@ func TestRecoveryReset(t *testing.T) {
 	f.UpdateManifest()
 
 	log.Println("Testing recovery...")
+	log.Println("Starting a coordinator enclave")
+	cfg := framework.NewCoordinatorConfig()
+	defer cfg.Cleanup()
+	coordinatorProc := f.StartCoordinator(cfg)
+	require.NotNil(coordinatorProc, "could not start coordinator")
+	defer coordinatorProc.Kill()
+
+	// set Manifest
+	log.Println("Setting the Manifest")
+	_, err := f.SetManifest(f.TestManifest)
+	require.NoError(err, "failed to set Manifest")
+
+	// start server
+	log.Println("Starting a Server-Marble")
+	serverCfg := framework.NewMarbleConfig(f.MeshServerAddr, "testMarbleServer", "server,backend,localhost")
+	defer serverCfg.Cleanup()
+	serverProc := f.StartMarbleServer(serverCfg)
+	require.NotNil(serverProc, "failed to start server-marble")
+	defer serverProc.Kill()
 
 	// Trigger recovery mode
-	_, coordinatorProc, serverProc, cfg, serverCfg, _ := f.TriggerRecovery(f.TestManifest)
-	defer cfg.Cleanup()
-	defer serverCfg.Cleanup()
-	defer serverProc.Kill()
+	coordinatorProc, _ = f.TriggerRecovery(cfg, coordinatorProc)
 	defer coordinatorProc.Kill()
 
 	// Set manifest again
 	log.Println("Setting the Manifest")
-	_, err := f.SetManifest(f.TestManifest)
+	_, err = f.SetManifest(f.TestManifest)
 	require.NoError(err, "failed to set Manifest")
 
 	// Verify if a new manifest has been set correctly and we are off to a fresh start
