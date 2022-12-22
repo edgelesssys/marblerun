@@ -4,12 +4,12 @@ When [defining the initial manifest](define-manifest.md), you have to choose whe
 
 ## Package updates
 
-Updates play an important role to ensure your software stays secure. To avoid having to redeploy your application from scratch, MarbleRun allows uploading a separate "update manifest" that increases the minimum `SecurityVersion` of already deployed packages. After such an update is performed, an old version of a defined software package can't be loaded anymore under the current manifest.
+Updates play an important role in ensuring your software stays secure. To avoid redeploying your application from scratch, MarbleRun allows uploading a separate "update manifest" that increases the minimum `SecurityVersion` of already deployed packages. After such an update is performed, an old version of a defined software package can't be loaded anymore under the current manifest.
 
 To deploy an update, your user needs to have a [role assigned that contains the `UpdateSecurityVersion` action](define-manifest.md#roles).
 
 ### Defining an update manifest
-The format of an update manifest follows the syntax of the original manifest, but it only contains packages with new `SecurityVersion` values.
+The update manifest format follows the original manifest's syntax, but it only contains packages with new `SecurityVersion` values.
 
 For example, the current `Packages` section of your original manifest looks like this:
 
@@ -52,7 +52,7 @@ Don't define other values except the `SecurityVersion` value for a package, as M
 
 Some deployment scenarios require more flexibility regarding changes to the manifest. To this end, MarbleRun also allows uploading a full manifest. User-defined secrets and secrets of type `symmetric-key` are retained if their definition doesn't change.
 
-To deploy a new manifest, your user needs to have a [role assigned that contains the `UpdateManifest` action](define-manifest.md#roles).
+To deploy a new manifest, your user must have a [role assigned that contains the `UpdateManifest` action](define-manifest.md#roles).
 
 ## Deploying an update
 
