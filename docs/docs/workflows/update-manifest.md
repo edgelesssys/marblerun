@@ -1,16 +1,15 @@
 # Updating a manifest
-To ensure the confidentiality of a deployed application, MarbleRun uses a manifest to define the software packages and the infrastructure your deployment uses. To verify that your deployment hasn't been altered, the manifest is usually set in stone after it was set to ensure no one can alter with your cluster.
 
-Yet, updates play an important role to ensure your software stays secure. To avoid having to redeploy your application from scratch, MarbleRun allows uploading a separate "update manifest" which increases the minimum `SecurityVersion` of one or multiple already deployed packages. After such an update is performed, an old version of a defined software package can't be loaded anymore under the current manifest.
+When [defining the initial manifest](define-manifest.md), you have to choose whether it should be [partially or fully updatable](../features/manifest.md) by assigning appropriate [roles](define-manifest.md#roles) to eligible users.
 
-## Requirements
-To deploy an update, you need the certificate/private key pair belonging to a user from the `Users` section of the original manifest, as described in ["defining a manifest."](../workflows/define-manifest.md#marbles)
-Furthermore the user needs to be [permitted to update](../workflows/define-manifest.md#roles) the chosen packages.
+## Package updates
 
-If no user with the permission for updates has been initially set up, no updates can be applied.
+Updates play an important role in ensuring your software stays secure. To avoid redeploying your application from scratch, MarbleRun allows uploading a separate "update manifest" that increases the minimum `SecurityVersion` of already deployed packages. After such an update is performed, an old version of a defined software package can't be loaded anymore under the current manifest.
 
-## Defining an update manifest
-The format of an update manifest follows the syntax of the original manifest, though it only expects to contain a package name and a new `SecurityVersion` value set for it.
+To deploy an update, your user needs to have a [role assigned that contains the `UpdateSecurityVersion` action](define-manifest.md#roles).
+
+### Defining an update manifest
+The update manifest format follows the original manifest's syntax, but it only contains packages with new `SecurityVersion` values.
 
 For example, the current `Packages` section of your original manifest looks like this:
 
@@ -33,8 +32,7 @@ For example, the current `Packages` section of your original manifest looks like
 }
 ```
 
-If you now want to update the minimum required version for `frontend`, the complete definition for the update manifest just needs to be as short as this example:
-
+To update the minimum required version for `frontend`, the complete definition for the update manifest just needs to be:
 
 ```javascript
 {
@@ -46,20 +44,25 @@ If you now want to update the minimum required version for `frontend`, the compl
 }
 ```
 
-Please don't define other values except the `SecurityVersion` value for a package, as MarbleRun will refuse to accept such an update manifest.
+Don't define other values except the `SecurityVersion` value for a package, as MarbleRun refuses to accept such an update manifest.
 
-Also, if an update was already performed and you want to deploy another update on top of it, you can! Just make sure the `SecurityVersion` is indeed higher than defined in the previous update, as downgrades aren't supported for security reasons.
+## Full update
+
+<enterpriseBanner/>
+
+Some deployment scenarios require more flexibility regarding changes to the manifest. To this end, MarbleRun also allows uploading a full manifest. User-defined secrets and secrets of type `symmetric-key` are retained if their definition doesn't change.
+
+To deploy a new manifest, your user must have a [role assigned that contains the `UpdateManifest` action](define-manifest.md#roles).
 
 ## Deploying an update
-Similar to other operations, an update can be deployed with the help of the CLI. Note that for this operation, you need to specify one of your defined `Users` certificates as a TLS client certificate, combined with the according private key.
 
-This operation can be performed in the following way:
+Use the CLI to deploy an update, specifying the client certificate and private key of a user with appropriate permissions:
 
 ```bash
 marblerun manifest update update-manifest.json $MARBLERUN --cert=admin-cert.pem --key=admin-key.pem --era-config=era.json
 ```
 
-If everything went well, no message will be returned and your MarbleRun logs should highlight that an update manifest has been set. And if something went wrong, the API endpoint will return an error message telling you what happened. If you receive `unauthorized user` back, it means MarbleRun either received no client certificate over the TLS connection, or you used the wrong certificate.
+On success, no message will be returned and your MarbleRun logs should highlight that an update manifest has been set. On error, the API endpoint will return an error message. If you receive `unauthorized user`, MarbleRun either received no client certificate over the TLS connection, or you used the wrong certificate.
 
 ## Effects of an update
 When a manifest has been updated, the Coordinator will generate new certificates which your Marbles will receive upon the next startup. Also, if you are trying to launch Marbles based on packages containing the old `SecurityVersion`, they will refuse to run (unless you are running in SGX Simulation or non-Enclave mode). However, so far currently running Marbles will continue to run and will be able to authenticate each other, as long as they're still running. So if you need to enforce an update, make sure to kill the Marbles on your host and restart them.

@@ -328,10 +328,12 @@ awk 'NF {sub(/\r/, ""); printf "%s\\n",$0;}' admin_certificate.pem
 
 MarbleRun supports Role-based access control (RBAC).
 An RBAC Role represents a set of permissions for a MarbleRun `User`. Permissions are purely additive (there are no "deny" rules).
-Each role defines a `ResourceType` (one of `Packages` or `Secrets`), a list of `ResourceNames` of that type, and a list of `Actions` that role permits on the listed resources. \
+Each role defines a `ResourceType` (one of `Packages` or `Secrets`), a list of `ResourceNames` of that type, and a list of `Actions` that role permits on the listed resources.
+
 Valid `Actions` are:
 * For `"ResourceType": "Secrets"`: `ReadSecret` and `WriteSecret`, allowing reading and writing a secret respectively
 * For `"ResourceType": "Packages"`: `UpdateSecurityVersion`, allowing to update the `SecurityVersion` of a given package
+* For `"ResourceType": "Manifest"`: `UpdateManifest`, allowing to update the full manifest (MarbleRun Enterprise only)
 
 ```javascript
 {
@@ -357,6 +359,10 @@ Valid `Actions` are:
                 "ReadSecret",
                 "WriteSecret"
             ]
+        },
+        "updateManifest": {
+            "ResourceType": "Manifest",
+            "Actions": ["UpdateManifest"]
         }
     }
     //...
