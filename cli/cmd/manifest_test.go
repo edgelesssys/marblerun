@@ -8,7 +8,6 @@ package cmd
 
 import (
 	"crypto/sha256"
-	"crypto/tls"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
@@ -203,18 +202,19 @@ func TestCliManifestUpdate(t *testing.T) {
 	}))
 	defer s.Close()
 
-	clCert := tls.Certificate{}
-
-	err := cliManifestUpdate([]byte("00"), host, clCert, []*pem.Block{cert})
+	client, err := restClient([]*pem.Block{cert}, nil)
 	require.NoError(err)
 
-	err = cliManifestUpdate([]byte("11"), host, clCert, []*pem.Block{cert})
+	err = cliManifestUpdate([]byte("00"), host, client)
+	require.NoError(err)
+
+	err = cliManifestUpdate([]byte("11"), host, client)
 	require.Error(err)
 
-	err = cliManifestUpdate([]byte("22"), host, clCert, []*pem.Block{cert})
+	err = cliManifestUpdate([]byte("22"), host, client)
 	require.Error(err)
 
-	err = cliManifestUpdate([]byte("33"), host, clCert, []*pem.Block{cert})
+	err = cliManifestUpdate([]byte("33"), host, client)
 	require.Error(err)
 }
 
@@ -372,4 +372,84 @@ func TestGetSignatureFromString(t *testing.T) {
 
 	_, err = getSignatureFromString("invalidFilename")
 	assert.Error(err)
+}
+
+func TestManifestUpdateAcknowledge(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	s, host, cert := newTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal("/update-manifest", r.RequestURI)
+		assert.Equal(http.MethodPost, r.Method)
+
+		serverResp := server.GeneralResponse{
+			Status: "success",
+			Data:   "acknowledgement successful",
+		}
+
+		assert.NoError(json.NewEncoder(w).Encode(serverResp))
+	}))
+	defer s.Close()
+
+	client, err := restClient([]*pem.Block{cert}, nil)
+	require.NoError(err)
+
+	err = cliManifestUpdateAcknowledge([]byte("manifest"), host, client)
+	assert.NoError(err)
+}
+
+func TestManifestUpdateGet(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	s, host, cert := newTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal("/update-manifest", r.RequestURI)
+		assert.Equal(http.MethodGet, r.Method)
+
+		serverResp := server.GeneralResponse{
+			Status: "success",
+			Data: struct {
+				Manifest     []byte   `json:"manifest"`
+				Message      string   `json:"message"`
+				MissingUsers []string `json:"missingUsers"`
+			}{
+				Manifest:     []byte(`{"foo": "bar"}`),
+				Message:      "message",
+				MissingUsers: []string{"user1", "user2"},
+			},
+		}
+
+		assert.NoError(json.NewEncoder(w).Encode(serverResp))
+	}))
+	defer s.Close()
+
+	client, err := restClient([]*pem.Block{cert}, nil)
+	require.NoError(err)
+
+	err = cliManifestUpdateGet("", host, client)
+	assert.NoError(err)
+}
+
+func TestManifestUpdateCancel(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	s, host, cert := newTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal("/update-cancel", r.RequestURI)
+		assert.Equal(http.MethodPost, r.Method)
+
+		serverResp := server.GeneralResponse{
+			Status: "success",
+			Data:   "cancel successful",
+		}
+
+		assert.NoError(json.NewEncoder(w).Encode(serverResp))
+	}))
+	defer s.Close()
+
+	client, err := restClient([]*pem.Block{cert}, nil)
+	require.NoError(err)
+
+	err = cliManifestUpdateCancel(host, client)
+	assert.NoError(err)
 }
