@@ -52,17 +52,25 @@ Don't define other values except the `SecurityVersion` value for a package, as M
 
 Some deployment scenarios require more flexibility regarding changes to the manifest. To this end, MarbleRun also allows uploading a full manifest. User-defined secrets and secrets of type `symmetric-key` are retained if their definition doesn't change.
 
-To deploy a new manifest, your user must have a [role assigned that contains the `UpdateManifest` action](define-manifest.md#roles).
+To deploy a new manifest, your user must have a [role assigned that contains the `UpdateManifest` action](define-manifest.md#roles). If multiple users have such a role assigned, each of them must [acknowledge](#acknowledging-an-update) the new manifest.
 
 ## Deploying an update
 
 Use the CLI to deploy an update, specifying the client certificate and private key of a user with appropriate permissions:
 
 ```bash
-marblerun manifest update update-manifest.json $MARBLERUN --cert=admin-cert.pem --key=admin-key.pem --era-config=era.json
+marblerun manifest update update-manifest.json $MARBLERUN --cert=user-cert.pem --key=user-key.pem --era-config=era.json
 ```
 
-On success, no message will be returned and your MarbleRun logs should highlight that an update manifest has been set. On error, the API endpoint will return an error message. If you receive `unauthorized user`, MarbleRun either received no client certificate over the TLS connection, or you used the wrong certificate.
+On success, no message will be returned and your MarbleRun logs should highlight whether the update manifest has been set or further acknowledgements are required. On error, the API endpoint will return an error message. If you receive `unauthorized user`, MarbleRun either received no client certificate over the TLS connection, or you used the wrong certificate.
+
+## Acknowledging an update
+
+Use the CLI to acknowledge a full manifest update, specifying the client certificate and private key of a user with appropriate permissions:
+
+```bash
+marblerun manifest update update-manifest.json $MARBLERUN --cert=user-cert.pem --key=user-key.pem --acknowledge --era-config=era.json
+```
 
 ## Effects of an update
 When a manifest has been updated, the Coordinator will generate new certificates which your Marbles will receive upon the next startup. Also, if you are trying to launch Marbles based on packages containing the old `SecurityVersion`, they will refuse to run (unless you are running in SGX Simulation or non-Enclave mode). However, so far currently running Marbles will continue to run and will be able to authenticate each other, as long as they're still running. So if you need to enforce an update, make sure to kill the Marbles on your host and restart them.
