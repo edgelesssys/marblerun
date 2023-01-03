@@ -493,11 +493,12 @@ func (a *ClientAPI) UpdateManifest(rawUpdateManifest []byte, updater *user.User)
 		if currentPackages[pkgName].SecurityVersion == nil {
 			currentPkg := currentPackages[pkgName]
 			currentPackages[pkgName] = quote.PackageProperties{
-				Debug:           currentPkg.Debug,
-				UniqueID:        currentPkg.UniqueID,
-				SecurityVersion: pkg.SecurityVersion,
-				ProductID:       currentPkg.ProductID,
-				SignerID:        currentPkg.SignerID,
+				Debug:               currentPkg.Debug,
+				UniqueID:            currentPkg.UniqueID,
+				SecurityVersion:     pkg.SecurityVersion,
+				ProductID:           currentPkg.ProductID,
+				SignerID:            currentPkg.SignerID,
+				AcceptedTCBStatuses: currentPkg.AcceptedTCBStatuses,
 			}
 		} else {
 			*currentPackages[pkgName].SecurityVersion = *pkg.SecurityVersion
