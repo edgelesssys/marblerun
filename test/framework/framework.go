@@ -400,7 +400,7 @@ func (i IntegrationTest) StartMarbleClient(cfg MarbleConfig) bool {
 	panic(err.Error() + "\n" + string(out))
 }
 
-// TriggerRecovery starts a Coordinator, sets the manifest, and triggers a recovery.
+// TriggerRecovery triggers a recovery.
 func (i IntegrationTest) TriggerRecovery(coordinatorCfg CoordinatorConfig, coordinatorProc *os.Process) (*os.Process, string) {
 	// get certificate
 	log.Println("Save certificate before we try to recover.")

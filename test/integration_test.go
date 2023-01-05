@@ -70,8 +70,7 @@ func TestMain(m *testing.M) {
 // sanity test of the integration test environment
 func TestTest(t *testing.T) {
 	assert := assert.New(t)
-	f := framework.New(t, *buildDir, simFlag, *noenclave, marbleTestAddr, meshServerAddr, clientServerAddr, IntegrationManifestJSON, UpdateManifest)
-	f.UpdateManifest()
+	f := newFramework(t)
 
 	cfg := framework.NewCoordinatorConfig()
 	defer cfg.Cleanup()
@@ -85,8 +84,7 @@ func TestTest(t *testing.T) {
 func TestMarbleAPI(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	f := framework.New(t, *buildDir, simFlag, *noenclave, marbleTestAddr, meshServerAddr, clientServerAddr, IntegrationManifestJSON, UpdateManifest)
-	f.UpdateManifest()
+	f := newFramework(t)
 
 	// start Coordinator
 	log.Println("Starting a coordinator enclave")
@@ -127,8 +125,7 @@ func TestMarbleAPI(t *testing.T) {
 func TestRestart(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	f := framework.New(t, *buildDir, simFlag, *noenclave, marbleTestAddr, meshServerAddr, clientServerAddr, IntegrationManifestJSON, UpdateManifest)
-	f.UpdateManifest()
+	f := newFramework(t)
 
 	log.Println("Testing the restart capabilities")
 	// start Coordinator
@@ -180,8 +177,7 @@ func TestRestart(t *testing.T) {
 func TestClientAPI(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	f := framework.New(t, *buildDir, simFlag, *noenclave, marbleTestAddr, meshServerAddr, clientServerAddr, IntegrationManifestJSON, UpdateManifest)
-	f.UpdateManifest()
+	f := newFramework(t)
 
 	// start Coordinator
 	cfg := framework.NewCoordinatorConfig()
@@ -244,8 +240,7 @@ func TestClientAPI(t *testing.T) {
 func TestSettingSecrets(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	f := framework.New(t, *buildDir, simFlag, *noenclave, marbleTestAddr, meshServerAddr, clientServerAddr, IntegrationManifestJSON, UpdateManifest)
-	f.UpdateManifest()
+	f := newFramework(t)
 
 	// start Coordinator
 	cfg := framework.NewCoordinatorConfig()
@@ -296,8 +291,7 @@ func TestSettingSecrets(t *testing.T) {
 func TestRecoveryRestoreKey(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	f := framework.New(t, *buildDir, simFlag, *noenclave, marbleTestAddr, meshServerAddr, clientServerAddr, IntegrationManifestJSON, UpdateManifest)
-	f.UpdateManifest()
+	f := newFramework(t)
 
 	log.Println("Testing recovery...")
 	log.Println("Starting a coordinator enclave")
@@ -345,8 +339,7 @@ func TestRecoveryRestoreKey(t *testing.T) {
 
 func TestRecoveryReset(t *testing.T) {
 	require := require.New(t)
-	f := framework.New(t, *buildDir, simFlag, *noenclave, marbleTestAddr, meshServerAddr, clientServerAddr, IntegrationManifestJSON, UpdateManifest)
-	f.UpdateManifest()
+	f := newFramework(t)
 
 	log.Println("Testing recovery...")
 	log.Println("Starting a coordinator enclave")
@@ -389,8 +382,7 @@ func TestManifestUpdate(t *testing.T) {
 		t.Skip("This test cannot be run in Simulation / No Enclave mode.")
 		return
 	}
-	f := framework.New(t, *buildDir, simFlag, *noenclave, marbleTestAddr, meshServerAddr, clientServerAddr, IntegrationManifestJSON, UpdateManifest)
-	f.UpdateManifest()
+	f := newFramework(t)
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -437,4 +429,10 @@ func TestManifestUpdate(t *testing.T) {
 	log.Println("Starting the same bunch of outdated Client-Marbles again (should fail now)...")
 	assert.False(f.StartMarbleClient(clientCfg), "Did start successfully, but must not run successfully. The increased minimum SecurityVersion was ignored.")
 	assert.False(f.StartMarbleClient(clientCfg), "Did start successfully, but must not run successfully. The increased minimum SecurityVersion was ignored.")
+}
+
+func newFramework(t *testing.T) *framework.IntegrationTest {
+	f := framework.New(t, *buildDir, simFlag, *noenclave, marbleTestAddr, meshServerAddr, clientServerAddr, IntegrationManifestJSON, UpdateManifest)
+	f.UpdateManifest()
+	return f
 }
