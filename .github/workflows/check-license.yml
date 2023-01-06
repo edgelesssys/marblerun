@@ -18,8 +18,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
-        uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8 # tag=v3.1.0
-        with:
-          ref: ${{ github.head_ref }}
+        uses: actions/checkout@v3
+
       - name: Check for files without license header
         run: "! grep -rL --include='*.go' -e'// Copyright (c) Edgeless Systems GmbH.' -e'DO NOT EDIT' | grep ''"
