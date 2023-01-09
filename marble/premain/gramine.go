@@ -9,8 +9,8 @@ package premain
 import (
 	"crypto/sha256"
 	"errors"
-	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
 	"google.golang.org/grpc/credentials"
@@ -24,13 +24,25 @@ func GramineActivate(req *rpc.ActivationReq, coordAddr string, tlsCredentials cr
 		return nil, err
 	}
 
-	// Write the protected files key if present. We must do this "manually" here because premain will write files
-	// in an unspecified order. However, the key must be written before any other protected file is written.
+	// Write encrypted file keys if present. We must do this "manually" here because premain will write files
+	// in an unspecified order. However, the keys must be written before any other encrypted file is written.
+	const atKeyBasePath = "/dev/attestation/keys/"
+	for keyPath, key := range params.Files {
+		if strings.HasPrefix(keyPath, atKeyBasePath) {
+			if err := os.WriteFile(keyPath, key, 0); err != nil {
+				return nil, err
+			}
+			delete(params.Files, keyPath)
+		}
+	}
+
+	// Gramine v1.2 and older use a different key pseudo file system, add this here if present
 	const pfKeyPath = "/dev/attestation/protected_files_key"
 	if key, ok := params.Files[pfKeyPath]; ok {
-		if err := ioutil.WriteFile(pfKeyPath, []byte(key), 0); err != nil {
+		if err := os.WriteFile(pfKeyPath, key, 0); err != nil {
 			return nil, err
 		}
+		delete(params.Files, pfKeyPath)
 	}
 
 	return params, nil
