@@ -1,7 +1,8 @@
 {
     "Packages": {
         "nginx": {
-            "Debug": true
+            "Debug": true,
+            "UniqueID": "<replace with mrenclave printed during the build>"
         }
     },
     "Marbles": {
@@ -14,9 +15,9 @@
                     "conf/nginx-gramine.conf"
                 ],
                 "Files": {
-                    "/dev/attestation/protected_files_key": "{{ hex .Secrets.ProtectedFilesKey }}",
-                    "install/conf/server.crt": "{{ pem .Secrets.ServerCert.Cert }}",
-                    "install/conf/server.key": "{{ pem .Secrets.ServerCert.Private }}"
+                    "/dev/attestation/keys/default": "{{ raw .Secrets.ProtectedFilesKey }}",
+                    "/install/secrets/server.crt": "{{ pem .Secrets.ServerCert.Cert }}",
+                    "/install/secrets/server.key": "{{ pem .Secrets.ServerCert.Private }}"
                 }
             }
         }
