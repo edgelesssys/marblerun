@@ -3,3 +3,4 @@ build/
 *.pem
 *.test
 marblerun-coordinator-data/
+debug/
