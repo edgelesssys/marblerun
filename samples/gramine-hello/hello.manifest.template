@@ -5,7 +5,7 @@ loader.env.LD_LIBRARY_PATH = "/lib"
 libos.entrypoint = "premain-libos"
 
 # argv0 must be the path to the actual application
-loader.argv0_override = "hello"
+loader.argv = [ "hello" ]
 
 # Forward EDG environment variables, used by MarbleRun
 loader.env.EDG_MARBLE_TYPE = { passthrough = true }
@@ -44,7 +44,7 @@ sgx.allowed_files = [
 ]
 
 # enable DCAP
-sgx.remote_attestation = true
+sgx.remote_attestation = "dcap"
 
 # enclave must have enough memory and threads
 sgx.enclave_size = "1024M"

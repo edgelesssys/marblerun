@@ -24,4 +24,4 @@ premain-libos:
 	chmod u+x premain-libos
 
 run:
-	gramine-sgx hello
+	EDG_MARBLE_TYPE=hello gramine-sgx hello

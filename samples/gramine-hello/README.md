@@ -4,7 +4,7 @@ This example shows how to run a [Gramine](https://github.com/gramineproject/gram
 
 ## Requirements
 
-First, install Gramine on [release v1.0](https://github.com/gramineproject/gramine/releases/tag/v1.0). You will need hardware with Intel SGX support.
+First, install Gramine on [release v1.3](https://github.com/gramineproject/gramine/releases/tag/v1.3.1). You will need hardware with Intel SGX support.
 
 Then, before you can run the example, make sure you got the prerequisites for ECDSA remote attestation installed on your system. You can collectively install them with the following command:
 
@@ -42,5 +42,5 @@ curl -k --data-binary @manifest.json https://localhost:4433/manifest
 The type of the Marble is defined in the `manifest.json`. In this example, the manifest defines a single Marble, which is called "hello". To run the application, you need to set the `EDG_MARBLE_TYPE` environement variable to that name.
 
 ```sh
-EDG_MARBLE_TYPE=hello make run
+make run
 ```
