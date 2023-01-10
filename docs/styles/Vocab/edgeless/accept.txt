@@ -23,6 +23,7 @@ nonce
 Occlum
 [Pp]remain
 runtime
+Redis
 subcommand
 Tensorflow
 toleration
