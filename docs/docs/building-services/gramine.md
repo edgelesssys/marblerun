@@ -80,7 +80,7 @@ A Marble's secrets, e.g. a certificate and private key, can be provisioned as fi
 ```toml
 fs.mounts = [
     # ...
-    { type = "tmpf", path = "/secrets" },
+    { type = "tmpfs", path = "/secrets" },
     # ...
 ]
 ```
@@ -99,10 +99,10 @@ You can specify the files' content in the MarbleRun manifest:
 ```
 
 Note that Gramine also allows to store files encrypted on the host's file system. The so encrypted filesystem requires to initialize an encrypted files key by writing it to the virtual `protected_files_key` device.
-For debugging purposes, you can define the key directly in the Gramine manifest.
+For debugging purposes only, you can define the key directly in the Gramine manifest:
 
 ```toml
-fs.insecure__keys.[KEY_NAME]] = "[16-byte hex value]"
+fs.insecure__keys.[KEY_NAME] = "[32-character hex value]"
 fs.mounts = [
   # ...
   { type = "encrypted", path = "/secrets", uri = "file:/path/to/local/directory", key_name = "[KEY_NAME] },
@@ -110,8 +110,8 @@ fs.mounts = [
 ]
 ```
 
-MarbleRun allows provisioning the encrypted files key at runtime to your enclave.
-You can see how this can be done in the [nginx example](https://github.com/edgelesssys/marblerun/tree/master/samples/gramine-nginx).
+For production use cases, MarbleRun can provision your enclave with encrypted file keys at runtime.
+You can see how this is done in the [nginx example](https://github.com/edgelesssys/marblerun/tree/master/samples/gramine-nginx).
 
 ## Troubleshooting
 

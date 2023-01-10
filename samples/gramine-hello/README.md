@@ -39,8 +39,8 @@ Once the Coordinator instance is running, you can upload the manifest to the Coo
 curl -k --data-binary @manifest.json https://localhost:4433/manifest
 ```
 
-The type of the Marble is defined in the `manifest.json`. In this example, the manifest defines a single Marble, which is called "hello". To run the application, you need to set the `EDG_MARBLE_TYPE` environement variable to that name.
+The type of the Marble is defined in the `manifest.json`. In this example, the manifest defines a single Marble, which is called "hello". To run the application, you need to set the `EDG_MARBLE_TYPE` environment variable to that name.
 
 ```sh
-make run
+EDG_MARBLE_TYPE=hello gramine-sgx hello
 ```
