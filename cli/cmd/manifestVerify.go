@@ -27,7 +27,7 @@ func newManifestVerify() *cobra.Command {
 			manifest := args[0]
 			hostName := args[1]
 
-			cert, err := verifyCoordinator(hostName, eraConfig, insecureEra)
+			cert, err := verifyCoordinator(hostName, eraConfig, insecureEra, acceptedTCBStatuses)
 			if err != nil {
 				return err
 			}

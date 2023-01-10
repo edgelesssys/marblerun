@@ -28,7 +28,7 @@ func newRecoverCmd() *cobra.Command {
 			keyFile := args[0]
 			hostName := args[1]
 
-			cert, err := verifyCoordinator(hostName, eraConfig, insecureEra)
+			cert, err := verifyCoordinator(hostName, eraConfig, insecureEra, acceptedTCBStatuses)
 			if err != nil {
 				return err
 			}
@@ -48,6 +48,7 @@ func newRecoverCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(&eraConfig, "era-config", "", "Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github")
 	cmd.Flags().BoolVarP(&insecureEra, "insecure", "i", false, "Set to skip quote verification, needed when running in simulation mode")
+	cmd.PersistentFlags().StringSliceVar(&acceptedTCBStatuses, "accepted-tcb-statuses", []string{"UpToDate"}, "Coma seperated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded)")
 
 	return cmd
 }

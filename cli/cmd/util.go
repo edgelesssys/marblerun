@@ -20,7 +20,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/edgelesssys/ego/attestation"
 	"github.com/edgelesssys/era/era"
+	"github.com/edgelesssys/era/util"
 	"k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -44,12 +46,13 @@ const promptForChanges = "Do you want to automatically apply the suggested chang
 const eraDefaultConfig = "era-config.json"
 
 var (
-	eraConfig   string
-	insecureEra bool
+	eraConfig           string
+	insecureEra         bool
+	acceptedTCBStatuses []string
 )
 
 // verify the connection to the MarbleRun Coordinator.
-func verifyCoordinator(host string, configFilename string, insecure bool) ([]*pem.Block, error) {
+func verifyCoordinator(host string, configFilename string, insecure bool, acceptedTCBStatuses []string) ([]*pem.Block, error) {
 	// skip verification if specified
 	if insecure {
 		fmt.Println("Warning: skipping quote verification")
@@ -58,7 +61,11 @@ func verifyCoordinator(host string, configFilename string, insecure bool) ([]*pe
 
 	// get certificate using provided config
 	if configFilename != "" {
-		pemBlock, _, err := era.GetCertificate(host, configFilename)
+		pemBlock, tcbStatus, err := era.GetCertificate(host, configFilename)
+		if errors.Is(err, attestation.ErrTCBLevelInvalid) && util.StringSliceContains(acceptedTCBStatuses, tcbStatus.String()) {
+			fmt.Println("Warning: TCB level invalid, but accepted by configuration")
+			return pemBlock, nil
+		}
 		return pemBlock, err
 	}
 

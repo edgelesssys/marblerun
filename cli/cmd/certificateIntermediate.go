@@ -24,7 +24,7 @@ func newCertificateIntermediate() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hostName := args[0]
-			return cliCertificateIntermediate(hostName, certFilename, eraConfig, insecureEra)
+			return cliCertificateIntermediate(hostName, certFilename, eraConfig, insecureEra, acceptedTCBStatuses)
 		},
 		SilenceUsage: true,
 	}
@@ -35,8 +35,8 @@ func newCertificateIntermediate() *cobra.Command {
 }
 
 // cliCertificateIntermediate gets the intermediate certificate of the MarbleRun Coordinator.
-func cliCertificateIntermediate(host string, output string, configFilename string, insecure bool) error {
-	certs, err := verifyCoordinator(host, configFilename, insecure)
+func cliCertificateIntermediate(host string, output string, configFilename string, insecure bool, acceptedTCBStatuses []string) error {
+	certs, err := verifyCoordinator(host, configFilename, insecure, acceptedTCBStatuses)
 	if err != nil {
 		return err
 	}

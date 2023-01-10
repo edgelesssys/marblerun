@@ -25,7 +25,7 @@ func newManifestLog() *cobra.Command {
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hostName := args[0]
-			cert, err := verifyCoordinator(hostName, eraConfig, insecureEra)
+			cert, err := verifyCoordinator(hostName, eraConfig, insecureEra, acceptedTCBStatuses)
 			if err != nil {
 				return err
 			}
