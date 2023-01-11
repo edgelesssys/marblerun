@@ -142,3 +142,23 @@ load_enclave() failed with error -1
 Make sure you installed the Intel AESM ECDSA plugins on your machine. You can do this by installing the `libsgx-quote-dev` package mentioned in the requirements above.
 
 If you are running your application in a container, you will need to mount the aesm socket. The socket is located at `/var/run/aesmd/`.
+
+If you are deploying your application on Kubernetes with the [Intel SGX device plugin](https://intel.github.io/intel-device-plugins-for-kubernetes/cmd/sgx_plugin/README.html) installed, the socket is automatically mounted by setting the `sgx.intel.com/quote-provider: aesmd` annotation for your deployment:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: gramine-marble
+  labels:
+    marblerun/marbletype: gramine-marble
+  annotations:
+    sgx.intel.com/quote-provider: aesmd
+spec:
+  container:
+    - name: gramine-marble
+      image: localhost/gramine-marble
+      resources:
+        limits:
+          sgx.intel.com/epc: 10Mi
+```
