@@ -30,7 +30,8 @@ func newManifestUpdate() *cobra.Command {
 Updates the MarbleRun Coordinator with the specified manifest.
 An admin certificate specified in the original manifest is needed to verify the authenticity of the update manifest.
 `,
-		Args: cobra.ExactArgs(2),
+		Example: "marblerun manifest update update-manifest.json $MARBLERUN --cert=admin-cert.pem --key=admin-key.pem --era-config=era.json",
+		Args:    cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			manifestFile := args[0]
 			hostName := args[1]

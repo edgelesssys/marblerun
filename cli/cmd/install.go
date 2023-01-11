@@ -57,8 +57,13 @@ func newInstallCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "install",
 		Short: "Installs MarbleRun on a kubernetes cluster",
-		Long:  `Installs MarbleRun on a kubernetes cluster`,
-		Args:  cobra.NoArgs,
+		Long:  `Installs MarbleRun on a Kubernetes cluster`,
+		Example: `# Install MarbleRun in simulation mode
+marblerun install --simulation
+
+# Install MarbleRun using the Intel QPL and custom PCCS
+marblerun install --dcap-qpl intel --dcap-pccs-url https://pccs.example.com/sgx/certification/v3/ --dcap-secure-cert FALSE`,
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.settings = cli.New()
 			var err error

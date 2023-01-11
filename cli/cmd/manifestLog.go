@@ -22,7 +22,8 @@ func newManifestLog() *cobra.Command {
 		Long: `Get the update log from the MarbleRun Coordinator.
 		The log is list of all successful changes to the Coordinator,
 		including a timestamp and user performing the operation.`,
-		Args: cobra.ExactArgs(1),
+		Example: "marblerun manifest log $MARBLERUN",
+		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hostName := args[0]
 			cert, err := verifyCoordinator(hostName, eraConfig, insecureEra, acceptedTCBStatuses)

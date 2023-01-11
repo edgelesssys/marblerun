@@ -28,7 +28,7 @@ Set or retrieve a secret defined in the manifest.`,
 	cmd.PersistentFlags().StringVarP(&userCertFile, "cert", "c", "", "PEM encoded MarbleRun user certificate file (required)")
 	cmd.PersistentFlags().StringVarP(&userKeyFile, "key", "k", "", "PEM encoded MarbleRun user key file (required)")
 	cmd.PersistentFlags().BoolVarP(&insecureEra, "insecure", "i", false, "Set to skip quote verification, needed when running in simulation mode")
-	cmd.PersistentFlags().StringSliceVar(&acceptedTCBStatuses, "accepted-tcb-statuses", []string{"UpToDate"}, "Coma seperated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded)")
+	cmd.PersistentFlags().StringSliceVar(&acceptedTCBStatuses, "accepted-tcb-statuses", []string{"UpToDate"}, "Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded)")
 	cmd.MarkPersistentFlagRequired("key")
 	cmd.MarkPersistentFlagRequired("cert")
 	cmd.AddCommand(newSecretSet())

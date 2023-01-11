@@ -24,10 +24,11 @@ func newManifestSet() *cobra.Command {
 	var recoveryFilename string
 
 	cmd := &cobra.Command{
-		Use:   "set <manifest.json> <IP:PORT>",
-		Short: "Sets the manifest for the MarbleRun Coordinator",
-		Long:  "Sets the manifest for the MarbleRun Coordinator",
-		Args:  cobra.ExactArgs(2),
+		Use:     "set <manifest.json> <IP:PORT>",
+		Short:   "Sets the manifest for the MarbleRun Coordinator",
+		Long:    "Sets the manifest for the MarbleRun Coordinator",
+		Example: "marblerun manifest set manifest.json $MARBLERUN --recovery-data=recovery-secret.json --era-config=era.json",
+		Args:    cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			manifestFile := args[0]
 			hostName := args[1]

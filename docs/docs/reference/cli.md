@@ -7,661 +7,783 @@ This CLI allows you to install MarbleRun on your cluster and interacts with the 
 
 To install the MarbleRun CLI on your machine you can use our pre-built binaries.
 
-**For the current user**
+<tabs groupId="user">
+<tabItem value="current-user" label="For the current user">
 
 ```bash
 wget -P ~/.local/bin https://github.com/edgelesssys/marblerun/releases/latest/download/marblerun
 chmod +x ~/.local/bin/marblerun
 ```
 
-**Global install (requires root)**
+</tabItem>
+<tabItem value="global" label="Global install (requires root)">
 
 ```bash
 sudo wget -O /usr/local/bin/marblerun https://github.com/edgelesssys/marblerun/releases/latest/download/marblerun
 sudo chmod +x /usr/local/bin/marblerun
 ```
 
+</tabItem>
+<tabItem value="build" label="Build from source">
+
 To build the MarbleRun CLI, [Edgeless RT](https://github.com/edgelesssys/edgelessrt) needs to be installed on your machine.
 
 ```bash
-go build -o marblerun github.com/edgelesssys/marblerun/cli
+git clone https://github.com/edgelesssys/marblerun && cd ./marblerun
+go build -buildvcs=false -o marblerun ./cli
 ```
 
-To list all available commands, either run `marblerun` with no commands or execute `marblerun help`
-The output is the following:
-
-```
-Usage:
-  marblerun [command]
-
-Available Commands:
-  certificate      Retrieves the certificate of the MarbleRun Coordinator
-  check            Check the status of MarbleRun's control plane
-  completion       Output script for specified shell to enable autocompletion
-  gramine-prepare  Modifies a Gramine manifest for use with MarbleRun
-  help             Help about any command
-  install          Installs marblerun on a kubernetes cluster
-  manifest         Manages manifest for the MarbleRun Coordinator
-  precheck         Check if your kubernetes cluster supports SGX
-  recover          Recovers the MarbleRun Coordinator from a sealed state
-  secret           Manages secrets for the MarbleRun Coordinator
-  status           Gives information about the status of the marblerun Coordinator
-  uninstall        Removes MarbleRun from a kubernetes cluster
-  version          Display version of this CLI and (if running) the MarbleRun Coordinator
-
-Flags:
-  -h, --help   help for marblerun
-
-Use "marblerun [command] --help" for more information about a command.
-```
+</tabItem>
+</tabs>
 
 ### Requirements
 
+The CLI requires SGX quote verification library to verify quotes issued by the Coordinator.
+You have different options depending on the environment the Coordinator is deployed to:
+
+<tabs groupId="environement">
+<tabItem value="azure" label="Azure CVM">
 If the Coordinator is running on an Azure VM, the CLI relies on the [Azure DCAP Client](https://github.com/microsoft/Azure-DCAP-Client) to verify quotes.
-To install the dependency run:
+To install the dependency on Ubuntu 20.04 run:
+
 ```bash
-echo "deb [arch=amd64] https://packages.microsoft.com/ubuntu/18.04/prod bionic main" | sudo tee /etc/apt/sources.list.d/msprod.list
-wget -qO - https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+sudo apt-key adv --fetch-keys https://packages.microsoft.com/keys/microsoft.asc
+sudo add-apt-repository 'deb [arch=amd64] https://packages.microsoft.com/ubuntu/20.04/prod focal main'
 sudo apt update
-sudo apt -y install az-dcap-client
+sudo apt install -y az-dcap-client
 ```
 
-## Command `certificate`
+</tabItem>
+<tabItem value="generic" label="Generic SGX system">
 
-Get the root and/or intermediate certificates of the MarbleRun Coordinator.
-
-**Flags**
-These flags apply to all `certificate` subcommands
-
-| Name, shorthand | Default | Description                                                                                                                      |
-| --------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| --era-config    |         | Path to remote attestation config file in JSON format, if none provided the newest configuration will be loaded from GitHub      |
-| --help, -h      |         | help for certificate                                                                                                             |
-| --insecure, -i  |         | simulation mode                                                                                                                  |
-| --output, -o    |         | File to save the certificate to                                                                                                  |
-
-* ### `root`
-
-  Gets the root certificate of the MarbleRun Coordinator.
-
-  **Usage**
-
-  ```bash
-  marblerun certificate root <IP:PORT> [flags]
-  ```
-
-* ### `intermediate`
-
-  Gets the intermediate certificate of the MarbleRun Coordinator.
-
-  **Usage**
-
-  ```bash
-  marblerun certificate intermediate <IP:PORT> [flags]
-  ```
-
-* ### `chain`
-
-  Gets the certificate chain of the MarbleRun Coordinator.
-
-  **Usage**
-
-  ```bash
-  marblerun certificate chain <IP:PORT> [flags]
-  ```
-
-## Command `check`
-
-  Check the status of MarbleRun's control plane.
-  This command will check if the MarbleRun Coordinator and/or the MarbleRun webhook are deployed on a Kubernetes cluster and wait until all replicas of the deployment have the `available` status.
-
-  **Usage**
-
-  ```bash
-  marblerun check
-  ```
-
-  **Flags**
-
-  | Name, shorthand | Default | Description                             |
-  | --------------- | ------- | --------------------------------------- |
-  | --timeout       | 60      | Time to wait before aborting in seconds |
-
-
-## Command `completion`
-Generate a shell script to enable autocompletion for `marblerun` commands.
-Supported shells are:
-* `bash`:
-  * To enable completion run:
-    ```bash
-    source <(marblerun completion bash)
-    ```
-
-* `zsh`:
-  * If completion isn't already enabled you need to enable it first:
-    ```bash
-    echo "autoload -U compinit; compinit" >> ~/.zshrc
-    ```
-  * Enable completion for `marblerun`:
-    ```bash
-    marblerun completion zsh > "${fpath[1]}/_marblerun"
-    ```
-
-
-Once enabled, command completion is just one keystroke away:\
-  `marblerun ma`+<kbd>Tab</kbd> completes to:\
-  `marblerun manifest`
-
-
-## Command `gramine-prepare`
-This command helps you if you want to add Gramine-based services to your MarbleRun service mesh.
-It prepares your Gramine project to be used as a Marble by replacing the original entrypoint of your application with the bootstrapping Marble premain process which eventually spawns your application.
-Given your [Gramine manifest template](https://gramine.readthedocs.io/en/latest/manifest-syntax.html), it will suggest the required adjustments needed and adds our bootstrapping data-plane code to your Gramine image.
-See [Building a service: Gramine](../building-services/gramine.md) for detailed information on MarbleRun’s Gramine integration and our changes in your Gramine manifest.
-
-Please note that this only works on a best-effort basis and may not instantly work correctly.
-While suggestions should be made for every valid TOML Gramine configuration, changes can only be performed for non-hierarchically sorted configurations. as the official Gramine examples.
-The unmodified manifest is saved as a backup under the old path with an added `.bak` suffix, allowing you to try out and roll back any changes performed.
-
-Remember, you need to create a [MarbleRun manifest](../workflows/define-manifest.md) in addition to the Gramine manifest. Adding Gramine packages to your manifest is straightforward and follows the same principles as any other SGX enclave. If you configured the arguments to your Gramine application through the [Gramine manifest](https://gramine.readthedocs.io/en/latest/manifest-syntax.html#command-line-arguments) before, you need to transfer those to the [MarbleRun manifest](../workflows/define-manifest.md#marbles).
-
-  **Usage**
-
-  ```bash
-  marblerun gramine-prepare <path>
-  ```
-
-  **Examples**
-  ```bash
-  marblerun gramine-prepare nginx.manifest.template
-  ```
-
-  Output:
-  ```bash
-  Reading file: nginx.manifest.template
-
-  MarbleRun suggests the following changes to your Gramine manifest:
-  libos.entrypoint = "file:premain-libos"
-  loader.argv0_override = "$(INSTALL_DIR)/sbin/nginx"
-  loader.insecure__use_host_env = 1
-  sgx.allowed_files.marblerun_uuid = "file:uuid"
-  sgx.enclave_size = "1024M"
-  sgx.remote_attestation = 1
-  sgx.thread_num = 16
-  sgx.trusted_files.marblerun_premain = "file:premain-libos"
-  Do you want to automatically apply the suggested changes [y/n]? y
-  Applying changes...
-  Saving original manifest as nginx.manifest.template.bak...
-  Saving changes to nginx.manifest.template...
-  Downloading MarbleRun premain from GitHub...
-  Successfully downloaded premain-libos.
-
-  Done! You should be good to go for MarbleRun!
-  ```
-
-## Command `install`
-
-Install MarbleRun on your Kubernetes cluster.
-This command will add MarbleRun to your local helm repository if it's not present yet, optionally you can provide a path to your own helm chart.
-
-**Usage**
+Intel provides the `libsgx-dcap-default-qpl` library to facilitate SGX quote verification.
+To install the dependency on Ubuntu 20.04 run:
 
 ```bash
+sudo apt-key adv --fetch-keys https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key
+sudo add-apt-repository 'https://download.01.org/intel-sgx/sgx_repo/ubuntu main'
+sudo apt update
+sudo apt install -y libsgx-dcap-default-qpl
+```
+
+Follow the [Intel's documentation](https://github.com/intel/SGXDataCenterAttestationPrimitives/blob/master/QuoteGeneration/qpl/README.md#configuration) to configure access to the PCCS.
+</tabItem>
+</tabs>
+
+## Reference
+
+Usage:
+
+```terminal
+marblerun [command]
+```
+Commands:
+
+* [certificate](#marblerun-certificate): Retrieves the certificate of the MarbleRun Coordinator
+  * [root](#marblerun-certificate-root): Returns the root certificate of the MarbleRun Coordinator
+  * [intermediate](#marblerun-certificate-intermediate): Returns the intermediate certificate of the MarbleRun Coordinator
+  * [chain](#marblerun-certificate-chain): Returns the certificate chain of the MarbleRun Coordinator
+* [check](#marblerun-check): Check the status of MarbleRun's control plane
+* [completion](#marblerun-completion): Output script for specified shell to enable autocompletion
+* [gramine-prepare](#marblerun-gramine-prepare): Modifies a Gramine manifest for use with MarbleRun
+* [install](#marblerun-install): Installs MarbleRun on a kubernetes cluster
+* [manifest](#marblerun-manifest): Manages manifest for the MarbleRun Coordinator
+  * [get](#marblerun-manifest-get): Get the manifest from the MarbleRun Coordinator
+  * [log](#marblerun-manifest-log): Get the update log from the MarbleRun Coordinator
+  * [set](#marblerun-manifest-set): Sets the manifest for the MarbleRun Coordinator
+  * [signature](#marblerun-manifest-signature): Prints the signature of a MarbleRun manifest
+  * [update](#marblerun-manifest-update): Updates the MarbleRun Coordinator with the specified manifest
+  * [verify](#marblerun-manifest-verify): Verifies the signature of a MarbleRun manifest
+* [precheck](#marblerun-precheck): Check if your kubernetes cluster supports SGX
+* [package-info](#marblerun-package-info): Prints the package signature properties of an enclave
+* [recover](#marblerun-recover): Recovers the MarbleRun Coordinator from a sealed state
+* [secret](#marblerun-secret): Manages secrets for the MarbleRun Coordinator
+  * [set](#marblerun-secret-set): Set a secret for the MarbleRun Coordinator
+  * [get](#marblerun-secret-get): Retrieve secrets from the MarbleRun Coordinator
+* [status](#marblerun-status): Gives information about the status of the MarbleRun Coordinator
+* [uninstall](#marblerun-uninstall): Removes MarbleRun from a kubernetes cluster
+* [version](#marblerun-version): Display version of this CLI and (if running) the MarbleRun Coordinator
+
+## marblerun certificate
+
+Retrieves the certificate of the MarbleRun Coordinator
+
+### Synopsis
+
+Retrieves the certificate of the MarbleRun Coordinator
+
+### Options
+
+```
+      --accepted-tcb-statuses strings   Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
+  -h, --help                            help for certificate
+  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+```
+
+## marblerun certificate root
+
+Returns the root certificate of the MarbleRun Coordinator
+
+### Synopsis
+
+Returns the root certificate of the MarbleRun Coordinator
+
+```
+marblerun certificate root <IP:PORT> [flags]
+```
+
+### Options
+
+```
+  -h, --help            help for root
+  -o, --output string   File to save the certificate to (default "marblerunRootCA.crt")
+```
+
+### Options inherited from parent commands
+
+```
+      --accepted-tcb-statuses strings   Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
+  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+```
+
+## marblerun certificate intermediate
+
+Returns the intermediate certificate of the MarbleRun Coordinator
+
+### Synopsis
+
+Returns the intermediate certificate of the MarbleRun Coordinator
+
+```
+marblerun certificate intermediate <IP:PORT> [flags]
+```
+
+### Options
+
+```
+  -h, --help            help for intermediate
+  -o, --output string   File to save the certificate to (default "marblerunIntermediateCA.crt")
+```
+
+### Options inherited from parent commands
+
+```
+      --accepted-tcb-statuses strings   Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
+  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+```
+
+## marblerun certificate chain
+
+Returns the certificate chain of the MarbleRun Coordinator
+
+### Synopsis
+
+Returns the certificate chain of the MarbleRun Coordinator
+
+```
+marblerun certificate chain <IP:PORT> [flags]
+```
+
+### Options
+
+```
+  -h, --help            help for chain
+  -o, --output string   File to save the certificate to (default "marblerunChainCA.crt")
+```
+
+### Options inherited from parent commands
+
+```
+      --accepted-tcb-statuses strings   Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
+  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+```
+
+## marblerun check
+
+Check the status of MarbleRun's control plane
+
+### Synopsis
+
+Check the status of MarbleRun's control plane
+
+```
+marblerun check [flags]
+```
+
+### Options
+
+```
+  -h, --help           help for check
+      --timeout uint   Time to wait before aborting in seconds (default 60)
+```
+
+## marblerun completion
+
+Output script for specified shell to enable autocompletion
+
+### Synopsis
+
+Output script for specified shell to enable autocompletion
+
+```
+marblerun completion
+```
+
+### Examples
+
+```
+
+  	For bash:
+  	source <(marblerun completion bash)
+
+	For zsh:
+	If shell completion is not already enabled in your environment you will need to enable it:
+	echo "autoload -U compinit; compinit" >> ~/.zshrc
+
+	To load completions for each session, execute once:
+	marblerun completion zsh > "${fpath[1]}/_marblerun"
+	
+```
+
+### Options
+
+```
+  -h, --help   help for completion
+```
+
+## marblerun gramine-prepare
+
+Modifies a Gramine manifest for use with MarbleRun
+
+### Synopsis
+
+Modifies a Gramine manifest for use with MarbleRun.
+
+This command tries to automatically adjust the required parameters in an already existing Gramine manifest template, simplifying the migration of your existing Gramine application to MarbleRun.
+Please note that you still need to manually create a MarbleRun manifest.
+
+For more information about the requirements and  changes performed, consult the documentation: https://edglss.cc/doc-mr-gramine
+
+The parameter of this command is the path of the Gramine manifest template you want to modify.
+
+
+```
+marblerun gramine-prepare [flags]
+```
+
+### Options
+
+```
+  -h, --help   help for gramine-prepare
+```
+
+## marblerun install
+
+Installs MarbleRun on a kubernetes cluster
+
+### Synopsis
+
+Installs MarbleRun on a Kubernetes cluster
+
+```
 marblerun install [flags]
 ```
 
-**Flags**
+### Examples
 
-| Name, shorthand          | Default             | Description                                                                                                                                                 |
-| :----------------------- | :------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| --client-server-port     | `4433`              | Set the client server port. Needs to be configured to the same port as in your client tool stack                                                            |
-| --disable-auto-injection |                     | Install MarbleRun without auto-injection webhook                                                                                                            |
-| --domain                 | `localhost`         | Sets the CNAME for the Coordinator certificate                                                                                                              |
-| --help, -h               |                     | help for install                                                                                                                                            |
-| --marblerun-chart-path   |                     | Path to MarbleRun helm chart                                                                                                                                |
-| --mesh-sever-port        | `2001`              | Set the mesh server port. Needs to be configured to the same port as in the data-plane marbles                                                              |
-| --resource-key           | `sgx.intel.com/epc` | Resource providing SGX, different depending on used device plugin. Use this to set tolerations/resources if your device plugin isn't supported by MarbleRun |
-| --simulation             |                     | Set MarbleRun to start in simulation mode, needed when not running on an SGX enabled cluster                                                                |
-| --version                |                     | Version of the Coordinator to install, latest by default                                                                                                    |
+```
+# Install MarbleRun in simulation mode
+marblerun install --simulation
 
-**Examples**
+# Install MarbleRun using the Intel QPL and custom PCCS
+marblerun install --dcap-qpl intel --dcap-pccs-url https://pccs.example.com/sgx/certification/v3/ --dcap-secure-cert FALSE
+```
 
-* Install MarbleRun on a cluster with SGX Support
+### Options
 
-    ```bash
-    marblerun install --domain=mycluster.uksouth.cloudapp.azure.com
-    ```
+```
+      --client-server-port int        Set the client server port. Needs to be configured to the same port as in your client tool stack (default 4433)
+      --dcap-pccs-url string          Provisioning Certificate Caching Service (PCCS) server address (default "https://localhost:8081/sgx/certification/v3/")
+      --dcap-qpl string               Quote provider library to use by the Coordinator. One of {"azure", "intel"} (default "azure")
+      --dcap-secure-cert string       To accept insecure HTTPS certificate from the PCCS, set this option to FALSE (default "TRUE")
+      --disable-auto-injection        Install MarbleRun without auto-injection webhook
+      --domain string                 Sets the CNAME for the Coordinator certificate (default "localhost")
+  -h, --help                          help for install
+      --marblerun-chart-path string   Path to MarbleRun helm chart
+      --mesh-server-port int          Set the mesh server port. Needs to be configured to the same port as in the data-plane marbles (default 2001)
+      --resource-key string           Resource providing SGX, different depending on used device plugin. Use this to set tolerations/resources if your device plugin is not supported by MarbleRun
+      --simulation                    Set MarbleRun to start in simulation mode
+      --version string                Version of the Coordinator to install, latest by default
+```
 
-  The output is similar to the following:
+## marblerun manifest
 
-    ```bash
-    Did not find marblerun helm repository on system, adding now...
-    edgeless has been added to your helm repositories
-    Setting up MarbleRun Webhook... Done
-    MarbleRun installed successfully
-    ```
+Manages manifest for the MarbleRun Coordinator
 
-* Install MarbleRun on a cluster without SGX Support (simulation mode)
+### Synopsis
 
-    ```bash
-    marblerun install --simulation
-    ```
 
-  The output is similar to the following:
+Manages manifests for the MarbleRun Coordinator.
+Used to either set the manifest, update an already set manifest,
+or return a signature of the currently set manifest to the user
 
-  ```bash
-  Setting up MarbleRun Webhook... Done
-  MarbleRun installed successfully
-  ```
+### Examples
 
-## Command `manifest`
+```
+manifest set manifest.json example.com:4433 [--era-config=config.json] [--insecure]
+```
 
-Set or update a manifest, or retrieve the signature of the manifest in place.
+### Options
 
-**Flags**
-These flags apply to all subcommands of manifest
+```
+      --accepted-tcb-statuses strings   Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
+  -h, --help                            help for manifest
+  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+```
 
-| Name, shorthand | Default | Description                                                                                                                      |
-| --------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| --era-config    |         | Path to remote attestation config file in JSON format, if none provided the newest configuration will be loaded from GitHub      |
-| --help, -h      |         | help for manifest                                                                                                                |
-| --insecure, -i  |         | simulation mode                                                                                                                  |
+## marblerun manifest get
 
-* ### `set`
+Get the manifest from the MarbleRun Coordinator
 
-  Uploads a manifest in JSON or YAML format to the MarbleRun Coordinator.
-  If a recovery key was set in the manifest, a recovery secret will be sent back.
+### Synopsis
 
-  **Usage**
+Get the manifest from the MarbleRun Coordinator.
+Optionally get the manifests signature or merge updates into the displayed manifest.
 
-  ```bash
-  marblerun manifest set <manifest.json> <IP:PORT> [flags]
-  ```
+```
+marblerun manifest get <IP:PORT> [flags]
+```
 
-  **Flags**
+### Examples
 
-  | Name, shorthand     | Default | Description                                                  |
-  | ------------------- | ------- | ------------------------------------------------------------ |
-  | --recovery-data, -r |         | File to write recovery data to, print to `stdout` if not set |
+```
+marblerun manifest get $MARBLERUN -s --era-config=era.json
+```
 
-  **Examples**
+### Options
 
-  ```bash
-  marblerun manifest set manifest.json $MARBLERUN --recovery-data=recovery-secret.json --era-config=era.json
-  ```
+```
+  -u, --display-update   Set to merge updates into the displayed manifest
+  -h, --help             help for get
+  -o, --output string    Save output to file instead of printing to stdout
+  -s, --signature        Set to additionally display the manifests signature
+```
 
-  The output is similar to the following:
+### Options inherited from parent commands
 
-  ```bash
-  Successfully verified Coordinator, now uploading manifest
-  Manifest successfully set, recovery data saved to: recovery-secret.json
-  ```
+```
+      --accepted-tcb-statuses strings   Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
+  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+```
 
-* ### `update`
+## marblerun manifest log
 
-  Update a manifest by uploading an update manifest to the MarbleRun Coordinator.
-  The original manifest has to define one or multiple Users who are allowed to update the manifest.
-  For more information see [Update](../workflows/update-manifest.md)
+Get the update log from the MarbleRun Coordinator
 
-  **Usage**
+### Synopsis
 
-  ```bash
-  marblerun manifest update <manifest.json> <IP:PORT> --cert=admin-cert.pem --key=admin-key.pem [flags]
-  ```
+Get the update log from the MarbleRun Coordinator.
+		The log is list of all successful changes to the Coordinator,
+		including a timestamp and user performing the operation.
 
-  **Flags**
+```
+marblerun manifest log <IP:PORT> [flags]
+```
 
-  | Name, shorthand | Default | Description                                   |
-  | --------------- | ------- | --------------------------------------------- |
-  | --cert, -c      |         | PEM encoded admin certificate file (required) |
-  | --key, -k       |         | PEM encoded admin key file (required)         |
+### Examples
 
-  **Examples**
+```
+marblerun manifest log $MARBLERUN
+```
 
-  ```bash
-  marblerun manifest update update-manifest.json $MARBLERUN --cert=admin-cert.pem --key=admin-key.pem --era-config=era.json
-  ```
+### Options
 
-  The output is the following:
+```
+  -h, --help            help for log
+  -o, --output string   Save log to file instead of printing to stdout
+```
 
-  ```bash
-  Successfully verified Coordinator, now uploading manifest
-  Manifest successfully updated
-  ```
+### Options inherited from parent commands
 
-* ### `get`
+```
+      --accepted-tcb-statuses strings   Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
+  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+```
 
-  Retrieves the manifest and signature from the MarbleRun Coordinator.
-  This allows a user to verify what configuration is running on the Coordinator.
+## marblerun manifest set
 
-  Using the `display-update` flag, users can generate a manifest, including all applied updates up to that point.
+Sets the manifest for the MarbleRun Coordinator
 
-  **Usage**
+### Synopsis
 
-  ```bash
-  marblerun manifest get <IP:PORT> [flags]
-  ```
+Sets the manifest for the MarbleRun Coordinator
 
-  **Flags**
+```
+marblerun manifest set <manifest.json> <IP:PORT> [flags]
+```
 
-  | Name, shorthand      | Default | Description                                         |
-  | -------------------- | --------| --------------------------------------------------- |
-  | --display-update, -u |         | Set to merge updates into the displayed manifest    |
-  | --output, -o         |         | Save output to file instead of printing to `stdout` |
-  | --signature, -s      |         | Set to additionally display the manifests signature |
+### Examples
 
-  **Examples**
+```
+marblerun manifest set manifest.json $MARBLERUN --recovery-data=recovery-secret.json --era-config=era.json
+```
 
-  ```bash
-  marblerun manifest get $MARBLERUN -s --era-config=era.json
-  ```
+### Options
 
-  The output is similar to the following:
+```
+  -h, --help                  help for set
+  -r, --recoverydata string   File to write recovery data to, print to stdout if non specified
+```
 
-  ```bash
-  Successfully verified Coordinator, now requesting manifest
-  {
-  "ManifestSignature": "1ae03179b6e0c4e94546c1a8abff711c8d0975a9ee8ca5445aaa249c22b68724",
-  "Manifest": {
-      "Packages": {
-          "world": {
-              "Debug": true
-          }
-      },
-      "Marbles": {
-          "hello": {
-              "Package": "world",
-              "Parameters": {}
-          }
-      }
-  }
-  }
-  ```
+### Options inherited from parent commands
 
-* ### `log`
+```
+      --accepted-tcb-statuses strings   Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
+  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+```
 
-  Retrieves a structured log of updates to the manifest. This allows users to check what the currently supported security versions are and if certain secrets have been set by another user.
+## marblerun manifest signature
 
-  **Usage**
+Prints the signature of a MarbleRun manifest
 
-  ```bash
-  marblerun manifest log <IP:PORT> [flags]
-  ```
+### Synopsis
 
-  **Flags**
+Prints the signature of a MarbleRun manifest
 
-  | Name, shorthand | Default | Description                                      |
-  | --------------- | --------| ------------------------------------------------ |
-  | --output, -o    |         | Save log to file instead of printing to `stdout` |
+```
+marblerun manifest signature <manifest.json> [flags]
+```
 
-  **Examples**
+### Options
 
-  ```bash
-  marblerun manifest log $MARBLERUN
-  ```
+```
+  -h, --help   help for signature
+```
 
-  The output is similar to the following:
-  ```
-  Successfully verified Coordinator, now requesting update log
-  Update log:
-  {"time":"2021-07-01T09:10:23.128Z","update":"initial manifest set"}
-  {"time":"2021-07-01T09:32:54.207Z","update":"secret set","user":"admin","secret":"symmetricKeyUnset","type":"symmetric-key"}
-  {"time":"2021-07-01T09:32:54.207Z","update":"secret set","user":"admin","secret":"certUnset","type":"cert-ed25519"}
-  {"time":"2021-07-01T10:05:44.791Z","update":"SecurityVersion increased","user":"admin","package":"world","new version":4}
-  ```
+### Options inherited from parent commands
 
-* ### `signature`
+```
+      --accepted-tcb-statuses strings   Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
+  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+```
 
-  Print the signature of a MarbleRun manifest.
-  The manifest can be in either JSON or YAML format.
+## marblerun manifest update
 
-  **Usage**
+Updates the MarbleRun Coordinator with the specified manifest
 
-  ```bash
-  marblerun manifest signature manifest.json
-  ```
+### Synopsis
 
-  The output is the sha256 hash in base64 encoding of the manifest as it would be interpreted by the MarbleRun Coordinator.
-  Note, that Internally, the Coordinator handles the manifest in JSON format. Hence, the signature is always based on the JSON format of your manifest.
 
-* ### `verify`
-  Verifies that the signature returned by the Coordinator is equal to a local signature.
-  Can be used to verify the integrity of the installed manifest.
-  You can provide a signature directly, or a manifest in either JSON or YAML format.
+Updates the MarbleRun Coordinator with the specified manifest.
+An admin certificate specified in the original manifest is needed to verify the authenticity of the update manifest.
 
-  **Usage**
 
-  ```bash
-  marblerun manifest verify <manifest/signature> <IP:PORT> [flags]
-  ```
+```
+marblerun manifest update <manifest.json> <IP:PORT> [flags]
+```
 
-  **Examples**
+### Examples
 
-  ```bash
-  marblerun manifest verify manifest.json $MARBLERUN
-  ```
+```
+marblerun manifest update update-manifest.json $MARBLERUN --cert=admin-cert.pem --key=admin-key.pem --era-config=era.json
+```
 
-  ```bash
-  marblerun manifest verify 152493c4a85845480a04b95f79dd447a4573862e0d2c102c71b91b8b3cbcade5 $MARBLERUN
-  ```
+### Options
 
-  If the signatures match, the output is the following:
-  ```bash
-  OK
-  ```
+```
+  -c, --cert string   PEM encoded admin certificate file (required)
+  -h, --help          help for update
+  -k, --key string    PEM encoded admin key file (required)
+```
 
-## Command `precheck`
+### Options inherited from parent commands
 
-  Check if your Kubernetes cluster supports SGX.
-  More precisely the command will check if any nodes in the cluster define SGX resources through the use of [Device Plugins](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/device-plugins/).
-  Currently supported are:
-  * [Intel SGX Device Plugin](https://intel.github.io/intel-device-plugins-for-kubernetes/cmd/sgx_plugin/README.html), exposing the resources:
-    * `sgx.intel.com/enclave`
-    * `sgx.intel.com/epc`
-    * `sgx.intel.com/provision`
+```
+      --accepted-tcb-statuses strings   Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
+  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+```
 
+## marblerun manifest verify
 
-  * [Azure SGX Device Plugin](https://docs.microsoft.com/en-us/azure/confidential-computing/confidential-nodes-aks-overview#azure-device-plugin-for-intel-sgx-), exposing the resource:
-    * `kubernetes.azure.com/sgx_epc_mem_in_MiB`
+Verifies the signature of a MarbleRun manifest
 
-  **Usage**
+### Synopsis
 
-  ```bash
-  marblerun precheck
-  ```
+Verifies that the signature returned by the Coordinator is equal to a local signature
 
-  * If your cluster doesn't support SGX the output is the following:
+```
+marblerun manifest verify <manifest/signature> <IP:PORT> [flags]
+```
 
-  ```bash
-  Cluster does not support SGX, you may still run MarbleRun in simulation mode
-  To install MarbleRun run [marblerun install --simulation]
-  ```
+### Examples
 
-  * If your cluster does support SGX the output is similar to the following
+```
+marblerun manifest verify manifest.json $MARBLERUN
+```
 
-  ```bash
-  Cluster supports SGX on 2 nodes
-  To install MarbleRun run [marblerun install]
-  ```
+### Options
 
-## Command `recover`
+```
+  -h, --help   help for verify
+```
 
-Recover the MarbleRun Coordinator from a sealed state by uploading a recovery key.
-For more information about Coordinator recovery see [Recovery](../workflows/recover-coordinator.md)
+### Options inherited from parent commands
 
-**Usage**
+```
+      --accepted-tcb-statuses strings   Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
+  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+```
 
-```bash
+## marblerun precheck
+
+Check if your kubernetes cluster supports SGX
+
+### Synopsis
+
+Check if your kubernetes cluster supports SGX
+
+```
+marblerun precheck [flags]
+```
+
+### Options
+
+```
+  -h, --help   help for precheck
+```
+
+## marblerun package-info
+
+Prints the package signature properties of an enclave
+
+### Synopsis
+
+Prints the package signature properties of an enclave
+
+```
+marblerun package-info [flags]
+```
+
+### Options
+
+```
+  -h, --help   help for package-info
+```
+
+## marblerun recover
+
+Recovers the MarbleRun Coordinator from a sealed state
+
+### Synopsis
+
+Recovers the MarbleRun Coordinator from a sealed state
+
+```
 marblerun recover <recovery_key_decrypted> <IP:PORT> [flags]
 ```
 
-**Flags**
+### Examples
 
-| Name, shorthand | Default | Description                                                                                                                      |
-| --------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| --era-config    |         | Path to remote attestation config file in JSON format, if none provided the newest configuration will be loaded from GitHub      |
-| --help, -h      |         | help for recover                                                                                                                 |
-| --insecure, -i  |         | Set to skip quote verification, needed when running in simulation mode                                                           |
-
-**Examples**
-
-```bash
-marblerun recover recovery_key_decrypted $MARBLERUN --era-config=era.json
+```
+marblerun recover recovery_key_decrypted $MARBLERUN
 ```
 
-The output is similar to the following:
+### Options
 
-```bash
-Successfully verified Coordinator, now uploading key
-Successfully uploaded recovery key and unsealed the MarbleRun Coordinator
+```
+      --accepted-tcb-statuses strings   Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
+  -h, --help                            help for recover
+  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
 ```
 
-## Command `secret`
+## marblerun secret
 
-Manages secrets for the Coordinator
+Manages secrets for the MarbleRun Coordinator
 
-**Flags**
-These flags apply to all `secret` subcommands
+### Synopsis
 
-| Name, shorthand | Default | Description                                                                                                                 |
-| --------------- | ------- | --------------------------------------------------------------------------------------------------------------------------- |
-| --cert, -c      |         | PEM encoded MarbleRun user certificate file (required)                                                                      |
-| --era-config    |         | Path to remote attestation config file in JSON format, if none provided the newest configuration will be loaded from GitHub |
-| --insecure, -i  |         | Set to skip quote verification, needed when running in simulation mode                                                      |
-| --key, -k       |         | PEM encoded MarbleRun user key file (required)                                                                              |
 
-* ### `get`
+Manages secrets for the MarbleRun Coordinator.
+Set or retrieve a secret defined in the manifest.
 
-  Retrieves one or more secrets from the Coordinator. Requires credentials in the form of a private key and self-signed certificate of the corresponding public key. The corresponding user needs to be permitted to access the requested secrets.
-  Secrets are returned in JSON format with key data in base64 encoding.
+### Options
 
-  **Usage**
+```
+      --accepted-tcb-statuses strings   Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+  -c, --cert string                     PEM encoded MarbleRun user certificate file (required)
+      --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
+  -h, --help                            help for secret
+  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -k, --key string                      PEM encoded MarbleRun user key file (required)
+```
 
-  ```bash
-  marblerun secret get SECRETNAME ... <IP:PORT> [flags]
-  ```
+## marblerun secret set
 
-  **Flags**
+Set a secret for the MarbleRun Coordinator
 
-  | Name, shorthand | Default | Description                |
-  | --------------- | ------- | -------------------------- |
-  | --output, -o    |         | File to save the secret to |
+### Synopsis
 
-  **Examples**
 
-  ```bash
-  marblerun secret get genericSecret symmetricKeyShared $MARBLERUN -c admin.crt -k admin.key
-  ```
+Set a secret for the MarbleRun Coordinator.
+Secrets are loaded from a file in JSON format or directly from a PEM
+encoded certificate and/or key. In the later case, the name of the secret
+has to be set with the flag [--from-pem].
+Users have to authenticate themselves using a certificate and private key
+and need permissions in the manifest to write the requested secrets.
 
-  The output is similar to the following:
 
-  ```
-  genericSecret:
-  	Type:          plain
-  	Data:          SGVsbG8gZnJvbSB0aGUgTWFyYmxlcnVuIERvY3MhCg==
+```
+marblerun secret set <secret_file> <IP:PORT> [flags]
+```
 
-  symmetricKeyShared:
-  	Type:          symmetric-key
-  	UserDefined:   false
-  	Size:          128
-  	Key:           uVGpoJZTRICLccJiVNt9jA==
-  ```
+### Examples
 
-* ### `set`
+```
+# Set a secret from a JSON file
+marblerun secret set secret.json $MARBLERUN -c admin.crt -k admin.key
 
-  Sets one or more secrets for the Coordinator. Requires credentials in the form of a private key and a self-signed certificate of the corresponding public key. The corresponding user needs to be permitted to access the requested secrets.
-  Secrets to set are specified in a special secrets file in JSON format, or created by the CLI from a PEM encoded certificate and key.
-  For more information see [Managing secrets](../workflows/managing-secrets.md).
+# Set a secret from a PEM encoded file
+marblerun secret set certificate.pem $MARBLERUN -c admin.crt -k admin.key --from-pem certificateSecret
+```
 
-  **Usage**
+### Options
 
-  ```bash
-  marblerun secret set <secret.json> <IP:PORT> [flags]
-  ```
+```
+      --from-pem string   name of the secret from a PEM encoded file
+  -h, --help              help for set
+```
 
-  **Flags**
+### Options inherited from parent commands
 
-  | Name, shorthand | Default | Description                                  |
-  | --------------- | ------- | -------------------------------------------- |
-  | --from-pem      |         | set to load a secret from a PEM encoded file |
+```
+      --accepted-tcb-statuses strings   Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+  -c, --cert string                     PEM encoded MarbleRun user certificate file (required)
+      --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
+  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -k, --key string                      PEM encoded MarbleRun user key file (required)
+```
 
-  **Examples**
+## marblerun secret get
 
-  ```bash
-  marblerun secret set secret.json $MARBLERUN -c admin.crt -k admin.key
-  ```
+Retrieve secrets from the MarbleRun Coordinator
 
-  ```bash
-  marblerun secret set certificate.pem $MARBLERUN -c admin.crt -k admin.key --from-pem certificateSecret
-  ```
+### Synopsis
 
-  The output is the following:
-  ```
-  Secret successfully set
-  ```
 
-## Command `status`
+Retrieve one or more secrets from the MarbleRun Coordinator.
+Users have to authenticate themselves using a certificate and private key,
+and need permissions in the manifest to read the requested secrets.
 
-Checks on the current status of the Coordinator.
 
-**Usage**
+```
+marblerun secret get SECRETNAME ... <IP:PORT> [flags]
+```
 
-```bash
+### Examples
+
+```
+marblerun secret get genericSecret symmetricKeyShared $MARBLERUN -c admin.crt -k admin.key
+```
+
+### Options
+
+```
+  -h, --help            help for get
+  -o, --output string   File to save the secret to
+```
+
+### Options inherited from parent commands
+
+```
+      --accepted-tcb-statuses strings   Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+  -c, --cert string                     PEM encoded MarbleRun user certificate file (required)
+      --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
+  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -k, --key string                      PEM encoded MarbleRun user key file (required)
+```
+
+## marblerun status
+
+Gives information about the status of the MarbleRun Coordinator
+
+### Synopsis
+
+
+This command provides information about the currently running MarbleRun Coordinator.
+Information is obtained from the /status endpoint of the Coordinators REST API.
+
+The Coordinator will be in one of these 4 states:
+  0 recovery mode: Found a sealed state of an old seal key. Waiting for user input on /recovery.
+	The Coordinator is currently sealed, it can be recovered using the [marblerun recover] command.
+
+  1 uninitialized: Fresh start, initializing the Coordinator.
+	The Coordinator is in its starting phase.
+
+  2 waiting for manifest: Waiting for user input on /manifest.
+	Send a manifest to the Coordinator using [marblerun manifest set] to start.
+
+  3 accepting marble: The Coordinator is running, you can add marbles to the mesh or update the
+    manifest using [marblerun manifest update].
+
+
+```
 marblerun status <IP:PORT> [flags]
 ```
 
-**Flags**
+### Options
 
-| Name, shorthand | Default | Description                                                                                                                      |
-| --------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| --era-config    |         | Path to remote attestation config file in JSON format, if none provided the newest configuration will be loaded from GitHub      |
-| --help, -h      |         | help for status                                                                                                                  |
-| --insecure, -i  |         | Set to skip quote verification, needed when running in simulation mode                                                           |
-
-**Examples**
-
-```bash
-marblerun status $MARBLERUN
+```
+      --accepted-tcb-statuses strings   Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
+  -h, --help                            help for status
+  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
 ```
 
-The output is similar to the following:
+## marblerun uninstall
 
-```bash
-No era config file specified, getting latest config from github.com/edgelesssys/marblerun/releases/latest/download/coordinator-era.json
-Got latest config
-2: Coordinator is ready to accept a manifest.
+Removes MarbleRun from a kubernetes cluster
+
+### Synopsis
+
+Removes MarbleRun from a kubernetes cluster
+
+```
+marblerun uninstall [flags]
 ```
 
-## Command `uninstall`
+### Options
 
-  Remove MarbleRun from your Kubernetes cluster.
-  This command will remove all resources added by the installation command.
+```
+  -h, --help   help for uninstall
+```
 
-  **Usage**
+## marblerun version
 
-  ```bash
-  marblerun uninstall
-  ```
+Display version of this CLI and (if running) the MarbleRun Coordinator
 
-  The output is the following:
-  ```bash
-  MarbleRun successfully removed from your cluster
-  ```
+### Synopsis
 
-## Command `version`
+Display version of this CLI and (if running) the MarbleRun Coordinator
 
-  Display version information of CLI, and the MarbleRun Coordinator running on a Kubernetes cluster.
+```
+marblerun version [flags]
+```
 
-  **Usage**
+### Options
 
-  ```bash
-  marblerun version
-  ```
+```
+  -h, --help   help for version
+```
 
-  The output is similar to the following:
-
-  ```
-  CLI Version: v0.3.0
-  Commit: 689787ea6f3ea3e047a68e2d4deaf095d1d84db9
-  Coordinator Version: v0.3.0
-  ```

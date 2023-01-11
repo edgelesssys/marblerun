@@ -38,7 +38,8 @@ Retrieve one or more secrets from the MarbleRun Coordinator.
 Users have to authenticate themselves using a certificate and private key,
 and need permissions in the manifest to read the requested secrets.
 `,
-		Args: cobra.MinimumNArgs(2),
+		Example: "marblerun secret get genericSecret symmetricKeyShared $MARBLERUN -c admin.crt -k admin.key",
+		Args:    cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hostName := args[len(args)-1]
 			caCert, err := verifyCoordinator(hostName, eraConfig, insecureEra, acceptedTCBStatuses)
