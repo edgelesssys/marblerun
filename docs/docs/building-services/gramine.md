@@ -18,7 +18,7 @@ sudo apt install libsgx-quote-ex-dev
 
 We provide the `premain-libos` executable with the [MarbleRun Releases](https://github.com/edgelesssys/marblerun/releases). It will contact the Coordinator, set up the environment, and run the actual application.
 
-Set the premain executable as the entry point of the Gramine project and place the actual entry point in argv0:
+Set the premain executable as [the entry point](https://gramine.readthedocs.io/en/v1.3/manifest-syntax.html#libos-entrypoint) of the Gramine application and place the actual entry point [in argv0](https://gramine.readthedocs.io/en/v1.3/manifest-syntax.html#command-line-arguments):
 
 ```toml
 libos.entrypoint = "file:premain-libos"
@@ -37,7 +37,9 @@ After the premain is done running, it will automatically spawn your application.
 
 ### Host environment variables
 
-The premain needs access to some host [environment variables for configuration](../workflows/add-service.md#step-3-start-your-service):
+By default, environment variables from the host won't be passed to the application.
+Gramine allows to [pass through select environment variables from the host](https://gramine.readthedocs.io/en/v1.3/manifest-syntax.html#environment-variables).
+The premain needs access to the following [environment variables for configuration](../workflows/add-service.md#step-3-start-your-service):
 
 ```toml
 loader.env.EDG_MARBLE_TYPE = { passthrough = true }
@@ -51,12 +53,15 @@ loader.env.EDG_MARBLE_DNS_NAMES = { passthrough = true }
 The Marble must be able to store its UUID:
 
 ```toml
-sgx.allowed_files.uuid = "file:uuid"
+sgx.allowed_files = [
+    # ...
+    "file:uuid"
+]
 ```
 
 ### Remote attestation
 
-The Marble will send an SGX quote to the Coordinator for remote attestation using DCAP attestation:
+The Marble will send an SGX quote to the Coordinator for remote attestation using [DCAP attestation](https://gramine.readthedocs.io/en/v1.3/manifest-syntax.html#attestation-and-quotes):
 
 ```toml
 sgx.remote_attestation = "dcap"
@@ -98,19 +103,29 @@ You can specify the files' content in the MarbleRun manifest:
 ...
 ```
 
-Note that Gramine also allows to store files encrypted on the host's file system. The so encrypted filesystem requires to initialize an encrypted files key by writing it to the virtual `protected_files_key` device.
-For debugging purposes only, you can define the key directly in the Gramine manifest:
+Gramine also allows to store files [encrypted on the host's file system](https://gramine.readthedocs.io/en/v1.3/manifest-syntax.html#encrypted-files).
 
 ```toml
-fs.insecure__keys.[KEY_NAME] = "[32-character hex value]"
 fs.mounts = [
   # ...
-  { type = "encrypted", path = "/secrets", uri = "file:/path/to/local/directory", key_name = "[KEY_NAME] },
+  { type = "encrypted", path = "/secrets", uri = "file:/path/to/local/directory", key_name = "[KEY_NAME]" },
   # ...
 ]
 ```
 
-For production use cases, MarbleRun can provision your enclave with encrypted file keys at runtime.
+Gramine provides access to a pseudo filesystem for [setting the encryption key](https://gramine.readthedocs.io/en/v1.3/attestation.html#low-level-dev-attestation-interface).
+MarbleRun can set up your enclave with keys at runtime by specifying them in the MarbleRun manifest:
+
+```javascript
+...
+    "Parameters": {
+        "Files": {
+            "/dev/attestation/[KEY_NAME]": "{{ raw .Secrets.encryptedFilesKey }}"
+        }
+    }
+...
+```
+
 You can see how this is done in the [nginx example](https://github.com/edgelesssys/marblerun/tree/master/samples/gramine-nginx).
 
 ## Troubleshooting
