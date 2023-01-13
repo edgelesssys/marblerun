@@ -30,7 +30,6 @@ RUN apt-get update && apt-get install -y \
     libsgx-quote-ex-dev \
     libsgx-aesm-launch-plugin \
     build-essential \
-    libssl-dev \
     libprotobuf-c-dev \
     gramine && \
     apt-get clean -y && apt-get autoclean -y && apt-get autoremove -y
