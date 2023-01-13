@@ -11,7 +11,6 @@ COPY --from=pull_marblerun /marblerun /premain
 WORKDIR /premain/build
 RUN cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
 RUN make premain-libos
-COPY ./premain-libos /premain/build/premain-libos
 
 FROM ubuntu:20.04
 RUN apt update && \
