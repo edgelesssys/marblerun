@@ -51,6 +51,42 @@ var (
 	acceptedTCBStatuses []string
 )
 
+func fetchLatestCoordinatorConfiguration() error {
+	coordinatorVersion, err := getCoordinatorVersion()
+	eraURL := fmt.Sprintf("https://github.com/edgelesssys/marblerun/releases/download/%s/coordinator-era.json", coordinatorVersion)
+	if err != nil {
+		// if errors were caused by an empty kube config file or by being unable to connect to a cluster we assume the Coordinator is running as a standlone
+		// and we default to the latest era-config file
+		var dnsError *net.DNSError
+		if !clientcmd.IsEmptyConfig(err) && !errors.As(err, &dnsError) && !os.IsNotExist(err) {
+			return err
+		}
+		eraURL = "https://github.com/edgelesssys/marblerun/releases/latest/download/coordinator-era.json"
+	}
+
+	fmt.Printf("No era config file specified, getting config from %s\n", eraURL)
+	resp, err := http.Get(eraURL)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("downloading era config failed with error %d: %s", resp.StatusCode, http.StatusText(resp.StatusCode))
+	}
+	out, err := os.Create(eraDefaultConfig)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	_, err = io.Copy(out, resp.Body)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Got latest config")
+	return nil
+}
+
 // verify the connection to the MarbleRun Coordinator.
 func verifyCoordinator(host string, configFilename string, insecure bool, acceptedTCBStatuses []string) ([]*pem.Block, error) {
 	// skip verification if specified
@@ -70,37 +106,9 @@ func verifyCoordinator(host string, configFilename string, insecure bool, accept
 	}
 
 	// get latest config from github if none specified
-	coordinatorVersion, err := getCoordinatorVersion()
-	eraURL := fmt.Sprintf("https://github.com/edgelesssys/marblerun/releases/download/%s/coordinator-era.json", coordinatorVersion)
-	if err != nil {
-		// if errors were caused by an empty kube config file or by being unable to connect to a cluster we assume the Coordinator is running as a standlone
-		// and we default to the latest era-config file
-		var dnsError *net.DNSError
-		if !clientcmd.IsEmptyConfig(err) && !errors.As(err, &dnsError) && !os.IsNotExist(err) {
-			return nil, err
-		}
-		eraURL = "https://github.com/edgelesssys/marblerun/releases/latest/download/coordinator-era.json"
-	}
-
-	fmt.Printf("No era config file specified, getting config from %s\n", eraURL)
-	resp, err := http.Get(eraURL)
-	if err != nil {
+	if err := fetchLatestCoordinatorConfiguration(); err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("downloading era config failed with error %d: %s", resp.StatusCode, http.StatusText(resp.StatusCode))
-	}
-	out, err := os.Create(eraDefaultConfig)
-	if err != nil {
-		return nil, err
-	}
-	defer out.Close()
-	_, err = io.Copy(out, resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Println("Got latest config")
 
 	pemBlock, _, err := era.GetCertificate(host, eraDefaultConfig)
 	return pemBlock, err
