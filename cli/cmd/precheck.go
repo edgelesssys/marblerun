@@ -20,8 +20,8 @@ import (
 func newPrecheckCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "precheck",
-		Short: "Check if your kubernetes cluster supports SGX",
-		Long:  `Check if your kubernetes cluster supports SGX`,
+		Short: "Check if your Kubernetes cluster supports SGX",
+		Long:  `Check if your Kubernetes cluster supports SGX`,
 		Args:  cobra.NoArgs,
 		RunE: func(cobracmd *cobra.Command, args []string) error {
 			kubeClient, err := getKubernetesInterface()

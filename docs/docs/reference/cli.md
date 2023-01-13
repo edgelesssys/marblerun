@@ -43,6 +43,7 @@ You have different options depending on the environment the Coordinator is deplo
 
 <tabs groupId="environement">
 <tabItem value="azure" label="Azure CVM">
+
 If the Coordinator is running on an Azure VM, the CLI relies on the [Azure DCAP Client](https://github.com/microsoft/Azure-DCAP-Client) to verify quotes.
 To install the dependency on Ubuntu 20.04 run:
 
@@ -86,7 +87,7 @@ Commands:
 * [check](#marblerun-check): Check the status of MarbleRun's control plane
 * [completion](#marblerun-completion): Output script for specified shell to enable autocompletion
 * [gramine-prepare](#marblerun-gramine-prepare): Modifies a Gramine manifest for use with MarbleRun
-* [install](#marblerun-install): Installs MarbleRun on a kubernetes cluster
+* [install](#marblerun-install): Installs MarbleRun on a Kubernetes cluster
 * [manifest](#marblerun-manifest): Manages manifest for the MarbleRun Coordinator
   * [get](#marblerun-manifest-get): Get the manifest from the MarbleRun Coordinator
   * [log](#marblerun-manifest-log): Get the update log from the MarbleRun Coordinator
@@ -94,14 +95,14 @@ Commands:
   * [signature](#marblerun-manifest-signature): Prints the signature of a MarbleRun manifest
   * [update](#marblerun-manifest-update): Updates the MarbleRun Coordinator with the specified manifest
   * [verify](#marblerun-manifest-verify): Verifies the signature of a MarbleRun manifest
-* [precheck](#marblerun-precheck): Check if your kubernetes cluster supports SGX
+* [precheck](#marblerun-precheck): Check if your Kubernetes cluster supports SGX
 * [package-info](#marblerun-package-info): Prints the package signature properties of an enclave
 * [recover](#marblerun-recover): Recovers the MarbleRun Coordinator from a sealed state
 * [secret](#marblerun-secret): Manages secrets for the MarbleRun Coordinator
   * [set](#marblerun-secret-set): Set a secret for the MarbleRun Coordinator
   * [get](#marblerun-secret-get): Retrieve secrets from the MarbleRun Coordinator
 * [status](#marblerun-status): Gives information about the status of the MarbleRun Coordinator
-* [uninstall](#marblerun-uninstall): Removes MarbleRun from a kubernetes cluster
+* [uninstall](#marblerun-uninstall): Removes MarbleRun from a Kubernetes cluster
 * [version](#marblerun-version): Display version of this CLI and (if running) the MarbleRun Coordinator
 
 ## marblerun certificate
@@ -283,7 +284,7 @@ marblerun gramine-prepare [flags]
 
 ## marblerun install
 
-Installs MarbleRun on a kubernetes cluster
+Installs MarbleRun on a Kubernetes cluster
 
 ### Synopsis
 
@@ -547,11 +548,11 @@ marblerun manifest verify manifest.json $MARBLERUN
 
 ## marblerun precheck
 
-Check if your kubernetes cluster supports SGX
+Check if your Kubernetes cluster supports SGX
 
 ### Synopsis
 
-Check if your kubernetes cluster supports SGX
+Check if your Kubernetes cluster supports SGX
 
 ```
 marblerun precheck [flags]
@@ -753,11 +754,11 @@ marblerun status <IP:PORT> [flags]
 
 ## marblerun uninstall
 
-Removes MarbleRun from a kubernetes cluster
+Removes MarbleRun from a Kubernetes cluster
 
 ### Synopsis
 
-Removes MarbleRun from a kubernetes cluster
+Removes MarbleRun from a Kubernetes cluster
 
 ```
 marblerun uninstall [flags]

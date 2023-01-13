@@ -56,7 +56,7 @@ func newInstallCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "install",
-		Short: "Installs MarbleRun on a kubernetes cluster",
+		Short: "Installs MarbleRun on a Kubernetes cluster",
 		Long:  `Installs MarbleRun on a Kubernetes cluster`,
 		Example: `# Install MarbleRun in simulation mode
 marblerun install --simulation

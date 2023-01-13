@@ -43,6 +43,7 @@ You have different options depending on the environment the Coordinator is deplo
 
 <tabs groupId="environement">
 <tabItem value="azure" label="Azure CVM">
+
 If the Coordinator is running on an Azure VM, the CLI relies on the [Azure DCAP Client](https://github.com/microsoft/Azure-DCAP-Client) to verify quotes.
 To install the dependency on Ubuntu 20.04 run:
 
