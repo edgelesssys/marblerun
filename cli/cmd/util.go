@@ -110,7 +110,11 @@ func verifyCoordinator(host string, configFilename string, insecure bool, accept
 		return nil, err
 	}
 
-	pemBlock, _, err := era.GetCertificate(host, eraDefaultConfig)
+	pemBlock, tcbStatus, err := era.GetCertificate(host, eraDefaultConfig)
+	if errors.Is(err, attestation.ErrTCBLevelInvalid) && util.StringSliceContains(acceptedTCBStatuses, tcbStatus.String()) {
+		fmt.Println("Warning: TCB level invalid, but accepted by configuration")
+		return pemBlock, nil
+	}
 	return pemBlock, err
 }
 
