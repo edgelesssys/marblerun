@@ -1,3 +1,5 @@
+EDG_MARBLE_TYPE ?= hello
+
 all: sign
 .PHONY: clean all
 
@@ -24,4 +26,4 @@ premain-libos:
 	chmod u+x premain-libos
 
 run:
-	gramine-sgx hello
+	EDG_MARBLE_TYPE=$(EDG_MARBLE_TYPE) gramine-sgx hello

@@ -18,7 +18,7 @@ loader.log_level = "{{ log_level }}"
 ################################# ARGUMENTS ###################################
 
 # MARBLERUN: argv0 must be the path to the actual application
-loader.argv0_override = "redis-server"
+loader.argv = ["redis-server"]
 
 ################################# ENV VARS ####################################
 
@@ -28,8 +28,7 @@ loader.argv0_override = "redis-server"
 #
 # In case of Redis:
 # - /lib is searched for Glibc libraries (ld, libc, libpthread)
-# - {{ arch_libdir }} is searched for Name Service Switch (NSS) libraries
-loader.env.LD_LIBRARY_PATH = "/lib:{{ arch_libdir }}:/usr/{{ arch_libdir }}"
+loader.env.LD_LIBRARY_PATH = "/lib:/usr/lib/x86_64-linux-gnu"
 
 # MARBLERUN: Forward EDG environment variables, used by MarbleRun
 loader.env.EDG_MARBLE_TYPE = { passthrough = true }
@@ -45,26 +44,29 @@ sys.enable_sigterm_injection = true
 ################################# MOUNT FS  ###################################
 
 # General notes:
-# - There is only one supported type of mount points: 'chroot'.
-# - Directory names are (somewhat confusingly) prepended by 'file:'.
-# - Names of mount entries (lib, lib2, lib3) are irrelevant but must be unique.
-# - In-Gramine visible path names may be arbitrary but we reuse host-OS URIs
-#   for simplicity (except for the first 'lib' case).
+# - All mount points are mounted using the default 'chroot' type.
+# - `path`: names of directories and files in Gramine environment; they may be
+#           arbitrary but here we mostly reuse host URIs for simplicity (except
+#           for the first `/lib` mount point).
+# - `uri`:  names of directories and files on the host, somewhat confusingly
+#           prepended by the 'file:' keyword.
 
 fs.mounts = [
-  # Mount host-OS directory to Gramine glibc/runtime libraries (in 'uri') into
+  # Mount on-host directory to Gramine glibc/runtime libraries (in 'uri') into
   # in-Gramine visible directory /lib (in 'path').
   { path = "/lib", uri = "file:{{ gramine.runtimedir() }}" },
+  { path = "/usr/lib/x86_64-linux-gnu", uri = "file:/usr/lib/x86_64-linux-gnu" },
 
-  # Mount host-OS directory to Name Service Switch (NSS) libraries (in 'uri')
-  # into in-Gramine visible directory /lib/x86_64-linux-gnu (in 'path').
-  { path = "{{ arch_libdir }}", uri = "file:{{ arch_libdir }}" },
-
-  { path = "/usr/{{ arch_libdir }}", uri = "file:/usr/{{ arch_libdir }}" },
+  # Mount redis-server executable (located in the current directory) under the
+  # in-Gramine visible root directory.
+  { path = "/redis-server", uri = "file:redis-server" },
 
   # Mount host-OS directory to NSS files required by Glibc + NSS libs (in 'uri')
   # into in-Gramine visible directory /etc (in 'path').
   { path = "/etc", uri = "file:/etc" },
+
+  # Redis encrypted data dir
+  { type = "encrypted", path = "/redis-data/", uri = "file:redis-data/" },
 ]
 
 ############################### SGX: GENERAL ##################################
@@ -125,19 +127,8 @@ sgx.trusted_files = [
   "file:{{ gramine.libos }}",
   "file:redis-server",
   "file:{{ gramine.runtimedir() }}/",
-  "file:{{ arch_libdir }}/",
-  "file:/usr/{{ arch_libdir }}/",
+  "file:/usr/lib/x86_64-linux-gnu/",
   "file:premain-libos"
-]
-
-############################# SGX: PROTECTED FILES ###############################
-
-# MARBLERUN: these are provisioned by the Coordinator
-sgx.protected_files = [
-    "file:redis.conf",
-    "file:redis.crt",
-    "file:redis.key",
-    "file:ca.crt"
 ]
 
 ############################# SGX: ALLOWED FILES ###############################
@@ -168,6 +159,6 @@ sgx.allowed_files = [
 
 ############################# SGX: Attestation ###############################
 
-sgx.remote_attestation = true
+sgx.remote_attestation = "dcap"
 sgx.isvprodid = 13
 sgx.isvsvn    = 1

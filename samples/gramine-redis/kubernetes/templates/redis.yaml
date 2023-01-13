@@ -41,8 +41,6 @@ spec:
         - name: EDG_MARBLE_TYPE
           value: "redis-main"
         name: redis
-        securityContext:
-          privileged: true
         volumeMounts:
         - name: aesmd-socket
           mountPath: /var/run/aesmd
@@ -92,8 +90,6 @@ spec:
         - name: EDG_MARBLE_TYPE
           value: "redis-replica"
         name: redis
-        securityContext:
-          privileged: true
         volumeMounts:
         - name: aesmd-socket
           mountPath: /var/run/aesmd

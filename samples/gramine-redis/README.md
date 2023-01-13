@@ -78,8 +78,8 @@ You can now securely connect to the Redis server using the `redis-cli` and the M
 
     ```bash
     wget http://download.redis.io/redis-stable.tar.gz
-    tar xzf redis-stable.tar.gz
-    make BUILD_TLS=yes -C redis-stable &&  cp redis-stable/src/redis-cli /usr/local/bin
+    tar xzf redis-stable.tar.gz && cd redis-stable
+    make BUILD_TLS=yes && cp redis-stable/src/redis-cli /usr/local/bin
     ```
 
 * Obtain the Coordinator's CA certificate

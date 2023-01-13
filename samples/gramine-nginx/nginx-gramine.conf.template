@@ -40,8 +40,8 @@ http {
         listen  $(LISTEN_SSL_PORT) ssl;
         server_name $(LISTEN_HOST);
 
-        ssl_certificate            server.crt;
-        ssl_certificate_key        server.key;
+        ssl_certificate            /install/secrets/server.crt;
+        ssl_certificate_key        /install/secrets/server.key;
         ssl_session_cache          shared:SSL:10m;
         ssl_session_timeout        10m;
         ssl_protocols              TLSv1 TLSv1.1 TLSv1.2;
