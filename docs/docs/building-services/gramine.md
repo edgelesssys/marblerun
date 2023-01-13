@@ -38,7 +38,7 @@ After the premain is done running, it will automatically spawn your application.
 ### Host environment variables
 
 By default, environment variables from the host won't be passed to the application.
-Gramine allows to [pass through select environment variables from the host](https://gramine.readthedocs.io/en/v1.3/manifest-syntax.html#environment-variables).
+Gramine allows to [pass through whitelisted environment variables from the host](https://gramine.readthedocs.io/en/v1.3/manifest-syntax.html#environment-variables).
 The premain needs access to the following [environment variables for configuration](../workflows/add-service.md#step-3-start-your-service):
 
 ```toml
