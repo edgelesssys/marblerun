@@ -95,22 +95,19 @@ func verifyCoordinator(host string, configFilename string, insecure bool, accept
 		return era.InsecureGetCertificate(host)
 	}
 
+	var configFile string
 	// get certificate using provided config
 	if configFilename != "" {
-		pemBlock, tcbStatus, err := era.GetCertificate(host, configFilename)
-		if errors.Is(err, attestation.ErrTCBLevelInvalid) && util.StringSliceContains(acceptedTCBStatuses, tcbStatus.String()) {
-			fmt.Println("Warning: TCB level invalid, but accepted by configuration")
-			return pemBlock, nil
+		configFile = configFilename
+	} else {
+		// get latest config from github if none specified
+		if err := fetchLatestCoordinatorConfiguration(); err != nil {
+			return nil, err
 		}
-		return pemBlock, err
+		configFile = eraDefaultConfig
 	}
 
-	// get latest config from github if none specified
-	if err := fetchLatestCoordinatorConfiguration(); err != nil {
-		return nil, err
-	}
-
-	pemBlock, tcbStatus, err := era.GetCertificate(host, eraDefaultConfig)
+	pemBlock, tcbStatus, err := era.GetCertificate(host, configFile)
 	if errors.Is(err, attestation.ErrTCBLevelInvalid) && util.StringSliceContains(acceptedTCBStatuses, tcbStatus.String()) {
 		fmt.Println("Warning: TCB level invalid, but accepted by configuration")
 		return pemBlock, nil
