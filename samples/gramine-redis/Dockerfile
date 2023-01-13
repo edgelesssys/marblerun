@@ -11,7 +11,6 @@ COPY --from=pull_marblerun /marblerun /premain
 WORKDIR /premain/build
 RUN cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
 RUN make premain-libos
-COPY ./premain-libos /premain/build/premain-libos
 
 FROM ubuntu:20.04
 RUN apt update && \
@@ -30,7 +29,6 @@ RUN apt-get update && apt-get install -y \
     libsgx-quote-ex-dev \
     libsgx-aesm-launch-plugin \
     build-essential \
-    libssl-dev \
     libprotobuf-c-dev \
     gramine && \
     apt-get clean -y && apt-get autoclean -y && apt-get autoremove -y
