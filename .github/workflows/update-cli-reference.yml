@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master
-      - fix/cli-workflow
     paths:
       - "cli/**"
       - "hack/clidocgen/**"
@@ -34,6 +33,7 @@ jobs:
           echo "COMMIT_END=$(echo ${{ github.sha }} | cut -c1-8)" >> "$GITHUB_ENV"
 
       - name: Check if action branch exists
+        shell: bash -e {0}
         run: |
           ex="$(git ls-remote --heads origin action/marblerun/update-cli-reference)"
           echo "EXISTS=$(if [[ -z "$ex" ]]; then echo 0; else echo 1; fi)" >> "$GITHUB_ENV"
