@@ -9,7 +9,7 @@ config
 Dockerfile
 emojivoto
 Env
-Gramine
+[Gg]ramine
 hardcode
 helloworld
 hostname
@@ -17,11 +17,14 @@ Istio
 kubectl
 Linkerd
 minikube
+MarbleRun
+marblerun
 namespace
 nginx
 nonce
 Occlum
 [Pp]remain
+precheck
 runtime
 Redis
 subcommand

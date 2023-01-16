@@ -31,7 +31,7 @@ or return a signature of the currently set manifest to the user`,
 
 	cmd.PersistentFlags().StringVar(&eraConfig, "era-config", "", "Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github")
 	cmd.PersistentFlags().BoolVarP(&insecureEra, "insecure", "i", false, "Set to skip quote verification, needed when running in simulation mode")
-	cmd.PersistentFlags().StringSliceVar(&acceptedTCBStatuses, "accepted-tcb-statuses", []string{"UpToDate"}, "Coma seperated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded)")
+	cmd.PersistentFlags().StringSliceVar(&acceptedTCBStatuses, "accepted-tcb-statuses", []string{"UpToDate"}, "Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded)")
 	cmd.AddCommand(newManifestGet())
 	cmd.AddCommand(newManifestLog())
 	cmd.AddCommand(newManifestSet())

@@ -28,7 +28,8 @@ func newManifestGet() *cobra.Command {
 		Short: "Get the manifest from the MarbleRun Coordinator",
 		Long: `Get the manifest from the MarbleRun Coordinator.
 Optionally get the manifests signature or merge updates into the displayed manifest.`,
-		Args: cobra.ExactArgs(1),
+		Example: "marblerun manifest get $MARBLERUN -s --era-config=era.json",
+		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hostName := args[0]
 			cert, err := verifyCoordinator(hostName, eraConfig, insecureEra, acceptedTCBStatuses)

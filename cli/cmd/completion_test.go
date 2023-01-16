@@ -15,7 +15,7 @@ import (
 func TestCliCompletion(t *testing.T) {
 	assert := assert.New(t)
 
-	bashCompletion, err := cliCompletion("bash", rootCmd)
+	bashCompletion, err := cliCompletion("bash", NewRootCmd())
 	assert.NoError(err)
 	assert.Contains(bashCompletion, "# bash completion for marblerun")
 
@@ -23,10 +23,10 @@ func TestCliCompletion(t *testing.T) {
 	// assert.NoError(err)
 	// assert.Contains(fishCompletion, "# fish completion for marblerun")
 
-	zshCompletion, err := cliCompletion("zsh", rootCmd)
+	zshCompletion, err := cliCompletion("zsh", NewRootCmd())
 	assert.NoError(err)
 	assert.Contains(zshCompletion, "# zsh completion for marblerun")
 
-	_, err = cliCompletion("unsupported-shell", rootCmd)
+	_, err = cliCompletion("unsupported-shell", NewRootCmd())
 	assert.Error(err)
 }

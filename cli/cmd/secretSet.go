@@ -37,6 +37,11 @@ has to be set with the flag [--from-pem].
 Users have to authenticate themselves using a certificate and private key
 and need permissions in the manifest to write the requested secrets.
 `,
+		Example: `# Set a secret from a JSON file
+marblerun secret set secret.json $MARBLERUN -c admin.crt -k admin.key
+
+# Set a secret from a PEM encoded file
+marblerun secret set certificate.pem $MARBLERUN -c admin.crt -k admin.key --from-pem certificateSecret`,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			secretFile := args[0]

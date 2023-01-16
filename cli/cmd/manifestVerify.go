@@ -19,10 +19,11 @@ import (
 
 func newManifestVerify() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "verify <manifest/signature> <IP:PORT>",
-		Short: "Verifies the signature of a MarbleRun manifest",
-		Long:  `Verifies that the signature returned by the Coordinator is equal to a local signature`,
-		Args:  cobra.ExactArgs(2),
+		Use:     "verify <manifest/signature> <IP:PORT>",
+		Short:   "Verifies the signature of a MarbleRun manifest",
+		Long:    `Verifies that the signature returned by the Coordinator is equal to a local signature`,
+		Example: "marblerun manifest verify manifest.json $MARBLERUN",
+		Args:    cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			manifest := args[0]
 			hostName := args[1]

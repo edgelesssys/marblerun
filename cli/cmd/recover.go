@@ -20,10 +20,11 @@ import (
 
 func newRecoverCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "recover <recovery_key_decrypted> <IP:PORT>",
-		Short: "Recovers the MarbleRun Coordinator from a sealed state",
-		Long:  `Recovers the MarbleRun Coordinator from a sealed state`,
-		Args:  cobra.ExactArgs(2),
+		Use:     "recover <recovery_key_decrypted> <IP:PORT>",
+		Short:   "Recovers the MarbleRun Coordinator from a sealed state",
+		Long:    "Recovers the MarbleRun Coordinator from a sealed state",
+		Example: "marblerun recover recovery_key_decrypted $MARBLERUN",
+		Args:    cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			keyFile := args[0]
 			hostName := args[1]
@@ -48,7 +49,7 @@ func newRecoverCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(&eraConfig, "era-config", "", "Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github")
 	cmd.Flags().BoolVarP(&insecureEra, "insecure", "i", false, "Set to skip quote verification, needed when running in simulation mode")
-	cmd.PersistentFlags().StringSliceVar(&acceptedTCBStatuses, "accepted-tcb-statuses", []string{"UpToDate"}, "Coma seperated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded)")
+	cmd.PersistentFlags().StringSliceVar(&acceptedTCBStatuses, "accepted-tcb-statuses", []string{"UpToDate"}, "Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded)")
 
 	return cmd
 }

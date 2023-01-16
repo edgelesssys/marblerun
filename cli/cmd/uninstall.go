@@ -22,8 +22,8 @@ import (
 func newUninstallCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "uninstall",
-		Short: "Removes MarbleRun from a kubernetes cluster",
-		Long:  `Removes MarbleRun from a kubernetes cluster`,
+		Short: "Removes MarbleRun from a Kubernetes cluster",
+		Long:  `Removes MarbleRun from a Kubernetes cluster`,
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			settings := cli.New()
