@@ -46,6 +46,7 @@ jobs:
         with:
           source_file: "cli.md"
           destination_repo: "edgelesssys/marblerun"
+          destination_branch: "master"
           destination_branch_create: "action/marblerun/update-cli-reference"
           destination_folder: "docs/docs/reference"
           user_name: "${{ github.actor }}"
