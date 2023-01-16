@@ -20,6 +20,10 @@ jobs:
         with:
           ref: ${{ !github.event.pull_request.head.repo.fork && github.head_ref || '' }}
 
+      - name: Setup
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Generate reference docs
         run: go run . | cat header.md - > ../../cli.md
         working-directory: hack/clidocgen
@@ -29,6 +33,7 @@ jobs:
           echo "COMMIT_END=$(echo ${{ github.sha }} | cut -c1-8)" >> "$GITHUB_ENV"
 
       - name: Check if action branch exists
+        shell: bash -e {0}
         run: |
           ex="$(git ls-remote --heads origin action/marblerun/update-cli-reference)"
           echo "EXISTS=$(if [[ -z "$ex" ]]; then echo 0; else echo 1; fi)" >> "$GITHUB_ENV"
@@ -41,6 +46,7 @@ jobs:
         with:
           source_file: "cli.md"
           destination_repo: "edgelesssys/marblerun"
+          destination_branch: "master"
           destination_branch_create: "action/marblerun/update-cli-reference"
           destination_folder: "docs/docs/reference"
           user_name: "${{ github.actor }}"
