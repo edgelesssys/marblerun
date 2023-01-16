@@ -38,7 +38,7 @@ go build -buildvcs=false -o marblerun ./cli
 
 ### Requirements
 
-The CLI requires SGX quote verification library to verify quotes issued by the Coordinator.
+The CLI requires an SGX quote verification library to verify quotes issued by the Coordinator.
 You have different options depending on the environment the Coordinator is deployed to:
 
 <tabs groupId="environement">
@@ -67,7 +67,7 @@ sudo apt update
 sudo apt install -y libsgx-dcap-default-qpl
 ```
 
-Follow the [Intel's documentation](https://github.com/intel/SGXDataCenterAttestationPrimitives/blob/master/QuoteGeneration/qpl/README.md#configuration) to configure access to the PCCS.
+Follow [Intel's documentation](https://github.com/intel/SGXDataCenterAttestationPrimitives/blob/master/QuoteGeneration/qpl/README.md#configuration) to configure access to the PCCS.
 </tabItem>
 </tabs>
 

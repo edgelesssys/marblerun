@@ -38,7 +38,7 @@ go build -buildvcs=false -o marblerun ./cli
 
 ### Requirements
 
-The CLI requires SGX quote verification library to verify quotes issued by the Coordinator.
+The CLI requires an SGX quote verification library to verify quotes issued by the Coordinator.
 You have different options depending on the environment the Coordinator is deployed to:
 
 <tabs groupId="environement">
@@ -67,7 +67,7 @@ sudo apt update
 sudo apt install -y libsgx-dcap-default-qpl
 ```
 
-Follow the [Intel's documentation](https://github.com/intel/SGXDataCenterAttestationPrimitives/blob/master/QuoteGeneration/qpl/README.md#configuration) to configure access to the PCCS.
+Follow [Intel's documentation](https://github.com/intel/SGXDataCenterAttestationPrimitives/blob/master/QuoteGeneration/qpl/README.md#configuration) to configure access to the PCCS.
 </tabItem>
 </tabs>
 
@@ -116,7 +116,7 @@ Retrieves the certificate of the MarbleRun Coordinator
 ### Options
 
 ```
-      --accepted-tcb-statuses strings   Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
       --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
   -h, --help                            help for certificate
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
@@ -144,7 +144,7 @@ marblerun certificate root <IP:PORT> [flags]
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
       --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
 ```
@@ -171,7 +171,7 @@ marblerun certificate intermediate <IP:PORT> [flags]
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
       --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
 ```
@@ -198,7 +198,7 @@ marblerun certificate chain <IP:PORT> [flags]
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
       --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
 ```
@@ -341,7 +341,7 @@ manifest set manifest.json example.com:4433 [--era-config=config.json] [--insecu
 ### Options
 
 ```
-      --accepted-tcb-statuses strings   Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
       --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
   -h, --help                            help for manifest
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
@@ -378,7 +378,7 @@ marblerun manifest get $MARBLERUN -s --era-config=era.json
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
       --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
 ```
@@ -413,7 +413,7 @@ marblerun manifest log $MARBLERUN
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
       --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
 ```
@@ -446,7 +446,7 @@ marblerun manifest set manifest.json $MARBLERUN --recovery-data=recovery-secret.
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
       --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
 ```
@@ -472,7 +472,7 @@ marblerun manifest signature <manifest.json> [flags]
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
       --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
 ```
@@ -509,7 +509,7 @@ marblerun manifest update update-manifest.json $MARBLERUN --cert=admin-cert.pem 
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
       --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
 ```
@@ -541,7 +541,7 @@ marblerun manifest verify manifest.json $MARBLERUN
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
       --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
 ```
@@ -603,7 +603,7 @@ marblerun recover recovery_key_decrypted $MARBLERUN
 ### Options
 
 ```
-      --accepted-tcb-statuses strings   Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
       --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
   -h, --help                            help for recover
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
@@ -622,7 +622,7 @@ Set or retrieve a secret defined in the manifest.
 ### Options
 
 ```
-      --accepted-tcb-statuses strings   Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
   -c, --cert string                     PEM encoded MarbleRun user certificate file (required)
       --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
   -h, --help                            help for secret
@@ -669,7 +669,7 @@ marblerun secret set certificate.pem $MARBLERUN -c admin.crt -k admin.key --from
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
   -c, --cert string                     PEM encoded MarbleRun user certificate file (required)
       --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
@@ -708,7 +708,7 @@ marblerun secret get genericSecret symmetricKeyShared $MARBLERUN -c admin.crt -k
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
   -c, --cert string                     PEM encoded MarbleRun user certificate file (required)
       --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
@@ -746,7 +746,7 @@ marblerun status <IP:PORT> [flags]
 ### Options
 
 ```
-      --accepted-tcb-statuses strings   Comma separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
       --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
   -h, --help                            help for status
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode

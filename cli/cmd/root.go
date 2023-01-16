@@ -21,9 +21,9 @@ func NewRootCmd() *cobra.Command {
 		Short: "Install and manage the MarbleRun confidential computing service mesh",
 		Long: `The marblerun CLI enables you to install and manage the MarbleRun
 confidential computing service mesh in your Kubernetes cluster
-		
+
 To install and configure MarbleRun, run:
-		
+
 	$ marblerun install
 `,
 	}
