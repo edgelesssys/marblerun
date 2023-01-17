@@ -81,7 +81,7 @@ func newUpdateAcknowledge() *cobra.Command {
 		Short: "Acknowledge a pending update for the MarbleRun Coordinator (Enterprise feature)",
 		Long: `Acknowledge a pending update for the MarbleRun Coordinator (Enterprise feature).
 
-In case of multi party updates, the Coordinator will wait for all participants to acknowledge the update before applying it.
+In case of multi-party updates, the Coordinator will wait for all participants to acknowledge the update before applying it.
 All participants must use the same manifest to acknowledge the pending update.
 `,
 		Example: "marblerun manifest update acknowledge update-manifest.json $MARBLERUN --cert=admin-cert.pem --key=admin-key.pem --era-config=era.json",
