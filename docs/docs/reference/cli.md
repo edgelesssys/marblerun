@@ -93,7 +93,11 @@ Commands:
   * [log](#marblerun-manifest-log): Get the update log from the MarbleRun Coordinator
   * [set](#marblerun-manifest-set): Sets the manifest for the MarbleRun Coordinator
   * [signature](#marblerun-manifest-signature): Prints the signature of a MarbleRun manifest
-  * [update](#marblerun-manifest-update): Updates the MarbleRun Coordinator with the specified manifest
+  * [update](#marblerun-manifest-update): Manage manifest updates for the MarbleRun Coordinator
+    * [apply](#marblerun-manifest-update-apply): Updates the MarbleRun Coordinator with the specified manifest
+    * [acknowledge](#marblerun-manifest-update-acknowledge): Acknowledge a pending update for the MarbleRun Coordinator (Enterprise feature)
+    * [cancel](#marblerun-manifest-update-cancel): Cancel a pending manifest update for the MarbleRun Coordinator (Enterprise feature)
+    * [get](#marblerun-manifest-update-get): View a pending manifest update (Enterprise feature)
   * [verify](#marblerun-manifest-verify): Verifies the signature of a MarbleRun manifest
 * [precheck](#marblerun-precheck): Check if your Kubernetes cluster supports SGX
 * [package-info](#marblerun-package-info): Prints the package signature properties of an enclave
@@ -479,6 +483,28 @@ marblerun manifest signature <manifest.json> [flags]
 
 ## marblerun manifest update
 
+Manage manifest updates for the MarbleRun Coordinator
+
+### Synopsis
+
+Manage manifest updates for the MarbleRun Coordinator.
+
+### Options
+
+```
+  -h, --help   help for update
+```
+
+### Options inherited from parent commands
+
+```
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
+  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+```
+
+## marblerun manifest update apply
+
 Updates the MarbleRun Coordinator with the specified manifest
 
 ### Synopsis
@@ -489,21 +515,126 @@ An admin certificate specified in the original manifest is needed to verify the 
 
 
 ```
-marblerun manifest update <manifest.json> <IP:PORT> [flags]
+marblerun manifest update apply <manifest.json> <IP:PORT> [flags]
 ```
 
 ### Examples
 
 ```
-marblerun manifest update update-manifest.json $MARBLERUN --cert=admin-cert.pem --key=admin-key.pem --era-config=era.json
+marblerun manifest update apply update-manifest.json $MARBLERUN --cert=admin-cert.pem --key=admin-key.pem --era-config=era.json
 ```
 
 ### Options
 
 ```
   -c, --cert string   PEM encoded admin certificate file (required)
-  -h, --help          help for update
+  -h, --help          help for apply
   -k, --key string    PEM encoded admin key file (required)
+```
+
+### Options inherited from parent commands
+
+```
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
+  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+```
+
+## marblerun manifest update acknowledge
+
+Acknowledge a pending update for the MarbleRun Coordinator (Enterprise feature)
+
+### Synopsis
+
+Acknowledge a pending update for the MarbleRun Coordinator (Enterprise feature).
+
+In case of multi-party updates, the Coordinator will wait for all participants to acknowledge the update before applying it.
+All participants must use the same manifest to acknowledge the pending update.
+
+
+```
+marblerun manifest update acknowledge <manifest.json> <IP:PORT> [flags]
+```
+
+### Examples
+
+```
+marblerun manifest update acknowledge update-manifest.json $MARBLERUN --cert=admin-cert.pem --key=admin-key.pem --era-config=era.json
+```
+
+### Options
+
+```
+  -c, --cert string   PEM encoded admin certificate file (required)
+  -h, --help          help for acknowledge
+  -k, --key string    PEM encoded admin key file (required)
+```
+
+### Options inherited from parent commands
+
+```
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
+  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+```
+
+## marblerun manifest update cancel
+
+Cancel a pending manifest update for the MarbleRun Coordinator (Enterprise feature)
+
+### Synopsis
+
+Cancel a pending manifest update for the MarbleRun Coordinator (Enterprise feature).
+
+```
+marblerun manifest update cancel <IP:PORT> [flags]
+```
+
+### Examples
+
+```
+marblerun manifest update cancel $MARBLERUN --cert=admin-cert.pem --key=admin-key.pem --era-config=era.json
+```
+
+### Options
+
+```
+  -c, --cert string   PEM encoded admin certificate file (required)
+  -h, --help          help for cancel
+  -k, --key string    PEM encoded admin key file (required)
+```
+
+### Options inherited from parent commands
+
+```
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --era-config string               Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github
+  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+```
+
+## marblerun manifest update get
+
+View a pending manifest update (Enterprise feature)
+
+### Synopsis
+
+View a pending manifest update (Enterprise feature).
+
+```
+marblerun manifest update get <IP:PORT> [flags]
+```
+
+### Examples
+
+```
+marblerun manifest update get $MARBLERUN --era-config=era.json
+```
+
+### Options
+
+```
+  -h, --help            help for get
+  -o, --output string   Save output to file instead of printing to stdout
 ```
 
 ### Options inherited from parent commands
