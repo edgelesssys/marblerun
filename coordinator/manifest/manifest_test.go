@@ -261,13 +261,19 @@ func TestManifestCheck(t *testing.T) {
 	require := require.New(t)
 
 	var manifest Manifest
-	err := json.Unmarshal([]byte(test.ManifestJSON), &manifest)
+	err := json.Unmarshal([]byte(test.ManifestJSONWithRecoveryKey), &manifest)
 	require.NoError(err)
 
 	zap, err := zap.NewDevelopment()
 	require.NoError(err)
 	err = manifest.Check(zap)
 	assert.NoError(err)
+
+	manifest.Users["anotherUser"] = User{
+		Certificate: manifest.Users["admin"].Certificate,
+	}
+	err = manifest.Check(zap)
+	assert.Error(err)
 }
 
 func TestCertificate(t *testing.T) {
