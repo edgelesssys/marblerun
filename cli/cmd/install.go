@@ -115,7 +115,13 @@ func cliInstall(options *installOptions) error {
 		if err != nil {
 			return err
 		}
-		options.chartPath, err = installer.ChartPathOptions.LocateChart(helmChartName, options.settings)
+
+		// Enterprise chart is used if an access token is provided
+		chartName := helmChartName
+		if options.accessToken != "" {
+			chartName = helmChartNameEnterprise
+		}
+		options.chartPath, err = installer.ChartPathOptions.LocateChart(chartName, options.settings)
 		if err != nil {
 			return err
 		}
@@ -203,21 +209,9 @@ func cliInstall(options *installOptions) error {
 		if !ok {
 			return errors.New("coordinator.registry not found in chart values")
 		}
-		enterpriseImage, ok := coordinatorCfg["enterpriseImage"].(string)
-		if !ok {
-			return errors.New("coordinator.enterpriseImage not found in chart values")
-		}
-		enterpriseVersion, ok := coordinatorCfg["enterpriseVersion"].(string)
-		if !ok {
-			return errors.New("coordinator.enterpriseVersion not found in chart values")
-		}
-
-		stringValues = append(stringValues, fmt.Sprintf("coordinator.image=%s", enterpriseImage))
-		stringValues = append(stringValues, fmt.Sprintf("coordinator.version=%s", enterpriseVersion))
 
 		token := fmt.Sprintf(`{"auths":{"%s":{"auth":"%s"}}}`, repository, options.accessToken)
 		stringValues = append(stringValues, fmt.Sprintf("pullSecret.token=%s", base64.StdEncoding.EncodeToString([]byte(token))))
-		stringValues = append(stringValues, "pullSecret.name=marblerun-enterprise-access-token")
 	}
 
 	if !options.disableInjection {

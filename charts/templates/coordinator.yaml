@@ -62,9 +62,16 @@ spec:
               path: /status
               scheme: HTTPS
               port: {{ .Values.coordinator.clientServerPort }}
-            initialDelaySeconds: 10
+            periodSeconds: 60
           readinessProbe:
             failureThreshold: 7
+            periodSeconds: 60
+            httpGet:
+              path: /status
+              scheme: HTTPS
+              port: {{ .Values.coordinator.clientServerPort }}
+          startupProbe:
+            periodSeconds: 2
             httpGet:
               path: /status
               scheme: HTTPS
@@ -74,7 +81,6 @@ spec:
               name: http
             - containerPort: {{ .Values.coordinator.meshServerPort }}
               name: grcp
-
           resources:
           {{- toYaml .Values.coordinator.resources | nindent 12 }}
           volumeMounts:
@@ -128,7 +134,7 @@ metadata:
     app.kubernetes.io/part-of: marblerun
     app.kubernetes.io/version: {{ .Values.coordinator.version }}
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     {{ .Values.global.coordinatorComponentLabel }}: coordinator
     {{ .Values.global.coordinatorNamespaceLabel }}: {{ .Release.Namespace }}

@@ -33,6 +33,7 @@ const webhookName = "marble-injector.marblerun"
 // helm constants.
 const (
 	helmChartName             = "edgeless/marblerun"
+	helmChartNameEnterprise   = "edgeless/marblerun-enterprise"
 	helmCoordinatorDeployment = "marblerun-coordinator"
 	helmInjectorDeployment    = "marble-injector"
 	helmNamespace             = "marblerun"

@@ -17,11 +17,10 @@ global:
   coordinatorComponentLabel: edgeless.systems/control-plane-component
   coordinatorNamespaceLabel: edgeless.systems/control-plane-ns
 
-# For Private docker registries, authentication is needed.
-#  Registry secrets are applied to the respective service accounts
-pullSecret: {}
-  # name: pull-secret-name
-  # token: base64({"auths":{"<repository>":{"auth":"<personal-access-token>"}}})
+  # For Private docker registries, authentication is needed.
+  #  Registry secrets are applied to the respective service accounts
+  # pullSecret:
+  # pullSecret: my-private-docker-registry-login-secret
 
 
 # webhook configuration
@@ -43,9 +42,6 @@ coordinator:
   image: coordinator
   pullPolicy: IfNotPresent
   version: v0.6.1
-
-  enterpriseImage: coordinator-enterprise
-  enterpriseVersion: latest
 
   # Environment configuration for the coordinator control-plane
   # meshServerPort needs to be configured to the same port as in the data-plane marbles
