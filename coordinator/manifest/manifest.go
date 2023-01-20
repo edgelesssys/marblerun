@@ -401,6 +401,7 @@ func (m Manifest) Check(zaplogger *zap.Logger) error {
 		}
 	}
 
+	uniqueUsers := make(map[string]string)
 	for userName, user := range m.Users {
 		if len(user.Certificate) <= 0 {
 			return fmt.Errorf("manifest does not contain a certificate for user %s", userName)
@@ -410,6 +411,12 @@ func (m Manifest) Check(zaplogger *zap.Logger) error {
 				return fmt.Errorf("manifest specifies role %s for user %s, but role does not exist", role, userName)
 			}
 		}
+
+		// Check if user certificate is unique
+		if otherUser, ok := uniqueUsers[user.Certificate]; ok {
+			return fmt.Errorf("manifest contains the same certificate for users %s and %s", userName, otherUser)
+		}
+		uniqueUsers[user.Certificate] = userName
 	}
 
 	for roleName, role := range m.Roles {
