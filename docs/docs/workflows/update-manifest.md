@@ -59,7 +59,7 @@ To deploy a new manifest, your user must have a [role assigned that contains the
 Use the CLI to deploy an update, specifying the client certificate and private key of a user with appropriate permissions:
 
 ```bash
-marblerun manifest update update-manifest.json $MARBLERUN --cert=user-cert.pem --key=user-key.pem --era-config=era.json
+marblerun manifest update apply update-manifest.json $MARBLERUN --cert=user-cert.pem --key=user-key.pem --era-config=era.json
 ```
 
 On success, no message will be returned and your MarbleRun logs should highlight whether the update manifest has been set or further acknowledgements are required. On error, the API endpoint will return an error message. If you receive `unauthorized user`, MarbleRun either received no client certificate over the TLS connection, or you used the wrong certificate.
@@ -71,6 +71,104 @@ Use the CLI to acknowledge a full manifest update, specifying the client certifi
 ```bash
 marblerun manifest update update-manifest.json $MARBLERUN --cert=user-cert.pem --key=user-key.pem --acknowledge --era-config=era.json
 ```
+
+### Example: Multi-party update
+
+The following gives an example of a full manifest update with multiple parties:
+
+Assume the following `Users` and `Roles` were defined in the Manifest:
+
+```javascript
+    "Users": {
+        "alice": {
+            "Certificate": "-----BEGIN CERTIFICATE-----\nMIIFZTCCA02gAwIBAgIUANHwS8RM0PUDl9htA+yWJx9WqucwDQYJKoZIhvcNAQEL\nBQAwQjELMAkGA1UEBhMC=\n-----END CERTIFICATE-----\n",
+            "Roles": [
+                "UpdateManifest"
+            ]
+        },
+        "bob": {
+            "Certificate": "-----BEGIN CERTIFICATE-----\nMIIFZTCCA02gAwIBAgIUJvtF7KRsunTmWVtpU9198HUxyLEwDQYJKoZIhvcNAQEL\nBQAwQjELMAkGA1UEBhMC=\n-----END CERTIFICATE-----\n",
+            "Roles": [
+                "UpdateManifest"
+            ]
+        }
+    },
+    "Roles": {
+        "UpdateManifest": {
+            "ResourceType": "Manifest",
+            "Actions": ["UpdateManifest"]
+        }
+    },
+```
+
+1. Alice applies an update by uploading an update manifest:
+
+    ```bash
+    $ marblerun manifest update apply new_manifest.json $MARBLERUN ---cert alice.crt --key alice-private.pem
+    Coordinator verified 
+    Loading client certificate
+    Creating client
+    Successfully verified Coordinator, now uploading manifest
+    Update manifest set successfully
+    ```
+
+    The Coordinator log shows the following:
+
+    ```bash
+    {"level":"info","ts":1674205619.1967707,"caller":"clientapi/clientapi.go:199","msg":"UpdateManifest called"}
+    {"level":"info","ts":1674205619.2007706,"caller":"clientapi/clientapi.go:282","msg":"UpdateManifest successful. Waiting for acknowledgments to apply the update","missingAcknowledgments":1}
+    ```
+
+2. Bob checks the planned update:
+
+    ```bash
+    $ marblerun manifest update get $MARBLERUN
+    Successfully verified Coordinator
+    {
+        "Manifest": {
+            "Marbles": {
+                ...
+    }
+    ```
+
+3. Finally Bob acknowleges the update by providing the updated manifest again. Alice can either distribute the update manifest to Bob via a second channel, or Bob uses the manifest obtained from `marblerun manifest update get`:
+
+    ```bash
+    $ marblerun manifest update acknowledge new_manifest.json $MARBLERUN ---cert bob.crt --key bob-private.pem
+    Coordinator verified
+    Loading client certificate
+    Creating client
+    Successfully verified Coordinator
+    Acknowledgement successful: All users have acknowledged the update manifest. Update successfully applied
+    ```
+
+    The Coordinator log shows the following:
+
+    ```bash
+    {"level":"info","ts":1674205860.3970933,"caller":"clientapi/update.go:67","msg":"Received update acknowledgement","user":"bob","missingAcknowledgments":0}
+    {"level":"info","ts":1674205860.3970933,"caller":"clientapi/update.go:72","msg":"All users have acknowledged the update manifest, applying update"}
+    ...
+    {"level":"info","ts":1674205321.4204075,"caller":"clientapi/update.go:176","msg":"An updated manifest overriding the original manifest was set."}
+    {"level":"info","ts":1674205321.4204075,"caller":"clientapi/update.go:177","msg":"Please restart your Marbles to enforce the update."}
+    {"level":"info","ts":1674205321.4204075,"caller":"clientapi/update.go:183","msg":"UpdateManifest successful"}
+    ```
+
+4. Alternatively, if for some reason Alice or Bob decide to cancel the update procedure instead:
+
+    ```bash
+    $ marblerun manifest update cancel $MARBLERUN ---cert bob.crt --key bob-private.pem
+    Coordinator verified
+    Loading client certificate
+    Creating client
+    Successfully verified Coordinator
+    Cancellation successful
+    ```
+
+    The Coordinator log shows the following:
+
+    ```bash
+    {"level":"info","ts":1674205264.1442728,"caller":"clientapi/update.go:223","msg":"Manifest update canceled","user":"bob"}
+    ```
 
 ## Effects of an update
 When a manifest has been updated, the Coordinator will generate new certificates which your Marbles will receive upon the next startup. Also, if you are trying to launch Marbles based on packages containing the old `SecurityVersion`, they will refuse to run (unless you are running in SGX Simulation or non-Enclave mode). However, so far currently running Marbles will continue to run and will be able to authenticate each other, as long as they're still running. So if you need to enforce an update, make sure to kill the Marbles on your host and restart them.
