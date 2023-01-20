@@ -131,7 +131,7 @@ Assume the following `Users` and `Roles` were defined in the Manifest:
     }
     ```
 
-3. Finally Bob acknowleges the update by providing the updated manifest again. Alice can either distribute the update manifest to Bob via a second channel, or Bob uses the manifest obtained from `marblerun manifest update get`:
+3. Finally Bob acknowledges the update by providing the updated manifest again. Alice can either distribute the update manifest to Bob via a second channel, or Bob uses the manifest obtained from `marblerun manifest update get`:
 
     ```bash
     $ marblerun manifest update acknowledge new_manifest.json $MARBLERUN ---cert bob.crt --key bob-private.pem
