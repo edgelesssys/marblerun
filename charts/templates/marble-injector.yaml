@@ -9,7 +9,7 @@ metadata:
     app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
     app.kubernetes.io/name: marble-injector
     app.kubernetes.io/part-of: marblerun
-    app.kubernetes.io/version: {{ .Values.global.image.version }}
+    app.kubernetes.io/version: {{ .Values.marbleInjector.version }}
 spec:
   ports:
   - port: 443
@@ -27,7 +27,7 @@ metadata:
     app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
     app.kubernetes.io/name: marble-injector
     app.kubernetes.io/part-of: marblerun
-    app.kubernetes.io/version: {{ .Values.global.image.version }}
+    app.kubernetes.io/version: {{ .Values.marbleInjector.version }}
     {{ .Values.global.coordinatorComponentLabel }}: admission-controller
     {{ .Values.global.coordinatorNamespaceLabel }}: {{ .Release.Namespace }}
 spec:
@@ -36,7 +36,7 @@ spec:
     matchLabels:
       app.kubernetes.io/name: marble-injector
       app.kubernetes.io/part-of: marblerun
-      app.kubernetes.io/version: {{ .Values.global.image.version }}
+      app.kubernetes.io/version: {{ .Values.marbleInjector.version }}
   template:
     metadata:
       labels:
@@ -44,7 +44,7 @@ spec:
         app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
         app.kubernetes.io/name: marble-injector
         app.kubernetes.io/part-of: marblerun
-        app.kubernetes.io/version: {{ .Values.global.image.version }}
+        app.kubernetes.io/version: {{ .Values.marbleInjector.version }}
         {{ .Values.global.coordinatorComponentLabel }}: admission-controller
         {{ .Values.global.coordinatorNamespaceLabel }}: {{ .Release.Namespace }}
         {{- with .Values.global.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
@@ -58,8 +58,8 @@ spec:
         - -tlsKeyFile=/etc/webhook/certs/key.pem
         - -sgxResource={{ .Values.marbleInjector.resourceKey }}
         name: marble-injector
-        image: "{{ .Values.global.image.repository }}/marble-injector:{{ .Values.global.image.version }}"
-        imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+        image: "{{ .Values.marbleInjector.repository }}/{{ .Values.marbleInjector.image }}:{{ .Values.marbleInjector.version }}"
+        imagePullPolicy: {{ .Values.marbleInjector.pullPolicy }}
         volumeMounts:
           - name: webhook-certs
             mountPath: /etc/webhook/certs
@@ -82,7 +82,7 @@ metadata:
     app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
     app.kubernetes.io/name: marble-injector
     app.kubernetes.io/part-of: marblerun
-    app.kubernetes.io/version: {{ .Values.global.image.version }}
+    app.kubernetes.io/version: {{ .Values.marbleInjector.version }}
 webhooks:
   - name: marble-injector.cluster.local
     clientConfig:

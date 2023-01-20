@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
     app.kubernetes.io/name: coordinator
     app.kubernetes.io/part-of: marblerun
-    app.kubernetes.io/version: {{ .Values.global.image.version }}
+    app.kubernetes.io/version: {{ .Values.coordinator.version }}
     {{ .Values.global.coordinatorComponentLabel }}: coordinator
     {{ .Values.global.coordinatorNamespaceLabel }}: {{ .Release.Namespace }}
 spec:
@@ -24,7 +24,7 @@ spec:
         app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
         app.kubernetes.io/name: coordinator
         app.kubernetes.io/part-of: marblerun
-        app.kubernetes.io/version: {{ .Values.global.image.version }}
+        app.kubernetes.io/version: {{ .Values.coordinator.version }}
         {{ .Values.global.coordinatorComponentLabel }}: coordinator
         {{ .Values.global.coordinatorNamespaceLabel }}: {{ .Release.Namespace }}
         {{- with .Values.global.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
@@ -55,8 +55,8 @@ spec:
             value: "{{ .Values.dcap.qpl }}"
           {{ end }}
           name: coordinator
-          image: "{{ .Values.global.image.repository }}/coordinator:{{ .Values.global.image.version }}"
-          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          image: "{{ .Values.coordinator.repository }}/{{ .Values.coordinator.image }}:{{ .Values.coordinator.version }}"
+          imagePullPolicy: {{ .Values.coordinator.pullPolicy }}
           livenessProbe:
             httpGet:
               path: /status
@@ -105,7 +105,7 @@ metadata:
     app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
     app.kubernetes.io/name: coordinator-pv-claim
     app.kubernetes.io/part-of: marblerun
-    app.kubernetes.io/version: {{ .Values.global.image.version }}
+    app.kubernetes.io/version: {{ .Values.coordinator.version }}
 spec:
   {{- with .Values.coordinator.storageClass }}
   storageClassName: {{ .Values.coordinator.storageClass }}
@@ -126,7 +126,7 @@ metadata:
     app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
     app.kubernetes.io/name: coordinator-client-api
     app.kubernetes.io/part-of: marblerun
-    app.kubernetes.io/version: {{ .Values.global.image.version }}
+    app.kubernetes.io/version: {{ .Values.coordinator.version }}
 spec:
   type: LoadBalancer
   selector:
@@ -147,7 +147,7 @@ metadata:
     app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
     app.kubernetes.io/name: coordinator-mesh-api
     app.kubernetes.io/part-of: marblerun
-    app.kubernetes.io/version: {{ .Values.global.image.version }}
+    app.kubernetes.io/version: {{ .Values.coordinator.version }}
 spec:
   type: ClusterIP
   selector:
