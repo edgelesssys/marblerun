@@ -106,8 +106,6 @@ Assume the following `Users` and `Roles` were defined in the Manifest:
     ```bash
     $ marblerun manifest update apply new_manifest.json $MARBLERUN ---cert alice.crt --key alice-private.pem
     Coordinator verified 
-    Loading client certificate
-    Creating client
     Successfully verified Coordinator, now uploading manifest
     Update manifest set successfully
     ```
@@ -125,8 +123,7 @@ Assume the following `Users` and `Roles` were defined in the Manifest:
     $ marblerun manifest update get $MARBLERUN
     Successfully verified Coordinator
     {
-        "Manifest": {
-            "Marbles": {
+        "Marbles": {
                 ...
     }
     ```
