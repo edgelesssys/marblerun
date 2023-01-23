@@ -634,6 +634,7 @@ marblerun manifest update get $MARBLERUN --era-config=era.json
 
 ```
   -h, --help            help for get
+      --missing         Display number of missing acknowledgements instead of the manifest
   -o, --output string   Save output to file instead of printing to stdout
 ```
 
