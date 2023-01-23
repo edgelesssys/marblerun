@@ -7,6 +7,7 @@
 package cmd
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -15,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/edgelesssys/marblerun/coordinator/server"
@@ -205,16 +207,18 @@ func TestCliManifestUpdate(t *testing.T) {
 	client, err := restClient([]*pem.Block{cert}, nil)
 	require.NoError(err)
 
-	err = cliManifestUpdate([]byte("00"), host, client)
+	var out bytes.Buffer
+
+	err = cliManifestUpdate(&out, []byte("00"), host, client)
 	require.NoError(err)
 
-	err = cliManifestUpdate([]byte("11"), host, client)
+	err = cliManifestUpdate(&out, []byte("11"), host, client)
 	require.Error(err)
 
-	err = cliManifestUpdate([]byte("22"), host, client)
+	err = cliManifestUpdate(&out, []byte("22"), host, client)
 	require.Error(err)
 
-	err = cliManifestUpdate([]byte("33"), host, client)
+	err = cliManifestUpdate(&out, []byte("33"), host, client)
 	require.Error(err)
 }
 
@@ -394,13 +398,17 @@ func TestManifestUpdateAcknowledge(t *testing.T) {
 	client, err := restClient([]*pem.Block{cert}, nil)
 	require.NoError(err)
 
-	err = cliManifestUpdateAcknowledge([]byte("manifest"), host, client)
+	var out bytes.Buffer
+
+	err = cliManifestUpdateAcknowledge(&out, []byte("manifest"), host, client)
 	assert.NoError(err)
 }
 
 func TestManifestUpdateGet(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+
+	manifest := []byte(`{"foo": "bar"}`)
 
 	s, host, cert := newTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal("/update-manifest", r.RequestURI)
@@ -413,7 +421,7 @@ func TestManifestUpdateGet(t *testing.T) {
 				Message      string   `json:"message"`
 				MissingUsers []string `json:"missingUsers"`
 			}{
-				Manifest:     []byte(`{"foo": "bar"}`),
+				Manifest:     manifest,
 				Message:      "message",
 				MissingUsers: []string{"user1", "user2"},
 			},
@@ -426,8 +434,18 @@ func TestManifestUpdateGet(t *testing.T) {
 	client, err := restClient([]*pem.Block{cert}, nil)
 	require.NoError(err)
 
-	err = cliManifestUpdateGet("", host, client)
+	var out bytes.Buffer
+
+	err = cliManifestUpdateGet(&out, host, client, false)
 	assert.NoError(err)
+	assert.Equal(manifest, out.Bytes())
+
+	out.Reset()
+	err = cliManifestUpdateGet(&out, host, client, true)
+	assert.NoError(err)
+	assert.True(strings.Contains(out.String(), "message"))
+	assert.True(strings.Contains(out.String(), "user1"))
+	assert.True(strings.Contains(out.String(), "user2"))
 }
 
 func TestManifestUpdateCancel(t *testing.T) {
@@ -450,6 +468,8 @@ func TestManifestUpdateCancel(t *testing.T) {
 	client, err := restClient([]*pem.Block{cert}, nil)
 	require.NoError(err)
 
-	err = cliManifestUpdateCancel(host, client)
+	var out bytes.Buffer
+
+	err = cliManifestUpdateCancel(&out, host, client)
 	assert.NoError(err)
 }

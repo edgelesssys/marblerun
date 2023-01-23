@@ -11,7 +11,6 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -61,8 +60,8 @@ An admin certificate specified in the original manifest is needed to verify the 
 				return err
 			}
 
-			fmt.Println("Successfully verified Coordinator, now uploading manifest")
-			return cliManifestUpdate(manifest, hostName, client)
+			cmd.Println("Successfully verified Coordinator, now uploading manifest")
+			return cliManifestUpdate(cmd.OutOrStdout(), manifest, hostName, client)
 		},
 		SilenceUsage: true,
 	}
@@ -101,8 +100,8 @@ All participants must use the same manifest to acknowledge the pending update.
 				return err
 			}
 
-			fmt.Println("Successfully verified Coordinator")
-			return cliManifestUpdateAcknowledge(manifest, hostName, client)
+			cmd.Println("Successfully verified Coordinator")
+			return cliManifestUpdateAcknowledge(cmd.OutOrStdout(), manifest, hostName, client)
 		},
 		SilenceUsage: true,
 	}
@@ -129,8 +128,8 @@ func newUpdateCancel() *cobra.Command {
 				return err
 			}
 
-			fmt.Println("Successfully verified Coordinator")
-			return cliManifestUpdateCancel(hostName, client)
+			cmd.Println("Successfully verified Coordinator")
+			return cliManifestUpdateCancel(cmd.OutOrStdout(), hostName, client)
 		},
 		SilenceUsage: true,
 	}
@@ -144,35 +143,17 @@ func newUpdateCancel() *cobra.Command {
 
 func newUpdateGet() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "get <IP:PORT>",
-		Short:   "View a pending manifest update (Enterprise feature)",
-		Long:    "View a pending manifest update (Enterprise feature).",
-		Example: `marblerun manifest update get $MARBLERUN --era-config=era.json`,
-		Args:    cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			hostName := args[0]
-
-			out, err := cmd.Flags().GetString("output")
-			if err != nil {
-				return err
-			}
-
-			caCert, err := verifyCoordinator(hostName, eraConfig, insecureEra, acceptedTCBStatuses)
-			if err != nil {
-				return err
-			}
-			client, err := restClient(caCert, nil)
-			if err != nil {
-				return err
-			}
-
-			fmt.Println("Successfully verified Coordinator")
-			return cliManifestUpdateGet(out, hostName, client)
-		},
+		Use:          "get <IP:PORT>",
+		Short:        "View a pending manifest update (Enterprise feature)",
+		Long:         "View a pending manifest update (Enterprise feature).",
+		Example:      `marblerun manifest update get $MARBLERUN --era-config=era.json`,
+		Args:         cobra.ExactArgs(1),
+		RunE:         runUpdateGet,
 		SilenceUsage: true,
 	}
 
 	cmd.Flags().StringP("output", "o", "", "Save output to file instead of printing to stdout")
+	cmd.Flags().Bool("missing", false, "Display number of missing acknowledgements instead of the manifest")
 
 	return cmd
 }
@@ -183,7 +164,7 @@ func authenticatedClient(cmd *cobra.Command, hostName string) (*http.Client, err
 		return nil, err
 	}
 
-	fmt.Println("Coordinator verified")
+	cmd.Println("Coordinator verified")
 	clientAdminCert, err := cmd.Flags().GetString("cert")
 	if err != nil {
 		return nil, err
@@ -193,13 +174,11 @@ func authenticatedClient(cmd *cobra.Command, hostName string) (*http.Client, err
 		return nil, err
 	}
 
-	fmt.Println("Loading client certificate")
 	clCert, err := tls.LoadX509KeyPair(clientAdminCert, clientAdminKey)
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Println("Creating client")
 	client, err := restClient(caCert, &clCert)
 	if err != nil {
 		return nil, err
@@ -209,7 +188,7 @@ func authenticatedClient(cmd *cobra.Command, hostName string) (*http.Client, err
 }
 
 // cliManifestUpdate updates the Coordinators manifest using its rest api.
-func cliManifestUpdate(manifest []byte, host string, client *http.Client) error {
+func cliManifestUpdate(out io.Writer, manifest []byte, host string, client *http.Client) error {
 	url := url.URL{Scheme: "https", Host: host, Path: "update"}
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, url.String(), bytes.NewReader(manifest))
 	if err != nil {
@@ -228,7 +207,7 @@ func cliManifestUpdate(manifest []byte, host string, client *http.Client) error 
 
 	switch resp.StatusCode {
 	case http.StatusOK:
-		fmt.Println("Update manifest set successfully")
+		fmt.Fprintln(out, "Update manifest set successfully")
 	case http.StatusBadRequest:
 		return fmt.Errorf("unable to update manifest: %s", gjson.GetBytes(respBody, "message").String())
 	case http.StatusUnauthorized:
@@ -241,7 +220,7 @@ func cliManifestUpdate(manifest []byte, host string, client *http.Client) error 
 	return nil
 }
 
-func cliManifestUpdateAcknowledge(manifest []byte, host string, client *http.Client) error {
+func cliManifestUpdateAcknowledge(out io.Writer, manifest []byte, host string, client *http.Client) error {
 	url := url.URL{Scheme: "https", Host: host, Path: "update-manifest"}
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, url.String(), bytes.NewReader(manifest))
 	if err != nil {
@@ -260,7 +239,7 @@ func cliManifestUpdateAcknowledge(manifest []byte, host string, client *http.Cli
 
 	switch resp.StatusCode {
 	case http.StatusOK:
-		fmt.Printf("Acknowledgement successful: %s\n", gjson.GetBytes(respBody, "data").String())
+		fmt.Fprintf(out, "Acknowledgement successful: %s\n", gjson.GetBytes(respBody, "data").String())
 	case http.StatusNotFound:
 		return fmt.Errorf("unable to update manifest: no pending update found: %s", gjson.GetBytes(respBody, "message").String())
 	case http.StatusUnauthorized:
@@ -273,7 +252,7 @@ func cliManifestUpdateAcknowledge(manifest []byte, host string, client *http.Cli
 	return nil
 }
 
-func cliManifestUpdateCancel(host string, client *http.Client) error {
+func cliManifestUpdateCancel(out io.Writer, host string, client *http.Client) error {
 	url := url.URL{Scheme: "https", Host: host, Path: "update-cancel"}
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, url.String(), http.NoBody)
 	if err != nil {
@@ -291,7 +270,7 @@ func cliManifestUpdateCancel(host string, client *http.Client) error {
 
 	switch resp.StatusCode {
 	case http.StatusOK:
-		fmt.Println("Cancellation successful")
+		fmt.Fprintln(out, "Cancellation successful")
 	case http.StatusNotFound:
 		return fmt.Errorf("unable to cancel manifest update: no pending update found: %s", gjson.GetBytes(respBody, "message").String())
 	case http.StatusUnauthorized:
@@ -304,7 +283,49 @@ func cliManifestUpdateCancel(host string, client *http.Client) error {
 	return nil
 }
 
-func cliManifestUpdateGet(output string, host string, client *http.Client) error {
+func runUpdateGet(cmd *cobra.Command, args []string) (retErr error) {
+	hostName := args[0]
+
+	outputFile, err := cmd.Flags().GetString("output")
+	if err != nil {
+		return err
+	}
+	displayMissing, err := cmd.Flags().GetBool("missing")
+	if err != nil {
+		return err
+	}
+
+	caCert, err := verifyCoordinator(hostName, eraConfig, insecureEra, acceptedTCBStatuses)
+	if err != nil {
+		return err
+	}
+	client, err := restClient(caCert, nil)
+	if err != nil {
+		return err
+	}
+
+	var out io.Writer
+	if outputFile != "" {
+		file, err := os.Create(outputFile)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			_ = file.Close()
+			if retErr != nil {
+				_ = os.Remove(outputFile)
+			}
+		}()
+		out = file
+	} else {
+		out = cmd.OutOrStdout()
+	}
+
+	cmd.Println("Successfully verified Coordinator")
+	return cliManifestUpdateGet(out, hostName, client, displayMissing)
+}
+
+func cliManifestUpdateGet(out io.Writer, host string, client *http.Client, displayMissing bool) error {
 	url := url.URL{Scheme: "https", Host: host, Path: "update-manifest"}
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url.String(), http.NoBody)
 	if err != nil {
@@ -322,37 +343,23 @@ func cliManifestUpdateGet(output string, host string, client *http.Client) error
 
 	switch resp.StatusCode {
 	case http.StatusOK:
-		mnfB64 := gjson.GetBytes(respBody, "data.manifest").String()
-		msg := gjson.GetBytes(respBody, "data.message")
-		missingUsers := gjson.GetBytes(respBody, "data.missingUsers")
+		var response string
 
-		mnfRaw, err := base64.StdEncoding.DecodeString(mnfB64)
-		if err != nil {
-			return err
-		}
-		var mnf map[string]interface{}
-		if err := json.Unmarshal(mnfRaw, &mnf); err != nil {
-			return err
-		}
-		removeNil(mnf)
-		cleaned, err := json.Marshal(mnf)
-		if err != nil {
-			return err
+		if displayMissing {
+			msg := gjson.GetBytes(respBody, "data.message")
+			missingUsers := gjson.GetBytes(respBody, "data.missingUsers")
+
+			response = fmt.Sprintf("%s\nThe following users have not yet acknowledged the update: %s\n", msg.String(), missingUsers.String())
+		} else {
+			mnfB64 := gjson.GetBytes(respBody, "data.manifest").String()
+			mnf, err := base64.StdEncoding.DecodeString(mnfB64)
+			if err != nil {
+				return err
+			}
+			response = string(mnf)
 		}
 
-		consolidatedResponse := gjson.Parse(fmt.Sprintf(
-			"{\n\"Manifest\": %s,\n\"Message\": \"%s\"\n\"MissingUsers\": %s\n}",
-			string(cleaned),
-			msg.String(),
-			missingUsers.String(),
-		)).Get(`@pretty:{"indent":"    "}`).String()
-
-		if output == "" {
-			fmt.Println(consolidatedResponse)
-			return nil
-		}
-
-		return os.WriteFile(output, []byte(consolidatedResponse), 0o644)
+		fmt.Fprintf(out, response)
 
 	case http.StatusNotFound:
 		return fmt.Errorf("no pending update found: %s", gjson.GetBytes(respBody, "message").String())
@@ -360,4 +367,6 @@ func cliManifestUpdateGet(output string, host string, client *http.Client) error
 		response := gjson.GetBytes(respBody, "message")
 		return fmt.Errorf("error connecting to server: %d %s: %s", resp.StatusCode, http.StatusText(resp.StatusCode), response)
 	}
+
+	return nil
 }
