@@ -12,7 +12,6 @@ import (
 	"crypto/x509"
 	"net"
 	"net/http"
-	"os"
 
 	"github.com/edgelesssys/marblerun/coordinator/core"
 	"github.com/edgelesssys/marblerun/coordinator/events"
@@ -20,7 +19,6 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
 	"github.com/edgelesssys/marblerun/coordinator/state"
 	"github.com/edgelesssys/marblerun/coordinator/user"
-	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
@@ -118,10 +116,9 @@ func CreateServeMux(api clientAPI, promFactory *promauto.Factory) serveMux {
 
 // RunClientServer runs a HTTP server serving mux.
 func RunClientServer(mux http.Handler, address string, tlsConfig *tls.Config, zapLogger *zap.Logger) {
-	loggedRouter := handlers.LoggingHandler(os.Stdout, mux)
 	server := http.Server{
 		Addr:      address,
-		Handler:   loggedRouter,
+		Handler:   mux,
 		TLSConfig: tlsConfig,
 	}
 	zapLogger.Info("starting client https server", zap.String("address", address))
