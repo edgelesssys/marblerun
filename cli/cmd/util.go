@@ -51,11 +51,11 @@ var (
 	acceptedTCBStatuses []string
 )
 
-func fetchLatestCoordinatorConfiguration() error {
+func fetchLatestCoordinatorConfiguration(out io.Writer) error {
 	coordinatorVersion, err := getCoordinatorVersion()
 	eraURL := fmt.Sprintf("https://github.com/edgelesssys/marblerun/releases/download/%s/coordinator-era.json", coordinatorVersion)
 	if err != nil {
-		// if errors were caused by an empty kube config file or by being unable to connect to a cluster we assume the Coordinator is running as a standlone
+		// if errors were caused by an empty kube config file or by being unable to connect to a cluster we assume the Coordinator is running as a standalone
 		// and we default to the latest era-config file
 		var dnsError *net.DNSError
 		if !clientcmd.IsEmptyConfig(err) && !errors.As(err, &dnsError) && !os.IsNotExist(err) {
@@ -64,48 +64,52 @@ func fetchLatestCoordinatorConfiguration() error {
 		eraURL = "https://github.com/edgelesssys/marblerun/releases/latest/download/coordinator-era.json"
 	}
 
-	fmt.Printf("No era config file specified, getting config from %s\n", eraURL)
+	fmt.Fprintf(out, "No era config file specified, getting config from %s\n", eraURL)
 	resp, err := http.Get(eraURL)
 	if err != nil {
-		return err
+		return fmt.Errorf("downloading era config for version %s: %w", coordinatorVersion, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("downloading era config failed with error %d: %s", resp.StatusCode, http.StatusText(resp.StatusCode))
-	}
-	out, err := os.Create(eraDefaultConfig)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-	_, err = io.Copy(out, resp.Body)
-	if err != nil {
-		return err
+		return fmt.Errorf("downloading era config for version: %s: %d: %s", coordinatorVersion, resp.StatusCode, http.StatusText(resp.StatusCode))
 	}
 
-	fmt.Println("Got latest config")
+	era, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("downloading era config for version %s: %w", coordinatorVersion, err)
+	}
+
+	if err := os.WriteFile(eraDefaultConfig, era, 0o644); err != nil {
+		return fmt.Errorf("writing era config file: %w", err)
+	}
+
+	fmt.Fprintf(out, "Got era config for version %s\n", coordinatorVersion)
 	return nil
 }
 
 // verify the connection to the MarbleRun Coordinator.
-func verifyCoordinator(host string, configFilename string, insecure bool, acceptedTCBStatuses []string) ([]*pem.Block, error) {
+func verifyCoordinator(out io.Writer, host, configFilename string, insecure bool, acceptedTCBStatuses []string) ([]*pem.Block, error) {
 	// skip verification if specified
 	if insecure {
-		fmt.Println("Warning: skipping quote verification")
+		fmt.Fprintln(out, "Warning: skipping quote verification")
 		return era.InsecureGetCertificate(host)
 	}
 
 	if configFilename == "" {
-		// get latest config from github if none specified
-		if err := fetchLatestCoordinatorConfiguration(); err != nil {
+		configFilename = eraDefaultConfig
+
+		// reuse existing config from current working directory if none specified
+		// or try to get latest config from github if it does not exist
+		if _, err := os.Stat(configFilename); err == nil {
+			fmt.Fprintln(out, "Reusing existing config file")
+		} else if err := fetchLatestCoordinatorConfiguration(out); err != nil {
 			return nil, err
 		}
-		configFilename = eraDefaultConfig
 	}
 
 	pemBlock, tcbStatus, err := era.GetCertificate(host, configFilename)
 	if errors.Is(err, attestation.ErrTCBLevelInvalid) && util.StringSliceContains(acceptedTCBStatuses, tcbStatus.String()) {
-		fmt.Println("Warning: TCB level invalid, but accepted by configuration")
+		fmt.Fprintln(out, "Warning: TCB level invalid, but accepted by configuration")
 		return pemBlock, nil
 	}
 	return pemBlock, err
@@ -162,7 +166,7 @@ func getKubernetesInterface() (*kubernetes.Clientset, error) {
 
 	kubeClient, err := kubernetes.NewForConfig(kubeConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed setting up kubernetes client: %v", err)
+		return nil, fmt.Errorf("failed setting up kubernetes client: %w", err)
 	}
 
 	return kubeClient, nil

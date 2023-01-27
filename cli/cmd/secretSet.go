@@ -47,7 +47,7 @@ marblerun secret set certificate.pem $MARBLERUN -c admin.crt -k admin.key --from
 			secretFile := args[0]
 			hostName := args[1]
 
-			caCert, err := verifyCoordinator(hostName, eraConfig, insecureEra, acceptedTCBStatuses)
+			caCert, err := verifyCoordinator(cmd.OutOrStdout(), hostName, eraConfig, insecureEra, acceptedTCBStatuses)
 			if err != nil {
 				return err
 			}

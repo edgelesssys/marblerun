@@ -7,7 +7,6 @@
 package cmd
 
 import (
-	"fmt"
 	"io/ioutil"
 
 	"github.com/spf13/cobra"
@@ -26,11 +25,11 @@ func newManifestLog() *cobra.Command {
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hostName := args[0]
-			cert, err := verifyCoordinator(hostName, eraConfig, insecureEra, acceptedTCBStatuses)
+			cert, err := verifyCoordinator(cmd.OutOrStdout(), hostName, eraConfig, insecureEra, acceptedTCBStatuses)
 			if err != nil {
 				return err
 			}
-			fmt.Println("Successfully verified Coordinator, now requesting update log")
+			cmd.Println("Successfully verified Coordinator, now requesting update log")
 			response, err := cliDataGet(hostName, "update", "data", cert)
 			if err != nil {
 				return err
@@ -38,7 +37,7 @@ func newManifestLog() *cobra.Command {
 			if len(output) > 0 {
 				return ioutil.WriteFile(output, response, 0o644)
 			}
-			fmt.Printf("Update log:\n%s", string(response))
+			cmd.Printf("Update log:\n%s", string(response))
 			return nil
 		},
 		SilenceUsage: true,

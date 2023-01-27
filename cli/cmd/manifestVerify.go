@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 
@@ -28,7 +29,7 @@ func newManifestVerify() *cobra.Command {
 			manifest := args[0]
 			hostName := args[1]
 
-			cert, err := verifyCoordinator(hostName, eraConfig, insecureEra, acceptedTCBStatuses)
+			cert, err := verifyCoordinator(cmd.OutOrStdout(), hostName, eraConfig, insecureEra, acceptedTCBStatuses)
 			if err != nil {
 				return err
 			}
@@ -38,7 +39,7 @@ func newManifestVerify() *cobra.Command {
 				return err
 			}
 
-			return cliManifestVerify(localSignature, hostName, cert)
+			return cliManifestVerify(cmd.OutOrStdout(), localSignature, hostName, cert)
 		},
 		SilenceUsage: true,
 	}
@@ -73,7 +74,7 @@ func getSignatureFromString(manifest string) (string, error) {
 }
 
 // cliManifestVerify verifies if a signature returned by the MarbleRun Coordinator is equal to one locally created.
-func cliManifestVerify(localSignature string, host string, cert []*pem.Block) error {
+func cliManifestVerify(out io.Writer, localSignature string, host string, cert []*pem.Block) error {
 	remoteSignature, err := cliDataGet(host, "manifest", "data.ManifestSignature", cert)
 	if err != nil {
 		return err
@@ -83,6 +84,6 @@ func cliManifestVerify(localSignature string, host string, cert []*pem.Block) er
 		return fmt.Errorf("remote signature differs from local signature: %s != %s", string(remoteSignature), localSignature)
 	}
 
-	fmt.Println("OK")
+	fmt.Fprintln(out, "OK")
 	return nil
 }

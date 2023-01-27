@@ -9,6 +9,7 @@ package cmd
 import (
 	"encoding/pem"
 	"fmt"
+	"io"
 	"io/ioutil"
 
 	"github.com/spf13/cobra"
@@ -24,7 +25,7 @@ func newCertificateRoot() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hostName := args[0]
-			return cliCertificateRoot(hostName, certFilename, eraConfig, insecureEra, acceptedTCBStatuses)
+			return cliCertificateRoot(cmd.OutOrStdout(), hostName, certFilename, eraConfig, insecureEra, acceptedTCBStatuses)
 		},
 		SilenceUsage: true,
 	}
@@ -35,9 +36,9 @@ func newCertificateRoot() *cobra.Command {
 }
 
 // cliCertificateRoot gets the root certificate of the MarbleRun Coordinator and saves it to a file.
-func cliCertificateRoot(host string, output string, configFilename string, insecure bool, acceptedTCBStatuses []string) error {
+func cliCertificateRoot(out io.Writer, host, output, configFilename string, insecure bool, acceptedTCBStatuses []string) error {
 	var certs []*pem.Block
-	certs, err := verifyCoordinator(host, configFilename, insecure, acceptedTCBStatuses)
+	certs, err := verifyCoordinator(out, host, configFilename, insecure, acceptedTCBStatuses)
 	if err != nil {
 		return err
 	}
@@ -45,7 +46,7 @@ func cliCertificateRoot(host string, output string, configFilename string, insec
 	if err := ioutil.WriteFile(output, pem.EncodeToMemory(certs[len(certs)-1]), 0o644); err != nil {
 		return err
 	}
-	fmt.Println("Root certificate written to", output)
+	fmt.Fprintln(out, "Root certificate written to", output)
 
 	return nil
 }

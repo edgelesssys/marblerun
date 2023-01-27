@@ -29,7 +29,7 @@ func newRecoverCmd() *cobra.Command {
 			keyFile := args[0]
 			hostName := args[1]
 
-			cert, err := verifyCoordinator(hostName, eraConfig, insecureEra, acceptedTCBStatuses)
+			cert, err := verifyCoordinator(cmd.OutOrStdout(), hostName, eraConfig, insecureEra, acceptedTCBStatuses)
 			if err != nil {
 				return err
 			}
@@ -40,7 +40,7 @@ func newRecoverCmd() *cobra.Command {
 				return err
 			}
 
-			fmt.Println("Successfully verified Coordinator, now uploading key")
+			cmd.Println("Successfully verified Coordinator, now uploading key")
 
 			return cliRecover(hostName, recoveryKey, cert)
 		},

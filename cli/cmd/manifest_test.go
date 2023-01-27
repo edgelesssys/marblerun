@@ -159,20 +159,22 @@ func TestCliManifestSet(t *testing.T) {
 	require.NoError(err)
 	defer os.RemoveAll(dir)
 
-	err = cliManifestSet([]byte("00"), host, []*pem.Block{cert}, "")
+	var out bytes.Buffer
+
+	err = cliManifestSet(&out, []byte("00"), host, []*pem.Block{cert}, "")
 	require.NoError(err)
 
-	err = cliManifestSet([]byte("11"), host, []*pem.Block{cert}, "")
+	err = cliManifestSet(&out, []byte("11"), host, []*pem.Block{cert}, "")
 	require.NoError(err)
 
 	responseFile := filepath.Join(dir, "tmp-recovery.json")
-	err = cliManifestSet([]byte("11"), host, []*pem.Block{cert}, responseFile)
+	err = cliManifestSet(&out, []byte("11"), host, []*pem.Block{cert}, responseFile)
 	require.NoError(err)
 
-	err = cliManifestSet([]byte("22"), host, []*pem.Block{cert}, "")
+	err = cliManifestSet(&out, []byte("22"), host, []*pem.Block{cert}, "")
 	require.Error(err)
 
-	err = cliManifestSet([]byte("55"), host, []*pem.Block{cert}, "")
+	err = cliManifestSet(&out, []byte("55"), host, []*pem.Block{cert}, "")
 	require.Error(err)
 }
 
@@ -344,10 +346,13 @@ func TestCliManifestVerify(t *testing.T) {
 	}))
 	defer s.Close()
 
-	err := cliManifestVerify("TestSignature", host, []*pem.Block{cert})
-	assert.NoError(err)
+	var out bytes.Buffer
 
-	err = cliManifestVerify("InvalidSignature", host, []*pem.Block{cert})
+	err := cliManifestVerify(&out, "TestSignature", host, []*pem.Block{cert})
+	assert.NoError(err)
+	assert.Equal("OK\n", out.String())
+
+	err = cliManifestVerify(&out, "InvalidSignature", host, []*pem.Block{cert})
 	assert.Error(err)
 }
 

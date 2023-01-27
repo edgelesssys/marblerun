@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -33,12 +34,12 @@ func newManifestSet() *cobra.Command {
 			manifestFile := args[0]
 			hostName := args[1]
 
-			cert, err := verifyCoordinator(hostName, eraConfig, insecureEra, acceptedTCBStatuses)
+			cert, err := verifyCoordinator(cmd.OutOrStdout(), hostName, eraConfig, insecureEra, acceptedTCBStatuses)
 			if err != nil {
 				return err
 			}
 
-			fmt.Println("Successfully verified Coordinator, now uploading manifest")
+			cmd.Println("Successfully verified Coordinator, now uploading manifest")
 
 			// Load manifest
 			manifest, err := loadManifestFile(manifestFile)
@@ -46,9 +47,9 @@ func newManifestSet() *cobra.Command {
 				return err
 			}
 			signature := cliManifestSignature(manifest)
-			fmt.Printf("Manifest signature: %s\n", signature)
+			cmd.Printf("Manifest signature: %s\n", signature)
 
-			return cliManifestSet(manifest, hostName, cert, recoveryFilename)
+			return cliManifestSet(cmd.OutOrStdout(), manifest, hostName, cert, recoveryFilename)
 		},
 		SilenceUsage: true,
 	}
@@ -59,7 +60,7 @@ func newManifestSet() *cobra.Command {
 }
 
 // cliManifestSet sets the Coordinators manifest using its rest api.
-func cliManifestSet(manifest []byte, host string, cert []*pem.Block, recover string) error {
+func cliManifestSet(out io.Writer, manifest []byte, host string, cert []*pem.Block, recover string) error {
 	client, err := restClient(cert, nil)
 	if err != nil {
 		return err
@@ -78,7 +79,7 @@ func cliManifestSet(manifest []byte, host string, cert []*pem.Block, recover str
 		if err != nil {
 			return err
 		}
-		fmt.Println("Manifest successfully set")
+		fmt.Fprintln(out, "Manifest successfully set")
 
 		if len(respBody) <= 0 {
 			return nil
@@ -93,12 +94,12 @@ func cliManifestSet(manifest []byte, host string, cert []*pem.Block, recover str
 
 		// recovery secret was sent, print or save to file
 		if recover == "" {
-			fmt.Println(response.String())
+			fmt.Fprintln(out, response.String())
 		} else {
 			if err := ioutil.WriteFile(recover, []byte(response.String()), 0o644); err != nil {
 				return err
 			}
-			fmt.Printf("Recovery data saved to: %s.\n", recover)
+			fmt.Fprintf(out, "Recovery data saved to: %s.\n", recover)
 		}
 	case http.StatusBadRequest:
 		respBody, err := ioutil.ReadAll(resp.Body)

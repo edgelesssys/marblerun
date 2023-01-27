@@ -48,7 +48,7 @@ func newStatusCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hostname := args[0]
-			cert, err := verifyCoordinator(hostname, eraConfig, insecureEra, acceptedTCBStatuses)
+			cert, err := verifyCoordinator(cmd.OutOrStdout(), hostname, eraConfig, insecureEra, acceptedTCBStatuses)
 			if err != nil {
 				return err
 			}

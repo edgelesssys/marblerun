@@ -9,6 +9,7 @@ package cmd
 import (
 	"encoding/pem"
 	"fmt"
+	"io"
 	"io/ioutil"
 
 	"github.com/spf13/cobra"
@@ -24,7 +25,7 @@ func newCertificateIntermediate() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hostName := args[0]
-			return cliCertificateIntermediate(hostName, certFilename, eraConfig, insecureEra, acceptedTCBStatuses)
+			return cliCertificateIntermediate(cmd.OutOrStdout(), hostName, certFilename, eraConfig, insecureEra, acceptedTCBStatuses)
 		},
 		SilenceUsage: true,
 	}
@@ -35,8 +36,8 @@ func newCertificateIntermediate() *cobra.Command {
 }
 
 // cliCertificateIntermediate gets the intermediate certificate of the MarbleRun Coordinator.
-func cliCertificateIntermediate(host string, output string, configFilename string, insecure bool, acceptedTCBStatuses []string) error {
-	certs, err := verifyCoordinator(host, configFilename, insecure, acceptedTCBStatuses)
+func cliCertificateIntermediate(out io.Writer, host, output, configFilename string, insecure bool, acceptedTCBStatuses []string) error {
+	certs, err := verifyCoordinator(out, host, configFilename, insecure, acceptedTCBStatuses)
 	if err != nil {
 		return err
 	}
@@ -45,9 +46,9 @@ func cliCertificateIntermediate(host string, output string, configFilename strin
 		if err := ioutil.WriteFile(output, pem.EncodeToMemory(certs[0]), 0o644); err != nil {
 			return err
 		}
-		fmt.Println("Intermediate certificate written to", output)
+		fmt.Fprintln(out, "Intermediate certificate written to", output)
 	} else {
-		fmt.Println("WARNING: No intermediate certificate received.")
+		fmt.Fprintln(out, "WARNING: No intermediate certificate received.")
 	}
 
 	return nil
