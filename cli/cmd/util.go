@@ -51,7 +51,7 @@ var (
 	acceptedTCBStatuses []string
 )
 
-func fetchLatestCoordinatorConfiguration() error {
+func fetchLatestCoordinatorConfiguration(out io.Writer) error {
 	coordinatorVersion, err := getCoordinatorVersion()
 	eraURL := fmt.Sprintf("https://github.com/edgelesssys/marblerun/releases/download/%s/coordinator-era.json", coordinatorVersion)
 	if err != nil {
@@ -64,7 +64,7 @@ func fetchLatestCoordinatorConfiguration() error {
 		eraURL = "https://github.com/edgelesssys/marblerun/releases/latest/download/coordinator-era.json"
 	}
 
-	fmt.Printf("No era config file specified, getting config from %s\n", eraURL)
+	fmt.Fprintf(out, "No era config file specified, getting config from %s\n", eraURL)
 	resp, err := http.Get(eraURL)
 	if err != nil {
 		return fmt.Errorf("downloading era config for version %s: %w", coordinatorVersion, err)
@@ -83,15 +83,15 @@ func fetchLatestCoordinatorConfiguration() error {
 		return fmt.Errorf("writing era config file: %w", err)
 	}
 
-	fmt.Printf("Got era config for version %s\n", coordinatorVersion)
+	fmt.Fprintf(out, "Got era config for version %s\n", coordinatorVersion)
 	return nil
 }
 
 // verify the connection to the MarbleRun Coordinator.
-func verifyCoordinator(host string, configFilename string, insecure bool, acceptedTCBStatuses []string) ([]*pem.Block, error) {
+func verifyCoordinator(out io.Writer, host, configFilename string, insecure bool, acceptedTCBStatuses []string) ([]*pem.Block, error) {
 	// skip verification if specified
 	if insecure {
-		fmt.Println("Warning: skipping quote verification")
+		fmt.Fprintln(out, "Warning: skipping quote verification")
 		return era.InsecureGetCertificate(host)
 	}
 
@@ -101,15 +101,15 @@ func verifyCoordinator(host string, configFilename string, insecure bool, accept
 		// reuse existing config from current working directory if none specified
 		// or try to get latest config from github if it does not exist
 		if _, err := os.Stat(configFilename); err == nil {
-			fmt.Println("Reusing existing config file")
-		} else if err := fetchLatestCoordinatorConfiguration(); err != nil {
+			fmt.Fprintln(out, "Reusing existing config file")
+		} else if err := fetchLatestCoordinatorConfiguration(out); err != nil {
 			return nil, err
 		}
 	}
 
 	pemBlock, tcbStatus, err := era.GetCertificate(host, configFilename)
 	if errors.Is(err, attestation.ErrTCBLevelInvalid) && util.StringSliceContains(acceptedTCBStatuses, tcbStatus.String()) {
-		fmt.Println("Warning: TCB level invalid, but accepted by configuration")
+		fmt.Fprintln(out, "Warning: TCB level invalid, but accepted by configuration")
 		return pemBlock, nil
 	}
 	return pemBlock, err
@@ -166,7 +166,7 @@ func getKubernetesInterface() (*kubernetes.Clientset, error) {
 
 	kubeClient, err := kubernetes.NewForConfig(kubeConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed setting up kubernetes client: %v", err)
+		return nil, fmt.Errorf("failed setting up kubernetes client: %w", err)
 	}
 
 	return kubeClient, nil

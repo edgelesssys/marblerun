@@ -7,6 +7,7 @@
 package cmd
 
 import (
+	"bytes"
 	"crypto/tls"
 	"encoding/json"
 	"encoding/pem"
@@ -117,15 +118,18 @@ func TestGetSecrets(t *testing.T) {
 		clCert: tls.Certificate{},
 		caCert: []*pem.Block{cert},
 	}
-	err := cliSecretGet(options)
+
+	var out bytes.Buffer
+
+	err := cliSecretGet(&out, options)
 	assert.NoError(err)
 
 	options.secretIDs = []string{"restrictedSecret"}
-	err = cliSecretGet(options)
+	err = cliSecretGet(&out, options)
 	assert.Error(err)
 
 	options.secretIDs = []string{"this should cause an error"}
-	err = cliSecretGet(options)
+	err = cliSecretGet(&out, options)
 	assert.Error(err)
 }
 

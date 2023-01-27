@@ -10,6 +10,7 @@ import (
 	"crypto/tls"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -42,7 +43,7 @@ and need permissions in the manifest to read the requested secrets.
 		Args:    cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hostName := args[len(args)-1]
-			caCert, err := verifyCoordinator(hostName, eraConfig, insecureEra, acceptedTCBStatuses)
+			caCert, err := verifyCoordinator(cmd.OutOrStdout(), hostName, eraConfig, insecureEra, acceptedTCBStatuses)
 			if err != nil {
 				return err
 			}
@@ -58,7 +59,7 @@ and need permissions in the manifest to read the requested secrets.
 			options.caCert = caCert
 			options.clCert = clCert
 
-			return cliSecretGet(options)
+			return cliSecretGet(cmd.OutOrStdout(), options)
 		},
 		SilenceUsage: true,
 	}
@@ -69,7 +70,7 @@ and need permissions in the manifest to read the requested secrets.
 }
 
 // cliSecretGet requests one or more secrets from the MarbleRun Coordinator.
-func cliSecretGet(o *secretGetOptions) error {
+func cliSecretGet(out io.Writer, o *secretGetOptions) error {
 	client, err := restClient(o.caCert, &o.clCert)
 	if err != nil {
 		return err
@@ -105,12 +106,12 @@ func cliSecretGet(o *secretGetOptions) error {
 		}
 
 		if o.output == "" {
-			return printSecrets(response)
+			return printSecrets(out, response)
 		}
 		if err := ioutil.WriteFile(o.output, []byte(response.String()), 0o644); err != nil {
 			return err
 		}
-		fmt.Printf("Saved secret to: %s\n", o.output)
+		fmt.Fprintf(out, "Saved secret to: %s\n", o.output)
 	case http.StatusBadRequest:
 		// Something went wrong
 		respBody, err := ioutil.ReadAll(resp.Body)
@@ -134,8 +135,8 @@ func cliSecretGet(o *secretGetOptions) error {
 	return nil
 }
 
-// printSecrets prints secrets formated in a readable way.
-func printSecrets(response gjson.Result) error {
+// printSecrets prints secrets formatted in a readable way.
+func printSecrets(out io.Writer, response gjson.Result) error {
 	for secretName, singleResponse := range response.Map() {
 		secretType := singleResponse.Get("Type")
 		userDefined := singleResponse.Get("UserDefined")
@@ -145,7 +146,7 @@ func printSecrets(response gjson.Result) error {
 		public := singleResponse.Get("Public")
 		private := singleResponse.Get("Private")
 
-		fmt.Printf("%s:\n", secretName)
+		fmt.Fprintf(out, "%s:\n", secretName)
 		var output string
 		output = prettyFormat(output, "Type:", secretType.String())
 
@@ -168,9 +169,8 @@ func printSecrets(response gjson.Result) error {
 		default:
 			return fmt.Errorf("unknown secret type")
 		}
-		fmt.Printf("%s\n", output)
+		fmt.Fprintf(out, "%s\n", output)
 	}
-
 	return nil
 }
 

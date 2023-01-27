@@ -159,7 +159,7 @@ func newUpdateGet() *cobra.Command {
 }
 
 func authenticatedClient(cmd *cobra.Command, hostName string) (*http.Client, error) {
-	caCert, err := verifyCoordinator(hostName, eraConfig, insecureEra, acceptedTCBStatuses)
+	caCert, err := verifyCoordinator(cmd.OutOrStdout(), hostName, eraConfig, insecureEra, acceptedTCBStatuses)
 	if err != nil {
 		return nil, err
 	}
@@ -295,7 +295,7 @@ func runUpdateGet(cmd *cobra.Command, args []string) (retErr error) {
 		return err
 	}
 
-	caCert, err := verifyCoordinator(hostName, eraConfig, insecureEra, acceptedTCBStatuses)
+	caCert, err := verifyCoordinator(cmd.OutOrStdout(), hostName, eraConfig, insecureEra, acceptedTCBStatuses)
 	if err != nil {
 		return err
 	}

@@ -32,11 +32,11 @@ Optionally get the manifests signature or merge updates into the displayed manif
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hostName := args[0]
-			cert, err := verifyCoordinator(hostName, eraConfig, insecureEra, acceptedTCBStatuses)
+			cert, err := verifyCoordinator(cmd.OutOrStdout(), hostName, eraConfig, insecureEra, acceptedTCBStatuses)
 			if err != nil {
 				return err
 			}
-			fmt.Println("Successfully verified Coordinator, now requesting manifest")
+			cmd.Println("Successfully verified Coordinator, now requesting manifest")
 			response, err := cliDataGet(hostName, "manifest", "data", cert)
 			if err != nil {
 				return err
@@ -53,7 +53,7 @@ Optionally get the manifests signature or merge updates into the displayed manif
 			if len(output) > 0 {
 				return ioutil.WriteFile(output, []byte(manifest), 0o644)
 			}
-			fmt.Println(manifest)
+			cmd.Println(manifest)
 			return nil
 		},
 		SilenceUsage: true,

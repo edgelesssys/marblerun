@@ -9,6 +9,7 @@ package cmd
 import (
 	"encoding/pem"
 	"fmt"
+	"io"
 	"io/ioutil"
 
 	"github.com/spf13/cobra"
@@ -24,7 +25,7 @@ func newCertificateChain() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hostName := args[0]
-			return cliCertificateChain(hostName, certFilename, eraConfig, insecureEra, acceptedTCBStatuses)
+			return cliCertificateChain(cmd.OutOrStdout(), hostName, certFilename, eraConfig, insecureEra, acceptedTCBStatuses)
 		},
 		SilenceUsage: true,
 	}
@@ -35,14 +36,14 @@ func newCertificateChain() *cobra.Command {
 }
 
 // cliCertificateChain gets the certificate chain of the MarbleRun Coordinator.
-func cliCertificateChain(host string, output string, configFilename string, insecure bool, acceptedTCBStatuses []string) error {
-	certs, err := verifyCoordinator(host, configFilename, insecure, acceptedTCBStatuses)
+func cliCertificateChain(out io.Writer, host, output, configFilename string, insecure bool, acceptedTCBStatuses []string) error {
+	certs, err := verifyCoordinator(out, host, configFilename, insecure, acceptedTCBStatuses)
 	if err != nil {
 		return err
 	}
 
 	if len(certs) == 1 {
-		fmt.Println("WARNING: Only received root certificate from host.")
+		fmt.Fprintln(out, "WARNING: Only received root certificate from host.")
 	}
 
 	var chain []byte
@@ -54,7 +55,7 @@ func cliCertificateChain(host string, output string, configFilename string, inse
 		return err
 	}
 
-	fmt.Println("Certificate chain written to", output)
+	fmt.Fprintln(out, "Certificate chain written to", output)
 
 	return nil
 }
