@@ -8,6 +8,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -26,13 +27,21 @@ const (
 	occlum
 )
 
+func exit(format string, args ...interface{}) {
+	// Print error message in red and append newline
+	// then exit with error code 1
+	msg := fmt.Sprintf("Error: %s\n", format)
+	_, _ = color.New(color.FgRed).Fprintf(os.Stderr, msg, args...)
+	os.Exit(1)
+}
+
 func main() {
 	log.SetPrefix("[PreMain] ")
 
 	// Automatically detect libOS based on uname
 	libOS, err := detectLibOS()
 	if err != nil {
-		panic(err)
+		exit("failed to detect libOS: %s", err)
 	}
 
 	// Use filesystem from libOS
@@ -47,7 +56,7 @@ func main() {
 		// Gramine: Get service to launch before MarbleRun's premain
 		service, err = prepareGramine(hostfs)
 		if err != nil {
-			panic(err)
+			exit("activating Gramine Marble failed: %s", err)
 		}
 
 	case occlum:
@@ -56,13 +65,13 @@ func main() {
 		// Occlum: Get entrypoint from MarbleRun manifest, adjust it to Occlum's quirks
 		service, err = prepareOcclum(hostfs)
 		if err != nil {
-			panic(err)
+			exit("activating Occlum Marble failed: %s", err)
 		}
 	}
 
 	// Launch service
 	if err := unix.Exec(service, os.Args, os.Environ()); err != nil {
-		panic(err)
+		exit("%s", err)
 	}
 }
 
@@ -109,7 +118,7 @@ func prepareGramine(hostfs afero.Fs) (string, error) {
 func prepareOcclum(hostfs afero.Fs) (string, error) {
 	// Run MarbleRun premain
 	if err := marblePremain.PreMainEx(marblePremain.OcclumQuoteIssuer{}, marblePremain.ActivateRPC, hostfs, hostfs); err != nil {
-		panic(err)
+		return "", err
 	}
 
 	// Check if the entrypoint defined in os.Args[0] actually exists

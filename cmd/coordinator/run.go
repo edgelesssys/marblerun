@@ -7,6 +7,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -35,16 +36,17 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer 
 	devMode := util.Getenv(constants.DevMode, constants.DevModeDefault) == "1"
 
 	// Setup logging with Zap Logger
-	// Development Logger shows a stacktrace for warnings & errors, Production Logger only for errors
-	var log *zap.Logger
-	var err error
+	var cfg zap.Config
 	if devMode {
-		log, err = zap.NewDevelopment()
+		cfg = zap.NewDevelopmentConfig()
 	} else {
-		log, err = zap.NewProduction()
+		cfg = zap.NewProductionConfig()
+		cfg.DisableStacktrace = true // Disable stacktraces in production
 	}
+	log, err := cfg.Build()
 	if err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "failed to create logger: %s\n", err)
+		os.Exit(1)
 	}
 	defer log.Sync() // flushes buffer, if any
 
