@@ -55,7 +55,7 @@ func fetchLatestCoordinatorConfiguration() error {
 	coordinatorVersion, err := getCoordinatorVersion()
 	eraURL := fmt.Sprintf("https://github.com/edgelesssys/marblerun/releases/download/%s/coordinator-era.json", coordinatorVersion)
 	if err != nil {
-		// if errors were caused by an empty kube config file or by being unable to connect to a cluster we assume the Coordinator is running as a standlone
+		// if errors were caused by an empty kube config file or by being unable to connect to a cluster we assume the Coordinator is running as a standalone
 		// and we default to the latest era-config file
 		var dnsError *net.DNSError
 		if !clientcmd.IsEmptyConfig(err) && !errors.As(err, &dnsError) && !os.IsNotExist(err) {
@@ -67,23 +67,23 @@ func fetchLatestCoordinatorConfiguration() error {
 	fmt.Printf("No era config file specified, getting config from %s\n", eraURL)
 	resp, err := http.Get(eraURL)
 	if err != nil {
-		return err
+		return fmt.Errorf("downloading era config for version %s: %w", coordinatorVersion, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("downloading era config failed with error %d: %s", resp.StatusCode, http.StatusText(resp.StatusCode))
-	}
-	out, err := os.Create(eraDefaultConfig)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-	_, err = io.Copy(out, resp.Body)
-	if err != nil {
-		return err
+		return fmt.Errorf("downloading era config for version: %s: %d: %s", coordinatorVersion, resp.StatusCode, http.StatusText(resp.StatusCode))
 	}
 
-	fmt.Println("Got latest config")
+	era, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("downloading era config for version %s: %w", coordinatorVersion, err)
+	}
+
+	if err := os.WriteFile(eraDefaultConfig, era, 0o644); err != nil {
+		return fmt.Errorf("writing era config file: %w", err)
+	}
+
+	fmt.Printf("Got era config for version %s\n", coordinatorVersion)
 	return nil
 }
 
@@ -96,11 +96,15 @@ func verifyCoordinator(host string, configFilename string, insecure bool, accept
 	}
 
 	if configFilename == "" {
-		// get latest config from github if none specified
-		if err := fetchLatestCoordinatorConfiguration(); err != nil {
+		configFilename = eraDefaultConfig
+
+		// reuse existing config from current working directory if none specified
+		// or try to get latest config from github if it does not exist
+		if _, err := os.Stat(configFilename); err == nil {
+			fmt.Println("Reusing existing config file")
+		} else if err := fetchLatestCoordinatorConfiguration(); err != nil {
 			return nil, err
 		}
-		configFilename = eraDefaultConfig
 	}
 
 	pemBlock, tcbStatus, err := era.GetCertificate(host, configFilename)
