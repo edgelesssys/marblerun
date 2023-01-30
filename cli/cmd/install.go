@@ -10,6 +10,7 @@ import (
 	"context"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -43,6 +44,7 @@ type installOptions struct {
 	dcapQpl          string
 	pccsUrl          string
 	useSecureCert    string
+	accessToken      string
 	simulation       bool
 	disableInjection bool
 	clientPort       int
@@ -84,6 +86,7 @@ marblerun install --dcap-qpl intel --dcap-pccs-url https://pccs.example.com/sgx/
 	cmd.Flags().StringVar(&options.dcapQpl, "dcap-qpl", "azure", `Quote provider library to use by the Coordinator. One of {"azure", "intel"}`)
 	cmd.Flags().StringVar(&options.pccsUrl, "dcap-pccs-url", "https://localhost:8081/sgx/certification/v3/", "Provisioning Certificate Caching Service (PCCS) server address")
 	cmd.Flags().StringVar(&options.useSecureCert, "dcap-secure-cert", "TRUE", "To accept insecure HTTPS certificate from the PCCS, set this option to FALSE")
+	cmd.Flags().StringVar(&options.accessToken, "enterprise-access-token", "", "Access token for Enterprise Coordinator. Leave empty for default installation")
 	cmd.Flags().BoolVar(&options.simulation, "simulation", false, "Set MarbleRun to start in simulation mode")
 	cmd.Flags().BoolVar(&options.disableInjection, "disable-auto-injection", false, "Install MarbleRun without auto-injection webhook")
 	cmd.Flags().IntVar(&options.meshPort, "mesh-server-port", 2001, "Set the mesh server port. Needs to be configured to the same port as in the data-plane marbles")
@@ -112,7 +115,13 @@ func cliInstall(options *installOptions) error {
 		if err != nil {
 			return err
 		}
-		options.chartPath, err = installer.ChartPathOptions.LocateChart(helmChartName, options.settings)
+
+		// Enterprise chart is used if an access token is provided
+		chartName := helmChartName
+		if options.accessToken != "" {
+			chartName = helmChartNameEnterprise
+		}
+		options.chartPath, err = installer.ChartPathOptions.LocateChart(chartName, options.settings)
 		if err != nil {
 			return err
 		}
@@ -188,6 +197,21 @@ func cliInstall(options *installOptions) error {
 				fmt.Sprintf("tolerations[%d].effect=NoSchedule", idx),
 			)
 		}
+	}
+
+	// Configure enterprise access token
+	if options.accessToken != "" {
+		coordinatorCfg, ok := chart.Values["coordinator"].(map[string]interface{})
+		if !ok {
+			return errors.New("coordinator not found in chart values")
+		}
+		repository, ok := coordinatorCfg["repository"].(string)
+		if !ok {
+			return errors.New("coordinator.registry not found in chart values")
+		}
+
+		token := fmt.Sprintf(`{"auths":{"%s":{"auth":"%s"}}}`, repository, options.accessToken)
+		stringValues = append(stringValues, fmt.Sprintf("pullSecret.token=%s", base64.StdEncoding.EncodeToString([]byte(token))))
 	}
 
 	if !options.disableInjection {
