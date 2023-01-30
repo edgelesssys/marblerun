@@ -27,18 +27,19 @@ add_custom_target(
 add_custom_target(coordinatorlib
   COMMAND
   ${CMAKE_COMMAND} -P ${CMAKE_SOURCE_DIR}/build_with_version.cmake
-  "ertgo" ${PROJECT_VERSION} "libcoordinator.a"
-  "${CMAKE_SOURCE_DIR}/cmd/coordinator" "main"
+  "ertgo" ${PROJECT_VERSION} "${CMAKE_BINARY_DIR}/libcoordinator.a"
+  "main"
   ${TRIMPATH}
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/cmd/coordinator
 )
 
 add_custom_target(coordinator-noenclave ALL
   COMMAND
   ${CMAKE_COMMAND} -P ${CMAKE_SOURCE_DIR}/build_with_version.cmake
-  "go" ${PROJECT_VERSION} "coordinator-noenclave"
-  "${CMAKE_SOURCE_DIR}/cmd/coordinator" "main"
+  "go" ${PROJECT_VERSION} "${CMAKE_BINARY_DIR}/coordinator-noenclave"
+  "main"
    ${TRIMPATH}
-
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/cmd/coordinator
 )
 
 add_executable(coordinator-enclave enclave/main.c)
@@ -50,12 +51,19 @@ target_link_libraries(coordinator-enclave
   ${CMAKE_BINARY_DIR}/libcoordinator.a
  )
 
+# Configure coordinator.conf
+set(COORDINATORCONF_DEBUG 1)
+if(PRODUCTION)
+  set(COORDINATORCONF_DEBUG 0)
+endif()
+configure_file(enclave/coordinator.conf coordinator.conf)
+
 # Sign enclave
 add_custom_command(
   OUTPUT coordinator-enclave.signed
-  DEPENDS coordinator-enclave enclave/coordinator.conf signing-key
+  DEPENDS coordinator-enclave ${CMAKE_BINARY_DIR}/coordinator.conf signing-key
   COMMAND openenclave::oesign sign -e $<TARGET_FILE:coordinator-enclave> -c
-          ${CMAKE_SOURCE_DIR}/enclave/coordinator.conf -k private.pem)
+          ${CMAKE_BINARY_DIR}/coordinator.conf -k private.pem)
 
 # Create config for remote attestation
 add_custom_command(
@@ -73,9 +81,9 @@ add_custom_target(sign-coordinator ALL DEPENDS coordinator-enclave.signed coordi
 add_custom_target(marble-injector ALL
   CGO_ENABLED=0
   go build ${TRIMPATH}
-  -o marble-injector
+  -o ${CMAKE_BINARY_DIR}
   -buildvcs=false
-  ${CMAKE_SOURCE_DIR}/cmd/marble-injector
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/cmd/marble-injector
 )
 
 #
@@ -85,9 +93,10 @@ add_custom_target(marble-injector ALL
 add_custom_target(cli ALL
   COMMAND
   ${CMAKE_COMMAND} -P ${CMAKE_SOURCE_DIR}/build_with_version.cmake
-  "go" "${PROJECT_VERSION}" "marblerun"
-  "${CMAKE_SOURCE_DIR}/cli" "github.com/edgelesssys/marblerun/cli/cmd"
+  "go" "${PROJECT_VERSION}" "${CMAKE_BINARY_DIR}/marblerun"
+  "github.com/edgelesssys/marblerun/cli/cmd"
   ${TRIMPATH}
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/cli
 )
 
 #
@@ -96,16 +105,16 @@ add_custom_target(cli ALL
 
 add_custom_target(marbletestlib
   ertgo build ${TRIMPATH} -buildmode=c-archive
-  -tags enclave -o libmarbletest.a
+  -tags enclave -o ${CMAKE_BINARY_DIR}/libmarbletest.a
   -buildvcs=false
-  ${CMAKE_SOURCE_DIR}/cmd/marble-test
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/cmd/marble-test
 )
 
 add_custom_target(marble-test-noenclave ALL
   go build ${TRIMPATH}
-  -o marble-test-noenclave
+  -o ${CMAKE_BINARY_DIR}/marble-test-noenclave
   -buildvcs=false
-  ${CMAKE_SOURCE_DIR}/cmd/marble-test)
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/cmd/marble-test)
 
 add_executable(marble-test-enclave enclave/main.c)
 add_dependencies(marble-test-enclave marbletestlib)
@@ -141,4 +150,5 @@ add_custom_target(
   ertgo build ${TRIMPATH}
   -buildmode=pie
   -buildvcs=false
-  ${CMAKE_SOURCE_DIR}/cmd/premain-libos)
+  -o ${CMAKE_BINARY_DIR}
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/cmd/premain-libos)

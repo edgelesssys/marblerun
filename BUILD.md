@@ -210,7 +210,7 @@ You can build the Docker image of the Coordinator by providing a signing key:
 
 ```bash
 openssl genrsa -out private.pem -3 3072
-DOCKER_BUILDKIT=1 docker build --secret id=signingkey,src=private.pem --target release --tag ghcr.io/edgelesssys/coordinator -f dockerfiles/Dockerfile.coordinator .
+DOCKER_BUILDKIT=1 docker build --secret id=signingkey,src=private.pem --tag ghcr.io/edgelesssys/coordinator - < dockerfiles/Dockerfile.coordinator
 ```
 
 You can build the Docker image of the marble-injector as follows:
