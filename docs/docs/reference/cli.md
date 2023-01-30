@@ -311,18 +311,19 @@ marblerun install --dcap-qpl intel --dcap-pccs-url https://pccs.example.com/sgx/
 ### Options
 
 ```
-      --client-server-port int        Set the client server port. Needs to be configured to the same port as in your client tool stack (default 4433)
-      --dcap-pccs-url string          Provisioning Certificate Caching Service (PCCS) server address (default "https://localhost:8081/sgx/certification/v3/")
-      --dcap-qpl string               Quote provider library to use by the Coordinator. One of {"azure", "intel"} (default "azure")
-      --dcap-secure-cert string       To accept insecure HTTPS certificate from the PCCS, set this option to FALSE (default "TRUE")
-      --disable-auto-injection        Install MarbleRun without auto-injection webhook
-      --domain string                 Sets the CNAME for the Coordinator certificate (default "localhost")
-  -h, --help                          help for install
-      --marblerun-chart-path string   Path to MarbleRun helm chart
-      --mesh-server-port int          Set the mesh server port. Needs to be configured to the same port as in the data-plane marbles (default 2001)
-      --resource-key string           Resource providing SGX, different depending on used device plugin. Use this to set tolerations/resources if your device plugin is not supported by MarbleRun
-      --simulation                    Set MarbleRun to start in simulation mode
-      --version string                Version of the Coordinator to install, latest by default
+      --client-server-port int           Set the client server port. Needs to be configured to the same port as in your client tool stack (default 4433)
+      --dcap-pccs-url string             Provisioning Certificate Caching Service (PCCS) server address (default "https://localhost:8081/sgx/certification/v3/")
+      --dcap-qpl string                  Quote provider library to use by the Coordinator. One of {"azure", "intel"} (default "azure")
+      --dcap-secure-cert string          To accept insecure HTTPS certificate from the PCCS, set this option to FALSE (default "TRUE")
+      --disable-auto-injection           Install MarbleRun without auto-injection webhook
+      --domain string                    Sets the CNAME for the Coordinator certificate (default "localhost")
+      --enterprise-access-token string   Access token for Enterprise Coordinator. Leave empty for default installation
+  -h, --help                             help for install
+      --marblerun-chart-path string      Path to MarbleRun helm chart
+      --mesh-server-port int             Set the mesh server port. Needs to be configured to the same port as in the data-plane marbles (default 2001)
+      --resource-key string              Resource providing SGX, different depending on used device plugin. Use this to set tolerations/resources if your device plugin is not supported by MarbleRun
+      --simulation                       Set MarbleRun to start in simulation mode
+      --version string                   Version of the Coordinator to install, latest by default
 ```
 
 ## marblerun manifest
