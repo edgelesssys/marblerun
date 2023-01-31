@@ -2,7 +2,7 @@
 
 if [[ "${DCAP_LIBRARY}" == "intel" ]]
 then
-    apt-get install -qq libsgx-dcap-default-qpl
+    apt-get install -qq libsgx-dcap-default-qpl > /dev/null
 else
     apt-get install -qq az-dcap-client
 fi

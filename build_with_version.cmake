@@ -5,8 +5,8 @@ execute_process(COMMAND bash "-c" "git rev-parse HEAD | tr -d '\n'"
 set(COMPILER ${CMAKE_ARGV3})
 set(PROJECT_VERSION ${CMAKE_ARGV4})
 set(OUTPUT_NAME ${CMAKE_ARGV5})
-set(INJECT_PATH ${CMAKE_ARGV7})
-set(TRIMPATH ${CMAKE_ARGV8})
+set(INJECT_PATH ${CMAKE_ARGV6})
+set(TRIMPATH ${CMAKE_ARGV7})
 
 
 if("${COMPILER}" STREQUAL "go")
