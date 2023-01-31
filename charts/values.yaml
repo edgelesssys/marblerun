@@ -27,10 +27,10 @@ global:
 marbleInjector:
   start: false
   replicas: 1
-  repository: ghcr.io/edgelesssys
+  repository: ghcr.io/edgelesssys/marblerun
   image: marble-injector
   pullPolicy: IfNotPresent
-  version: v0.6.1
+  version: v1.0.0
   # Set this to use a custom CABundle for the MutatingWebhook
   # CABundle: "CA_Bundle_Base64"
 
@@ -38,10 +38,10 @@ marbleInjector:
 # coordinator configuration
 coordinator:
   replicas: 1
-  repository: ghcr.io/edgelesssys
+  repository: ghcr.io/edgelesssys/marblerun
   image: coordinator
   pullPolicy: IfNotPresent
-  version: v0.6.1
+  version: v1.0.0
 
   # Environment configuration for the coordinator control-plane
   # meshServerPort needs to be configured to the same port as in the data-plane marbles
