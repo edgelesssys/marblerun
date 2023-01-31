@@ -4,7 +4,7 @@ if [[ "${DCAP_LIBRARY}" == "intel" ]]
 then
     apt-get install -qq libsgx-dcap-default-qpl > /dev/null
 else
-    apt-get install -qq az-dcap-client
+    apt-get install -qq az-dcap-client > /dev/null
 fi
 
 erthost coordinator-enclave.signed
