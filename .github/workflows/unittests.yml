@@ -65,7 +65,7 @@ jobs:
           -d '{"event_type": "docker-build",
               "client_payload":{"repository":"marblerun",
                                 "sign":"nightly",
-                                "imagename":"coordinator",
+                                "imagename":"marblerun/coordinator-debug",
                                 "tag":"nightly",
                                 "file": "dockerfiles/Dockerfile.coordinator",
                                 "target":"release"}}' \
@@ -80,7 +80,7 @@ jobs:
           -d '{"event_type": "docker-build",
               "client_payload":{"repository":"marblerun",
                                 "sign":"nightly",
-                                "imagename":"marble-injector",
+                                "imagename":"marblerun/marble-injector",
                                 "tag":"nightly",
                                 "file": "dockerfiles/Dockerfile.marble-injector",
                                 "target":"release"}}' \
