@@ -1,15 +1,68 @@
-# syntax=docker/dockerfile:experimental
+FROM ghcr.io/edgelesssys/marblerun/build-base:v1.0.0 AS build
 
-FROM alpine/git:latest AS pull
-RUN git clone https://github.com/edgelesssys/marblerun.git /coordinator
+# don't run `apt-get update` because required packages are cached in build-base for reproducibility
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+  build-essential \
+  ca-certificates \
+  clang-10 \
+  cmake \
+  git \
+  libssl-dev \
+  ninja-build \
+  wget
 
-FROM ghcr.io/edgelesssys/edgelessrt-dev AS build
-COPY --from=pull /coordinator /coordinator
-WORKDIR /coordinator/build
-RUN cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
-RUN --mount=type=secret,id=signingkey,dst=/coordinator/build/private.pem,required=true make sign-coordinator coordinator-noenclave
+ARG erttag=v0.3.6
+ARG mrtag=v1.0.0
+RUN wget -qO- https://golang.org/dl/go1.18.1.linux-amd64.tar.gz | tar -C /usr/local -xz \
+  && git clone -b $erttag --depth=1 https://github.com/edgelesssys/edgelessrt \
+  && git clone -b $mrtag --depth=1 https://github.com/edgelesssys/marblerun \
+  && mkdir ertbuild mrbuild
 
-FROM ghcr.io/edgelesssys/edgelessrt-deploy AS release
-LABEL description="EdgelessCoordinator"
-COPY --from=build /coordinator/build/coordinator-enclave.signed /coordinator/build/coordinator-noenclave /coordinator/build/coordinator-config.json /coordinator/dockerfiles/start.sh /
+# install ert
+RUN cd edgelessrt && export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct) && cd /ertbuild \
+  && cmake -GNinja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF /edgelessrt \
+  && ninja install
+
+# build marblerun
+ARG production=OFF
+RUN --mount=type=secret,id=signingkey,dst=/mrbuild/private.pem,required=true \
+  cd marblerun && export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct) && cd /mrbuild \
+  && . /opt/edgelessrt/share/openenclave/openenclaverc \
+  && cmake -DCMAKE_BUILD_TYPE=Release -DPRODUCTION=$production /marblerun \
+  && PATH=$PATH:/usr/local/go/bin make -j`nproc`
+
+FROM scratch AS export
+COPY --from=build \
+  /mrbuild/coordinator-enclave.signed \
+  /mrbuild/coordinator-config.json \
+  /mrbuild/coordinator-noenclave \
+  /mrbuild/marblerun \
+  /mrbuild/marble-injector \
+  /mrbuild/premain-libos \
+  /opt/edgelessrt/bin/erthost \
+  /
+
+# the coordinator container image
+FROM ubuntu:focal-20221130 AS release
+ARG PSW_VERSION=2.18.101.1-focal1
+ARG DCAP_VERSION=1.15.100.3-focal1
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates gnupg libcurl4 wget \
+  && wget -qO- https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | apt-key add \
+  && echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu focal main' >> /etc/apt/sources.list \
+  && wget -qO- https://packages.microsoft.com/keys/microsoft.asc | apt-key add \
+  && echo 'deb [arch=amd64] https://packages.microsoft.com/ubuntu/20.04/prod focal main' >> /etc/apt/sources.list \
+  && apt-get update && apt-get install -y --no-install-recommends \
+  libsgx-ae-id-enclave=$DCAP_VERSION \
+  libsgx-ae-pce=$PSW_VERSION \
+  libsgx-ae-qe3=$DCAP_VERSION \
+  libsgx-dcap-ql=$DCAP_VERSION \
+  libsgx-enclave-common=$PSW_VERSION \
+  libsgx-launch=$PSW_VERSION \
+  libsgx-pce-logic=$DCAP_VERSION \
+  libsgx-qe3-logic=$DCAP_VERSION \
+  libsgx-urts=$PSW_VERSION \
+  && apt-get install -d az-dcap-client libsgx-dcap-default-qpl=$DCAP_VERSION
+COPY --from=build /mrbuild/coordinator-enclave.signed /mrbuild/coordinator-config.json /marblerun/dockerfiles/start.sh /
+COPY --from=build /opt/edgelessrt/bin/erthost /opt/edgelessrt/bin/
+ENV PATH=${PATH}:/opt/edgelessrt/bin
 ENTRYPOINT ["/start.sh"]
