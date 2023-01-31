@@ -36,19 +36,24 @@ their default values.
 | `coordinator.clientServerHost`               | string         | Hostname of the client-api server | `"0.0.0.0"` |
 | `coordinator.clientServerPort`               | int            | Port of the client-api server configuration | `4433` |
 | `coordinator.hostname`                       | string         | DNS-Names for the coordinator certificate | `"localhost"` |
+| `coordinator.image`                          | string         | Name of the coordinator container image | `"coordinator"` |
 | `coordinator.meshServerHost`                 | string         | Hostname of the mesh-api server | `"0.0.0.0"` |
 | `coordinator.meshServerPort`                 | int            | Port of the mesh-api server configuration | `2001` |
 | `coordinator.replicas`                       | int            | Number of replicas for each control plane pod | `1` |
+| `coordinator.repository`                     | string         | Name of the container registry to pull the coordinator image from | `"ghcr.io/edgelesssys/marblerun"` |
 | `coordinator.sealDir`                        | string         | Path to the directory used for sealing data. Needs to be consistent with the persisten storage setup | `"/coordinator/data/"` |
 | `coordinator.simulation`                     | bool           | SGX simulation settings, set to `true` if your not running on an SGX capable cluster | `false` |
+| `coordinator.version`                        | string         | Version of the coordinator container image to pull | `"v1.0.0"` |
 | `global.coordinatorComponentLabel`           | string         | Control plane label. Do not edit | `"edgeless.systems/control-plane-component"` |
 | `global.coordinatorNamespaceLabel`           | string         | Control plane label. Do not edit | `"edgeless.systems/control-plane-ns"` |
-| `global.image`                               | object         | Image configuration for all components | `{"pullPolicy":"IfNotPresent","version":" v0.5.0","repository":"ghcr.io/edgelesssys"}` |
 | `global.podAnnotations`                      | object         | Additional annotations to add to all pods | `{}`|
 | `global.podLabels`                           | object         | Additional labels to add to all pods | `{}` |
 | `marbleInjector.CABundle`                    | string         | Set this to use a custom CABundle for the MutatingWebhook | `""` |
+| `marbleInjector.image`                       | string         | Name of the marbleInjector container image | `"coordinator"` |
 | `marbleInjector.start`                       | bool           | Start the marbleInjector webhook | `false` |
 | `marbleInjector.replicas`                    | int            | Replicas of the marbleInjector webhook | `1` |
+| `marbleInjector.repository`                  | string         | Name of the container registry to pull the marbleInjector image from | `"ghcr.io/edgelesssys/marblerun"` |
+| `marbleInjector.version`                     | string         | Version of the marbleInjector container image to pull | `"v1.0.0"` |
 | `nodeSelector`                               | object         | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information | `{"beta.kubernetes.io/os": "linux"}` |
 | `tolerations`                                | object         | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information | `{key:"sgx.intel.com/epc",operator:"Exists",effect:"NoSchedule"}` |
 | `dcap.qpl`                                   | string         | SGX quote provider library (QPL) to use. Needs to be "intel" if the libsgx-dcap-default-qpl is to be used, otherwise az-dcap-client is used by default | `"azure"` |
