@@ -337,7 +337,7 @@ Valid `Actions` are:
 
 :::note
 
-Assigning a role with the `UpdateManifest` action to multiple users enables [multi-party manifest update](../features/manifest.md#multi-party-update): each of the users can upload a manifest, but all other users must [acknowledge this manifest](update-manifest.md#acknowledging-an-update).
+Assigning a role with the `UpdateManifest` action to multiple users enables [multi-party manifest update](../features/manifest.md#multi-party-update): each of the users can upload a manifest, but all other users must [acknowledge this manifest](update-manifest.md#acknowledging-a-multi-party-update).
 
 :::
 

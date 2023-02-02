@@ -50,9 +50,9 @@ If you've [configured your MarbleRun deployment for multi-party recovery](define
 
 ### Example
 
-The following gives an example of a multi-party recovery workflow:
+The following gives an example of a multi-party recovery workflow.
 
-Assume the following `RecoveryKeys` were set in the Manifest:
+Assume the following `RecoveryKeys` were set in the manifest:
 
 ```javascript
     "RecoveryKeys": {
@@ -63,18 +63,18 @@ Assume the following `RecoveryKeys` were set in the Manifest:
 
 1. The Coordinator returned the following `RecoverySecrets`:
 
-  ```bash
+  ```shell-session
   $ marblerun manifest set manifest.json $MARBLERUN
   ...
-  {RecoverySecrets:{alice:EbkX/skIPrJISf8PiXdzRIKnwQyJ+VejtGzHGfES5NIPuCeEFedqgCVDk=,bob:bvPzio4A4SvzeHajsb+dFDpDarErcU9wMR0V9hyHtG2lC4ZfyrYjDBE7wtis3eOPgDaMG/HCt=}}
+  {"RecoverySecrets":{"alice":"EbkX/skIPrJISf8PiXdzRIKnwQyJ+VejtGzHGfES5NIPuCeEFedqgCVDk=","bob":"bvPzio4A4SvzeHajsb+dFDpDarErcU9wMR0V9hyHtG2lC4ZfyrYjDBE7wtis3eOPgDaMG/HCt="}}
   ```
 
 2. Alice decrypts and uploads her recovery key using her private key `private_key.pem` as follows:
 
-  ```bash
+  ```shell-session
   $ marblerun status $MARBLERUN
   1: Coordinator is in recovery mode. Either upload a key to unseal the saved state, or set a new manifest. For more information on how to proceed, consult the documentation.
-  $ echo "EbkX/skIPrJISf8PiXdzRIKnwQyJ+VejtGzHGfES5NIPuCeEFedqgCVDk=" >> recovery_data
+  $ echo "EbkX/skIPrJISf8PiXdzRIKnwQyJ+VejtGzHGfES5NIPuCeEFedqgCVDk=" > recovery_data
   $ base64 -d recovery_data \
     | openssl pkeyutl -inkey private_key.pem -decrypt \
       -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256 \
@@ -86,17 +86,17 @@ Assume the following `RecoveryKeys` were set in the Manifest:
 
   The Coordinator log shows the following:
 
-  ```bash
+  ```json
   {"level":"info","ts":1674206799.524596,"caller":"clientapi/clientapi.go:234","msg":"Recover called"}
   {"level":"info","ts":1674206799.524596,"caller":"clientapi/clientapi.go:253","msg":"Recover: recovery incomplete, more keys needed","remaining":1}
   ```
 
-3. Bob does the same with his key to complete the recovery procedure
+3. Bob does the same with his key to complete the recovery procedure:
 
-    ```bash
+    ```shell-session
     $ marblerun status $MARBLERUN
     1: Coordinator is in recovery mode. Either upload a key to unseal the saved state, or set a new manifest. For more information on how to proceed, consult the documentation.
-    $ echo "bvPzio4A4SvzeHajsb+dFDpDarErcU9wMR0V9hyHtG2lC4ZfyrYjDBE7wtis3eOPgDaMG/HCt=" >> recovery_data
+    $ echo "bvPzio4A4SvzeHajsb+dFDpDarErcU9wMR0V9hyHtG2lC4ZfyrYjDBE7wtis3eOPgDaMG/HCt=" > recovery_data
     $ base64 -d recovery_data \
       | openssl pkeyutl -inkey private_key.pem -decrypt \
         -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256 \
@@ -110,7 +110,7 @@ Assume the following `RecoveryKeys` were set in the Manifest:
 
     The Coordinator log shows the following:
 
-    ```bash
+    ```json
     {"level":"info","ts":1674206836.5523517,"caller":"clientapi/clientapi.go:234","msg":"Recover called"}
     {"level":"info","ts":1674206836.5563517,"caller":"core/core.go:261","msg":"generating quote"}
     {"level":"info","ts":1674206836.6043515,"caller":"clientapi/clientapi.go:281","msg":"Recover successful"}
