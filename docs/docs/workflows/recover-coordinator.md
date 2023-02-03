@@ -63,33 +63,33 @@ Assume the following `RecoveryKeys` were set in the manifest:
 
 1. The Coordinator returned the following `RecoverySecrets`:
 
-  ```shell-session
-  $ marblerun manifest set manifest.json $MARBLERUN
-  ...
-  {"RecoverySecrets":{"alice":"EbkX/skIPrJISf8PiXdzRIKnwQyJ+VejtGzHGfES5NIPuCeEFedqgCVDk=","bob":"bvPzio4A4SvzeHajsb+dFDpDarErcU9wMR0V9hyHtG2lC4ZfyrYjDBE7wtis3eOPgDaMG/HCt="}}
-  ```
+    ```shell-session
+    $ marblerun manifest set manifest.json $MARBLERUN
+    ...
+    {"RecoverySecrets":{"alice":"EbkX/skIPrJISf8PiXdzRIKnwQyJ+VejtGzHGfES5NIPuCeEFedqgCVDk=","bob":"bvPzio4A4SvzeHajsb+dFDpDarErcU9wMR0V9hyHtG2lC4ZfyrYjDBE7wtis3eOPgDaMG/HCt="}}
+    ```
 
 2. Alice decrypts and uploads her recovery key using her private key `private_key.pem` as follows:
 
-  ```shell-session
-  $ marblerun status $MARBLERUN
-  1: Coordinator is in recovery mode. Either upload a key to unseal the saved state, or set a new manifest. For more information on how to proceed, consult the documentation.
-  $ echo "EbkX/skIPrJISf8PiXdzRIKnwQyJ+VejtGzHGfES5NIPuCeEFedqgCVDk=" > recovery_data
-  $ base64 -d recovery_data \
-    | openssl pkeyutl -inkey private_key.pem -decrypt \
-      -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256 \
-      -out recovery_key_decrypted
-  $ marblerun recover recovery_key_decrypted $MARBLERUN
-  Successfully verified Coordinator, now uploading key
-  Secret was processed successfully. Upload the next secret. Remaining secrets: 1
-  ```
+    ```shell-session
+    $ marblerun status $MARBLERUN
+    1: Coordinator is in recovery mode. Either upload a key to unseal the saved state, or set a new manifest. For more information on how to proceed, consult the documentation.
+    $ echo "EbkX/skIPrJISf8PiXdzRIKnwQyJ+VejtGzHGfES5NIPuCeEFedqgCVDk=" > recovery_data
+    $ base64 -d recovery_data \
+      | openssl pkeyutl -inkey private_key.pem -decrypt \
+        -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256 \
+        -out recovery_key_decrypted
+    $ marblerun recover recovery_key_decrypted $MARBLERUN
+    Successfully verified Coordinator, now uploading key
+    Secret was processed successfully. Upload the next secret. Remaining secrets: 1
+    ```
 
-  The Coordinator log shows the following:
+    The Coordinator log shows the following:
 
-  ```json
-  {"level":"info","ts":1674206799.524596,"caller":"clientapi/clientapi.go:234","msg":"Recover called"}
-  {"level":"info","ts":1674206799.524596,"caller":"clientapi/clientapi.go:253","msg":"Recover: recovery incomplete, more keys needed","remaining":1}
-  ```
+    ```json
+    {"level":"info","ts":1674206799.524596,"caller":"clientapi/clientapi.go:234","msg":"Recover called"}
+    {"level":"info","ts":1674206799.524596,"caller":"clientapi/clientapi.go:253","msg":"Recover: recovery incomplete, more keys needed","remaining":1}
+    ```
 
 3. Bob does the same with his key to complete the recovery procedure:
 
