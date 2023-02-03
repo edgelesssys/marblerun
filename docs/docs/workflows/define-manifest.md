@@ -335,6 +335,12 @@ Valid `Actions` are:
 * For `"ResourceType": "Packages"`: `UpdateSecurityVersion`, allowing to update the `SecurityVersion` of a given package
 * For `"ResourceType": "Manifest"`: `UpdateManifest`, allowing to update the full manifest (MarbleRun Enterprise only)
 
+:::note
+
+Assigning a role with the `UpdateManifest` action to multiple users enables [multi-party manifest update](../features/manifest.md#multi-party-update): each of the users can upload a manifest, but all other users must [acknowledge this manifest](update-manifest.md#acknowledging-a-multi-party-update).
+
+:::
+
 ```javascript
 {
     //...

@@ -56,7 +56,7 @@ The simplest way to verify the quote is via the Edgeless Remote Attestation ([er
 To verify the coordinator, `era` requires the Coordinator's UniqueID (or MRENCLAVE in SGX terms) or the tuple ProductID, SecurityVersion, SignerID (MRSIGNER) to verify the quote. `era` contacts the Coordinator, and receives an SGX quote from it which contains the actual UniqueID or ProductID/SecurityVersion/SignerID tuple of the running instance. The tool verifies it against the expected values defined in `coordinator-era.json` and can therefore determine if an authentic copy of the Coordinator is running, or if an unknown version is contacted.
 
 In production, the expected values in `coordinator-era.json` would be generated when building the Coordinator and distributed to your clients. When you build MarbleRun from source, you can find the file in your build directory.
-For testing with a pre-built release, there's a Coordinator image at `ghcr.io/edgelesssys/coordinator`.
+For testing with a pre-built release, there's a Coordinator image at `ghcr.io/edgelesssys/marblerun/coordinator`.
 You can pull the corresponding `coordinator-era.json` file from our release page:
 
 ```bash

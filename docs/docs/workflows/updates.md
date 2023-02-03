@@ -11,7 +11,7 @@ When updating to a new MarbleRun version, updates to both the control plane and 
 Updating the Coordinator follows the regular steps for [updating a deployment in Kubernetes](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#updating-a-deployment).
 
 ```bash
-kubectl -n marblerun set image deployment/marblerun-coordinator coordinator=ghcr.io/edgelesssys/coordinator:latest --record
+kubectl -n marblerun set image deployment/marblerun-coordinator coordinator=ghcr.io/edgelesssys/marblerun/coordinator:latest --record
 ```
 
 You can also use Helm to upgrade the image. Note that Helm requires you to pass all the flags with `upgrade` that you set during the initial deployment.
@@ -19,7 +19,7 @@ You can also use Helm to upgrade the image. Note that Helm requires you to pass 
 ```bash
 helm upgrade marblerun edgeless/marblerun \
     -n marblerun \
-    --set coordinator.coordinatorImageVersion=latest
+    --set coordinator.version=latest
 ```
 
 If the Coordinator is rescheduled on the same host as before, it will continue running with the same manifest as before.

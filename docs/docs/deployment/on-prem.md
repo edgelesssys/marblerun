@@ -81,7 +81,7 @@ You currently have two options regarding PCCS for your on-premises machines and 
 
     If refreshing CRL fails, you can manually delete the `pckcache.db` database (default location `/opt/intel/sgx-dcap-pccs/pckcache.db`) and restart your PCCS.
 
-The docker image for the [MarbleRun Coordinator](https://github.com/edgelesssys/marblerun/pkgs/container/coordinator) comes with both the Azure-DCAP-Client and the default quote provider library by Intel.
+The docker image for the [MarbleRun Coordinator](https://github.com/edgelesssys/marblerun/pkgs/container/marblerun%2Fcoordinator) comes with both the Azure-DCAP-Client and the default quote provider library by Intel.
 To use your own PCCS, select the Intel library by starting a container with the environment variable `DCAP_LIBRARY=intel`, and mount the desired configuration to `/etc/sgx_default_qcnl.conf`.
 Similarly, the [EGo image](https://github.com/orgs/edgelesssys/packages?repo_name=ego) comes preinstalled with both libraries.
 
