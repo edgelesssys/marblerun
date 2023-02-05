@@ -54,10 +54,6 @@
             },
             "TLS": [
                 "web"
-            ],
-            "Roles": [
-                "cert-reader",
-                "key-reader"
             ]
         },
         "backendOther": {
@@ -74,9 +70,6 @@
             "TLS": [
                 "web",
                 "anotherWeb"
-            ],
-            "Roles": [
-                "cert-reader"
             ]
         },
         "frontend": {
