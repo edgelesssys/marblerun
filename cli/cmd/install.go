@@ -425,7 +425,7 @@ func setSGXValues(resourceKey string, values, chartValues map[string]interface{}
 		"requests": map[string]interface{}{},
 	}
 
-	toRemove := fmt.Sprintf("%s %s", util.IntelEpc.String(), util.AzureEpc.String())
+	toRemove := fmt.Sprintf("%s %s %s", util.IntelEpc.String(), util.AzureEpc.String(), util.IntelProvision.String())
 	var needNewLimit bool
 	limit := util.GetEPCResourceLimit(resourceKey)
 
