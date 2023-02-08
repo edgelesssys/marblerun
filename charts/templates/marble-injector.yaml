@@ -91,7 +91,7 @@ webhooks:
       {{- end }}
       service:
         name: marble-injector
-        namespace: marblerun
+        namespace: {{ .Release.Namespace }}
         path: "/mutate"
     rules:
     - operations: ["CREATE"]
