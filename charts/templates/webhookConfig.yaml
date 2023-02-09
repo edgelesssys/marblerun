@@ -1,0 +1,35 @@
+{{- if and .Values.marbleInjector.start .Values.marbleInjector.useCertManager }}
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: marble-injector-selfsigned-issuer
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/component: admission-controller-selfsigned-issuer
+    app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
+    app.kubernetes.io/name: marble-injector
+    app.kubernetes.io/part-of: marblerun
+    app.kubernetes.io/version: {{ .Values.marbleInjector.version }}
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: marble-injector-serving-cert
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/component: admission-controller-serving-cert
+    app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
+    app.kubernetes.io/name: marble-injector
+    app.kubernetes.io/part-of: marblerun
+    app.kubernetes.io/version: {{ .Values.marbleInjector.version }}
+spec:
+  dnsNames:
+  - 'marble-injector.{{ .Release.Namespace }}.svc'
+  - 'marble-injector.{{ .Release.Namespace }}.svc.{{ .Values.coordinator.hostname }}'
+  issuerRef:
+    kind: Issuer
+    name: marble-injector-selfsigned-issuer
+  secretName: marble-injector-webhook-certs
+{{- end }}

@@ -48,12 +48,15 @@ their default values.
 | `global.coordinatorNamespaceLabel`           | string         | Control plane label. Do not edit | `"edgeless.systems/control-plane-ns"` |
 | `global.podAnnotations`                      | object         | Additional annotations to add to all pods | `{}`|
 | `global.podLabels`                           | object         | Additional labels to add to all pods | `{}` |
-| `marbleInjector.CABundle`                    | string         | Set this to use a custom CABundle for the MutatingWebhook | `""` |
+| `marbleInjector.CABundle`                    | string         | MutatingWebhook CA bundle. Automatically configured by the MarbleRun CLI. Ignore when using standalone helm chart | `""` |
 | `marbleInjector.image`                       | string         | Name of the marbleInjector container image | `"coordinator"` |
 | `marbleInjector.start`                       | bool           | Start the marbleInjector webhook | `false` |
 | `marbleInjector.replicas`                    | int            | Replicas of the marbleInjector webhook | `1` |
 | `marbleInjector.repository`                  | string         | Name of the container registry to pull the marbleInjector image from | `"ghcr.io/edgelesssys/marblerun"` |
 | `marbleInjector.version`                     | string         | Version of the marbleInjector container image to pull | `"v1.0.0"` |
+| `marbleInjector.useCertManager`              | bool           | Set to use cert-manager for certificate provisioning. Required when using standalone helm chart for installation | `false` |
+| `marbleInjector.objectSelector`              | object         | ObjectSelector to trigger marble-injector mutation, See the [K8S documentation](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-objectselector) for more information | `{matchExpressions:[{key:"marblerun/marbletype",operator:"Exists"}]}` |
+| `marbleInjector.namespaceSelector`           | object         | NamespaceSelector to trigger marble-injector mutation, See the [K8S documentation](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-namespaceselector) for more information | `{}` |
 | `nodeSelector`                               | object         | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information | `{"beta.kubernetes.io/os": "linux"}` |
 | `tolerations`                                | object         | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information | `{key:"sgx.intel.com/epc",operator:"Exists",effect:"NoSchedule"}` |
 | `dcap.qpl`                                   | string         | SGX quote provider library (QPL) to use. Needs to be "intel" if the libsgx-dcap-default-qpl is to be used, otherwise az-dcap-client is used by default | `"azure"` |
