@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/component: coordinator
     app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
     app.kubernetes.io/name: coordinator
-    app.kubernetes.io/part-of: {{ .Release.Namespace }}
+    app.kubernetes.io/part-of: marblerun
     app.kubernetes.io/version: {{ .Values.coordinator.version }}
     {{ .Values.global.coordinatorComponentLabel }}: coordinator
     {{ .Values.global.coordinatorNamespaceLabel }}: {{ .Release.Namespace }}
