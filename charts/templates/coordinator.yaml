@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/component: coordinator
     app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
     app.kubernetes.io/name: coordinator
-    app.kubernetes.io/part-of: marblerun
+    app.kubernetes.io/part-of: {{ .Release.Namespace }}
     app.kubernetes.io/version: {{ .Values.coordinator.version }}
     {{ .Values.global.coordinatorComponentLabel }}: coordinator
     {{ .Values.global.coordinatorNamespaceLabel }}: {{ .Release.Namespace }}
@@ -23,7 +23,7 @@ spec:
         app.kubernetes.io/component: coordinator
         app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
         app.kubernetes.io/name: coordinator
-        app.kubernetes.io/part-of: marblerun
+        app.kubernetes.io/part-of: {{ .Release.Namespace }}
         app.kubernetes.io/version: {{ .Values.coordinator.version }}
         {{ .Values.global.coordinatorComponentLabel }}: coordinator
         {{ .Values.global.coordinatorNamespaceLabel }}: {{ .Release.Namespace }}
@@ -110,7 +110,7 @@ metadata:
     app.kubernetes.io/component: persistent-storage
     app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
     app.kubernetes.io/name: coordinator-pv-claim
-    app.kubernetes.io/part-of: marblerun
+    app.kubernetes.io/part-of: {{ .Release.Namespace }}
     app.kubernetes.io/version: {{ .Values.coordinator.version }}
 spec:
   {{- with .Values.coordinator.storageClass }}
@@ -131,10 +131,10 @@ metadata:
     app.kubernetes.io/component: client-api
     app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
     app.kubernetes.io/name: coordinator-client-api
-    app.kubernetes.io/part-of: marblerun
+    app.kubernetes.io/part-of: {{ .Release.Namespace }}
     app.kubernetes.io/version: {{ .Values.coordinator.version }}
 spec:
-  type: ClusterIP
+  type: NodePort
   selector:
     {{ .Values.global.coordinatorComponentLabel }}: coordinator
     {{ .Values.global.coordinatorNamespaceLabel }}: {{ .Release.Namespace }}
@@ -152,7 +152,7 @@ metadata:
     app.kubernetes.io/component: mesh-api
     app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
     app.kubernetes.io/name: coordinator-mesh-api
-    app.kubernetes.io/part-of: marblerun
+    app.kubernetes.io/part-of: {{ .Release.Namespace }}
     app.kubernetes.io/version: {{ .Values.coordinator.version }}
 spec:
   type: ClusterIP

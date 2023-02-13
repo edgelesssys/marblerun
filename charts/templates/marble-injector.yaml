@@ -75,7 +75,7 @@ spec:
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
-  name: marble-injector
+  name: marble-injector-{{ .Release.Namespace }}
   labels:
     app.kubernetes.io/component: admission-controller-configuration
     app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
@@ -87,7 +87,7 @@ metadata:
     cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/marble-injector-serving-cert
   {{- end }}
 webhooks:
-  - name: marble-injector.cluster.local
+  - name: marble-injector-{{ .Release.Namespace }}.cluster.local
     clientConfig:
       {{- if ne .Values.marbleInjector.CABundle "" }}
       caBundle: {{ .Values.marbleInjector.CABundle }}
