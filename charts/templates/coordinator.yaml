@@ -134,7 +134,7 @@ metadata:
     app.kubernetes.io/part-of: {{ .Release.Namespace }}
     app.kubernetes.io/version: {{ .Values.coordinator.version }}
 spec:
-  type: NodePort
+  type: ClusterIP
   selector:
     {{ .Values.global.coordinatorComponentLabel }}: coordinator
     {{ .Values.global.coordinatorNamespaceLabel }}: {{ .Release.Namespace }}
