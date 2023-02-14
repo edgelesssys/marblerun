@@ -109,7 +109,7 @@ By default `--domain` is set to `localhost`.
 The domain is used as the CommonName in the Coordinator's TLS certificate.
 This certificate is used for the HTTPS communication of the Coordinator's client API.
 The HTTPS endpoint is exposed via a [Kubernetes ClusterIP Service](https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types).
-If you plan on exposing the endpoint on a public IP, you need to make sure that the domain you set via `--domain` matches the one you configured for the public IPs provisioned in your cluster.
+If you plan on exposing the endpoint on a public IP, make sure that the domain set via `--domain` matches the one configured for the public IPs provisioned in your cluster.
 On Azure, you can [use a static public IP address with the Azure Kubernetes Service (AKS) load balancer](https://docs.microsoft.com/en-us/azure/aks/static-ip#create-a-static-ip-address).
 The client API can be used by users/clients of your application to obtain one concise remote attestation statement for your cluster.
 
@@ -129,7 +129,7 @@ helm repo update
 
 ### Installing the chart
 
-Please note that installing MarbleRun with the [marble-injector webhook](../features/kubernetes-integration.md) enabled using Helm, requires [cert-manager](https://cert-manager.io/docs/) to be installed in your cluster.
+Note that installing MarbleRun with the [marble-injector webhook](../features/kubernetes-integration.md) enabled using Helm requires [cert-manager](https://cert-manager.io/docs/) to be installed in your cluster.
 Review the `values.yaml` file of the chart for a full list of available configuration options.
 
 Update the hostname with your cluster's FQDN.
@@ -159,7 +159,7 @@ By default `coordinator.hostname` is set to `localhost`.
 The domain is used as the CommonName in the Coordinator's TLS certificate.
 This certificate is used for the HTTPS communication of the Coordinator's client API.
 The HTTPS endpoint is exposed via a [Kubernetes ClusterIP Service](https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types).
-If you plan on exposing the endpoint on a public IP, you need to make sure that the domain you set via `--domain` matches the one you configured for the public IPs provisioned in your cluster.
+If you plan on exposing the endpoint on a public IP, make sure that the domain set via `--domain` matches the one configured for the public IPs provisioned in your cluster.
 On Azure, you can [use a static public IP address with the Azure Kubernetes Service (AKS) load balancer](https://docs.microsoft.com/en-us/azure/aks/static-ip#create-a-static-ip-address).
 The client API can be used by users/clients of your application to obtain one concise remote attestation statement for your cluster.
 
