@@ -1,4 +1,4 @@
-{{ if .Values.marbleInjector.start }}
+{{- if .Values.marbleInjector.start }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -54,8 +54,8 @@ spec:
       containers:
       - args:
         - -coordAddr=coordinator-mesh-api.{{ .Release.Namespace }}:{{ .Values.coordinator.meshServerPort }}
-        - -tlsCertFile=/etc/webhook/certs/cert.pem
-        - -tlsKeyFile=/etc/webhook/certs/key.pem
+        - -tlsCertFile=/etc/webhook/certs/tls.crt
+        - -tlsKeyFile=/etc/webhook/certs/tls.key
         - -sgxResource={{ .Values.marbleInjector.resourceKey }}
         name: marble-injector
         image: "{{ .Values.marbleInjector.repository }}/{{ .Values.marbleInjector.image }}:{{ .Values.marbleInjector.version }}"
@@ -67,7 +67,6 @@ spec:
         ports:
           - containerPort: 8443
             name: http
-
       volumes:
       - name: webhook-certs
         secret:
@@ -76,18 +75,22 @@ spec:
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
-  name: marble-injector
+  name: marble-injector-{{ .Release.Namespace }}
   labels:
     app.kubernetes.io/component: admission-controller-configuration
     app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
     app.kubernetes.io/name: marble-injector
     app.kubernetes.io/part-of: marblerun
     app.kubernetes.io/version: {{ .Values.marbleInjector.version }}
+  {{- if eq .Values.marbleInjector.CABundle "" }}
+  annotations:
+    cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/marble-injector-serving-cert
+  {{- end }}
 webhooks:
-  - name: marble-injector.cluster.local
+  - name: marble-injector-{{ .Release.Namespace }}.cluster.local
     clientConfig:
-      {{- with .Values.marbleInjector.CABundle }}
-      caBundle: {{ . }}
+      {{- if ne .Values.marbleInjector.CABundle "" }}
+      caBundle: {{ .Values.marbleInjector.CABundle }}
       {{- end }}
       service:
         name: marble-injector
@@ -99,11 +102,14 @@ webhooks:
       apiVersions: ["v1"]
       resources: ["pods"]
       scope: "Namespaced"
+    {{- with .Values.marbleInjector.objectSelector }}
     objectSelector:
-      matchExpressions:
-        - key: marblerun/marbletype
-          operator: Exists
-          values: []
+      {{- . | toYaml | nindent 6 }}
+    {{- end }}
+    {{- with .Values.marbleInjector.namespaceSelector }}
+    namespaceSelector:
+      {{- . | toYaml | nindent 6 }}
+    {{- end }}
     admissionReviewVersions: ["v1", "v1beta1"]
     sideEffects: None
-{{ end }}
+{{- end }}

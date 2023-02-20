@@ -353,8 +353,8 @@ func createSecret(privKey *rsa.PrivateKey, crt []byte, kubeClient kubernetes.Int
 			Namespace: helmNamespace,
 		},
 		Data: map[string][]byte{
-			"cert.pem": crt,
-			"key.pem":  rsaPEM,
+			"tls.crt": crt,
+			"tls.key": rsaPEM,
 		},
 	}
 

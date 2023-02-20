@@ -28,11 +28,18 @@ marbleInjector:
   start: false
   replicas: 1
   repository: ghcr.io/edgelesssys/marblerun
+  resourceKey: "sgx.intel.com/epc"
   image: marble-injector
   pullPolicy: IfNotPresent
   version: v1.0.0
-  # Set this to use a custom CABundle for the MutatingWebhook
-  # CABundle: "CA_Bundle_Base64"
+  useCertManager: false
+  CABundle: ""
+  objectSelector:
+    matchExpressions:
+      - key: marblerun/marbletype
+        operator: Exists
+        values: []
+  namespaceSelector: {}
 
 
 # coordinator configuration

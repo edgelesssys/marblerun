@@ -106,8 +106,8 @@ func TestCleanupWebhook(t *testing.T) {
 			Namespace: helmNamespace,
 		},
 		Data: map[string][]byte{
-			"cert.pem": {0xAA, 0xAA, 0xAA},
-			"key.pem":  {0xBB, 0xBB, 0xBB},
+			"tls.crt": {0xAA, 0xAA, 0xAA},
+			"tls.key": {0xBB, 0xBB, 0xBB},
 		},
 	}
 
