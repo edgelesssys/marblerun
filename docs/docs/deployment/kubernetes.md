@@ -140,7 +140,9 @@ Update the hostname with your cluster's FQDN.
     helm install marblerun edgeless/marblerun \
         --create-namespace \
         -n marblerun \
-        --set coordinator.hostname=mycluster.uksouth.cloudapp.azure.com
+        --set coordinator.hostname=mycluster.uksouth.cloudapp.azure.com \
+        --set marbleInjector.start=true \
+        --set marbleInjector.useCertManager=true
     ```
 
 * For a cluster without SGX support:
@@ -152,7 +154,9 @@ Update the hostname with your cluster's FQDN.
         --set coordinator.resources=null \
         --set coordinator.simulation=1 \
         --set tolerations=null \
-        --set coordinator.hostname=mycluster.uksouth.cloudapp.azure.com
+        --set coordinator.hostname=mycluster.uksouth.cloudapp.azure.com \
+        --set marbleInjector.start=true \
+        --set marbleInjector.useCertManager=true
     ```
 
 By default `coordinator.hostname` is set to `localhost`.
