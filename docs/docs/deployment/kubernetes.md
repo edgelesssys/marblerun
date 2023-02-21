@@ -77,6 +77,7 @@ If you are using a different plugin please let us know, so we can add support!
 ### Out-of-process attestation
 
 Intel SGX supports two modes for obtaining remote attestation quotes:
+
 * In-process: The software generating the quote is part of the enclave application
 * Out-of-process: The software generating the quote isn't part of the actual enclave application. This requires the Intel SGX Architectural Enclave Service Manager (AESM) to run on the system
 
@@ -107,9 +108,8 @@ This command will pull the latest Helm chart from [our repository](https:/helm.e
 By default `--domain` is set to `localhost`.
 The domain is used as the CommonName in the Coordinator's TLS certificate.
 This certificate is used for the HTTPS communication of the Coordinator's client API.
-The HTTPS endpoint is exposed via a [Kubernetes LoadBalancer Service](https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer).
-The public IP and associated DNS names of load balancer services are provisioned and managed by your cloud provider.
-You need to make sure that the domain you set via `--domain` matches the one you configured for the public IPs provisioned in your cluster.
+The HTTPS endpoint is exposed via a [Kubernetes ClusterIP Service](https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types).
+If you plan on exposing the endpoint on a public IP, make sure that the domain set via `--domain` matches the one configured for the public IPs provisioned in your cluster.
 On Azure, you can [use a static public IP address with the Azure Kubernetes Service (AKS) load balancer](https://docs.microsoft.com/en-us/azure/aks/static-ip#create-a-static-ip-address).
 The client API can be used by users/clients of your application to obtain one concise remote attestation statement for your cluster.
 
@@ -129,6 +129,9 @@ helm repo update
 
 ### Installing the chart
 
+Note that installing MarbleRun with the [marble-injector webhook](../features/kubernetes-integration.md) enabled using Helm requires [cert-manager](https://cert-manager.io/docs/) to be installed in your cluster.
+Review the `values.yaml` file of the chart for a full list of available configuration options.
+
 Update the hostname with your cluster's FQDN.
 
 * For a cluster with SGX support:
@@ -137,7 +140,9 @@ Update the hostname with your cluster's FQDN.
     helm install marblerun edgeless/marblerun \
         --create-namespace \
         -n marblerun \
-        --set coordinator.hostname=mycluster.uksouth.cloudapp.azure.com
+        --set coordinator.hostname=mycluster.uksouth.cloudapp.azure.com \
+        --set marbleInjector.start=true \
+        --set marbleInjector.useCertManager=true
     ```
 
 * For a cluster without SGX support:
@@ -149,25 +154,32 @@ Update the hostname with your cluster's FQDN.
         --set coordinator.resources=null \
         --set coordinator.simulation=1 \
         --set tolerations=null \
-        --set coordinator.hostname=mycluster.uksouth.cloudapp.azure.com
+        --set coordinator.hostname=mycluster.uksouth.cloudapp.azure.com \
+        --set marbleInjector.start=true \
+        --set marbleInjector.useCertManager=true
     ```
 
 By default `coordinator.hostname` is set to `localhost`.
 The domain is used as the CommonName in the Coordinator's TLS certificate.
 This certificate is used for the HTTPS communication of the Coordinator's client API.
-The HTTPS endpoint is exposed via a [Kubernetes LoadBalancer Service](https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer).
-The public IP and associated DNS names of load balancer services are provisioned and managed by your cloud provider.
-You need to make sure that the domain you set via `coordinator.hostname` matches the one you configured for the public IPs provisioned in your cluster.
+The HTTPS endpoint is exposed via a [Kubernetes ClusterIP Service](https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types).
+If you plan on exposing the endpoint on a public IP, make sure that the domain set via `--domain` matches the one configured for the public IPs provisioned in your cluster.
 On Azure, you can [use a static public IP address with the Azure Kubernetes Service (AKS) load balancer](https://docs.microsoft.com/en-us/azure/aks/static-ip#create-a-static-ip-address).
 The client API can be used by users/clients of your application to obtain one concise remote attestation statement for your cluster.
 
 The Coordinator is now in a pending state, waiting for a manifest.
 See the [how to add a service](../workflows/add-service.md) documentation for more information on how to create and set a manifest.
+
 ## (Optional) Exposing the client API
 
-The Coordinator creates a [`LoadBalancer`](https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer) service called `coordinator-client-api` exposing the client API on the default port 4433.
-Depending on your deployment type you can provision a LoadBalancer that exposes this service to the outside world, or you deploy an Ingress Gateway forwarding the traffic.
-If you are running with minikube you can expose this service to localhost with `kubectl -n marblerun port-forward svc/coordinator-client-api 4433:4433 --address localhost`.
+The Coordinator creates a [`ClusterIP`](https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types) service called `coordinator-client-api` exposing the client API on the default port 4433.
+Depending on your deployment type you may want to deploy an Ingress Gateway forwarding the traffic or create a [`LoadBalancer`](https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer) service to expose the endpoint on a public IP.
+
+You can also use `kubectl` to forward the port to your local system:
+
+```bash
+kubectl -n marblerun port-forward svc/coordinator-client-api 4433:4433 --address localhost
+```
 
 ### Ingress/Gateway configuration
 
@@ -181,13 +193,14 @@ If you're using an ingress-controller or gateway for managing access to the `coo
 By default the Coordinator will generate its quote using the [Azure-DCAP-Client](https://github.com/microsoft/Azure-DCAP-Client). If you choose to use this, no additional steps are required.
 If you want to use a PCCS other than Azure's you can do so by setting the [necessary configuration](https://github.com/intel/SGXDataCenterAttestationPrimitives/blob/master/QuoteGeneration/qpl/README.md#configuration) during installation:
 
-
 * Using the CLI
+
   ```bash
   marblerun install --dcap-qpl intel --dcap-pccs-url <PCCS_URL> --dcap-secure-cert <TRUE/FALSE>
   ```
 
 * Using Helm
+
   ```bash
   helm install marblerun edgeless/marblerun \
         --create-namespace \
