@@ -68,6 +68,7 @@ coordinator:
     limits:
       # Disable this if your running on a cluster without an SGX Device Plugin
       sgx.intel.com/epc: "10Mi"
+      sgx.intel.com/enclave: 1
       sgx.intel.com/provision: 1
 
   # Set the storage class for your cluster
