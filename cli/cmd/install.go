@@ -417,7 +417,7 @@ func getSGXResourceKey(kubeClient kubernetes.Interface) (string, error) {
 	return util.IntelEpc.String(), nil
 }
 
-// setSGXValues sets the needed values for the coorindator as a map[string]interface.
+// setSGXValues sets the needed values for the coordinator as a map[string]interface.
 // strvals can't parse keys which include dots, e.g. setting as a resource limit key "sgx.intel.com/epc" will lead to errors.
 func setSGXValues(resourceKey string, values, chartValues map[string]interface{}) {
 	values["coordinator"].(map[string]interface{})["resources"] = map[string]interface{}{
@@ -425,7 +425,6 @@ func setSGXValues(resourceKey string, values, chartValues map[string]interface{}
 		"requests": map[string]interface{}{},
 	}
 
-	toRemove := fmt.Sprintf("%s %s %s", util.IntelEpc.String(), util.AzureEpc.String(), util.IntelProvision.String())
 	var needNewLimit bool
 	limit := util.GetEPCResourceLimit(resourceKey)
 
@@ -433,7 +432,7 @@ func setSGXValues(resourceKey string, values, chartValues map[string]interface{}
 	if presetLimits, ok := chartValues["coordinator"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{}); ok {
 		for oldResourceKey := range presetLimits {
 			// Make sure the key we delete is an unwanted sgx resource and not a custom resource or common resource (cpu, memory, etc.)
-			if oldResourceKey != resourceKey && strings.Contains(toRemove, oldResourceKey) {
+			if needsDeletion(oldResourceKey, resourceKey) {
 				values["coordinator"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})[oldResourceKey] = nil
 				needNewLimit = true
 			}
@@ -443,7 +442,7 @@ func setSGXValues(resourceKey string, values, chartValues map[string]interface{}
 	// remove all previously set sgx resource requests
 	if presetLimits, ok := chartValues["coordinator"].(map[string]interface{})["resources"].(map[string]interface{})["requests"].(map[string]interface{}); ok {
 		for oldResourceKey := range presetLimits {
-			if oldResourceKey != resourceKey && strings.Contains(toRemove, oldResourceKey) {
+			if needsDeletion(oldResourceKey, resourceKey) {
 				values["coordinator"].(map[string]interface{})["resources"].(map[string]interface{})["requests"].(map[string]interface{})[oldResourceKey] = nil
 				needNewLimit = true
 			}
@@ -455,9 +454,10 @@ func setSGXValues(resourceKey string, values, chartValues map[string]interface{}
 		values["coordinator"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})[resourceKey] = limit
 	}
 
-	// Make sure provision bit is set if the Intel plugin is used
+	// Make sure provision and enclave bit is set if the Intel plugin is used
 	if resourceKey == util.IntelEpc.String() {
 		values["coordinator"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})[util.IntelProvision.String()] = 1
+		values["coordinator"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})[util.IntelEnclave.String()] = 1
 	}
 }
 
@@ -468,6 +468,38 @@ func errorAndCleanup(err error, kubeClient kubernetes.Interface) error {
 	cleanupCSR(kubeClient)
 	cleanupSecrets(kubeClient)
 	return err
+}
+
+// needsDeletion checks if an existing key of a helm chart should be deleted.
+// Choice is based on the resource key of the used SGX device plugin.
+func needsDeletion(existingKey, sgxKey string) bool {
+	sgxResources := []string{
+		util.AlibabaEpc.String(), util.AzureEpc.String(), util.IntelEpc.String(),
+		util.IntelProvision.String(), util.IntelEnclave.String(),
+	}
+
+	switch sgxKey {
+	case util.AlibabaEpc.String(), util.AzureEpc.String():
+		// Delete all non Alibaba/Azure SGX resources depending on the used SGX device plugin
+		return sgxKey != existingKey && keyInList(existingKey, sgxResources)
+	case util.IntelEpc.String():
+		// Delete all non Intel SGX resources depending on the used SGX device plugin
+		// Keep Intel provision and enclave bit
+		return keyInList(existingKey, []string{util.AlibabaEpc.String(), util.AzureEpc.String()})
+	default:
+		// Either no SGX plugin or a custom SGX plugin is used
+		// Delete all known SGX resources
+		return keyInList(existingKey, sgxResources)
+	}
+}
+
+func keyInList(key string, list []string) bool {
+	for _, l := range list {
+		if key == l {
+			return true
+		}
+	}
+	return false
 }
 
 func debug(format string, v ...interface{}) {
