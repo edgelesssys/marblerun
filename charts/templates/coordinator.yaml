@@ -46,6 +46,8 @@ spec:
             value: "{{ .Values.coordinator.clientServerHost }}:{{ .Values.coordinator.clientServerPort }}"
           - name: EDG_COORDINATOR_DNS_NAMES
             value: "{{ .Values.coordinator.hostname }},coordinator-mesh-api,coordinator-client-api,coordinator-mesh-api.{{ .Release.Namespace }},coordinator-client-api.{{ .Release.Namespace }},coordinator-mesh-api.{{ .Release.Namespace }}.svc.cluster.local,coordinator-client-api.{{ .Release.Namespace }}.svc.cluster.local"
+          - name: EDG_COORDINATOR_PROMETHEUS_ADDR
+            value: "{{ .Values.coordinator.prometheusHost }}:{{ .Values.coordinator.prometheusPort }}"
           - name: EDG_COORDINATOR_SEAL_DIR
             value: "{{ .Values.coordinator.sealDir }}"
           - name: OE_SIMULATION
@@ -81,6 +83,8 @@ spec:
               name: http
             - containerPort: {{ .Values.coordinator.meshServerPort }}
               name: grcp
+            - containerPort: {{ .Values.coordinator.prometheusPort }}
+              name: prometheus
           resources:
           {{- toYaml .Values.coordinator.resources | nindent 12 }}
           volumeMounts:

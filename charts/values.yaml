@@ -57,6 +57,9 @@ coordinator:
   # clientServerPort needs to be configured to the same port as in your client tool stack
   clientServerHost: "0.0.0.0"
   clientServerPort: 4433
+  # Prometheus exporter address
+  prometheusHost: "0.0.0.0"
+  prometheusPort: 9944
   # hosName needs to match the host you expect the coordinator to run on
   hostname: "localhost"
   # SEAL_DIR needs to be set according to persistent storage
