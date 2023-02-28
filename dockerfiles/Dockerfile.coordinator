@@ -46,6 +46,7 @@ COPY --from=build \
 FROM ubuntu:focal-20221130 AS release
 ARG PSW_VERSION=2.18.101.1-focal1
 ARG DCAP_VERSION=1.15.100.3-focal1
+ARG AZ_VERSION=1.11.2
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates gnupg libcurl4 wget \
   && wget -qO- https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | apt-key add \
   && echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu focal main' >> /etc/apt/sources.list \
@@ -61,8 +62,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
   libsgx-pce-logic=$DCAP_VERSION \
   libsgx-qe3-logic=$DCAP_VERSION \
   libsgx-urts=$PSW_VERSION \
-  && apt-get install -d az-dcap-client libsgx-dcap-default-qpl=$DCAP_VERSION
+  libsgx-dcap-default-qpl=$DCAP_VERSION \
+  az-dcap-client=$AZ_VERSION \
+  && apt-get autoremove -y && apt-get clean -y
+
+# create backup of libdcap_quoteprov.so.1 and libsgx_default_qcnl_wrapper.so.1 and remove libsgx-dcap-default-qpl
+RUN mkdir /usr/lib/x86_64-linux-gnu/dcap \
+  && cp /usr/lib/x86_64-linux-gnu/libsgx_default_qcnl_wrapper.so.1 /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so.1 /usr/lib/x86_64-linux-gnu/dcap \
+  && apt remove -y libsgx-dcap-default-qpl \
+  && ln -s /usr/lib/x86_64-linux-gnu/dcap/libsgx_default_qcnl_wrapper.so.1 /usr/lib/x86_64-linux-gnu/libsgx_default_qcnl_wrapper.so.1 \
+  && ln -s /usr/lib/x86_64-linux-gnu/dcap/libdcap_quoteprov.so.1 /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so.intel
+
 COPY --from=build /mrbuild/coordinator-enclave.signed /mrbuild/coordinator-config.json /marblerun/dockerfiles/start.sh /
 COPY --from=build /opt/edgelessrt/bin/erthost /opt/edgelessrt/bin/
+RUN chgrp -R 0 /usr/lib/ && chmod -R g=u /usr/lib/
 ENV PATH=${PATH}:/opt/edgelessrt/bin
+ENV AZDCAP_DEBUG_LOG_LEVEL=ERROR
 ENTRYPOINT ["/start.sh"]

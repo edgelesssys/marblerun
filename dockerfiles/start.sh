@@ -2,9 +2,10 @@
 
 if [[ "${DCAP_LIBRARY}" == "intel" ]]
 then
-    apt-get install -qq libsgx-dcap-default-qpl > /dev/null 2>&1
-else
-    apt-get install -qq az-dcap-client > /dev/null 2>&1
+    # rename the library installed by az-dcap-client
+    mv /usr/lib/libdcap_quoteprov.so /usr/lib/libdcap_quoteprov.so.azure
+    # create a link to the intel quote provider library
+    ln -s /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so.intel /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so
 fi
 
-erthost coordinator-enclave.signed
+exec erthost coordinator-enclave.signed
