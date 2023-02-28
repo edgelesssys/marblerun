@@ -470,14 +470,36 @@ func errorAndCleanup(err error, kubeClient kubernetes.Interface) error {
 	return err
 }
 
+// needsDeletion checks if an existing key of a helm chart should be deleted.
+// Choice is based on the resource key of the used SGX device plugin.
 func needsDeletion(existingKey, sgxKey string) bool {
-	if existingKey == sgxKey {
-		return false
+	sgxResources := []string{
+		util.AlibabaEpc.String(), util.AzureEpc.String(), util.IntelEpc.String(),
+		util.IntelProvision.String(), util.IntelEnclave.String(),
 	}
-	if sgxKey == util.IntelEpc.String() && (existingKey == util.IntelProvision.String() || existingKey == util.IntelEnclave.String()) {
-		return false
+
+	switch sgxKey {
+	case util.AlibabaEpc.String(), util.AzureEpc.String():
+		// Delete all non Alibaba/Azure SGX resources depending on the used SGX device plugin
+		return sgxKey != existingKey && keyInList(existingKey, sgxResources)
+	case util.IntelEpc.String():
+		// Delete all non Intel SGX resources depending on the used SGX device plugin
+		// Keep Intel provision and enclave bit
+		return keyInList(existingKey, []string{util.AlibabaEpc.String(), util.AzureEpc.String()})
+	default:
+		// Either no SGX plugin or a custom SGX plugin is used
+		// Delete all known SGX resources
+		return keyInList(existingKey, sgxResources)
 	}
-	return true
+}
+
+func keyInList(key string, list []string) bool {
+	for _, l := range list {
+		if key == l {
+			return true
+		}
+	}
+	return false
 }
 
 func debug(format string, v ...interface{}) {
