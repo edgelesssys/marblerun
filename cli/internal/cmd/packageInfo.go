@@ -22,7 +22,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newPackageInfoCmd() *cobra.Command {
+func NewPackageInfoCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "package-info",
 		Short: "Prints the package signature properties of an enclave",

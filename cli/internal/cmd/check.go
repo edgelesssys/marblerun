@@ -18,7 +18,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func newCheckCmd() *cobra.Command {
+func NewCheckCmd() *cobra.Command {
 	var timeout uint
 
 	cmd := &cobra.Command{

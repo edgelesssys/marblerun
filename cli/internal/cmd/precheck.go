@@ -17,7 +17,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func newPrecheckCmd() *cobra.Command {
+func NewPrecheckCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "precheck",
 		Short: "Check if your Kubernetes cluster supports SGX",

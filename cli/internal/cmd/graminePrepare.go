@@ -52,7 +52,7 @@ type diff struct {
 	manifestEntry string
 }
 
-func newGraminePrepareCmd() *cobra.Command {
+func NewGraminePrepareCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "gramine-prepare",
 		Short: "Modifies a Gramine manifest for use with MarbleRun",

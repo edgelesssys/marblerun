@@ -18,7 +18,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-func newManifestCmd() *cobra.Command {
+func NewManifestCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "manifest",
 		Short: "Manages manifest for the MarbleRun Coordinator",

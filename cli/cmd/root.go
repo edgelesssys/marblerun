@@ -7,12 +7,20 @@
 package cmd
 
 import (
+	"context"
+	"os"
+
+	"github.com/edgelesssys/marblerun/cli/internal/cmd"
 	"github.com/spf13/cobra"
 )
 
 // Execute starts the CLI.
 func Execute() error {
-	return NewRootCmd().Execute()
+	cobra.EnableCommandSorting = false
+	rootCmd := NewRootCmd()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	return rootCmd.ExecuteContext(ctx)
 }
 
 func NewRootCmd() *cobra.Command {
@@ -26,21 +34,28 @@ To install and configure MarbleRun, run:
 
 	$ marblerun install
 `,
+		PersistentPreRun: preRunRoot,
 	}
 
-	rootCmd.AddCommand(newCertificateCmd())
-	rootCmd.AddCommand(newCheckCmd())
-	rootCmd.AddCommand(newCompletionCmd())
-	rootCmd.AddCommand(newGraminePrepareCmd())
-	rootCmd.AddCommand(newInstallCmd())
-	rootCmd.AddCommand(newManifestCmd())
-	rootCmd.AddCommand(newPrecheckCmd())
-	rootCmd.AddCommand(newPackageInfoCmd())
-	rootCmd.AddCommand(newRecoverCmd())
-	rootCmd.AddCommand(newSecretCmd())
-	rootCmd.AddCommand(newStatusCmd())
-	rootCmd.AddCommand(newUninstallCmd())
-	rootCmd.AddCommand(newVersionCmd())
+	// Set output of cmd.Print to stdout. (By default, it's stderr.)
+	rootCmd.SetOut(os.Stdout)
+
+	rootCmd.AddCommand(cmd.NewInstallCmd())
+	rootCmd.AddCommand(cmd.NewUninstallCmd())
+	rootCmd.AddCommand(cmd.NewPrecheckCmd())
+	rootCmd.AddCommand(cmd.NewCheckCmd())
+	rootCmd.AddCommand(cmd.NewManifestCmd())
+	rootCmd.AddCommand(cmd.NewCertificateCmd())
+	rootCmd.AddCommand(cmd.NewSecretCmd())
+	rootCmd.AddCommand(cmd.NewStatusCmd())
+	rootCmd.AddCommand(cmd.NewRecoverCmd())
+	rootCmd.AddCommand(cmd.NewPackageInfoCmd())
+	rootCmd.AddCommand(cmd.NewVersionCmd())
+	rootCmd.AddCommand(cmd.NewGraminePrepareCmd())
 
 	return rootCmd
+}
+
+func preRunRoot(cmd *cobra.Command, args []string) {
+	cmd.SilenceUsage = true
 }

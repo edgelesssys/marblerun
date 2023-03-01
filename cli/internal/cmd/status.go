@@ -40,7 +40,7 @@ type statusResponse struct {
 	StatusMessage string `json:"StatusMessage"`
 }
 
-func newStatusCmd() *cobra.Command {
+func NewStatusCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "status <IP:PORT>",
 		Short: "Gives information about the status of the MarbleRun Coordinator",

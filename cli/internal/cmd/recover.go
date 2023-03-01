@@ -18,7 +18,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-func newRecoverCmd() *cobra.Command {
+func NewRecoverCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "recover <recovery_key_decrypted> <IP:PORT>",
 		Short:   "Recovers the MarbleRun Coordinator from a sealed state",

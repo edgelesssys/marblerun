@@ -53,7 +53,7 @@ type installOptions struct {
 	settings         *cli.EnvSettings
 }
 
-func newInstallCmd() *cobra.Command {
+func NewInstallCmd() *cobra.Command {
 	options := &installOptions{}
 
 	cmd := &cobra.Command{
