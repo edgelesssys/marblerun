@@ -51,7 +51,6 @@ To install and configure MarbleRun, run:
 	rootCmd.AddCommand(cmd.NewRecoverCmd())
 	rootCmd.AddCommand(cmd.NewPackageInfoCmd())
 	rootCmd.AddCommand(cmd.NewVersionCmd())
-	rootCmd.AddCommand(cmd.NewGraminePrepareCmd())
 
 	return rootCmd
 }
