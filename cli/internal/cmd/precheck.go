@@ -7,9 +7,7 @@
 package cmd
 
 import (
-	"context"
-	"fmt"
-
+	"github.com/edgelesssys/marblerun/cli/internal/kube"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
@@ -23,21 +21,22 @@ func NewPrecheckCmd() *cobra.Command {
 		Short: "Check if your Kubernetes cluster supports SGX",
 		Long:  `Check if your Kubernetes cluster supports SGX`,
 		Args:  cobra.NoArgs,
-		RunE: func(cobracmd *cobra.Command, args []string) error {
-			kubeClient, err := getKubernetesInterface()
-			if err != nil {
-				return err
-			}
-			return cliCheckSGXSupport(kubeClient)
-		},
-		SilenceUsage: true,
+		RunE:  runPrecheck,
 	}
 
 	return cmd
 }
 
-func cliCheckSGXSupport(kubeClient kubernetes.Interface) error {
-	nodes, err := kubeClient.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+func runPrecheck(cmd *cobra.Command, args []string) error {
+	kubeClient, err := kube.NewClient()
+	if err != nil {
+		return err
+	}
+	return cliCheckSGXSupport(cmd, kubeClient)
+}
+
+func cliCheckSGXSupport(cmd *cobra.Command, kubeClient kubernetes.Interface) error {
+	nodes, err := kubeClient.CoreV1().Nodes().List(cmd.Context(), metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -52,17 +51,17 @@ func cliCheckSGXSupport(kubeClient kubernetes.Interface) error {
 	}
 
 	if supportedNodes == 0 {
-		fmt.Println("Cluster does not support SGX, you may still run MarbleRun in simulation mode")
-		fmt.Println("To install MarbleRun run [marblerun install --simulation]")
-		fmt.Println("If your nodes have SGX support you might be missing an SGX device plugin")
-		fmt.Println("Check https://edglss.cc/doc-mr-k8s-prereq for more information")
+		cmd.Println("Cluster does not support SGX, you may still run MarbleRun in simulation mode")
+		cmd.Println("To install MarbleRun run [marblerun install --simulation]")
+		cmd.Println("If your nodes have SGX support you might be missing an SGX device plugin")
+		cmd.Println("Check https://edglss.cc/doc-mr-k8s-prereq for more information")
 	} else {
 		nodeString := "node"
 		if supportedNodes > 1 {
 			nodeString = nodeString + "s"
 		}
-		fmt.Printf("Cluster supports SGX on %d %s\n", supportedNodes, nodeString)
-		fmt.Println("To install MarbleRun run [marblerun install]")
+		cmd.Printf("Cluster supports SGX on %d %s\n", supportedNodes, nodeString)
+		cmd.Println("To install MarbleRun run [marblerun install]")
 	}
 
 	return nil

@@ -11,7 +11,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"encoding/pem"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -27,7 +27,7 @@ func TestSetSecrets(t *testing.T) {
 	s, host, cert := newTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal("/secrets", r.RequestURI)
 		assert.Equal(http.MethodPost, r.Method)
-		request, err := ioutil.ReadAll(r.Body)
+		request, err := io.ReadAll(r.Body)
 		assert.NoError(err)
 
 		if strings.Contains(string(request), "restrictedSecret") {

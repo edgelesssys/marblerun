@@ -10,8 +10,9 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 
+	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/spf13/cobra"
 )
 
@@ -23,11 +24,7 @@ func newCertificateChain() *cobra.Command {
 		Short: "Returns the certificate chain of the MarbleRun Coordinator",
 		Long:  `Returns the certificate chain of the MarbleRun Coordinator`,
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			hostName := args[0]
-			return cliCertificateChain(cmd.OutOrStdout(), hostName, certFilename, eraConfig, insecureEra, acceptedTCBStatuses)
-		},
-		SilenceUsage: true,
+		RunE:  runCertificateChain,
 	}
 
 	cmd.Flags().StringVarP(&certFilename, "output", "o", "marblerunChainCA.crt", "File to save the certificate to")
@@ -35,13 +32,25 @@ func newCertificateChain() *cobra.Command {
 	return cmd
 }
 
-// cliCertificateChain gets the certificate chain of the MarbleRun Coordinator.
-func cliCertificateChain(out io.Writer, host, output, configFilename string, insecure bool, acceptedTCBStatuses []string) error {
-	certs, err := verifyCoordinator(out, host, configFilename, insecure, acceptedTCBStatuses)
+func runCertificateChain(cmd *cobra.Command, args []string) error {
+	hostname := args[0]
+	flags, err := rest.ParseFlags(cmd)
 	if err != nil {
 		return err
 	}
+	output, err := cmd.Flags().GetString("output")
+	if err != nil {
+		return err
+	}
+	certs, err := rest.VerifyCoordinator(
+		cmd.Context(), cmd.OutOrStdout(), hostname,
+		flags.EraConfig, flags.Insecure, flags.AcceptedTCBStatuses,
+	)
+	return cliCertificateChain(cmd.OutOrStdout(), output, certs)
+}
 
+// cliCertificateChain gets the certificate chain of the MarbleRun Coordinator.
+func cliCertificateChain(out io.Writer, outputFile string, certs []*pem.Block) error {
 	if len(certs) == 1 {
 		fmt.Fprintln(out, "WARNING: Only received root certificate from host.")
 	}
@@ -51,11 +60,10 @@ func cliCertificateChain(out io.Writer, host, output, configFilename string, ins
 		chain = append(chain, pem.EncodeToMemory(cert)...)
 	}
 
-	if err := ioutil.WriteFile(output, chain, 0o644); err != nil {
+	if err := os.WriteFile(outputFile, chain, 0o644); err != nil {
 		return err
 	}
-
-	fmt.Fprintln(out, "Certificate chain written to", output)
+	fmt.Fprintln(out, "Certificate chain written to", outputFile)
 
 	return nil
 }

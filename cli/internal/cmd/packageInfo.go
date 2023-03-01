@@ -14,78 +14,76 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 
-	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
 
 func NewPackageInfoCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "package-info",
-		Short: "Prints the package signature properties of an enclave",
-		Long:  "Prints the package signature properties of an enclave",
+		Short: "Print the package signature properties of an enclave",
+		Long:  "Print the package signature properties of an enclave",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			path := args[0]
-
-			// Check if given filename is actually a directory
-			stat, err := os.Stat(path)
-			if err != nil {
-				return err
-			}
-			isDirectory := stat.IsDir()
-
-			// For Open Enclave / Edgeless RT / EGo, we require to directly point to the signed enclave binary, as these do not have a specific directory structure
-			var errOpenEnclave error
-			if !isDirectory {
-				errOpenEnclave = decodeOpenEnclaveSigStruct(path)
-				if errOpenEnclave == nil {
-					return nil
-				}
-			}
-
-			// In every other case, try to guess if it's a directory, or expect a specific file to be pointed to
-			errGramine := decodeGramineSigStruct(path, isDirectory)
-			if errGramine == nil {
-				return nil
-			}
-			errOcclum := decodeSGXSDKSigStruct(path, isDirectory) // Either Occlum or SGX SDK
-			if errOcclum == nil {
-				return nil
-			}
-
-			color.Red("ERROR: Failed to automatically determine SGX package signature properties detection.")
-			if isDirectory {
-				color.Red("A directory was supplied, but it appears not to be a Gramine or Occlum instance.")
-				color.Red("Please either specify the .sig file (Gramine) or SGX enclave binary (Occlum / SGX SDK) directly, or the root directory of an Gramine or Occlum instance.")
-			}
-
-			fmt.Printf("\n")
-			// Output exact errors for each detection method to user
-			if errOpenEnclave != nil {
-				color.Red("Open Enclave detection error: %v\n", errOpenEnclave)
-			}
-			fmt.Printf("Error - Gramine: %v\n", errGramine)
-			fmt.Printf("Error - Occlum / SGX SDK: %v\n", errOcclum)
-			return errors.New("unable to determine enclave properties")
-		},
-		SilenceUsage: true,
+		RunE:  runPackageInfo,
 	}
 
 	return cmd
 }
 
-func decodeSGXSDKSigStruct(path string, isDirectory bool) error {
+func runPackageInfo(cmd *cobra.Command, args []string) error {
+	path := args[0]
+
+	// Check if given filename is actually a directory
+	stat, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+	isDirectory := stat.IsDir()
+
+	// For Open Enclave / Edgeless RT / EGo, we require to directly point to the signed enclave binary, as these do not have a specific directory structure
+	var errOpenEnclave error
+	if !isDirectory {
+		errOpenEnclave = decodeOpenEnclaveSigStruct(cmd.OutOrStdout(), path)
+		if errOpenEnclave == nil {
+			return nil
+		}
+	}
+
+	// In every other case, try to guess if it's a directory, or expect a specific file to be pointed to
+	errGramine := decodeGramineSigStruct(cmd.OutOrStdout(), path, isDirectory)
+	if errGramine == nil {
+		return nil
+	}
+	errOcclum := decodeSGXSDKSigStruct(cmd.OutOrStdout(), path, isDirectory) // Either Occlum or SGX SDK
+	if errOcclum == nil {
+		return nil
+	}
+
+	cmd.PrintErrln("ERROR: Failed to automatically determine SGX package signature properties.")
+	if isDirectory {
+		cmd.PrintErrln("A directory was supplied, but it appears not to be a Gramine or Occlum instance.")
+		cmd.PrintErrln("Please either specify the .sig file (Gramine) or SGX enclave binary (Occlum / SGX SDK) directly, or the root directory of an Gramine or Occlum instance.")
+	}
+	fmt.Println()
+
+	// Output exact errors for each detection method to user
+	cmd.PrintErrf("Open Enclave detection error: %s\n", errOpenEnclave)
+	cmd.PrintErrf("Error - Gramine: %s\n", errGramine)
+	cmd.PrintErrf("Error - Occlum / SGX SDK: %s\n", errOcclum)
+	return errors.New("unable to determine enclave properties")
+}
+
+func decodeSGXSDKSigStruct(out io.Writer, path string, isDirectory bool) error {
 	// If the path is a directory, we try to find out if it's an Occlum image directory
 	var elfFile *elf.File
 	var isOcclumInstance bool
 	var err error
 	if isDirectory {
 		if elfFile, err = elf.Open(filepath.Join(path, "build/lib/libocclum-libos.signed.so")); err == nil {
-			color.Green("Detected Occlum image.")
+			fmt.Fprintln(out, "Detected Occlum image.")
 			isOcclumInstance = true
 		}
 	} else {
@@ -115,12 +113,12 @@ func decodeSGXSDKSigStruct(path string, isDirectory bool) error {
 
 	// Display the determined properties
 	if isOcclumInstance {
-		color.Cyan("PackageProperties for Occlum image at '%s':\n", path)
+		fmt.Fprintf(out, "PackageProperties for Occlum image at '%s':\n", path)
 	} else {
-		color.Cyan("PackageProperties for '%s':\n", path)
+		fmt.Fprintf(out, "PackageProperties for '%s':\n", path)
 	}
 
-	printPackageProperties(mrenclave, mrsigner, isvprodid, isvsvn)
+	printPackageProperties(out, mrenclave, mrsigner, isvprodid, isvsvn)
 
 	return nil
 }
@@ -168,11 +166,11 @@ func parseSigStruct(sgxMetaData []byte) ([]byte, []byte, []byte, []byte, error) 
 	return mrenclave, mrsigner[:], isvprodid, isvsvn, nil
 }
 
-func decodeGramineSigStruct(path string, isDirectory bool) error {
+func decodeGramineSigStruct(out io.Writer, path string, isDirectory bool) error {
 	// Check if directory contains a file ending in .sig
 	var sigFile string
 	if isDirectory {
-		fsInfo, err := ioutil.ReadDir(path)
+		fsInfo, err := os.ReadDir(path)
 		if err != nil {
 			return err
 		}
@@ -184,7 +182,7 @@ func decodeGramineSigStruct(path string, isDirectory bool) error {
 				}
 				foundSigFile = true
 				sigFile = entry.Name()
-				color.Green("Detected Gramine instance.")
+				fmt.Fprintln(out, "Detected Gramine instance.")
 			}
 		}
 		if !foundSigFile {
@@ -196,7 +194,7 @@ func decodeGramineSigStruct(path string, isDirectory bool) error {
 	}
 
 	// Try to load the file
-	sigContent, err := ioutil.ReadFile(sigFile)
+	sigContent, err := os.ReadFile(sigFile)
 	if err != nil {
 		return err
 	}
@@ -207,24 +205,24 @@ func decodeGramineSigStruct(path string, isDirectory bool) error {
 	}
 
 	if isDirectory {
-		color.Cyan("PackageProperties for Gramine instance at '%s':\n", path)
+		fmt.Fprintf(out, "PackageProperties for Gramine instance at '%s':\n", path)
 	} else {
-		color.Cyan("PackageProperties for '%s':\n", path)
+		fmt.Fprintf(out, "PackageProperties for '%s':\n", path)
 	}
 
-	printPackageProperties(mrenclave, mrsigner[:], isvprodid, isvsvn)
+	printPackageProperties(out, mrenclave, mrsigner[:], isvprodid, isvsvn)
 
 	return nil
 }
 
-func printPackageProperties(mrenclave []byte, mrsigner []byte, isvprodid []byte, isvsvn []byte) {
-	fmt.Printf("UniqueID (MRENCLAVE)      : %s\n", hex.EncodeToString(mrenclave))
-	fmt.Printf("SignerID (MRSIGNER)       : %s\n", hex.EncodeToString(mrsigner[:]))
-	fmt.Printf("ProductID (ISVPRODID)     : %d\n", binary.LittleEndian.Uint16(isvprodid))
-	fmt.Printf("SecurityVersion (ISVSVN)  : %d\n", binary.LittleEndian.Uint16(isvsvn))
+func printPackageProperties(out io.Writer, mrenclave []byte, mrsigner []byte, isvprodid []byte, isvsvn []byte) {
+	fmt.Fprintf(out, "UniqueID (MRENCLAVE)      : %s\n", hex.EncodeToString(mrenclave))
+	fmt.Fprintf(out, "SignerID (MRSIGNER)       : %s\n", hex.EncodeToString(mrsigner[:]))
+	fmt.Fprintf(out, "ProductID (ISVPRODID)     : %d\n", binary.LittleEndian.Uint16(isvprodid))
+	fmt.Fprintf(out, "SecurityVersion (ISVSVN)  : %d\n", binary.LittleEndian.Uint16(isvsvn))
 }
 
-func decodeOpenEnclaveSigStruct(path string) error {
+func decodeOpenEnclaveSigStruct(out io.Writer, path string) error {
 	// Open ELF file
 	elfFile, err := elf.Open(path)
 	if err != nil {
@@ -251,8 +249,8 @@ func decodeOpenEnclaveSigStruct(path string) error {
 	}
 
 	// Print PackageProperties of detected SIGSTRUCT
-	color.Cyan("PackageProperties for '%s':\n", path)
-	printPackageProperties(mrenclave, mrsigner[:], isvprodid, isvsvn)
+	fmt.Fprintf(out, "PackageProperties for '%s':\n", path)
+	printPackageProperties(out, mrenclave, mrsigner[:], isvprodid, isvsvn)
 
 	return nil
 }

@@ -12,7 +12,7 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
-	"io/ioutil"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -33,7 +33,7 @@ func TestParseSigStruct(t *testing.T) {
 	r, err := zlib.NewReader(bytes.NewReader(sgxMetaDataCompressed))
 	require.NoError(err)
 	defer r.Close()
-	sgxMetaData, err := ioutil.ReadAll(r)
+	sgxMetaData, err := io.ReadAll(r)
 	require.NoError(err)
 
 	// Parse SIGSTRUCT and verify against known results

@@ -8,11 +8,9 @@ package cmd
 
 import (
 	"encoding/json"
-	"encoding/pem"
-	"fmt"
-	"io/ioutil"
 	"net/http"
 
+	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/spf13/cobra"
 	"github.com/tidwall/gjson"
 )
@@ -43,56 +41,37 @@ type statusResponse struct {
 func NewStatusCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "status <IP:PORT>",
-		Short: "Gives information about the status of the MarbleRun Coordinator",
+		Short: "Retrieve information about the status of the MarbleRun Coordinator",
 		Long:  statusDesc,
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			hostname := args[0]
-			cert, err := verifyCoordinator(cmd.OutOrStdout(), hostname, eraConfig, insecureEra, acceptedTCBStatuses)
-			if err != nil {
-				return err
-			}
-			return cliStatus(hostname, cert)
-		},
-		SilenceUsage: true,
+		RunE:  runStatus,
 	}
-
-	cmd.Flags().StringVar(&eraConfig, "era-config", "", "Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github")
-	cmd.Flags().BoolVarP(&insecureEra, "insecure", "i", false, "Set to skip quote verification, needed when running in simulation mode")
-	cmd.PersistentFlags().StringSliceVar(&acceptedTCBStatuses, "accepted-tcb-statuses", []string{"UpToDate"}, "Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded)")
 
 	return cmd
 }
 
+func runStatus(cmd *cobra.Command, args []string) error {
+	hostname := args[0]
+	client, err := rest.NewClient(cmd, hostname)
+	if err != nil {
+		return err
+	}
+	return cliStatus(cmd, hostname, client)
+}
+
 // cliStatus requests the current status of the Coordinator.
-func cliStatus(host string, cert []*pem.Block) error {
-	client, err := restClient(cert, nil)
+func cliStatus(cmd *cobra.Command, host string, client getter) error {
+	resp, err := client.Get(cmd.Context(), "status", http.NoBody)
 	if err != nil {
 		return err
 	}
 
-	resp, err := client.Get("https://" + host + "/status")
-	if err != nil {
+	jsonResponse := gjson.GetBytes(resp, "data")
+	var statusResp statusResponse
+	if err := json.Unmarshal([]byte(jsonResponse.String()), &statusResp); err != nil {
 		return err
 	}
-
-	defer resp.Body.Close()
-
-	switch resp.StatusCode {
-	case http.StatusOK:
-		respBody, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return err
-		}
-		jsonResponse := gjson.GetBytes(respBody, "data")
-		var statusResp statusResponse
-		if err := json.Unmarshal([]byte(jsonResponse.String()), &statusResp); err != nil {
-			return err
-		}
-		fmt.Printf("%d: %s\n", statusResp.StatusCode, statusResp.StatusMessage)
-	default:
-		return fmt.Errorf("error connecting to server: %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
-	}
+	cmd.Printf("%d: %s\n", statusResp.StatusCode, statusResp.StatusMessage)
 
 	return nil
 }

@@ -23,6 +23,7 @@ func Execute() error {
 	return rootCmd.ExecuteContext(ctx)
 }
 
+// NewRootCmd returns the root command of the CLI.
 func NewRootCmd() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:   "marblerun",
@@ -51,6 +52,10 @@ To install and configure MarbleRun, run:
 	rootCmd.AddCommand(cmd.NewRecoverCmd())
 	rootCmd.AddCommand(cmd.NewPackageInfoCmd())
 	rootCmd.AddCommand(cmd.NewVersionCmd())
+
+	rootCmd.PersistentFlags().String("era-config", "", "Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github")
+	rootCmd.PersistentFlags().BoolP("insecure", "i", false, "Set to skip quote verification, needed when running in simulation mode")
+	rootCmd.PersistentFlags().StringSlice("accepted-tcb-statuses", []string{"UpToDate"}, "Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded)")
 
 	return rootCmd
 }

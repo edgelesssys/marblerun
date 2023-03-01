@@ -8,12 +8,10 @@ package cmd
 
 import (
 	"bytes"
-	"encoding/pem"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"net/url"
+	"os"
 
+	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/spf13/cobra"
 	"github.com/tidwall/gjson"
 )
@@ -21,63 +19,42 @@ import (
 func NewRecoverCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "recover <recovery_key_decrypted> <IP:PORT>",
-		Short:   "Recovers the MarbleRun Coordinator from a sealed state",
-		Long:    "Recovers the MarbleRun Coordinator from a sealed state",
+		Short:   "Recover the MarbleRun Coordinator from a sealed state",
+		Long:    "Recover the MarbleRun Coordinator from a sealed state",
 		Example: "marblerun recover recovery_key_decrypted $MARBLERUN",
 		Args:    cobra.ExactArgs(2),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			keyFile := args[0]
-			hostName := args[1]
-
-			cert, err := verifyCoordinator(cmd.OutOrStdout(), hostName, eraConfig, insecureEra, acceptedTCBStatuses)
-			if err != nil {
-				return err
-			}
-
-			// read in key
-			recoveryKey, err := ioutil.ReadFile(keyFile)
-			if err != nil {
-				return err
-			}
-
-			cmd.Println("Successfully verified Coordinator, now uploading key")
-
-			return cliRecover(hostName, recoveryKey, cert)
-		},
-		SilenceUsage: true,
+		RunE:    runRecover,
 	}
-
-	cmd.Flags().StringVar(&eraConfig, "era-config", "", "Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github")
-	cmd.Flags().BoolVarP(&insecureEra, "insecure", "i", false, "Set to skip quote verification, needed when running in simulation mode")
-	cmd.PersistentFlags().StringSliceVar(&acceptedTCBStatuses, "accepted-tcb-statuses", []string{"UpToDate"}, "Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded)")
 
 	return cmd
 }
 
+func runRecover(cmd *cobra.Command, args []string) error {
+	keyFile := args[0]
+	hostname := args[1]
+
+	// read recovery key
+	recoveryKey, err := os.ReadFile(keyFile)
+	if err != nil {
+		return err
+	}
+
+	client, err := rest.NewClient(cmd, hostname)
+	if err != nil {
+		return err
+	}
+	cmd.Println("Successfully verified Coordinator, now uploading key")
+	return cliRecover(cmd, recoveryKey, client)
+}
+
 // cliRecover tries to unseal the Coordinator by uploading the recovery key.
-func cliRecover(host string, key []byte, cert []*pem.Block) error {
-	client, err := restClient(cert, nil)
+func cliRecover(cmd *cobra.Command, key []byte, client poster) error {
+	resp, err := client.Post(cmd.Context(), "recover", "text/plain", bytes.NewReader(key))
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to recover Coordinator: %w", err)
 	}
 
-	url := url.URL{Scheme: "https", Host: host, Path: "recover"}
-	resp, err := client.Post(url.String(), "text/plain", bytes.NewReader(key))
-	if err != nil {
-		return err
-	}
-
-	switch resp.StatusCode {
-	case http.StatusOK:
-		respBody, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return err
-		}
-		jsonResponse := gjson.GetBytes(respBody, "data.StatusMessage")
-		fmt.Printf("%s \n", jsonResponse.String())
-	default:
-		return fmt.Errorf("error connecting to server: %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
-	}
-
+	jsonResponse := gjson.GetBytes(resp, "data.StatusMessage")
+	cmd.Printf("%s \n", jsonResponse.String())
 	return nil
 }

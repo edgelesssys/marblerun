@@ -8,10 +8,12 @@ package cmd
 
 import (
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 
+	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/spf13/cobra"
 )
 
@@ -19,14 +21,11 @@ func newCertificateRoot() *cobra.Command {
 	var certFilename string
 
 	cmd := &cobra.Command{
-		Use:   "root <IP:PORT>",
-		Short: "Returns the root certificate of the MarbleRun Coordinator",
-		Long:  `Returns the root certificate of the MarbleRun Coordinator`,
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			hostName := args[0]
-			return cliCertificateRoot(cmd.OutOrStdout(), hostName, certFilename, eraConfig, insecureEra, acceptedTCBStatuses)
-		},
+		Use:          "root <IP:PORT>",
+		Short:        "Returns the root certificate of the MarbleRun Coordinator",
+		Long:         `Returns the root certificate of the MarbleRun Coordinator`,
+		Args:         cobra.ExactArgs(1),
+		RunE:         runCertificateRoot,
 		SilenceUsage: true,
 	}
 
@@ -35,18 +34,32 @@ func newCertificateRoot() *cobra.Command {
 	return cmd
 }
 
-// cliCertificateRoot gets the root certificate of the MarbleRun Coordinator and saves it to a file.
-func cliCertificateRoot(out io.Writer, host, output, configFilename string, insecure bool, acceptedTCBStatuses []string) error {
-	var certs []*pem.Block
-	certs, err := verifyCoordinator(out, host, configFilename, insecure, acceptedTCBStatuses)
+func runCertificateRoot(cmd *cobra.Command, args []string) error {
+	hostname := args[0]
+	flags, err := rest.ParseFlags(cmd)
 	if err != nil {
 		return err
 	}
-
-	if err := ioutil.WriteFile(output, pem.EncodeToMemory(certs[len(certs)-1]), 0o644); err != nil {
+	output, err := cmd.Flags().GetString("output")
+	if err != nil {
 		return err
 	}
-	fmt.Fprintln(out, "Root certificate written to", output)
+	certs, err := rest.VerifyCoordinator(
+		cmd.Context(), cmd.OutOrStdout(), hostname,
+		flags.EraConfig, flags.Insecure, flags.AcceptedTCBStatuses,
+	)
+	return cliCertificateRoot(cmd.OutOrStdout(), output, certs)
+}
+
+// cliCertificateRoot gets the root certificate of the MarbleRun Coordinator and saves it to a file.
+func cliCertificateRoot(out io.Writer, outputFile string, certs []*pem.Block) error {
+	if len(certs) == 0 {
+		return errors.New("no certificates received from Coordinator")
+	}
+	if err := os.WriteFile(outputFile, pem.EncodeToMemory(certs[len(certs)-1]), 0o644); err != nil {
+		return err
+	}
+	fmt.Fprintln(out, "Root certificate written to", outputFile)
 
 	return nil
 }

@@ -9,107 +9,85 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
-	"encoding/pem"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"net/url"
+	"os"
 
+	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/spf13/cobra"
 	"github.com/tidwall/gjson"
 	"sigs.k8s.io/yaml"
 )
 
 func newManifestSet() *cobra.Command {
-	var recoveryFilename string
-
 	cmd := &cobra.Command{
 		Use:     "set <manifest.json> <IP:PORT>",
 		Short:   "Sets the manifest for the MarbleRun Coordinator",
 		Long:    "Sets the manifest for the MarbleRun Coordinator",
 		Example: "marblerun manifest set manifest.json $MARBLERUN --recovery-data=recovery-secret.json --era-config=era.json",
 		Args:    cobra.ExactArgs(2),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			manifestFile := args[0]
-			hostName := args[1]
-
-			cert, err := verifyCoordinator(cmd.OutOrStdout(), hostName, eraConfig, insecureEra, acceptedTCBStatuses)
-			if err != nil {
-				return err
-			}
-
-			cmd.Println("Successfully verified Coordinator, now uploading manifest")
-
-			// Load manifest
-			manifest, err := loadManifestFile(manifestFile)
-			if err != nil {
-				return err
-			}
-			signature := cliManifestSignature(manifest)
-			cmd.Printf("Manifest signature: %s\n", signature)
-
-			return cliManifestSet(cmd.OutOrStdout(), manifest, hostName, cert, recoveryFilename)
-		},
-		SilenceUsage: true,
+		RunE:    runManifestSet,
 	}
 
-	cmd.Flags().StringVarP(&recoveryFilename, "recoverydata", "r", "", "File to write recovery data to, print to stdout if non specified")
+	cmd.Flags().StringP("recoverydata", "r", "", "File to write recovery data to, print to stdout if non specified")
 
 	return cmd
 }
 
+func runManifestSet(cmd *cobra.Command, args []string) error {
+	manifestFile := args[0]
+	hostname := args[1]
+
+	recoveryFilename, err := cmd.Flags().GetString("recoverydata")
+	if err != nil {
+		return err
+	}
+
+	client, err := rest.NewClient(cmd, hostname)
+	if err != nil {
+		return err
+	}
+
+	cmd.Println("Successfully verified Coordinator, now uploading manifest")
+
+	// Load manifest
+	manifest, err := loadManifestFile(manifestFile)
+	if err != nil {
+		return err
+	}
+	signature := cliManifestSignature(manifest)
+	cmd.Printf("Manifest signature: %s\n", signature)
+
+	return cliManifestSet(cmd, manifest, recoveryFilename, client)
+}
+
 // cliManifestSet sets the Coordinators manifest using its rest api.
-func cliManifestSet(out io.Writer, manifest []byte, host string, cert []*pem.Block, recover string) error {
-	client, err := restClient(cert, nil)
+func cliManifestSet(cmd *cobra.Command, manifest []byte, recover string, client poster) error {
+	resp, err := client.Post(cmd.Context(), "manifest", "application/json", bytes.NewReader(manifest))
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to set manifest: %w", err)
 	}
 
-	url := url.URL{Scheme: "https", Host: host, Path: "manifest"}
-	resp, err := client.Post(url.String(), "application/json", bytes.NewReader(manifest))
-	if err != nil {
-		return err
+	cmd.Println("Manifest successfully set")
+
+	if len(resp) <= 0 {
+		return nil
 	}
-	defer resp.Body.Close()
 
-	switch resp.StatusCode {
-	case http.StatusOK:
-		respBody, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
+	response := gjson.GetBytes(resp, "data")
+
+	// Skip outputting secrets if we do not get any recovery secrets back
+	if len(response.String()) == 0 {
+		return nil
+	}
+
+	// recovery secret was sent, print or save to file
+	if recover == "" {
+		cmd.Println(response.String())
+	} else {
+		if err := os.WriteFile(recover, []byte(response.String()), 0o644); err != nil {
 			return err
 		}
-		fmt.Fprintln(out, "Manifest successfully set")
-
-		if len(respBody) <= 0 {
-			return nil
-		}
-
-		response := gjson.GetBytes(respBody, "data")
-
-		// Skip outputting secrets if we do not get any recovery secrets back
-		if len(response.String()) == 0 {
-			return nil
-		}
-
-		// recovery secret was sent, print or save to file
-		if recover == "" {
-			fmt.Fprintln(out, response.String())
-		} else {
-			if err := ioutil.WriteFile(recover, []byte(response.String()), 0o644); err != nil {
-				return err
-			}
-			fmt.Fprintf(out, "Recovery data saved to: %s.\n", recover)
-		}
-	case http.StatusBadRequest:
-		respBody, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return err
-		}
-		response := gjson.GetBytes(respBody, "message")
-		return fmt.Errorf(response.String())
-	default:
-		return fmt.Errorf("error connecting to server: %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
+		cmd.Printf("Recovery data saved to: %s.\n", recover)
 	}
 
 	return nil
@@ -117,7 +95,7 @@ func cliManifestSet(out io.Writer, manifest []byte, host string, cert []*pem.Blo
 
 // loadManifestFile loads a manifest in either json or yaml format and returns the data as json.
 func loadManifestFile(filename string) ([]byte, error) {
-	manifestData, err := ioutil.ReadFile(filename)
+	manifestData, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}

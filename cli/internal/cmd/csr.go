@@ -16,7 +16,6 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -54,7 +53,7 @@ func newCertificateV1(kubeClient kubernetes.Interface) (*certificateV1, error) {
 
 	privKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
-		return nil, fmt.Errorf("failed creating rsa private key: %v", err)
+		return nil, fmt.Errorf("failed creating rsa private key: %w", err)
 	}
 
 	crt.privKey = privKey
@@ -113,7 +112,7 @@ func (crt *certificateV1) setCaBundle() ([]string, error) {
 	if len(kubeConfig.CAData) > 0 {
 		caBundle = base64.StdEncoding.EncodeToString(kubeConfig.CAData)
 	} else if len(kubeConfig.CAFile) > 0 {
-		fileData, err := ioutil.ReadFile(kubeConfig.CAFile)
+		fileData, err := os.ReadFile(kubeConfig.CAFile)
 		if err != nil {
 			return nil, err
 		}
@@ -123,7 +122,7 @@ func (crt *certificateV1) setCaBundle() ([]string, error) {
 	}
 
 	injectorVals := []string{
-		fmt.Sprintf("marbleInjector.start=%v", true),
+		fmt.Sprintf("marbleInjector.start=%t", true),
 		fmt.Sprintf("marbleInjector.CABundle=%s", caBundle),
 	}
 

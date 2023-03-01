@@ -9,42 +9,42 @@ package cmd
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/pem"
 	"fmt"
-	"io"
-	"io/ioutil"
+	"net/http"
 	"os"
 
+	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/spf13/cobra"
+	"github.com/tidwall/gjson"
 )
 
 func newManifestVerify() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "verify <manifest/signature> <IP:PORT>",
-		Short:   "Verifies the signature of a MarbleRun manifest",
-		Long:    `Verifies that the signature returned by the Coordinator is equal to a local signature`,
+		Short:   "Verify the signature of a MarbleRun manifest",
+		Long:    `Verify that the signature returned by the Coordinator is equal to a local signature`,
 		Example: "marblerun manifest verify manifest.json $MARBLERUN",
 		Args:    cobra.ExactArgs(2),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			manifest := args[0]
-			hostName := args[1]
-
-			cert, err := verifyCoordinator(cmd.OutOrStdout(), hostName, eraConfig, insecureEra, acceptedTCBStatuses)
-			if err != nil {
-				return err
-			}
-
-			localSignature, err := getSignatureFromString(manifest)
-			if err != nil {
-				return err
-			}
-
-			return cliManifestVerify(cmd.OutOrStdout(), localSignature, hostName, cert)
-		},
-		SilenceUsage: true,
+		RunE:    runManifestVerify,
 	}
 
 	return cmd
+}
+
+func runManifestVerify(cmd *cobra.Command, args []string) error {
+	manifest := args[0]
+	hostname := args[1]
+
+	localSignature, err := getSignatureFromString(manifest)
+	if err != nil {
+		return err
+	}
+
+	client, err := rest.NewClient(cmd, hostname)
+	if err != nil {
+		return err
+	}
+	return cliManifestVerify(cmd, localSignature, client)
 }
 
 // getSignatureFromString checks if a string is a file or a valid signature.
@@ -66,7 +66,7 @@ func getSignatureFromString(manifest string) (string, error) {
 	}
 
 	// manifest is an existing file -> return the signature of the file
-	rawManifest, err := ioutil.ReadFile(manifest)
+	rawManifest, err := os.ReadFile(manifest)
 	if err != nil {
 		return "", err
 	}
@@ -74,16 +74,16 @@ func getSignatureFromString(manifest string) (string, error) {
 }
 
 // cliManifestVerify verifies if a signature returned by the MarbleRun Coordinator is equal to one locally created.
-func cliManifestVerify(out io.Writer, localSignature string, host string, cert []*pem.Block) error {
-	remoteSignature, err := cliDataGet(host, "manifest", "data.ManifestSignature", cert)
+func cliManifestVerify(cmd *cobra.Command, localSignature string, client getter) error {
+	res, err := client.Get(cmd.Context(), "manifest", http.NoBody)
 	if err != nil {
 		return err
 	}
-
+	remoteSignature := gjson.GetBytes(res, "data.ManifestSignature").String()
 	if string(remoteSignature) != localSignature {
 		return fmt.Errorf("remote signature differs from local signature: %s != %s", string(remoteSignature), localSignature)
 	}
 
-	fmt.Fprintln(out, "OK")
+	cmd.Println("OK")
 	return nil
 }

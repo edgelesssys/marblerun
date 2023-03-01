@@ -67,7 +67,7 @@ func newCertificateLegacy() (*certificateLegacy, error) {
 
 	serverPrivKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
-		return nil, fmt.Errorf("failed creating rsa private key: %v", err)
+		return nil, fmt.Errorf("failed creating rsa private key: %w", err)
 	}
 	crt.serverPrivKey = serverPrivKey
 
@@ -84,7 +84,7 @@ func (crt *certificateLegacy) get() ([]byte, error) {
 func (crt *certificateLegacy) setCaBundle() ([]string, error) {
 	caCertBytes := pem.EncodeToMemory(crt.caCert)
 	injectorValues := []string{
-		fmt.Sprintf("marbleInjector.start=%v", true),
+		fmt.Sprintf("marbleInjector.start=%t", true),
 		fmt.Sprintf("marbleInjector.CABundle=%s", base64.StdEncoding.EncodeToString(caCertBytes)),
 	}
 	return injectorValues, nil

@@ -14,12 +14,13 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/edgelesssys/marblerun/cli/internal/constants"
+	"github.com/edgelesssys/marblerun/cli/internal/kube"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/gofrs/flock"
 	"github.com/spf13/cobra"
@@ -28,7 +29,7 @@ import (
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/getter"
+	helmgetter "helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/repo"
 	"helm.sh/helm/v3/pkg/strvals"
 	corev1 "k8s.io/api/core/v1"
@@ -69,7 +70,7 @@ marblerun install --dcap-qpl intel --dcap-pccs-url https://pccs.example.com/sgx/
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.settings = cli.New()
 			var err error
-			options.kubeClient, err = getKubernetesInterface()
+			options.kubeClient, err = kube.NewClient()
 			if err != nil {
 				return err
 			}
@@ -98,28 +99,28 @@ marblerun install --dcap-qpl intel --dcap-pccs-url https://pccs.example.com/sgx/
 // cliInstall installs MarbleRun on the cluster.
 func cliInstall(options *installOptions) error {
 	actionConfig := new(action.Configuration)
-	if err := actionConfig.Init(options.settings.RESTClientGetter(), helmNamespace, os.Getenv("HELM_DRIVER"), debug); err != nil {
+	if err := actionConfig.Init(options.settings.RESTClientGetter(), constants.HelmNamespace, os.Getenv("HELM_DRIVER"), debug); err != nil {
 		return err
 	}
 
 	// create helm installer
 	installer := action.NewInstall(actionConfig)
 	installer.CreateNamespace = true
-	installer.Namespace = helmNamespace
-	installer.ReleaseName = helmRelease
+	installer.Namespace = constants.HelmNamespace
+	installer.ReleaseName = constants.HelmRelease
 	installer.ChartPathOptions.Version = options.version
 
 	if options.chartPath == "" {
 		// No chart was specified -> add or update edgeless helm repo
-		err := getRepo(helmRepoName, helmRepoURI, options.settings)
+		err := getRepo(constants.HelmRepoName, constants.HelmRepoURI, options.settings)
 		if err != nil {
 			return err
 		}
 
 		// Enterprise chart is used if an access token is provided
-		chartName := helmChartName
+		chartName := constants.HelmChartName
 		if options.accessToken != "" {
-			chartName = helmChartNameEnterprise
+			chartName = constants.HelmChartNameEnterprise
 		}
 		options.chartPath, err = installer.ChartPathOptions.LocateChart(chartName, options.settings)
 		if err != nil {
@@ -269,7 +270,7 @@ func getRepo(name string, url string, settings *cli.EnvSettings) error {
 		return err
 	}
 
-	b, err := ioutil.ReadFile(repoFile)
+	b, err := os.ReadFile(repoFile)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
@@ -284,7 +285,7 @@ func getRepo(name string, url string, settings *cli.EnvSettings) error {
 		URL:  url,
 	}
 
-	r, err := repo.NewChartRepository(c, getter.All(settings))
+	r, err := repo.NewChartRepository(c, helmgetter.All(settings))
 	if err != nil {
 		return err
 	}
@@ -304,7 +305,7 @@ func getRepo(name string, url string, settings *cli.EnvSettings) error {
 // installWebhook enables a mutating admission webhook to allow automatic injection of values into pods.
 func installWebhook(kubeClient kubernetes.Interface) ([]string, error) {
 	// verify 'marblerun' namespace exists, if not create it
-	if err := verifyNamespace(helmNamespace, kubeClient); err != nil {
+	if err := verifyNamespace(constants.HelmNamespace, kubeClient); err != nil {
 		return nil, err
 	}
 
@@ -350,7 +351,7 @@ func createSecret(privKey *rsa.PrivateKey, crt []byte, kubeClient kubernetes.Int
 	newSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "marble-injector-webhook-certs",
-			Namespace: helmNamespace,
+			Namespace: constants.HelmNamespace,
 		},
 		Data: map[string][]byte{
 			"tls.crt": crt,
@@ -358,7 +359,7 @@ func createSecret(privKey *rsa.PrivateKey, crt []byte, kubeClient kubernetes.Int
 		},
 	}
 
-	_, err := kubeClient.CoreV1().Secrets(helmNamespace).Create(context.TODO(), newSecret, metav1.CreateOptions{})
+	_, err := kubeClient.CoreV1().Secrets(constants.HelmNamespace).Create(context.TODO(), newSecret, metav1.CreateOptions{})
 	return err
 }
 

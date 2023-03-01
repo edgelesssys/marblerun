@@ -7,30 +7,19 @@
 package cmd
 
 import (
-	"crypto/tls"
-	"encoding/pem"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 
+	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/spf13/cobra"
 	"github.com/tidwall/gjson"
 )
 
-type secretGetOptions struct {
-	host      string
-	secretIDs []string
-	output    string
-	clCert    tls.Certificate
-	caCert    []*pem.Block
-}
-
 func newSecretGet() *cobra.Command {
-	options := &secretGetOptions{}
-
 	cmd := &cobra.Command{
 		Use:   "get SECRETNAME ... <IP:PORT>",
 		Short: "Retrieve secrets from the MarbleRun Coordinator",
@@ -41,96 +30,60 @@ and need permissions in the manifest to read the requested secrets.
 `,
 		Example: "marblerun secret get genericSecret symmetricKeyShared $MARBLERUN -c admin.crt -k admin.key",
 		Args:    cobra.MinimumNArgs(2),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			hostName := args[len(args)-1]
-			caCert, err := verifyCoordinator(cmd.OutOrStdout(), hostName, eraConfig, insecureEra, acceptedTCBStatuses)
-			if err != nil {
-				return err
-			}
-
-			// Load client certificate and key
-			clCert, err := tls.LoadX509KeyPair(userCertFile, userKeyFile)
-			if err != nil {
-				return err
-			}
-
-			options.secretIDs = args[0 : len(args)-1]
-			options.host = hostName
-			options.caCert = caCert
-			options.clCert = clCert
-
-			return cliSecretGet(cmd.OutOrStdout(), options)
-		},
-		SilenceUsage: true,
+		RunE:    runSecretGet,
 	}
 
-	cmd.Flags().StringVarP(&options.output, "output", "o", "", "File to save the secret to")
+	cmd.Flags().StringP("output", "o", "", "File to save the secret to")
 
 	return cmd
 }
 
-// cliSecretGet requests one or more secrets from the MarbleRun Coordinator.
-func cliSecretGet(out io.Writer, o *secretGetOptions) error {
-	client, err := restClient(o.caCert, &o.clCert)
+func runSecretGet(cmd *cobra.Command, args []string) error {
+	hostname := args[len(args)-1]
+	secretIDs := args[0 : len(args)-1]
+
+	output, err := cmd.Flags().GetString("output")
 	if err != nil {
 		return err
 	}
 
+	client, err := rest.NewAuthenticatedClient(cmd, hostname)
+	if err != nil {
+		return err
+	}
+
+	return cliSecretGet(cmd, hostname, client, secretIDs, output)
+}
+
+// cliSecretGet requests one or more secrets from the MarbleRun Coordinator.
+func cliSecretGet(cmd *cobra.Command, host string, client getter, secretIDs []string, output string) error {
 	secretQuery := url.Values{}
 
-	for _, secret := range o.secretIDs {
+	for _, secret := range secretIDs {
 		secretQuery.Add("s", secret)
 	}
-	url := url.URL{Scheme: "https", Host: o.host, Path: "secrets", RawQuery: secretQuery.Encode()}
-	resp, err := client.Get(url.String())
+	path := fmt.Sprintf("secrets?%s", secretQuery.Encode())
+	resp, err := client.Get(cmd.Context(), path, http.NoBody)
 	if err != nil {
+		return fmt.Errorf("unable to retrieve secret: %w", err)
+	}
+
+	response := gjson.GetBytes(resp, "data")
+	if len(response.String()) <= 0 {
+		return fmt.Errorf("received empty secret response")
+	}
+
+	if len(response.Map()) != len(secretIDs) {
+		return fmt.Errorf("did not receive the same number of secrets as requested")
+	}
+
+	if output == "" {
+		return printSecrets(cmd.OutOrStdout(), response)
+	}
+	if err := os.WriteFile(output, []byte(response.String()), 0o644); err != nil {
 		return err
 	}
-	defer resp.Body.Close()
-
-	switch resp.StatusCode {
-	case http.StatusOK:
-		// Everything went fine, print the secret or save to file
-		respBody, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return err
-		}
-
-		response := gjson.GetBytes(respBody, "data")
-		if len(response.String()) <= 0 {
-			return fmt.Errorf("received empty secret response")
-		}
-
-		if len(response.Map()) != len(o.secretIDs) {
-			return fmt.Errorf("did not receive the same number of secrets as requested")
-		}
-
-		if o.output == "" {
-			return printSecrets(out, response)
-		}
-		if err := ioutil.WriteFile(o.output, []byte(response.String()), 0o644); err != nil {
-			return err
-		}
-		fmt.Fprintf(out, "Saved secret to: %s\n", o.output)
-	case http.StatusBadRequest:
-		// Something went wrong
-		respBody, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return err
-		}
-		response := gjson.GetBytes(respBody, "message")
-		return fmt.Errorf("unable to retrieve secret: %s", response)
-	case http.StatusUnauthorized:
-		// User was not authorized
-		respBody, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return err
-		}
-		response := gjson.GetBytes(respBody, "message")
-		return fmt.Errorf("unable to authorize user: %s", response)
-	default:
-		return fmt.Errorf("error connecting to server: %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
-	}
+	cmd.Printf("Saved secret to: %s\n", output)
 
 	return nil
 }

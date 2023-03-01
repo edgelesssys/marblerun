@@ -7,22 +7,20 @@
 package cmd
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
-	"encoding/pem"
 	"fmt"
-	"io/ioutil"
+	"net/http"
+	"os"
 
+	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/spf13/cobra"
 	"github.com/tidwall/gjson"
 )
 
 func newManifestGet() *cobra.Command {
-	var output string
-	var displayUpdate bool
-	var signature bool
-
 	cmd := &cobra.Command{
 		Use:   "get <IP:PORT>",
 		Short: "Get the manifest from the MarbleRun Coordinator",
@@ -30,43 +28,51 @@ func newManifestGet() *cobra.Command {
 Optionally get the manifests signature or merge updates into the displayed manifest.`,
 		Example: "marblerun manifest get $MARBLERUN -s --era-config=era.json",
 		Args:    cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			hostName := args[0]
-			cert, err := verifyCoordinator(cmd.OutOrStdout(), hostName, eraConfig, insecureEra, acceptedTCBStatuses)
-			if err != nil {
-				return err
-			}
-			cmd.Println("Successfully verified Coordinator, now requesting manifest")
-			response, err := cliDataGet(hostName, "manifest", "data", cert)
-			if err != nil {
-				return err
-			}
-			manifest, err := decodeManifest(displayUpdate, gjson.GetBytes(response, "Manifest").String(), hostName, cert)
-			if err != nil {
-				return err
-			}
-			if signature {
-				// wrap the signature and manifest into one json object
-				manifest = fmt.Sprintf("{\n\"ManifestSignature\": \"%s\",\n\"Manifest\": %s}", gjson.GetBytes(response, "ManifestSignature"), manifest)
-			}
-
-			if len(output) > 0 {
-				return ioutil.WriteFile(output, []byte(manifest), 0o644)
-			}
-			cmd.Println(manifest)
-			return nil
-		},
-		SilenceUsage: true,
+		RunE:    runManifestGet,
 	}
 
-	cmd.Flags().BoolVarP(&signature, "signature", "s", false, "Set to additionally display the manifests signature")
-	cmd.Flags().BoolVarP(&displayUpdate, "display-update", "u", false, "Set to merge updates into the displayed manifest")
-	cmd.Flags().StringVarP(&output, "output", "o", "", "Save output to file instead of printing to stdout")
+	cmd.Flags().BoolP("signature", "s", false, "Set to additionally display the manifests signature")
+	cmd.Flags().BoolP("display-update", "u", false, "Set to merge updates into the displayed manifest")
+	cmd.Flags().StringP("output", "o", "", "Save output to file instead of printing to stdout")
 	return cmd
 }
 
+func runManifestGet(cmd *cobra.Command, args []string) error {
+	hostname := args[0]
+	client, err := rest.NewClient(cmd, hostname)
+	if err != nil {
+		return err
+	}
+	cmd.Println("Successfully verified Coordinator, now requesting manifest")
+
+	flags, err := parseManifestGetFlags(cmd)
+	if err != nil {
+		return err
+	}
+
+	resp, err := client.Get(cmd.Context(), "manifest", http.NoBody)
+	if err != nil {
+		return fmt.Errorf("unable to get manifest: %w", err)
+	}
+
+	manifest, err := decodeManifest(flags.displayUpdate, gjson.GetBytes(resp, "data.Manifest").String(), client)
+	if err != nil {
+		return err
+	}
+	if flags.signature {
+		// wrap the signature and manifest into one json object
+		manifest = fmt.Sprintf("{\n\"ManifestSignature\": \"%s\",\n\"Manifest\": %s}", gjson.GetBytes(resp, "ManifestSignature"), manifest)
+	}
+
+	if flags.output != "" {
+		return os.WriteFile(flags.output, []byte(manifest), 0o644)
+	}
+	cmd.Println(manifest)
+	return nil
+}
+
 // decodeManifest parses a base64 encoded manifest and optionally merges updates.
-func decodeManifest(displayUpdate bool, encodedManifest, hostName string, cert []*pem.Block) (string, error) {
+func decodeManifest(displayUpdate bool, encodedManifest string, client getter) (string, error) {
 	manifest, err := base64.StdEncoding.DecodeString(encodedManifest)
 	if err != nil {
 		return "", err
@@ -76,10 +82,11 @@ func decodeManifest(displayUpdate bool, encodedManifest, hostName string, cert [
 		return string(manifest), nil
 	}
 
-	log, err := cliDataGet(hostName, "update", "data", cert)
+	resp, err := client.Get(context.Background(), "update", http.NoBody)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("unable to retrieve update log: %w", err)
 	}
+	log := []byte(gjson.GetBytes(resp, "data").String())
 
 	return consolidateManifest(manifest, log)
 }
@@ -133,4 +140,30 @@ func removeNil(m map[string]interface{}) {
 			}
 		}
 	}
+}
+
+type manifestGetFlags struct {
+	output        string
+	displayUpdate bool
+	signature     bool
+}
+
+func parseManifestGetFlags(cmd *cobra.Command) (manifestGetFlags, error) {
+	output, err := cmd.Flags().GetString("output")
+	if err != nil {
+		return manifestGetFlags{}, err
+	}
+	displayUpdate, err := cmd.Flags().GetBool("display-update")
+	if err != nil {
+		return manifestGetFlags{}, err
+	}
+	signature, err := cmd.Flags().GetBool("signature")
+	if err != nil {
+		return manifestGetFlags{}, err
+	}
+	return manifestGetFlags{
+		output:        output,
+		displayUpdate: displayUpdate,
+		signature:     signature,
+	}, nil
 }

@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/edgelesssys/marblerun/cli/internal/constants"
+	"github.com/edgelesssys/marblerun/cli/internal/kube"
 	"github.com/spf13/cobra"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli"
@@ -22,21 +24,22 @@ import (
 func NewUninstallCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "uninstall",
-		Short: "Removes MarbleRun from a Kubernetes cluster",
-		Long:  `Removes MarbleRun from a Kubernetes cluster`,
+		Short: "Remove MarbleRun from a Kubernetes cluster",
+		Long:  `Remove MarbleRun from a Kubernetes cluster`,
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			settings := cli.New()
-			kubeClient, err := getKubernetesInterface()
-			if err != nil {
-				return fmt.Errorf("failed setting up kubernetes client: %v", err)
-			}
-			return cliUninstall(settings, kubeClient)
-		},
-		SilenceUsage: true,
+		RunE:  runUninstall,
 	}
 
 	return cmd
+}
+
+func runUninstall(cmd *cobra.Command, args []string) error {
+	settings := cli.New()
+	kubeClient, err := kube.NewClient()
+	if err != nil {
+		return err
+	}
+	return cliUninstall(settings, kubeClient)
 }
 
 // cliUninstall uninstalls MarbleRun.
@@ -65,19 +68,19 @@ func cliUninstall(settings *cli.EnvSettings, kubeClient kubernetes.Interface) er
 // removeHelmRelease removes kubernetes resources installed using helm.
 func removeHelmRelease(settings *cli.EnvSettings) error {
 	actionConfig := new(action.Configuration)
-	if err := actionConfig.Init(settings.RESTClientGetter(), helmNamespace, os.Getenv("HELM_DRIVER"), debug); err != nil {
+	if err := actionConfig.Init(settings.RESTClientGetter(), constants.HelmNamespace, os.Getenv("HELM_DRIVER"), debug); err != nil {
 		return err
 	}
 
 	uninstallAction := action.NewUninstall(actionConfig)
-	_, err := uninstallAction.Run(helmRelease)
+	_, err := uninstallAction.Run(constants.HelmRelease)
 
 	return err
 }
 
 // cleanupSecrets removes secretes set for the Admission Controller.
 func cleanupSecrets(kubeClient kubernetes.Interface) error {
-	return kubeClient.CoreV1().Secrets(helmNamespace).Delete(context.TODO(), "marble-injector-webhook-certs", metav1.DeleteOptions{})
+	return kubeClient.CoreV1().Secrets(constants.HelmNamespace).Delete(context.TODO(), "marble-injector-webhook-certs", metav1.DeleteOptions{})
 }
 
 // cleanupCSR removes a potentially leftover CSR from the Admission Controller.

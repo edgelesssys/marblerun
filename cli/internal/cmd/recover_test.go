@@ -9,7 +9,7 @@ package cmd
 import (
 	"encoding/json"
 	"encoding/pem"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"testing"
 
@@ -25,7 +25,7 @@ func TestCliRecover(t *testing.T) {
 		assert.Equal("/recover", r.RequestURI)
 		assert.Equal(http.MethodPost, r.Method)
 
-		reqData, err := ioutil.ReadAll(r.Body)
+		reqData, err := io.ReadAll(r.Body)
 		assert.NoError(err)
 
 		type recoveryStatusResp struct {
