@@ -9,11 +9,10 @@ package cmd
 import (
 	"fmt"
 	"net/http"
-	"os"
 
+	"github.com/edgelesssys/marblerun/cli/internal/file"
 	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/spf13/cobra"
-	"github.com/tidwall/gjson"
 )
 
 func newManifestLog() *cobra.Command {
@@ -44,20 +43,18 @@ func runManifestLog(cmd *cobra.Command, args []string) error {
 	}
 
 	cmd.Println("Successfully verified Coordinator, now requesting update log")
-	return cliManifestLog(cmd, output, client)
+	return cliManifestLog(cmd, file.New(output), client)
 }
 
-func cliManifestLog(cmd *cobra.Command, outputFile string, client getter) error {
-	resp, err := client.Get(cmd.Context(), "update", http.NoBody)
+func cliManifestLog(cmd *cobra.Command, file fileWriter, client getter) error {
+	resp, err := client.Get(cmd.Context(), rest.UpdateEndpoint, http.NoBody)
 	if err != nil {
 		return fmt.Errorf("unable to retrieve update log: %w", err)
 	}
 
-	log := gjson.GetBytes(resp, "data").String()
-
-	if outputFile != "" {
-		return os.WriteFile(outputFile, []byte(log), 0o644)
+	if file != nil {
+		return file.Write(resp)
 	}
-	cmd.Printf("Update log:\n%s", log)
+	cmd.Printf("Update log:\n%s", resp)
 	return nil
 }

@@ -11,25 +11,23 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 
+	"github.com/edgelesssys/marblerun/cli/internal/file"
 	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/spf13/cobra"
 )
 
 func newCertificateRoot() *cobra.Command {
-	var certFilename string
-
 	cmd := &cobra.Command{
-		Use:          "root <IP:PORT>",
-		Short:        "Returns the root certificate of the MarbleRun Coordinator",
-		Long:         `Returns the root certificate of the MarbleRun Coordinator`,
-		Args:         cobra.ExactArgs(1),
-		RunE:         runCertificateRoot,
-		SilenceUsage: true,
+		Use:     "root <IP:PORT>",
+		Short:   "Returns the root certificate of the MarbleRun Coordinator",
+		Long:    `Returns the root certificate of the MarbleRun Coordinator`,
+		Args:    cobra.ExactArgs(1),
+		RunE:    runCertificateRoot,
+		PreRunE: outputFlagNotEmpty,
 	}
 
-	cmd.Flags().StringVarP(&certFilename, "output", "o", "marblerunRootCA.crt", "File to save the certificate to")
+	cmd.Flags().StringP("output", "o", "marblerunRootCA.crt", "File to save the certificate to")
 
 	return cmd
 }
@@ -44,22 +42,25 @@ func runCertificateRoot(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	fmt.Println(output)
+
 	certs, err := rest.VerifyCoordinator(
 		cmd.Context(), cmd.OutOrStdout(), hostname,
 		flags.EraConfig, flags.Insecure, flags.AcceptedTCBStatuses,
 	)
-	return cliCertificateRoot(cmd.OutOrStdout(), output, certs)
+	return cliCertificateRoot(cmd.OutOrStdout(), file.New(output), certs)
 }
 
 // cliCertificateRoot gets the root certificate of the MarbleRun Coordinator and saves it to a file.
-func cliCertificateRoot(out io.Writer, outputFile string, certs []*pem.Block) error {
+func cliCertificateRoot(out io.Writer, file fileWriter, certs []*pem.Block) error {
 	if len(certs) == 0 {
 		return errors.New("no certificates received from Coordinator")
 	}
-	if err := os.WriteFile(outputFile, pem.EncodeToMemory(certs[len(certs)-1]), 0o644); err != nil {
+	if err := file.Write(pem.EncodeToMemory(certs[len(certs)-1])); err != nil {
 		return err
 	}
-	fmt.Fprintln(out, "Root certificate written to", outputFile)
+	fmt.Fprintf(out, "Root certificate written to %s\n", file.Name())
 
 	return nil
 }

@@ -19,7 +19,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/edgelesssys/marblerun/cli/internal/constants"
+	"github.com/edgelesssys/marblerun/cli/internal/helm"
 	"github.com/edgelesssys/marblerun/cli/internal/kube"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/gofrs/flock"
@@ -99,28 +99,28 @@ marblerun install --dcap-qpl intel --dcap-pccs-url https://pccs.example.com/sgx/
 // cliInstall installs MarbleRun on the cluster.
 func cliInstall(options *installOptions) error {
 	actionConfig := new(action.Configuration)
-	if err := actionConfig.Init(options.settings.RESTClientGetter(), constants.HelmNamespace, os.Getenv("HELM_DRIVER"), debug); err != nil {
+	if err := actionConfig.Init(options.settings.RESTClientGetter(), helm.Namespace, os.Getenv("HELM_DRIVER"), debug); err != nil {
 		return err
 	}
 
 	// create helm installer
 	installer := action.NewInstall(actionConfig)
 	installer.CreateNamespace = true
-	installer.Namespace = constants.HelmNamespace
-	installer.ReleaseName = constants.HelmRelease
+	installer.Namespace = helm.Namespace
+	installer.ReleaseName = helm.Release
 	installer.ChartPathOptions.Version = options.version
 
 	if options.chartPath == "" {
 		// No chart was specified -> add or update edgeless helm repo
-		err := getRepo(constants.HelmRepoName, constants.HelmRepoURI, options.settings)
+		err := getRepo(helm.RepoName, helm.RepoURI, options.settings)
 		if err != nil {
 			return err
 		}
 
 		// Enterprise chart is used if an access token is provided
-		chartName := constants.HelmChartName
+		chartName := helm.ChartName
 		if options.accessToken != "" {
-			chartName = constants.HelmChartNameEnterprise
+			chartName = helm.ChartNameEnterprise
 		}
 		options.chartPath, err = installer.ChartPathOptions.LocateChart(chartName, options.settings)
 		if err != nil {
@@ -305,7 +305,7 @@ func getRepo(name string, url string, settings *cli.EnvSettings) error {
 // installWebhook enables a mutating admission webhook to allow automatic injection of values into pods.
 func installWebhook(kubeClient kubernetes.Interface) ([]string, error) {
 	// verify 'marblerun' namespace exists, if not create it
-	if err := verifyNamespace(constants.HelmNamespace, kubeClient); err != nil {
+	if err := verifyNamespace(helm.Namespace, kubeClient); err != nil {
 		return nil, err
 	}
 
@@ -351,7 +351,7 @@ func createSecret(privKey *rsa.PrivateKey, crt []byte, kubeClient kubernetes.Int
 	newSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "marble-injector-webhook-certs",
-			Namespace: constants.HelmNamespace,
+			Namespace: helm.Namespace,
 		},
 		Data: map[string][]byte{
 			"tls.crt": crt,
@@ -359,7 +359,7 @@ func createSecret(privKey *rsa.PrivateKey, crt []byte, kubeClient kubernetes.Int
 		},
 	}
 
-	_, err := kubeClient.CoreV1().Secrets(constants.HelmNamespace).Create(context.TODO(), newSecret, metav1.CreateOptions{})
+	_, err := kubeClient.CoreV1().Secrets(helm.Namespace).Create(context.TODO(), newSecret, metav1.CreateOptions{})
 	return err
 }
 

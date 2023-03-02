@@ -12,8 +12,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 
+	"github.com/edgelesssys/marblerun/cli/internal/file"
 	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/spf13/cobra"
@@ -49,13 +49,14 @@ func runManifestGet(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	file := file.New(flags.output)
 
-	resp, err := client.Get(cmd.Context(), "manifest", http.NoBody)
+	resp, err := client.Get(cmd.Context(), rest.ManifestEndpoint, http.NoBody)
 	if err != nil {
 		return fmt.Errorf("unable to get manifest: %w", err)
 	}
 
-	manifest, err := decodeManifest(flags.displayUpdate, gjson.GetBytes(resp, "data.Manifest").String(), client)
+	manifest, err := decodeManifest(cmd.Context(), flags.displayUpdate, gjson.GetBytes(resp, "Manifest").String(), client)
 	if err != nil {
 		return err
 	}
@@ -64,15 +65,15 @@ func runManifestGet(cmd *cobra.Command, args []string) error {
 		manifest = fmt.Sprintf("{\n\"ManifestSignature\": \"%s\",\n\"Manifest\": %s}", gjson.GetBytes(resp, "ManifestSignature"), manifest)
 	}
 
-	if flags.output != "" {
-		return os.WriteFile(flags.output, []byte(manifest), 0o644)
+	if file != nil {
+		return file.Write([]byte(manifest))
 	}
 	cmd.Println(manifest)
 	return nil
 }
 
 // decodeManifest parses a base64 encoded manifest and optionally merges updates.
-func decodeManifest(displayUpdate bool, encodedManifest string, client getter) (string, error) {
+func decodeManifest(ctx context.Context, displayUpdate bool, encodedManifest string, client getter) (string, error) {
 	manifest, err := base64.StdEncoding.DecodeString(encodedManifest)
 	if err != nil {
 		return "", err
@@ -82,12 +83,10 @@ func decodeManifest(displayUpdate bool, encodedManifest string, client getter) (
 		return string(manifest), nil
 	}
 
-	resp, err := client.Get(context.Background(), "update", http.NoBody)
+	log, err := client.Get(ctx, rest.UpdateEndpoint, http.NoBody)
 	if err != nil {
 		return "", fmt.Errorf("unable to retrieve update log: %w", err)
 	}
-	log := []byte(gjson.GetBytes(resp, "data").String())
-
 	return consolidateManifest(manifest, log)
 }
 

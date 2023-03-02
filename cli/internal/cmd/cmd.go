@@ -19,3 +19,8 @@ type getter interface {
 type poster interface {
 	Post(ctx context.Context, path, contentType string, body io.Reader) ([]byte, error)
 }
+
+type fileWriter interface {
+	Write(data []byte) error
+	Name() string
+}

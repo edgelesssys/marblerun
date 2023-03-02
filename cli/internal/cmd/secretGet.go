@@ -11,8 +11,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 
+	"github.com/edgelesssys/marblerun/cli/internal/file"
 	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/spf13/cobra"
@@ -52,38 +52,35 @@ func runSecretGet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return cliSecretGet(cmd, hostname, client, secretIDs, output)
+	return cliSecretGet(cmd, secretIDs, file.New(output), client)
 }
 
 // cliSecretGet requests one or more secrets from the MarbleRun Coordinator.
-func cliSecretGet(cmd *cobra.Command, host string, client getter, secretIDs []string, output string) error {
+func cliSecretGet(cmd *cobra.Command, secretIDs []string, file fileWriter, client getter) error {
 	secretQuery := url.Values{}
 
 	for _, secret := range secretIDs {
 		secretQuery.Add("s", secret)
 	}
-	path := fmt.Sprintf("secrets?%s", secretQuery.Encode())
+	path := fmt.Sprintf("%s?%s", rest.SecretEndpoint, secretQuery.Encode())
 	resp, err := client.Get(cmd.Context(), path, http.NoBody)
 	if err != nil {
 		return fmt.Errorf("unable to retrieve secret: %w", err)
 	}
 
-	response := gjson.GetBytes(resp, "data")
-	if len(response.String()) <= 0 {
-		return fmt.Errorf("received empty secret response")
-	}
-
+	response := gjson.ParseBytes(resp)
 	if len(response.Map()) != len(secretIDs) {
 		return fmt.Errorf("did not receive the same number of secrets as requested")
 	}
 
-	if output == "" {
+	if file == nil {
 		return printSecrets(cmd.OutOrStdout(), response)
 	}
-	if err := os.WriteFile(output, []byte(response.String()), 0o644); err != nil {
+
+	if err := file.Write([]byte(response.String())); err != nil {
 		return err
 	}
-	cmd.Printf("Saved secret to: %s\n", output)
+	cmd.Printf("Saved secrets to: %s\n", file.Name())
 
 	return nil
 }

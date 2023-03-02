@@ -12,7 +12,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/edgelesssys/marblerun/cli/internal/constants"
+	"github.com/edgelesssys/marblerun/cli/internal/helm"
 	"github.com/edgelesssys/marblerun/cli/internal/kube"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -44,11 +44,11 @@ func NewCheckCmd() *cobra.Command {
 
 // cliCheck if MarbleRun control-plane deployments are ready to use.
 func cliCheck(kubeClient kubernetes.Interface, timeout uint) error {
-	if err := checkDeploymentStatus(kubeClient, constants.HelmInjectorDeployment, constants.HelmNamespace, timeout); err != nil {
+	if err := checkDeploymentStatus(kubeClient, helm.InjectorDeployment, helm.Namespace, timeout); err != nil {
 		return err
 	}
 
-	if err := checkDeploymentStatus(kubeClient, constants.HelmCoordinatorDeployment, constants.HelmNamespace, timeout); err != nil {
+	if err := checkDeploymentStatus(kubeClient, helm.CoordinatorDeployment, helm.Namespace, timeout); err != nil {
 		return err
 	}
 

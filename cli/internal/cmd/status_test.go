@@ -7,44 +7,102 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
-	"encoding/pem"
-	"net/http"
+	"errors"
 	"testing"
 
-	"github.com/edgelesssys/marblerun/coordinator/server"
+	"github.com/edgelesssys/marblerun/cli/internal/rest"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestStatus(t *testing.T) {
-	require := require.New(t)
-	assert := assert.New(t)
+	marshalMsg := func(msg statusResponse) []byte {
+		bytes, err := json.Marshal(msg)
+		require.NoError(t, err)
+		return bytes
+	}
 
-	s, host, cert := newTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal("/status", r.RequestURI)
+	testCases := map[string]struct {
+		getter  *stubGetter
+		wantErr bool
+	}{
+		"recovery mode": {
+			getter: &stubGetter{
+				response: marshalMsg(
+					statusResponse{
+						StatusCode:    0,
+						StatusMessage: "Recovery",
+					},
+				),
+			},
+		},
+		"uninitialized": {
+			getter: &stubGetter{
+				response: marshalMsg(
+					statusResponse{
+						StatusCode:    1,
+						StatusMessage: "Uninitialized",
+					},
+				),
+			},
+		},
+		"waiting for manifest": {
+			getter: &stubGetter{
+				response: marshalMsg(
+					statusResponse{
+						StatusCode:    2,
+						StatusMessage: "Waiting for manifest",
+					},
+				),
+			},
+		},
+		"accepting marbles": {
+			getter: &stubGetter{
+				response: marshalMsg(
+					statusResponse{
+						StatusCode:    3,
+						StatusMessage: "Accepting Marbles",
+					},
+				),
+			},
+		},
+		"get error": {
+			getter: &stubGetter{
+				err: errors.New("failed"),
+			},
+			wantErr: true,
+		},
+		"unmarshal error": {
+			getter: &stubGetter{
+				response: []byte("invalid"),
+			},
+			wantErr: true,
+		},
+	}
 
-		resp := statusResponse{
-			StatusCode:    1,
-			StatusMessage: "Test Server waiting",
-		}
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
 
-		serverResp := server.GeneralResponse{
-			Status: "success",
-			Data:   resp,
-		}
+			cmd := &cobra.Command{}
+			var out bytes.Buffer
+			cmd.SetOut(&out)
 
-		assert.NoError(json.NewEncoder(w).Encode(serverResp))
-	}))
+			err := cliStatus(cmd, tc.getter)
 
-	defer s.Close()
+			if tc.wantErr {
+				assert.Error(err)
+				return
+			}
 
-	err := cliStatus(host, []*pem.Block{cert})
-	require.NoError(err)
-
-	s.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-	})
-	err = cliStatus(host, []*pem.Block{cert})
-	require.Error(err)
+			assert.NoError(err)
+			var expected statusResponse
+			require.NoError(t, json.Unmarshal(tc.getter.response, &expected))
+			assert.Contains(out.String(), expected.StatusMessage)
+			assert.Equal(rest.StatusEndpoint, tc.getter.requestPath)
+		})
+	}
 }

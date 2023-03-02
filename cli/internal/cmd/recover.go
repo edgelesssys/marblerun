@@ -49,12 +49,12 @@ func runRecover(cmd *cobra.Command, args []string) error {
 
 // cliRecover tries to unseal the Coordinator by uploading the recovery key.
 func cliRecover(cmd *cobra.Command, key []byte, client poster) error {
-	resp, err := client.Post(cmd.Context(), "recover", "text/plain", bytes.NewReader(key))
+	resp, err := client.Post(cmd.Context(), rest.RecoverEndpoint, rest.ContentPlain, bytes.NewReader(key))
 	if err != nil {
 		return fmt.Errorf("unable to recover Coordinator: %w", err)
 	}
 
-	jsonResponse := gjson.GetBytes(resp, "data.StatusMessage")
-	cmd.Printf("%s \n", jsonResponse.String())
+	response := gjson.GetBytes(resp, "StatusMessage")
+	cmd.Println(response.String())
 	return nil
 }

@@ -14,6 +14,7 @@ import (
 	"os"
 
 	"github.com/edgelesssys/marblerun/cli/internal/rest"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/tidwall/gjson"
 )
@@ -35,7 +36,7 @@ func runManifestVerify(cmd *cobra.Command, args []string) error {
 	manifest := args[0]
 	hostname := args[1]
 
-	localSignature, err := getSignatureFromString(manifest)
+	localSignature, err := getSignatureFromString(manifest, afero.Afero{Fs: afero.NewOsFs()})
 	if err != nil {
 		return err
 	}
@@ -48,8 +49,8 @@ func runManifestVerify(cmd *cobra.Command, args []string) error {
 }
 
 // getSignatureFromString checks if a string is a file or a valid signature.
-func getSignatureFromString(manifest string) (string, error) {
-	if _, err := os.Stat(manifest); err != nil {
+func getSignatureFromString(manifest string, fs afero.Afero) (string, error) {
+	if _, err := fs.Stat(manifest); err != nil {
 		if !os.IsNotExist(err) {
 			return "", err
 		}
@@ -66,7 +67,7 @@ func getSignatureFromString(manifest string) (string, error) {
 	}
 
 	// manifest is an existing file -> return the signature of the file
-	rawManifest, err := os.ReadFile(manifest)
+	rawManifest, err := fs.ReadFile(manifest)
 	if err != nil {
 		return "", err
 	}

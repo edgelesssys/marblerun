@@ -4,6 +4,8 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+// Package rest provides methods and functions to communicate
+// with the MarbleRun Coordinator using its REST API.
 package rest
 
 import (
@@ -28,6 +30,18 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+const (
+	ManifestEndpoint     = "manifest"
+	UpdateEndpoint       = "update"
+	UpdateCancelEndpoint = "update-cancel"
+	UpdateStatusEndpoint = "update-manifest"
+	RecoverEndpoint      = "recover"
+	SecretEndpoint       = "secrets"
+	StatusEndpoint       = "status"
+	ContentJSON          = "application/json"
+	ContentPlain         = "text/plain"
+)
+
 const eraDefaultConfig = "era-config.json"
 
 // Flags are command line flags used to configure the REST client.
@@ -37,6 +51,7 @@ type Flags struct {
 	AcceptedTCBStatuses []string
 }
 
+// ParseFlags par
 func ParseFlags(cmd *cobra.Command) (Flags, error) {
 	eraConfig, err := cmd.Flags().GetString("era-config")
 	if err != nil {
@@ -46,7 +61,7 @@ func ParseFlags(cmd *cobra.Command) (Flags, error) {
 	if err != nil {
 		return Flags{}, err
 	}
-	acceptedTCBStatuses, err := cmd.Flags().GetStringArray("accepted-tcb-statuses")
+	acceptedTCBStatuses, err := cmd.Flags().GetStringSlice("accepted-tcb-statuses")
 	if err != nil {
 		return Flags{}, err
 	}
@@ -161,6 +176,7 @@ func newClient(host string, caCert []*pem.Block, clCert *tls.Certificate) (*Clie
 
 // Get sends a GET request to the Coordinator under the specified path.
 // Optionally, a body can be provided.
+// On success, the data field of the JSON response is returned.
 func (c *Client) Get(ctx context.Context, path string, body io.Reader) ([]byte, error) {
 	uri := url.URL{Scheme: "https", Host: c.host, Path: path}
 
@@ -183,7 +199,9 @@ func (c *Client) Get(ctx context.Context, path string, body io.Reader) ([]byte, 
 
 	switch resp.StatusCode {
 	case http.StatusOK:
-		return respBody, nil
+		// return data field of JSON response
+		data := gjson.GetBytes(respBody, "data").String()
+		return []byte(data), nil
 	case http.StatusUnauthorized:
 		return nil, fmt.Errorf("GET %s: unable to authorize user: %s", uri.String(), msg)
 	default:

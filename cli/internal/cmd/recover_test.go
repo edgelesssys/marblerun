@@ -7,53 +7,62 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
-	"encoding/pem"
-	"io"
-	"net/http"
+	"errors"
 	"testing"
 
-	"github.com/edgelesssys/marblerun/coordinator/server"
+	"github.com/edgelesssys/marblerun/cli/internal/rest"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestCliRecover(t *testing.T) {
-	require := require.New(t)
-	assert := assert.New(t)
-	s, host, cert := newTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal("/recover", r.RequestURI)
-		assert.Equal(http.MethodPost, r.Method)
+	testCases := map[string]struct {
+		getter  *stubPoster
+		wantErr bool
+	}{
+		"success": {
+			getter: &stubPoster{
+				response: func() []byte {
+					resp := struct {
+						StatusMessage string
+					}{
+						StatusMessage: "Success",
+					}
+					bytes, err := json.Marshal(resp)
+					require.NoError(t, err)
+					return bytes
+				}(),
+			},
+		},
+		"get error": {
+			getter: &stubPoster{
+				err: errors.New("failed"),
+			},
+			wantErr: true,
+		},
+	}
 
-		reqData, err := io.ReadAll(r.Body)
-		assert.NoError(err)
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
 
-		type recoveryStatusResp struct {
-			StatusMessage string
-		}
+			cmd := &cobra.Command{}
 
-		if string(reqData) == "Return Error" {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
+			var out bytes.Buffer
+			cmd.SetOut(&out)
 
-		data := recoveryStatusResp{
-			StatusMessage: "Recovery successful.",
-		}
-
-		serverResp := server.GeneralResponse{
-			Status: "success",
-			Data:   data,
-		}
-
-		assert.NoError(json.NewEncoder(w).Encode(serverResp))
-	}))
-
-	defer s.Close()
-
-	err := cliRecover(host, []byte{0xAA, 0xAA}, []*pem.Block{cert})
-	require.NoError(err)
-
-	err = cliRecover(host, []byte("Return Error"), []*pem.Block{cert})
-	require.Error(err)
+			err := cliRecover(cmd, []byte{0x00}, tc.getter)
+			if tc.wantErr {
+				assert.Error(err)
+				return
+			}
+			assert.NoError(err)
+			assert.Equal(tc.getter.requestPath, rest.RecoverEndpoint)
+			assert.Equal(tc.getter.header, rest.ContentPlain)
+			assert.Equal("Success\n", out.String())
+		})
+	}
 }

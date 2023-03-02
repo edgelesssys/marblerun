@@ -10,7 +10,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/edgelesssys/marblerun/cli/internal/constants"
+	"github.com/edgelesssys/marblerun/cli/internal/helm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	certv1 "k8s.io/api/certificates/v1"
@@ -93,7 +93,7 @@ func TestCleanupWebhook(t *testing.T) {
 	require.NoError(err)
 
 	// Try to remove non existent Secret using function
-	_, err = testClient.CoreV1().Secrets(constants.HelmNamespace).Get(context.TODO(), "marble-injector-webhook-certs", metav1.GetOptions{})
+	_, err = testClient.CoreV1().Secrets(helm.Namespace).Get(context.TODO(), "marble-injector-webhook-certs", metav1.GetOptions{})
 	require.Error(err)
 
 	err = cleanupSecrets(testClient)
@@ -104,7 +104,7 @@ func TestCleanupWebhook(t *testing.T) {
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "marble-injector-webhook-certs",
-			Namespace: constants.HelmNamespace,
+			Namespace: helm.Namespace,
 		},
 		Data: map[string][]byte{
 			"tls.crt": {0xAA, 0xAA, 0xAA},
@@ -112,10 +112,10 @@ func TestCleanupWebhook(t *testing.T) {
 		},
 	}
 
-	_, err = testClient.CoreV1().Secrets(constants.HelmNamespace).Create(context.TODO(), secret, metav1.CreateOptions{})
+	_, err = testClient.CoreV1().Secrets(helm.Namespace).Create(context.TODO(), secret, metav1.CreateOptions{})
 	require.NoError(err)
 
-	_, err = testClient.CoreV1().Secrets(constants.HelmNamespace).Get(context.TODO(), "marble-injector-webhook-certs", metav1.GetOptions{})
+	_, err = testClient.CoreV1().Secrets(helm.Namespace).Get(context.TODO(), "marble-injector-webhook-certs", metav1.GetOptions{})
 	require.NoError(err)
 
 	err = cleanupSecrets(testClient)

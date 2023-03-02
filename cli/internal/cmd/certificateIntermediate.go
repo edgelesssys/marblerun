@@ -10,19 +10,20 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
-	"os"
 
+	"github.com/edgelesssys/marblerun/cli/internal/file"
 	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/spf13/cobra"
 )
 
 func newCertificateIntermediate() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "intermediate <IP:PORT>",
-		Short: "Returns the intermediate certificate of the MarbleRun Coordinator",
-		Long:  `Returns the intermediate certificate of the MarbleRun Coordinator`,
-		Args:  cobra.ExactArgs(1),
-		RunE:  runCertificateIntermediate,
+		Use:     "intermediate <IP:PORT>",
+		Short:   "Returns the intermediate certificate of the MarbleRun Coordinator",
+		Long:    `Returns the intermediate certificate of the MarbleRun Coordinator`,
+		Args:    cobra.ExactArgs(1),
+		RunE:    runCertificateIntermediate,
+		PreRunE: outputFlagNotEmpty,
 	}
 
 	cmd.Flags().StringP("output", "o", "marblerunIntermediateCA.crt", "File to save the certificate to")
@@ -44,16 +45,16 @@ func runCertificateIntermediate(cmd *cobra.Command, args []string) error {
 		cmd.Context(), cmd.OutOrStdout(), hostname,
 		flags.EraConfig, flags.Insecure, flags.AcceptedTCBStatuses,
 	)
-	return cliCertificateIntermediate(cmd.OutOrStdout(), output, certs)
+	return cliCertificateIntermediate(cmd.OutOrStdout(), file.New(output), certs)
 }
 
 // cliCertificateIntermediate gets the intermediate certificate of the MarbleRun Coordinator.
-func cliCertificateIntermediate(out io.Writer, outputFile string, certs []*pem.Block) error {
+func cliCertificateIntermediate(out io.Writer, file fileWriter, certs []*pem.Block) error {
 	if len(certs) > 1 {
-		if err := os.WriteFile(outputFile, pem.EncodeToMemory(certs[0]), 0o644); err != nil {
+		if err := file.Write(pem.EncodeToMemory(certs[0])); err != nil {
 			return err
 		}
-		fmt.Fprintln(out, "Intermediate certificate written to", outputFile)
+		fmt.Fprintf(out, "Intermediate certificate written to %s\n", file.Name())
 	} else {
 		fmt.Fprintln(out, "WARNING: No intermediate certificate received.")
 	}

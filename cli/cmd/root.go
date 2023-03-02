@@ -57,9 +57,17 @@ To install and configure MarbleRun, run:
 	rootCmd.PersistentFlags().BoolP("insecure", "i", false, "Set to skip quote verification, needed when running in simulation mode")
 	rootCmd.PersistentFlags().StringSlice("accepted-tcb-statuses", []string{"UpToDate"}, "Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded)")
 
+	must(rootCmd.MarkPersistentFlagFilename("era-config", "json"))
+
 	return rootCmd
 }
 
 func preRunRoot(cmd *cobra.Command, args []string) {
 	cmd.SilenceUsage = true
+}
+
+func must(err error) {
+	if err != nil {
+		panic(err)
+	}
 }

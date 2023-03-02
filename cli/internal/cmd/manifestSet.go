@@ -12,9 +12,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/edgelesssys/marblerun/cli/internal/file"
 	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/spf13/cobra"
-	"github.com/tidwall/gjson"
 	"sigs.k8s.io/yaml"
 )
 
@@ -57,37 +57,29 @@ func runManifestSet(cmd *cobra.Command, args []string) error {
 	signature := cliManifestSignature(manifest)
 	cmd.Printf("Manifest signature: %s\n", signature)
 
-	return cliManifestSet(cmd, manifest, recoveryFilename, client)
+	return cliManifestSet(cmd, manifest, file.New(recoveryFilename), client)
 }
 
 // cliManifestSet sets the Coordinators manifest using its rest api.
-func cliManifestSet(cmd *cobra.Command, manifest []byte, recover string, client poster) error {
-	resp, err := client.Post(cmd.Context(), "manifest", "application/json", bytes.NewReader(manifest))
+func cliManifestSet(cmd *cobra.Command, manifest []byte, file fileWriter, client poster) error {
+	resp, err := client.Post(cmd.Context(), rest.ManifestEndpoint, rest.ContentJSON, bytes.NewReader(manifest))
 	if err != nil {
 		return fmt.Errorf("unable to set manifest: %w", err)
 	}
-
 	cmd.Println("Manifest successfully set")
 
-	if len(resp) <= 0 {
-		return nil
-	}
-
-	response := gjson.GetBytes(resp, "data")
-
 	// Skip outputting secrets if we do not get any recovery secrets back
-	if len(response.String()) == 0 {
+	if len(resp) == 0 {
 		return nil
 	}
-
 	// recovery secret was sent, print or save to file
-	if recover == "" {
-		cmd.Println(response.String())
-	} else {
-		if err := os.WriteFile(recover, []byte(response.String()), 0o644); err != nil {
+	if file != nil {
+		if err := file.Write(resp); err != nil {
 			return err
 		}
-		cmd.Printf("Recovery data saved to: %s.\n", recover)
+		cmd.Printf("Recovery data saved to: %s\n", file.Name())
+	} else {
+		cmd.Println(string(resp))
 	}
 
 	return nil

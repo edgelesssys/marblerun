@@ -8,11 +8,11 @@ package cmd
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/spf13/cobra"
-	"github.com/tidwall/gjson"
 )
 
 const statusDesc = `
@@ -56,19 +56,18 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return cliStatus(cmd, hostname, client)
+	return cliStatus(cmd, client)
 }
 
 // cliStatus requests the current status of the Coordinator.
-func cliStatus(cmd *cobra.Command, host string, client getter) error {
-	resp, err := client.Get(cmd.Context(), "status", http.NoBody)
+func cliStatus(cmd *cobra.Command, client getter) error {
+	resp, err := client.Get(cmd.Context(), rest.StatusEndpoint, http.NoBody)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to query Coordinator status: %w", err)
 	}
 
-	jsonResponse := gjson.GetBytes(resp, "data")
 	var statusResp statusResponse
-	if err := json.Unmarshal([]byte(jsonResponse.String()), &statusResp); err != nil {
+	if err := json.Unmarshal(resp, &statusResp); err != nil {
 		return err
 	}
 	cmd.Printf("%d: %s\n", statusResp.StatusCode, statusResp.StatusMessage)

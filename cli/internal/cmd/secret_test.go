@@ -8,129 +8,102 @@ package cmd
 
 import (
 	"bytes"
-	"crypto/tls"
 	"encoding/json"
-	"encoding/pem"
-	"io"
-	"net/http"
-	"strings"
+	"errors"
 	"testing"
 
+	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
-	"github.com/edgelesssys/marblerun/coordinator/server"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestSetSecrets(t *testing.T) {
-	assert := assert.New(t)
-	s, host, cert := newTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal("/secrets", r.RequestURI)
-		assert.Equal(http.MethodPost, r.Method)
-		request, err := io.ReadAll(r.Body)
-		assert.NoError(err)
+	testCases := map[string]struct {
+		poster  *stubPoster
+		wantErr bool
+	}{
+		"success": {
+			poster:  &stubPoster{},
+			wantErr: false,
+		},
+		"error": {
+			poster: &stubPoster{
+				err: errors.New("failed"),
+			},
+			wantErr: true,
+		},
+	}
 
-		if strings.Contains(string(request), "restrictedSecret") {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
 
-		if strings.Contains(string(request), `"Type":"invalid"`) {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
+			cmd := &cobra.Command{}
 
-		serverResp := server.GeneralResponse{
-			Status: "success",
-		}
-		assert.NoError(json.NewEncoder(w).Encode(serverResp))
-	}))
-	defer s.Close()
+			var out bytes.Buffer
+			cmd.SetOut(&out)
 
-	err := cliSecretSet(host, []byte(`{"user_secret":{"Type":"plain","Key":"Q0xJIFRlc3QK"}}`), tls.Certificate{}, []*pem.Block{cert})
-	assert.NoError(err)
-
-	err = cliSecretSet(host, []byte(`{"restrictedSecret":{"Type":"plain","Key":"Q0xJIFRlc3QK"}}`), tls.Certificate{}, []*pem.Block{cert})
-	assert.Error(err)
-
-	err = cliSecretSet(host, []byte(`{"user_secret":{"Type":"invalid","Key":"Q0xJIFRlc3QK"}}`), tls.Certificate{}, []*pem.Block{cert})
-	assert.Error(err)
+			err := cliSecretSet(cmd, []byte{0x00}, tc.poster)
+			if tc.wantErr {
+				assert.Error(err)
+				return
+			}
+			assert.NoError(err)
+			assert.Contains(out.String(), "Secret successfully set")
+			assert.Equal(tc.poster.requestPath, rest.SecretEndpoint)
+			assert.Equal(tc.poster.header, rest.ContentJSON)
+		})
+	}
 }
 
 func TestGetSecrets(t *testing.T) {
-	assert := assert.New(t)
-	s, host, cert := newTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(http.MethodGet, r.Method)
-		if r.RequestURI == "/secrets?s=plain_secret&s=certShared&s=secretOne" {
-			serverResp := server.GeneralResponse{
-				Status: "success",
-				Data: map[string]interface{}{
-					"plain_secret": map[string]interface{}{
-						"Type":        manifest.SecretTypePlain,
-						"Size":        0,
-						"Shared":      false,
-						"UserDefined": true,
-						"Cert":        nil,
-						"ValidFor":    0,
-						"Private":     "base64-data",
-						"Public":      "base64-data",
-					},
-					"secretOne": map[string]interface{}{
-						"Type":        manifest.SecretTypeSymmetricKey,
-						"Size":        128,
-						"Shared":      true,
-						"UserDefined": false,
-						"Cert":        nil,
-						"ValidFor":    0,
-						"Private":     "base64-priv-data",
-						"Public":      "base64-priv-data",
-					},
-					"certShared": map[string]interface{}{
-						"Type":        manifest.SecretTypeCertRSA,
-						"Size":        2048,
-						"Shared":      true,
-						"UserDefined": false,
-						"Cert":        "base64-cert-data",
-						"ValidFor":    14,
-						"Private":     "base64-priv-data",
-						"Public":      "base64-pub-data",
-					},
-				},
-			}
-			assert.NoError(json.NewEncoder(w).Encode(serverResp))
-			return
-		}
-		if r.RequestURI == "/secrets?s=restrictedSecret" {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-		w.WriteHeader(http.StatusBadRequest)
-	}))
-	defer s.Close()
-	options := &secretGetOptions{
-		host: host,
-		secretIDs: []string{
-			"plain_secret",
-			"certShared",
-			"secretOne",
+	someErr := errors.New("failed")
+	testCases := map[string]struct {
+		getter    *stubGetter
+		writer    *stubFileWriter
+		secretIDs []string
+		wantErr   bool
+	}{
+		"success": {
+			getter:    &stubGetter{response: []byte(`{"test": "ABCDEF"}`)},
+			writer:    &stubFileWriter{},
+			secretIDs: []string{"test"},
 		},
-		output: "",
-		clCert: tls.Certificate{},
-		caCert: []*pem.Block{cert},
+		"get error": {
+			getter:    &stubGetter{err: someErr},
+			writer:    &stubFileWriter{},
+			secretIDs: []string{"test"},
+			wantErr:   true,
+		},
+		"write error": {
+			getter:    &stubGetter{response: []byte(`{"test": "ABCDEF"}`)},
+			writer:    &stubFileWriter{err: someErr},
+			secretIDs: []string{"test"},
+			wantErr:   true,
+		},
 	}
 
-	var out bytes.Buffer
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
 
-	err := cliSecretGet(&out, options)
-	assert.NoError(err)
+			cmd := &cobra.Command{}
 
-	options.secretIDs = []string{"restrictedSecret"}
-	err = cliSecretGet(&out, options)
-	assert.Error(err)
-
-	options.secretIDs = []string{"this should cause an error"}
-	err = cliSecretGet(&out, options)
-	assert.Error(err)
+			err := cliSecretGet(cmd, tc.secretIDs, tc.writer, tc.getter)
+			if tc.wantErr {
+				assert.Error(err)
+				return
+			}
+			assert.NoError(err)
+			assert.Contains(tc.getter.requestPath, rest.SecretEndpoint)
+			for _, id := range tc.secretIDs {
+				assert.Contains(tc.getter.requestPath, id)
+				assert.Equal(tc.writer.out.String(), string(tc.getter.response))
+			}
+		})
+	}
 }
 
 func TestSecretFromPEM(t *testing.T) {
@@ -173,7 +146,7 @@ LuL049+D8bu8Z+Fe
 -----END PRIVATE KEY-----`
 
 	secretName := "test-secret"
-	secret, err := loadSecretFromPEM(secretName, []byte(testCert))
+	secret, err := createSecretFromPEM(secretName, []byte(testCert))
 	assert.NoError(err)
 
 	var secretMap map[string]manifest.Secret
@@ -187,11 +160,11 @@ LuL049+D8bu8Z+Fe
 	assert.True(len(secretMap[secretName].Public) == 0)
 
 	// no error here since we stop after finding the first cert-key pair
-	_, err = loadSecretFromPEM(secretName, []byte(testCert+"\n-----BEGIN MESSAGE-----\ndGVzdA==\n-----END MESSAGE-----"))
+	_, err = createSecretFromPEM(secretName, []byte(testCert+"\n-----BEGIN MESSAGE-----\ndGVzdA==\n-----END MESSAGE-----"))
 	assert.NoError(err)
 	// error since the first pem block contains an invalid type
-	_, err = loadSecretFromPEM(secretName, []byte("-----BEGIN MESSAGE-----\ndGVzdA==\n-----END MESSAGE-----\n"+testCert))
+	_, err = createSecretFromPEM(secretName, []byte("-----BEGIN MESSAGE-----\ndGVzdA==\n-----END MESSAGE-----\n"+testCert))
 	assert.Error(err)
-	_, err = loadSecretFromPEM(secretName, []byte("no PEM data here"))
+	_, err = createSecretFromPEM(secretName, []byte("no PEM data here"))
 	assert.Error(err)
 }

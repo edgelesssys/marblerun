@@ -125,12 +125,12 @@ func runUpdateApply(cmd *cobra.Command, args []string) error {
 	}
 
 	cmd.Println("Successfully verified Coordinator, now uploading manifest")
-	return cliManifestUpdateApply(cmd, manifest, hostname, client)
+	return cliManifestUpdateApply(cmd, manifest, client)
 }
 
 // cliManifestUpdate updates the Coordinators manifest using its rest api.
-func cliManifestUpdateApply(cmd *cobra.Command, manifest []byte, host string, client poster) error {
-	_, err := client.Post(cmd.Context(), "update", "application/json", bytes.NewReader(manifest))
+func cliManifestUpdateApply(cmd *cobra.Command, manifest []byte, client poster) error {
+	_, err := client.Post(cmd.Context(), rest.UpdateEndpoint, rest.ContentJSON, bytes.NewReader(manifest))
 	if err != nil {
 		return fmt.Errorf("unable to apply update: %w", err)
 	}
@@ -155,16 +155,16 @@ func runUpdateAcknowledge(cmd *cobra.Command, args []string) error {
 	}
 
 	cmd.Println("Successfully verified Coordinator")
-	return cliManifestUpdateAcknowledge(cmd, manifest, hostname, client)
+	return cliManifestUpdateAcknowledge(cmd, manifest, client)
 }
 
-func cliManifestUpdateAcknowledge(cmd *cobra.Command, manifest []byte, host string, client poster) error {
-	resp, err := client.Post(cmd.Context(), "update-manifest", "application/json", bytes.NewReader(manifest))
+func cliManifestUpdateAcknowledge(cmd *cobra.Command, manifest []byte, client poster) error {
+	resp, err := client.Post(cmd.Context(), rest.UpdateStatusEndpoint, rest.ContentJSON, bytes.NewReader(manifest))
 	if err != nil {
 		return fmt.Errorf("unable to acknowledge update manifest: %w", err)
 	}
 
-	cmd.Printf("Acknowledgement successful: %s\n", gjson.GetBytes(resp, "data").String())
+	cmd.Printf("Acknowledgement successful: %s\n", string(resp))
 	return nil
 }
 
@@ -177,11 +177,11 @@ func runUpdateCancel(cmd *cobra.Command, args []string) error {
 	}
 
 	cmd.Println("Successfully verified Coordinator")
-	return cliManifestUpdateCancel(cmd, hostname, client)
+	return cliManifestUpdateCancel(cmd, client)
 }
 
-func cliManifestUpdateCancel(cmd *cobra.Command, host string, client poster) error {
-	_, err := client.Post(cmd.Context(), "update-cancel", "", http.NoBody)
+func cliManifestUpdateCancel(cmd *cobra.Command, client poster) error {
+	_, err := client.Post(cmd.Context(), rest.UpdateCancelEndpoint, "", http.NoBody)
 	if err != nil {
 		return fmt.Errorf("unable to cancel update: %w", err)
 	}
@@ -227,19 +227,19 @@ func runUpdateGet(cmd *cobra.Command, args []string) (retErr error) {
 }
 
 func cliManifestUpdateGet(ctx context.Context, out io.Writer, displayMissing bool, client getter) error {
-	resp, err := client.Get(ctx, "update-manifest", http.NoBody)
+	resp, err := client.Get(ctx, rest.UpdateStatusEndpoint, http.NoBody)
 	if err != nil {
 		return fmt.Errorf("unable to retrieve pending update manifest: %w", err)
 	}
 
 	var response string
 	if displayMissing {
-		msg := gjson.GetBytes(resp, "data.message")
-		missingUsers := gjson.GetBytes(resp, "data.missingUsers")
+		msg := gjson.GetBytes(resp, "message")
+		missingUsers := gjson.GetBytes(resp, "missingUsers")
 
 		response = fmt.Sprintf("%s\nThe following users have not yet acknowledged the update: %s\n", msg.String(), missingUsers.String())
 	} else {
-		mnfB64 := gjson.GetBytes(resp, "data.manifest").String()
+		mnfB64 := gjson.GetBytes(resp, "manifest").String()
 		mnf, err := base64.StdEncoding.DecodeString(mnfB64)
 		if err != nil {
 			return err

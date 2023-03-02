@@ -12,7 +12,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/edgelesssys/marblerun/cli/internal/constants"
+	"github.com/edgelesssys/marblerun/cli/internal/helm"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -51,7 +51,7 @@ func CoordinatorVersion(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	coordinatorDeployment, err := kubeClient.AppsV1().Deployments(constants.HelmNamespace).Get(ctx, constants.HelmCoordinatorDeployment, metav1.GetOptions{})
+	coordinatorDeployment, err := kubeClient.AppsV1().Deployments(helm.Namespace).Get(ctx, helm.CoordinatorDeployment, metav1.GetOptions{})
 	if err != nil {
 		return "", fmt.Errorf("retrieving deployment information: %w", err)
 	}

@@ -10,24 +10,23 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
-	"os"
 
+	"github.com/edgelesssys/marblerun/cli/internal/file"
 	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/spf13/cobra"
 )
 
 func newCertificateChain() *cobra.Command {
-	var certFilename string
-
 	cmd := &cobra.Command{
-		Use:   "chain <IP:PORT>",
-		Short: "Returns the certificate chain of the MarbleRun Coordinator",
-		Long:  `Returns the certificate chain of the MarbleRun Coordinator`,
-		Args:  cobra.ExactArgs(1),
-		RunE:  runCertificateChain,
+		Use:     "chain <IP:PORT>",
+		Short:   "Returns the certificate chain of the MarbleRun Coordinator",
+		Long:    `Returns the certificate chain of the MarbleRun Coordinator`,
+		Args:    cobra.ExactArgs(1),
+		RunE:    runCertificateChain,
+		PreRunE: outputFlagNotEmpty,
 	}
 
-	cmd.Flags().StringVarP(&certFilename, "output", "o", "marblerunChainCA.crt", "File to save the certificate to")
+	cmd.Flags().StringP("output", "o", "marblerunChainCA.crt", "File to save the certificate to")
 
 	return cmd
 }
@@ -46,11 +45,11 @@ func runCertificateChain(cmd *cobra.Command, args []string) error {
 		cmd.Context(), cmd.OutOrStdout(), hostname,
 		flags.EraConfig, flags.Insecure, flags.AcceptedTCBStatuses,
 	)
-	return cliCertificateChain(cmd.OutOrStdout(), output, certs)
+	return cliCertificateChain(cmd.OutOrStdout(), file.New(output), certs)
 }
 
 // cliCertificateChain gets the certificate chain of the MarbleRun Coordinator.
-func cliCertificateChain(out io.Writer, outputFile string, certs []*pem.Block) error {
+func cliCertificateChain(out io.Writer, file fileWriter, certs []*pem.Block) error {
 	if len(certs) == 1 {
 		fmt.Fprintln(out, "WARNING: Only received root certificate from host.")
 	}
@@ -60,10 +59,10 @@ func cliCertificateChain(out io.Writer, outputFile string, certs []*pem.Block) e
 		chain = append(chain, pem.EncodeToMemory(cert)...)
 	}
 
-	if err := os.WriteFile(outputFile, chain, 0o644); err != nil {
+	if err := file.Write(chain); err != nil {
 		return err
 	}
-	fmt.Fprintln(out, "Certificate chain written to", outputFile)
+	fmt.Fprintf(out, "Certificate chain written to %s\n", file.Name())
 
 	return nil
 }

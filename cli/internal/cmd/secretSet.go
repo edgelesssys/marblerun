@@ -77,7 +77,7 @@ func runSecretSet(cmd *cobra.Command, args []string) error {
 
 // cliSecretSet sets one or more secrets using a secrets manifest.
 func cliSecretSet(cmd *cobra.Command, newSecrets []byte, client poster) error {
-	_, err := client.Post(cmd.Context(), "secrets", "application/json", bytes.NewReader(newSecrets))
+	_, err := client.Post(cmd.Context(), rest.SecretEndpoint, rest.ContentJSON, bytes.NewReader(newSecrets))
 	if err != nil {
 		return fmt.Errorf("unable to set secret: %w", err)
 	}

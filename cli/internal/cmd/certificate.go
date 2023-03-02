@@ -7,6 +7,8 @@
 package cmd
 
 import (
+	"errors"
+
 	"github.com/spf13/cobra"
 )
 
@@ -22,4 +24,15 @@ func NewCertificateCmd() *cobra.Command {
 	cmd.AddCommand(newCertificateChain())
 
 	return cmd
+}
+
+func outputFlagNotEmpty(cmd *cobra.Command, args []string) error {
+	output, err := cmd.Flags().GetString("output")
+	if err != nil {
+		return err
+	}
+	if output == "" {
+		return errors.New("output flag must not be empty")
+	}
+	return nil
 }

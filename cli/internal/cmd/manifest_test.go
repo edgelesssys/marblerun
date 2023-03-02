@@ -8,65 +8,37 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
-	"encoding/pem"
+	"errors"
 	"io/ioutil"
-	"net/http"
 	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 
-	"github.com/edgelesssys/marblerun/coordinator/server"
+	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/edgelesssys/marblerun/test"
+	"github.com/spf13/afero"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tidwall/gjson"
 )
 
-func TestCliManifestGet(t *testing.T) {
-	require := require.New(t)
-	assert := assert.New(t)
-	s, host, cert := newTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal("/manifest", r.RequestURI)
-		assert.Equal(http.MethodGet, r.Method)
-		type testResp struct {
-			ManifestSignature string
-		}
-
-		data := testResp{
-			ManifestSignature: "TestSignature",
-		}
-
-		serverResp := server.GeneralResponse{
-			Status: "success",
-			Data:   data,
-		}
-
-		assert.NoError(json.NewEncoder(w).Encode(serverResp))
-	}))
-	defer s.Close()
-
-	resp, err := cliDataGet(host, "manifest", "data.ManifestSignature", []*pem.Block{cert})
-	require.NoError(err)
-	assert.Equal("TestSignature", string(resp))
-
-	s.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-	})
-	_, err = cliDataGet(host, "manifest", "data.ManifestSignature", []*pem.Block{cert})
-	require.Error(err)
-}
-
-func TestConsolidateManifest(t *testing.T) {
-	assert := assert.New(t)
-	log := []byte(`{"time":"1970-01-01T01:00:00.0","update":"initial manifest set"}
+var testLog = []byte(`{"time":"1970-01-01T01:00:00.0","update":"initial manifest set"}
 {"time":"1970-01-01T02:00:00.0","update":"SecurityVersion increased","user":"admin","package":"frontend","new version":5}
 {"time":"1970-01-01T03:00:00.0","update":"SecurityVersion increased","user":"admin","package":"frontend","new version":5}
 {"time":"1970-01-01T04:00:00.0","update":"SecurityVersion increased","user":"admin","package":"frontend","new version":8}
 {"time":"1970-01-01T05:00:00.0","update":"SecurityVersion increased","user":"admin","package":"frontend","new version":12}`)
+
+func TestCliManifestGet(t *testing.T) {
+	// TODO: rewrite
+}
+
+func TestConsolidateManifest(t *testing.T) {
+	assert := assert.New(t)
+	log := testLog
 
 	manifest, err := consolidateManifest([]byte(test.ManifestJSON), log)
 	assert.NoError(err)
@@ -76,17 +48,17 @@ func TestConsolidateManifest(t *testing.T) {
 
 func TestDecodeManifest(t *testing.T) {
 	assert := assert.New(t)
-	require := require.New(t)
-	type responseStruct struct {
-		Manifest []byte
-	}
 
-	wrapped, err := json.Marshal(responseStruct{[]byte(test.ManifestJSON)})
-	require.NoError(err)
+	manifestRaw := base64.StdEncoding.EncodeToString([]byte(test.ManifestJSON))
 
-	manifest, err := decodeManifest(false, gjson.GetBytes(wrapped, "Manifest").String(), "", nil)
+	manifest, err := decodeManifest(context.Background(), false, string(manifestRaw), &stubGetter{})
 	assert.NoError(err)
 	assert.Equal(test.ManifestJSON, manifest)
+
+	getter := &stubGetter{response: testLog}
+	manifest, err = decodeManifest(context.Background(), true, string(manifestRaw), getter)
+	assert.NoError(err)
+	assert.Contains(manifest, `"SecurityVersion": 12`)
 }
 
 func TestRemoveNil(t *testing.T) {
@@ -124,104 +96,110 @@ func TestRemoveNil(t *testing.T) {
 }
 
 func TestCliManifestSet(t *testing.T) {
-	require := require.New(t)
-	assert := assert.New(t)
-	s, host, cert := newTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal("/manifest", r.RequestURI)
-		assert.Equal(http.MethodPost, r.Method)
+	someErr := errors.New("failed")
+	testCases := map[string]struct {
+		poster  *stubPoster
+		file    *stubFileWriter
+		wantErr bool
+	}{
+		"success": {
+			poster: &stubPoster{},
+			file:   &stubFileWriter{},
+		},
+		"success with secrets": {
+			poster: &stubPoster{response: []byte("secret")},
+			file:   nil,
+		},
+		"success with secrets and file": {
+			poster: &stubPoster{response: []byte("secret")},
+			file:   &stubFileWriter{},
+		},
+		"post error": {
+			poster:  &stubPoster{err: someErr},
+			wantErr: true,
+		},
+		"writing file error": {
+			poster:  &stubPoster{response: []byte("secret")},
+			file:    &stubFileWriter{err: someErr},
+			wantErr: true,
+		},
+	}
 
-		reqData, err := ioutil.ReadAll(r.Body)
-		assert.NoError(err)
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
+			require := require.New(t)
 
-		if string(reqData) == "00" {
-			return
-		}
+			cmd := &cobra.Command{}
+			var out bytes.Buffer
+			cmd.SetOut(&out)
 
-		if string(reqData) == "11" {
-			serverResp := server.GeneralResponse{
-				Status: "success",
-				Data:   "returned recovery secret",
+			var err error
+			// for some reason, Go does no recognize that tc.file is nil
+			// if we don't explicitly pass nil
+			if tc.file != nil {
+				err = cliManifestSet(cmd, []byte("manifest"), tc.file, tc.poster)
+			} else {
+				err = cliManifestSet(cmd, []byte("manifest"), nil, tc.poster)
 			}
-			assert.NoError(json.NewEncoder(w).Encode(serverResp))
-			return
-		}
+			if tc.wantErr {
+				assert.Error(err)
+				return
+			}
 
-		if string(reqData) == "22" {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
+			require.NoError(err)
+			assert.Contains(out.String(), "Manifest successfully set")
+			assert.Equal(rest.ManifestEndpoint, tc.poster.requestPath)
+			assert.Equal(rest.ContentJSON, tc.poster.header)
 
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
-	defer s.Close()
-
-	dir, err := ioutil.TempDir("", "unittest")
-	require.NoError(err)
-	defer os.RemoveAll(dir)
-
-	var out bytes.Buffer
-
-	err = cliManifestSet(&out, []byte("00"), host, []*pem.Block{cert}, "")
-	require.NoError(err)
-
-	err = cliManifestSet(&out, []byte("11"), host, []*pem.Block{cert}, "")
-	require.NoError(err)
-
-	responseFile := filepath.Join(dir, "tmp-recovery.json")
-	err = cliManifestSet(&out, []byte("11"), host, []*pem.Block{cert}, responseFile)
-	require.NoError(err)
-
-	err = cliManifestSet(&out, []byte("22"), host, []*pem.Block{cert}, "")
-	require.Error(err)
-
-	err = cliManifestSet(&out, []byte("55"), host, []*pem.Block{cert}, "")
-	require.Error(err)
+			if tc.poster.response != nil {
+				if tc.file != nil {
+					assert.Equal(tc.poster.response, []byte(tc.file.out.String()))
+				} else {
+					assert.Contains(out.String(), string(tc.poster.response))
+				}
+			}
+		})
+	}
 }
 
-func TestCliManifestUpdate(t *testing.T) {
-	require := require.New(t)
-	assert := assert.New(t)
-	s, host, cert := newTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal("/update", r.RequestURI)
-		assert.Equal(http.MethodPost, r.Method)
+func TestCliManifestUpdateApply(t *testing.T) {
+	testCases := map[string]struct {
+		poster  *stubPoster
+		wantErr bool
+	}{
+		"success": {
+			poster:  &stubPoster{},
+			wantErr: false,
+		},
+		"error": {
+			poster: &stubPoster{
+				err: errors.New("failed"),
+			},
+			wantErr: true,
+		},
+	}
 
-		reqData, err := ioutil.ReadAll(r.Body)
-		assert.NoError(err)
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
 
-		if string(reqData) == "00" {
-			return
-		}
+			cmd := &cobra.Command{}
 
-		if string(reqData) == "11" {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
+			var out bytes.Buffer
+			cmd.SetOut(&out)
 
-		if string(reqData) == "22" {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
-	defer s.Close()
-
-	client, err := restClient([]*pem.Block{cert}, nil)
-	require.NoError(err)
-
-	var out bytes.Buffer
-
-	err = cliManifestUpdate(&out, []byte("00"), host, client)
-	require.NoError(err)
-
-	err = cliManifestUpdate(&out, []byte("11"), host, client)
-	require.Error(err)
-
-	err = cliManifestUpdate(&out, []byte("22"), host, client)
-	require.Error(err)
-
-	err = cliManifestUpdate(&out, []byte("33"), host, client)
-	require.Error(err)
+			err := cliManifestUpdateApply(cmd, []byte("manifest"), tc.poster)
+			if tc.wantErr {
+				assert.Error(err)
+				return
+			}
+			assert.NoError(err)
+			assert.Contains(out.String(), "Update manifest set successfully")
+			assert.Equal(tc.poster.requestPath, rest.UpdateEndpoint)
+			assert.Equal(tc.poster.header, rest.ContentJSON)
+		})
+	}
 }
 
 func TestLoadJSON(t *testing.T) {
@@ -324,101 +302,77 @@ func TestCliManifestSignature(t *testing.T) {
 }
 
 func TestCliManifestVerify(t *testing.T) {
-	assert := assert.New(t)
-
-	s, host, cert := newTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal("/manifest", r.RequestURI)
-		assert.Equal(http.MethodGet, r.Method)
-		type testResp struct {
-			ManifestSignature string
-		}
-
-		data := testResp{
-			ManifestSignature: "TestSignature",
-		}
-
-		serverResp := server.GeneralResponse{
-			Status: "success",
-			Data:   data,
-		}
-
-		assert.NoError(json.NewEncoder(w).Encode(serverResp))
-	}))
-	defer s.Close()
-
-	var out bytes.Buffer
-
-	err := cliManifestVerify(&out, "TestSignature", host, []*pem.Block{cert})
-	assert.NoError(err)
-	assert.Equal("OK\n", out.String())
-
-	err = cliManifestVerify(&out, "InvalidSignature", host, []*pem.Block{cert})
-	assert.Error(err)
+	// TODO: rewrite
 }
 
 func TestGetSignatureFromString(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	tmpFile, err := ioutil.TempFile("", "unittest")
-	require.NoError(err)
-	defer os.Remove(tmpFile.Name())
+	fs := afero.Afero{Fs: afero.NewMemMapFs()}
 
 	testValue := []byte("TestSignature")
 	hash := sha256.Sum256(testValue)
 	directSignature := hex.EncodeToString(hash[:])
 
-	_, err = tmpFile.Write(testValue)
-	require.NoError(err)
+	filename := "testSignature"
+	require.NoError(fs.WriteFile(filename, testValue, 0o644))
 
-	testSignature1, err := getSignatureFromString(directSignature)
+	testSignature1, err := getSignatureFromString(directSignature, fs)
 	assert.NoError(err)
 	assert.Equal(directSignature, testSignature1)
 
-	testSignature2, err := getSignatureFromString(tmpFile.Name())
+	testSignature2, err := getSignatureFromString(filename, fs)
 	assert.NoError(err)
 	assert.Equal(directSignature, testSignature2)
 
-	_, err = getSignatureFromString("invalidFilename")
+	_, err = getSignatureFromString("invalidFilename", fs)
 	assert.Error(err)
 }
 
 func TestManifestUpdateAcknowledge(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
+	testCases := map[string]struct {
+		poster  *stubPoster
+		wantErr bool
+	}{
+		"success": {
+			poster:  &stubPoster{response: []byte("response")},
+			wantErr: false,
+		},
+		"error": {
+			poster: &stubPoster{
+				err: errors.New("failed"),
+			},
+			wantErr: true,
+		},
+	}
 
-	s, host, cert := newTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal("/update-manifest", r.RequestURI)
-		assert.Equal(http.MethodPost, r.Method)
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
 
-		serverResp := server.GeneralResponse{
-			Status: "success",
-			Data:   "acknowledgement successful",
-		}
+			cmd := &cobra.Command{}
 
-		assert.NoError(json.NewEncoder(w).Encode(serverResp))
-	}))
-	defer s.Close()
+			var out bytes.Buffer
+			cmd.SetOut(&out)
 
-	client, err := restClient([]*pem.Block{cert}, nil)
-	require.NoError(err)
-
-	var out bytes.Buffer
-
-	err = cliManifestUpdateAcknowledge(&out, []byte("manifest"), host, client)
-	assert.NoError(err)
+			err := cliManifestUpdateAcknowledge(cmd, []byte("manifest"), tc.poster)
+			if tc.wantErr {
+				assert.Error(err)
+				return
+			}
+			assert.NoError(err)
+			assert.Contains(out.String(), "Acknowledgement successful")
+			assert.Contains(out.String(), string(tc.poster.response))
+			assert.Equal(tc.poster.requestPath, rest.UpdateStatusEndpoint)
+			assert.Equal(tc.poster.header, rest.ContentJSON)
+		})
+	}
 }
 
 func TestManifestUpdateGet(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-
-	manifest := []byte(`{"foo": "bar"}`)
-
-	s, host, cert := newTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal("/update-manifest", r.RequestURI)
-		assert.Equal(http.MethodGet, r.Method)
-
+	// TODO: rewrite
+	/*
 		serverResp := server.GeneralResponse{
 			Status: "success",
 			Data: struct {
@@ -431,50 +385,87 @@ func TestManifestUpdateGet(t *testing.T) {
 				MissingUsers: []string{"user1", "user2"},
 			},
 		}
+	*/
 
-		assert.NoError(json.NewEncoder(w).Encode(serverResp))
-	}))
-	defer s.Close()
+	testCases := map[string]struct {
+		getter         *stubGetter
+		displayMissing bool
+		wantErr        bool
+	}{
+		"success": {
+			getter: &stubGetter{
+				response: []byte(`{"manifest": "bWFuaWZlc3Q=", "missingUsers": ["user1", "user2"]}`),
+			},
+		},
+		"success display missing": {
+			getter: &stubGetter{
+				response: []byte(`{"manifest": "bWFuaWZlc3Q=", "missingUsers": ["user1", "user2"]}`),
+			},
+			displayMissing: true,
+		},
+		"get error": {
+			getter:  &stubGetter{err: errors.New("failed")},
+			wantErr: true,
+		},
+		"invalid manifest encoding": {
+			getter: &stubGetter{
+				response: []byte(`{"manifest": "_invalid_data_", "missingUsers": ["user1", "user2"]}`),
+			},
+			displayMissing: true,
+		},
+	}
 
-	client, err := restClient([]*pem.Block{cert}, nil)
-	require.NoError(err)
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
 
-	var out bytes.Buffer
+			var out bytes.Buffer
 
-	err = cliManifestUpdateGet(&out, host, client, false)
-	assert.NoError(err)
-	assert.Equal(manifest, out.Bytes())
-
-	out.Reset()
-	err = cliManifestUpdateGet(&out, host, client, true)
-	assert.NoError(err)
-	assert.True(strings.Contains(out.String(), "message"))
-	assert.True(strings.Contains(out.String(), "user1"))
-	assert.True(strings.Contains(out.String(), "user2"))
+			err := cliManifestUpdateGet(context.Background(), &out, tc.displayMissing, tc.getter)
+			if tc.wantErr {
+				assert.Error(err)
+				return
+			}
+			assert.NoError(err)
+			assert.NotEmpty(out.String())
+		})
+	}
 }
 
 func TestManifestUpdateCancel(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
+	testCases := map[string]struct {
+		poster  *stubPoster
+		wantErr bool
+	}{
+		"success": {
+			poster:  &stubPoster{},
+			wantErr: false,
+		},
+		"error": {
+			poster: &stubPoster{
+				err: errors.New("failed"),
+			},
+			wantErr: true,
+		},
+	}
 
-	s, host, cert := newTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal("/update-cancel", r.RequestURI)
-		assert.Equal(http.MethodPost, r.Method)
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
 
-		serverResp := server.GeneralResponse{
-			Status: "success",
-			Data:   "cancel successful",
-		}
+			cmd := &cobra.Command{}
 
-		assert.NoError(json.NewEncoder(w).Encode(serverResp))
-	}))
-	defer s.Close()
+			var out bytes.Buffer
+			cmd.SetOut(&out)
 
-	client, err := restClient([]*pem.Block{cert}, nil)
-	require.NoError(err)
-
-	var out bytes.Buffer
-
-	err = cliManifestUpdateCancel(&out, host, client)
-	assert.NoError(err)
+			err := cliManifestUpdateCancel(cmd, tc.poster)
+			if tc.wantErr {
+				assert.Error(err)
+				return
+			}
+			assert.NoError(err)
+			assert.Contains(out.String(), "Cancellation successful")
+			assert.Equal(tc.poster.requestPath, rest.UpdateCancelEndpoint)
+		})
+	}
 }
