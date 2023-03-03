@@ -8,7 +8,6 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/edgelesssys/marblerun/cli/internal/helm"
 	"github.com/edgelesssys/marblerun/cli/internal/kube"
@@ -56,26 +55,26 @@ func cliUninstall(cmd *cobra.Command, helmClient *helm.Client, kubeClient kubern
 
 	// If we get a "not found" error the resource was already removed / never created
 	// and we can continue on without a problem
-	if err := cleanupSecrets(kubeClient); err != nil && !errors.IsNotFound(err) {
+	if err := cleanupSecrets(cmd.Context(), kubeClient); err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 
-	if err := cleanupCSR(kubeClient); err != nil && !errors.IsNotFound(err) {
+	if err := cleanupCSR(cmd.Context(), kubeClient); err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 
-	fmt.Println("MarbleRun successfully removed from your cluster")
+	cmd.Println("MarbleRun successfully removed from your cluster")
 
 	return nil
 }
 
 // cleanupSecrets removes secretes set for the Admission Controller.
-func cleanupSecrets(kubeClient kubernetes.Interface) error {
-	return kubeClient.CoreV1().Secrets(helm.Namespace).Delete(context.TODO(), "marble-injector-webhook-certs", metav1.DeleteOptions{})
+func cleanupSecrets(ctx context.Context, kubeClient kubernetes.Interface) error {
+	return kubeClient.CoreV1().Secrets(helm.Namespace).Delete(ctx, "marble-injector-webhook-certs", metav1.DeleteOptions{})
 }
 
 // cleanupCSR removes a potentially leftover CSR from the Admission Controller.
-func cleanupCSR(kubeClient kubernetes.Interface) error {
+func cleanupCSR(ctx context.Context, kubeClient kubernetes.Interface) error {
 	// in case of kubernetes version < 1.19 no CSR was created by the install command
 	isLegacy, err := checkLegacyKubernetesVersion(kubeClient)
 	if err != nil {
@@ -85,5 +84,5 @@ func cleanupCSR(kubeClient kubernetes.Interface) error {
 		return nil
 	}
 
-	return kubeClient.CertificatesV1().CertificateSigningRequests().Delete(context.TODO(), webhookName, metav1.DeleteOptions{})
+	return kubeClient.CertificatesV1().CertificateSigningRequests().Delete(ctx, webhookName, metav1.DeleteOptions{})
 }

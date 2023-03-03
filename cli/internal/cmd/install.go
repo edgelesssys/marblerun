@@ -12,6 +12,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"io"
 
 	"github.com/edgelesssys/marblerun/cli/internal/helm"
 	"github.com/edgelesssys/marblerun/cli/internal/kube"
@@ -80,7 +81,7 @@ func cliInstall(cmd *cobra.Command, helmClient *helm.Client, kubeClient kubernet
 	}
 
 	if flags.resourceKey == "" {
-		flags.resourceKey, err = getSGXResourceKey(kubeClient)
+		flags.resourceKey, err = getSGXResourceKey(cmd.Context(), kubeClient)
 		if err != nil {
 			return fmt.Errorf("trying to determine SGX resource key: %w", err)
 		}
@@ -88,9 +89,9 @@ func cliInstall(cmd *cobra.Command, helmClient *helm.Client, kubeClient kubernet
 
 	var webhookSettings []string
 	if !flags.disableInjection {
-		webhookSettings, err = installWebhook(kubeClient)
+		webhookSettings, err = installWebhook(cmd, kubeClient)
 		if err != nil {
-			return errorAndCleanup(fmt.Errorf("installing webhook certs: %w", err), kubeClient)
+			return errorAndCleanup(cmd.Context(), fmt.Errorf("installing webhook certs: %w", err), kubeClient)
 		}
 	}
 
@@ -110,34 +111,34 @@ func cliInstall(cmd *cobra.Command, helmClient *helm.Client, kubeClient kubernet
 		chart.Values,
 	)
 	if err != nil {
-		return errorAndCleanup(fmt.Errorf("generating helm values: %w", err), kubeClient)
+		return errorAndCleanup(cmd.Context(), fmt.Errorf("generating helm values: %w", err), kubeClient)
 	}
 
 	if err := helmClient.Install(cmd.Context(), flags.wait, chart, values); err != nil {
-		return errorAndCleanup(fmt.Errorf("installing MarbleRun: %w", err), kubeClient)
+		return errorAndCleanup(cmd.Context(), fmt.Errorf("installing MarbleRun: %w", err), kubeClient)
 	}
 
-	fmt.Println("MarbleRun installed successfully")
+	cmd.Println("MarbleRun installed successfully")
 	return nil
 }
 
 // installWebhook enables a mutating admission webhook to allow automatic injection of values into pods.
-func installWebhook(kubeClient kubernetes.Interface) ([]string, error) {
+func installWebhook(cmd *cobra.Command, kubeClient kubernetes.Interface) ([]string, error) {
 	// verify 'marblerun' namespace exists, if not create it
-	if err := verifyNamespace(helm.Namespace, kubeClient); err != nil {
+	if err := verifyNamespace(cmd.Context(), helm.Namespace, kubeClient); err != nil {
 		return nil, err
 	}
 
-	fmt.Printf("Setting up MarbleRun Webhook")
-	certificateHandler, err := getCertificateHandler(kubeClient)
+	cmd.Print("Setting up MarbleRun Webhook")
+	certificateHandler, err := getCertificateHandler(cmd.OutOrStdout(), kubeClient)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf(".")
+	cmd.Print(".")
 	if err := certificateHandler.signRequest(); err != nil {
 		return nil, err
 	}
-	fmt.Printf(".")
+	cmd.Print(".")
 	injectorValues, err := certificateHandler.setCaBundle()
 	if err != nil {
 		return nil, err
@@ -149,17 +150,17 @@ func installWebhook(kubeClient kubernetes.Interface) ([]string, error) {
 	if len(cert) <= 0 {
 		return nil, fmt.Errorf("certificate was not signed by the CA")
 	}
-	fmt.Printf(".")
+	cmd.Print(".")
 
-	if err := createSecret(certificateHandler.getKey(), cert, kubeClient); err != nil {
+	if err := createSecret(cmd.Context(), certificateHandler.getKey(), cert, kubeClient); err != nil {
 		return nil, err
 	}
-	fmt.Printf(" Done\n")
+	cmd.Printf(" Done\n")
 	return injectorValues, nil
 }
 
 // createSecret creates a secret containing the signed certificate and private key for the webhook server.
-func createSecret(privKey *rsa.PrivateKey, crt []byte, kubeClient kubernetes.Interface) error {
+func createSecret(ctx context.Context, privKey *rsa.PrivateKey, crt []byte, kubeClient kubernetes.Interface) error {
 	rsaPEM := pem.EncodeToMemory(
 		&pem.Block{
 			Type:  "RSA PRIVATE KEY",
@@ -178,37 +179,34 @@ func createSecret(privKey *rsa.PrivateKey, crt []byte, kubeClient kubernetes.Int
 		},
 	}
 
-	_, err := kubeClient.CoreV1().Secrets(helm.Namespace).Create(context.TODO(), newSecret, metav1.CreateOptions{})
+	_, err := kubeClient.CoreV1().Secrets(helm.Namespace).Create(ctx, newSecret, metav1.CreateOptions{})
 	return err
 }
 
-func getCertificateHandler(kubeClient kubernetes.Interface) (certificateInterface, error) {
+func getCertificateHandler(out io.Writer, kubeClient kubernetes.Interface) (certificateInterface, error) {
 	isLegacy, err := checkLegacyKubernetesVersion(kubeClient)
 	if err != nil {
 		return nil, err
 	}
 	if isLegacy {
-		fmt.Printf("\nKubernetes version lower than 1.19 detected, using self-signed certificates as CABundle")
+		fmt.Fprintf(out, "\nKubernetes version lower than 1.19 detected, using self-signed certificates as CABundle")
 		return newCertificateLegacy()
 	}
 	return newCertificateV1(kubeClient)
 }
 
-func verifyNamespace(namespace string, kubeClient kubernetes.Interface) error {
-	_, err := kubeClient.CoreV1().Namespaces().Get(context.TODO(), namespace, metav1.GetOptions{})
+func verifyNamespace(ctx context.Context, namespace string, kubeClient kubernetes.Interface) error {
+	_, err := kubeClient.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
 	if err != nil {
 		// if the namespace does not exist we create it
 
 		if errors.IsNotFound(err) {
-			fmt.Println("Namespace does not exist, creating it now")
-		}
-		if err.Error() == fmt.Sprintf("namespaces \"%s\" not found", namespace) {
 			marbleNamespace := &corev1.Namespace{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: namespace,
 				},
 			}
-			if _, err := kubeClient.CoreV1().Namespaces().Create(context.TODO(), marbleNamespace, metav1.CreateOptions{}); err != nil {
+			if _, err := kubeClient.CoreV1().Namespaces().Create(ctx, marbleNamespace, metav1.CreateOptions{}); err != nil {
 				return err
 			}
 		} else {
@@ -219,8 +217,8 @@ func verifyNamespace(namespace string, kubeClient kubernetes.Interface) error {
 }
 
 // getSGXResourceKey checks what device plugin is providing SGX on the cluster and returns the corresponding resource key.
-func getSGXResourceKey(kubeClient kubernetes.Interface) (string, error) {
-	nodes, err := kubeClient.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+func getSGXResourceKey(ctx context.Context, kubeClient kubernetes.Interface) (string, error) {
+	nodes, err := kubeClient.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -243,10 +241,10 @@ func getSGXResourceKey(kubeClient kubernetes.Interface) (string, error) {
 
 // errorAndCleanup returns the given error and deletes resources which might have been created previously.
 // This prevents secrets and CSRs to stay on the cluster after a failed installation attempt.
-func errorAndCleanup(err error, kubeClient kubernetes.Interface) error {
+func errorAndCleanup(ctx context.Context, err error, kubeClient kubernetes.Interface) error {
 	// We dont care about any additional errors here
-	cleanupCSR(kubeClient)
-	cleanupSecrets(kubeClient)
+	cleanupCSR(ctx, kubeClient)
+	cleanupSecrets(ctx, kubeClient)
 	return err
 }
 

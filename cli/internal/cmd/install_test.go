@@ -7,6 +7,7 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/cli/internal/helm"
 	"github.com/edgelesssys/marblerun/util"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	certv1 "k8s.io/api/certificates/v1"
@@ -31,6 +33,7 @@ import (
 func TestCreateSecret(t *testing.T) {
 	require := require.New(t)
 	testClient := fake.NewSimpleClientset()
+	ctx := context.Background()
 
 	testKey, err := rsa.GenerateKey(rand.Reader, 1024)
 	require.NoError(err)
@@ -41,16 +44,16 @@ func TestCreateSecret(t *testing.T) {
 			Name: helm.Namespace,
 		},
 	}
-	_, err = testClient.CoreV1().Namespaces().Create(context.TODO(), newNamespace1, metav1.CreateOptions{})
+	_, err = testClient.CoreV1().Namespaces().Create(ctx, newNamespace1, metav1.CreateOptions{})
 	require.NoError(err)
 
-	err = createSecret(testKey, crt, testClient)
+	err = createSecret(ctx, testKey, crt, testClient)
 	require.NoError(err)
 	_, err = testClient.CoreV1().Secrets(helm.Namespace).Get(context.TODO(), "marble-injector-webhook-certs", metav1.GetOptions{})
 	require.NoError(err)
 
 	// we should get an error since the secret was already created in the previous step
-	err = createSecret(testKey, crt, testClient)
+	err = createSecret(ctx, testKey, crt, testClient)
 	require.Error(err)
 }
 
@@ -59,50 +62,58 @@ func TestGetCertificateHandler(t *testing.T) {
 	require := require.New(t)
 	testClient := fake.NewSimpleClientset()
 
+	var out bytes.Buffer
+
 	testClient.Discovery().(*fakediscovery.FakeDiscovery).FakedServerVersion = &version.Info{
 		Major:      "1",
 		Minor:      "19",
 		GitVersion: "v1.19.4",
 	}
-	testHandler, err := getCertificateHandler(testClient)
+	testHandler, err := getCertificateHandler(&out, testClient)
 	require.NoError(err)
 	assert.Equal("*cmd.certificateV1", reflect.TypeOf(testHandler).String())
+	assert.Empty(out.String())
+	out.Reset()
 
 	testClient.Discovery().(*fakediscovery.FakeDiscovery).FakedServerVersion = &version.Info{
 		Major:      "1",
 		Minor:      "18",
 		GitVersion: "v1.18.4",
 	}
-	testHandler, err = getCertificateHandler(testClient)
+	testHandler, err = getCertificateHandler(&out, testClient)
 	require.NoError(err)
 	assert.Equal("*cmd.certificateLegacy", reflect.TypeOf(testHandler).String())
+	assert.NotEmpty(out.String())
+	out.Reset()
 
 	testClient.Discovery().(*fakediscovery.FakeDiscovery).FakedServerVersion = &version.Info{
 		Major:      "1",
 		Minor:      "24+",
 		GitVersion: "v1.24.3-2+63243a96d1c393",
 	}
-	testHandler, err = getCertificateHandler(testClient)
+	testHandler, err = getCertificateHandler(&out, testClient)
 	require.NoError(err)
 	assert.Equal("*cmd.certificateV1", reflect.TypeOf(testHandler).String())
+	assert.Empty(out.String())
 }
 
 func TestVerifyNamespace(t *testing.T) {
 	require := require.New(t)
 	testClient := fake.NewSimpleClientset()
+	ctx := context.Background()
 
-	_, err := testClient.CoreV1().Namespaces().Get(context.TODO(), "test-space", metav1.GetOptions{})
+	_, err := testClient.CoreV1().Namespaces().Get(ctx, "test-space", metav1.GetOptions{})
 	require.Error(err)
 
 	// namespace does not exist, it should be created here
-	err = verifyNamespace("test-space", testClient)
+	err = verifyNamespace(ctx, "test-space", testClient)
 	require.NoError(err)
 
 	_, err = testClient.CoreV1().Namespaces().Get(context.TODO(), "test-space", metav1.GetOptions{})
 	require.NoError(err)
 
 	// namespace exists, should return nil
-	err = verifyNamespace("test-space", testClient)
+	err = verifyNamespace(ctx, "test-space", testClient)
 	require.NoError(err)
 }
 
@@ -116,7 +127,11 @@ func TestInstallWebhook(t *testing.T) {
 		GitVersion: "v1.18.4",
 	}
 
-	testValues, err := installWebhook(testClient)
+	cmd := &cobra.Command{}
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+
+	testValues, err := installWebhook(cmd, testClient)
 	assert.NoError(err)
 	assert.Equal("marbleInjector.start=true", testValues[0], "failed to set start to true")
 	assert.Contains(testValues[1], "LS0t", "failed to set CABundle")
@@ -127,6 +142,7 @@ func TestGetSGXResourceKey(t *testing.T) {
 	require := require.New(t)
 
 	testClient := fake.NewSimpleClientset()
+	ctx := context.Background()
 
 	// Test Intel Device Plugin
 	intelSGXNode := &corev1.Node{
@@ -141,10 +157,10 @@ func TestGetSGXResourceKey(t *testing.T) {
 			},
 		},
 	}
-	_, err := testClient.CoreV1().Nodes().Create(context.TODO(), intelSGXNode, metav1.CreateOptions{})
+	_, err := testClient.CoreV1().Nodes().Create(ctx, intelSGXNode, metav1.CreateOptions{})
 	require.NoError(err)
 
-	resourceKey, err := getSGXResourceKey(testClient)
+	resourceKey, err := getSGXResourceKey(ctx, testClient)
 	assert.NoError(err)
 	assert.Equal(util.IntelEpc.String(), resourceKey)
 }
@@ -159,9 +175,10 @@ func TestErrorAndCleanup(t *testing.T) {
 		Minor:      "19",
 		GitVersion: "v1.19.4",
 	}
+	ctx := context.Background()
 
 	testError := errors.New("test")
-	err := errorAndCleanup(testError, testClient)
+	err := errorAndCleanup(ctx, testError, testClient)
 	assert.Equal(testError, err)
 
 	// Create and test for CSR
@@ -184,7 +201,7 @@ func TestErrorAndCleanup(t *testing.T) {
 	_, err = testClient.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), webhookName, metav1.GetOptions{})
 	require.NoError(err)
 
-	err = errorAndCleanup(testError, testClient)
+	err = errorAndCleanup(ctx, testError, testClient)
 	assert.Equal(testError, err)
 
 	_, err = testClient.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), webhookName, metav1.GetOptions{})
