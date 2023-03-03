@@ -9,13 +9,10 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/edgelesssys/marblerun/cli/internal/helm"
 	"github.com/edgelesssys/marblerun/cli/internal/kube"
 	"github.com/spf13/cobra"
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/cli"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -30,52 +27,46 @@ func NewUninstallCmd() *cobra.Command {
 		RunE:  runUninstall,
 	}
 
+	cmd.Flags().Bool("wait", false, "Wait for the uninstallation to complete before returning")
+
 	return cmd
 }
 
 func runUninstall(cmd *cobra.Command, args []string) error {
-	settings := cli.New()
 	kubeClient, err := kube.NewClient()
 	if err != nil {
 		return err
 	}
-	return cliUninstall(settings, kubeClient)
+	helmClient, err := helm.New()
+	if err != nil {
+		return err
+	}
+	return cliUninstall(cmd, helmClient, kubeClient)
 }
 
 // cliUninstall uninstalls MarbleRun.
-func cliUninstall(settings *cli.EnvSettings, kubeClient kubernetes.Interface) error {
-	if err := removeHelmRelease(settings); err != nil {
+func cliUninstall(cmd *cobra.Command, helmClient *helm.Client, kubeClient kubernetes.Interface) error {
+	wait, err := cmd.Flags().GetBool("wait")
+	if err != nil {
+		return err
+	}
+	if err := helmClient.Uninstall(wait); err != nil {
 		return err
 	}
 
 	// If we get a "not found" error the resource was already removed / never created
 	// and we can continue on without a problem
-	err := cleanupSecrets(kubeClient)
-	if err != nil && !errors.IsNotFound(err) {
+	if err := cleanupSecrets(kubeClient); err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 
-	err = cleanupCSR(kubeClient)
-	if err != nil && !errors.IsNotFound(err) {
+	if err := cleanupCSR(kubeClient); err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 
 	fmt.Println("MarbleRun successfully removed from your cluster")
 
 	return nil
-}
-
-// removeHelmRelease removes kubernetes resources installed using helm.
-func removeHelmRelease(settings *cli.EnvSettings) error {
-	actionConfig := new(action.Configuration)
-	if err := actionConfig.Init(settings.RESTClientGetter(), helm.Namespace, os.Getenv("HELM_DRIVER"), debug); err != nil {
-		return err
-	}
-
-	uninstallAction := action.NewUninstall(actionConfig)
-	_, err := uninstallAction.Run(helm.Release)
-
-	return err
 }
 
 // cleanupSecrets removes secretes set for the Admission Controller.

@@ -8,6 +8,7 @@ package cmd
 
 import (
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 
@@ -41,23 +42,26 @@ func runCertificateIntermediate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
 	certs, err := rest.VerifyCoordinator(
 		cmd.Context(), cmd.OutOrStdout(), hostname,
 		flags.EraConfig, flags.Insecure, flags.AcceptedTCBStatuses,
 	)
+	if err != nil {
+		return fmt.Errorf("retrieving intermediate certificate from Coordinator: %w", err)
+	}
 	return cliCertificateIntermediate(cmd.OutOrStdout(), file.New(output), certs)
 }
 
 // cliCertificateIntermediate gets the intermediate certificate of the MarbleRun Coordinator.
 func cliCertificateIntermediate(out io.Writer, file fileWriter, certs []*pem.Block) error {
-	if len(certs) > 1 {
-		if err := file.Write(pem.EncodeToMemory(certs[0])); err != nil {
-			return err
-		}
-		fmt.Fprintf(out, "Intermediate certificate written to %s\n", file.Name())
-	} else {
-		fmt.Fprintln(out, "WARNING: No intermediate certificate received.")
+	if len(certs) == 0 {
+		return errors.New("no intermediate certificate received from Coordinator")
 	}
+	if err := file.Write(pem.EncodeToMemory(certs[0])); err != nil {
+		return err
+	}
+	fmt.Fprintf(out, "Intermediate certificate written to %s\n", file.Name())
 
 	return nil
 }

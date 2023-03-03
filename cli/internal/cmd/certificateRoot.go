@@ -43,12 +43,13 @@ func runCertificateRoot(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Println(output)
-
 	certs, err := rest.VerifyCoordinator(
 		cmd.Context(), cmd.OutOrStdout(), hostname,
 		flags.EraConfig, flags.Insecure, flags.AcceptedTCBStatuses,
 	)
+	if err != nil {
+		return fmt.Errorf("retrieving root certificate from Coordinator: %w", err)
+	}
 	return cliCertificateRoot(cmd.OutOrStdout(), file.New(output), certs)
 }
 

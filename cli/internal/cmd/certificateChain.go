@@ -8,6 +8,7 @@ package cmd
 
 import (
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 
@@ -41,17 +42,24 @@ func runCertificateChain(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
 	certs, err := rest.VerifyCoordinator(
 		cmd.Context(), cmd.OutOrStdout(), hostname,
 		flags.EraConfig, flags.Insecure, flags.AcceptedTCBStatuses,
 	)
+	if err != nil {
+		return fmt.Errorf("retrieving certificate chain from Coordinator: %w", err)
+	}
 	return cliCertificateChain(cmd.OutOrStdout(), file.New(output), certs)
 }
 
 // cliCertificateChain gets the certificate chain of the MarbleRun Coordinator.
 func cliCertificateChain(out io.Writer, file fileWriter, certs []*pem.Block) error {
+	if len(certs) == 0 {
+		return errors.New("no certificates received from Coordinator")
+	}
 	if len(certs) == 1 {
-		fmt.Fprintln(out, "WARNING: Only received root certificate from host.")
+		fmt.Fprintln(out, "WARNING: Only received root certificate from Coordinator")
 	}
 
 	var chain []byte

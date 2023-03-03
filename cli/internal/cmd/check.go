@@ -35,7 +35,6 @@ func NewCheckCmd() *cobra.Command {
 			}
 			return cliCheck(kubeClient, timeout)
 		},
-		SilenceUsage: true,
 	}
 
 	cmd.Flags().UintVar(&timeout, "timeout", 60, "Time to wait before aborting in seconds")

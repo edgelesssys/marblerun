@@ -111,14 +111,14 @@ type Client struct {
 func NewClient(cmd *cobra.Command, host string) (*Client, error) {
 	flags, err := ParseFlags(cmd)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parsing flags: %w", err)
 	}
 	caCert, err := VerifyCoordinator(
 		cmd.Context(), cmd.OutOrStdout(), host,
 		flags.EraConfig, flags.Insecure, flags.AcceptedTCBStatuses,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to verify Coordinator enclave: %w", err)
 	}
 	return newClient(host, caCert, nil)
 }
@@ -127,14 +127,14 @@ func NewClient(cmd *cobra.Command, host string) (*Client, error) {
 func NewAuthenticatedClient(cmd *cobra.Command, host string) (*Client, error) {
 	flags, err := parseAuthenticatedFlags(cmd)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parsing flags: %w", err)
 	}
 	caCert, err := VerifyCoordinator(
 		cmd.Context(), cmd.OutOrStdout(), host,
 		flags.EraConfig, flags.Insecure, flags.AcceptedTCBStatuses,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to verify Coordinator enclave: %w", err)
 	}
 	return newClient(host, caCert, &flags.ClientCert)
 }

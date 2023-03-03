@@ -67,7 +67,7 @@ func runPackageInfo(cmd *cobra.Command, args []string) error {
 		cmd.PrintErrln("A directory was supplied, but it appears not to be a Gramine or Occlum instance.")
 		cmd.PrintErrln("Please either specify the .sig file (Gramine) or SGX enclave binary (Occlum / SGX SDK) directly, or the root directory of an Gramine or Occlum instance.")
 	}
-	fmt.Println()
+	cmd.Println()
 
 	// Output exact errors for each detection method to user
 	cmd.PrintErrf("Open Enclave detection error: %s\n", errOpenEnclave)
