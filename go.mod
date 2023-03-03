@@ -3,7 +3,6 @@ module github.com/edgelesssys/marblerun
 go 1.17
 
 require (
-	github.com/c2h5oh/datasize v0.0.0-20220606134207-859f65c6625b
 	github.com/edgelesssys/ego v1.0.1
 	github.com/edgelesssys/era v0.3.3
 	github.com/fatih/color v1.13.0
@@ -13,8 +12,6 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
-	github.com/jarcoal/httpmock v1.2.0
-	github.com/pelletier/go-toml v1.9.5
 	github.com/prometheus/client_golang v1.14.0
 	github.com/prometheus/client_model v0.3.0
 	github.com/spacemonkeygo/openssl v0.0.0-20181017203307-c2dcc5cca94a

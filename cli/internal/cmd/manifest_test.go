@@ -14,10 +14,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
-	"os"
 	"testing"
 
+	"github.com/edgelesssys/marblerun/cli/internal/file"
 	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/spf13/afero"
@@ -31,10 +30,6 @@ var testLog = []byte(`{"time":"1970-01-01T01:00:00.0","update":"initial manifest
 {"time":"1970-01-01T03:00:00.0","update":"SecurityVersion increased","user":"admin","package":"frontend","new version":5}
 {"time":"1970-01-01T04:00:00.0","update":"SecurityVersion increased","user":"admin","package":"frontend","new version":8}
 {"time":"1970-01-01T05:00:00.0","update":"SecurityVersion increased","user":"admin","package":"frontend","new version":12}`)
-
-func TestCliManifestGet(t *testing.T) {
-	// TODO: rewrite
-}
 
 func TestConsolidateManifest(t *testing.T) {
 	assert := assert.New(t)
@@ -99,12 +94,12 @@ func TestCliManifestSet(t *testing.T) {
 	someErr := errors.New("failed")
 	testCases := map[string]struct {
 		poster  *stubPoster
-		file    *stubFileWriter
+		file    *file.Handler
 		wantErr bool
 	}{
 		"success": {
 			poster: &stubPoster{},
-			file:   &stubFileWriter{},
+			file:   file.New("unit-test", afero.NewMemMapFs()),
 		},
 		"success with secrets": {
 			poster: &stubPoster{response: []byte("secret")},
@@ -112,7 +107,7 @@ func TestCliManifestSet(t *testing.T) {
 		},
 		"success with secrets and file": {
 			poster: &stubPoster{response: []byte("secret")},
-			file:   &stubFileWriter{},
+			file:   file.New("unit-test", afero.NewMemMapFs()),
 		},
 		"post error": {
 			poster:  &stubPoster{err: someErr},
@@ -120,7 +115,7 @@ func TestCliManifestSet(t *testing.T) {
 		},
 		"writing file error": {
 			poster:  &stubPoster{response: []byte("secret")},
-			file:    &stubFileWriter{err: someErr},
+			file:    file.New("unit-test", afero.NewReadOnlyFs(afero.NewMemMapFs())),
 			wantErr: true,
 		},
 	}
@@ -134,14 +129,8 @@ func TestCliManifestSet(t *testing.T) {
 			var out bytes.Buffer
 			cmd.SetOut(&out)
 
-			var err error
-			// for some reason, Go does no recognize that tc.file is nil
-			// if we don't explicitly pass nil
-			if tc.file != nil {
-				err = cliManifestSet(cmd, []byte("manifest"), tc.file, tc.poster)
-			} else {
-				err = cliManifestSet(cmd, []byte("manifest"), nil, tc.poster)
-			}
+			err := cliManifestSet(cmd, []byte("manifest"), tc.file, tc.poster)
+
 			if tc.wantErr {
 				assert.Error(err)
 				return
@@ -154,7 +143,9 @@ func TestCliManifestSet(t *testing.T) {
 
 			if tc.poster.response != nil {
 				if tc.file != nil {
-					assert.Equal(tc.poster.response, []byte(tc.file.out.String()))
+					manifestResponse, err := tc.file.Read()
+					require.NoError(err)
+					assert.Equal(tc.poster.response, manifestResponse)
 				} else {
 					assert.Contains(out.String(), string(tc.poster.response))
 				}
@@ -202,94 +193,63 @@ func TestCliManifestUpdateApply(t *testing.T) {
 	}
 }
 
-func TestLoadJSON(t *testing.T) {
+func TestLoadManifestFile(t *testing.T) {
 	require := require.New(t)
-	assert := assert.New(t)
 
-	tmpFile, err := ioutil.TempFile("", "unittest")
-	require.NoError(err)
-	defer os.Remove(tmpFile.Name())
-
-	input := []byte(`
-{
-	"Packages": {
-		"APackage": {
-			"SignerID": "1234",
-			"ProductID": 0,
-			"SecurityVersion": 0,
-			"Debug": false
-		}
-	}
-}
-`)
-	assert.True(json.Valid(input))
-	_, err = tmpFile.Write(input)
-	require.NoError(err)
-
-	dataJSON, err := loadManifestFile(tmpFile.Name())
-	require.NoError(err)
-	assert.True(json.Valid(dataJSON))
-}
-
-func TestLoadYAML(t *testing.T) {
-	require := require.New(t)
-	assert := assert.New(t)
-
-	tmpFile, err := ioutil.TempFile("", "unittest")
-	require.NoError(err)
-	defer os.Remove(tmpFile.Name())
-
-	input := []byte(`
-Packages:
-  APackage:
+	testCases := map[string]struct {
+		file    *file.Handler
+		wantErr bool
+	}{
+		"json data": {
+			file: func() *file.Handler {
+				file := file.New("unit-test", afero.NewMemMapFs())
+				require.NoError(file.Write([]byte(`{"Packages": {"APackage": {"SignerID": "1234","ProductID": 0,"SecurityVersion": 0,"Debug": false}}}`)))
+				return file
+			}(),
+		},
+		"yaml data": {
+			file: func() *file.Handler {
+				file := file.New("unit-test", afero.NewMemMapFs())
+				require.NoError(file.Write([]byte(`
+Package:
+  SomePackage:
     Debug: false
     ProductID: 0
     SecurityVersion: 0
     SignerID: "1234"
-`)
-	assert.False(json.Valid(input))
-	_, err = tmpFile.Write(input)
-	require.NoError(err)
+`)))
+				return file
+			}(),
+		},
+		"invalid data": {
+			file: func() *file.Handler {
+				file := file.New("unit-test", afero.NewMemMapFs())
+				require.NoError(file.Write([]byte(`
+				Invalid YAML:
+				This should return an error`)))
+				return file
+			}(),
+			wantErr: true,
+		},
+		"file not found": {
+			file:    file.New("unit-test", afero.NewReadOnlyFs(afero.NewMemMapFs())),
+			wantErr: true,
+		},
+	}
 
-	dataJSON, err := loadManifestFile(tmpFile.Name())
-	require.NoError(err)
-	assert.True(json.Valid(dataJSON))
-}
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
 
-func TestLoadFailsOnInvalid(t *testing.T) {
-	require := require.New(t)
-	assert := assert.New(t)
-
-	tmpFile, err := ioutil.TempFile("", "unittest")
-	require.NoError(err)
-	defer os.Remove(tmpFile.Name())
-
-	input := []byte(`
-Invalid YAML:
-This should return an error
-`)
-	assert.False(json.Valid(input))
-	_, err = tmpFile.Write(input)
-	require.NoError(err)
-
-	dataJSON, err := loadManifestFile(tmpFile.Name())
-	require.Error(err)
-	assert.False(json.Valid(dataJSON))
-
-	input = []byte(`
-{
-	"JSON": "Data",
-	"But its invalid",
-}
-`)
-
-	assert.False(json.Valid(input))
-	_, err = tmpFile.Write(input)
-	require.NoError(err)
-
-	dataJSON, err = loadManifestFile(tmpFile.Name())
-	require.Error(err)
-	assert.False(json.Valid(dataJSON))
+			dataJSON, err := loadManifestFile(tc.file)
+			if tc.wantErr {
+				assert.Error(err)
+				return
+			}
+			assert.NoError(err)
+			assert.True(json.Valid(dataJSON))
+		})
+	}
 }
 
 func TestCliManifestSignature(t *testing.T) {
@@ -302,7 +262,45 @@ func TestCliManifestSignature(t *testing.T) {
 }
 
 func TestCliManifestVerify(t *testing.T) {
-	// TODO: rewrite
+	testCases := map[string]struct {
+		localSignature string
+		getter         *stubGetter
+		wantErr        bool
+	}{
+		"success": {
+			localSignature: "signature",
+			getter:         &stubGetter{response: []byte(`{"ManifestSignature": "signature"}`)},
+		},
+		"get error": {
+			localSignature: "signature",
+			getter:         &stubGetter{err: errors.New("failed")},
+			wantErr:        true,
+		},
+		"invalid signature": {
+			localSignature: "signature",
+			getter:         &stubGetter{response: []byte(`{"ManifestSignature": "invalid"}`)},
+			wantErr:        true,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
+
+			cmd := &cobra.Command{}
+
+			var out bytes.Buffer
+			cmd.SetOut(&out)
+
+			err := cliManifestVerify(cmd, tc.localSignature, tc.getter)
+			if tc.wantErr {
+				assert.Error(err)
+				return
+			}
+			assert.NoError(err)
+			assert.Equal("OK\n", out.String())
+		})
+	}
 }
 
 func TestGetSignatureFromString(t *testing.T) {

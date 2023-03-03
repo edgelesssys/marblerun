@@ -10,11 +10,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 
 	"github.com/edgelesssys/marblerun/cli/internal/file"
 	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/tidwall/gjson"
 )
@@ -52,18 +52,17 @@ func runSecretGet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return cliSecretGet(cmd, secretIDs, file.New(output), client)
+	return cliSecretGet(cmd, secretIDs, file.New(output, afero.NewOsFs()), client)
 }
 
 // cliSecretGet requests one or more secrets from the MarbleRun Coordinator.
-func cliSecretGet(cmd *cobra.Command, secretIDs []string, file fileWriter, client getter) error {
-	secretQuery := url.Values{}
-
-	for _, secret := range secretIDs {
-		secretQuery.Add("s", secret)
+func cliSecretGet(cmd *cobra.Command, secretIDs []string, file *file.Handler, client getter) error {
+	var query []string
+	for _, secretID := range secretIDs {
+		query = append(query, "s", secretID)
 	}
-	path := fmt.Sprintf("%s?%s", rest.SecretEndpoint, secretQuery.Encode())
-	resp, err := client.Get(cmd.Context(), path, http.NoBody)
+
+	resp, err := client.Get(cmd.Context(), rest.SecretEndpoint, http.NoBody, query...)
 	if err != nil {
 		return fmt.Errorf("unable to retrieve secret: %w", err)
 	}

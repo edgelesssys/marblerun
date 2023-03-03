@@ -177,9 +177,16 @@ func newClient(host string, caCert []*pem.Block, clCert *tls.Certificate) (*Clie
 // Get sends a GET request to the Coordinator under the specified path.
 // Optionally, a body can be provided.
 // On success, the data field of the JSON response is returned.
-func (c *Client) Get(ctx context.Context, path string, body io.Reader) ([]byte, error) {
-	uri := url.URL{Scheme: "https", Host: c.host, Path: path}
+func (c *Client) Get(ctx context.Context, path string, body io.Reader, queryParameters ...string) ([]byte, error) {
+	if len(queryParameters) > 0 && len(queryParameters)%2 != 0 {
+		return nil, errors.New("query parameters must be provided in pairs")
+	}
+	query := url.Values{}
+	for i := 0; i < len(queryParameters); i += 2 {
+		query.Add(queryParameters[i], queryParameters[i+1])
+	}
 
+	uri := url.URL{Scheme: "https", Host: c.host, Path: path, RawQuery: query.Encode()}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, uri.String(), body)
 	if err != nil {
 		return nil, err
@@ -235,7 +242,7 @@ func (c *Client) Post(ctx context.Context, path, contentType string, body io.Rea
 
 	switch resp.StatusCode {
 	case http.StatusOK:
-		return respBody, nil
+		return []byte(gjson.GetBytes(respBody, "data").String()), nil
 	case http.StatusUnauthorized:
 		return nil, fmt.Errorf("POST %s: unable to authorize user: %s", uri.String(), msg)
 	default:

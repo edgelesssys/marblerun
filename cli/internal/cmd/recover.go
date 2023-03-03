@@ -9,9 +9,10 @@ package cmd
 import (
 	"bytes"
 	"fmt"
-	"os"
 
+	"github.com/edgelesssys/marblerun/cli/internal/file"
 	"github.com/edgelesssys/marblerun/cli/internal/rest"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/tidwall/gjson"
 )
@@ -34,7 +35,7 @@ func runRecover(cmd *cobra.Command, args []string) error {
 	hostname := args[1]
 
 	// read recovery key
-	recoveryKey, err := os.ReadFile(keyFile)
+	recoveryKey, err := file.New(keyFile, afero.NewOsFs()).Read()
 	if err != nil {
 		return err
 	}

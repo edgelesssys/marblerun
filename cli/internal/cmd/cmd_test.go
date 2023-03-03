@@ -7,7 +7,6 @@
 package cmd
 
 import (
-	"bytes"
 	"context"
 	"io"
 )
@@ -15,11 +14,13 @@ import (
 type stubGetter struct {
 	response    []byte
 	requestPath string
+	query       []string
 	err         error
 }
 
-func (s *stubGetter) Get(_ context.Context, request string, _ io.Reader) ([]byte, error) {
+func (s *stubGetter) Get(_ context.Context, request string, _ io.Reader, query ...string) ([]byte, error) {
 	s.requestPath = request
+	s.query = query
 	return s.response, s.err
 }
 
@@ -34,24 +35,4 @@ func (s *stubPoster) Post(_ context.Context, request string, header string, _ io
 	s.requestPath = request
 	s.header = header
 	return s.response, s.err
-}
-
-type stubFileWriter struct {
-	err error
-	out bytes.Buffer
-}
-
-func (s *stubFileWriter) Write(data []byte) error {
-	if s.err != nil {
-		return s.err
-	}
-
-	if _, err := s.out.Write(data); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (s *stubFileWriter) Name() string {
-	return "unit-test"
 }

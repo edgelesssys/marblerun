@@ -10,17 +10,41 @@ package cmd
 import (
 	"context"
 	"io"
+
+	"k8s.io/apimachinery/pkg/util/version"
+	"k8s.io/client-go/kubernetes"
 )
 
+const webhookName = "marble-injector.marblerun"
+
 type getter interface {
-	Get(ctx context.Context, path string, body io.Reader) ([]byte, error)
+	Get(ctx context.Context, path string, body io.Reader, queryParameters ...string) ([]byte, error)
 }
 
 type poster interface {
 	Post(ctx context.Context, path, contentType string, body io.Reader) ([]byte, error)
 }
 
-type fileWriter interface {
-	Write(data []byte) error
-	Name() string
+func checkLegacyKubernetesVersion(kubeClient kubernetes.Interface) (bool, error) {
+	serverVersion, err := kubeClient.Discovery().ServerVersion()
+	if err != nil {
+		return false, err
+	}
+	versionInfo, err := version.ParseGeneric(serverVersion.String())
+	if err != nil {
+		return false, err
+	}
+
+	// return the legacy if kubernetes version is < 1.19
+	if versionInfo.Major() == 1 && versionInfo.Minor() < 19 {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+func must(err error) {
+	if err != nil {
+		panic(err)
+	}
 }

@@ -14,6 +14,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/cli/internal/file"
 	"github.com/edgelesssys/marblerun/cli/internal/rest"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 )
 
@@ -50,11 +51,11 @@ func runCertificateRoot(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("retrieving root certificate from Coordinator: %w", err)
 	}
-	return cliCertificateRoot(cmd.OutOrStdout(), file.New(output), certs)
+	return cliCertificateRoot(cmd.OutOrStdout(), file.New(output, afero.NewOsFs()), certs)
 }
 
 // cliCertificateRoot gets the root certificate of the MarbleRun Coordinator and saves it to a file.
-func cliCertificateRoot(out io.Writer, file fileWriter, certs []*pem.Block) error {
+func cliCertificateRoot(out io.Writer, file *file.Handler, certs []*pem.Block) error {
 	if len(certs) == 0 {
 		return errors.New("no certificates received from Coordinator")
 	}

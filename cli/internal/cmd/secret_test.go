@@ -12,8 +12,10 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/edgelesssys/marblerun/cli/internal/file"
 	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -62,24 +64,24 @@ func TestGetSecrets(t *testing.T) {
 	someErr := errors.New("failed")
 	testCases := map[string]struct {
 		getter    *stubGetter
-		writer    *stubFileWriter
+		file      *file.Handler
 		secretIDs []string
 		wantErr   bool
 	}{
 		"success": {
 			getter:    &stubGetter{response: []byte(`{"test": "ABCDEF"}`)},
-			writer:    &stubFileWriter{},
+			file:      file.New("unit-test", afero.NewMemMapFs()),
 			secretIDs: []string{"test"},
 		},
 		"get error": {
 			getter:    &stubGetter{err: someErr},
-			writer:    &stubFileWriter{},
+			file:      file.New("unit-test", afero.NewMemMapFs()),
 			secretIDs: []string{"test"},
 			wantErr:   true,
 		},
 		"write error": {
 			getter:    &stubGetter{response: []byte(`{"test": "ABCDEF"}`)},
-			writer:    &stubFileWriter{err: someErr},
+			file:      file.New("unit-test", afero.NewReadOnlyFs(afero.NewMemMapFs())),
 			secretIDs: []string{"test"},
 			wantErr:   true,
 		},
@@ -91,16 +93,18 @@ func TestGetSecrets(t *testing.T) {
 
 			cmd := &cobra.Command{}
 
-			err := cliSecretGet(cmd, tc.secretIDs, tc.writer, tc.getter)
+			err := cliSecretGet(cmd, tc.secretIDs, tc.file, tc.getter)
 			if tc.wantErr {
 				assert.Error(err)
 				return
 			}
 			assert.NoError(err)
 			assert.Contains(tc.getter.requestPath, rest.SecretEndpoint)
+
+			expectedResponse, err := tc.file.Read()
+			assert.Equal(expectedResponse, tc.getter.response)
 			for _, id := range tc.secretIDs {
-				assert.Contains(tc.getter.requestPath, id)
-				assert.Equal(tc.writer.out.String(), string(tc.getter.response))
+				assert.Contains(tc.getter.query, id)
 			}
 		})
 	}

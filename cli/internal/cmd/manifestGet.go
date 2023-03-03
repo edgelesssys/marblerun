@@ -16,6 +16,7 @@ import (
 	"github.com/edgelesssys/marblerun/cli/internal/file"
 	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/tidwall/gjson"
 )
@@ -49,8 +50,12 @@ func runManifestGet(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	file := file.New(flags.output)
+	file := file.New(flags.output, afero.NewOsFs())
 
+	return cliManifestGet(cmd, flags, file, client)
+}
+
+func cliManifestGet(cmd *cobra.Command, flags manifestGetFlags, file *file.Handler, client getter) error {
 	resp, err := client.Get(cmd.Context(), rest.ManifestEndpoint, http.NoBody)
 	if err != nil {
 		return fmt.Errorf("unable to get manifest: %w", err)

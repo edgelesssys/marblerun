@@ -14,6 +14,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/cli/internal/file"
 	"github.com/edgelesssys/marblerun/cli/internal/rest"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 )
 
@@ -50,11 +51,11 @@ func runCertificateIntermediate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("retrieving intermediate certificate from Coordinator: %w", err)
 	}
-	return cliCertificateIntermediate(cmd.OutOrStdout(), file.New(output), certs)
+	return cliCertificateIntermediate(cmd.OutOrStdout(), file.New(output, afero.NewOsFs()), certs)
 }
 
 // cliCertificateIntermediate gets the intermediate certificate of the MarbleRun Coordinator.
-func cliCertificateIntermediate(out io.Writer, file fileWriter, certs []*pem.Block) error {
+func cliCertificateIntermediate(out io.Writer, file *file.Handler, certs []*pem.Block) error {
 	if len(certs) == 0 {
 		return errors.New("no intermediate certificate received from Coordinator")
 	}

@@ -15,7 +15,9 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/edgelesssys/marblerun/cli/internal/file"
 	"github.com/edgelesssys/marblerun/cli/internal/rest"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/tidwall/gjson"
 )
@@ -119,7 +121,7 @@ func runUpdateApply(cmd *cobra.Command, args []string) error {
 	}
 
 	// Load manifest
-	manifest, err := loadManifestFile(manifestFile)
+	manifest, err := loadManifestFile(file.New(manifestFile, afero.NewOsFs()))
 	if err != nil {
 		return err
 	}
@@ -149,7 +151,7 @@ func runUpdateAcknowledge(cmd *cobra.Command, args []string) error {
 	}
 
 	// Load manifest
-	manifest, err := loadManifestFile(manifestFile)
+	manifest, err := loadManifestFile(file.New(manifestFile, afero.NewOsFs()))
 	if err != nil {
 		return err
 	}

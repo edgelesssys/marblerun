@@ -14,6 +14,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/cli/internal/file"
 	"github.com/edgelesssys/marblerun/cli/internal/rest"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 )
 
@@ -50,11 +51,11 @@ func runCertificateChain(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("retrieving certificate chain from Coordinator: %w", err)
 	}
-	return cliCertificateChain(cmd.OutOrStdout(), file.New(output), certs)
+	return cliCertificateChain(cmd.OutOrStdout(), file.New(output, afero.NewOsFs()), certs)
 }
 
 // cliCertificateChain gets the certificate chain of the MarbleRun Coordinator.
-func cliCertificateChain(out io.Writer, file fileWriter, certs []*pem.Block) error {
+func cliCertificateChain(out io.Writer, file *file.Handler, certs []*pem.Block) error {
 	if len(certs) == 0 {
 		return errors.New("no certificates received from Coordinator")
 	}

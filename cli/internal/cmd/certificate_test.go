@@ -11,8 +11,11 @@ import (
 	"encoding/pem"
 	"testing"
 
+	"github.com/edgelesssys/marblerun/cli/internal/file"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestOutputFlagNotEmpty(t *testing.T) {
@@ -57,17 +60,17 @@ func TestOutputFlagNotEmpty(t *testing.T) {
 
 func TestCertificateRoot(t *testing.T) {
 	testCases := map[string]struct {
-		file    *stubFileWriter
+		file    *file.Handler
 		certs   []*pem.Block
 		wantErr bool
 	}{
 		"no certs": {
-			file:    &stubFileWriter{},
+			file:    file.New("unit-test", afero.NewMemMapFs()),
 			certs:   []*pem.Block{},
 			wantErr: true,
 		},
 		"one cert": {
-			file: &stubFileWriter{},
+			file: file.New("unit-test", afero.NewMemMapFs()),
 			certs: []*pem.Block{
 				{
 					Type:  "CERTIFICATE",
@@ -76,7 +79,7 @@ func TestCertificateRoot(t *testing.T) {
 			},
 		},
 		"multiple certs": {
-			file: &stubFileWriter{},
+			file: file.New("unit-test", afero.NewMemMapFs()),
 			certs: []*pem.Block{
 				{
 					Type:  "CERTIFICATE",
@@ -102,24 +105,26 @@ func TestCertificateRoot(t *testing.T) {
 				return
 			}
 			assert.NoError(err)
-			assert.Equal(tc.file.out.String(), string(pem.EncodeToMemory(tc.certs[len(tc.certs)-1])))
+			writtenCert, err := tc.file.Read()
+			require.NoError(t, err)
+			assert.Equal(pem.EncodeToMemory(tc.certs[len(tc.certs)-1]), writtenCert)
 		})
 	}
 }
 
 func TestCertificateIntermediate(t *testing.T) {
 	testCases := map[string]struct {
-		file    *stubFileWriter
+		file    *file.Handler
 		certs   []*pem.Block
 		wantErr bool
 	}{
 		"no certs": {
-			file:    &stubFileWriter{},
+			file:    file.New("unit-test", afero.NewMemMapFs()),
 			certs:   []*pem.Block{},
 			wantErr: true,
 		},
 		"one cert": {
-			file: &stubFileWriter{},
+			file: file.New("unit-test", afero.NewMemMapFs()),
 			certs: []*pem.Block{
 				{
 					Type:  "CERTIFICATE",
@@ -128,7 +133,7 @@ func TestCertificateIntermediate(t *testing.T) {
 			},
 		},
 		"multiple certs": {
-			file: &stubFileWriter{},
+			file: file.New("unit-test", afero.NewMemMapFs()),
 			certs: []*pem.Block{
 				{
 					Type:  "CERTIFICATE",
@@ -154,24 +159,26 @@ func TestCertificateIntermediate(t *testing.T) {
 				return
 			}
 			assert.NoError(err)
-			assert.Equal(string(pem.EncodeToMemory(tc.certs[0])), tc.file.out.String())
+			writtenCert, err := tc.file.Read()
+			require.NoError(t, err)
+			assert.Equal(pem.EncodeToMemory(tc.certs[0]), writtenCert)
 		})
 	}
 }
 
 func TestCertificateChain(t *testing.T) {
 	testCases := map[string]struct {
-		file    *stubFileWriter
+		file    *file.Handler
 		certs   []*pem.Block
 		wantErr bool
 	}{
 		"no certs": {
-			file:    &stubFileWriter{},
+			file:    file.New("unit-test", afero.NewMemMapFs()),
 			certs:   []*pem.Block{},
 			wantErr: true,
 		},
 		"one cert": {
-			file: &stubFileWriter{},
+			file: file.New("unit-test", afero.NewMemMapFs()),
 			certs: []*pem.Block{
 				{
 					Type:  "CERTIFICATE",
@@ -180,7 +187,7 @@ func TestCertificateChain(t *testing.T) {
 			},
 		},
 		"multiple certs": {
-			file: &stubFileWriter{},
+			file: file.New("unit-test", afero.NewMemMapFs()),
 			certs: []*pem.Block{
 				{
 					Type:  "CERTIFICATE",
@@ -206,8 +213,10 @@ func TestCertificateChain(t *testing.T) {
 				return
 			}
 			assert.NoError(err)
+			writtenCert, err := tc.file.Read()
+			require.NoError(t, err)
 			for _, cert := range tc.certs {
-				assert.Contains(tc.file.out.String(), string(pem.EncodeToMemory(cert)))
+				assert.Contains(string(writtenCert), string(pem.EncodeToMemory(cert)))
 			}
 		})
 	}

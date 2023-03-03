@@ -8,9 +8,9 @@ package file
 
 import "github.com/spf13/afero"
 
-// Writer is a wrapper around afero.Afero,
-// providing a simple interface for writing files.
-type Writer struct {
+// Handler is a wrapper around afero.Afero,
+// providing a simple interface for reading and writing files.
+type Handler struct {
 	fs       afero.Afero
 	filename string
 }
@@ -18,23 +18,28 @@ type Writer struct {
 // New returns a new FileWriter for the given filename.
 //
 // Returns nil if filename is empty.
-func New(filename string) *Writer {
+func New(filename string, fs afero.Fs) *Handler {
 	if filename == "" {
 		return nil
 	}
 
-	return &Writer{
-		fs:       afero.Afero{Fs: afero.NewOsFs()},
+	return &Handler{
+		fs:       afero.Afero{Fs: fs},
 		filename: filename,
 	}
 }
 
 // Write writes the given data to the file.
-func (f *Writer) Write(data []byte) error {
+func (f *Handler) Write(data []byte) error {
 	return f.fs.WriteFile(f.filename, data, 0o644)
 }
 
 // Name returns the filename.
-func (f *Writer) Name() string {
+func (f *Handler) Name() string {
 	return f.filename
+}
+
+// Read reads the file and returns its contents.
+func (f *Handler) Read() ([]byte, error) {
+	return f.fs.ReadFile(f.filename)
 }

@@ -10,6 +10,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 
+	"github.com/edgelesssys/marblerun/cli/internal/file"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 )
 
@@ -29,7 +31,7 @@ func runManifestSignature(cmd *cobra.Command, args []string) error {
 	manifestFile := args[0]
 
 	// Load manifest
-	manifest, err := loadManifestFile(manifestFile)
+	manifest, err := loadManifestFile(file.New(manifestFile, afero.NewOsFs()))
 	if err != nil {
 		return err
 	}

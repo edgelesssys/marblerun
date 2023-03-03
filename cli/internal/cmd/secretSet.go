@@ -12,11 +12,12 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"os"
 	"strings"
 
+	"github.com/edgelesssys/marblerun/cli/internal/file"
 	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 )
 
@@ -55,7 +56,7 @@ func runSecretSet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	newSecrets, err := os.ReadFile(secretFile)
+	newSecrets, err := file.New(secretFile, afero.NewOsFs()).Read()
 	if err != nil {
 		return err
 	}

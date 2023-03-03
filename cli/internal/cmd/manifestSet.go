@@ -10,10 +10,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/edgelesssys/marblerun/cli/internal/file"
 	"github.com/edgelesssys/marblerun/cli/internal/rest"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/yaml"
 )
@@ -50,18 +50,18 @@ func runManifestSet(cmd *cobra.Command, args []string) error {
 	cmd.Println("Successfully verified Coordinator, now uploading manifest")
 
 	// Load manifest
-	manifest, err := loadManifestFile(manifestFile)
+	manifest, err := loadManifestFile(file.New(manifestFile, afero.NewOsFs()))
 	if err != nil {
 		return err
 	}
 	signature := cliManifestSignature(manifest)
 	cmd.Printf("Manifest signature: %s\n", signature)
 
-	return cliManifestSet(cmd, manifest, file.New(recoveryFilename), client)
+	return cliManifestSet(cmd, manifest, file.New(recoveryFilename, afero.NewOsFs()), client)
 }
 
 // cliManifestSet sets the Coordinators manifest using its rest api.
-func cliManifestSet(cmd *cobra.Command, manifest []byte, file fileWriter, client poster) error {
+func cliManifestSet(cmd *cobra.Command, manifest []byte, file *file.Handler, client poster) error {
 	resp, err := client.Post(cmd.Context(), rest.ManifestEndpoint, rest.ContentJSON, bytes.NewReader(manifest))
 	if err != nil {
 		return fmt.Errorf("unable to set manifest: %w", err)
@@ -86,8 +86,8 @@ func cliManifestSet(cmd *cobra.Command, manifest []byte, file fileWriter, client
 }
 
 // loadManifestFile loads a manifest in either json or yaml format and returns the data as json.
-func loadManifestFile(filename string) ([]byte, error) {
-	manifestData, err := os.ReadFile(filename)
+func loadManifestFile(file *file.Handler) ([]byte, error) {
+	manifestData, err := file.Read()
 	if err != nil {
 		return nil, err
 	}
