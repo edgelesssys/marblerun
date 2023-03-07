@@ -14,7 +14,7 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"flag"
-	"io/ioutil"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -192,7 +192,7 @@ func TestClientAPI(t *testing.T) {
 	resp, err := client.Get(clientAPIURL.String())
 	require.NoError(err)
 	require.Equal(http.StatusOK, resp.StatusCode)
-	quote, err := ioutil.ReadAll(resp.Body)
+	quote, err := io.ReadAll(resp.Body)
 	resp.Body.Close()
 	require.NoError(err)
 	cert := gjson.Get(string(quote), "data.Cert").String()
@@ -215,7 +215,7 @@ func TestClientAPI(t *testing.T) {
 	resp, err = client.Get(clientAPIURL.String())
 	require.NoError(err)
 	require.Equal(http.StatusOK, resp.StatusCode)
-	manifest, err := ioutil.ReadAll(resp.Body)
+	manifest, err := io.ReadAll(resp.Body)
 	resp.Body.Close()
 	require.NoError(err)
 	assert.JSONEq(`{"status":"success","data":{"ManifestSignatureRootECDSA":null,"ManifestSignature":"","Manifest":null}}`, string(manifest))
@@ -231,7 +231,7 @@ func TestClientAPI(t *testing.T) {
 	resp, err = client.Get(clientAPIURL.String())
 	require.NoError(err)
 	require.Equal(http.StatusOK, resp.StatusCode)
-	secret, err := ioutil.ReadAll(resp.Body)
+	secret, err := io.ReadAll(resp.Body)
 	resp.Body.Close()
 	require.NoError(err)
 	assert.Contains(string(secret), `{"status":"success","data":{"symmetricKeyShared":{"Type":"symmetric-key","Size":128,`)

@@ -10,7 +10,6 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -68,7 +67,7 @@ func TestCertificateV1(t *testing.T) {
 	require.NoError(err)
 	assert.True((len(testCrt) == 0))
 
-	configFile, err := ioutil.TempFile(os.TempDir(), "unittest")
+	configFile, err := os.CreateTemp(os.TempDir(), "unittest")
 	require.NoError(err)
 	defer os.Remove(configFile.Name())
 	err = os.Setenv(clientcmd.RecommendedConfigPathEnvVar, configFile.Name())

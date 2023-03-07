@@ -10,7 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -246,7 +246,7 @@ func checkRequest(w http.ResponseWriter, r *http.Request) []byte {
 		return nil
 	}
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	defer r.Body.Close()
 	if err != nil {
 		http.Error(w, fmt.Sprintf("unable to read request: %v", err), http.StatusBadRequest)
