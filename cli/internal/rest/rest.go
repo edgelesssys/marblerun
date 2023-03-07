@@ -30,6 +30,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+// Endpoints of the MarbleRun Coordinator REST API.
 const (
 	ManifestEndpoint     = "manifest"
 	UpdateEndpoint       = "update"
@@ -42,7 +43,11 @@ const (
 	ContentPlain         = "text/plain"
 )
 
-const eraDefaultConfig = "era-config.json"
+const (
+	eraDefaultConfig = "era-config.json"
+	messageField     = "message"
+	dataField        = "data"
+)
 
 // Flags are command line flags used to configure the REST client.
 type Flags struct {
@@ -102,6 +107,7 @@ func parseAuthenticatedFlags(cmd *cobra.Command) (authenticatedFlags, error) {
 	}, nil
 }
 
+// Client is a REST client for the MarbleRun Coordinator.
 type Client struct {
 	client *http.Client
 	host   string
@@ -175,7 +181,8 @@ func newClient(host string, caCert []*pem.Block, clCert *tls.Certificate) (*Clie
 }
 
 // Get sends a GET request to the Coordinator under the specified path.
-// Optionally, a body can be provided.
+// If body is non nil, it is sent as the request body.
+// Query parameters can be provided as a list of strings, where each pair of strings is a key-value pair.
 // On success, the data field of the JSON response is returned.
 func (c *Client) Get(ctx context.Context, path string, body io.Reader, queryParameters ...string) ([]byte, error) {
 	if len(queryParameters) > 0 && len(queryParameters)%2 != 0 {
@@ -202,17 +209,17 @@ func (c *Client) Get(ctx context.Context, path string, body io.Reader, queryPara
 		return nil, err
 	}
 
-	msg := gjson.GetBytes(respBody, "message").String()
+	msg := gjson.GetBytes(respBody, messageField).String()
 
 	switch resp.StatusCode {
 	case http.StatusOK:
 		// return data field of JSON response
-		data := gjson.GetBytes(respBody, "data").String()
+		data := gjson.GetBytes(respBody, dataField).String()
 		return []byte(data), nil
 	case http.StatusUnauthorized:
 		return nil, fmt.Errorf("GET %s: unable to authorize user: %s", uri.String(), msg)
 	default:
-		return nil, fmt.Errorf("GET %s: %d %s: %s", uri.String(), resp.StatusCode, http.StatusText(resp.StatusCode), msg)
+		return nil, fmt.Errorf("GET %s: %d %s %s", uri.String(), resp.StatusCode, http.StatusText(resp.StatusCode), msg)
 	}
 }
 
@@ -238,15 +245,15 @@ func (c *Client) Post(ctx context.Context, path, contentType string, body io.Rea
 		return nil, err
 	}
 
-	msg := gjson.GetBytes(respBody, "message").String()
+	msg := gjson.GetBytes(respBody, messageField).String()
 
 	switch resp.StatusCode {
 	case http.StatusOK:
-		return []byte(gjson.GetBytes(respBody, "data").String()), nil
+		return []byte(gjson.GetBytes(respBody, dataField).String()), nil
 	case http.StatusUnauthorized:
 		return nil, fmt.Errorf("POST %s: unable to authorize user: %s", uri.String(), msg)
 	default:
-		return nil, fmt.Errorf("POST %s: %d %s: %s", uri.String(), resp.StatusCode, http.StatusText(resp.StatusCode), msg)
+		return nil, fmt.Errorf("POST %s: %d %s %s", uri.String(), resp.StatusCode, http.StatusText(resp.StatusCode), msg)
 	}
 }
 

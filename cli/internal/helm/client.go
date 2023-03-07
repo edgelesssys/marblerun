@@ -72,15 +72,15 @@ func (c *Client) GetChart(chartPath, version string, enterpriseRelease bool) (*c
 		installer := action.NewInstall(c.config)
 		installer.ChartPathOptions.Version = version
 
-		err := c.getRepo(RepoName, RepoURI)
+		err := c.getRepo(repoName, repoURI)
 		if err != nil {
 			return nil, fmt.Errorf("adding edgeless helm repo: %w", err)
 		}
 
 		// Enterprise chart is used if an access token is provided
-		chartName := ChartName
+		chartName := chartName
 		if enterpriseRelease {
-			chartName = ChartNameEnterprise
+			chartName = chartNameEnterprise
 		}
 
 		chartPath, err = installer.ChartPathOptions.LocateChart(chartName, c.settings)
@@ -190,7 +190,7 @@ func (c *Client) UpdateValues(options Options, chartValues map[string]interface{
 func (c *Client) Install(ctx context.Context, wait bool, chart *chart.Chart, values map[string]interface{}) error {
 	installer := action.NewInstall(c.config)
 	installer.Namespace = Namespace
-	installer.ReleaseName = Release
+	installer.ReleaseName = release
 	installer.CreateNamespace = true
 	installer.Wait = wait
 	installer.Timeout = time.Minute * 5
@@ -209,7 +209,7 @@ func (c *Client) Uninstall(wait bool) error {
 	uninstaller.Wait = wait
 	uninstaller.Timeout = time.Minute * 5
 
-	_, err := uninstaller.Run(Release)
+	_, err := uninstaller.Run(release)
 	return err
 }
 

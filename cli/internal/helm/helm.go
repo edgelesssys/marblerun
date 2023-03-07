@@ -9,12 +9,12 @@ package helm
 
 // Helm constants.
 const (
-	ChartName             = "edgeless/marblerun"
-	ChartNameEnterprise   = "edgeless/marblerun-enterprise"
 	CoordinatorDeployment = "marblerun-coordinator"
 	InjectorDeployment    = "marble-injector"
 	Namespace             = "marblerun"
-	Release               = "marblerun"
-	RepoURI               = "https://helm.edgeless.systems/stable"
-	RepoName              = "edgeless"
+	chartName             = "edgeless/marblerun"
+	chartNameEnterprise   = "edgeless/marblerun-enterprise"
+	release               = "marblerun"
+	repoURI               = "https://helm.edgeless.systems/stable"
+	repoName              = "edgeless"
 )
