@@ -1,4 +1,4 @@
-# Default values for marblerun-coordinator.
+# Default values for MarbleRun helm deployment
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
@@ -25,20 +25,33 @@ global:
 
 # webhook configuration
 marbleInjector:
-  start: false
   replicas: 1
   repository: ghcr.io/edgelesssys/marblerun
-  resourceKey: "sgx.intel.com/epc"
   image: marble-injector
   pullPolicy: IfNotPresent
   version: v1.0.0
+
+  # Set to true to install the injection webhook
+  start: false
+  # SGX resource request to inject into pods
+  resourceKey: "sgx.intel.com/epc"
+  # Set to true if using standalone helm installation (cert-manager is required)
   useCertManager: false
+  # Automatically injected by the MarbleRun CLI. Ignore in helm standalone installation
   CABundle: ""
+
+  # objectSelector configuration.
+  # See: https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-objectselector
+  # Customize to limit injection to specific pods
+  # The default configuration injects all Pods with the "marblerun/marbletype" label
   objectSelector:
     matchExpressions:
       - key: marblerun/marbletype
         operator: Exists
         values: []
+  # namespaceSelector configuration.
+  # See: https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-namespaceselector
+  # Customize to limit injection to specific namespaces
   namespaceSelector: {}
 
 
@@ -64,15 +77,22 @@ coordinator:
   # OE_SIMULATION needs be set to "1" when running on systems without SGX1+FLC capabilities
   simulation: false
 
+  # Resource limits for the Coordinator
   resources:
     limits:
-      # Disable this if your running on a cluster without an SGX Device Plugin
+      # Resource request to use Intel SGX Device Plugin
+      # If you are running in simulation mode, or are using a different plugin,
+      # update these values accordingly
       sgx.intel.com/epc: "10Mi"
       sgx.intel.com/enclave: 1
       sgx.intel.com/provision: 1
 
-  # Set the storage class for your cluster
-  # storageClass:
+  # Set the storage class to use for creating the Coordinator's PVC
+  # Leave empty to use the default storage class
+  storageClass: ""
+  # Set to use an existing PVC for Coordinator storage
+  # Leave empty to create a new one using the configured storage class
+  pvcName: ""
 
 
 # Tolerations constraints for control-plane components
