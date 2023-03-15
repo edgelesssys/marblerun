@@ -94,13 +94,14 @@ spec:
       volumes:
         - name: coordinator-pv-storage
           persistentVolumeClaim:
-            claimName: coordinator-pv-claim
+            claimName: {{ .Values.coordinator.pvcName | default "coordinator-pv-claim" }}
         {{ if .Values.dcap }}
         - name: dcap-conf
           configMap:
             name: coordinator-dcap-config
         {{ end }}
 ---
+{{- if not .Values.coordinator.pvcName }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -113,14 +114,13 @@ metadata:
     app.kubernetes.io/part-of: marblerun
     app.kubernetes.io/version: {{ .Values.coordinator.version }}
 spec:
-  {{- with .Values.coordinator.storageClass }}
   storageClassName: {{ .Values.coordinator.storageClass }}
-  {{ end }}
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
       storage: 10Mi
+{{- end }}
 ---
 apiVersion: v1
 kind: Service

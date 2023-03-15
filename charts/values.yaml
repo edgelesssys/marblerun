@@ -71,8 +71,12 @@ coordinator:
       sgx.intel.com/enclave: 1
       sgx.intel.com/provision: 1
 
+
   # Set the storage class for your cluster
-  # storageClass:
+  storageClass: ""
+  # Set to use an existing PVC for Coordinator storage
+  # Otherwise a new one will be created using the configured storage class
+  pvcName: ""
 
 
 # Tolerations constraints for control-plane components
