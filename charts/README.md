@@ -39,10 +39,12 @@ their default values.
 | `coordinator.image`                          | string         | Name of the coordinator container image | `"coordinator"` |
 | `coordinator.meshServerHost`                 | string         | Hostname of the mesh-api server | `"0.0.0.0"` |
 | `coordinator.meshServerPort`                 | int            | Port of the mesh-api server configuration | `2001` |
+| `coordinator.pvcName`                        | string         | Name of a [Persistent Volume Claim](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) to use for the Coordinator's state. Leave empty to create a new one using the configured StorageClass |
 | `coordinator.replicas`                       | int            | Number of replicas for each control plane pod | `1` |
 | `coordinator.repository`                     | string         | Name of the container registry to pull the coordinator image from | `"ghcr.io/edgelesssys/marblerun"` |
 | `coordinator.sealDir`                        | string         | Path to the directory used for sealing data. Needs to be consistent with the persisten storage setup | `"/coordinator/data/"` |
 | `coordinator.simulation`                     | bool           | SGX simulation settings, set to `true` if your not running on an SGX capable cluster | `false` |
+| `coordinator.storageClass`                   | string         | Kubernetes [StorageClass](https://kubernetes.io/docs/concepts/storage/storage-classes/) to use for creating the Coordinator PVC. Leave empty to use the default StorageClass |
 | `coordinator.version`                        | string         | Version of the coordinator container image to pull | `"v1.0.0"` |
 | `global.coordinatorComponentLabel`           | string         | Control plane label. Do not edit | `"edgeless.systems/control-plane-component"` |
 | `global.coordinatorNamespaceLabel`           | string         | Control plane label. Do not edit | `"edgeless.systems/control-plane-ns"` |
