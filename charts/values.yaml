@@ -87,10 +87,11 @@ coordinator:
       sgx.intel.com/enclave: 1
       sgx.intel.com/provision: 1
 
-  # Set the storage class for your cluster
+  # Set the storage class to use for creating the Coordinator's PVC
+  # Leave empty to use the default storage class
   storageClass: ""
   # Set to use an existing PVC for Coordinator storage
-  # Otherwise a new one will be created using the configured storage class
+  # Leave empty to create a new one using the configured storage class
   pvcName: ""
 
 
