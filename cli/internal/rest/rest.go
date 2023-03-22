@@ -236,9 +236,9 @@ func (c *Client) do(req *http.Request) ([]byte, error) {
 		data := gjson.GetBytes(respBody, dataField).String()
 		return []byte(data), nil
 	case http.StatusUnauthorized:
-		return nil, fmt.Errorf("GET %s: authorizing user: %s", req.URL.String(), msg)
+		return nil, fmt.Errorf("%s %s: authorizing user: %s", req.Method, req.URL.String(), msg)
 	default:
-		return nil, fmt.Errorf("GET %s: %s %s", req.URL.String(), resp.Status, msg)
+		return nil, fmt.Errorf("%s %s: %s %s", req.Method, req.URL.String(), resp.Status, msg)
 	}
 }
 
