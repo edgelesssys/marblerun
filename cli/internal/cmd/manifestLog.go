@@ -50,7 +50,7 @@ func runManifestLog(cmd *cobra.Command, args []string) error {
 func cliManifestLog(cmd *cobra.Command, file *file.Handler, client getter) error {
 	resp, err := client.Get(cmd.Context(), rest.UpdateEndpoint, http.NoBody)
 	if err != nil {
-		return fmt.Errorf("unable to retrieve update log: %w", err)
+		return fmt.Errorf("retrieving update log: %w", err)
 	}
 
 	if file != nil {

@@ -58,7 +58,7 @@ func runManifestGet(cmd *cobra.Command, args []string) error {
 func cliManifestGet(cmd *cobra.Command, flags manifestGetFlags, file *file.Handler, client getter) error {
 	resp, err := client.Get(cmd.Context(), rest.ManifestEndpoint, http.NoBody)
 	if err != nil {
-		return fmt.Errorf("unable to get manifest: %w", err)
+		return fmt.Errorf("getting manifest: %w", err)
 	}
 
 	manifest, err := decodeManifest(cmd.Context(), flags.displayUpdate, gjson.GetBytes(resp, "Manifest").String(), client)
@@ -90,7 +90,7 @@ func decodeManifest(ctx context.Context, displayUpdate bool, encodedManifest str
 
 	log, err := client.Get(ctx, rest.UpdateEndpoint, http.NoBody)
 	if err != nil {
-		return "", fmt.Errorf("unable to retrieve update log: %w", err)
+		return "", fmt.Errorf("retrieving update log: %w", err)
 	}
 	return consolidateManifest(manifest, log)
 }

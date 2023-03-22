@@ -54,8 +54,8 @@ func TestSetSecrets(t *testing.T) {
 			}
 			assert.NoError(err)
 			assert.Contains(out.String(), "Secret successfully set")
-			assert.Equal(tc.poster.requestPath, rest.SecretEndpoint)
-			assert.Equal(tc.poster.header, rest.ContentJSON)
+			assert.Equal(rest.SecretEndpoint, tc.poster.requestPath)
+			assert.Equal(rest.ContentJSON, tc.poster.header)
 		})
 	}
 }
@@ -102,6 +102,7 @@ func TestGetSecrets(t *testing.T) {
 			assert.Contains(tc.getter.requestPath, rest.SecretEndpoint)
 
 			expectedResponse, err := tc.file.Read()
+			require.NoError(t, err)
 			assert.Equal(expectedResponse, tc.getter.response)
 			for _, id := range tc.secretIDs {
 				assert.Contains(tc.getter.query, id)

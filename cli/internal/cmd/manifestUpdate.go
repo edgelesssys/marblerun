@@ -120,7 +120,6 @@ func runUpdateApply(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Load manifest
 	manifest, err := loadManifestFile(file.New(manifestFile, afero.NewOsFs()))
 	if err != nil {
 		return err
@@ -134,7 +133,7 @@ func runUpdateApply(cmd *cobra.Command, args []string) error {
 func cliManifestUpdateApply(cmd *cobra.Command, manifest []byte, client poster) error {
 	_, err := client.Post(cmd.Context(), rest.UpdateEndpoint, rest.ContentJSON, bytes.NewReader(manifest))
 	if err != nil {
-		return fmt.Errorf("unable to apply update: %w", err)
+		return fmt.Errorf("applying update: %w", err)
 	}
 
 	cmd.Println("Update manifest set successfully")
@@ -150,7 +149,6 @@ func runUpdateAcknowledge(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Load manifest
 	manifest, err := loadManifestFile(file.New(manifestFile, afero.NewOsFs()))
 	if err != nil {
 		return err
@@ -163,10 +161,10 @@ func runUpdateAcknowledge(cmd *cobra.Command, args []string) error {
 func cliManifestUpdateAcknowledge(cmd *cobra.Command, manifest []byte, client poster) error {
 	resp, err := client.Post(cmd.Context(), rest.UpdateStatusEndpoint, rest.ContentJSON, bytes.NewReader(manifest))
 	if err != nil {
-		return fmt.Errorf("unable to acknowledge update manifest: %w", err)
+		return fmt.Errorf("acknowledging update manifest: %w", err)
 	}
 
-	cmd.Printf("Acknowledgement successful: %s\n", string(resp))
+	cmd.Printf("Acknowledgement successful: %s\n", resp)
 	return nil
 }
 
@@ -185,7 +183,7 @@ func runUpdateCancel(cmd *cobra.Command, args []string) error {
 func cliManifestUpdateCancel(cmd *cobra.Command, client poster) error {
 	_, err := client.Post(cmd.Context(), rest.UpdateCancelEndpoint, "", http.NoBody)
 	if err != nil {
-		return fmt.Errorf("unable to cancel update: %w", err)
+		return fmt.Errorf("canceling update: %w", err)
 	}
 	cmd.Println("Cancellation successful")
 	return nil
@@ -231,7 +229,7 @@ func runUpdateGet(cmd *cobra.Command, args []string) (retErr error) {
 func cliManifestUpdateGet(ctx context.Context, out io.Writer, displayMissing bool, client getter) error {
 	resp, err := client.Get(ctx, rest.UpdateStatusEndpoint, http.NoBody)
 	if err != nil {
-		return fmt.Errorf("unable to retrieve pending update manifest: %w", err)
+		return fmt.Errorf("retrieving pending update manifest: %w", err)
 	}
 
 	var response string
@@ -248,7 +246,7 @@ func cliManifestUpdateGet(ctx context.Context, out io.Writer, displayMissing boo
 		}
 		response = string(mnf)
 	}
-	fmt.Fprintf(out, response)
+	fmt.Fprint(out, response)
 
 	return nil
 }

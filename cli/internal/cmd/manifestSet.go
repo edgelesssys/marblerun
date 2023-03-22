@@ -49,7 +49,6 @@ func runManifestSet(cmd *cobra.Command, args []string) error {
 
 	cmd.Println("Successfully verified Coordinator, now uploading manifest")
 
-	// Load manifest
 	manifest, err := loadManifestFile(file.New(manifestFile, afero.NewOsFs()))
 	if err != nil {
 		return err
@@ -64,7 +63,7 @@ func runManifestSet(cmd *cobra.Command, args []string) error {
 func cliManifestSet(cmd *cobra.Command, manifest []byte, file *file.Handler, client poster) error {
 	resp, err := client.Post(cmd.Context(), rest.ManifestEndpoint, rest.ContentJSON, bytes.NewReader(manifest))
 	if err != nil {
-		return fmt.Errorf("unable to set manifest: %w", err)
+		return fmt.Errorf("setting manifest: %w", err)
 	}
 	cmd.Println("Manifest successfully set")
 

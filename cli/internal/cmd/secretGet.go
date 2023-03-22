@@ -64,7 +64,7 @@ func cliSecretGet(cmd *cobra.Command, secretIDs []string, file *file.Handler, cl
 
 	resp, err := client.Get(cmd.Context(), rest.SecretEndpoint, http.NoBody, query...)
 	if err != nil {
-		return fmt.Errorf("unable to retrieve secret: %w", err)
+		return fmt.Errorf("retrieving secret: %w", err)
 	}
 
 	response := gjson.ParseBytes(resp)

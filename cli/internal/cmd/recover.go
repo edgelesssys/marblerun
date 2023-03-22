@@ -34,7 +34,6 @@ func runRecover(cmd *cobra.Command, args []string) error {
 	keyFile := args[0]
 	hostname := args[1]
 
-	// read recovery key
 	recoveryKey, err := file.New(keyFile, afero.NewOsFs()).Read()
 	if err != nil {
 		return err
@@ -52,7 +51,7 @@ func runRecover(cmd *cobra.Command, args []string) error {
 func cliRecover(cmd *cobra.Command, key []byte, client poster) error {
 	resp, err := client.Post(cmd.Context(), rest.RecoverEndpoint, rest.ContentPlain, bytes.NewReader(key))
 	if err != nil {
-		return fmt.Errorf("unable to recover Coordinator: %w", err)
+		return fmt.Errorf("recovering Coordinator: %w", err)
 	}
 
 	response := gjson.GetBytes(resp, "StatusMessage")

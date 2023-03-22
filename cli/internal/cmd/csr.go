@@ -118,7 +118,7 @@ func (crt *certificateV1) setCaBundle() ([]string, error) {
 		}
 		caBundle = base64.StdEncoding.EncodeToString(fileData)
 	} else {
-		return nil, fmt.Errorf("unable to read CAData or CAFile from kube-config: %s", path)
+		return nil, fmt.Errorf("reading CAData or CAFile from kube-config: %s", path)
 	}
 
 	injectorVals := []string{

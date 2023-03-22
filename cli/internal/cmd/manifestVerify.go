@@ -76,13 +76,13 @@ func getSignatureFromString(manifest string, fs afero.Afero) (string, error) {
 
 // cliManifestVerify verifies if a signature returned by the MarbleRun Coordinator is equal to one locally created.
 func cliManifestVerify(cmd *cobra.Command, localSignature string, client getter) error {
-	res, err := client.Get(cmd.Context(), rest.ManifestEndpoint, http.NoBody)
+	resp, err := client.Get(cmd.Context(), rest.ManifestEndpoint, http.NoBody)
 	if err != nil {
 		return err
 	}
-	remoteSignature := gjson.GetBytes(res, "ManifestSignature").String()
+	remoteSignature := gjson.GetBytes(resp, "ManifestSignature").String()
 	if remoteSignature != localSignature {
-		return fmt.Errorf("remote signature differs from local signature: %s != %s", string(remoteSignature), localSignature)
+		return fmt.Errorf("remote signature differs from local signature: %s != %s", remoteSignature, localSignature)
 	}
 
 	cmd.Println("OK")

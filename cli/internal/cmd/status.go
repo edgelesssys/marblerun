@@ -63,7 +63,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 func cliStatus(cmd *cobra.Command, client getter) error {
 	resp, err := client.Get(cmd.Context(), rest.StatusEndpoint, http.NoBody)
 	if err != nil {
-		return fmt.Errorf("unable to query Coordinator status: %w", err)
+		return fmt.Errorf("querying Coordinator status: %w", err)
 	}
 
 	var statusResp statusResponse

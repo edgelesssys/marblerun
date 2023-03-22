@@ -30,7 +30,6 @@ func newManifestSignature() *cobra.Command {
 func runManifestSignature(cmd *cobra.Command, args []string) error {
 	manifestFile := args[0]
 
-	// Load manifest
 	manifest, err := loadManifestFile(file.New(manifestFile, afero.NewOsFs()))
 	if err != nil {
 		return err

@@ -46,7 +46,7 @@ func TestDecodeManifest(t *testing.T) {
 
 	manifestRaw := base64.StdEncoding.EncodeToString([]byte(test.ManifestJSON))
 
-	manifest, err := decodeManifest(context.Background(), false, string(manifestRaw), &stubGetter{})
+	manifest, err := decodeManifest(context.Background(), false, manifestRaw, &stubGetter{})
 	assert.NoError(err)
 	assert.Equal(test.ManifestJSON, manifest)
 
@@ -187,8 +187,8 @@ func TestCliManifestUpdateApply(t *testing.T) {
 			}
 			assert.NoError(err)
 			assert.Contains(out.String(), "Update manifest set successfully")
-			assert.Equal(tc.poster.requestPath, rest.UpdateEndpoint)
-			assert.Equal(tc.poster.header, rest.ContentJSON)
+			assert.Equal(rest.UpdateEndpoint, tc.poster.requestPath)
+			assert.Equal(rest.ContentJSON, tc.poster.header)
 		})
 	}
 }
@@ -362,29 +362,13 @@ func TestManifestUpdateAcknowledge(t *testing.T) {
 			assert.NoError(err)
 			assert.Contains(out.String(), "Acknowledgement successful")
 			assert.Contains(out.String(), string(tc.poster.response))
-			assert.Equal(tc.poster.requestPath, rest.UpdateStatusEndpoint)
-			assert.Equal(tc.poster.header, rest.ContentJSON)
+			assert.Equal(rest.UpdateStatusEndpoint, tc.poster.requestPath)
+			assert.Equal(rest.ContentJSON, tc.poster.header)
 		})
 	}
 }
 
 func TestManifestUpdateGet(t *testing.T) {
-	// TODO: rewrite
-	/*
-		serverResp := server.GeneralResponse{
-			Status: "success",
-			Data: struct {
-				Manifest     []byte   `json:"manifest"`
-				Message      string   `json:"message"`
-				MissingUsers []string `json:"missingUsers"`
-			}{
-				Manifest:     manifest,
-				Message:      "message",
-				MissingUsers: []string{"user1", "user2"},
-			},
-		}
-	*/
-
 	testCases := map[string]struct {
 		getter         *stubGetter
 		displayMissing bool
@@ -463,7 +447,7 @@ func TestManifestUpdateCancel(t *testing.T) {
 			}
 			assert.NoError(err)
 			assert.Contains(out.String(), "Cancellation successful")
-			assert.Equal(tc.poster.requestPath, rest.UpdateCancelEndpoint)
+			assert.Equal(rest.UpdateCancelEndpoint, tc.poster.requestPath)
 		})
 	}
 }

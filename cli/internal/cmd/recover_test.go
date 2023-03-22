@@ -8,14 +8,12 @@ package cmd
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"testing"
 
 	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestCliRecover(t *testing.T) {
@@ -25,16 +23,7 @@ func TestCliRecover(t *testing.T) {
 	}{
 		"success": {
 			getter: &stubPoster{
-				response: func() []byte {
-					resp := struct {
-						StatusMessage string
-					}{
-						StatusMessage: "Success",
-					}
-					bytes, err := json.Marshal(resp)
-					require.NoError(t, err)
-					return bytes
-				}(),
+				response: []byte(`{"StatusMessage":"Success"}`),
 			},
 		},
 		"get error": {
@@ -60,8 +49,8 @@ func TestCliRecover(t *testing.T) {
 				return
 			}
 			assert.NoError(err)
-			assert.Equal(tc.getter.requestPath, rest.RecoverEndpoint)
-			assert.Equal(tc.getter.header, rest.ContentPlain)
+			assert.Equal(rest.RecoverEndpoint, tc.getter.requestPath)
+			assert.Equal(rest.ContentPlain, tc.getter.header)
 			assert.Equal("Success\n", out.String())
 		})
 	}

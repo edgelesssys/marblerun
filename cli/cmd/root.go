@@ -18,9 +18,7 @@ import (
 func Execute() error {
 	cobra.EnableCommandSorting = false
 	rootCmd := NewRootCmd()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	return rootCmd.ExecuteContext(ctx)
+	return rootCmd.ExecuteContext(context.Background())
 }
 
 // NewRootCmd returns the root command of the CLI.

@@ -71,7 +71,7 @@ func TestGet(t *testing.T) {
 			body:          strings.NewReader("request body"),
 			wantResponse:  []byte("response data"),
 		},
-		"uneven query params": {
+		"odd number of query params": {
 			roundTripFunc: defaultResponseFunc,
 			queryParams:   []string{"key1", "value1", "key2"},
 			wantErr:       true,

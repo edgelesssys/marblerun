@@ -56,7 +56,7 @@ type Flags struct {
 	AcceptedTCBStatuses []string
 }
 
-// ParseFlags par
+// ParseFlags parses the command line flags used to configure the REST client.
 func ParseFlags(cmd *cobra.Command) (Flags, error) {
 	eraConfig, err := cmd.Flags().GetString("era-config")
 	if err != nil {
@@ -185,7 +185,7 @@ func newClient(host string, caCert []*pem.Block, clCert *tls.Certificate) (*Clie
 // Query parameters can be provided as a list of strings, where each pair of strings is a key-value pair.
 // On success, the data field of the JSON response is returned.
 func (c *Client) Get(ctx context.Context, path string, body io.Reader, queryParameters ...string) ([]byte, error) {
-	if len(queryParameters) > 0 && len(queryParameters)%2 != 0 {
+	if len(queryParameters)%2 != 0 {
 		return nil, errors.New("query parameters must be provided in pairs")
 	}
 	query := url.Values{}
@@ -199,6 +199,25 @@ func (c *Client) Get(ctx context.Context, path string, body io.Reader, queryPara
 		return nil, err
 	}
 
+	return c.do(req)
+}
+
+// Post sends a POST request to the Coordinator under the specified path.
+// Optionally, a body can be provided.
+func (c *Client) Post(ctx context.Context, path, contentType string, body io.Reader) ([]byte, error) {
+	uri := url.URL{Scheme: "https", Host: c.host, Path: path}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, uri.String(), body)
+	if err != nil {
+		return nil, err
+	}
+	if contentType != "" {
+		req.Header.Set("Content-Type", contentType)
+	}
+
+	return c.do(req)
+}
+
+func (c *Client) do(req *http.Request) ([]byte, error) {
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, err
@@ -217,43 +236,9 @@ func (c *Client) Get(ctx context.Context, path string, body io.Reader, queryPara
 		data := gjson.GetBytes(respBody, dataField).String()
 		return []byte(data), nil
 	case http.StatusUnauthorized:
-		return nil, fmt.Errorf("GET %s: unable to authorize user: %s", uri.String(), msg)
+		return nil, fmt.Errorf("GET %s: authorizing user: %s", req.URL.String(), msg)
 	default:
-		return nil, fmt.Errorf("GET %s: %d %s %s", uri.String(), resp.StatusCode, http.StatusText(resp.StatusCode), msg)
-	}
-}
-
-// Post sends a POST request to the Coordinator under the specified path.
-// Optionally, a body can be provided.
-func (c *Client) Post(ctx context.Context, path, contentType string, body io.Reader) ([]byte, error) {
-	uri := url.URL{Scheme: "https", Host: c.host, Path: path}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, uri.String(), body)
-	if err != nil {
-		return nil, err
-	}
-	if contentType != "" {
-		req.Header.Set("Content-Type", contentType)
-	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	msg := gjson.GetBytes(respBody, messageField).String()
-
-	switch resp.StatusCode {
-	case http.StatusOK:
-		return []byte(gjson.GetBytes(respBody, dataField).String()), nil
-	case http.StatusUnauthorized:
-		return nil, fmt.Errorf("POST %s: unable to authorize user: %s", uri.String(), msg)
-	default:
-		return nil, fmt.Errorf("POST %s: %d %s %s", uri.String(), resp.StatusCode, http.StatusText(resp.StatusCode), msg)
+		return nil, fmt.Errorf("GET %s: %s %s", req.URL.String(), resp.Status, msg)
 	}
 }
 
