@@ -409,6 +409,20 @@ func (s *clientAPIServer) secretsPost(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, nil)
 }
 
+func (s *clientAPIServer) handleGetPost(getHandler, postHandler func(http.ResponseWriter, *http.Request),
+) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			getHandler(w, r)
+		case http.MethodPost:
+			postHandler(w, r)
+		default:
+			s.methodNotAllowedHandler(w, r)
+		}
+	}
+}
+
 func (s *clientAPIServer) methodNotAllowedHandler(w http.ResponseWriter, r *http.Request) {
 	writeJSONError(w, "", http.StatusMethodNotAllowed)
 }

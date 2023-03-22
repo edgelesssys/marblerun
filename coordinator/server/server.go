@@ -19,7 +19,6 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
 	"github.com/edgelesssys/marblerun/coordinator/state"
 	"github.com/edgelesssys/marblerun/coordinator/user"
-	"github.com/gorilla/mux"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
@@ -96,21 +95,21 @@ func CreateServeMux(api clientAPI, promFactory *promauto.Factory) serveMux {
 	server := clientAPIServer{api}
 	var router serveMux
 	if promFactory != nil {
-		router = newPromServeMux(promFactory, "server", "client_api")
-		router.(*promServeMux).setMethodNotAllowedHandler(server.methodNotAllowedHandler)
+		muxRouter := newPromServeMux(promFactory, "server", "client_api")
+		muxRouter.setMethodNotAllowedHandler(server.methodNotAllowedHandler)
+		router = muxRouter
 	} else {
-		router = mux.NewRouter()
-		router.(*mux.Router).MethodNotAllowedHandler = http.HandlerFunc(server.methodNotAllowedHandler)
+		muxRouter := http.NewServeMux()
+		muxRouter.HandleFunc("/", server.methodNotAllowedHandler)
+		router = muxRouter
 	}
-	router.HandleFunc("/status", server.statusGet).Methods("GET")
-	router.HandleFunc("/manifest", server.manifestGet).Methods("GET")
-	router.HandleFunc("/manifest", server.manifestPost).Methods("POST")
-	router.HandleFunc("/quote", server.quoteGet).Methods("GET")
-	router.HandleFunc("/recover", server.recoverPost).Methods("POST")
-	router.HandleFunc("/update", server.updateGet).Methods("GET")
-	router.HandleFunc("/update", server.updatePost).Methods("POST")
-	router.HandleFunc("/secrets", server.secretsPost).Methods("POST")
-	router.HandleFunc("/secrets", server.secretsGet).Methods("GET")
+
+	router.HandleFunc("/manifest", server.handleGetPost(server.manifestGet, server.manifestPost))
+	router.HandleFunc("/update", server.handleGetPost(server.updateGet, server.updatePost))
+	router.HandleFunc("/secrets", server.handleGetPost(server.secretsGet, server.secretsPost))
+	router.HandleFunc("/status", server.handleGetPost(server.statusGet, server.methodNotAllowedHandler))
+	router.HandleFunc("/quote", server.handleGetPost(server.quoteGet, server.methodNotAllowedHandler))
+	router.HandleFunc("/recover", server.handleGetPost(server.methodNotAllowedHandler, server.recoverPost))
 	return router
 }
 
