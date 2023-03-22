@@ -56,7 +56,7 @@ func runCertificateIntermediate(cmd *cobra.Command, args []string) error {
 
 // cliCertificateIntermediate gets the intermediate certificate of the MarbleRun Coordinator.
 func cliCertificateIntermediate(out io.Writer, file *file.Handler, certs []*pem.Block) error {
-	if len(certs) == 0 {
+	if len(certs) < 2 {
 		return errors.New("no intermediate certificate received from Coordinator")
 	}
 	if err := file.Write(pem.EncodeToMemory(certs[0])); err != nil {

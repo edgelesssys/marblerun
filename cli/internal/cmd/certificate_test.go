@@ -131,6 +131,7 @@ func TestCertificateIntermediate(t *testing.T) {
 					Bytes: []byte("ROOT CERTIFICATE"),
 				},
 			},
+			wantErr: true,
 		},
 		"multiple certs": {
 			file: file.New("unit-test", afero.NewMemMapFs()),
