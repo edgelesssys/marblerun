@@ -69,15 +69,15 @@ func TestClientApiRequestMetrics(t *testing.T) {
 			mux := CreateServeMux(api, &fac)
 
 			metrics := mux.(*promServeMux).metrics[tc.target]
-			assert.Equal(0, promtest.CollectAndCount(metrics.reqest))
-			assert.Equal(float64(0), promtest.ToFloat64(metrics.reqest.WithLabelValues(tc.expectedStatusCode, strings.ToLower(tc.method))))
+			assert.Equal(0, promtest.CollectAndCount(metrics.request))
+			assert.Equal(float64(0), promtest.ToFloat64(metrics.request.WithLabelValues(tc.expectedStatusCode, strings.ToLower(tc.method))))
 
 			for i := 1; i < 6; i++ {
 				req := httptest.NewRequest(tc.method, tc.target, nil)
 				resp := httptest.NewRecorder()
 				mux.ServeHTTP(resp, req)
-				assert.Equal(1, promtest.CollectAndCount(metrics.reqest))
-				assert.Equal(float64(i), promtest.ToFloat64(metrics.reqest.WithLabelValues(tc.expectedStatusCode, strings.ToLower(tc.method))))
+				assert.Equal(1, promtest.CollectAndCount(metrics.request))
+				assert.Equal(float64(i), promtest.ToFloat64(metrics.request.WithLabelValues(tc.expectedStatusCode, strings.ToLower(tc.method))))
 			}
 		})
 	}
