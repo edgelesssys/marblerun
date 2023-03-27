@@ -7,7 +7,7 @@ This sample shows how to run an [Occlum](https://github.com/occlum/occlum) appli
 First, get Occlum and its build toolchain up and running. This can become quite complex if you run it on your existing environment. Therefore, we use the official Docker image and expose the SGX device to it:
 
 ```sh
-docker run -it --network host --device /dev/sgx occlum/occlum:0.24.1-ubuntu18.04
+docker run -it --network host --device /dev/sgx_enclave --device /dev/sgx_provision -v /dev/sgx:/dev/sgx occlum/occlum:0.29.3-ubuntu20.04
 ```
 
 If you are trying to run this sample on Azure, you might want to use the provided [Dockerfile](Dockerfile) instead. It is based on the official Occlum image, but replaces the default Intel DCAP client with the [Azure DCAP Client](https://github.com/microsoft/Azure-DCAP-Client). This is required to get correct quotes on Azure's Confidential Computing virtual machines. You can build and use the image in the following way:
@@ -15,7 +15,7 @@ If you are trying to run this sample on Azure, you might want to use the provide
 ```sh
 # Assuming `samples/occlum-hello` is the current working directory
 DOCKER_BUILDKIT=1 docker build -t occlum-azure .
-docker run -it --network host --device /dev/sgx occlum-azure
+docker run -it --network host --device /dev/sgx_enclave --device /dev/sgx_provision -v /dev/sgx:/dev/sgx occlum-azure
 ```
 
 Note that we also chose `--network host` here, as we assume you do not run the coordinator in the same Docker instance. **This option is potentially insecure in production use**, as it disables the isolation of the container network. For a production setup, we recommend that you choose a setup that exposes the coordinator to the container.

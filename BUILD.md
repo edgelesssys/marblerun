@@ -24,7 +24,7 @@ MarbleRun is written entirely in Go and builds on Edgeless RT, which is written 
 *Prerequisites*:
 
 * [Edgeless RT](https://github.com/edgelesssys/edgelessrt) is installed and sourced
-* Go 1.17 or newer
+* Go 1.20 or newer
 
 Build the Coordinator control plane and Marble test applications:
 

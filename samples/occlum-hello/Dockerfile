@@ -1,7 +1,7 @@
 # Replace standard Intel DCAP plugin with Azure DCAP plugin
-FROM occlum/occlum:0.27.1-ubuntu20.04
+FROM occlum/occlum:0.29.3-ubuntu20.04
 
-ARG GO_VER=1.17.11
+ARG GO_VER=1.20.2
 RUN echo "deb [arch=amd64] https://packages.microsoft.com/ubuntu/20.04/prod focal main" | sudo tee /etc/apt/sources.list.d/msprod.list && \
     wget -qO - https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add - && \
     sudo apt-get update && \
