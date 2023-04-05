@@ -266,12 +266,14 @@ func VerifyCoordinator(
 	}
 
 	pemBlock, tcbStatus, err := era.GetCertificate(host, configFilename)
-	if errors.Is(err, attestation.ErrTCBLevelInvalid) &&
-		util.StringSliceContains(acceptedTCBStatuses, tcbStatus.String()) {
-		fmt.Fprintln(out, "Warning: TCB level invalid, but accepted by configuration")
-		return pemBlock, nil
+	if !errors.Is(err, attestation.ErrTCBLevelInvalid) {
+		return pemBlock, err
 	}
-	return pemBlock, err
+	if !util.StringSliceContains(acceptedTCBStatuses, tcbStatus.String()) {
+		return nil, fmt.Errorf("TCB level invalid: %v", tcbStatus)
+	}
+	fmt.Fprintln(out, "Warning: TCB level invalid, but accepted by configuration:", tcbStatus)
+	return pemBlock, nil
 }
 
 func fetchLatestCoordinatorConfiguration(ctx context.Context, out io.Writer) error {

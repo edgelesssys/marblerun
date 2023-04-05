@@ -32,12 +32,14 @@ func NewERTValidator() *ERTValidator {
 func (m *ERTValidator) Validate(givenQuote []byte, cert []byte, pp quote.PackageProperties, ip quote.InfrastructureProperties) error {
 	// Verify Quote
 	report, err := enclave.VerifyRemoteReport(givenQuote)
-	if err != nil {
-		if errors.Is(err, attestation.ErrTCBLevelInvalid) && util.StringSliceContains(pp.AcceptedTCBStatuses, report.TCBStatus.String()) {
-			fmt.Println("Warning: TCB level invalid, but accepted by configuration")
+	if errors.Is(err, attestation.ErrTCBLevelInvalid) {
+		if util.StringSliceContains(pp.AcceptedTCBStatuses, report.TCBStatus.String()) {
+			fmt.Println("Warning: TCB level invalid, but accepted by configuration", report.TCBStatus)
 		} else {
-			return fmt.Errorf("verifying quote failed: %v", err)
+			return fmt.Errorf("TCB level invalid: %v", report.TCBStatus)
 		}
+	} else if err != nil {
+		return fmt.Errorf("verifying quote: %w", err)
 	}
 
 	// Check that cert is equal
