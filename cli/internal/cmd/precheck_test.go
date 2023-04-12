@@ -11,7 +11,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/edgelesssys/marblerun/util"
+	"github.com/edgelesssys/marblerun/util/k8sutil"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -53,9 +53,9 @@ func TestNodeSupportsSGX(t *testing.T) {
 		},
 		Status: corev1.NodeStatus{
 			Capacity: corev1.ResourceList{
-				util.IntelEnclave:   resource.MustParse("10"),
-				util.IntelEpc:       resource.MustParse("500"),
-				util.IntelProvision: resource.MustParse("10"),
+				k8sutil.IntelEnclave:   resource.MustParse("10"),
+				k8sutil.IntelEpc:       resource.MustParse("500"),
+				k8sutil.IntelProvision: resource.MustParse("10"),
 			},
 		},
 	}
@@ -78,7 +78,7 @@ func TestNodeSupportsSGX(t *testing.T) {
 		},
 		Status: corev1.NodeStatus{
 			Capacity: corev1.ResourceList{
-				util.AzureEpc: resource.MustParse("500"),
+				k8sutil.AzureEpc: resource.MustParse("500"),
 			},
 		},
 	}
@@ -126,9 +126,9 @@ func TestCliCheckSGXSupport(t *testing.T) {
 		},
 		Status: corev1.NodeStatus{
 			Capacity: corev1.ResourceList{
-				util.IntelEnclave:   resource.MustParse("10"),
-				util.IntelEpc:       resource.MustParse("500"),
-				util.IntelProvision: resource.MustParse("10"),
+				k8sutil.IntelEnclave:   resource.MustParse("10"),
+				k8sutil.IntelEpc:       resource.MustParse("500"),
+				k8sutil.IntelProvision: resource.MustParse("10"),
 			},
 		},
 	}

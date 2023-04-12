@@ -8,7 +8,7 @@ package cmd
 
 import (
 	"github.com/edgelesssys/marblerun/cli/internal/kube"
-	"github.com/edgelesssys/marblerun/util"
+	"github.com/edgelesssys/marblerun/util/k8sutil"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -75,20 +75,20 @@ func nodeSupportsSGX(capacityInfo corev1.ResourceList) bool {
 
 // nodeHasAlibabaDevPlugin checks if a node has the Alibaba device plugin installed (https://github.com/AliyunContainerService/sgx-device-plugin).
 func nodeHasAlibabaDevPlugin(capacityInfo corev1.ResourceList) bool {
-	epcQuant := capacityInfo[util.AlibabaEpc]
+	epcQuant := capacityInfo[k8sutil.AlibabaEpc]
 	return epcQuant.Value() != 0
 }
 
 // nodeHasAzureDevPlugin checks if a node has the Azures SGX device plugin installed (https://github.com/Azure/aks-engine/blob/master/docs/topics/sgx.md#deploying-the-sgx-device-plugin).
 func nodeHasAzureDevPlugin(capacityInfo corev1.ResourceList) bool {
-	epcQuant := capacityInfo[util.AzureEpc]
+	epcQuant := capacityInfo[k8sutil.AzureEpc]
 	return epcQuant.Value() != 0
 }
 
 // nodeHasIntelDevPlugin checks if a node has the Intel SGX device plugin installed (https://github.com/intel/intel-device-plugins-for-kubernetes#sgx-device-plugin).
 func nodeHasIntelDevPlugin(capacityInfo corev1.ResourceList) bool {
-	epcQuant := capacityInfo[util.IntelEpc]
-	enclaveQuant := capacityInfo[util.IntelEnclave]
-	provisionQuant := capacityInfo[util.IntelProvision]
+	epcQuant := capacityInfo[k8sutil.IntelEpc]
+	enclaveQuant := capacityInfo[k8sutil.IntelEnclave]
+	provisionQuant := capacityInfo[k8sutil.IntelProvision]
 	return !(epcQuant.Value() == 0 || enclaveQuant.Value() == 0 || provisionQuant.Value() == 0)
 }

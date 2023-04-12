@@ -9,7 +9,7 @@ package helm
 import (
 	"testing"
 
-	"github.com/edgelesssys/marblerun/util"
+	"github.com/edgelesssys/marblerun/util/k8sutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -20,62 +20,62 @@ func TestNeedsDeletion(t *testing.T) {
 		wantDeletion bool
 	}{
 		"intel key with azure plugin": {
-			existingKey:  util.IntelEpc.String(),
-			sgxKey:       util.AzureEpc.String(),
+			existingKey:  k8sutil.IntelEpc.String(),
+			sgxKey:       k8sutil.AzureEpc.String(),
 			wantDeletion: true,
 		},
 		"intel key with alibaba plugin": {
-			existingKey:  util.IntelEpc.String(),
-			sgxKey:       util.AlibabaEpc.String(),
+			existingKey:  k8sutil.IntelEpc.String(),
+			sgxKey:       k8sutil.AlibabaEpc.String(),
 			wantDeletion: true,
 		},
 		"azure key with intel plugin": {
-			existingKey:  util.AzureEpc.String(),
-			sgxKey:       util.IntelEpc.String(),
+			existingKey:  k8sutil.AzureEpc.String(),
+			sgxKey:       k8sutil.IntelEpc.String(),
 			wantDeletion: true,
 		},
 		"azure key with alibaba plugin": {
-			existingKey:  util.AzureEpc.String(),
-			sgxKey:       util.AlibabaEpc.String(),
+			existingKey:  k8sutil.AzureEpc.String(),
+			sgxKey:       k8sutil.AlibabaEpc.String(),
 			wantDeletion: true,
 		},
 		"alibaba key with intel plugin": {
-			existingKey:  util.AlibabaEpc.String(),
-			sgxKey:       util.IntelEpc.String(),
+			existingKey:  k8sutil.AlibabaEpc.String(),
+			sgxKey:       k8sutil.IntelEpc.String(),
 			wantDeletion: true,
 		},
 		"alibaba key with azure plugin": {
-			existingKey:  util.AlibabaEpc.String(),
-			sgxKey:       util.AzureEpc.String(),
+			existingKey:  k8sutil.AlibabaEpc.String(),
+			sgxKey:       k8sutil.AzureEpc.String(),
 			wantDeletion: true,
 		},
 		"same key": {
-			existingKey:  util.IntelEpc.String(),
-			sgxKey:       util.IntelEpc.String(),
+			existingKey:  k8sutil.IntelEpc.String(),
+			sgxKey:       k8sutil.IntelEpc.String(),
 			wantDeletion: false,
 		},
 		"intel provision with intel plugin": {
-			existingKey:  util.IntelProvision.String(),
-			sgxKey:       util.IntelEpc.String(),
+			existingKey:  k8sutil.IntelProvision.String(),
+			sgxKey:       k8sutil.IntelEpc.String(),
 			wantDeletion: false,
 		},
 		"intel enclave with intel plugin": {
-			existingKey:  util.IntelEnclave.String(),
-			sgxKey:       util.IntelEpc.String(),
+			existingKey:  k8sutil.IntelEnclave.String(),
+			sgxKey:       k8sutil.IntelEpc.String(),
 			wantDeletion: false,
 		},
 		"regular resource with intel plugin": {
 			existingKey:  "cpu",
-			sgxKey:       util.IntelEpc.String(),
+			sgxKey:       k8sutil.IntelEpc.String(),
 			wantDeletion: false,
 		},
 		"custom resource with intel plugin": {
 			existingKey:  "custom-sgx-resource",
-			sgxKey:       util.IntelEpc.String(),
+			sgxKey:       k8sutil.IntelEpc.String(),
 			wantDeletion: false,
 		},
 		"intel provision with custom plugin": {
-			existingKey:  util.IntelProvision.String(),
+			existingKey:  k8sutil.IntelProvision.String(),
 			sgxKey:       "custom-sgx-resource",
 			wantDeletion: true,
 		},

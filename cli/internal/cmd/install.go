@@ -16,7 +16,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/cli/internal/helm"
 	"github.com/edgelesssys/marblerun/cli/internal/kube"
-	"github.com/edgelesssys/marblerun/util"
+	"github.com/edgelesssys/marblerun/util/k8sutil"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -225,18 +225,18 @@ func getSGXResourceKey(ctx context.Context, kubeClient kubernetes.Interface) (st
 
 	for _, node := range nodes.Items {
 		if nodeHasAlibabaDevPlugin(node.Status.Capacity) {
-			return util.AlibabaEpc.String(), nil
+			return k8sutil.AlibabaEpc.String(), nil
 		}
 		if nodeHasAzureDevPlugin(node.Status.Capacity) {
-			return util.AzureEpc.String(), nil
+			return k8sutil.AzureEpc.String(), nil
 		}
 		if nodeHasIntelDevPlugin(node.Status.Capacity) {
-			return util.IntelEpc.String(), nil
+			return k8sutil.IntelEpc.String(), nil
 		}
 	}
 
 	// assume cluster has the intel SGX device plugin by default
-	return util.IntelEpc.String(), nil
+	return k8sutil.IntelEpc.String(), nil
 }
 
 // errorAndCleanup returns the given error and deletes resources which might have been created previously.

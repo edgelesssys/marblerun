@@ -16,7 +16,7 @@ import (
 	"testing"
 
 	"github.com/edgelesssys/marblerun/cli/internal/helm"
-	"github.com/edgelesssys/marblerun/util"
+	"github.com/edgelesssys/marblerun/util/k8sutil"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -151,9 +151,9 @@ func TestGetSGXResourceKey(t *testing.T) {
 		},
 		Status: corev1.NodeStatus{
 			Capacity: corev1.ResourceList{
-				util.IntelEnclave:   resource.MustParse("10"),
-				util.IntelEpc:       resource.MustParse("500"),
-				util.IntelProvision: resource.MustParse("10"),
+				k8sutil.IntelEnclave:   resource.MustParse("10"),
+				k8sutil.IntelEpc:       resource.MustParse("500"),
+				k8sutil.IntelProvision: resource.MustParse("10"),
 			},
 		},
 	}
@@ -162,7 +162,7 @@ func TestGetSGXResourceKey(t *testing.T) {
 
 	resourceKey, err := getSGXResourceKey(ctx, testClient)
 	assert.NoError(err)
-	assert.Equal(util.IntelEpc.String(), resourceKey)
+	assert.Equal(k8sutil.IntelEpc.String(), resourceKey)
 }
 
 func TestErrorAndCleanup(t *testing.T) {

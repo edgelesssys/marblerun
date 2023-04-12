@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/edgelesssys/marblerun/util"
+	"github.com/edgelesssys/marblerun/util/k8sutil"
 	"github.com/gofrs/flock"
 	"gopkg.in/yaml.v2"
 	"helm.sh/helm/v3/pkg/action"
@@ -277,7 +277,7 @@ func setSGXValues(resourceKey string, values, chartValues map[string]interface{}
 	}
 
 	var needNewLimit bool
-	limit := util.GetEPCResourceLimit(resourceKey)
+	limit := k8sutil.GetEPCResourceLimit(resourceKey)
 
 	// remove all previously set sgx resource limits
 	if presetLimits, ok := chartValues["coordinator"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{}); ok {
@@ -306,9 +306,9 @@ func setSGXValues(resourceKey string, values, chartValues map[string]interface{}
 	}
 
 	// Make sure provision and enclave bit is set if the Intel plugin is used
-	if resourceKey == util.IntelEpc.String() {
-		values["coordinator"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})[util.IntelProvision.String()] = 1
-		values["coordinator"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})[util.IntelEnclave.String()] = 1
+	if resourceKey == k8sutil.IntelEpc.String() {
+		values["coordinator"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})[k8sutil.IntelProvision.String()] = 1
+		values["coordinator"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})[k8sutil.IntelEnclave.String()] = 1
 	}
 }
 
@@ -316,18 +316,18 @@ func setSGXValues(resourceKey string, values, chartValues map[string]interface{}
 // Choice is based on the resource key of the used SGX device plugin.
 func needsDeletion(existingKey, sgxKey string) bool {
 	sgxResources := []string{
-		util.AlibabaEpc.String(), util.AzureEpc.String(), util.IntelEpc.String(),
-		util.IntelProvision.String(), util.IntelEnclave.String(),
+		k8sutil.AlibabaEpc.String(), k8sutil.AzureEpc.String(), k8sutil.IntelEpc.String(),
+		k8sutil.IntelProvision.String(), k8sutil.IntelEnclave.String(),
 	}
 
 	switch sgxKey {
-	case util.AlibabaEpc.String(), util.AzureEpc.String():
+	case k8sutil.AlibabaEpc.String(), k8sutil.AzureEpc.String():
 		// Delete all non Alibaba/Azure SGX resources depending on the used SGX device plugin
 		return sgxKey != existingKey && keyInList(existingKey, sgxResources)
-	case util.IntelEpc.String():
+	case k8sutil.IntelEpc.String():
 		// Delete all non Intel SGX resources depending on the used SGX device plugin
 		// Keep Intel provision and enclave bit
-		return keyInList(existingKey, []string{util.AlibabaEpc.String(), util.AzureEpc.String()})
+		return keyInList(existingKey, []string{k8sutil.AlibabaEpc.String(), k8sutil.AzureEpc.String()})
 	default:
 		// Either no SGX plugin or a custom SGX plugin is used
 		// Delete all known SGX resources
