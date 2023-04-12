@@ -15,7 +15,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/edgelesssys/marblerun/util"
+	"github.com/edgelesssys/marblerun/util/k8sutil"
 	v1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -184,18 +184,18 @@ func mutate(body []byte, coordAddr, domainName, resourceKey string) ([]byte, err
 				container.Resources.Limits = make(map[corev1.ResourceName]resource.Quantity)
 			}
 			switch resourceKey {
-			case util.IntelEpc.String():
+			case k8sutil.IntelEpc.String():
 				// Intels device plugin offers 3 resources:
 				//  epc			: sets EPC for the container
 				//  enclave		: provides a handle to /dev/sgx_enclave
 				//  provision	: provides a handle to /dev/sgx_provision, this is not needed when the Marble utilises out-of-process quote-generation
-				setResourceLimit(container.Resources.Limits, util.IntelEpc, util.GetEPCResourceLimit(resourceKey))
-				setResourceLimit(container.Resources.Limits, util.IntelEnclave, "1")
-				setResourceLimit(container.Resources.Limits, util.IntelProvision, "1")
+				setResourceLimit(container.Resources.Limits, k8sutil.IntelEpc, k8sutil.GetEPCResourceLimit(resourceKey))
+				setResourceLimit(container.Resources.Limits, k8sutil.IntelEnclave, "1")
+				setResourceLimit(container.Resources.Limits, k8sutil.IntelProvision, "1")
 			default:
 				// Azure and Alibaba Cloud plugins offer only 1 resource
 				// for custom plugins we can only inject the resource provided by the `resourceKey`
-				setResourceLimit(container.Resources.Limits, corev1.ResourceName(resourceKey), util.GetEPCResourceLimit(resourceKey))
+				setResourceLimit(container.Resources.Limits, corev1.ResourceName(resourceKey), k8sutil.GetEPCResourceLimit(resourceKey))
 			}
 		}
 
