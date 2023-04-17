@@ -29,6 +29,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/coordinator/state"
 	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
+	"github.com/edgelesssys/marblerun/coordinator/store/wrapper"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
@@ -204,11 +205,11 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	ms.assert.Equal(cert.DNSNames, newLeafCert.DNSNames)
 	ms.assert.Equal(cert.IPAddresses, newLeafCert.IPAddresses)
 
-	rootCert, err := ms.coreServer.data.GetCertificate(constants.SKCoordinatorRootCert)
+	rootCert, err := wrapper.New(ms.coreServer.store).GetCertificate(constants.SKCoordinatorRootCert)
 	ms.assert.NoError(err)
-	intermediateCert, err := ms.coreServer.data.GetCertificate(constants.SKCoordinatorIntermediateCert)
+	intermediateCert, err := wrapper.New(ms.coreServer.store).GetCertificate(constants.SKCoordinatorIntermediateCert)
 	ms.assert.NoError(err)
-	marbleRootCert, err := ms.coreServer.data.GetCertificate(constants.SKMarbleRootCert)
+	marbleRootCert, err := wrapper.New(ms.coreServer.store).GetCertificate(constants.SKMarbleRootCert)
 	ms.assert.NoError(err)
 	// Check Signature for both, intermediate certificate and leaf certificate
 	ms.assert.NoError(rootCert.CheckSignature(intermediateCert.SignatureAlgorithm, intermediateCert.RawTBSCertificate, intermediateCert.Signature))
@@ -485,7 +486,7 @@ func TestSecurityLevelUpdate(t *testing.T) {
 	_, err = clientAPI.SetManifest([]byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
 
-	admin, err := coreServer.data.GetUser("admin")
+	admin, err := wrapper.New(coreServer.store).GetUser("admin")
 	assert.NoError(err)
 
 	// try to activate another first backend, should succeed as SecurityLevel matches the definition in the manifest
@@ -501,9 +502,9 @@ func TestSecurityLevelUpdate(t *testing.T) {
 	// Use a new core and test if updated manifest persisted after restart
 	coreServer2, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer), recovery, zapLogger, nil, nil)
 	require.NoError(err)
-	coreServer2State, err := coreServer2.data.GetState()
+	coreServer2State, err := wrapper.New(coreServer2.store).GetState()
 	assert.NoError(err)
-	coreServer2UpdatedPkg, err := coreServer2.data.GetPackage("frontend")
+	coreServer2UpdatedPkg, err := wrapper.New(coreServer2.store).GetPackage("frontend")
 	assert.NoError(err)
 	assert.Equal(state.AcceptingMarbles, coreServer2State)
 	assert.EqualValues(5, *coreServer2UpdatedPkg.SecurityVersion)
@@ -551,7 +552,7 @@ func (ms *marbleSpawner) shortMarbleActivation(marbleType string, infraName stri
 	// Validate response
 	params := resp.GetParameters()
 	// Get the marble from the manifest set on the coreServer since this one sets default values for empty values
-	coreServerManifest, err := ms.coreServer.data.GetManifest()
+	coreServerManifest, err := wrapper.New(ms.coreServer.store).GetManifest()
 	ms.assert.NoError(err)
 	marble = coreServerManifest.Marbles[marbleType]
 	// Validate Files

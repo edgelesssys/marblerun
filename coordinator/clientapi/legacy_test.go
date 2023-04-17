@@ -219,7 +219,7 @@ func TestGetSecret_Legacy(t *testing.T) {
 
 	secret1, err := data.GetSecret(symmetricSecret)
 	require.NoError(err)
-	secret2, err := c.data.GetSecret(certSecret)
+	secret2, err := data.GetSecret(certSecret)
 	require.NoError(err)
 	admin, err := data.GetUser("admin")
 	require.NoError(err)
@@ -614,7 +614,6 @@ func setupAPI(t *testing.T) (*ClientAPI, wrapper.Wrapper) {
 	require.NoError(err)
 
 	return &ClientAPI{
-		data: wrapper,
 		core: &fakeCore{
 			state:       state.AcceptingManifest,
 			getStateMsg: "status message",

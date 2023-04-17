@@ -77,7 +77,16 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (res *rpc.A
 		c.log.Error("Couldn't get marble TLS certificate")
 		return nil, status.Error(codes.Unauthenticated, "couldn't get marble TLS certificate")
 	}
-	if err := c.verifyManifestRequirement(tlsCert, req.GetQuote(), req.GetMarbleType()); err != nil {
+
+	tx, err := c.store.BeginTransaction()
+	if err != nil {
+		c.log.Error("Initialize store transaction failed", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "initializing store transaction: %s", err)
+	}
+	defer tx.Rollback()
+	txdata := wrapper.New(tx)
+
+	if err := c.verifyManifestRequirement(txdata, tlsCert, req.GetQuote(), req.GetMarbleType()); err != nil {
 		c.log.Error("Marble verification failed", zap.Error(err))
 		return nil, status.Errorf(codes.PermissionDenied, "marble verification failed: %s", err)
 	}
@@ -89,31 +98,36 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (res *rpc.A
 	}
 
 	// Generate marble authentication secrets
-	authSecrets, err := c.generateMarbleAuthSecrets(req, marbleUUID)
+	authSecrets, err := c.generateMarbleAuthSecrets(txdata, req, marbleUUID)
 	if err != nil {
 		c.log.Error("Generating marble authentication secrets failed", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "generating marble authentication secrets: %s", err)
 	}
 
-	marbleRootCert, err := c.data.GetCertificate(constants.SKMarbleRootCert)
+	marbleRootCert, err := txdata.GetCertificate(constants.SKMarbleRootCert)
 	if err != nil {
 		c.log.Error("Couldn't retrieve marble root certificate", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "retrieving marbleRootCert certificate: %s", err)
 	}
-	intermediatePrivK, err := c.data.GetPrivateKey(constants.SKCoordinatorIntermediateKey)
+	rootPrivK, err := txdata.GetPrivateKey(constants.SKCoordinatorRootKey)
+	if err != nil {
+		c.log.Error("Couldn't retrieve marbleRootCert private key", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "retrieving marble root private key: %s", err)
+	}
+	intermediatePrivK, err := txdata.GetPrivateKey(constants.SKCoordinatorIntermediateKey)
 	if err != nil {
 		c.log.Error("Couldn't retrieve marbleRootCert private key", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "retrieving marble root private key: %s", err)
 	}
 
-	secrets, err := c.data.GetSecretMap()
+	secrets, err := txdata.GetSecretMap()
 	if err != nil {
 		c.log.Error("Loading secrets from store failed", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "retrieving secrets: %s", err)
 	}
 
 	// Generate unique (= per marble) secrets
-	privateSecrets, err := c.GenerateSecrets(secrets, marbleUUID, marbleRootCert, intermediatePrivK)
+	privateSecrets, err := c.GenerateSecrets(secrets, marbleUUID, marbleRootCert, intermediatePrivK, rootPrivK)
 	if err != nil {
 		c.log.Error("Couldn't generate specified secrets for the given manifest", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "generating secrets for marble: %s", err)
@@ -124,14 +138,14 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (res *rpc.A
 		secrets[k] = v
 	}
 
-	marble, err := c.data.GetMarble(req.MarbleType)
+	marble, err := txdata.GetMarble(req.MarbleType)
 	if err != nil {
 		c.log.Error("Loading marble config failed", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "retrieving marble config: %s", err)
 	}
 
 	// add TTLS config to Env
-	if err := c.setTTLSConfig(marble, authSecrets, secrets); err != nil {
+	if err := c.setTTLSConfig(txdata, marble, authSecrets, secrets); err != nil {
 		c.log.Error("Couldn't create TTLS config", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "creating TTLS config: %s", err)
 	}
@@ -147,20 +161,16 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (res *rpc.A
 		Parameters: params,
 	}
 
-	tx, err := c.store.BeginTransaction()
-	if err != nil {
-		c.log.Error("Initialize store transaction failed", zap.Error(err))
-		return nil, status.Errorf(codes.Internal, "initializing store transaction: %s", err)
-	}
-	defer tx.Rollback()
-
-	if err := (wrapper.New(tx)).IncrementActivations(req.GetMarbleType()); err != nil {
-		c.log.Error("Could not increment activations", zap.Error(err))
-		return nil, status.Errorf(codes.Internal, "incrementing marble activations: %s", err)
-	}
-	if err := tx.Commit(); err != nil {
-		c.log.Error("Committing store transaction failed", zap.Error(err))
-		return nil, status.Errorf(codes.Internal, "committing store transaction: %s", err)
+	// We only need to commit any data to the store if we have a limit on the number of activations
+	if marble.MaxActivations > 0 {
+		if err := txdata.IncrementActivations(req.GetMarbleType()); err != nil {
+			c.log.Error("Could not increment activations", zap.Error(err))
+			return nil, status.Errorf(codes.Internal, "incrementing marble activations: %s", err)
+		}
+		if err := tx.Commit(); err != nil {
+			c.log.Error("Committing store transaction failed", zap.Error(err))
+			return nil, status.Errorf(codes.Internal, "committing store transaction: %s", err)
+		}
 	}
 
 	c.metrics.marbleAPI.activationSuccess.WithLabelValues(req.GetMarbleType(), req.GetUUID()).Inc()
@@ -174,8 +184,8 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (res *rpc.A
 }
 
 // verifyManifestRequirement verifies marble attempting to register with respect to manifest.
-func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, certQuote []byte, marbleType string) error {
-	marble, err := c.data.GetMarble(marbleType)
+func (c *Core) verifyManifestRequirement(txdata storeGetter, tlsCert *x509.Certificate, certQuote []byte, marbleType string) error {
+	marble, err := txdata.GetMarble(marbleType)
 	if err != nil {
 		if errors.Is(err, store.ErrValueUnset) {
 			return fmt.Errorf("unknown marble type requested")
@@ -183,7 +193,7 @@ func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, certQuote []
 		return fmt.Errorf("loading marble data: %w", err)
 	}
 
-	pkg, err := c.data.GetPackage(marble.Package)
+	pkg, err := txdata.GetPackage(marble.Package)
 	if err != nil {
 		if errors.Is(err, store.ErrValueUnset) {
 			return fmt.Errorf("undefined package %q", marble.Package)
@@ -191,7 +201,7 @@ func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, certQuote []
 		return fmt.Errorf("loading package data: %w", err)
 	}
 
-	infraIter, err := c.data.GetIterator(request.Infrastructure)
+	infraIter, err := txdata.GetIterator(request.Infrastructure)
 	if err != nil {
 		return fmt.Errorf("getting infrastructure iterator: %w", err)
 	}
@@ -208,7 +218,7 @@ func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, certQuote []
 				if err != nil {
 					return err
 				}
-				infra, err := c.data.GetInfrastructure(infraName)
+				infra, err := txdata.GetInfrastructure(infraName)
 				if err != nil {
 					return fmt.Errorf("loading infrastructure: %w", err)
 				}
@@ -224,7 +234,7 @@ func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, certQuote []
 	}
 
 	// check activation budget (MaxActivations == 0 means infinite budget)
-	activations, err := c.data.GetActivations(marbleType)
+	activations, err := txdata.GetActivations(marbleType)
 	if err != nil {
 		return fmt.Errorf("could not retrieve activations for marble type %q: %w", marbleType, err)
 	}
@@ -235,7 +245,7 @@ func (c *Core) verifyManifestRequirement(tlsCert *x509.Certificate, certQuote []
 }
 
 // generateCertFromCSR signs the CSR from marble attempting to register.
-func (c *Core) generateCertFromCSR(csrReq []byte, pubk ecdsa.PublicKey, marbleUUID string) ([]byte, error) {
+func (c *Core) generateCertFromCSR(txdata storeGetter, csrReq []byte, pubk ecdsa.PublicKey, marbleUUID string) ([]byte, error) {
 	// parse and verify CSR
 	csr, err := x509.ParseCertificateRequest(csrReq)
 	if err != nil {
@@ -250,11 +260,11 @@ func (c *Core) generateCertFromCSR(csrReq []byte, pubk ecdsa.PublicKey, marbleUU
 		return nil, fmt.Errorf("generating certificate serial number: %w", err)
 	}
 
-	marbleRootCert, err := c.data.GetCertificate(constants.SKMarbleRootCert)
+	marbleRootCert, err := txdata.GetCertificate(constants.SKMarbleRootCert)
 	if err != nil {
 		return nil, fmt.Errorf("loading marble root certificate: %w", err)
 	}
-	intermediatePrivK, err := c.data.GetPrivateKey(constants.SKCoordinatorIntermediateKey)
+	intermediatePrivK, err := txdata.GetPrivateKey(constants.SKCoordinatorIntermediateKey)
 	if err != nil {
 		return nil, fmt.Errorf("loading marble root certificate private key: %w", err)
 	}
@@ -367,7 +377,7 @@ func parseSecrets(data string, tplFunc template.FuncMap, secretsWrapped secretsW
 	return templateResult.String(), nil
 }
 
-func (c *Core) generateMarbleAuthSecrets(req *rpc.ActivationReq, marbleUUID uuid.UUID) (reservedSecrets, error) {
+func (c *Core) generateMarbleAuthSecrets(txdata storeGetter, req *rpc.ActivationReq, marbleUUID uuid.UUID) (reservedSecrets, error) {
 	// generate key-pair for marble
 	privk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
@@ -383,7 +393,7 @@ func (c *Core) generateMarbleAuthSecrets(req *rpc.ActivationReq, marbleUUID uuid
 	}
 
 	// Generate Marble certificate
-	certRaw, err := c.generateCertFromCSR(req.GetCSR(), privk.PublicKey, marbleUUID.String())
+	certRaw, err := c.generateCertFromCSR(txdata, req.GetCSR(), privk.PublicKey, marbleUUID.String())
 	if err != nil {
 		return reservedSecrets{}, err
 	}
@@ -393,7 +403,7 @@ func (c *Core) generateMarbleAuthSecrets(req *rpc.ActivationReq, marbleUUID uuid
 		return reservedSecrets{}, err
 	}
 
-	marbleRootCert, err := c.data.GetCertificate(constants.SKMarbleRootCert)
+	marbleRootCert, err := txdata.GetCertificate(constants.SKMarbleRootCert)
 	if err != nil {
 		return reservedSecrets{}, err
 	}
@@ -406,7 +416,7 @@ func (c *Core) generateMarbleAuthSecrets(req *rpc.ActivationReq, marbleUUID uuid
 	return authSecrets, nil
 }
 
-func (c *Core) setTTLSConfig(marble manifest.Marble, specialSecrets reservedSecrets, userSecrets map[string]manifest.Secret) error {
+func (c *Core) setTTLSConfig(txdata storeGetter, marble manifest.Marble, specialSecrets reservedSecrets, userSecrets map[string]manifest.Secret) error {
 	if len(marble.TLS) == 0 {
 		return nil
 	}
@@ -416,7 +426,7 @@ func (c *Core) setTTLSConfig(marble manifest.Marble, specialSecrets reservedSecr
 	ttlsConf["tls"]["Incoming"] = make(map[string]map[string]interface{})
 	ttlsConf["tls"]["Outgoing"] = make(map[string]map[string]interface{})
 
-	marbleRootCert, err := c.data.GetCertificate(constants.SKMarbleRootCert)
+	marbleRootCert, err := txdata.GetCertificate(constants.SKMarbleRootCert)
 	if err != nil {
 		return err
 	}
@@ -431,7 +441,7 @@ func (c *Core) setTTLSConfig(marble manifest.Marble, specialSecrets reservedSecr
 	stringClientKey := string(pem.EncodeToMemory(&pemClientKey))
 
 	for _, tagName := range marble.TLS {
-		tag, err := c.data.GetTLS(tagName)
+		tag, err := txdata.GetTLS(tagName)
 		if err != nil {
 			return err
 		}

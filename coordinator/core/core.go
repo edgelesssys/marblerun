@@ -34,6 +34,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/store"
 	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
 	"github.com/edgelesssys/marblerun/coordinator/store/wrapper"
+	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -54,7 +55,6 @@ type Core struct {
 	metrics  *coreMetrics
 
 	store store.Store
-	data  wrapper.Wrapper
 
 	log      *zap.Logger
 	eventlog *events.Log
@@ -66,7 +66,15 @@ type Core struct {
 // This function locks the Core's mutex and therefore should be paired with `defer c.mux.Unlock()`.
 func (c *Core) RequireState(states ...state.State) error {
 	c.mux.Lock()
-	curState, err := c.data.GetState()
+
+	tx, err := c.store.BeginTransaction()
+	if err != nil {
+		return fmt.Errorf("initializing read transaction: %w", err)
+	}
+	defer tx.Rollback()
+	data := wrapper.New(tx)
+
+	curState, err := data.GetState()
 	if err != nil {
 		return err
 	}
@@ -103,7 +111,6 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, stor store.
 		qi:       qi,
 		recovery: recovery,
 		store:    stor,
-		data:     wrapper.New(stor),
 		log:      zapLogger,
 		eventlog: eventlog,
 	}
@@ -161,12 +168,12 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, stor store.
 		stor.SetRecoveryData(recoveryData)
 	}
 
-	if err := tx.Commit(); err != nil {
+	rootCert, err := txdata.GetCertificate(constants.SKCoordinatorRootCert)
+	if err != nil {
 		return nil, err
 	}
 
-	rootCert, err := c.data.GetCertificate(constants.SKCoordinatorRootCert)
-	if err != nil {
+	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 
@@ -206,8 +213,17 @@ func (c *Core) GetTLSConfig() (*tls.Config, error) {
 }
 
 // GetTLSRootCertificate creates a TLS certificate for the Coordinators self-signed x509 certificate.
+//
+// This function initializes a read transaction and should not be called from other functions with ongoing transactions.
 func (c *Core) GetTLSRootCertificate(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	curState, err := c.data.GetState()
+	tx, err := c.store.BeginTransaction()
+	if err != nil {
+		return nil, fmt.Errorf("initializing read transaction: %w", err)
+	}
+	defer tx.Rollback()
+	data := wrapper.New(tx)
+
+	curState, err := data.GetState()
 	if err != nil {
 		return nil, err
 	}
@@ -215,11 +231,11 @@ func (c *Core) GetTLSRootCertificate(clientHello *tls.ClientHelloInfo) (*tls.Cer
 		return nil, errors.New("don't have a cert yet")
 	}
 
-	rootCert, err := c.data.GetCertificate(constants.SKCoordinatorRootCert)
+	rootCert, err := data.GetCertificate(constants.SKCoordinatorRootCert)
 	if err != nil {
 		return nil, err
 	}
-	rootPrivK, err := c.data.GetPrivateKey(constants.SKCoordinatorRootKey)
+	rootPrivK, err := data.GetPrivateKey(constants.SKCoordinatorRootKey)
 	if err != nil {
 		return nil, err
 	}
@@ -228,8 +244,17 @@ func (c *Core) GetTLSRootCertificate(clientHello *tls.ClientHelloInfo) (*tls.Cer
 }
 
 // GetTLSMarbleRootCertificate creates a TLS certificate for the Coordinator's x509 marbleRoot certificate.
+//
+// This function initializes a read transaction and should not be called from other functions with ongoing transactions.
 func (c *Core) GetTLSMarbleRootCertificate(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	curState, err := c.data.GetState()
+	tx, err := c.store.BeginTransaction()
+	if err != nil {
+		return nil, fmt.Errorf("initializing read transaction: %w", err)
+	}
+	defer tx.Rollback()
+	data := wrapper.New(tx)
+
+	curState, err := data.GetState()
 	if err != nil {
 		return nil, err
 	}
@@ -237,11 +262,11 @@ func (c *Core) GetTLSMarbleRootCertificate(clientHello *tls.ClientHelloInfo) (*t
 		return nil, errors.New("don't have a cert yet")
 	}
 
-	marbleRootCert, err := c.data.GetCertificate(constants.SKMarbleRootCert)
+	marbleRootCert, err := data.GetCertificate(constants.SKMarbleRootCert)
 	if err != nil {
 		return nil, err
 	}
-	intermediatePrivK, err := c.data.GetPrivateKey(constants.SKCoordinatorIntermediateKey)
+	intermediatePrivK, err := data.GetPrivateKey(constants.SKCoordinatorIntermediateKey)
 	if err != nil {
 		return nil, err
 	}
@@ -291,7 +316,14 @@ func getClientTLSCert(ctx context.Context) *x509.Certificate {
 
 // GetState returns the current state of the Coordinator.
 func (c *Core) GetState() (state.State, string, error) {
-	curState, err := c.data.GetState()
+	tx, err := c.store.BeginTransaction()
+	if err != nil {
+		return -1, "Cannot determine coordinator status.", fmt.Errorf("initializing read transaction: %w", err)
+	}
+	defer tx.Rollback()
+	data := wrapper.New(tx)
+
+	curState, err := data.GetState()
 	if err != nil {
 		return -1, "Cannot determine coordinator status.", err
 	}
@@ -313,14 +345,12 @@ func (c *Core) GetState() (state.State, string, error) {
 }
 
 // GenerateSecrets generates secrets for the given manifest and parent certificate.
-func (c *Core) GenerateSecrets(secrets map[string]manifest.Secret, id uuid.UUID, parentCertificate *x509.Certificate, parentPrivKey *ecdsa.PrivateKey) (map[string]manifest.Secret, error) {
+func (c *Core) GenerateSecrets(
+	secrets map[string]manifest.Secret, id uuid.UUID,
+	parentCertificate *x509.Certificate, parentPrivKey *ecdsa.PrivateKey, rootPrivK *ecdsa.PrivateKey,
+) (map[string]manifest.Secret, error) {
 	// Create a new map so we do not overwrite the entries in the manifest
 	newSecrets := make(map[string]manifest.Secret)
-
-	rootPrivK, err := c.data.GetPrivateKey(constants.SKCoordinatorRootKey)
-	if err != nil {
-		return nil, err
-	}
 
 	// Generate secrets
 	for name, secret := range secrets {
@@ -558,4 +588,23 @@ type QuoteError struct {
 // Error returns the error message.
 func (e QuoteError) Error() string {
 	return fmt.Sprintf("failed to get quote: %v", e.err)
+}
+
+type storeGetter interface {
+	GetActivations(name string) (uint, error)
+	GetCertificate(name string) (*x509.Certificate, error)
+	GetInfrastructure(name string) (quote.InfrastructureProperties, error)
+	GetIterator(prefix string) (wrapper.Iterator, error)
+	GetManifest() (manifest.Manifest, error)
+	GetMarble(marble string) (manifest.Marble, error)
+	GetPackage(name string) (quote.PackageProperties, error)
+	GetPrivateKey(name string) (*ecdsa.PrivateKey, error)
+	GetManifestSignature() ([]byte, error)
+	GetRawManifest() ([]byte, error)
+	GetSecretMap() (map[string]manifest.Secret, error)
+	GetState() (state.State, error)
+	GetSecret(name string) (manifest.Secret, error)
+	GetTLS(name string) (manifest.TLStag, error)
+	GetUpdateLog() (string, error)
+	GetUser(userName string) (*user.User, error)
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/coordinator/state"
 	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
+	"github.com/edgelesssys/marblerun/coordinator/store/wrapper"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -72,7 +73,7 @@ func TestStoreWrapperMetrics(t *testing.T) {
 	key := make([]byte, 16)
 	_, err = clientAPI.Recover(key)
 	require.NoError(err)
-	state, err := c.data.GetState()
+	state, err := wrapper.New(c.store).GetState()
 	require.NoError(err)
 	assert.Equal(1, promtest.CollectAndCount(c.metrics.coordinatorState))
 	assert.Equal(float64(state), promtest.ToFloat64(c.metrics.coordinatorState))

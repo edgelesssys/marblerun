@@ -23,6 +23,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/coordinator/state"
 	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
+	"github.com/edgelesssys/marblerun/coordinator/store/wrapper"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -39,10 +40,10 @@ func TestCore(t *testing.T) {
 	assert := assert.New(t)
 
 	c := NewCoreWithMocks()
-	curState, err := c.data.GetState()
+	curState, err := wrapper.New(c.store).GetState()
 	assert.NoError(err)
 	assert.Equal(state.AcceptingManifest, curState)
-	rootCert, err := c.data.GetCertificate(constants.SKCoordinatorRootCert)
+	rootCert, err := wrapper.New(c.store).GetCertificate(constants.SKCoordinatorRootCert)
 	assert.NoError(err)
 	assert.Equal(constants.CoordinatorName, rootCert.Subject.CommonName)
 
@@ -84,7 +85,7 @@ func TestSeal(t *testing.T) {
 	signatureRootECDSA, signature, _ := clientAPI.GetManifestSignature()
 
 	// Get secrets
-	cSecrets, err := c.data.GetSecretMap()
+	cSecrets, err := wrapper.New(c.store).GetSecretMap()
 	assert.NoError(err)
 
 	// Check sealing with a new core initialized with the sealed state.
@@ -92,7 +93,7 @@ func TestSeal(t *testing.T) {
 	require.NoError(err)
 	clientAPI, err = clientapi.New(c2.store, c2.recovery, c2, zapLogger)
 	require.NoError(err)
-	c2State, err := c2.data.GetState()
+	c2State, err := wrapper.New(c2.store).GetState()
 	assert.NoError(err)
 	assert.Equal(state.AcceptingMarbles, c2State)
 
@@ -104,7 +105,7 @@ func TestSeal(t *testing.T) {
 	assert.Error(err)
 
 	// Check if the secret specified in the test manifest is unsealed correctly
-	c2Secrets, err := c2.data.GetSecretMap()
+	c2Secrets, err := wrapper.New(c2.store).GetSecretMap()
 	assert.NoError(err)
 	assert.Equal(cSecrets, c2Secrets)
 
@@ -152,14 +153,14 @@ func TestRecover(t *testing.T) {
 	require.NoError(err)
 	clientAPI, err = clientapi.New(c2.store, c2.recovery, c2, zapLogger)
 	require.NoError(err)
-	c2State, err := c2.data.GetState()
+	c2State, err := wrapper.New(c2.store).GetState()
 	assert.NoError(err)
 	require.Equal(state.Recovery, c2State)
 
 	// recover
 	_, err = clientAPI.Recover(key)
 	assert.NoError(err)
-	c2State, err = c2.data.GetState()
+	c2State, err = wrapper.New(c2.store).GetState()
 	assert.NoError(err)
 	assert.Equal(state.AcceptingMarbles, c2State)
 }
@@ -202,13 +203,13 @@ func TestGenerateSecrets(t *testing.T) {
 
 	c := NewCoreWithMocks()
 
-	rootCert, err := c.data.GetCertificate(constants.SKCoordinatorRootCert)
+	rootCert, err := wrapper.New(c.store).GetCertificate(constants.SKCoordinatorRootCert)
 	assert.NoError(err)
-	rootPrivK, err := c.data.GetPrivateKey(constants.SKCoordinatorRootKey)
+	rootPrivK, err := wrapper.New(c.store).GetPrivateKey(constants.SKCoordinatorRootKey)
 	assert.NoError(err)
 
 	// This should return valid secrets
-	generatedSecrets, err := c.GenerateSecrets(secretsToGenerate, uuid.Nil, rootCert, rootPrivK)
+	generatedSecrets, err := c.GenerateSecrets(secretsToGenerate, uuid.Nil, rootCert, rootPrivK, rootPrivK)
 	require.NoError(err)
 	// Check if rawTest1 has 128 Bits/16 Bytes and rawTest2 256 Bits/8 Bytes
 	assert.Len(generatedSecrets["rawTest1"].Public, 16)
@@ -228,7 +229,7 @@ func TestGenerateSecrets(t *testing.T) {
 
 	// Make sure a certificate gets a new serial number if its regenerated
 	firstSerial := generatedSecrets["cert-rsa-test"].Cert.SerialNumber
-	secondGeneration, err := c.GenerateSecrets(generatedSecrets, uuid.Nil, rootCert, rootPrivK)
+	secondGeneration, err := c.GenerateSecrets(generatedSecrets, uuid.Nil, rootCert, rootPrivK, rootPrivK)
 	assert.NoError(err)
 	assert.NotEqualValues(*firstSerial, *secondGeneration["cert-rsa-test"].Cert.SerialNumber)
 
@@ -270,31 +271,31 @@ func TestGenerateSecrets(t *testing.T) {
 	assert.NoError(err)
 
 	// Check if we get an empty secret map as output for an empty map as input
-	generatedSecrets, err = c.GenerateSecrets(secretsEmptyMap, uuid.Nil, rootCert, rootPrivK)
+	generatedSecrets, err = c.GenerateSecrets(secretsEmptyMap, uuid.Nil, rootCert, rootPrivK, rootPrivK)
 	require.NoError(err)
 	assert.IsType(map[string]manifest.Secret{}, generatedSecrets)
 	assert.Len(generatedSecrets, 0)
 
 	// Check if we get an empty secret map as output for nil
-	generatedSecrets, err = c.GenerateSecrets(nil, uuid.Nil, rootCert, rootPrivK)
+	generatedSecrets, err = c.GenerateSecrets(nil, uuid.Nil, rootCert, rootPrivK, rootPrivK)
 	require.NoError(err)
 	assert.IsType(map[string]manifest.Secret{}, generatedSecrets)
 	assert.Len(generatedSecrets, 0)
 
 	// If no size is specified, the function should fail
-	_, err = c.GenerateSecrets(secretsNoSize, uuid.Nil, rootCert, rootPrivK)
+	_, err = c.GenerateSecrets(secretsNoSize, uuid.Nil, rootCert, rootPrivK, rootPrivK)
 	assert.Error(err)
 
 	// Also, it should fail if we try to generate a secret with an unknown type
-	_, err = c.GenerateSecrets(secretsInvalidType, uuid.Nil, rootCert, rootPrivK)
+	_, err = c.GenerateSecrets(secretsInvalidType, uuid.Nil, rootCert, rootPrivK, rootPrivK)
 	assert.Error(err)
 
 	// If Ed25519 key size is specified, we should fail
-	_, err = c.GenerateSecrets(secretsEd25519WrongKeySize, uuid.Nil, rootCert, rootPrivK)
+	_, err = c.GenerateSecrets(secretsEd25519WrongKeySize, uuid.Nil, rootCert, rootPrivK, rootPrivK)
 	assert.Error(err)
 
 	// However, for ECDSA we fail as we can have multiple curves
-	_, err = c.GenerateSecrets(secretsECDSAWrongKeySize, uuid.Nil, rootCert, rootPrivK)
+	_, err = c.GenerateSecrets(secretsECDSAWrongKeySize, uuid.Nil, rootCert, rootPrivK, rootPrivK)
 	assert.Error(err)
 }
 
@@ -313,19 +314,19 @@ func TestUnsetRestart(t *testing.T) {
 	// create a new core, this seals the state with only certificate and keys
 	c1, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer), recovery, zapLogger, nil, nil)
 	require.NoError(err)
-	c1State, err := c1.data.GetState()
+	c1State, err := wrapper.New(c1.store).GetState()
 	assert.NoError(err)
 	assert.Equal(state.AcceptingManifest, c1State)
-	cCert, err := c1.data.GetCertificate(constants.SKCoordinatorRootCert)
+	cCert, err := wrapper.New(c1.store).GetCertificate(constants.SKCoordinatorRootCert)
 	assert.NoError(err)
 
 	// create a second core, this should overwrite the previously sealed certificate and keys since no manifest was set
 	c2, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer), recovery, zapLogger, nil, nil)
 	require.NoError(err)
-	c2State, err := c2.data.GetState()
+	c2State, err := wrapper.New(c2.store).GetState()
 	assert.NoError(err)
 	assert.Equal(state.AcceptingManifest, c2State)
-	c2Cert, err := c2.data.GetCertificate(constants.SKCoordinatorRootCert)
+	c2Cert, err := wrapper.New(c2.store).GetCertificate(constants.SKCoordinatorRootCert)
 	assert.NoError(err)
 
 	assert.NotEqual(*cCert, *c2Cert)
