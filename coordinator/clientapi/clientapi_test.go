@@ -590,7 +590,11 @@ func (c *fakeCore) RequireState(states ...state.State) error {
 	return errors.New("core is not in expected state")
 }
 
-func (c *fakeCore) AdvanceState(newState state.State, _ store.Transaction) error {
+func (c *fakeCore) AdvanceState(newState state.State, _ interface {
+	PutState(state.State) error
+	GetState() (state.State, error)
+},
+) error {
 	if c.advanceStateErr != nil {
 		return c.advanceStateErr
 	}

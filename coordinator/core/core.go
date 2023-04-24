@@ -34,7 +34,6 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/store"
 	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
 	"github.com/edgelesssys/marblerun/coordinator/store/wrapper"
-	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -54,7 +53,7 @@ type Core struct {
 	recovery recovery.Recovery
 	metrics  *coreMetrics
 
-	store store.Store
+	txHandle transactionHandle
 
 	log      *zap.Logger
 	eventlog *events.Log
@@ -67,14 +66,13 @@ type Core struct {
 func (c *Core) RequireState(states ...state.State) error {
 	c.mux.Lock()
 
-	tx, err := c.store.BeginTransaction()
+	getter, rollback, _, err := wrapper.WrapTransaction(c.txHandle)
 	if err != nil {
-		return fmt.Errorf("initializing read transaction: %w", err)
+		return err
 	}
-	defer tx.Rollback()
-	data := wrapper.New(tx)
+	defer rollback()
 
-	curState, err := data.GetState()
+	curState, err := getter.GetState()
 	if err != nil {
 		return err
 	}
@@ -87,16 +85,19 @@ func (c *Core) RequireState(states ...state.State) error {
 }
 
 // AdvanceState advances the state of the Coordinator.
-func (c *Core) AdvanceState(newState state.State, tx store.Transaction) error {
-	txdata := wrapper.New(tx)
-	curState, err := txdata.GetState()
+func (c *Core) AdvanceState(newState state.State, tx interface {
+	PutState(state.State) error
+	GetState() (state.State, error)
+},
+) error {
+	curState, err := tx.GetState()
 	if err != nil {
 		return err
 	}
 	if !(curState < newState && newState < state.Max) {
 		panic(fmt.Errorf("cannot advance from %d to %d", curState, newState))
 	}
-	return txdata.PutState(newState)
+	return tx.PutState(newState)
 }
 
 // Unlock the Core's mutex.
@@ -110,7 +111,7 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, stor store.
 		qv:       qv,
 		qi:       qi,
 		recovery: recovery,
-		store:    stor,
+		txHandle: stor,
 		log:      zapLogger,
 		eventlog: eventlog,
 	}
@@ -122,17 +123,16 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, stor store.
 		c.log.Error("Could not retrieve recovery data from state. Recovery will be unavailable", zap.Error(err))
 	}
 
-	tx, err := c.store.BeginTransaction()
+	transaction, rollback, commit, err := wrapper.WrapTransaction(c.txHandle)
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback()
-	txdata := wrapper.New(tx)
+	defer rollback()
 
 	// set core to uninitialized if no state is set
-	if _, err := txdata.GetState(); err != nil {
+	if _, err := transaction.GetState(); err != nil {
 		if errors.Is(err, store.ErrValueUnset) {
-			if err := txdata.PutState(state.Uninitialized); err != nil {
+			if err := transaction.PutState(state.Uninitialized); err != nil {
 				return nil, err
 			}
 		} else {
@@ -146,19 +146,19 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, stor store.
 		}
 		// sealed state was found but couldnt be decrypted, go to recovery mode or reset manifest
 		c.log.Error("Failed to decrypt sealed state. Processing with a new state. Use the /recover API endpoint to load an old state, or submit a new manifest to overwrite the old state. Look up the documentation for more information on how to proceed.")
-		if err := c.setCAData(dnsNames, tx); err != nil {
+		if err := c.setCAData(dnsNames, transaction); err != nil {
 			return nil, err
 		}
-		if err := c.AdvanceState(state.Recovery, tx); err != nil {
+		if err := c.AdvanceState(state.Recovery, transaction); err != nil {
 			return nil, err
 		}
-	} else if _, err := txdata.GetRawManifest(); errors.Is(err, store.ErrValueUnset) {
+	} else if _, err := transaction.GetRawManifest(); errors.Is(err, store.ErrValueUnset) {
 		// no state was found, wait for manifest
 		c.log.Info("No sealed state found. Proceeding with new state.")
-		if err := c.setCAData(dnsNames, tx); err != nil {
+		if err := c.setCAData(dnsNames, transaction); err != nil {
 			return nil, err
 		}
-		if err := txdata.PutState(state.AcceptingManifest); err != nil {
+		if err := transaction.PutState(state.AcceptingManifest); err != nil {
 			return nil, err
 		}
 	} else if err != nil {
@@ -168,12 +168,12 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, stor store.
 		stor.SetRecoveryData(recoveryData)
 	}
 
-	rootCert, err := txdata.GetCertificate(constants.SKCoordinatorRootCert)
+	rootCert, err := transaction.GetCertificate(constants.SKCoordinatorRootCert)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := commit(); err != nil {
 		return nil, err
 	}
 
@@ -216,12 +216,11 @@ func (c *Core) GetTLSConfig() (*tls.Config, error) {
 //
 // This function initializes a read transaction and should not be called from other functions with ongoing transactions.
 func (c *Core) GetTLSRootCertificate(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	tx, err := c.store.BeginTransaction()
+	data, rollback, _, err := wrapper.WrapTransaction(c.txHandle)
 	if err != nil {
-		return nil, fmt.Errorf("initializing read transaction: %w", err)
+		return nil, err
 	}
-	defer tx.Rollback()
-	data := wrapper.New(tx)
+	defer rollback()
 
 	curState, err := data.GetState()
 	if err != nil {
@@ -247,12 +246,11 @@ func (c *Core) GetTLSRootCertificate(clientHello *tls.ClientHelloInfo) (*tls.Cer
 //
 // This function initializes a read transaction and should not be called from other functions with ongoing transactions.
 func (c *Core) GetTLSMarbleRootCertificate(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	tx, err := c.store.BeginTransaction()
+	data, rollback, _, err := wrapper.WrapTransaction(c.txHandle)
 	if err != nil {
-		return nil, fmt.Errorf("initializing read transaction: %w", err)
+		return nil, err
 	}
-	defer tx.Rollback()
-	data := wrapper.New(tx)
+	defer rollback()
 
 	curState, err := data.GetState()
 	if err != nil {
@@ -316,12 +314,11 @@ func getClientTLSCert(ctx context.Context) *x509.Certificate {
 
 // GetState returns the current state of the Coordinator.
 func (c *Core) GetState() (state.State, string, error) {
-	tx, err := c.store.BeginTransaction()
+	data, rollback, _, err := wrapper.WrapTransaction(c.txHandle)
 	if err != nil {
 		return -1, "Cannot determine coordinator status.", fmt.Errorf("initializing read transaction: %w", err)
 	}
-	defer tx.Rollback()
-	data := wrapper.New(tx)
+	defer rollback()
 
 	curState, err := data.GetState()
 	if err != nil {
@@ -545,7 +542,11 @@ func (c *Core) generateCertificateForSecret(secret manifest.Secret, parentCertif
 	return secret, nil
 }
 
-func (c *Core) setCAData(dnsNames []string, tx store.Transaction) error {
+func (c *Core) setCAData(dnsNames []string, putter interface {
+	PutCertificate(name string, cert *x509.Certificate) error
+	PutPrivateKey(name string, key *ecdsa.PrivateKey) error
+},
+) error {
 	rootCert, rootPrivK, err := corecrypto.GenerateCert(dnsNames, constants.CoordinatorName, nil, nil, nil)
 	if err != nil {
 		return err
@@ -560,20 +561,19 @@ func (c *Core) setCAData(dnsNames []string, tx store.Transaction) error {
 		return err
 	}
 
-	txdata := wrapper.New(tx)
-	if err := txdata.PutCertificate(constants.SKCoordinatorRootCert, rootCert); err != nil {
+	if err := putter.PutCertificate(constants.SKCoordinatorRootCert, rootCert); err != nil {
 		return err
 	}
-	if err := txdata.PutCertificate(constants.SKCoordinatorIntermediateCert, intermediateCert); err != nil {
+	if err := putter.PutCertificate(constants.SKCoordinatorIntermediateCert, intermediateCert); err != nil {
 		return err
 	}
-	if err := txdata.PutCertificate(constants.SKMarbleRootCert, marbleRootCert); err != nil {
+	if err := putter.PutCertificate(constants.SKMarbleRootCert, marbleRootCert); err != nil {
 		return err
 	}
-	if err := txdata.PutPrivateKey(constants.SKCoordinatorRootKey, rootPrivK); err != nil {
+	if err := putter.PutPrivateKey(constants.SKCoordinatorRootKey, rootPrivK); err != nil {
 		return err
 	}
-	if err := txdata.PutPrivateKey(constants.SKCoordinatorIntermediateKey, intermediatePrivK); err != nil {
+	if err := putter.PutPrivateKey(constants.SKCoordinatorIntermediateKey, intermediatePrivK); err != nil {
 		return err
 	}
 
@@ -590,21 +590,6 @@ func (e QuoteError) Error() string {
 	return fmt.Sprintf("failed to get quote: %v", e.err)
 }
 
-type storeGetter interface {
-	GetActivations(name string) (uint, error)
-	GetCertificate(name string) (*x509.Certificate, error)
-	GetInfrastructure(name string) (quote.InfrastructureProperties, error)
-	GetIterator(prefix string) (wrapper.Iterator, error)
-	GetManifest() (manifest.Manifest, error)
-	GetMarble(marble string) (manifest.Marble, error)
-	GetPackage(name string) (quote.PackageProperties, error)
-	GetPrivateKey(name string) (*ecdsa.PrivateKey, error)
-	GetManifestSignature() ([]byte, error)
-	GetRawManifest() ([]byte, error)
-	GetSecretMap() (map[string]manifest.Secret, error)
-	GetState() (state.State, error)
-	GetSecret(name string) (manifest.Secret, error)
-	GetTLS(name string) (manifest.TLStag, error)
-	GetUpdateLog() (string, error)
-	GetUser(userName string) (*user.User, error)
+type transactionHandle interface {
+	BeginTransaction() (store.Transaction, error)
 }

@@ -22,6 +22,24 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/user"
 )
 
+// WrapTransaction initializes a transaction using the given handle,
+// and returns a wrapper for the transaction, as well as rollback and commit functions.
+func WrapTransaction(txHandle transactionHandle,
+) (wrapper Wrapper, rollback func(), commit func() error, err error) {
+	tx, err := txHandle.BeginTransaction()
+	if err != nil {
+		return Wrapper{}, nil, nil, err
+	}
+	wrapper = New(tx)
+	rollback = func() {
+		tx.Rollback()
+	}
+	commit = func() error {
+		return tx.Commit()
+	}
+	return wrapper, rollback, commit, nil
+}
+
 // Wrapper wraps store functions to provide a more convenient interface,
 // and provides a type-safe way to access the store.
 type Wrapper struct {
@@ -317,4 +335,8 @@ type dataStore interface {
 	Put(string, []byte) error
 	// Iterator returns an Iterator for a given prefix
 	Iterator(string) (store.Iterator, error)
+}
+
+type transactionHandle interface {
+	BeginTransaction() (store.Transaction, error)
 }

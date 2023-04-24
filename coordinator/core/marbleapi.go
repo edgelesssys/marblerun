@@ -78,13 +78,12 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (res *rpc.A
 		return nil, status.Error(codes.Unauthenticated, "couldn't get marble TLS certificate")
 	}
 
-	tx, err := c.store.BeginTransaction()
+	txdata, rollback, commit, err := wrapper.WrapTransaction(c.txHandle)
 	if err != nil {
 		c.log.Error("Initialize store transaction failed", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "initializing store transaction: %s", err)
 	}
-	defer tx.Rollback()
-	txdata := wrapper.New(tx)
+	defer rollback()
 
 	if err := c.verifyManifestRequirement(txdata, tlsCert, req.GetQuote(), req.GetMarbleType()); err != nil {
 		c.log.Error("Marble verification failed", zap.Error(err))
@@ -167,7 +166,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (res *rpc.A
 			c.log.Error("Could not increment activations", zap.Error(err))
 			return nil, status.Errorf(codes.Internal, "incrementing marble activations: %s", err)
 		}
-		if err := tx.Commit(); err != nil {
+		if err := commit(); err != nil {
 			c.log.Error("Committing store transaction failed", zap.Error(err))
 			return nil, status.Errorf(codes.Internal, "committing store transaction: %s", err)
 		}
@@ -489,4 +488,18 @@ func (c *Core) setTTLSConfig(txdata storeGetter, marble manifest.Marble, special
 	marble.Parameters.Env["MARBLE_TTLS_CONFIG"] = manifest.File{Data: string(ttlsConfJSON), Encoding: "string"}
 
 	return nil
+}
+
+type storeGetter interface {
+	GetActivations(name string) (uint, error)
+	GetCertificate(name string) (*x509.Certificate, error)
+	GetInfrastructure(name string) (quote.InfrastructureProperties, error)
+	GetIterator(prefix string) (wrapper.Iterator, error)
+	GetManifest() (manifest.Manifest, error)
+	GetMarble(marble string) (manifest.Marble, error)
+	GetPackage(name string) (quote.PackageProperties, error)
+	GetPrivateKey(name string) (*ecdsa.PrivateKey, error)
+	GetSecretMap() (map[string]manifest.Secret, error)
+	GetSecret(name string) (manifest.Secret, error)
+	GetTLS(name string) (manifest.TLStag, error)
 }

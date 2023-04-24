@@ -16,6 +16,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
 	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/coordinator/state"
+	"github.com/edgelesssys/marblerun/coordinator/store"
 	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
 	"github.com/edgelesssys/marblerun/coordinator/store/wrapper"
 	"github.com/edgelesssys/marblerun/test"
@@ -48,7 +49,7 @@ func TestStoreWrapperMetrics(t *testing.T) {
 	assert.Equal(1, promtest.CollectAndCount(c.metrics.coordinatorState))
 	assert.Equal(float64(state.AcceptingManifest), promtest.ToFloat64(c.metrics.coordinatorState))
 
-	clientAPI, err := clientapi.New(c.store, c.recovery, c, zapLogger)
+	clientAPI, err := clientapi.New(c.txHandle.(store.Store), c.recovery, c, zapLogger)
 	require.NoError(err)
 	_, err = clientAPI.SetManifest([]byte(test.ManifestJSON))
 	require.NoError(err)
@@ -67,13 +68,13 @@ func TestStoreWrapperMetrics(t *testing.T) {
 	assert.Equal(1, promtest.CollectAndCount(c.metrics.coordinatorState))
 	assert.Equal(float64(state.Recovery), promtest.ToFloat64(c.metrics.coordinatorState))
 
-	clientAPI, err = clientapi.New(c.store, c.recovery, c, zapLogger)
+	clientAPI, err = clientapi.New(c.txHandle.(store.Store), c.recovery, c, zapLogger)
 	require.NoError(err)
 
 	key := make([]byte, 16)
 	_, err = clientAPI.Recover(key)
 	require.NoError(err)
-	state, err := wrapper.New(c.store).GetState()
+	state, err := wrapper.New(c.txHandle.(store.Store)).GetState()
 	require.NoError(err)
 	assert.Equal(1, promtest.CollectAndCount(c.metrics.coordinatorState))
 	assert.Equal(float64(state), promtest.ToFloat64(c.metrics.coordinatorState))
@@ -124,7 +125,7 @@ func TestMarbleAPIMetrics(t *testing.T) {
 	assert.Equal(float64(0), promtest.ToFloat64(metrics.activationSuccess.WithLabelValues("backendFirst", uuid)))
 
 	// set manifest
-	clientAPI, err := clientapi.New(c.store, c.recovery, c, zapLogger)
+	clientAPI, err := clientapi.New(c.txHandle.(store.Store), c.recovery, c, zapLogger)
 	require.NoError(err)
 	_, err = clientAPI.SetManifest([]byte(test.ManifestJSON))
 	require.NoError(err)

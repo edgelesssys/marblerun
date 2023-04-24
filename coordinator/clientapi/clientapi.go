@@ -36,7 +36,10 @@ import (
 type core interface {
 	Unlock()
 	RequireState(...state.State) error
-	AdvanceState(state.State, store.Transaction) error
+	AdvanceState(state.State, interface {
+		PutState(state.State) error
+		GetState() (state.State, error)
+	}) error
 	GetState() (state.State, string, error)
 	GenerateSecrets(
 		map[string]manifest.Secret, uuid.UUID, *x509.Certificate, *ecdsa.PrivateKey, *ecdsa.PrivateKey,
@@ -102,12 +105,11 @@ func (a *ClientAPI) GetCertQuote() (cert string, certQuote []byte, err error) {
 		}
 	}()
 
-	tx, err := a.txHandle.BeginTransaction()
+	txdata, rollback, _, err := wrapper.WrapTransaction(a.txHandle)
 	if err != nil {
-		return "", nil, fmt.Errorf("initializing store transaction: %w", err)
+		return "", nil, err
 	}
-	defer tx.Rollback()
-	txdata := wrapper.New(tx)
+	defer rollback()
 
 	rootCert, err := txdata.GetCertificate(constants.SKCoordinatorRootCert)
 	if err != nil {
@@ -146,13 +148,12 @@ func (a *ClientAPI) GetCertQuote() (cert string, certQuote []byte, err error) {
 func (a *ClientAPI) GetManifestSignature() (manifestSignatureRootECDSA, manifestSignature, manifest []byte) {
 	a.log.Info("GetManifestSignature called")
 
-	tx, err := a.txHandle.BeginTransaction()
+	txdata, rollback, _, err := wrapper.WrapTransaction(a.txHandle)
 	if err != nil {
 		a.log.Error("GetManifestSignature failed: initializing store transaction", zap.Error(err))
 		return nil, nil, nil
 	}
-	defer tx.Rollback()
-	txdata := wrapper.New(tx)
+	defer rollback()
 
 	rawManifest, err := txdata.GetRawManifest()
 	if err != nil {
@@ -189,12 +190,11 @@ func (a *ClientAPI) GetSecrets(requestedSecrets []string, client *user.User) (ma
 		return nil, fmt.Errorf("user %s is not allowed to read one or more secrets of: %v", client.Name(), requestedSecrets)
 	}
 
-	tx, err := a.txHandle.BeginTransaction()
+	txdata, rollback, _, err := wrapper.WrapTransaction(a.txHandle)
 	if err != nil {
-		return nil, fmt.Errorf("initializing store transaction: %w", err)
+		return nil, err
 	}
-	defer tx.Rollback()
-	txdata := wrapper.New(tx)
+	defer rollback()
 
 	secrets := make(map[string]manifest.Secret)
 	for _, requestedSecret := range requestedSecrets {
@@ -225,12 +225,11 @@ func (a *ClientAPI) GetUpdateLog() (string, error) {
 		return "", err
 	}
 
-	tx, err := a.txHandle.BeginTransaction()
+	txdata, rollback, _, err := wrapper.WrapTransaction(a.txHandle)
 	if err != nil {
-		return "", fmt.Errorf("initializing store transaction: %w", err)
+		return "", err
 	}
-	defer tx.Rollback()
-	txdata := wrapper.New(tx)
+	defer rollback()
 
 	updateLog, err := txdata.GetUpdateLog()
 	if err != nil {
@@ -282,12 +281,11 @@ func (a *ClientAPI) Recover(encryptionKey []byte) (keysLeft int, err error) {
 		a.log.Error("Could not retrieve recovery data from state. Recovery will be unavailable", zap.Error(err))
 	}
 
-	tx, err := a.txHandle.BeginTransaction()
+	txdata, rollback, _, err := wrapper.WrapTransaction(a.txHandle)
 	if err != nil {
-		return -1, fmt.Errorf("initializing store transaction: %w", err)
+		return -1, err
 	}
-	defer tx.Rollback()
-	txdata := wrapper.New(tx)
+	defer rollback()
 
 	rootCert, err := txdata.GetCertificate(constants.SKCoordinatorRootCert)
 	if err != nil {
@@ -327,12 +325,11 @@ func (a *ClientAPI) SetManifest(rawManifest []byte) (recoverySecretMap map[strin
 		return nil, fmt.Errorf("checking manifest: %w", err)
 	}
 
-	tx, err := a.txHandle.BeginTransaction()
+	txdata, rollback, commit, err := wrapper.WrapTransaction(a.txHandle)
 	if err != nil {
-		return nil, fmt.Errorf("initializing store transaction: %w", err)
+		return nil, err
 	}
-	defer tx.Rollback()
-	txdata := wrapper.New(tx)
+	defer rollback()
 
 	marbleRootCert, err := txdata.GetCertificate(constants.SKMarbleRootCert)
 	if err != nil {
@@ -454,11 +451,11 @@ func (a *ClientAPI) SetManifest(rawManifest []byte) (recoverySecretMap map[strin
 		return nil, fmt.Errorf("saving update log to store: %w", err)
 	}
 
-	if err := a.core.AdvanceState(state.AcceptingMarbles, tx); err != nil {
+	if err := a.core.AdvanceState(state.AcceptingMarbles, txdata); err != nil {
 		return nil, fmt.Errorf("advancing state: %w", err)
 	}
 	a.txHandle.SetRecoveryData(recoveryData)
-	if err := tx.Commit(); err != nil {
+	if err := commit(); err != nil {
 		a.log.Error("sealing of state failed", zap.Error(err))
 	}
 
@@ -496,12 +493,11 @@ func (a *ClientAPI) UpdateManifest(rawUpdateManifest []byte, updater *user.User)
 		return fmt.Errorf("user %s is not allowed to update one or more packages of %v", updater.Name(), wantedPackages)
 	}
 
-	tx, err := a.txHandle.BeginTransaction()
+	txdata, rollback, commit, err := wrapper.WrapTransaction(a.txHandle)
 	if err != nil {
-		return fmt.Errorf("initializing store transaction: %w", err)
+		return err
 	}
-	defer tx.Rollback()
-	txdata := wrapper.New(tx)
+	defer rollback()
 
 	currentPackages := make(map[string]quote.PackageProperties)
 	for pkgName := range updateManifest.Packages {
@@ -613,7 +609,7 @@ func (a *ClientAPI) UpdateManifest(rawUpdateManifest []byte, updater *user.User)
 	a.log.Info("Please restart your Marbles to enforce the update.")
 
 	a.txHandle.SetRecoveryData(currentRecoveryData)
-	if err := tx.Commit(); err != nil {
+	if err := commit(); err != nil {
 		return fmt.Errorf("updating manifest failed: committing store transaction: %w", err)
 	}
 
@@ -623,12 +619,11 @@ func (a *ClientAPI) UpdateManifest(rawUpdateManifest []byte, updater *user.User)
 
 // VerifyUser checks if a given client certificate matches the admin certificates specified in the manifest.
 func (a *ClientAPI) VerifyUser(clientCerts []*x509.Certificate) (*user.User, error) {
-	tx, err := a.txHandle.BeginTransaction()
+	txdata, rollback, _, err := wrapper.WrapTransaction(a.txHandle)
 	if err != nil {
-		return nil, fmt.Errorf("initializing store transaction: %w", err)
+		return nil, err
 	}
-	defer tx.Rollback()
-	txdata := wrapper.New(tx)
+	defer rollback()
 
 	userIter, err := txdata.GetIterator(request.User)
 	if err != nil {
@@ -676,12 +671,11 @@ func (a *ClientAPI) WriteSecrets(rawSecretManifest []byte, updater *user.User) (
 		return fmt.Errorf("unmarshaling secret manifest: %w", err)
 	}
 
-	tx, err := a.txHandle.BeginTransaction()
+	txdata, rollback, commit, err := wrapper.WrapTransaction(a.txHandle)
 	if err != nil {
-		return fmt.Errorf("initializing store transaction: %w", err)
+		return err
 	}
-	defer tx.Rollback()
-	txdata := wrapper.New(tx)
+	defer rollback()
 
 	// validate and parse new secrets
 	secretMeta, err := txdata.GetSecretMap()
@@ -732,5 +726,5 @@ func (a *ClientAPI) WriteSecrets(rawSecretManifest []byte, updater *user.User) (
 		return fmt.Errorf("saving update log to store: %w", err)
 	}
 
-	return tx.Commit()
+	return commit()
 }
