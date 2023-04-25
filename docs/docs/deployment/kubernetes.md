@@ -2,7 +2,7 @@
 
 This guide walks you through setting up MarbleRun in your Kubernetes cluster.
 
-The Kubernetes deployment is managed through the use of a [Helm chart](https://helm.sh/), which can be found in our [source repository](https://github.com/edgelesssys/marblerun/tree/master/charts) and installed via our [Helm repository.](https://helm.edgeless.systems) \
+The Kubernetes deployment is managed through the use of a [Helm chart](https://helm.sh/), which can be found in our [source repository](https://github.com/edgelesssys/marblerun/tree/master/charts) and installed via our [Helm repository.](https://helm.edgeless.systems)
 The installation consists of a deployment for the Coordinator and an admission controller.
 For more details see our section on [Kubernetes Integration](../features/kubernetes-integration.md).
 
