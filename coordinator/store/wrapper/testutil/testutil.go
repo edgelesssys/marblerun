@@ -8,6 +8,7 @@
 package testutil
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/x509"
 	"testing"
@@ -22,13 +23,13 @@ import (
 )
 
 type transactionHandle interface {
-	BeginTransaction() (store.Transaction, error)
+	BeginTransaction(context.Context) (store.Transaction, error)
 }
 
 // GetState returns the current state of the store.
 func GetState(t *testing.T, txHandle transactionHandle) state.State {
 	t.Helper()
-	tx, rollback, _, err := wrapper.WrapTransaction(txHandle)
+	tx, rollback, _, err := wrapper.WrapTransaction(context.Background(), txHandle)
 	require.NoError(t, err)
 	defer rollback()
 	state, err := tx.GetState()
@@ -39,7 +40,7 @@ func GetState(t *testing.T, txHandle transactionHandle) state.State {
 // GetCertificate returns the certificate with the given name.
 func GetCertificate(t *testing.T, txHandle transactionHandle, name string) *x509.Certificate {
 	t.Helper()
-	tx, rollback, _, err := wrapper.WrapTransaction(txHandle)
+	tx, rollback, _, err := wrapper.WrapTransaction(context.Background(), txHandle)
 	require.NoError(t, err)
 	defer rollback()
 	cert, err := tx.GetCertificate(name)
@@ -50,7 +51,7 @@ func GetCertificate(t *testing.T, txHandle transactionHandle, name string) *x509
 // GetPrivateKey returns the private key with the given name.
 func GetPrivateKey(t *testing.T, txHandle transactionHandle, name string) *ecdsa.PrivateKey {
 	t.Helper()
-	tx, rollback, _, err := wrapper.WrapTransaction(txHandle)
+	tx, rollback, _, err := wrapper.WrapTransaction(context.Background(), txHandle)
 	require.NoError(t, err)
 	defer rollback()
 	privKey, err := tx.GetPrivateKey(name)
@@ -61,7 +62,7 @@ func GetPrivateKey(t *testing.T, txHandle transactionHandle, name string) *ecdsa
 // GetSecretMap returns a map of all secrets in the store.
 func GetSecretMap(t *testing.T, txHandle transactionHandle) map[string]manifest.Secret {
 	t.Helper()
-	tx, rollback, _, err := wrapper.WrapTransaction(txHandle)
+	tx, rollback, _, err := wrapper.WrapTransaction(context.Background(), txHandle)
 	require.NoError(t, err)
 	defer rollback()
 	secretMap, err := tx.GetSecretMap()
@@ -72,7 +73,7 @@ func GetSecretMap(t *testing.T, txHandle transactionHandle) map[string]manifest.
 // GetUser returns the user with the given name.
 func GetUser(t *testing.T, txHandle transactionHandle, name string) *user.User {
 	t.Helper()
-	tx, rollback, _, err := wrapper.WrapTransaction(txHandle)
+	tx, rollback, _, err := wrapper.WrapTransaction(context.Background(), txHandle)
 	require.NoError(t, err)
 	defer rollback()
 	user, err := tx.GetUser(name)
@@ -83,7 +84,7 @@ func GetUser(t *testing.T, txHandle transactionHandle, name string) *user.User {
 // GetPackage returns the package with the given name.
 func GetPackage(t *testing.T, txHandle transactionHandle, name string) quote.PackageProperties {
 	t.Helper()
-	tx, rollback, _, err := wrapper.WrapTransaction(txHandle)
+	tx, rollback, _, err := wrapper.WrapTransaction(context.Background(), txHandle)
 	require.NoError(t, err)
 	defer rollback()
 	pkg, err := tx.GetPackage(name)
@@ -94,7 +95,7 @@ func GetPackage(t *testing.T, txHandle transactionHandle, name string) quote.Pac
 // GetManifest returns the manifest.
 func GetManifest(t *testing.T, txHandle transactionHandle) manifest.Manifest {
 	t.Helper()
-	tx, rollback, _, err := wrapper.WrapTransaction(txHandle)
+	tx, rollback, _, err := wrapper.WrapTransaction(context.Background(), txHandle)
 	require.NoError(t, err)
 	defer rollback()
 	manifest, err := tx.GetManifest()
@@ -105,7 +106,7 @@ func GetManifest(t *testing.T, txHandle transactionHandle) manifest.Manifest {
 // GetRawManifest returns the raw manifest.
 func GetRawManifest(t *testing.T, txHandle transactionHandle) []byte {
 	t.Helper()
-	tx, rollback, _, err := wrapper.WrapTransaction(txHandle)
+	tx, rollback, _, err := wrapper.WrapTransaction(context.Background(), txHandle)
 	require.NoError(t, err)
 	defer rollback()
 	manifest, err := tx.GetRawManifest()
@@ -116,7 +117,7 @@ func GetRawManifest(t *testing.T, txHandle transactionHandle) []byte {
 // GetManifestSignature returns the manifest signature.
 func GetManifestSignature(t *testing.T, txHandle transactionHandle) []byte {
 	t.Helper()
-	tx, rollback, _, err := wrapper.WrapTransaction(txHandle)
+	tx, rollback, _, err := wrapper.WrapTransaction(context.Background(), txHandle)
 	require.NoError(t, err)
 	defer rollback()
 	sig, err := tx.GetManifestSignature()

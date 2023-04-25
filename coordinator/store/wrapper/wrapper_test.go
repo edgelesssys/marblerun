@@ -7,6 +7,7 @@
 package wrapper
 
 import (
+	"context"
 	"testing"
 
 	"github.com/edgelesssys/marblerun/coordinator/constants"
@@ -30,6 +31,7 @@ func TestMain(m *testing.M) {
 func TestStoreWrapper(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+	ctx := context.Background()
 
 	store := stdstore.New(&seal.MockSealer{})
 	rawManifest := []byte(test.ManifestJSON)
@@ -47,7 +49,7 @@ func TestStoreWrapper(t *testing.T) {
 
 	// save values to store
 	data := New(store)
-	tx, err := store.BeginTransaction()
+	tx, err := store.BeginTransaction(ctx)
 	assert.NoError(err)
 	txdata := New(tx)
 	assert.NoError(txdata.PutCertificate("some-cert", someCert))
@@ -56,7 +58,7 @@ func TestStoreWrapper(t *testing.T) {
 	assert.NoError(txdata.PutSecret("test-secret", testSecret))
 	assert.NoError(txdata.PutState(curState))
 	assert.NoError(txdata.PutUser(testUser))
-	assert.NoError(tx.Commit())
+	assert.NoError(tx.Commit(ctx))
 
 	// see if we can retrieve them again
 	savedCert, err := data.GetCertificate("some-cert")
@@ -82,17 +84,18 @@ func TestStoreWrapper(t *testing.T) {
 func TestStoreWrapperRollback(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+	ctx := context.Background()
 
 	stor := stdstore.New(&seal.MockSealer{})
 	data := New(stor)
 
 	startingState := state.AcceptingManifest
-	tx, err := stor.BeginTransaction()
+	tx, err := stor.BeginTransaction(ctx)
 	require.NoError(err)
 	require.NoError(New(tx).PutState(state.AcceptingManifest))
-	require.NoError(tx.Commit())
+	require.NoError(tx.Commit(ctx))
 
-	tx, err = stor.BeginTransaction()
+	tx, err = stor.BeginTransaction(ctx)
 	require.NoError(err)
 	require.NoError(New(tx).PutState(state.AcceptingMarbles))
 	require.NoError(New(tx).PutRawManifest([]byte("manifes")))

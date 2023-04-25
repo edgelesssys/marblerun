@@ -7,13 +7,14 @@
 package store
 
 import (
+	"context"
 	"errors"
 )
 
 // Store is the interface for persistence.
 type Store interface {
 	// BeginTransaction starts a new transaction.
-	BeginTransaction() (Transaction, error)
+	BeginTransaction(context.Context) (Transaction, error)
 	// SetEncryptionKey sets the encryption key for the store.
 	SetEncryptionKey([]byte) error
 	// SetRecoveryData sets recovery data for the store.
@@ -33,7 +34,7 @@ type Transaction interface {
 	// Iterator returns an Iterator for a given prefix
 	Iterator(string) (Iterator, error)
 	// Commit ends a transaction and persists the changes
-	Commit() error
+	Commit(context.Context) error
 	// Rollback aborts a transaction. Noop if already committed.
 	Rollback()
 }

@@ -8,6 +8,7 @@
 package clientapi
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/sha256"
@@ -49,7 +50,7 @@ type core interface {
 }
 
 type transactionHandle interface {
-	BeginTransaction() (store.Transaction, error)
+	BeginTransaction(context.Context) (store.Transaction, error)
 	SetEncryptionKey([]byte) error
 	SetRecoveryData([]byte)
 	LoadState() ([]byte, error)
@@ -105,7 +106,7 @@ func (a *ClientAPI) GetCertQuote() (cert string, certQuote []byte, err error) {
 		}
 	}()
 
-	txdata, rollback, _, err := wrapper.WrapTransaction(a.txHandle)
+	txdata, rollback, _, err := wrapper.WrapTransaction(context.TODO(), a.txHandle)
 	if err != nil {
 		return "", nil, err
 	}
@@ -148,7 +149,7 @@ func (a *ClientAPI) GetCertQuote() (cert string, certQuote []byte, err error) {
 func (a *ClientAPI) GetManifestSignature() (manifestSignatureRootECDSA, manifestSignature, manifest []byte) {
 	a.log.Info("GetManifestSignature called")
 
-	txdata, rollback, _, err := wrapper.WrapTransaction(a.txHandle)
+	txdata, rollback, _, err := wrapper.WrapTransaction(context.TODO(), a.txHandle)
 	if err != nil {
 		a.log.Error("GetManifestSignature failed: initializing store transaction", zap.Error(err))
 		return nil, nil, nil
@@ -190,7 +191,7 @@ func (a *ClientAPI) GetSecrets(requestedSecrets []string, client *user.User) (ma
 		return nil, fmt.Errorf("user %s is not allowed to read one or more secrets of: %v", client.Name(), requestedSecrets)
 	}
 
-	txdata, rollback, _, err := wrapper.WrapTransaction(a.txHandle)
+	txdata, rollback, _, err := wrapper.WrapTransaction(context.TODO(), a.txHandle)
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +226,7 @@ func (a *ClientAPI) GetUpdateLog() (string, error) {
 		return "", err
 	}
 
-	txdata, rollback, _, err := wrapper.WrapTransaction(a.txHandle)
+	txdata, rollback, _, err := wrapper.WrapTransaction(context.TODO(), a.txHandle)
 	if err != nil {
 		return "", err
 	}
@@ -281,7 +282,7 @@ func (a *ClientAPI) Recover(encryptionKey []byte) (keysLeft int, err error) {
 		a.log.Error("Could not retrieve recovery data from state. Recovery will be unavailable", zap.Error(err))
 	}
 
-	txdata, rollback, _, err := wrapper.WrapTransaction(a.txHandle)
+	txdata, rollback, _, err := wrapper.WrapTransaction(context.TODO(), a.txHandle)
 	if err != nil {
 		return -1, err
 	}
@@ -325,7 +326,7 @@ func (a *ClientAPI) SetManifest(rawManifest []byte) (recoverySecretMap map[strin
 		return nil, fmt.Errorf("checking manifest: %w", err)
 	}
 
-	txdata, rollback, commit, err := wrapper.WrapTransaction(a.txHandle)
+	txdata, rollback, commit, err := wrapper.WrapTransaction(context.TODO(), a.txHandle)
 	if err != nil {
 		return nil, err
 	}
@@ -493,7 +494,7 @@ func (a *ClientAPI) UpdateManifest(rawUpdateManifest []byte, updater *user.User)
 		return fmt.Errorf("user %s is not allowed to update one or more packages of %v", updater.Name(), wantedPackages)
 	}
 
-	txdata, rollback, commit, err := wrapper.WrapTransaction(a.txHandle)
+	txdata, rollback, commit, err := wrapper.WrapTransaction(context.TODO(), a.txHandle)
 	if err != nil {
 		return err
 	}
@@ -619,7 +620,7 @@ func (a *ClientAPI) UpdateManifest(rawUpdateManifest []byte, updater *user.User)
 
 // VerifyUser checks if a given client certificate matches the admin certificates specified in the manifest.
 func (a *ClientAPI) VerifyUser(clientCerts []*x509.Certificate) (*user.User, error) {
-	txdata, rollback, _, err := wrapper.WrapTransaction(a.txHandle)
+	txdata, rollback, _, err := wrapper.WrapTransaction(context.TODO(), a.txHandle)
 	if err != nil {
 		return nil, err
 	}
@@ -671,7 +672,7 @@ func (a *ClientAPI) WriteSecrets(rawSecretManifest []byte, updater *user.User) (
 		return fmt.Errorf("unmarshaling secret manifest: %w", err)
 	}
 
-	txdata, rollback, commit, err := wrapper.WrapTransaction(a.txHandle)
+	txdata, rollback, commit, err := wrapper.WrapTransaction(context.TODO(), a.txHandle)
 	if err != nil {
 		return err
 	}

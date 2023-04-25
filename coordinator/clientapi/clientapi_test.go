@@ -8,6 +8,7 @@ package clientapi
 
 import (
 	"bytes"
+	"context"
 	"crypto/ecdsa"
 	"crypto/sha256"
 	"crypto/x509"
@@ -669,11 +670,11 @@ type fakeStore struct {
 	loadCalled          bool
 }
 
-func (s *fakeStore) BeginTransaction() (store.Transaction, error) {
+func (s *fakeStore) BeginTransaction(ctx context.Context) (store.Transaction, error) {
 	if s.beginTransactionErr != nil {
 		return nil, s.beginTransactionErr
 	}
-	return s.store.BeginTransaction()
+	return s.store.BeginTransaction(ctx)
 }
 
 func (s *fakeStore) SetEncryptionKey(key []byte) error {

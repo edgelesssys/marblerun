@@ -66,7 +66,7 @@ type Core struct {
 func (c *Core) RequireState(states ...state.State) error {
 	c.mux.Lock()
 
-	getter, rollback, _, err := wrapper.WrapTransaction(c.txHandle)
+	getter, rollback, _, err := wrapper.WrapTransaction(context.TODO(), c.txHandle)
 	if err != nil {
 		return err
 	}
@@ -123,7 +123,7 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, stor store.
 		c.log.Error("Could not retrieve recovery data from state. Recovery will be unavailable", zap.Error(err))
 	}
 
-	transaction, rollback, commit, err := wrapper.WrapTransaction(c.txHandle)
+	transaction, rollback, commit, err := wrapper.WrapTransaction(context.Background(), c.txHandle)
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +216,7 @@ func (c *Core) GetTLSConfig() (*tls.Config, error) {
 //
 // This function initializes a read transaction and should not be called from other functions with ongoing transactions.
 func (c *Core) GetTLSRootCertificate(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	data, rollback, _, err := wrapper.WrapTransaction(c.txHandle)
+	data, rollback, _, err := wrapper.WrapTransaction(clientHello.Context(), c.txHandle)
 	if err != nil {
 		return nil, err
 	}
@@ -246,7 +246,7 @@ func (c *Core) GetTLSRootCertificate(clientHello *tls.ClientHelloInfo) (*tls.Cer
 //
 // This function initializes a read transaction and should not be called from other functions with ongoing transactions.
 func (c *Core) GetTLSMarbleRootCertificate(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	data, rollback, _, err := wrapper.WrapTransaction(c.txHandle)
+	data, rollback, _, err := wrapper.WrapTransaction(clientHello.Context(), c.txHandle)
 	if err != nil {
 		return nil, err
 	}
@@ -314,7 +314,7 @@ func getClientTLSCert(ctx context.Context) *x509.Certificate {
 
 // GetState returns the current state of the Coordinator.
 func (c *Core) GetState() (state.State, string, error) {
-	data, rollback, _, err := wrapper.WrapTransaction(c.txHandle)
+	data, rollback, _, err := wrapper.WrapTransaction(context.TODO(), c.txHandle)
 	if err != nil {
 		return -1, "Cannot determine coordinator status.", fmt.Errorf("initializing read transaction: %w", err)
 	}
@@ -591,5 +591,5 @@ func (e QuoteError) Error() string {
 }
 
 type transactionHandle interface {
-	BeginTransaction() (store.Transaction, error)
+	BeginTransaction(context.Context) (store.Transaction, error)
 }

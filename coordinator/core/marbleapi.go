@@ -78,7 +78,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (res *rpc.A
 		return nil, status.Error(codes.Unauthenticated, "couldn't get marble TLS certificate")
 	}
 
-	txdata, rollback, commit, err := wrapper.WrapTransaction(c.txHandle)
+	txdata, rollback, commit, err := wrapper.WrapTransaction(ctx, c.txHandle)
 	if err != nil {
 		c.log.Error("Initialize store transaction failed", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "initializing store transaction: %s", err)

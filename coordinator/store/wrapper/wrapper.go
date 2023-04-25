@@ -7,6 +7,7 @@
 package wrapper
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/x509"
 	"encoding/json"
@@ -24,9 +25,9 @@ import (
 
 // WrapTransaction initializes a transaction using the given handle,
 // and returns a wrapper for the transaction, as well as rollback and commit functions.
-func WrapTransaction(txHandle transactionHandle,
+func WrapTransaction(ctx context.Context, txHandle transactionHandle,
 ) (wrapper Wrapper, rollback func(), commit func() error, err error) {
-	tx, err := txHandle.BeginTransaction()
+	tx, err := txHandle.BeginTransaction(ctx)
 	if err != nil {
 		return Wrapper{}, nil, nil, err
 	}
@@ -35,7 +36,7 @@ func WrapTransaction(txHandle transactionHandle,
 		tx.Rollback()
 	}
 	commit = func() error {
-		return tx.Commit()
+		return tx.Commit(ctx)
 	}
 	return wrapper, rollback, commit, nil
 }
@@ -338,5 +339,5 @@ type dataStore interface {
 }
 
 type transactionHandle interface {
-	BeginTransaction() (store.Transaction, error)
+	BeginTransaction(context.Context) (store.Transaction, error)
 }
