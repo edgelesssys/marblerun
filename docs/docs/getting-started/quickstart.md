@@ -62,5 +62,5 @@ You can use the CLI to check if your cluster is configured to run SGX workloads:
 marblerun precheck
 ```
 
-If your cluster supports SGX, you can follow the [quickstart for clusters with SGX support.](../getting-started/quickstart-sgx.md) \
+If your cluster supports SGX, you can follow the [quickstart for clusters with SGX support.](../getting-started/quickstart-sgx.md)
 Otherwise, please follow the [quickstart in simulation mode.](../getting-started/quickstart-simulation.md)
