@@ -24,6 +24,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/store/request"
 	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
 	"github.com/edgelesssys/marblerun/coordinator/store/wrapper"
+	"github.com/edgelesssys/marblerun/coordinator/store/wrapper/testutil"
 	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/google/uuid"
@@ -135,9 +136,9 @@ func TestGetCertQuote(t *testing.T) {
 
 			var intermediateCert, rootCert *x509.Certificate
 			if !tc.wantErr {
-				intermediateCert, err = wrapper.New(tc.store).GetCertificate(constants.SKCoordinatorIntermediateCert)
+				intermediateCert = testutil.GetCertificate(t, tc.store, constants.SKCoordinatorIntermediateCert)
 				require.NoError(err)
-				rootCert, err = wrapper.New(tc.store).GetCertificate(constants.SKCoordinatorRootCert)
+				rootCert = testutil.GetCertificate(t, tc.store, constants.SKCoordinatorRootCert)
 				require.NoError(err)
 			}
 
@@ -201,9 +202,9 @@ func TestGetManifestSignature(t *testing.T) {
 
 			var rawManifest, manifestSignature, manifestHash []byte
 			if !tc.wantErr {
-				rawManifest, err = wrapper.New(tc.store).GetRawManifest()
+				rawManifest = testutil.GetRawManifest(t, tc.store)
 				require.NoError(err)
-				manifestSignature, err = wrapper.New(tc.store).GetManifestSignature()
+				manifestSignature = testutil.GetManifestSignature(t, tc.store)
 				require.NoError(err)
 				h := sha256.Sum256(rawManifest)
 				manifestHash = h[:]
@@ -333,7 +334,7 @@ func TestGetSecrets(t *testing.T) {
 				log:      log,
 			}
 
-			storedSecrets, err := wrapper.New(tc.store).GetSecretMap()
+			storedSecrets := testutil.GetSecretMap(t, tc.store)
 			require.NoError(err)
 
 			secrets, err := api.GetSecrets(tc.request, tc.user)

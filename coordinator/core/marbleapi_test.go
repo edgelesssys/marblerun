@@ -30,7 +30,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/state"
 	"github.com/edgelesssys/marblerun/coordinator/store"
 	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
-	"github.com/edgelesssys/marblerun/coordinator/store/wrapper"
+	"github.com/edgelesssys/marblerun/coordinator/store/wrapper/testutil"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
@@ -73,7 +73,7 @@ func TestActivate(t *testing.T) {
 	}
 
 	// try to activate first backend marble prematurely before manifest is set
-	spawner.newMarble("backendFirst", "Azure", false)
+	spawner.newMarble(t, "backendFirst", "Azure", false)
 
 	// set manifest
 	clientAPI, err := clientapi.New(coreServer.txHandle.(store.Store), coreServer.recovery, coreServer, zapLogger)
@@ -82,10 +82,10 @@ func TestActivate(t *testing.T) {
 	require.NoError(err)
 
 	// activate first backend
-	spawner.newMarble("backendFirst", "Azure", true)
+	spawner.newMarble(t, "backendFirst", "Azure", true)
 
 	// try to activate another first backend
-	spawner.newMarble("backendFirst", "Azure", false)
+	spawner.newMarble(t, "backendFirst", "Azure", false)
 
 	// activate 10 other backend
 	pickInfra := func(i int) string {
@@ -95,12 +95,12 @@ func TestActivate(t *testing.T) {
 		return "Alibaba"
 	}
 	for i := 0; i < 10; i++ {
-		spawner.newMarbleAsync("backendOther", pickInfra(i), true)
+		spawner.newMarbleAsync(t, "backendOther", pickInfra(i), true)
 	}
 
 	// activate 10 frontend
 	for i := 0; i < 10; i++ {
-		spawner.newMarbleAsync("frontend", pickInfra(i), true)
+		spawner.newMarbleAsync(t, "frontend", pickInfra(i), true)
 	}
 
 	spawner.wg.Wait()
@@ -125,7 +125,7 @@ type marbleSpawner struct {
 	backendOtherUniqueCert x509.Certificate
 }
 
-func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSucceed bool) string {
+func (ms *marbleSpawner) newMarble(t *testing.T, marbleType string, infraName string, shouldSucceed bool) string {
 	cert, csr, _ := util.MustGenerateTestMarbleCredentials()
 
 	// create mock quote using values from the manifest
@@ -206,11 +206,11 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	ms.assert.Equal(cert.DNSNames, newLeafCert.DNSNames)
 	ms.assert.Equal(cert.IPAddresses, newLeafCert.IPAddresses)
 
-	rootCert, err := wrapper.New(ms.coreServer.txHandle.(store.Store)).GetCertificate(constants.SKCoordinatorRootCert)
+	rootCert := testutil.GetCertificate(t, ms.coreServer.txHandle, constants.SKCoordinatorRootCert)
 	ms.assert.NoError(err)
-	intermediateCert, err := wrapper.New(ms.coreServer.txHandle.(store.Store)).GetCertificate(constants.SKCoordinatorIntermediateCert)
+	intermediateCert := testutil.GetCertificate(t, ms.coreServer.txHandle, constants.SKCoordinatorIntermediateCert)
 	ms.assert.NoError(err)
-	marbleRootCert, err := wrapper.New(ms.coreServer.txHandle.(store.Store)).GetCertificate(constants.SKMarbleRootCert)
+	marbleRootCert := testutil.GetCertificate(t, ms.coreServer.txHandle, constants.SKMarbleRootCert)
 	ms.assert.NoError(err)
 	// Check Signature for both, intermediate certificate and leaf certificate
 	ms.assert.NoError(rootCert.CheckSignature(intermediateCert.SignatureAlgorithm, intermediateCert.RawTBSCertificate, intermediateCert.Signature))
@@ -296,10 +296,10 @@ func (ms *marbleSpawner) newMarble(marbleType string, infraName string, shouldSu
 	return uuidStr
 }
 
-func (ms *marbleSpawner) newMarbleAsync(marbleType string, infraName string, shouldSucceed bool) {
+func (ms *marbleSpawner) newMarbleAsync(t *testing.T, marbleType string, infraName string, shouldSucceed bool) {
 	ms.wg.Add(1)
 	go func() {
-		ms.newMarble(marbleType, infraName, shouldSucceed)
+		ms.newMarble(t, marbleType, infraName, shouldSucceed)
 		ms.wg.Done()
 	}()
 }
@@ -487,35 +487,35 @@ func TestSecurityLevelUpdate(t *testing.T) {
 	_, err = clientAPI.SetManifest([]byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
 
-	admin, err := wrapper.New(coreServer.txHandle.(store.Store)).GetUser("admin")
+	admin := testutil.GetUser(t, coreServer.txHandle, "admin")
 	assert.NoError(err)
 
 	// try to activate another first backend, should succeed as SecurityLevel matches the definition in the manifest
-	spawner.newMarble("frontend", "Azure", true)
+	spawner.newMarble(t, "frontend", "Azure", true)
 
 	// update manifest
 	err = clientAPI.UpdateManifest([]byte(test.UpdateManifest), admin)
 	require.NoError(err)
 
 	// try to activate another first backend, should fail as required SecurityLevel is now higher after manifest update
-	spawner.newMarble("frontend", "Azure", false)
+	spawner.newMarble(t, "frontend", "Azure", false)
 
 	// Use a new core and test if updated manifest persisted after restart
 	coreServer2, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer), recovery, zapLogger, nil, nil)
 	require.NoError(err)
-	coreServer2State, err := wrapper.New(coreServer2.txHandle.(store.Store)).GetState()
+	coreServer2State := testutil.GetState(t, coreServer2.txHandle)
 	assert.NoError(err)
-	coreServer2UpdatedPkg, err := wrapper.New(coreServer2.txHandle.(store.Store)).GetPackage("frontend")
+	coreServer2UpdatedPkg := testutil.GetPackage(t, coreServer2.txHandle, "frontend")
 	assert.NoError(err)
 	assert.Equal(state.AcceptingMarbles, coreServer2State)
 	assert.EqualValues(5, *coreServer2UpdatedPkg.SecurityVersion)
 
 	// This should still fail after a restart, as the update manifest should have been reloaded from the sealed state correctly
 	spawner.coreServer = coreServer2
-	spawner.newMarble("frontend", "Azure", false)
+	spawner.newMarble(t, "frontend", "Azure", false)
 }
 
-func (ms *marbleSpawner) shortMarbleActivation(marbleType string, infraName string) {
+func (ms *marbleSpawner) shortMarbleActivation(t *testing.T, marbleType string, infraName string) {
 	cert, csr, _ := util.MustGenerateTestMarbleCredentials()
 
 	// create mock quote using values from the manifest
@@ -553,7 +553,7 @@ func (ms *marbleSpawner) shortMarbleActivation(marbleType string, infraName stri
 	// Validate response
 	params := resp.GetParameters()
 	// Get the marble from the manifest set on the coreServer since this one sets default values for empty values
-	coreServerManifest, err := wrapper.New(ms.coreServer.txHandle.(store.Store)).GetManifest()
+	coreServerManifest := testutil.GetManifest(t, ms.coreServer.txHandle)
 	ms.assert.NoError(err)
 	marble = coreServerManifest.Marbles[marbleType]
 	// Validate Files
@@ -600,5 +600,5 @@ func TestActivateWithMissingParameters(t *testing.T) {
 	_, err = clientAPI.SetManifest([]byte(test.ManifestJSONMissingParameters))
 	require.NoError(err)
 
-	spawner.shortMarbleActivation("frontend", "Azure")
+	spawner.shortMarbleActivation(t, "frontend", "Azure")
 }

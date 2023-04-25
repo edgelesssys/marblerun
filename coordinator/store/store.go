@@ -14,12 +14,6 @@ import (
 type Store interface {
 	// BeginTransaction starts a new transaction.
 	BeginTransaction() (Transaction, error)
-	// Get returns a value from store by key.
-	Get(string) ([]byte, error)
-	// Put saves a value to store by key.
-	Put(string, []byte) error
-	// Iterator returns an Iterator for a given prefix.
-	Iterator(string) (Iterator, error)
 	// SetEncryptionKey sets the encryption key for the store.
 	SetEncryptionKey([]byte) error
 	// SetRecoveryData sets recovery data for the store.

@@ -24,7 +24,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/state"
 	"github.com/edgelesssys/marblerun/coordinator/store"
 	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
-	"github.com/edgelesssys/marblerun/coordinator/store/wrapper"
+	"github.com/edgelesssys/marblerun/coordinator/store/wrapper/testutil"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -41,11 +41,9 @@ func TestCore(t *testing.T) {
 	assert := assert.New(t)
 
 	c := NewCoreWithMocks()
-	curState, err := wrapper.New(c.txHandle.(store.Store)).GetState()
-	assert.NoError(err)
+	curState := testutil.GetState(t, c.txHandle)
 	assert.Equal(state.AcceptingManifest, curState)
-	rootCert, err := wrapper.New(c.txHandle.(store.Store)).GetCertificate(constants.SKCoordinatorRootCert)
-	assert.NoError(err)
+	rootCert := testutil.GetCertificate(t, c.txHandle, constants.SKCoordinatorRootCert)
 	assert.Equal(constants.CoordinatorName, rootCert.Subject.CommonName)
 
 	cert, err := c.GetTLSRootCertificate(nil)
@@ -86,16 +84,14 @@ func TestSeal(t *testing.T) {
 	signatureRootECDSA, signature, _ := clientAPI.GetManifestSignature()
 
 	// Get secrets
-	cSecrets, err := wrapper.New(c.txHandle.(store.Store)).GetSecretMap()
-	assert.NoError(err)
+	cSecrets := testutil.GetSecretMap(t, c.txHandle)
 
 	// Check sealing with a new core initialized with the sealed state.
 	c2, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer), recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	clientAPI, err = clientapi.New(c2.txHandle.(store.Store), c2.recovery, c2, zapLogger)
 	require.NoError(err)
-	c2State, err := wrapper.New(c2.txHandle.(store.Store)).GetState()
-	assert.NoError(err)
+	c2State := testutil.GetState(t, c2.txHandle)
 	assert.Equal(state.AcceptingMarbles, c2State)
 
 	cert2, err := c2.GetTLSRootCertificate(nil)
@@ -106,8 +102,7 @@ func TestSeal(t *testing.T) {
 	assert.Error(err)
 
 	// Check if the secret specified in the test manifest is unsealed correctly
-	c2Secrets, err := wrapper.New(c2.txHandle.(store.Store)).GetSecretMap()
-	assert.NoError(err)
+	c2Secrets := testutil.GetSecretMap(t, c2.txHandle)
 	assert.Equal(cSecrets, c2Secrets)
 
 	signatureRootECDSA2, signature2, _ := clientAPI.GetManifestSignature()
@@ -154,15 +149,13 @@ func TestRecover(t *testing.T) {
 	require.NoError(err)
 	clientAPI, err = clientapi.New(c2.txHandle.(store.Store), c2.recovery, c2, zapLogger)
 	require.NoError(err)
-	c2State, err := wrapper.New(c2.txHandle.(store.Store)).GetState()
-	assert.NoError(err)
+	c2State := testutil.GetState(t, c2.txHandle)
 	require.Equal(state.Recovery, c2State)
 
 	// recover
 	_, err = clientAPI.Recover(key)
 	assert.NoError(err)
-	c2State, err = wrapper.New(c2.txHandle.(store.Store)).GetState()
-	assert.NoError(err)
+	c2State = testutil.GetState(t, c2.txHandle)
 	assert.Equal(state.AcceptingMarbles, c2State)
 }
 
@@ -204,10 +197,8 @@ func TestGenerateSecrets(t *testing.T) {
 
 	c := NewCoreWithMocks()
 
-	rootCert, err := wrapper.New(c.txHandle.(store.Store)).GetCertificate(constants.SKCoordinatorRootCert)
-	assert.NoError(err)
-	rootPrivK, err := wrapper.New(c.txHandle.(store.Store)).GetPrivateKey(constants.SKCoordinatorRootKey)
-	assert.NoError(err)
+	rootCert := testutil.GetCertificate(t, c.txHandle, constants.SKCoordinatorRootCert)
+	rootPrivK := testutil.GetPrivateKey(t, c.txHandle, constants.SKCoordinatorRootKey)
 
 	// This should return valid secrets
 	generatedSecrets, err := c.GenerateSecrets(secretsToGenerate, uuid.Nil, rootCert, rootPrivK, rootPrivK)
@@ -315,20 +306,16 @@ func TestUnsetRestart(t *testing.T) {
 	// create a new core, this seals the state with only certificate and keys
 	c1, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer), recovery, zapLogger, nil, nil)
 	require.NoError(err)
-	c1State, err := wrapper.New(c1.txHandle.(store.Store)).GetState()
-	assert.NoError(err)
+	c1State := testutil.GetState(t, c1.txHandle)
 	assert.Equal(state.AcceptingManifest, c1State)
-	cCert, err := wrapper.New(c1.txHandle.(store.Store)).GetCertificate(constants.SKCoordinatorRootCert)
-	assert.NoError(err)
+	cCert := testutil.GetCertificate(t, c1.txHandle, constants.SKCoordinatorRootCert)
 
 	// create a second core, this should overwrite the previously sealed certificate and keys since no manifest was set
 	c2, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer), recovery, zapLogger, nil, nil)
 	require.NoError(err)
-	c2State, err := wrapper.New(c2.txHandle.(store.Store)).GetState()
-	assert.NoError(err)
+	c2State := testutil.GetState(t, c2.txHandle)
 	assert.Equal(state.AcceptingManifest, c2State)
-	c2Cert, err := wrapper.New(c2.txHandle.(store.Store)).GetCertificate(constants.SKCoordinatorRootCert)
-	assert.NoError(err)
+	c2Cert := testutil.GetCertificate(t, c2.txHandle, constants.SKCoordinatorRootCert)
 
 	assert.NotEqual(*cCert, *c2Cert)
 }

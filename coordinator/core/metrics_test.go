@@ -18,7 +18,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/state"
 	"github.com/edgelesssys/marblerun/coordinator/store"
 	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
-	"github.com/edgelesssys/marblerun/coordinator/store/wrapper"
+	"github.com/edgelesssys/marblerun/coordinator/store/wrapper/testutil"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -74,7 +74,7 @@ func TestStoreWrapperMetrics(t *testing.T) {
 	key := make([]byte, 16)
 	_, err = clientAPI.Recover(key)
 	require.NoError(err)
-	state, err := wrapper.New(c.txHandle.(store.Store)).GetState()
+	state := testutil.GetState(t, c.txHandle)
 	require.NoError(err)
 	assert.Equal(1, promtest.CollectAndCount(c.metrics.coordinatorState))
 	assert.Equal(float64(state), promtest.ToFloat64(c.metrics.coordinatorState))
@@ -118,7 +118,7 @@ func TestMarbleAPIMetrics(t *testing.T) {
 	}
 
 	// try to activate first backend marble prematurely before manifest is set
-	uuid := spawner.newMarble("backendFirst", "Azure", false)
+	uuid := spawner.newMarble(t, "backendFirst", "Azure", false)
 	promtest.CollectAndCount(metrics.activation)
 	promtest.CollectAndCount(metrics.activationSuccess)
 	assert.Equal(float64(1), promtest.ToFloat64(metrics.activation.WithLabelValues("backendFirst", uuid)))
@@ -131,14 +131,14 @@ func TestMarbleAPIMetrics(t *testing.T) {
 	require.NoError(err)
 
 	// activate first backend
-	uuid = spawner.newMarble("backendFirst", "Azure", true)
+	uuid = spawner.newMarble(t, "backendFirst", "Azure", true)
 	promtest.CollectAndCount(metrics.activation)
 	promtest.CollectAndCount(metrics.activationSuccess)
 	assert.Equal(float64(1), promtest.ToFloat64(metrics.activation.WithLabelValues("backendFirst", uuid)))
 	assert.Equal(float64(1), promtest.ToFloat64(metrics.activationSuccess.WithLabelValues("backendFirst", uuid)))
 
 	// try to activate another first backend
-	uuid = spawner.newMarble("backendFirst", "Azure", false)
+	uuid = spawner.newMarble(t, "backendFirst", "Azure", false)
 	promtest.CollectAndCount(metrics.activation)
 	promtest.CollectAndCount(metrics.activationSuccess)
 	assert.Equal(float64(1), promtest.ToFloat64(metrics.activation.WithLabelValues("backendFirst", uuid)))
