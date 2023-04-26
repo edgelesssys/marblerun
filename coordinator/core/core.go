@@ -63,10 +63,10 @@ type Core struct {
 
 // RequireState checks if the Coordinator is in one of the given states.
 // This function locks the Core's mutex and therefore should be paired with `defer c.mux.Unlock()`.
-func (c *Core) RequireState(states ...state.State) error {
+func (c *Core) RequireState(ctx context.Context, states ...state.State) error {
 	c.mux.Lock()
 
-	getter, rollback, _, err := wrapper.WrapTransaction(context.TODO(), c.txHandle)
+	getter, rollback, _, err := wrapper.WrapTransaction(ctx, c.txHandle)
 	if err != nil {
 		return err
 	}
@@ -173,7 +173,7 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, stor store.
 		return nil, err
 	}
 
-	if err := commit(); err != nil {
+	if err := commit(context.Background()); err != nil {
 		return nil, err
 	}
 
@@ -313,8 +313,8 @@ func getClientTLSCert(ctx context.Context) *x509.Certificate {
 }
 
 // GetState returns the current state of the Coordinator.
-func (c *Core) GetState() (state.State, string, error) {
-	data, rollback, _, err := wrapper.WrapTransaction(context.TODO(), c.txHandle)
+func (c *Core) GetState(ctx context.Context) (state.State, string, error) {
+	data, rollback, _, err := wrapper.WrapTransaction(ctx, c.txHandle)
 	if err != nil {
 		return -1, "Cannot determine coordinator status.", fmt.Errorf("initializing read transaction: %w", err)
 	}

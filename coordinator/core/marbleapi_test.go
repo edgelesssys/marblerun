@@ -78,7 +78,7 @@ func TestActivate(t *testing.T) {
 	// set manifest
 	clientAPI, err := clientapi.New(coreServer.txHandle.(store.Store), coreServer.recovery, coreServer, zapLogger)
 	require.NoError(err)
-	_, err = clientAPI.SetManifest([]byte(test.ManifestJSON))
+	_, err = clientAPI.SetManifest(context.Background(), []byte(test.ManifestJSON))
 	require.NoError(err)
 
 	// activate first backend
@@ -146,7 +146,7 @@ func (ms *marbleSpawner) newMarble(t *testing.T, marbleType string, infraName st
 		},
 	}
 
-	ctx := peer.NewContext(context.TODO(), &peer.Peer{
+	ctx := peer.NewContext(context.Background(), &peer.Peer{
 		AuthInfo: tlsInfo,
 	})
 
@@ -454,6 +454,7 @@ func TestParseSecrets(t *testing.T) {
 func TestSecurityLevelUpdate(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+	ctx := context.Background()
 
 	// parse manifest
 	var manifest manifest.Manifest
@@ -484,7 +485,7 @@ func TestSecurityLevelUpdate(t *testing.T) {
 	// set manifest
 	clientAPI, err := clientapi.New(coreServer.txHandle.(store.Store), coreServer.recovery, coreServer, zapLogger)
 	require.NoError(err)
-	_, err = clientAPI.SetManifest([]byte(test.ManifestJSONWithRecoveryKey))
+	_, err = clientAPI.SetManifest(ctx, []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
 
 	admin := testutil.GetUser(t, coreServer.txHandle, "admin")
@@ -494,7 +495,7 @@ func TestSecurityLevelUpdate(t *testing.T) {
 	spawner.newMarble(t, "frontend", "Azure", true)
 
 	// update manifest
-	err = clientAPI.UpdateManifest([]byte(test.UpdateManifest), admin)
+	err = clientAPI.UpdateManifest(ctx, []byte(test.UpdateManifest), admin)
 	require.NoError(err)
 
 	// try to activate another first backend, should fail as required SecurityLevel is now higher after manifest update
@@ -536,7 +537,7 @@ func (ms *marbleSpawner) shortMarbleActivation(t *testing.T, marbleType string, 
 		},
 	}
 
-	ctx := peer.NewContext(context.TODO(), &peer.Peer{
+	ctx := peer.NewContext(context.Background(), &peer.Peer{
 		AuthInfo: tlsInfo,
 	})
 
@@ -597,7 +598,7 @@ func TestActivateWithMissingParameters(t *testing.T) {
 	// set manifest
 	clientAPI, err := clientapi.New(coreServer.txHandle.(store.Store), coreServer.recovery, coreServer, zapLogger)
 	require.NoError(err)
-	_, err = clientAPI.SetManifest([]byte(test.ManifestJSONMissingParameters))
+	_, err = clientAPI.SetManifest(context.Background(), []byte(test.ManifestJSONMissingParameters))
 	require.NoError(err)
 
 	spawner.shortMarbleActivation(t, "frontend", "Azure")

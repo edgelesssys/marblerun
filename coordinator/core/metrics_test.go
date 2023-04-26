@@ -7,6 +7,7 @@
 package core
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -31,6 +32,7 @@ import (
 func TestStoreWrapperMetrics(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+	ctx := context.Background()
 
 	zapLogger, err := zap.NewDevelopment()
 	require.NoError(err)
@@ -51,7 +53,7 @@ func TestStoreWrapperMetrics(t *testing.T) {
 
 	clientAPI, err := clientapi.New(c.txHandle.(store.Store), c.recovery, c, zapLogger)
 	require.NoError(err)
-	_, err = clientAPI.SetManifest([]byte(test.ManifestJSON))
+	_, err = clientAPI.SetManifest(ctx, []byte(test.ManifestJSON))
 	require.NoError(err)
 	assert.Equal(1, promtest.CollectAndCount(c.metrics.coordinatorState))
 	assert.Equal(float64(state.AcceptingMarbles), promtest.ToFloat64(c.metrics.coordinatorState))
@@ -72,7 +74,7 @@ func TestStoreWrapperMetrics(t *testing.T) {
 	require.NoError(err)
 
 	key := make([]byte, 16)
-	_, err = clientAPI.Recover(key)
+	_, err = clientAPI.Recover(ctx, key)
 	require.NoError(err)
 	state := testutil.GetState(t, c.txHandle)
 	require.NoError(err)
@@ -127,7 +129,7 @@ func TestMarbleAPIMetrics(t *testing.T) {
 	// set manifest
 	clientAPI, err := clientapi.New(c.txHandle.(store.Store), c.recovery, c, zapLogger)
 	require.NoError(err)
-	_, err = clientAPI.SetManifest([]byte(test.ManifestJSON))
+	_, err = clientAPI.SetManifest(context.Background(), []byte(test.ManifestJSON))
 	require.NoError(err)
 
 	// activate first backend

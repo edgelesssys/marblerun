@@ -143,7 +143,7 @@ func TestGetCertQuote(t *testing.T) {
 				require.NoError(err)
 			}
 
-			cert, quote, err := api.GetCertQuote()
+			cert, quote, err := api.GetCertQuote(context.Background())
 			if tc.wantErr {
 				assert.Error(err)
 				return
@@ -211,7 +211,7 @@ func TestGetManifestSignature(t *testing.T) {
 				manifestHash = h[:]
 			}
 
-			signature, hash, manifest := api.GetManifestSignature()
+			signature, hash, manifest := api.GetManifestSignature(context.Background())
 			if tc.wantErr {
 				assert.Nil(signature)
 				assert.Nil(hash)
@@ -338,7 +338,7 @@ func TestGetSecrets(t *testing.T) {
 			storedSecrets := testutil.GetSecretMap(t, tc.store)
 			require.NoError(err)
 
-			secrets, err := api.GetSecrets(tc.request, tc.user)
+			secrets, err := api.GetSecrets(context.Background(), tc.request, tc.user)
 			if tc.wantErr {
 				assert.Error(err)
 				return
@@ -382,7 +382,7 @@ func TestGetStatus(t *testing.T) {
 				log:  log,
 			}
 
-			status, _, err := api.GetStatus()
+			status, _, err := api.GetStatus(context.Background())
 			if tc.wantErr {
 				assert.Error(err)
 				return
@@ -526,7 +526,7 @@ func TestRecover(t *testing.T) {
 				log:      log,
 			}
 
-			keysLeft, err := api.Recover([]byte("recoveryKey"))
+			keysLeft, err := api.Recover(context.Background(), []byte("recoveryKey"))
 			if tc.wantErr {
 				assert.Error(err)
 				return
@@ -579,7 +579,7 @@ func (c *fakeCore) Unlock() {
 	c.unlockCalled = true
 }
 
-func (c *fakeCore) RequireState(states ...state.State) error {
+func (c *fakeCore) RequireState(_ context.Context, states ...state.State) error {
 	if c.requireStateErr != nil {
 		return c.requireStateErr
 	}
@@ -608,7 +608,7 @@ func (c *fakeCore) AdvanceState(newState state.State, _ interface {
 	return nil
 }
 
-func (c *fakeCore) GetState() (state.State, string, error) {
+func (c *fakeCore) GetState(_ context.Context) (state.State, string, error) {
 	return c.state, c.getStateMsg, c.getStateErr
 }
 

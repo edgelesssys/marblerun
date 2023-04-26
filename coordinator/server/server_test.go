@@ -7,6 +7,7 @@
 package server
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
@@ -56,7 +57,7 @@ func TestManifest(t *testing.T) {
 	mux.ServeHTTP(resp, req)
 	require.Equal(http.StatusOK, resp.Code)
 
-	sigRootECDSA, sig, manifest := c.GetManifestSignature()
+	sigRootECDSA, sig, manifest := c.GetManifestSignature(context.Background())
 	assert.JSONEq(`{"status":"success","data":{"ManifestSignatureRootECDSA":"`+base64.StdEncoding.EncodeToString(sigRootECDSA)+`","ManifestSignature":"`+hex.EncodeToString(sig)+`","Manifest":"`+base64.StdEncoding.EncodeToString(manifest)+`"}}`, resp.Body.String())
 
 	// try setting manifest again, should fail
@@ -103,7 +104,7 @@ func TestGetUpdateLog(t *testing.T) {
 
 	// Setup mock core and set a manifest
 	c := newTestClientAPI(t)
-	_, err := c.SetManifest([]byte(test.ManifestJSONWithRecoveryKey))
+	_, err := c.SetManifest(context.Background(), []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
 	mux := CreateServeMux(c, nil)
 
@@ -120,7 +121,7 @@ func TestUpdate(t *testing.T) {
 
 	// Setup mock core and set a manifest
 	c := newTestClientAPI(t)
-	_, err := c.SetManifest([]byte(test.ManifestJSONWithRecoveryKey))
+	_, err := c.SetManifest(context.Background(), []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
 	mux := CreateServeMux(c, nil)
 
@@ -137,7 +138,7 @@ func TestReadSecret(t *testing.T) {
 
 	// Setup mock core and set a manifest
 	c := newTestClientAPI(t)
-	_, err := c.SetManifest([]byte(test.ManifestJSONWithRecoveryKey))
+	_, err := c.SetManifest(context.Background(), []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
 	mux := CreateServeMux(c, nil)
 
@@ -154,7 +155,7 @@ func TestSetSecret(t *testing.T) {
 
 	// Setup mock core and set a manifest
 	c := newTestClientAPI(t)
-	_, err := c.SetManifest([]byte(test.ManifestJSONWithRecoveryKey))
+	_, err := c.SetManifest(context.Background(), []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
 	mux := CreateServeMux(c, nil)
 

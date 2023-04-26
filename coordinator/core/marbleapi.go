@@ -61,7 +61,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (res *rpc.A
 	c.metrics.marbleAPI.activation.WithLabelValues(req.GetMarbleType(), req.GetUUID()).Inc()
 
 	defer c.mux.Unlock()
-	if err := c.RequireState(state.AcceptingMarbles); err != nil {
+	if err := c.RequireState(ctx, state.AcceptingMarbles); err != nil {
 		return nil, status.Error(codes.FailedPrecondition, "cannot accept marbles in current state")
 	}
 
@@ -166,7 +166,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (res *rpc.A
 			c.log.Error("Could not increment activations", zap.Error(err))
 			return nil, status.Errorf(codes.Internal, "incrementing marble activations: %s", err)
 		}
-		if err := commit(); err != nil {
+		if err := commit(ctx); err != nil {
 			c.log.Error("Committing store transaction failed", zap.Error(err))
 			return nil, status.Errorf(codes.Internal, "committing store transaction: %s", err)
 		}

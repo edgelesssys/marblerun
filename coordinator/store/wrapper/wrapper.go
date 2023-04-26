@@ -26,7 +26,7 @@ import (
 // WrapTransaction initializes a transaction using the given handle,
 // and returns a wrapper for the transaction, as well as rollback and commit functions.
 func WrapTransaction(ctx context.Context, txHandle transactionHandle,
-) (wrapper Wrapper, rollback func(), commit func() error, err error) {
+) (wrapper Wrapper, rollback func(), commit func(context.Context) error, err error) {
 	tx, err := txHandle.BeginTransaction(ctx)
 	if err != nil {
 		return Wrapper{}, nil, nil, err
@@ -35,7 +35,7 @@ func WrapTransaction(ctx context.Context, txHandle transactionHandle,
 	rollback = func() {
 		tx.Rollback()
 	}
-	commit = func() error {
+	commit = func(ctx context.Context) error {
 		return tx.Commit(ctx)
 	}
 	return wrapper, rollback, commit, nil

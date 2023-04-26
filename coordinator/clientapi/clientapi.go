@@ -36,12 +36,12 @@ import (
 
 type core interface {
 	Unlock()
-	RequireState(...state.State) error
+	RequireState(context.Context, ...state.State) error
 	AdvanceState(state.State, interface {
 		PutState(state.State) error
 		GetState() (state.State, error)
 	}) error
-	GetState() (state.State, string, error)
+	GetState(context.Context) (state.State, string, error)
 	GenerateSecrets(
 		map[string]manifest.Secret, uuid.UUID, *x509.Certificate, *ecdsa.PrivateKey, *ecdsa.PrivateKey,
 	) (map[string]manifest.Secret, error)
@@ -93,10 +93,10 @@ func New(store transactionHandle, recovery recovery.Recovery, core core, log *za
 //
 // Returns the remote attestation quote of its own certificate alongside this certificate,
 // which allows to verify the Coordinator's integrity and authentication for use of the ClientAPI.
-func (a *ClientAPI) GetCertQuote() (cert string, certQuote []byte, err error) {
+func (a *ClientAPI) GetCertQuote(ctx context.Context) (cert string, certQuote []byte, err error) {
 	a.log.Info("GetCertQuote called")
 	defer a.core.Unlock()
-	if err := a.core.RequireState(state.AcceptingManifest, state.AcceptingMarbles, state.Recovery); err != nil {
+	if err := a.core.RequireState(ctx, state.AcceptingManifest, state.AcceptingMarbles, state.Recovery); err != nil {
 		a.log.Error("GetCertQuote: Coordinator not in correct state", zap.Error(err))
 		return "", nil, err
 	}
@@ -106,7 +106,7 @@ func (a *ClientAPI) GetCertQuote() (cert string, certQuote []byte, err error) {
 		}
 	}()
 
-	txdata, rollback, _, err := wrapper.WrapTransaction(context.TODO(), a.txHandle)
+	txdata, rollback, _, err := wrapper.WrapTransaction(ctx, a.txHandle)
 	if err != nil {
 		return "", nil, err
 	}
@@ -146,10 +146,10 @@ func (a *ClientAPI) GetCertQuote() (cert string, certQuote []byte, err error) {
 // GetManifestSignature returns the hash of the manifest.
 //
 // Returns ECDSA signature, SHA256 hash and byte encoded representation of the active manifest.
-func (a *ClientAPI) GetManifestSignature() (manifestSignatureRootECDSA, manifestSignature, manifest []byte) {
+func (a *ClientAPI) GetManifestSignature(ctx context.Context) (manifestSignatureRootECDSA, manifestSignature, manifest []byte) {
 	a.log.Info("GetManifestSignature called")
 
-	txdata, rollback, _, err := wrapper.WrapTransaction(context.TODO(), a.txHandle)
+	txdata, rollback, _, err := wrapper.WrapTransaction(ctx, a.txHandle)
 	if err != nil {
 		a.log.Error("GetManifestSignature failed: initializing store transaction", zap.Error(err))
 		return nil, nil, nil
@@ -173,11 +173,11 @@ func (a *ClientAPI) GetManifestSignature() (manifestSignatureRootECDSA, manifest
 }
 
 // GetSecrets allows a user to retrieve secrets from the Coordinator.
-func (a *ClientAPI) GetSecrets(requestedSecrets []string, client *user.User) (map[string]manifest.Secret, error) {
+func (a *ClientAPI) GetSecrets(ctx context.Context, requestedSecrets []string, client *user.User) (map[string]manifest.Secret, error) {
 	a.log.Info("GetSecrets called", zap.Strings("secrets", requestedSecrets), zap.String("user", client.Name()))
 	defer a.core.Unlock()
 	// we can only return secrets if a manifest has already been set
-	if err := a.core.RequireState(state.AcceptingMarbles); err != nil {
+	if err := a.core.RequireState(ctx, state.AcceptingMarbles); err != nil {
 		a.log.Error("GetSecrets: Coordinator not in correct state", zap.Error(err))
 		return nil, err
 	}
@@ -191,7 +191,7 @@ func (a *ClientAPI) GetSecrets(requestedSecrets []string, client *user.User) (ma
 		return nil, fmt.Errorf("user %s is not allowed to read one or more secrets of: %v", client.Name(), requestedSecrets)
 	}
 
-	txdata, rollback, _, err := wrapper.WrapTransaction(context.TODO(), a.txHandle)
+	txdata, rollback, _, err := wrapper.WrapTransaction(ctx, a.txHandle)
 	if err != nil {
 		return nil, err
 	}
@@ -212,21 +212,21 @@ func (a *ClientAPI) GetSecrets(requestedSecrets []string, client *user.User) (ma
 }
 
 // GetStatus returns status information about the state of the Coordinator.
-func (a *ClientAPI) GetStatus() (state.State, string, error) {
+func (a *ClientAPI) GetStatus(ctx context.Context) (state.State, string, error) {
 	a.log.Info("GetStatus called")
-	return a.core.GetState()
+	return a.core.GetState(ctx)
 }
 
 // GetUpdateLog returns the update history of the Coordinator.
-func (a *ClientAPI) GetUpdateLog() (string, error) {
+func (a *ClientAPI) GetUpdateLog(ctx context.Context) (string, error) {
 	a.log.Info("GetUpdateLog called")
 	defer a.core.Unlock()
-	if err := a.core.RequireState(state.AcceptingMarbles); err != nil {
+	if err := a.core.RequireState(ctx, state.AcceptingMarbles); err != nil {
 		a.log.Error("GetUpdateLog: Coordinator not in correct state", zap.Error(err))
 		return "", err
 	}
 
-	txdata, rollback, _, err := wrapper.WrapTransaction(context.TODO(), a.txHandle)
+	txdata, rollback, _, err := wrapper.WrapTransaction(ctx, a.txHandle)
 	if err != nil {
 		return "", err
 	}
@@ -243,10 +243,10 @@ func (a *ClientAPI) GetUpdateLog() (string, error) {
 }
 
 // Recover sets an encryption key (ideally decrypted from the recovery data) and tries to unseal and load a saved state of the Coordinator.
-func (a *ClientAPI) Recover(encryptionKey []byte) (keysLeft int, err error) {
+func (a *ClientAPI) Recover(ctx context.Context, encryptionKey []byte) (keysLeft int, err error) {
 	a.log.Info("Recover called")
 	defer a.core.Unlock()
-	if err := a.core.RequireState(state.Recovery); err != nil {
+	if err := a.core.RequireState(ctx, state.Recovery); err != nil {
 		a.log.Error("Recover: Coordinator not in correct state", zap.Error(err))
 		return -1, err
 	}
@@ -282,7 +282,7 @@ func (a *ClientAPI) Recover(encryptionKey []byte) (keysLeft int, err error) {
 		a.log.Error("Could not retrieve recovery data from state. Recovery will be unavailable", zap.Error(err))
 	}
 
-	txdata, rollback, _, err := wrapper.WrapTransaction(context.TODO(), a.txHandle)
+	txdata, rollback, _, err := wrapper.WrapTransaction(ctx, a.txHandle)
 	if err != nil {
 		return -1, err
 	}
@@ -305,10 +305,10 @@ func (a *ClientAPI) Recover(encryptionKey []byte) (keysLeft int, err error) {
 //
 // rawManifest is the manifest of type Manifest in JSON format.
 // recoverySecretMap is a map of recovery secrets that can be used to recover the Coordinator.
-func (a *ClientAPI) SetManifest(rawManifest []byte) (recoverySecretMap map[string][]byte, err error) {
+func (a *ClientAPI) SetManifest(ctx context.Context, rawManifest []byte) (recoverySecretMap map[string][]byte, err error) {
 	a.log.Info("SetManifest called")
 	defer a.core.Unlock()
-	if err := a.core.RequireState(state.AcceptingManifest, state.Recovery); err != nil {
+	if err := a.core.RequireState(ctx, state.AcceptingManifest, state.Recovery); err != nil {
 		a.log.Error("SetManifest: Coordinator not in correct state", zap.Error(err))
 		return nil, err
 	}
@@ -326,7 +326,7 @@ func (a *ClientAPI) SetManifest(rawManifest []byte) (recoverySecretMap map[strin
 		return nil, fmt.Errorf("checking manifest: %w", err)
 	}
 
-	txdata, rollback, commit, err := wrapper.WrapTransaction(context.TODO(), a.txHandle)
+	txdata, rollback, commit, err := wrapper.WrapTransaction(ctx, a.txHandle)
 	if err != nil {
 		return nil, err
 	}
@@ -456,7 +456,7 @@ func (a *ClientAPI) SetManifest(rawManifest []byte) (recoverySecretMap map[strin
 		return nil, fmt.Errorf("advancing state: %w", err)
 	}
 	a.txHandle.SetRecoveryData(recoveryData)
-	if err := commit(); err != nil {
+	if err := commit(ctx); err != nil {
 		a.log.Error("sealing of state failed", zap.Error(err))
 	}
 
@@ -465,11 +465,11 @@ func (a *ClientAPI) SetManifest(rawManifest []byte) (recoverySecretMap map[strin
 }
 
 // UpdateManifest allows to update certain package parameters of the original manifest, supplied via a JSON manifest.
-func (a *ClientAPI) UpdateManifest(rawUpdateManifest []byte, updater *user.User) (err error) {
+func (a *ClientAPI) UpdateManifest(ctx context.Context, rawUpdateManifest []byte, updater *user.User) (err error) {
 	a.log.Info("UpdateManifest called")
 	defer a.core.Unlock()
 	// Only accept update manifest if we already have a manifest
-	if err := a.core.RequireState(state.AcceptingMarbles); err != nil {
+	if err := a.core.RequireState(ctx, state.AcceptingMarbles); err != nil {
 		a.log.Error("UpdateManifest: Coordinator not in correct state", zap.Error(err))
 		return err
 	}
@@ -494,7 +494,7 @@ func (a *ClientAPI) UpdateManifest(rawUpdateManifest []byte, updater *user.User)
 		return fmt.Errorf("user %s is not allowed to update one or more packages of %v", updater.Name(), wantedPackages)
 	}
 
-	txdata, rollback, commit, err := wrapper.WrapTransaction(context.TODO(), a.txHandle)
+	txdata, rollback, commit, err := wrapper.WrapTransaction(ctx, a.txHandle)
 	if err != nil {
 		return err
 	}
@@ -610,7 +610,7 @@ func (a *ClientAPI) UpdateManifest(rawUpdateManifest []byte, updater *user.User)
 	a.log.Info("Please restart your Marbles to enforce the update.")
 
 	a.txHandle.SetRecoveryData(currentRecoveryData)
-	if err := commit(); err != nil {
+	if err := commit(ctx); err != nil {
 		return fmt.Errorf("updating manifest failed: committing store transaction: %w", err)
 	}
 
@@ -619,8 +619,8 @@ func (a *ClientAPI) UpdateManifest(rawUpdateManifest []byte, updater *user.User)
 }
 
 // VerifyUser checks if a given client certificate matches the admin certificates specified in the manifest.
-func (a *ClientAPI) VerifyUser(clientCerts []*x509.Certificate) (*user.User, error) {
-	txdata, rollback, _, err := wrapper.WrapTransaction(context.TODO(), a.txHandle)
+func (a *ClientAPI) VerifyUser(ctx context.Context, clientCerts []*x509.Certificate) (*user.User, error) {
+	txdata, rollback, _, err := wrapper.WrapTransaction(ctx, a.txHandle)
 	if err != nil {
 		return nil, err
 	}
@@ -652,11 +652,11 @@ func (a *ClientAPI) VerifyUser(clientCerts []*x509.Certificate) (*user.User, err
 }
 
 // WriteSecrets allows a user to set certain user-defined secrets for the Coordinator.
-func (a *ClientAPI) WriteSecrets(rawSecretManifest []byte, updater *user.User) (err error) {
+func (a *ClientAPI) WriteSecrets(ctx context.Context, rawSecretManifest []byte, updater *user.User) (err error) {
 	a.log.Info("WriteSecrets called", zap.String("user", updater.Name()))
 	defer a.core.Unlock()
 	// Only accept secrets if we already have a manifest
-	if err := a.core.RequireState(state.AcceptingMarbles); err != nil {
+	if err := a.core.RequireState(ctx, state.AcceptingMarbles); err != nil {
 		a.log.Error("WriteSecrets: Coordinator not in correct state", zap.Error(err))
 		return err
 	}
@@ -672,7 +672,7 @@ func (a *ClientAPI) WriteSecrets(rawSecretManifest []byte, updater *user.User) (
 		return fmt.Errorf("unmarshaling secret manifest: %w", err)
 	}
 
-	txdata, rollback, commit, err := wrapper.WrapTransaction(context.TODO(), a.txHandle)
+	txdata, rollback, commit, err := wrapper.WrapTransaction(ctx, a.txHandle)
 	if err != nil {
 		return err
 	}
@@ -727,5 +727,5 @@ func (a *ClientAPI) WriteSecrets(rawSecretManifest []byte, updater *user.User) (
 		return fmt.Errorf("saving update log to store: %w", err)
 	}
 
-	return commit()
+	return commit(ctx)
 }

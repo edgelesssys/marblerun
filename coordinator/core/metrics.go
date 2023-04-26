@@ -7,6 +7,8 @@
 package core
 
 import (
+	"context"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
@@ -33,7 +35,7 @@ func newCoreMetrics(factory *promauto.Factory, core *Core, namespace string) *co
 				Help:      "State of the Coordinator.",
 			},
 			func() float64 {
-				state, _, err := core.GetState()
+				state, _, err := core.GetState(context.Background())
 				if err != nil {
 					return float64(0)
 				}

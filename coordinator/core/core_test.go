@@ -7,8 +7,10 @@
 package core
 
 import (
+	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"math/big"
@@ -46,7 +48,7 @@ func TestCore(t *testing.T) {
 	rootCert := testutil.GetCertificate(t, c.txHandle, constants.SKCoordinatorRootCert)
 	assert.Equal(constants.CoordinatorName, rootCert.Subject.CommonName)
 
-	cert, err := c.GetTLSRootCertificate(nil)
+	cert, err := c.GetTLSRootCertificate(&tls.ClientHelloInfo{})
 	assert.NoError(err)
 	assert.NotNil(cert)
 
@@ -58,6 +60,7 @@ func TestCore(t *testing.T) {
 func TestSeal(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+	ctx := context.Background()
 
 	// setup mock zaplogger which can be passed to Core
 	zapLogger, err := zap.NewDevelopment()
@@ -75,13 +78,13 @@ func TestSeal(t *testing.T) {
 	// Set manifest. This will seal the state.
 	clientAPI, err := clientapi.New(c.txHandle.(store.Store), c.recovery, c, zapLogger)
 	require.NoError(err)
-	_, err = clientAPI.SetManifest([]byte(test.ManifestJSON))
+	_, err = clientAPI.SetManifest(ctx, []byte(test.ManifestJSON))
 	require.NoError(err)
 
 	// Get certificate and signature.
-	cert, err := c.GetTLSRootCertificate(nil)
+	cert, err := c.GetTLSRootCertificate(&tls.ClientHelloInfo{})
 	assert.NoError(err)
-	signatureRootECDSA, signature, _ := clientAPI.GetManifestSignature()
+	signatureRootECDSA, signature, _ := clientAPI.GetManifestSignature(ctx)
 
 	// Get secrets
 	cSecrets := testutil.GetSecretMap(t, c.txHandle)
@@ -94,18 +97,18 @@ func TestSeal(t *testing.T) {
 	c2State := testutil.GetState(t, c2.txHandle)
 	assert.Equal(state.AcceptingMarbles, c2State)
 
-	cert2, err := c2.GetTLSRootCertificate(nil)
+	cert2, err := c2.GetTLSRootCertificate(&tls.ClientHelloInfo{})
 	assert.NoError(err)
 	assert.Equal(cert, cert2)
 
-	_, err = clientAPI.SetManifest([]byte(test.ManifestJSON))
+	_, err = clientAPI.SetManifest(ctx, []byte(test.ManifestJSON))
 	assert.Error(err)
 
 	// Check if the secret specified in the test manifest is unsealed correctly
 	c2Secrets := testutil.GetSecretMap(t, c2.txHandle)
 	assert.Equal(cSecrets, c2Secrets)
 
-	signatureRootECDSA2, signature2, _ := clientAPI.GetManifestSignature()
+	signatureRootECDSA2, signature2, _ := clientAPI.GetManifestSignature(ctx)
 	assert.Equal(signature, signature2, "manifest signature differs after restart")
 	assert.Equal(signatureRootECDSA, signatureRootECDSA2, "manifest signature root ecdsa differs after restart")
 }
@@ -113,6 +116,7 @@ func TestSeal(t *testing.T) {
 func TestRecover(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+	ctx := context.Background()
 
 	// setup mock zaplogger which can be passed to Core
 	zapLogger, err := zap.NewDevelopment()
@@ -131,15 +135,15 @@ func TestRecover(t *testing.T) {
 
 	// new core does not allow recover
 	key := make([]byte, 16)
-	_, err = clientAPI.Recover(key)
+	_, err = clientAPI.Recover(ctx, key)
 	assert.Error(err)
 
 	// Set manifest. This will seal the state.
-	_, err = clientAPI.SetManifest([]byte(test.ManifestJSON))
+	_, err = clientAPI.SetManifest(ctx, []byte(test.ManifestJSON))
 	require.NoError(err)
 
 	// core does not allow recover after manifest has been set
-	_, err = clientAPI.Recover(key)
+	_, err = clientAPI.Recover(ctx, key)
 	assert.Error(err)
 
 	// Initialize new core and let unseal fail
@@ -153,7 +157,7 @@ func TestRecover(t *testing.T) {
 	require.Equal(state.Recovery, c2State)
 
 	// recover
-	_, err = clientAPI.Recover(key)
+	_, err = clientAPI.Recover(ctx, key)
 	assert.NoError(err)
 	c2State = testutil.GetState(t, c2.txHandle)
 	assert.Equal(state.AcceptingMarbles, c2State)
