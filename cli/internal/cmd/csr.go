@@ -30,11 +30,11 @@ import (
 // certificateInterface provides the interface for certificate handlers.
 type certificateInterface interface {
 	// get the signed certificate
-	get() ([]byte, error)
+	get(context.Context) ([]byte, error)
 	// set the caBundle field for the helm chart
 	setCaBundle() ([]string, error)
 	// sign the certificate
-	signRequest() error
+	signRequest(context.Context) error
 	getKey() *rsa.PrivateKey
 }
 
@@ -83,8 +83,8 @@ func newCertificateV1(kubeClient kubernetes.Interface) (*certificateV1, error) {
 }
 
 // get returns the certificate signed by the kubernetes api server.
-func (crt *certificateV1) get() ([]byte, error) {
-	csr, err := crt.kubeClient.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), webhookName, metav1.GetOptions{})
+func (crt *certificateV1) get(ctx context.Context) ([]byte, error) {
+	csr, err := crt.kubeClient.CertificatesV1().CertificateSigningRequests().Get(ctx, webhookName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -130,15 +130,15 @@ func (crt *certificateV1) setCaBundle() ([]string, error) {
 }
 
 // signRequest performs a certificate signing request to the api server and approves it.
-func (crt *certificateV1) signRequest() error {
+func (crt *certificateV1) signRequest(ctx context.Context) error {
 	// send the csr to the k8s api server for signing
-	certReturn, err := crt.kubeClient.CertificatesV1().CertificateSigningRequests().Create(context.TODO(), crt.csr, metav1.CreateOptions{})
+	certReturn, err := crt.kubeClient.CertificatesV1().CertificateSigningRequests().Create(ctx, crt.csr, metav1.CreateOptions{})
 	if err != nil {
 		return err
 	}
 
 	if err := waitForResource(webhookName, crt.kubeClient, crt.timeout, func(name string, client kubernetes.Interface) bool {
-		_, err := client.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), name, metav1.GetOptions{})
+		_, err := client.CertificatesV1().CertificateSigningRequests().Get(ctx, name, metav1.GetOptions{})
 		return err == nil
 	}); err != nil {
 		return err
@@ -154,13 +154,13 @@ func (crt *certificateV1) signRequest() error {
 		LastUpdateTime: metav1.Now(),
 	})
 
-	_, err = crt.kubeClient.CertificatesV1().CertificateSigningRequests().UpdateApproval(context.TODO(), webhookName, certReturn, metav1.UpdateOptions{})
+	_, err = crt.kubeClient.CertificatesV1().CertificateSigningRequests().UpdateApproval(ctx, webhookName, certReturn, metav1.UpdateOptions{})
 	if err != nil {
 		return err
 	}
 
 	return waitForResource(webhookName, crt.kubeClient, crt.timeout, func(name string, client kubernetes.Interface) bool {
-		csr, err := client.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), webhookName, metav1.GetOptions{})
+		csr, err := client.CertificatesV1().CertificateSigningRequests().Get(ctx, webhookName, metav1.GetOptions{})
 		if err != nil {
 			return false
 		}

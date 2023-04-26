@@ -135,7 +135,7 @@ func installWebhook(cmd *cobra.Command, kubeClient kubernetes.Interface) ([]stri
 		return nil, err
 	}
 	cmd.Print(".")
-	if err := certificateHandler.signRequest(); err != nil {
+	if err := certificateHandler.signRequest(cmd.Context()); err != nil {
 		return nil, err
 	}
 	cmd.Print(".")
@@ -143,7 +143,7 @@ func installWebhook(cmd *cobra.Command, kubeClient kubernetes.Interface) ([]stri
 	if err != nil {
 		return nil, err
 	}
-	cert, err := certificateHandler.get()
+	cert, err := certificateHandler.get(cmd.Context())
 	if err != nil {
 		return nil, err
 	}

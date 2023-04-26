@@ -7,6 +7,7 @@
 package cmd
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -75,7 +76,7 @@ func newCertificateLegacy() (*certificateLegacy, error) {
 }
 
 // get returns the signed certificate of the webhook server.
-func (crt *certificateLegacy) get() ([]byte, error) {
+func (crt *certificateLegacy) get(_ context.Context) ([]byte, error) {
 	certBytes := pem.EncodeToMemory(crt.serverCert)
 	return certBytes, nil
 }
@@ -91,7 +92,7 @@ func (crt *certificateLegacy) setCaBundle() ([]string, error) {
 }
 
 // signRequest signs the webhook certificate using the rootCA.
-func (crt *certificateLegacy) signRequest() error {
+func (crt *certificateLegacy) signRequest(_ context.Context) error {
 	serial, err := util.GenerateCertificateSerialNumber()
 	if err != nil {
 		return err
