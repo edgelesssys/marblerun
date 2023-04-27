@@ -7,6 +7,7 @@
 package cmd
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"fmt"
@@ -47,6 +48,7 @@ func TestCreateCSR(t *testing.T) {
 func TestCertificateV1(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
+	ctx := context.Background()
 
 	testClient := fake.NewSimpleClientset()
 
@@ -58,12 +60,12 @@ func TestCertificateV1(t *testing.T) {
 
 	testHandler.timeout = 2
 	// this should error with a timeout since the fakeClient does not keep updated resources, but only returns them once on API call
-	err = testHandler.signRequest()
+	err = testHandler.signRequest(ctx)
 	require.Error(err)
 	assert.Contains(err.Error(), "certificate signing request was not updated", fmt.Sprintf("failed with unexpected error: %s", err.Error()))
 
 	// we use a different timeout function here, so this should not return an error, but the certificate will be empty
-	testCrt, err := testHandler.get()
+	testCrt, err := testHandler.get(ctx)
 	require.NoError(err)
 	assert.True((len(testCrt) == 0))
 
@@ -84,19 +86,20 @@ func TestCertificateV1(t *testing.T) {
 func TestCertificateLegacy(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
+	ctx := context.Background()
 
 	testHandler, err := newCertificateLegacy()
 	require.NoError(err)
 	assert.True(len(testHandler.caCert.Bytes) > 0, "failed creating caCert")
 
-	err = testHandler.signRequest()
+	err = testHandler.signRequest(ctx)
 	require.NoError(err)
 	assert.True(len(testHandler.serverCert.Bytes) > 0, "failed creating serverCert")
 
 	testKey := testHandler.getKey()
 	assert.Equal(testKey, testHandler.serverPrivKey, "private key of the handler and private key returned by its method were not equal")
 
-	testCrt, err := testHandler.get()
+	testCrt, err := testHandler.get(ctx)
 	require.NoError(err)
 	assert.True(len(testCrt) > 0, "failed to retrieve server certificate")
 
