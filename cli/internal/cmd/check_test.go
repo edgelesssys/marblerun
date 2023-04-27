@@ -67,7 +67,6 @@ func TestCheckDeploymentStatus(t *testing.T) {
 	testClient := fake.NewSimpleClientset()
 	ctx := context.Background()
 	cmd := &cobra.Command{}
-	cmd.SetContext(ctx)
 	var out bytes.Buffer
 	cmd.SetOut(&out)
 
@@ -98,7 +97,6 @@ func TestCliCheck(t *testing.T) {
 	testClient := fake.NewSimpleClientset()
 	ctx := context.Background()
 	cmd := &cobra.Command{}
-	cmd.SetContext(ctx)
 	var out bytes.Buffer
 	cmd.SetOut(&out)
 
