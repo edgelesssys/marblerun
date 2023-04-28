@@ -106,19 +106,22 @@ func (c *Core) Unlock() {
 }
 
 // NewCore creates and initializes a new Core object.
-func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, stor store.Store, recovery recovery.Recovery, zapLogger *zap.Logger, promFactory *promauto.Factory, eventlog *events.Log) (*Core, error) {
+func NewCore(
+	dnsNames []string, qv quote.Validator, qi quote.Issuer, txHandle transactionHandle,
+	recovery recovery.Recovery, zapLogger *zap.Logger, promFactory *promauto.Factory, eventlog *events.Log,
+) (*Core, error) {
 	c := &Core{
 		qv:       qv,
 		qi:       qi,
 		recovery: recovery,
-		txHandle: stor,
+		txHandle: txHandle,
 		log:      zapLogger,
 		eventlog: eventlog,
 	}
 	c.metrics = newCoreMetrics(promFactory, c, "coordinator")
 
 	zapLogger.Info("loading state")
-	recoveryData, loadErr := stor.LoadState()
+	recoveryData, loadErr := txHandle.LoadState()
 	if err := c.recovery.SetRecoveryData(recoveryData); err != nil {
 		c.log.Error("Could not retrieve recovery data from state. Recovery will be unavailable", zap.Error(err))
 	}
@@ -165,7 +168,7 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, stor store.
 		return nil, err
 	} else {
 		// recovered from a sealed state, reload components and finish the store transaction
-		stor.SetRecoveryData(recoveryData)
+		txHandle.SetRecoveryData(recoveryData)
 	}
 
 	rootCert, err := transaction.GetCertificate(constants.SKCoordinatorRootCert)
@@ -592,4 +595,7 @@ func (e QuoteError) Error() string {
 
 type transactionHandle interface {
 	BeginTransaction(context.Context) (store.Transaction, error)
+	SetEncryptionKey([]byte) error
+	SetRecoveryData([]byte)
+	LoadState() ([]byte, error)
 }

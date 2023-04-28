@@ -73,7 +73,7 @@ type ClientAPI struct {
 }
 
 // New returns an initialized instance of the ClientAPI.
-func New(store transactionHandle, recovery recovery.Recovery, core core, log *zap.Logger,
+func New(txHandle transactionHandle, recovery recovery.Recovery, core core, log *zap.Logger,
 ) (*ClientAPI, error) {
 	updateLog, err := updatelog.New()
 	if err != nil {
@@ -83,7 +83,7 @@ func New(store transactionHandle, recovery recovery.Recovery, core core, log *za
 	return &ClientAPI{
 		core:      core,
 		recovery:  recovery,
-		txHandle:  store,
+		txHandle:  txHandle,
 		updateLog: updateLog,
 		log:       log,
 	}, nil

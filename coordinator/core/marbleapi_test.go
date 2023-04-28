@@ -28,7 +28,6 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
 	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/coordinator/state"
-	"github.com/edgelesssys/marblerun/coordinator/store"
 	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
 	"github.com/edgelesssys/marblerun/coordinator/store/wrapper/testutil"
 	"github.com/edgelesssys/marblerun/test"
@@ -76,7 +75,7 @@ func TestActivate(t *testing.T) {
 	spawner.newMarble(t, "backendFirst", "Azure", false)
 
 	// set manifest
-	clientAPI, err := clientapi.New(coreServer.txHandle.(store.Store), coreServer.recovery, coreServer, zapLogger)
+	clientAPI, err := clientapi.New(coreServer.txHandle, coreServer.recovery, coreServer, zapLogger)
 	require.NoError(err)
 	_, err = clientAPI.SetManifest(context.Background(), []byte(test.ManifestJSON))
 	require.NoError(err)
@@ -483,7 +482,7 @@ func TestSecurityLevelUpdate(t *testing.T) {
 		coreServer: coreServer,
 	}
 	// set manifest
-	clientAPI, err := clientapi.New(coreServer.txHandle.(store.Store), coreServer.recovery, coreServer, zapLogger)
+	clientAPI, err := clientapi.New(coreServer.txHandle, coreServer.recovery, coreServer, zapLogger)
 	require.NoError(err)
 	_, err = clientAPI.SetManifest(ctx, []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
@@ -596,7 +595,7 @@ func TestActivateWithMissingParameters(t *testing.T) {
 		coreServer: coreServer,
 	}
 	// set manifest
-	clientAPI, err := clientapi.New(coreServer.txHandle.(store.Store), coreServer.recovery, coreServer, zapLogger)
+	clientAPI, err := clientapi.New(coreServer.txHandle, coreServer.recovery, coreServer, zapLogger)
 	require.NoError(err)
 	_, err = clientAPI.SetManifest(context.Background(), []byte(test.ManifestJSONMissingParameters))
 	require.NoError(err)

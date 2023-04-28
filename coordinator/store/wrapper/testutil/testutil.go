@@ -59,6 +59,17 @@ func GetPrivateKey(t *testing.T, txHandle transactionHandle, name string) *ecdsa
 	return privKey
 }
 
+// GetSecret returns the secret with the given name.
+func GetSecret(t *testing.T, txHandle transactionHandle, name string) manifest.Secret {
+	t.Helper()
+	tx, rollback, _, err := wrapper.WrapTransaction(context.Background(), txHandle)
+	require.NoError(t, err)
+	defer rollback()
+	secret, err := tx.GetSecret(name)
+	require.NoError(t, err)
+	return secret
+}
+
 // GetSecretMap returns a map of all secrets in the store.
 func GetSecretMap(t *testing.T, txHandle transactionHandle) map[string]manifest.Secret {
 	t.Helper()
