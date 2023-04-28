@@ -9,28 +9,45 @@ package stdstore
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/coordinator/store"
+	"github.com/spf13/afero"
+)
+
+const (
+	// SealedDataFname is the file name in which the state is sealed on disk in seal_dir.
+	SealedDataFname string = "sealed_data"
+
+	// SealedKeyFname is the file name in which the key is sealed with the seal key on disk in seal_dir.
+	SealedKeyFname string = "sealed_key"
 )
 
 // StdStore is the standard implementation of the Store interface.
 type StdStore struct {
-	data         map[string][]byte
-	mux, txmux   sync.Mutex
-	sealer       seal.Sealer
+	data       map[string][]byte
+	mux, txmux sync.Mutex
+	sealer     seal.Sealer
+
+	fs           afero.Afero
 	recoveryData []byte
 	recoveryMode bool
+	sealDir      string
 }
 
 // New creates and initializes a new StdStore object.
-func New(sealer seal.Sealer) *StdStore {
+func New(sealer seal.Sealer, fs afero.Fs, sealDir string) *StdStore {
 	s := &StdStore{
-		data:   make(map[string][]byte),
-		sealer: sealer,
+		data:    make(map[string][]byte),
+		sealer:  sealer,
+		fs:      afero.Afero{Fs: fs},
+		sealDir: sealDir,
 	}
 
 	return s
@@ -50,10 +67,7 @@ func (s *StdStore) Get(request string) ([]byte, error) {
 
 // Put saves a value in StdStore by Type and Name.
 func (s *StdStore) Put(request string, requestData []byte) error {
-	tx, err := s.beginTransaction()
-	if err != nil {
-		return err
-	}
+	tx := s.beginTransaction()
 	defer tx.Rollback()
 	if err := tx.Put(request, requestData); err != nil {
 		return err
@@ -63,10 +77,7 @@ func (s *StdStore) Put(request string, requestData []byte) error {
 
 // Delete removes a value from StdStore.
 func (s *StdStore) Delete(request string) error {
-	tx, err := s.beginTransaction()
-	if err != nil {
-		return err
-	}
+	tx := s.beginTransaction()
 	defer tx.Rollback()
 	if err := tx.Delete(request); err != nil {
 		return err
@@ -89,7 +100,7 @@ func (s *StdStore) Iterator(prefix string) (store.Iterator, error) {
 
 // BeginTransaction starts a new transaction.
 func (s *StdStore) BeginTransaction(_ context.Context) (store.Transaction, error) {
-	return s.beginTransaction()
+	return s.beginTransaction(), nil
 }
 
 // LoadState loads sealed data into StdStore's data.
@@ -97,7 +108,17 @@ func (s *StdStore) LoadState() ([]byte, error) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
-	encodedRecoveryData, stateRaw, err := s.sealer.Unseal()
+	// load from fs
+	sealedData, err := s.fs.ReadFile(filepath.Join(s.sealDir, SealedDataFname))
+	if errors.Is(err, afero.ErrFileNotFound) {
+		// No sealed data found, back up any existing seal keys
+		s.backupEncryptionKey()
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	encodedRecoveryData, stateRaw, err := s.sealer.Unseal(sealedData)
 	if err != nil {
 		s.recoveryMode = true
 		return encodedRecoveryData, err
@@ -124,10 +145,23 @@ func (s *StdStore) SetRecoveryData(recoveryData []byte) {
 
 // SetEncryptionKey sets the encryption key for sealing and unsealing.
 func (s *StdStore) SetEncryptionKey(encryptionKey []byte) error {
-	return s.sealer.SetEncryptionKey(encryptionKey)
+	// If there already is an existing key file stored on disk, save it
+	s.backupEncryptionKey()
+
+	encryptedKey, err := s.sealer.SetEncryptionKey(encryptionKey)
+	if err != nil {
+		return fmt.Errorf("encrypting data key: %w", err)
+	}
+
+	// Write the sealed encryption key to disk
+	if err = s.fs.WriteFile(filepath.Join(s.sealDir, SealedKeyFname), encryptedKey, 0o600); err != nil {
+		return fmt.Errorf("writing encrypted key to disk: %w", err)
+	}
+
+	return nil
 }
 
-func (s *StdStore) beginTransaction() (*StdTransaction, error) {
+func (s *StdStore) beginTransaction() *StdTransaction {
 	tx := StdTransaction{store: s, data: map[string][]byte{}}
 	s.txmux.Lock()
 
@@ -137,7 +171,7 @@ func (s *StdStore) beginTransaction() (*StdTransaction, error) {
 	}
 	s.mux.Unlock()
 
-	return &tx, nil
+	return &tx
 }
 
 func (s *StdStore) commit(data map[string][]byte) error {
@@ -146,19 +180,32 @@ func (s *StdStore) commit(data map[string][]byte) error {
 		return err
 	}
 
+	s.mux.Lock()
+	defer s.mux.Unlock()
 	if !s.recoveryMode {
-		if err := s.sealer.Seal(s.recoveryData, dataRaw); err != nil {
+		sealedData, err := s.sealer.Seal(s.recoveryData, dataRaw)
+		if err != nil {
+			return err
+		}
+
+		if err := s.fs.WriteFile(filepath.Join(s.sealDir, SealedDataFname), sealedData, 0o600); err != nil {
 			return err
 		}
 	}
 
-	s.mux.Lock()
 	s.data = data
-	s.mux.Unlock()
-
 	s.txmux.Unlock()
 
 	return nil
+}
+
+// backupEncryptionKey creates a backup of an existing seal key.
+func (s *StdStore) backupEncryptionKey() {
+	if sealedKeyData, err := s.fs.ReadFile(filepath.Join(s.sealDir, SealedKeyFname)); err == nil {
+		t := time.Now()
+		newFileName := filepath.Join(s.sealDir, SealedKeyFname) + "_" + t.Format("20060102150405") + ".bak"
+		_ = s.fs.WriteFile(newFileName, sealedKeyData, 0o600)
+	}
 }
 
 // StdTransaction is a transaction for StdStore.

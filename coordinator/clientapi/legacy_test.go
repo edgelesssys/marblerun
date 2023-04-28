@@ -27,6 +27,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/updatelog"
 	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/edgelesssys/marblerun/test"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -602,7 +603,7 @@ func setupAPI(t *testing.T) (*ClientAPI, wrapper.Wrapper) {
 	t.Helper()
 	require := require.New(t)
 
-	store := stdstore.New(&seal.MockSealer{})
+	store := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "")
 	log, err := zap.NewDevelopment()
 	require.NoError(err)
 

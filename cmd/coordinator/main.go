@@ -22,7 +22,7 @@ func main() {
 	validator := quote.NewFailValidator()
 	issuer := quote.NewFailIssuer()
 	sealDir := util.Getenv(constants.SealDir, constants.SealDirDefault())
-	sealer := seal.NewNoEnclaveSealer(sealDir)
+	sealer := seal.NewNoEnclaveSealer()
 	recovery := recovery.NewSinglePartyRecovery()
 	run(validator, issuer, sealDir, sealer, recovery)
 }

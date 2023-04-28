@@ -12,6 +12,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/coordinator/store"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,7 +20,7 @@ func TestStdStore(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.Background()
 
-	str := New(&seal.MockSealer{})
+	str := New(&seal.MockSealer{}, afero.NewMemMapFs(), "")
 	_, err := str.LoadState()
 	assert.NoError(err)
 
@@ -54,7 +55,7 @@ func TestStdIterator(t *testing.T) {
 	assert := assert.New(t)
 
 	sealer := &seal.MockSealer{}
-	store := New(sealer)
+	store := New(sealer, afero.NewMemMapFs(), "")
 	store.data = map[string][]byte{
 		"test:1":    {0x00, 0x11},
 		"test:2":    {0x00, 0x11},
@@ -106,8 +107,10 @@ func TestStdIterator(t *testing.T) {
 func TestStdStoreSealing(t *testing.T) {
 	assert := assert.New(t)
 
+	fs := afero.NewMemMapFs()
 	sealer := &seal.MockSealer{}
-	store := New(sealer)
+
+	store := New(sealer, fs, "")
 	_, err := store.LoadState()
 	assert.NoError(err)
 
@@ -115,7 +118,7 @@ func TestStdStoreSealing(t *testing.T) {
 	assert.NoError(store.Put("test:input", testData1))
 
 	// Check sealing with a new store initialized with the sealed state
-	store2 := New(sealer)
+	store2 := New(sealer, fs, "")
 	_, err = store2.LoadState()
 	assert.NoError(err)
 	val, err := store2.Get("test:input")
@@ -127,7 +130,7 @@ func TestStdStoreRollback(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.Background()
 
-	store := New(&seal.MockSealer{})
+	store := New(&seal.MockSealer{}, afero.NewMemMapFs(), "")
 	_, err := store.LoadState()
 	assert.NoError(err)
 
@@ -174,7 +177,7 @@ func TestStdStoreRollback(t *testing.T) {
 func TestStdStoreDelete(t *testing.T) {
 	assert := assert.New(t)
 
-	str := New(&seal.MockSealer{})
+	str := New(&seal.MockSealer{}, afero.NewMemMapFs(), "")
 
 	inputName := "test:input"
 	inputData := []byte("test data")

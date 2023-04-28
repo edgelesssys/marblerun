@@ -30,7 +30,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/coordinator/constants"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
-	"github.com/edgelesssys/marblerun/coordinator/seal"
+	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
 	mconfig "github.com/edgelesssys/marblerun/marble/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -424,7 +424,7 @@ func (i IntegrationTest) TriggerRecovery(coordinatorCfg CoordinatorConfig, coord
 
 	// Garble encryption key to trigger recovery state
 	log.Println("Purposely corrupt sealed key to trigger recovery state...")
-	pathToKeyFile := filepath.Join(coordinatorCfg.sealDir, seal.SealedKeyFname)
+	pathToKeyFile := filepath.Join(coordinatorCfg.sealDir, stdstore.SealedKeyFname)
 	sealedKeyData, err := os.ReadFile(pathToKeyFile)
 	i.require.NoError(err)
 	sealedKeyData[0] ^= byte(0x42)
