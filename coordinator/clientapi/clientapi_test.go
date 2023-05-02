@@ -8,6 +8,7 @@ package clientapi
 
 import (
 	"bytes"
+	"context"
 	"crypto/ecdsa"
 	"crypto/sha256"
 	"crypto/x509"
@@ -18,9 +19,15 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/constants"
 	"github.com/edgelesssys/marblerun/coordinator/crypto"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
+	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/coordinator/state"
 	"github.com/edgelesssys/marblerun/coordinator/store"
+	"github.com/edgelesssys/marblerun/coordinator/store/request"
+	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
 	"github.com/edgelesssys/marblerun/coordinator/store/wrapper"
+	"github.com/edgelesssys/marblerun/coordinator/store/wrapper/testutil"
+	"github.com/edgelesssys/marblerun/coordinator/user"
+	"github.com/edgelesssys/marblerun/test"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -34,55 +41,45 @@ func TestMain(m *testing.M) {
 
 func TestGetCertQuote(t *testing.T) {
 	someErr := errors.New("failed")
+	// these are not actually root and intermediate certs
+	// but we don't care for this test
+	rootCert, intermediateCert := test.MustSetupTestCerts(test.RecoveryPrivateKey)
+
+	prepareDefaultStore := func() store.Store {
+		s := stdstore.New(&seal.MockSealer{})
+		require.NoError(t, wrapper.New(s).PutCertificate(constants.SKCoordinatorRootCert, rootCert))
+		require.NoError(t, wrapper.New(s).PutCertificate(constants.SKCoordinatorIntermediateCert, intermediateCert))
+		return s
+	}
 
 	testCases := map[string]struct {
-		storeWrapper *stubStoreWrapper
-		core         *fakeCore
-		wantErr      bool
+		store   store.Store
+		core    *fakeCore
+		wantErr bool
 	}{
 		"success state accepting Marbles": {
-			storeWrapper: &stubStoreWrapper{
-				getCertificateList: map[string]*x509.Certificate{
-					constants.SKCoordinatorRootCert:         {Raw: []byte("root")},
-					constants.SKCoordinatorIntermediateCert: {Raw: []byte("intermediate")},
-				},
-			},
+			store: prepareDefaultStore(),
 			core: &fakeCore{
 				state: state.AcceptingMarbles,
 				quote: []byte("quote"),
 			},
 		},
 		"success state accepting manifest": {
-			storeWrapper: &stubStoreWrapper{
-				getCertificateList: map[string]*x509.Certificate{
-					constants.SKCoordinatorRootCert:         {Raw: []byte("root")},
-					constants.SKCoordinatorIntermediateCert: {Raw: []byte("intermediate")},
-				},
-			},
+			store: prepareDefaultStore(),
 			core: &fakeCore{
 				state: state.AcceptingManifest,
 				quote: []byte("quote"),
 			},
 		},
 		"success state recovery": {
-			storeWrapper: &stubStoreWrapper{
-				getCertificateList: map[string]*x509.Certificate{
-					constants.SKCoordinatorRootCert:         {Raw: []byte("root")},
-					constants.SKCoordinatorIntermediateCert: {Raw: []byte("intermediate")},
-				},
-			},
+			store: prepareDefaultStore(),
 			core: &fakeCore{
 				state: state.Recovery,
 				quote: []byte("quote"),
 			},
 		},
 		"unsupported state": {
-			storeWrapper: &stubStoreWrapper{
-				getCertificateList: map[string]*x509.Certificate{
-					constants.SKCoordinatorRootCert:         {Raw: []byte("root")},
-					constants.SKCoordinatorIntermediateCert: {Raw: []byte("intermediate")},
-				},
-			},
+			store: prepareDefaultStore(),
 			core: &fakeCore{
 				state: state.Uninitialized,
 				quote: []byte("quote"),
@@ -90,50 +87,19 @@ func TestGetCertQuote(t *testing.T) {
 			wantErr: true,
 		},
 		"error getting state": {
-			storeWrapper: &stubStoreWrapper{
-				getCertificateList: map[string]*x509.Certificate{
-					constants.SKCoordinatorRootCert:         {Raw: []byte("root")},
-					constants.SKCoordinatorIntermediateCert: {Raw: []byte("intermediate")},
-				},
-			},
+			store: prepareDefaultStore(),
 			core: &fakeCore{
 				requireStateErr: someErr,
 				quote:           []byte("quote"),
 			},
 			wantErr: true,
 		},
-		"empty root cert": {
-			storeWrapper: &stubStoreWrapper{
-				getCertificateList: map[string]*x509.Certificate{
-					constants.SKCoordinatorRootCert:         nil,
-					constants.SKCoordinatorIntermediateCert: {Raw: []byte("intermediate")},
-				},
-			},
-			core: &fakeCore{
-				state: state.AcceptingMarbles,
-				quote: []byte("quote"),
-			},
-			wantErr: true,
-		},
-		"empty intermediate cert": {
-			storeWrapper: &stubStoreWrapper{
-				getCertificateList: map[string]*x509.Certificate{
-					constants.SKCoordinatorRootCert:         {Raw: []byte("root")},
-					constants.SKCoordinatorIntermediateCert: nil,
-				},
-			},
-			core: &fakeCore{
-				state: state.AcceptingMarbles,
-				quote: []byte("quote"),
-			},
-			wantErr: true,
-		},
 		"root certificate not set": {
-			storeWrapper: &stubStoreWrapper{
-				getCertificateList: map[string]*x509.Certificate{
-					constants.SKCoordinatorIntermediateCert: {Raw: []byte("intermediate")},
-				},
-			},
+			store: func() store.Store {
+				s := stdstore.New(&seal.MockSealer{})
+				require.NoError(t, wrapper.New(s).PutCertificate(constants.SKCoordinatorIntermediateCert, intermediateCert))
+				return s
+			}(),
 			core: &fakeCore{
 				state: state.AcceptingMarbles,
 				quote: []byte("quote"),
@@ -141,14 +107,257 @@ func TestGetCertQuote(t *testing.T) {
 			wantErr: true,
 		},
 		"intermediate certificate not set": {
-			storeWrapper: &stubStoreWrapper{
-				getCertificateList: map[string]*x509.Certificate{
-					constants.SKCoordinatorRootCert: {Raw: []byte("root")},
-				},
-			},
+			store: func() store.Store {
+				s := stdstore.New(&seal.MockSealer{})
+				require.NoError(t, wrapper.New(s).PutCertificate(constants.SKCoordinatorRootCert, rootCert))
+				return s
+			}(),
 			core: &fakeCore{
 				state: state.AcceptingMarbles,
 				quote: []byte("quote"),
+			},
+			wantErr: true,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
+			require := require.New(t)
+
+			log, err := zap.NewDevelopment()
+			require.NoError(err)
+			defer log.Sync()
+
+			api := &ClientAPI{
+				core:     tc.core,
+				txHandle: tc.store,
+				log:      log,
+			}
+
+			var intermediateCert, rootCert *x509.Certificate
+			if !tc.wantErr {
+				intermediateCert = testutil.GetCertificate(t, tc.store, constants.SKCoordinatorIntermediateCert)
+				rootCert = testutil.GetCertificate(t, tc.store, constants.SKCoordinatorRootCert)
+			}
+
+			cert, quote, err := api.GetCertQuote(context.Background())
+			if tc.wantErr {
+				assert.Error(err)
+				return
+			}
+
+			require.NoError(err)
+			assert.Equal(tc.core.quote, quote)
+			assert.Equal(mustEncodeToPem(t, intermediateCert)+mustEncodeToPem(t, rootCert), cert)
+		})
+	}
+}
+
+func TestGetManifestSignature(t *testing.T) {
+	testCases := map[string]struct {
+		store   store.Store
+		wantErr bool
+	}{
+		"success": {
+			store: func() store.Store {
+				s := stdstore.New(&seal.MockSealer{})
+				require.NoError(t, s.Put(request.Manifest, []byte("manifest")))
+				require.NoError(t, s.Put(request.ManifestSignature, []byte("signature")))
+				return s
+			}(),
+		},
+		"GetRawManifest fails": {
+			store: func() store.Store {
+				s := stdstore.New(&seal.MockSealer{})
+				require.NoError(t, s.Put(request.ManifestSignature, []byte("signature")))
+				return s
+			}(),
+			wantErr: true,
+		},
+		"GetManifestSignature fails": {
+			store: func() store.Store {
+				s := stdstore.New(&seal.MockSealer{})
+				require.NoError(t, s.Put(request.Manifest, []byte("manifest")))
+				return s
+			}(),
+			wantErr: true,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
+			require := require.New(t)
+
+			log, err := zap.NewDevelopment()
+			require.NoError(err)
+			defer log.Sync()
+
+			api := &ClientAPI{
+				txHandle: tc.store,
+				log:      log,
+			}
+
+			var rawManifest, manifestSignature, manifestHash []byte
+			if !tc.wantErr {
+				rawManifest = testutil.GetRawManifest(t, tc.store)
+				manifestSignature = testutil.GetManifestSignature(t, tc.store)
+				h := sha256.Sum256(rawManifest)
+				manifestHash = h[:]
+			}
+
+			signature, hash, manifest := api.GetManifestSignature(context.Background())
+			if tc.wantErr {
+				assert.Nil(signature)
+				assert.Nil(hash)
+				assert.Nil(manifest)
+				return
+			}
+			assert.Equal(rawManifest, manifest)
+			assert.Equal(manifestHash, hash)
+			assert.Equal(manifestSignature, signature)
+		})
+	}
+}
+
+func TestGetSecrets(t *testing.T) {
+	newUserWithPermissions := func(name string, secretNames ...string) *user.User {
+		u := user.NewUser(name, nil)
+		u.Assign(user.NewPermission(user.PermissionReadSecret, secretNames))
+		return u
+	}
+
+	testCases := map[string]struct {
+		store   store.Store
+		core    *fakeCore
+		request []string
+		user    *user.User
+		wantErr bool
+	}{
+		"success": {
+			store: func() store.Store {
+				s := stdstore.New(&seal.MockSealer{})
+				require.NoError(t, wrapper.New(s).PutSecret("secret1", manifest.Secret{
+					Type:    manifest.SecretTypePlain,
+					Private: []byte("secret"),
+				}))
+				require.NoError(t, wrapper.New(s).PutSecret("secret2", manifest.Secret{
+					Type:    manifest.SecretTypePlain,
+					Private: []byte("secret"),
+				}))
+				return s
+			}(),
+			core: &fakeCore{state: state.AcceptingMarbles},
+			request: []string{
+				"secret1",
+				"secret2",
+			},
+			user: newUserWithPermissions("test", "secret1", "secret2"),
+		},
+		"wrong state": {
+			store: func() store.Store {
+				s := stdstore.New(&seal.MockSealer{})
+				require.NoError(t, wrapper.New(s).PutSecret("secret1", manifest.Secret{
+					Type:    manifest.SecretTypePlain,
+					Private: []byte("secret"),
+				}))
+				require.NoError(t, wrapper.New(s).PutSecret("secret2", manifest.Secret{
+					Type:    manifest.SecretTypePlain,
+					Private: []byte("secret"),
+				}))
+				return s
+			}(),
+			core: &fakeCore{state: state.AcceptingManifest},
+			request: []string{
+				"secret1",
+				"secret2",
+			},
+			user:    newUserWithPermissions("test", "secret1", "secret2"),
+			wantErr: true,
+		},
+		"user is missing permissions": {
+			store: func() store.Store {
+				s := stdstore.New(&seal.MockSealer{})
+				require.NoError(t, wrapper.New(s).PutSecret("secret1", manifest.Secret{
+					Type:    manifest.SecretTypePlain,
+					Private: []byte("secret"),
+				}))
+				require.NoError(t, wrapper.New(s).PutSecret("secret2", manifest.Secret{
+					Type:    manifest.SecretTypePlain,
+					Private: []byte("secret"),
+				}))
+				return s
+			}(),
+			core: &fakeCore{state: state.AcceptingMarbles},
+			request: []string{
+				"secret1",
+				"secret2",
+			},
+			user:    newUserWithPermissions("test", "secret2"), // only permission for secret2
+			wantErr: true,
+		},
+		"secret does not exist": {
+			store: func() store.Store {
+				s := stdstore.New(&seal.MockSealer{})
+				require.NoError(t, wrapper.New(s).PutSecret("secret1", manifest.Secret{
+					Type:    manifest.SecretTypePlain,
+					Private: []byte("secret"),
+				}))
+				return s
+			}(),
+			core: &fakeCore{state: state.AcceptingMarbles},
+			request: []string{
+				"secret1",
+				"secret2",
+			},
+			user:    newUserWithPermissions("test", "secret1", "secret2"),
+			wantErr: true,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
+			require := require.New(t)
+
+			log, err := zap.NewDevelopment()
+			require.NoError(err)
+			defer log.Sync()
+
+			api := &ClientAPI{
+				txHandle: tc.store,
+				core:     tc.core,
+				log:      log,
+			}
+
+			storedSecrets := testutil.GetSecretMap(t, tc.store)
+
+			secrets, err := api.GetSecrets(context.Background(), tc.request, tc.user)
+			if tc.wantErr {
+				assert.Error(err)
+				return
+			}
+			require.NoError(err)
+			for name, secret := range secrets {
+				assert.Equal(storedSecrets[name], secret)
+			}
+		})
+	}
+}
+
+func TestGetStatus(t *testing.T) {
+	testCases := map[string]struct {
+		core    *fakeCore
+		wantErr bool
+	}{
+		"success": {
+			core: &fakeCore{state: state.AcceptingManifest},
+		},
+		"error": {
+			core: &fakeCore{
+				state:       state.AcceptingManifest,
+				getStateErr: errors.New("failed"),
 			},
 			wantErr: true,
 		},
@@ -165,89 +374,18 @@ func TestGetCertQuote(t *testing.T) {
 
 			api := &ClientAPI{
 				core: tc.core,
-				data: tc.storeWrapper,
 				log:  log,
 			}
 
-			cert, quote, err := api.GetCertQuote()
+			status, _, err := api.GetStatus(context.Background())
 			if tc.wantErr {
 				assert.Error(err)
 				return
 			}
-
 			require.NoError(err)
-			assert.Equal(tc.core.quote, quote)
-			intermediateCert := tc.storeWrapper.getCertificateList[constants.SKCoordinatorIntermediateCert]
-			rootCert := tc.storeWrapper.getCertificateList[constants.SKCoordinatorRootCert]
-			assert.Equal(mustEncodeToPem(t, intermediateCert)+mustEncodeToPem(t, rootCert), cert)
+			assert.Equal(tc.core.state, status)
 		})
 	}
-}
-
-func TestGetManifestSignature(t *testing.T) {
-	someErr := errors.New("failed")
-
-	testCases := map[string]struct {
-		data    *stubStoreWrapper
-		wantErr bool
-	}{
-		"success": {
-			data: &stubStoreWrapper{
-				rawManifest:       []byte("manifest"),
-				manifestSignature: []byte("signature"),
-			},
-		},
-		"GetRawManifest fails": {
-			data: &stubStoreWrapper{
-				getRawManifestErr: someErr,
-				manifestSignature: []byte("signature"),
-			},
-			wantErr: true,
-		},
-		"GetManifestSignature fails": {
-			data: &stubStoreWrapper{
-				rawManifest:             []byte("manifest"),
-				getManifestSignatureErr: someErr,
-			},
-			wantErr: true,
-		},
-	}
-
-	for name, tc := range testCases {
-		t.Run(name, func(t *testing.T) {
-			assert := assert.New(t)
-			require := require.New(t)
-
-			log, err := zap.NewDevelopment()
-			require.NoError(err)
-			defer log.Sync()
-
-			api := &ClientAPI{
-				data: tc.data,
-				log:  log,
-			}
-
-			signature, hash, manifest := api.GetManifestSignature()
-			if tc.wantErr {
-				assert.Nil(signature)
-				assert.Nil(hash)
-				assert.Nil(manifest)
-				return
-			}
-			assert.Equal(tc.data.rawManifest, manifest)
-			expectedHash := sha256.Sum256(tc.data.rawManifest)
-			assert.Equal(expectedHash[:], hash)
-			assert.Equal(tc.data.manifestSignature, signature)
-		})
-	}
-}
-
-func TestGetSecrets(t *testing.T) {
-	t.Log("WARNING: Missing unit Test for GetSecrets")
-}
-
-func TestGetStatus(t *testing.T) {
-	t.Log("WARNING: Missing unit Test for GetStatus")
 }
 
 func TestGetUpdateLog(t *testing.T) {
@@ -256,33 +394,32 @@ func TestGetUpdateLog(t *testing.T) {
 
 func TestRecover(t *testing.T) {
 	someErr := errors.New("failed")
+	_, rootCert := test.MustSetupTestCerts(test.RecoveryPrivateKey)
+	defaultStore := func() store.Store {
+		s := stdstore.New(&seal.MockSealer{})
+		require.NoError(t, wrapper.New(s).PutCertificate(constants.SKCoordinatorRootCert, rootCert))
+		return s
+	}
 
 	testCases := map[string]struct {
-		data     *stubStoreWrapper
-		store    *stubStore
+		store    *fakeStore
 		recovery *stubRecovery
 		core     *fakeCore
 		wantErr  bool
 	}{
 		"success": {
-			data: &stubStoreWrapper{
-				getCertificateList: map[string]*x509.Certificate{
-					constants.SKCoordinatorRootCert: {Raw: []byte("root cert")},
-				},
+			store: &fakeStore{
+				store: defaultStore(),
 			},
-			store:    &stubStore{},
 			recovery: &stubRecovery{},
 			core: &fakeCore{
 				state: state.Recovery,
 			},
 		},
 		"more than one key required": {
-			data: &stubStoreWrapper{
-				getCertificateList: map[string]*x509.Certificate{
-					constants.SKCoordinatorRootCert: {Raw: []byte("root cert")},
-				},
+			store: &fakeStore{
+				store: defaultStore(),
 			},
-			store: &stubStore{},
 			recovery: &stubRecovery{
 				recoverKeysLeft: 1,
 			},
@@ -291,12 +428,9 @@ func TestRecover(t *testing.T) {
 			},
 		},
 		"SetRecoveryData fails does not result in error": {
-			data: &stubStoreWrapper{
-				getCertificateList: map[string]*x509.Certificate{
-					constants.SKCoordinatorRootCert: {Raw: []byte("root cert")},
-				},
+			store: &fakeStore{
+				store: defaultStore(),
 			},
-			store: &stubStore{},
 			recovery: &stubRecovery{
 				setRecoveryDataErr: someErr,
 			},
@@ -305,12 +439,9 @@ func TestRecover(t *testing.T) {
 			},
 		},
 		"Coordinator not in recovery state": {
-			data: &stubStoreWrapper{
-				getCertificateList: map[string]*x509.Certificate{
-					constants.SKCoordinatorRootCert: {Raw: []byte("root cert")},
-				},
+			store: &fakeStore{
+				store: defaultStore(),
 			},
-			store:    &stubStore{},
 			recovery: &stubRecovery{},
 			core: &fakeCore{
 				state: state.AcceptingManifest,
@@ -318,12 +449,9 @@ func TestRecover(t *testing.T) {
 			wantErr: true,
 		},
 		"RecoverKey fails": {
-			data: &stubStoreWrapper{
-				getCertificateList: map[string]*x509.Certificate{
-					constants.SKCoordinatorRootCert: {Raw: []byte("root cert")},
-				},
+			store: &fakeStore{
+				store: defaultStore(),
 			},
-			store: &stubStore{},
 			recovery: &stubRecovery{
 				recoverKeyErr: someErr,
 			},
@@ -333,12 +461,8 @@ func TestRecover(t *testing.T) {
 			wantErr: true,
 		},
 		"LoadState fails": {
-			data: &stubStoreWrapper{
-				getCertificateList: map[string]*x509.Certificate{
-					constants.SKCoordinatorRootCert: {Raw: []byte("root cert")},
-				},
-			},
-			store: &stubStore{
+			store: &fakeStore{
+				store:        defaultStore(),
 				loadStateErr: someErr,
 			},
 			recovery: &stubRecovery{},
@@ -348,12 +472,8 @@ func TestRecover(t *testing.T) {
 			wantErr: true,
 		},
 		"SetEncryptionKey fails": {
-			data: &stubStoreWrapper{
-				getCertificateList: map[string]*x509.Certificate{
-					constants.SKCoordinatorRootCert: {Raw: []byte("root cert")},
-				},
-			},
-			store: &stubStore{
+			store: &fakeStore{
+				store:               defaultStore(),
 				setEncryptionKeyErr: someErr,
 			},
 			recovery: &stubRecovery{},
@@ -363,10 +483,9 @@ func TestRecover(t *testing.T) {
 			wantErr: true,
 		},
 		"GetCertificate fails": {
-			data: &stubStoreWrapper{
-				getCertificateErr: someErr,
+			store: &fakeStore{
+				store: stdstore.New(&seal.MockSealer{}),
 			},
-			store:    &stubStore{},
 			recovery: &stubRecovery{},
 			core: &fakeCore{
 				state: state.Recovery,
@@ -374,12 +493,9 @@ func TestRecover(t *testing.T) {
 			wantErr: true,
 		},
 		"GenerateQuote fails": {
-			data: &stubStoreWrapper{
-				getCertificateList: map[string]*x509.Certificate{
-					constants.SKCoordinatorRootCert: {Raw: []byte("root cert")},
-				},
+			store: &fakeStore{
+				store: defaultStore(),
 			},
-			store:    &stubStore{},
 			recovery: &stubRecovery{},
 			core: &fakeCore{
 				state:            state.Recovery,
@@ -399,14 +515,13 @@ func TestRecover(t *testing.T) {
 			defer log.Sync()
 
 			api := &ClientAPI{
-				data:     tc.data,
 				txHandle: tc.store,
 				recovery: tc.recovery,
 				core:     tc.core,
 				log:      log,
 			}
 
-			keysLeft, err := api.Recover([]byte("recoveryKey"))
+			keysLeft, err := api.Recover(context.Background(), []byte("recoveryKey"))
 			if tc.wantErr {
 				assert.Error(err)
 				return
@@ -459,7 +574,7 @@ func (c *fakeCore) Unlock() {
 	c.unlockCalled = true
 }
 
-func (c *fakeCore) RequireState(states ...state.State) error {
+func (c *fakeCore) RequireState(_ context.Context, states ...state.State) error {
 	if c.requireStateErr != nil {
 		return c.requireStateErr
 	}
@@ -472,7 +587,11 @@ func (c *fakeCore) RequireState(states ...state.State) error {
 	return errors.New("core is not in expected state")
 }
 
-func (c *fakeCore) AdvanceState(newState state.State, _ store.Transaction) error {
+func (c *fakeCore) AdvanceState(newState state.State, _ interface {
+	PutState(state.State) error
+	GetState() (state.State, error)
+},
+) error {
 	if c.advanceStateErr != nil {
 		return c.advanceStateErr
 	}
@@ -484,11 +603,12 @@ func (c *fakeCore) AdvanceState(newState state.State, _ store.Transaction) error
 	return nil
 }
 
-func (c *fakeCore) GetState() (state.State, string, error) {
+func (c *fakeCore) GetState(_ context.Context) (state.State, string, error) {
 	return c.state, c.getStateMsg, c.getStateErr
 }
 
-func (c *fakeCore) GenerateSecrets(newSecrets map[string]manifest.Secret, _ uuid.UUID, rootCert *x509.Certificate, privK *ecdsa.PrivateKey,
+func (c *fakeCore) GenerateSecrets(
+	newSecrets map[string]manifest.Secret, _ uuid.UUID, rootCert *x509.Certificate, privK *ecdsa.PrivateKey, _ *ecdsa.PrivateKey,
 ) (map[string]manifest.Secret, error) {
 	if c.generateSecretsErr != nil || c.generatedSecrets != nil {
 		return c.generatedSecrets, c.generateSecretsErr
@@ -534,53 +654,9 @@ func (c *fakeCore) GenerateQuote(quoteData []byte) error {
 	return nil
 }
 
-type stubStoreWrapper struct {
-	getCertificateList      map[string]*x509.Certificate
-	getCertificateErr       error
-	getPrivateKeyList       map[string]*ecdsa.PrivateKey
-	getPrivateKeyErr        error
-	rawManifest             []byte
-	getRawManifestErr       error
-	manifestSignature       []byte
-	getManifestSignatureErr error
-	wrapper.Wrapper
-}
-
-func (s *stubStoreWrapper) GetCertificate(certName string) (*x509.Certificate, error) {
-	if s.getCertificateErr != nil {
-		return nil, s.getCertificateErr
-	}
-
-	cert, ok := s.getCertificateList[certName]
-	if !ok {
-		return nil, errors.New("certificate not found")
-	}
-
-	return cert, nil
-}
-
-func (s *stubStoreWrapper) GetPrivateKey(keyName string) (*ecdsa.PrivateKey, error) {
-	if s.getPrivateKeyErr != nil {
-		return nil, s.getPrivateKeyErr
-	}
-
-	key, ok := s.getPrivateKeyList[keyName]
-	if !ok {
-		return nil, errors.New("private key not found")
-	}
-
-	return key, nil
-}
-
-func (s *stubStoreWrapper) GetRawManifest() ([]byte, error) {
-	return s.rawManifest, s.getRawManifestErr
-}
-
-func (s *stubStoreWrapper) GetManifestSignature() ([]byte, error) {
-	return s.manifestSignature, s.getManifestSignatureErr
-}
-
-type stubStore struct {
+type fakeStore struct {
+	store               store.Store
+	beginTransactionErr error
 	recoveryData        []byte
 	encryptionKey       []byte
 	setEncryptionKeyErr error
@@ -589,11 +665,14 @@ type stubStore struct {
 	loadCalled          bool
 }
 
-func (s *stubStore) BeginTransaction() (store.Transaction, error) {
-	return nil, nil
+func (s *fakeStore) BeginTransaction(ctx context.Context) (store.Transaction, error) {
+	if s.beginTransactionErr != nil {
+		return nil, s.beginTransactionErr
+	}
+	return s.store.BeginTransaction(ctx)
 }
 
-func (s *stubStore) SetEncryptionKey(key []byte) error {
+func (s *fakeStore) SetEncryptionKey(key []byte) error {
 	if s.setEncryptionKeyErr != nil {
 		return s.setEncryptionKeyErr
 	}
@@ -601,11 +680,11 @@ func (s *stubStore) SetEncryptionKey(key []byte) error {
 	return nil
 }
 
-func (s *stubStore) SetRecoveryData(recoveryData []byte) {
+func (s *fakeStore) SetRecoveryData(recoveryData []byte) {
 	s.recoveryData = recoveryData
 }
 
-func (s *stubStore) LoadState() ([]byte, error) {
+func (s *fakeStore) LoadState() ([]byte, error) {
 	s.loadCalled = true
 	return s.loadStateRes, s.loadStateErr
 }
@@ -623,15 +702,15 @@ type stubRecovery struct {
 	setRecoveryDataErr       error
 }
 
-func (s *stubRecovery) GenerateEncryptionKey(recoveryKeys map[string]string) ([]byte, error) {
+func (s *stubRecovery) GenerateEncryptionKey(_ map[string]string) ([]byte, error) {
 	return s.generateEncryptionKeyRes, s.generateEncryptionKeyErr
 }
 
-func (s *stubRecovery) GenerateRecoveryData(recoveryKeys map[string]string) (map[string][]byte, []byte, error) {
+func (s *stubRecovery) GenerateRecoveryData(_ map[string]string) (map[string][]byte, []byte, error) {
 	return s.generateRecoveryDataRes, nil, s.generateRecoveryDataErr
 }
 
-func (s *stubRecovery) RecoverKey(secret []byte) (int, []byte, error) {
+func (s *stubRecovery) RecoverKey(_ []byte) (int, []byte, error) {
 	return s.recoverKeysLeft, s.recoverKeyRes, s.recoverKeyErr
 }
 
@@ -639,7 +718,7 @@ func (s *stubRecovery) GetRecoveryData() ([]byte, error) {
 	return s.getRecoveryDataRes, s.getRecoveryDataErr
 }
 
-func (s *stubRecovery) SetRecoveryData(data []byte) error {
+func (s *stubRecovery) SetRecoveryData(_ []byte) error {
 	return s.setRecoveryDataErr
 }
 

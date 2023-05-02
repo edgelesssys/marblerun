@@ -7,6 +7,7 @@
 package wrapper
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/x509"
 	"encoding/json"
@@ -21,6 +22,17 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/store/request"
 	"github.com/edgelesssys/marblerun/coordinator/user"
 )
+
+// WrapTransaction initializes a transaction using the given handle,
+// and returns a wrapper for the transaction, as well as rollback and commit functions.
+func WrapTransaction(ctx context.Context, txHandle transactionHandle,
+) (wrapper Wrapper, rollback func(), commit func(context.Context) error, err error) {
+	tx, err := txHandle.BeginTransaction(ctx)
+	if err != nil {
+		return Wrapper{}, nil, nil, err
+	}
+	return New(tx), tx.Rollback, tx.Commit, nil
+}
 
 // Wrapper wraps store functions to provide a more convenient interface,
 // and provides a type-safe way to access the store.
@@ -317,4 +329,8 @@ type dataStore interface {
 	Put(string, []byte) error
 	// Iterator returns an Iterator for a given prefix
 	Iterator(string) (store.Iterator, error)
+}
+
+type transactionHandle interface {
+	BeginTransaction(context.Context) (store.Transaction, error)
 }

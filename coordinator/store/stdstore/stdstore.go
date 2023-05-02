@@ -7,6 +7,7 @@
 package stdstore
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -57,7 +58,7 @@ func (s *StdStore) Put(request string, requestData []byte) error {
 	if err := tx.Put(request, requestData); err != nil {
 		return err
 	}
-	return tx.Commit()
+	return tx.Commit(context.Background())
 }
 
 // Delete removes a value from StdStore.
@@ -70,7 +71,7 @@ func (s *StdStore) Delete(request string) error {
 	if err := tx.Delete(request); err != nil {
 		return err
 	}
-	return tx.Commit()
+	return tx.Commit(context.Background())
 }
 
 // Iterator returns an iterator for keys saved in StdStore with a given prefix.
@@ -87,7 +88,7 @@ func (s *StdStore) Iterator(prefix string) (store.Iterator, error) {
 }
 
 // BeginTransaction starts a new transaction.
-func (s *StdStore) BeginTransaction() (store.Transaction, error) {
+func (s *StdStore) BeginTransaction(_ context.Context) (store.Transaction, error) {
 	return s.beginTransaction()
 }
 
@@ -199,7 +200,7 @@ func (t *StdTransaction) Iterator(prefix string) (store.Iterator, error) {
 }
 
 // Commit ends a transaction and persists the changes.
-func (t *StdTransaction) Commit() error {
+func (t *StdTransaction) Commit(_ context.Context) error {
 	if err := t.store.commit(t.data); err != nil {
 		return err
 	}

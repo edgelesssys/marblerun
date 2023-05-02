@@ -52,16 +52,16 @@ func TestOpenSSLVerify(t *testing.T) {
 	// create core
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
-	store := stdstore.New(&seal.MockSealer{})
+	stor := stdstore.New(&seal.MockSealer{})
 	recovery := recovery.NewSinglePartyRecovery()
-	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, store, recovery, zapLogger, nil, nil)
+	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, stor, recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	require.NotNil(coreServer)
 
 	// set manifest
-	clientAPI, err := clientapi.New(coreServer.store, coreServer.recovery, coreServer, zapLogger)
+	clientAPI, err := clientapi.New(coreServer.txHandle, coreServer.recovery, coreServer, zapLogger)
 	require.NoError(err)
-	_, err = clientAPI.SetManifest([]byte(test.ManifestJSON))
+	_, err = clientAPI.SetManifest(context.Background(), []byte(test.ManifestJSON))
 	require.NoError(err)
 
 	// create marble
@@ -86,7 +86,7 @@ func TestOpenSSLVerify(t *testing.T) {
 		},
 	}
 
-	ctx := peer.NewContext(context.TODO(), &peer.Peer{
+	ctx := peer.NewContext(context.Background(), &peer.Peer{
 		AuthInfo: tlsInfo,
 	})
 

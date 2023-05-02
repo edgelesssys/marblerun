@@ -7,6 +7,7 @@
 package stdstore
 
 import (
+	"context"
 	"testing"
 
 	"github.com/edgelesssys/marblerun/coordinator/seal"
@@ -16,6 +17,7 @@ import (
 
 func TestStdStore(t *testing.T) {
 	assert := assert.New(t)
+	ctx := context.Background()
 
 	str := New(&seal.MockSealer{})
 	_, err := str.LoadState()
@@ -29,11 +31,11 @@ func TestStdStore(t *testing.T) {
 	assert.Error(err)
 
 	// test Put method
-	tx, err := str.BeginTransaction()
+	tx, err := str.BeginTransaction(ctx)
 	assert.NoError(err)
 	assert.NoError(tx.Put("test:input", testData1))
 	assert.NoError(tx.Put("another:input", testData2))
-	assert.NoError(tx.Commit())
+	assert.NoError(tx.Commit(ctx))
 
 	// make sure values have been set
 	val, err := str.Get("test:input")
@@ -123,6 +125,7 @@ func TestStdStoreSealing(t *testing.T) {
 
 func TestStdStoreRollback(t *testing.T) {
 	assert := assert.New(t)
+	ctx := context.Background()
 
 	store := New(&seal.MockSealer{})
 	_, err := store.LoadState()
@@ -133,13 +136,13 @@ func TestStdStoreRollback(t *testing.T) {
 	testData3 := []byte("and even more data")
 
 	// save data to store and seal
-	tx, err := store.BeginTransaction()
+	tx, err := store.BeginTransaction(ctx)
 	assert.NoError(err)
 	assert.NoError(tx.Put("test:input", testData1))
-	assert.NoError(tx.Commit())
+	assert.NoError(tx.Commit(ctx))
 
 	// save more data to store
-	tx, err = store.BeginTransaction()
+	tx, err = store.BeginTransaction(ctx)
 	assert.NoError(err)
 	assert.NoError(tx.Put("another:input", testData2))
 
@@ -152,10 +155,10 @@ func TestStdStoreRollback(t *testing.T) {
 	assert.Error(err)
 
 	// save something new
-	tx, err = store.BeginTransaction()
+	tx, err = store.BeginTransaction(ctx)
 	assert.NoError(err)
 	assert.NoError(tx.Put("last:input", testData3))
-	assert.NoError(tx.Commit())
+	assert.NoError(tx.Commit(ctx))
 
 	// verify values
 	val, err = store.Get("test:input")

@@ -53,8 +53,7 @@ type Core struct {
 	recovery recovery.Recovery
 	metrics  *coreMetrics
 
-	store store.Store
-	data  wrapper.Wrapper
+	txHandle transactionHandle
 
 	log      *zap.Logger
 	eventlog *events.Log
@@ -64,9 +63,16 @@ type Core struct {
 
 // RequireState checks if the Coordinator is in one of the given states.
 // This function locks the Core's mutex and therefore should be paired with `defer c.mux.Unlock()`.
-func (c *Core) RequireState(states ...state.State) error {
+func (c *Core) RequireState(ctx context.Context, states ...state.State) error {
 	c.mux.Lock()
-	curState, err := c.data.GetState()
+
+	getter, rollback, _, err := wrapper.WrapTransaction(ctx, c.txHandle)
+	if err != nil {
+		return err
+	}
+	defer rollback()
+
+	curState, err := getter.GetState()
 	if err != nil {
 		return err
 	}
@@ -79,16 +85,19 @@ func (c *Core) RequireState(states ...state.State) error {
 }
 
 // AdvanceState advances the state of the Coordinator.
-func (c *Core) AdvanceState(newState state.State, tx store.Transaction) error {
-	txdata := wrapper.New(tx)
-	curState, err := txdata.GetState()
+func (c *Core) AdvanceState(newState state.State, tx interface {
+	PutState(state.State) error
+	GetState() (state.State, error)
+},
+) error {
+	curState, err := tx.GetState()
 	if err != nil {
 		return err
 	}
 	if !(curState < newState && newState < state.Max) {
 		panic(fmt.Errorf("cannot advance from %d to %d", curState, newState))
 	}
-	return txdata.PutState(newState)
+	return tx.PutState(newState)
 }
 
 // Unlock the Core's mutex.
@@ -97,35 +106,36 @@ func (c *Core) Unlock() {
 }
 
 // NewCore creates and initializes a new Core object.
-func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, stor store.Store, recovery recovery.Recovery, zapLogger *zap.Logger, promFactory *promauto.Factory, eventlog *events.Log) (*Core, error) {
+func NewCore(
+	dnsNames []string, qv quote.Validator, qi quote.Issuer, txHandle transactionHandle,
+	recovery recovery.Recovery, zapLogger *zap.Logger, promFactory *promauto.Factory, eventlog *events.Log,
+) (*Core, error) {
 	c := &Core{
 		qv:       qv,
 		qi:       qi,
 		recovery: recovery,
-		store:    stor,
-		data:     wrapper.New(stor),
+		txHandle: txHandle,
 		log:      zapLogger,
 		eventlog: eventlog,
 	}
 	c.metrics = newCoreMetrics(promFactory, c, "coordinator")
 
 	zapLogger.Info("loading state")
-	recoveryData, loadErr := stor.LoadState()
+	recoveryData, loadErr := txHandle.LoadState()
 	if err := c.recovery.SetRecoveryData(recoveryData); err != nil {
 		c.log.Error("Could not retrieve recovery data from state. Recovery will be unavailable", zap.Error(err))
 	}
 
-	tx, err := c.store.BeginTransaction()
+	transaction, rollback, commit, err := wrapper.WrapTransaction(context.Background(), c.txHandle)
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback()
-	txdata := wrapper.New(tx)
+	defer rollback()
 
 	// set core to uninitialized if no state is set
-	if _, err := txdata.GetState(); err != nil {
+	if _, err := transaction.GetState(); err != nil {
 		if errors.Is(err, store.ErrValueUnset) {
-			if err := txdata.PutState(state.Uninitialized); err != nil {
+			if err := transaction.PutState(state.Uninitialized); err != nil {
 				return nil, err
 			}
 		} else {
@@ -139,34 +149,34 @@ func NewCore(dnsNames []string, qv quote.Validator, qi quote.Issuer, stor store.
 		}
 		// sealed state was found but couldnt be decrypted, go to recovery mode or reset manifest
 		c.log.Error("Failed to decrypt sealed state. Processing with a new state. Use the /recover API endpoint to load an old state, or submit a new manifest to overwrite the old state. Look up the documentation for more information on how to proceed.")
-		if err := c.setCAData(dnsNames, tx); err != nil {
+		if err := c.setCAData(dnsNames, transaction); err != nil {
 			return nil, err
 		}
-		if err := c.AdvanceState(state.Recovery, tx); err != nil {
+		if err := c.AdvanceState(state.Recovery, transaction); err != nil {
 			return nil, err
 		}
-	} else if _, err := txdata.GetRawManifest(); errors.Is(err, store.ErrValueUnset) {
+	} else if _, err := transaction.GetRawManifest(); errors.Is(err, store.ErrValueUnset) {
 		// no state was found, wait for manifest
 		c.log.Info("No sealed state found. Proceeding with new state.")
-		if err := c.setCAData(dnsNames, tx); err != nil {
+		if err := c.setCAData(dnsNames, transaction); err != nil {
 			return nil, err
 		}
-		if err := txdata.PutState(state.AcceptingManifest); err != nil {
+		if err := transaction.PutState(state.AcceptingManifest); err != nil {
 			return nil, err
 		}
 	} else if err != nil {
 		return nil, err
 	} else {
 		// recovered from a sealed state, reload components and finish the store transaction
-		stor.SetRecoveryData(recoveryData)
+		txHandle.SetRecoveryData(recoveryData)
 	}
 
-	if err := tx.Commit(); err != nil {
+	rootCert, err := transaction.GetCertificate(constants.SKCoordinatorRootCert)
+	if err != nil {
 		return nil, err
 	}
 
-	rootCert, err := c.data.GetCertificate(constants.SKCoordinatorRootCert)
-	if err != nil {
+	if err := commit(context.Background()); err != nil {
 		return nil, err
 	}
 
@@ -206,8 +216,16 @@ func (c *Core) GetTLSConfig() (*tls.Config, error) {
 }
 
 // GetTLSRootCertificate creates a TLS certificate for the Coordinators self-signed x509 certificate.
+//
+// This function initializes a read transaction and should not be called from other functions with ongoing transactions.
 func (c *Core) GetTLSRootCertificate(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	curState, err := c.data.GetState()
+	data, rollback, _, err := wrapper.WrapTransaction(clientHello.Context(), c.txHandle)
+	if err != nil {
+		return nil, err
+	}
+	defer rollback()
+
+	curState, err := data.GetState()
 	if err != nil {
 		return nil, err
 	}
@@ -215,11 +233,11 @@ func (c *Core) GetTLSRootCertificate(clientHello *tls.ClientHelloInfo) (*tls.Cer
 		return nil, errors.New("don't have a cert yet")
 	}
 
-	rootCert, err := c.data.GetCertificate(constants.SKCoordinatorRootCert)
+	rootCert, err := data.GetCertificate(constants.SKCoordinatorRootCert)
 	if err != nil {
 		return nil, err
 	}
-	rootPrivK, err := c.data.GetPrivateKey(constants.SKCoordinatorRootKey)
+	rootPrivK, err := data.GetPrivateKey(constants.SKCoordinatorRootKey)
 	if err != nil {
 		return nil, err
 	}
@@ -228,8 +246,16 @@ func (c *Core) GetTLSRootCertificate(clientHello *tls.ClientHelloInfo) (*tls.Cer
 }
 
 // GetTLSMarbleRootCertificate creates a TLS certificate for the Coordinator's x509 marbleRoot certificate.
+//
+// This function initializes a read transaction and should not be called from other functions with ongoing transactions.
 func (c *Core) GetTLSMarbleRootCertificate(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	curState, err := c.data.GetState()
+	data, rollback, _, err := wrapper.WrapTransaction(clientHello.Context(), c.txHandle)
+	if err != nil {
+		return nil, err
+	}
+	defer rollback()
+
+	curState, err := data.GetState()
 	if err != nil {
 		return nil, err
 	}
@@ -237,11 +263,11 @@ func (c *Core) GetTLSMarbleRootCertificate(clientHello *tls.ClientHelloInfo) (*t
 		return nil, errors.New("don't have a cert yet")
 	}
 
-	marbleRootCert, err := c.data.GetCertificate(constants.SKMarbleRootCert)
+	marbleRootCert, err := data.GetCertificate(constants.SKMarbleRootCert)
 	if err != nil {
 		return nil, err
 	}
-	intermediatePrivK, err := c.data.GetPrivateKey(constants.SKCoordinatorIntermediateKey)
+	intermediatePrivK, err := data.GetPrivateKey(constants.SKCoordinatorIntermediateKey)
 	if err != nil {
 		return nil, err
 	}
@@ -290,8 +316,14 @@ func getClientTLSCert(ctx context.Context) *x509.Certificate {
 }
 
 // GetState returns the current state of the Coordinator.
-func (c *Core) GetState() (state.State, string, error) {
-	curState, err := c.data.GetState()
+func (c *Core) GetState(ctx context.Context) (state.State, string, error) {
+	data, rollback, _, err := wrapper.WrapTransaction(ctx, c.txHandle)
+	if err != nil {
+		return -1, "Cannot determine coordinator status.", fmt.Errorf("initializing read transaction: %w", err)
+	}
+	defer rollback()
+
+	curState, err := data.GetState()
 	if err != nil {
 		return -1, "Cannot determine coordinator status.", err
 	}
@@ -313,14 +345,12 @@ func (c *Core) GetState() (state.State, string, error) {
 }
 
 // GenerateSecrets generates secrets for the given manifest and parent certificate.
-func (c *Core) GenerateSecrets(secrets map[string]manifest.Secret, id uuid.UUID, parentCertificate *x509.Certificate, parentPrivKey *ecdsa.PrivateKey) (map[string]manifest.Secret, error) {
+func (c *Core) GenerateSecrets(
+	secrets map[string]manifest.Secret, id uuid.UUID,
+	parentCertificate *x509.Certificate, parentPrivKey *ecdsa.PrivateKey, rootPrivK *ecdsa.PrivateKey,
+) (map[string]manifest.Secret, error) {
 	// Create a new map so we do not overwrite the entries in the manifest
 	newSecrets := make(map[string]manifest.Secret)
-
-	rootPrivK, err := c.data.GetPrivateKey(constants.SKCoordinatorRootKey)
-	if err != nil {
-		return nil, err
-	}
 
 	// Generate secrets
 	for name, secret := range secrets {
@@ -515,7 +545,11 @@ func (c *Core) generateCertificateForSecret(secret manifest.Secret, parentCertif
 	return secret, nil
 }
 
-func (c *Core) setCAData(dnsNames []string, tx store.Transaction) error {
+func (c *Core) setCAData(dnsNames []string, putter interface {
+	PutCertificate(name string, cert *x509.Certificate) error
+	PutPrivateKey(name string, key *ecdsa.PrivateKey) error
+},
+) error {
 	rootCert, rootPrivK, err := corecrypto.GenerateCert(dnsNames, constants.CoordinatorName, nil, nil, nil)
 	if err != nil {
 		return err
@@ -530,20 +564,19 @@ func (c *Core) setCAData(dnsNames []string, tx store.Transaction) error {
 		return err
 	}
 
-	txdata := wrapper.New(tx)
-	if err := txdata.PutCertificate(constants.SKCoordinatorRootCert, rootCert); err != nil {
+	if err := putter.PutCertificate(constants.SKCoordinatorRootCert, rootCert); err != nil {
 		return err
 	}
-	if err := txdata.PutCertificate(constants.SKCoordinatorIntermediateCert, intermediateCert); err != nil {
+	if err := putter.PutCertificate(constants.SKCoordinatorIntermediateCert, intermediateCert); err != nil {
 		return err
 	}
-	if err := txdata.PutCertificate(constants.SKMarbleRootCert, marbleRootCert); err != nil {
+	if err := putter.PutCertificate(constants.SKMarbleRootCert, marbleRootCert); err != nil {
 		return err
 	}
-	if err := txdata.PutPrivateKey(constants.SKCoordinatorRootKey, rootPrivK); err != nil {
+	if err := putter.PutPrivateKey(constants.SKCoordinatorRootKey, rootPrivK); err != nil {
 		return err
 	}
-	if err := txdata.PutPrivateKey(constants.SKCoordinatorIntermediateKey, intermediatePrivK); err != nil {
+	if err := putter.PutPrivateKey(constants.SKCoordinatorIntermediateKey, intermediatePrivK); err != nil {
 		return err
 	}
 
@@ -558,4 +591,11 @@ type QuoteError struct {
 // Error returns the error message.
 func (e QuoteError) Error() string {
 	return fmt.Sprintf("failed to get quote: %v", e.err)
+}
+
+type transactionHandle interface {
+	BeginTransaction(context.Context) (store.Transaction, error)
+	SetEncryptionKey([]byte) error
+	SetRecoveryData([]byte)
+	LoadState() ([]byte, error)
 }

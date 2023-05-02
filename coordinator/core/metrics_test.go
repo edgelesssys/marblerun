@@ -7,6 +7,7 @@
 package core
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/coordinator/state"
 	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
+	"github.com/edgelesssys/marblerun/coordinator/store/wrapper/testutil"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -29,6 +31,7 @@ import (
 func TestStoreWrapperMetrics(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+	ctx := context.Background()
 
 	zapLogger, err := zap.NewDevelopment()
 	require.NoError(err)
@@ -47,9 +50,9 @@ func TestStoreWrapperMetrics(t *testing.T) {
 	assert.Equal(1, promtest.CollectAndCount(c.metrics.coordinatorState))
 	assert.Equal(float64(state.AcceptingManifest), promtest.ToFloat64(c.metrics.coordinatorState))
 
-	clientAPI, err := clientapi.New(c.store, c.recovery, c, zapLogger)
+	clientAPI, err := clientapi.New(c.txHandle, c.recovery, c, zapLogger)
 	require.NoError(err)
-	_, err = clientAPI.SetManifest([]byte(test.ManifestJSON))
+	_, err = clientAPI.SetManifest(ctx, []byte(test.ManifestJSON))
 	require.NoError(err)
 	assert.Equal(1, promtest.CollectAndCount(c.metrics.coordinatorState))
 	assert.Equal(float64(state.AcceptingMarbles), promtest.ToFloat64(c.metrics.coordinatorState))
@@ -66,14 +69,13 @@ func TestStoreWrapperMetrics(t *testing.T) {
 	assert.Equal(1, promtest.CollectAndCount(c.metrics.coordinatorState))
 	assert.Equal(float64(state.Recovery), promtest.ToFloat64(c.metrics.coordinatorState))
 
-	clientAPI, err = clientapi.New(c.store, c.recovery, c, zapLogger)
+	clientAPI, err = clientapi.New(c.txHandle, c.recovery, c, zapLogger)
 	require.NoError(err)
 
 	key := make([]byte, 16)
-	_, err = clientAPI.Recover(key)
+	_, err = clientAPI.Recover(ctx, key)
 	require.NoError(err)
-	state, err := c.data.GetState()
-	require.NoError(err)
+	state := testutil.GetState(t, c.txHandle)
 	assert.Equal(1, promtest.CollectAndCount(c.metrics.coordinatorState))
 	assert.Equal(float64(state), promtest.ToFloat64(c.metrics.coordinatorState))
 }
@@ -116,27 +118,27 @@ func TestMarbleAPIMetrics(t *testing.T) {
 	}
 
 	// try to activate first backend marble prematurely before manifest is set
-	uuid := spawner.newMarble("backendFirst", "Azure", false)
+	uuid := spawner.newMarble(t, "backendFirst", "Azure", false)
 	promtest.CollectAndCount(metrics.activation)
 	promtest.CollectAndCount(metrics.activationSuccess)
 	assert.Equal(float64(1), promtest.ToFloat64(metrics.activation.WithLabelValues("backendFirst", uuid)))
 	assert.Equal(float64(0), promtest.ToFloat64(metrics.activationSuccess.WithLabelValues("backendFirst", uuid)))
 
 	// set manifest
-	clientAPI, err := clientapi.New(c.store, c.recovery, c, zapLogger)
+	clientAPI, err := clientapi.New(c.txHandle, c.recovery, c, zapLogger)
 	require.NoError(err)
-	_, err = clientAPI.SetManifest([]byte(test.ManifestJSON))
+	_, err = clientAPI.SetManifest(context.Background(), []byte(test.ManifestJSON))
 	require.NoError(err)
 
 	// activate first backend
-	uuid = spawner.newMarble("backendFirst", "Azure", true)
+	uuid = spawner.newMarble(t, "backendFirst", "Azure", true)
 	promtest.CollectAndCount(metrics.activation)
 	promtest.CollectAndCount(metrics.activationSuccess)
 	assert.Equal(float64(1), promtest.ToFloat64(metrics.activation.WithLabelValues("backendFirst", uuid)))
 	assert.Equal(float64(1), promtest.ToFloat64(metrics.activationSuccess.WithLabelValues("backendFirst", uuid)))
 
 	// try to activate another first backend
-	uuid = spawner.newMarble("backendFirst", "Azure", false)
+	uuid = spawner.newMarble(t, "backendFirst", "Azure", false)
 	promtest.CollectAndCount(metrics.activation)
 	promtest.CollectAndCount(metrics.activationSuccess)
 	assert.Equal(float64(1), promtest.ToFloat64(metrics.activation.WithLabelValues("backendFirst", uuid)))

@@ -86,7 +86,7 @@ type clientAPIServer struct {
 //	      200: StatusResponse
 //			 500: ErrorResponse
 func (s *clientAPIServer) statusGet(w http.ResponseWriter, r *http.Request) {
-	statusCode, status, err := s.api.GetStatus()
+	statusCode, status, err := s.api.GetStatus(r.Context())
 	if err != nil {
 		writeJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -130,7 +130,7 @@ func (s *clientAPIServer) statusGet(w http.ResponseWriter, r *http.Request) {
 //	      200: ManifestResponse
 //			 500: ErrorResponse
 func (s *clientAPIServer) manifestGet(w http.ResponseWriter, r *http.Request) {
-	signatureRootECDSA, signature, manifest := s.api.GetManifestSignature()
+	signatureRootECDSA, signature, manifest := s.api.GetManifestSignature(r.Context())
 	writeJSON(w, ManifestSignatureResp{
 		ManifestSignatureRootECDSA: signatureRootECDSA,
 		ManifestSignature:          hex.EncodeToString(signature),
@@ -161,7 +161,7 @@ func (s *clientAPIServer) manifestPost(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	recoverySecretMap, err := s.api.SetManifest(manifest)
+	recoverySecretMap, err := s.api.SetManifest(r.Context(), manifest)
 	if err != nil {
 		writeJSONError(w, err.Error(), http.StatusBadRequest)
 		return
@@ -217,7 +217,7 @@ func (s *clientAPIServer) manifestPost(w http.ResponseWriter, r *http.Request) {
 //	      200: CertQuoteResponse
 //			 500: ErrorResponse
 func (s *clientAPIServer) quoteGet(w http.ResponseWriter, r *http.Request) {
-	cert, quote, err := s.api.GetCertQuote()
+	cert, quote, err := s.api.GetCertQuote(r.Context())
 	if err != nil {
 		writeJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -250,7 +250,7 @@ func (s *clientAPIServer) recoverPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Perform recover and receive amount of remaining secrets (for multi-party recovery)
-	remaining, err := s.api.Recover(key)
+	remaining, err := s.api.Recover(r.Context(), key)
 	if err != nil {
 		writeJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -277,7 +277,7 @@ func (s *clientAPIServer) recoverPost(w http.ResponseWriter, r *http.Request) {
 //	      200: UpdateLogResponse
 //			 500: ErrorResponse
 func (s *clientAPIServer) updateGet(w http.ResponseWriter, r *http.Request) {
-	updateLog, err := s.api.GetUpdateLog()
+	updateLog, err := s.api.GetUpdateLog(r.Context())
 	if err != nil {
 		writeJSONError(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -311,7 +311,7 @@ func (s *clientAPIServer) updatePost(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	err = s.api.UpdateManifest(updateManifest, user)
+	err = s.api.UpdateManifest(r.Context(), updateManifest, user)
 	if err != nil {
 		writeJSONError(w, err.Error(), http.StatusBadRequest)
 		return
@@ -362,7 +362,7 @@ func (s *clientAPIServer) secretsGet(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	response, err := s.api.GetSecrets(requestedSecrets, user)
+	response, err := s.api.GetSecrets(r.Context(), requestedSecrets, user)
 	if err != nil {
 		writeJSONError(w, err.Error(), http.StatusBadRequest)
 		return
@@ -402,7 +402,7 @@ func (s *clientAPIServer) secretsPost(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if err := s.api.WriteSecrets(secretManifest, user); err != nil {
+	if err := s.api.WriteSecrets(r.Context(), secretManifest, user); err != nil {
 		writeJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -433,7 +433,7 @@ func (s *clientAPIServer) verifyUser(w http.ResponseWriter, r *http.Request) *us
 		writeJSONError(w, "no client certificate provided", http.StatusUnauthorized)
 		return nil
 	}
-	verifiedUser, err := s.api.VerifyUser(r.TLS.PeerCertificates)
+	verifiedUser, err := s.api.VerifyUser(r.Context(), r.TLS.PeerCertificates)
 	if err != nil {
 		writeJSONError(w, "unauthorized user", http.StatusUnauthorized)
 		return nil

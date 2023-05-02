@@ -8,6 +8,7 @@
 package server
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"net"
@@ -32,16 +33,16 @@ import (
 )
 
 type clientAPI interface {
-	SetManifest(rawManifest []byte) (recoverySecretMap map[string][]byte, err error)
-	GetCertQuote() (cert string, certQuote []byte, err error)
-	GetManifestSignature() (manifestSignatureRootECDSA, manifestSignature, manifest []byte)
-	GetSecrets(requestedSecrets []string, requestUser *user.User) (map[string]manifest.Secret, error)
-	GetStatus() (statusCode state.State, status string, err error)
-	GetUpdateLog() (updateLog string, err error)
-	Recover(encryptionKey []byte) (int, error)
-	VerifyUser(clientCerts []*x509.Certificate) (*user.User, error)
-	UpdateManifest(rawUpdateManifest []byte, updater *user.User) error
-	WriteSecrets(rawSecretManifest []byte, updater *user.User) error
+	SetManifest(ctx context.Context, rawManifest []byte) (recoverySecretMap map[string][]byte, err error)
+	GetCertQuote(context.Context) (cert string, certQuote []byte, err error)
+	GetManifestSignature(context.Context) (manifestSignatureRootECDSA, manifestSignature, manifest []byte)
+	GetSecrets(ctx context.Context, requestedSecrets []string, requestUser *user.User) (map[string]manifest.Secret, error)
+	GetStatus(context.Context) (statusCode state.State, status string, err error)
+	GetUpdateLog(context.Context) (updateLog string, err error)
+	Recover(ctx context.Context, encryptionKey []byte) (int, error)
+	VerifyUser(ctx context.Context, clientCerts []*x509.Certificate) (*user.User, error)
+	UpdateManifest(ctx context.Context, rawUpdateManifest []byte, updater *user.User) error
+	WriteSecrets(ctx context.Context, rawSecretManifest []byte, updater *user.User) error
 }
 
 // RunMarbleServer starts a gRPC with the given Coordinator core.

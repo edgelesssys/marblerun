@@ -7,6 +7,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -106,7 +107,7 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer 
 		if err != nil {
 			log.Fatal("Cannot read startup manifest", zap.Error(err))
 		}
-		if _, err := clientServer.SetManifest(content); err != nil {
+		if _, err := clientServer.SetManifest(context.Background(), content); err != nil {
 			log.Fatal("Cannot set startup manifest", zap.Error(err))
 		}
 	}

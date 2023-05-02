@@ -7,6 +7,7 @@
 package clientapi
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/sha256"
 	"crypto/x509"
@@ -34,25 +35,26 @@ import (
 func TestSetManifest_Legacy(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+	ctx := context.Background()
 
 	rawManifest := []byte(test.ManifestJSON)
 	var manifest manifest.Manifest
 	require.NoError(json.Unmarshal(rawManifest, &manifest))
 
 	c, getter := setupAPI(t)
-	_, err := c.SetManifest(rawManifest)
+	_, err := c.SetManifest(ctx, rawManifest)
 	assert.NoError(err, "SetManifest should succeed on first try")
 	cManifest, err := getter.GetManifest()
 	assert.NoError(err)
 	assert.Equal(manifest, cManifest, "Manifest should be set correctly")
 
-	_, err = c.SetManifest(rawManifest)
+	_, err = c.SetManifest(ctx, rawManifest)
 	assert.Error(err, "SetManifest should fail on the second try")
 	cManifest, err = getter.GetManifest()
 	assert.NoError(err)
 	assert.Equal(manifest, cManifest, "Manifest should still be set correctly")
 
-	_, err = c.SetManifest(rawManifest[:len(rawManifest)-1])
+	_, err = c.SetManifest(ctx, rawManifest[:len(rawManifest)-1])
 	assert.Error(err, "SetManifest should fail on broken json")
 	cManifest, err = getter.GetManifest()
 	assert.NoError(err)
@@ -60,14 +62,14 @@ func TestSetManifest_Legacy(t *testing.T) {
 
 	// use new core
 	c, _ = setupAPI(t)
-	_, err = c.SetManifest(rawManifest[:len(rawManifest)-1])
+	_, err = c.SetManifest(ctx, rawManifest[:len(rawManifest)-1])
 	assert.Error(err, "SetManifest should fail on broken json")
 
 	c, getter = setupAPI(t)
-	_, err = c.SetManifest([]byte(""))
+	_, err = c.SetManifest(ctx, []byte(""))
 	assert.Error(err, "empty string should not be accepted")
 
-	_, err = c.SetManifest(rawManifest)
+	_, err = c.SetManifest(ctx, rawManifest)
 	assert.NoError(err, "SetManifest should succed after failed tries")
 	cManifest, err = getter.GetManifest()
 	assert.NoError(err)
@@ -77,6 +79,7 @@ func TestSetManifest_Legacy(t *testing.T) {
 func TestSetManifestInvalid_Legacy(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+	ctx := context.Background()
 
 	newTestManifest := func() *manifest.Manifest {
 		rawManifest := []byte(test.ManifestJSON)
@@ -91,7 +94,7 @@ func TestSetManifestInvalid_Legacy(t *testing.T) {
 
 		modRawManifest, err := json.Marshal(manifest)
 		require.NoError(err)
-		_, err = a.SetManifest(modRawManifest)
+		_, err = a.SetManifest(ctx, modRawManifest)
 		assert.NoError(err)
 
 		marblePackage.Debug = false
@@ -109,7 +112,7 @@ func TestSetManifestInvalid_Legacy(t *testing.T) {
 	}
 	modRawManifest, err := json.Marshal(manifest)
 	require.NoError(err)
-	_, err = a.SetManifest(modRawManifest)
+	_, err = a.SetManifest(ctx, modRawManifest)
 	assert.ErrorContains(err, "manifest does not contain marble package foo")
 
 	// Try setting manifest with all values unset, no debug mode (this should fail)
@@ -126,7 +129,7 @@ func TestSetManifestInvalid_Legacy(t *testing.T) {
 	manifest.Packages["backend"] = backendPackage
 	modRawManifest, err = json.Marshal(manifest)
 	require.NoError(err)
-	_, err = a.SetManifest(modRawManifest)
+	_, err = a.SetManifest(ctx, modRawManifest)
 	assert.ErrorContains(err, "manifest misses value for SignerID in package backend")
 
 	// Enable debug mode, should work now
@@ -139,7 +142,7 @@ func TestSetManifestInvalid_Legacy(t *testing.T) {
 
 	modRawManifest, err = json.Marshal(manifest)
 	require.NoError(err)
-	_, err = a.SetManifest(modRawManifest)
+	_, err = a.SetManifest(ctx, modRawManifest)
 	assert.ErrorContains(err, "manifest misses value for ProductID in package backend")
 
 	// Enable debug mode, should work now
@@ -153,7 +156,7 @@ func TestSetManifestInvalid_Legacy(t *testing.T) {
 
 	modRawManifest, err = json.Marshal(manifest)
 	require.NoError(err)
-	_, err = a.SetManifest(modRawManifest)
+	_, err = a.SetManifest(ctx, modRawManifest)
 	assert.ErrorContains(err, "manifest misses value for SecurityVersion in package backend")
 
 	// Enable debug mode, should work now
@@ -167,7 +170,7 @@ func TestSetManifestInvalid_Legacy(t *testing.T) {
 
 	modRawManifest, err = json.Marshal(manifest)
 	require.NoError(err)
-	_, err = a.SetManifest(modRawManifest)
+	_, err = a.SetManifest(ctx, modRawManifest)
 	assert.NoError(err)
 
 	// Reset & enable debug mode, should also work now
@@ -181,7 +184,7 @@ func TestSetManifestInvalid_Legacy(t *testing.T) {
 
 	modRawManifest, err = json.Marshal(manifest)
 	require.NoError(err)
-	_, err = a.SetManifest(modRawManifest)
+	_, err = a.SetManifest(ctx, modRawManifest)
 	assert.ErrorContains(err, "manifest specifies both UniqueID *and* SignerID/ProductID/SecurityVersion in package backend")
 
 	// Enable debug mode, should work now
@@ -191,13 +194,14 @@ func TestSetManifestInvalid_Legacy(t *testing.T) {
 func TestGetManifestSignature_Legacy(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+	ctx := context.Background()
 
 	api, data := setupAPI(t)
 
-	_, err := api.SetManifest([]byte(test.ManifestJSON))
+	_, err := api.SetManifest(ctx, []byte(test.ManifestJSON))
 	assert.NoError(err)
 
-	sigECDSA, hash, manifest := api.GetManifestSignature()
+	sigECDSA, hash, manifest := api.GetManifestSignature(ctx)
 	expectedHash := sha256.Sum256([]byte(test.ManifestJSON))
 	assert.Equal(expectedHash[:], hash)
 
@@ -211,32 +215,33 @@ func TestGetSecret_Legacy(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	c, data := setupAPI(t)
+	ctx := context.Background()
 
 	symmetricSecret := "symmetricKeyShared"
 	certSecret := "certShared"
-	_, err := c.SetManifest([]byte(test.ManifestJSONWithRecoveryKey))
+	_, err := c.SetManifest(ctx, []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
 
 	secret1, err := data.GetSecret(symmetricSecret)
 	require.NoError(err)
-	secret2, err := c.data.GetSecret(certSecret)
+	secret2, err := data.GetSecret(certSecret)
 	require.NoError(err)
 	admin, err := data.GetUser("admin")
 	require.NoError(err)
 
 	// requested secrets should be the same
-	reqSecrets, err := c.GetSecrets([]string{symmetricSecret, certSecret}, admin)
+	reqSecrets, err := c.GetSecrets(ctx, []string{symmetricSecret, certSecret}, admin)
 	require.NoError(err)
 	assert.True(len(reqSecrets) == 2)
 	assert.Equal(secret1, reqSecrets[symmetricSecret])
 	assert.Equal(secret2, reqSecrets[certSecret])
 
 	// request should fail if the user lacks permissions
-	_, err = c.GetSecrets([]string{symmetricSecret, "restrictedSecret"}, admin)
+	_, err = c.GetSecrets(ctx, []string{symmetricSecret, "restrictedSecret"}, admin)
 	assert.Error(err)
 
 	// requesting a secret should return an empty secret since it was not set
-	sec, err := c.GetSecrets([]string{"symmetricKeyUnset"}, admin)
+	sec, err := c.GetSecrets(ctx, []string{"symmetricKeyUnset"}, admin)
 	require.NoError(err)
 	assert.Empty(sec["symmetricKeyUnset"].Public)
 	assert.Empty(sec["symmetricKeyUnset"].Private)
@@ -246,17 +251,18 @@ func TestGetStatus_Legacy(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	c, _ := setupAPI(t)
+	ctx := context.Background()
 
 	// Server should be ready to accept a manifest after initializing a mock core
-	statusCode, status, err := c.GetStatus()
+	statusCode, status, err := c.GetStatus(ctx)
 	assert.NoError(err, "GetStatus failed")
 	assert.EqualValues(state.AcceptingManifest, statusCode, "We should be ready to accept a manifest now, but GetStatus tells us we don't.")
 	assert.NotEmpty(status, "Status string was empty, but should not.")
 
 	// Set a manifest, state should change
-	_, err = c.SetManifest([]byte(test.ManifestJSON))
+	_, err = c.SetManifest(ctx, []byte(test.ManifestJSON))
 	require.NoError(err)
-	statusCode, status, err = c.GetStatus()
+	statusCode, status, err = c.GetStatus(ctx)
 	assert.NoError(err, "GetStatus failed")
 	assert.EqualValues(state.AcceptingMarbles, statusCode, "We should be ready to accept Marbles now, but GetStatus tells us we don't.")
 	assert.NotEmpty(status, "Status string was empty, but should not.")
@@ -265,13 +271,14 @@ func TestGetStatus_Legacy(t *testing.T) {
 func TestWriteSecrets_Legacy(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+	ctx := context.Background()
 
 	symmetricSecret := "symmetricKeyUnset"
 	certSecret := "certUnset"
 
 	c, data := setupAPI(t)
 
-	_, err := c.SetManifest([]byte(test.ManifestJSONWithRecoveryKey))
+	_, err := c.SetManifest(ctx, []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
 
 	admin, err := data.GetUser("admin")
@@ -289,7 +296,7 @@ func TestWriteSecrets_Legacy(t *testing.T) {
 	assert.Empty(sec.Private)
 
 	// set a secret
-	err = c.WriteSecrets([]byte(test.UserSecrets), admin)
+	err = c.WriteSecrets(ctx, []byte(test.UserSecrets), admin)
 	require.NoError(err)
 	secret, err := data.GetSecret(symmetricSecret)
 	require.NoError(err)
@@ -304,7 +311,7 @@ func TestWriteSecrets_Legacy(t *testing.T) {
 			"Key": "` + base64.StdEncoding.EncodeToString([]byte("MarbleRun Unit Test")) + `"
 		}
 	}`)
-	err = c.WriteSecrets(genericSecret, admin)
+	err = c.WriteSecrets(ctx, genericSecret, admin)
 	require.NoError(err)
 	secret, err = data.GetSecret("genericSecret")
 	require.NoError(err)
@@ -316,7 +323,7 @@ func TestWriteSecrets_Legacy(t *testing.T) {
 			"Key": "` + base64.StdEncoding.EncodeToString([]byte{0x41, 0x41, 0x00, 0x41}) + `"
 		}
 	}`)
-	err = c.WriteSecrets(genericSecret, admin)
+	err = c.WriteSecrets(ctx, genericSecret, admin)
 	assert.Error(err)
 
 	// try to set a secret incorrect size
@@ -325,7 +332,7 @@ func TestWriteSecrets_Legacy(t *testing.T) {
 			"Key": "` + base64.StdEncoding.EncodeToString([]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}) + `"
 		}	
 	}`)
-	err = c.WriteSecrets(invalidSecret, admin)
+	err = c.WriteSecrets(ctx, invalidSecret, admin)
 	assert.Error(err)
 }
 
@@ -333,9 +340,10 @@ func TestUpdateManifest_Legacy(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	c, data := setupAPI(t)
+	ctx := context.Background()
 
 	// Set manifest
-	_, err := c.SetManifest([]byte(test.ManifestJSONWithRecoveryKey))
+	_, err := c.SetManifest(ctx, []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
 
 	admin, err := data.GetUser("admin")
@@ -352,7 +360,7 @@ func TestUpdateManifest_Legacy(t *testing.T) {
 	assert.NoError(err)
 
 	// Update manifest
-	err = c.UpdateManifest([]byte(test.UpdateManifest), admin)
+	err = c.UpdateManifest(ctx, []byte(test.UpdateManifest), admin)
 	require.NoError(err)
 
 	// Get new certificates
@@ -405,7 +413,7 @@ func TestUpdateManifest_Legacy(t *testing.T) {
 	assert.NoError(err)
 
 	// updating the manifest should have produced an entry for "frontend" in the updatelog
-	updateLog, err := c.GetUpdateLog()
+	updateLog, err := c.GetUpdateLog(ctx)
 	assert.NoError(err)
 	assert.Contains(updateLog, `"package":"frontend"`)
 }
@@ -414,10 +422,11 @@ func TestUpdateManifestInvalid_Legacy(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	c, data := setupAPI(t)
+	ctx := context.Background()
 
 	// Good update manifests
 	// Set manifest (frontend has SecurityVersion 3)
-	_, err := c.SetManifest([]byte(test.ManifestJSONWithRecoveryKey))
+	_, err := c.SetManifest(ctx, []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
 	cPackage, err := data.GetPackage("frontend")
 	assert.NoError(err)
@@ -425,14 +434,14 @@ func TestUpdateManifestInvalid_Legacy(t *testing.T) {
 
 	// Try to update with unregistered user
 	someUser := user.NewUser("invalid", nil)
-	err = c.UpdateManifest([]byte(test.UpdateManifest), someUser)
+	err = c.UpdateManifest(ctx, []byte(test.UpdateManifest), someUser)
 	assert.Error(err)
 
 	admin, err := data.GetUser("admin")
 	assert.NoError(err)
 
 	// Try to update manifest (frontend's SecurityVersion should rise from 3 to 5)
-	err = c.UpdateManifest([]byte(test.UpdateManifest), admin)
+	err = c.UpdateManifest(ctx, []byte(test.UpdateManifest), admin)
 	require.NoError(err)
 	cUpdatedPackage, err := data.GetPackage("frontend")
 	assert.NoError(err)
@@ -446,7 +455,7 @@ func TestUpdateManifestInvalid_Legacy(t *testing.T) {
 	badUpdateManifest.Packages["nonExisting"] = badUpdateManifest.Packages["frontend"]
 	badRawManifest, err := json.Marshal(badUpdateManifest)
 	require.NoError(err)
-	err = c.UpdateManifest(badRawManifest, admin)
+	err = c.UpdateManifest(ctx, badRawManifest, admin)
 	assert.Error(err)
 
 	delete(badUpdateManifest.Packages, "nonExisting")
@@ -457,7 +466,7 @@ func TestUpdateManifestInvalid_Legacy(t *testing.T) {
 	badUpdateManifest.Packages["frontend"] = badModPackage
 	badRawManifest, err = json.Marshal(badUpdateManifest)
 	require.NoError(err)
-	err = c.UpdateManifest(badRawManifest, admin)
+	err = c.UpdateManifest(ctx, badRawManifest, admin)
 	assert.Error(err)
 
 	badModPackage.Debug = false
@@ -467,7 +476,7 @@ func TestUpdateManifestInvalid_Legacy(t *testing.T) {
 	badUpdateManifest.Packages["frontend"] = badModPackage
 	badRawManifest, err = json.Marshal(badUpdateManifest)
 	require.NoError(err)
-	err = c.UpdateManifest(badRawManifest, admin)
+	err = c.UpdateManifest(ctx, badRawManifest, admin)
 	assert.Error(err)
 
 	// Test if downgrading fails
@@ -477,7 +486,7 @@ func TestUpdateManifestInvalid_Legacy(t *testing.T) {
 	badUpdateManifest.Packages["frontend"] = badModPackage
 	badRawManifest, err = json.Marshal(badUpdateManifest)
 	require.NoError(err)
-	err = c.UpdateManifest(badRawManifest, admin)
+	err = c.UpdateManifest(ctx, badRawManifest, admin)
 	assert.Error(err)
 
 	// Test if downgrading fails
@@ -487,7 +496,7 @@ func TestUpdateManifestInvalid_Legacy(t *testing.T) {
 	badUpdateManifest.Packages["frontend"] = badModPackage
 	badRawManifest, err = json.Marshal(badUpdateManifest)
 	require.NoError(err)
-	err = c.UpdateManifest(badRawManifest, admin)
+	err = c.UpdateManifest(ctx, badRawManifest, admin)
 	assert.Error(err)
 
 	// Test if removing a package from a currently existing update manifest fails
@@ -495,14 +504,14 @@ func TestUpdateManifestInvalid_Legacy(t *testing.T) {
 	delete(badUpdateManifest.Packages, "frontend")
 	badRawManifest, err = json.Marshal(badUpdateManifest)
 	require.NoError(err)
-	err = c.UpdateManifest(badRawManifest, admin)
+	err = c.UpdateManifest(ctx, badRawManifest, admin)
 	assert.Error(err)
 
 	// Test what happens if no packages are defined at all
 	badUpdateManifest.Packages = nil
 	badRawManifest, err = json.Marshal(badUpdateManifest)
 	require.NoError(err)
-	err = c.UpdateManifest(badRawManifest, admin)
+	err = c.UpdateManifest(ctx, badRawManifest, admin)
 	assert.Error(err)
 }
 
@@ -540,10 +549,11 @@ func TestUpdateDebugMarble_Legacy(t *testing.T) {
 }`)
 	assert := assert.New(t)
 	require := require.New(t)
+	ctx := context.Background()
 
 	c, data := setupAPI(t)
 	// Set manifest
-	_, err := c.SetManifest(manifest)
+	_, err := c.SetManifest(ctx, manifest)
 	require.NoError(err)
 
 	admin, err := data.GetUser("admin")
@@ -554,7 +564,7 @@ func TestUpdateDebugMarble_Legacy(t *testing.T) {
 
 	// Try to update manifest
 	// frontend's security version, which was previously unset, should now be set to 5
-	err = c.UpdateManifest([]byte(test.UpdateManifest), admin)
+	err = c.UpdateManifest(ctx, []byte(test.UpdateManifest), admin)
 	require.NoError(err)
 
 	updatedPackage, err := data.GetPackage("frontend")
@@ -566,11 +576,12 @@ func TestVerifyUser_Legacy(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	c, _ := setupAPI(t)
+	ctx := context.Background()
 
 	adminTestCert, otherTestCert := test.MustSetupTestCerts(test.RecoveryPrivateKey)
 
 	// Set a manifest containing an admin certificate
-	_, err := c.SetManifest([]byte(test.ManifestJSONWithRecoveryKey))
+	_, err := c.SetManifest(ctx, []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
 
 	// Put certificates in slice, as Go's TLS library passes them in an HTTP request
@@ -578,12 +589,12 @@ func TestVerifyUser_Legacy(t *testing.T) {
 	otherTestCertSlice := []*x509.Certificate{otherTestCert}
 
 	// Check if the adminTest certificate is deemed valid (stored in core), and the freshly generated one is deemed false
-	user, err := c.VerifyUser(adminTestCertSlice)
+	user, err := c.VerifyUser(ctx, adminTestCertSlice)
 	assert.NoError(err)
 	assert.Equal(*user.Certificate(), *adminTestCert)
-	_, err = c.VerifyUser(otherTestCertSlice)
+	_, err = c.VerifyUser(ctx, otherTestCertSlice)
 	assert.Error(err)
-	_, err = c.VerifyUser(nil)
+	_, err = c.VerifyUser(ctx, nil)
 	assert.Error(err)
 }
 
@@ -614,7 +625,6 @@ func setupAPI(t *testing.T) (*ClientAPI, wrapper.Wrapper) {
 	require.NoError(err)
 
 	return &ClientAPI{
-		data: wrapper,
 		core: &fakeCore{
 			state:       state.AcceptingManifest,
 			getStateMsg: "status message",
