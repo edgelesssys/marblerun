@@ -138,9 +138,7 @@ func TestGetCertQuote(t *testing.T) {
 			var intermediateCert, rootCert *x509.Certificate
 			if !tc.wantErr {
 				intermediateCert = testutil.GetCertificate(t, tc.store, constants.SKCoordinatorIntermediateCert)
-				require.NoError(err)
 				rootCert = testutil.GetCertificate(t, tc.store, constants.SKCoordinatorRootCert)
-				require.NoError(err)
 			}
 
 			cert, quote, err := api.GetCertQuote(context.Background())
@@ -204,9 +202,7 @@ func TestGetManifestSignature(t *testing.T) {
 			var rawManifest, manifestSignature, manifestHash []byte
 			if !tc.wantErr {
 				rawManifest = testutil.GetRawManifest(t, tc.store)
-				require.NoError(err)
 				manifestSignature = testutil.GetManifestSignature(t, tc.store)
-				require.NoError(err)
 				h := sha256.Sum256(rawManifest)
 				manifestHash = h[:]
 			}
@@ -336,7 +332,6 @@ func TestGetSecrets(t *testing.T) {
 			}
 
 			storedSecrets := testutil.GetSecretMap(t, tc.store)
-			require.NoError(err)
 
 			secrets, err := api.GetSecrets(context.Background(), tc.request, tc.user)
 			if tc.wantErr {

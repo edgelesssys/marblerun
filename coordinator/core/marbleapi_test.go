@@ -206,11 +206,8 @@ func (ms *marbleSpawner) newMarble(t *testing.T, marbleType string, infraName st
 	ms.assert.Equal(cert.IPAddresses, newLeafCert.IPAddresses)
 
 	rootCert := testutil.GetCertificate(t, ms.coreServer.txHandle, constants.SKCoordinatorRootCert)
-	ms.assert.NoError(err)
 	intermediateCert := testutil.GetCertificate(t, ms.coreServer.txHandle, constants.SKCoordinatorIntermediateCert)
-	ms.assert.NoError(err)
 	marbleRootCert := testutil.GetCertificate(t, ms.coreServer.txHandle, constants.SKMarbleRootCert)
-	ms.assert.NoError(err)
 	// Check Signature for both, intermediate certificate and leaf certificate
 	ms.assert.NoError(rootCert.CheckSignature(intermediateCert.SignatureAlgorithm, intermediateCert.RawTBSCertificate, intermediateCert.Signature))
 	ms.assert.NoError(newMarbleRootCert.CheckSignature(newMarbleRootCert.SignatureAlgorithm, newMarbleRootCert.RawTBSCertificate, newMarbleRootCert.Signature))
@@ -488,7 +485,6 @@ func TestSecurityLevelUpdate(t *testing.T) {
 	require.NoError(err)
 
 	admin := testutil.GetUser(t, coreServer.txHandle, "admin")
-	assert.NoError(err)
 
 	// try to activate another first backend, should succeed as SecurityLevel matches the definition in the manifest
 	spawner.newMarble(t, "frontend", "Azure", true)
@@ -504,9 +500,7 @@ func TestSecurityLevelUpdate(t *testing.T) {
 	coreServer2, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer), recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	coreServer2State := testutil.GetState(t, coreServer2.txHandle)
-	assert.NoError(err)
 	coreServer2UpdatedPkg := testutil.GetPackage(t, coreServer2.txHandle, "frontend")
-	assert.NoError(err)
 	assert.Equal(state.AcceptingMarbles, coreServer2State)
 	assert.EqualValues(5, *coreServer2UpdatedPkg.SecurityVersion)
 
@@ -554,7 +548,6 @@ func (ms *marbleSpawner) shortMarbleActivation(t *testing.T, marbleType string, 
 	params := resp.GetParameters()
 	// Get the marble from the manifest set on the coreServer since this one sets default values for empty values
 	coreServerManifest := testutil.GetManifest(t, ms.coreServer.txHandle)
-	ms.assert.NoError(err)
 	marble = coreServerManifest.Marbles[marbleType]
 	// Validate Files
 	for k, v := range marble.Parameters.Files {

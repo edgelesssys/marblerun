@@ -31,14 +31,7 @@ func WrapTransaction(ctx context.Context, txHandle transactionHandle,
 	if err != nil {
 		return Wrapper{}, nil, nil, err
 	}
-	wrapper = New(tx)
-	rollback = func() {
-		tx.Rollback()
-	}
-	commit = func(ctx context.Context) error {
-		return tx.Commit(ctx)
-	}
-	return wrapper, rollback, commit, nil
+	return New(tx), tx.Rollback, tx.Commit, nil
 }
 
 // Wrapper wraps store functions to provide a more convenient interface,

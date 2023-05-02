@@ -319,6 +319,5 @@ func TestUnsetRestart(t *testing.T) {
 	c2State := testutil.GetState(t, c2.txHandle)
 	assert.Equal(state.AcceptingManifest, c2State)
 	c2Cert := testutil.GetCertificate(t, c2.txHandle, constants.SKCoordinatorRootCert)
-
 	assert.NotEqual(*cCert, *c2Cert)
 }

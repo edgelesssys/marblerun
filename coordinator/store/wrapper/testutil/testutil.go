@@ -26,112 +26,117 @@ type transactionHandle interface {
 	BeginTransaction(context.Context) (store.Transaction, error)
 }
 
-// GetState returns the current state of the store.
-func GetState(t *testing.T, txHandle transactionHandle) state.State {
-	t.Helper()
-	tx, rollback, _, err := wrapper.WrapTransaction(context.Background(), txHandle)
-	require.NoError(t, err)
-	defer rollback()
-	state, err := tx.GetState()
-	require.NoError(t, err)
-	return state
+// GetActivations returns the number of activations for a given Marble.
+func GetActivations(t *testing.T, txHandle transactionHandle, name string) uint {
+	return get(t, txHandle, func(tx wrapper.Wrapper) (uint, error) {
+		return tx.GetActivations(name)
+	})
 }
 
 // GetCertificate returns the certificate with the given name.
 func GetCertificate(t *testing.T, txHandle transactionHandle, name string) *x509.Certificate {
-	t.Helper()
-	tx, rollback, _, err := wrapper.WrapTransaction(context.Background(), txHandle)
-	require.NoError(t, err)
-	defer rollback()
-	cert, err := tx.GetCertificate(name)
-	require.NoError(t, err)
-	return cert
+	return get(t, txHandle, func(tx wrapper.Wrapper) (*x509.Certificate, error) {
+		return tx.GetCertificate(name)
+	})
 }
 
-// GetPrivateKey returns the private key with the given name.
-func GetPrivateKey(t *testing.T, txHandle transactionHandle, name string) *ecdsa.PrivateKey {
-	t.Helper()
-	tx, rollback, _, err := wrapper.WrapTransaction(context.Background(), txHandle)
-	require.NoError(t, err)
-	defer rollback()
-	privKey, err := tx.GetPrivateKey(name)
-	require.NoError(t, err)
-	return privKey
+// GetInfrastructure returns infrastructure information.
+func GetInfrastructure(t *testing.T, txHandle transactionHandle, name string) quote.InfrastructureProperties {
+	return get(t, txHandle, func(tx wrapper.Wrapper) (quote.InfrastructureProperties, error) {
+		return tx.GetInfrastructure(name)
+	})
 }
 
-// GetSecret returns the secret with the given name.
-func GetSecret(t *testing.T, txHandle transactionHandle, name string) manifest.Secret {
-	t.Helper()
-	tx, rollback, _, err := wrapper.WrapTransaction(context.Background(), txHandle)
-	require.NoError(t, err)
-	defer rollback()
-	secret, err := tx.GetSecret(name)
-	require.NoError(t, err)
-	return secret
-}
-
-// GetSecretMap returns a map of all secrets in the store.
-func GetSecretMap(t *testing.T, txHandle transactionHandle) map[string]manifest.Secret {
-	t.Helper()
-	tx, rollback, _, err := wrapper.WrapTransaction(context.Background(), txHandle)
-	require.NoError(t, err)
-	defer rollback()
-	secretMap, err := tx.GetSecretMap()
-	require.NoError(t, err)
-	return secretMap
-}
-
-// GetUser returns the user with the given name.
-func GetUser(t *testing.T, txHandle transactionHandle, name string) *user.User {
-	t.Helper()
-	tx, rollback, _, err := wrapper.WrapTransaction(context.Background(), txHandle)
-	require.NoError(t, err)
-	defer rollback()
-	user, err := tx.GetUser(name)
-	require.NoError(t, err)
-	return user
+// GetMarble returns the marble with the given name.
+func GetMarble(t *testing.T, txHandle transactionHandle, name string) manifest.Marble {
+	return get(t, txHandle, func(tx wrapper.Wrapper) (manifest.Marble, error) {
+		return tx.GetMarble(name)
+	})
 }
 
 // GetPackage returns the package with the given name.
 func GetPackage(t *testing.T, txHandle transactionHandle, name string) quote.PackageProperties {
-	t.Helper()
-	tx, rollback, _, err := wrapper.WrapTransaction(context.Background(), txHandle)
-	require.NoError(t, err)
-	defer rollback()
-	pkg, err := tx.GetPackage(name)
-	require.NoError(t, err)
-	return pkg
+	return get(t, txHandle, func(tx wrapper.Wrapper) (quote.PackageProperties, error) {
+		return tx.GetPackage(name)
+	})
+}
+
+// GetPrivateKey returns the private key with the given name.
+func GetPrivateKey(t *testing.T, txHandle transactionHandle, name string) *ecdsa.PrivateKey {
+	return get(t, txHandle, func(tx wrapper.Wrapper) (*ecdsa.PrivateKey, error) {
+		return tx.GetPrivateKey(name)
+	})
 }
 
 // GetManifest returns the manifest.
 func GetManifest(t *testing.T, txHandle transactionHandle) manifest.Manifest {
-	t.Helper()
-	tx, rollback, _, err := wrapper.WrapTransaction(context.Background(), txHandle)
-	require.NoError(t, err)
-	defer rollback()
-	manifest, err := tx.GetManifest()
-	require.NoError(t, err)
-	return manifest
+	return get(t, txHandle, func(tx wrapper.Wrapper) (manifest.Manifest, error) {
+		return tx.GetManifest()
+	})
 }
 
 // GetRawManifest returns the raw manifest.
 func GetRawManifest(t *testing.T, txHandle transactionHandle) []byte {
-	t.Helper()
-	tx, rollback, _, err := wrapper.WrapTransaction(context.Background(), txHandle)
-	require.NoError(t, err)
-	defer rollback()
-	manifest, err := tx.GetRawManifest()
-	require.NoError(t, err)
-	return manifest
+	return get(t, txHandle, func(tx wrapper.Wrapper) ([]byte, error) {
+		return tx.GetRawManifest()
+	})
 }
 
 // GetManifestSignature returns the manifest signature.
 func GetManifestSignature(t *testing.T, txHandle transactionHandle) []byte {
+	return get(t, txHandle, func(tx wrapper.Wrapper) ([]byte, error) {
+		return tx.GetManifestSignature()
+	})
+}
+
+// GetSecret returns the secret with the given name.
+func GetSecret(t *testing.T, txHandle transactionHandle, name string) manifest.Secret {
+	return get(t, txHandle, func(tx wrapper.Wrapper) (manifest.Secret, error) {
+		return tx.GetSecret(name)
+	})
+}
+
+// GetSecretMap returns a map of all secrets in the store.
+func GetSecretMap(t *testing.T, txHandle transactionHandle) map[string]manifest.Secret {
+	return get(t, txHandle, func(tx wrapper.Wrapper) (map[string]manifest.Secret, error) {
+		return tx.GetSecretMap()
+	})
+}
+
+// GetState returns the current state of the store.
+func GetState(t *testing.T, txHandle transactionHandle) state.State {
+	return get(t, txHandle, func(tx wrapper.Wrapper) (state.State, error) {
+		return tx.GetState()
+	})
+}
+
+// GetTLS returns the TLS config with the given name.
+func GetTLS(t *testing.T, txHandle transactionHandle, name string) manifest.TLStag {
+	return get(t, txHandle, func(tx wrapper.Wrapper) (manifest.TLStag, error) {
+		return tx.GetTLS(name)
+	})
+}
+
+// GetUpdateLog returns the update log.
+func GetUpdateLog(t *testing.T, txHandle transactionHandle) string {
+	return get(t, txHandle, func(tx wrapper.Wrapper) (string, error) {
+		return tx.GetUpdateLog()
+	})
+}
+
+// GetUser returns the user with the given name.
+func GetUser(t *testing.T, txHandle transactionHandle, name string) *user.User {
+	return get(t, txHandle, func(tx wrapper.Wrapper) (*user.User, error) {
+		return tx.GetUser(name)
+	})
+}
+
+func get[T any](t *testing.T, txHandle transactionHandle, getter func(wrapper.Wrapper) (T, error)) T {
 	t.Helper()
 	tx, rollback, _, err := wrapper.WrapTransaction(context.Background(), txHandle)
 	require.NoError(t, err)
 	defer rollback()
-	sig, err := tx.GetManifestSignature()
+	val, err := getter(tx)
 	require.NoError(t, err)
-	return sig
+	return val
 }

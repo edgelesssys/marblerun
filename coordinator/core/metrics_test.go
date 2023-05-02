@@ -76,7 +76,6 @@ func TestStoreWrapperMetrics(t *testing.T) {
 	_, err = clientAPI.Recover(ctx, key)
 	require.NoError(err)
 	state := testutil.GetState(t, c.txHandle)
-	require.NoError(err)
 	assert.Equal(1, promtest.CollectAndCount(c.metrics.coordinatorState))
 	assert.Equal(float64(state), promtest.ToFloat64(c.metrics.coordinatorState))
 }
