@@ -149,7 +149,7 @@ func NewCore(
 		if !errors.As(loadErr, &keyErr) {
 			return nil, loadErr
 		}
-		// sealed state was found but couldnt be decrypted, go to recovery mode or reset manifest
+		// sealed state was found, but couldn't be decrypted, go to recovery mode or reset manifest
 		c.log.Error("Failed to decrypt sealed state. Processing with a new state. Use the /recover API endpoint to load an old state, or submit a new manifest to overwrite the old state. Look up the documentation for more information on how to proceed.")
 		if err := c.setCAData(dnsNames, transaction); err != nil {
 			return nil, err
@@ -179,7 +179,7 @@ func NewCore(
 	}
 
 	if err := commit(context.Background()); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("committing state: %w", err)
 	}
 
 	err = c.GenerateQuote(rootCert.Raw)

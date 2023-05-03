@@ -120,8 +120,22 @@ func (s *StdStore) LoadState() ([]byte, error) {
 
 	encodedRecoveryData, stateRaw, err := s.sealer.Unseal(sealedData)
 	if err != nil {
-		s.recoveryMode = true
-		return encodedRecoveryData, err
+		if !errors.Is(err, seal.ErrMissingEncryptionKey) {
+			s.recoveryMode = true
+			return encodedRecoveryData, fmt.Errorf("unsealing state: %w", err)
+		}
+		// Try to unseal encryption key from disk using product key
+		// And retry unsealing the sealed data
+		if err := s.unsealEncryptionKey(); err != nil {
+			s.recoveryMode = true
+			return encodedRecoveryData, fmt.Errorf("unsealing encryption key: %w", err)
+		}
+
+		encodedRecoveryData, stateRaw, err = s.sealer.Unseal(sealedData)
+		if err != nil {
+			s.recoveryMode = true
+			return encodedRecoveryData, fmt.Errorf("retry unsealing state with loaded key: %w", err)
+		}
 	}
 	if len(stateRaw) == 0 {
 		return encodedRecoveryData, nil
@@ -155,6 +169,8 @@ func (s *StdStore) SetEncryptionKey(encryptionKey []byte) error {
 
 	// Write the sealed encryption key to disk
 	if err = s.fs.WriteFile(filepath.Join(s.sealDir, SealedKeyFname), encryptedKey, 0o600); err != nil {
+		// Reset encryption key if writing to disk fails
+		_, _ = s.sealer.SetEncryptionKey(encryptionKey)
 		return fmt.Errorf("writing encrypted key to disk: %w", err)
 	}
 
@@ -174,6 +190,7 @@ func (s *StdStore) beginTransaction() *StdTransaction {
 	return &tx
 }
 
+// commit saves the store's data to disk.
 func (s *StdStore) commit(data map[string][]byte) error {
 	dataRaw, err := json.Marshal(data)
 	if err != nil {
@@ -185,7 +202,32 @@ func (s *StdStore) commit(data map[string][]byte) error {
 	if !s.recoveryMode {
 		sealedData, err := s.sealer.Seal(s.recoveryData, dataRaw)
 		if err != nil {
-			return err
+			if !errors.Is(err, seal.ErrMissingEncryptionKey) {
+				return err
+			}
+
+			// No encryption key set
+			// Load or generate new key, and retry sealing
+			if err := s.unsealEncryptionKey(); err != nil {
+				if !errors.Is(err, afero.ErrFileNotFound) {
+					return err
+				}
+
+				// No encryption key on disk
+				// Generate a new encryption key, and seal it with product key
+				encryptionKey, err := seal.GenerateEncryptionKey()
+				if err != nil {
+					return err
+				}
+				if err := s.SetEncryptionKey(encryptionKey); err != nil {
+					return err
+				}
+			}
+
+			sealedData, err = s.sealer.Seal(s.recoveryData, dataRaw)
+			if err != nil {
+				return err
+			}
 		}
 
 		if err := s.fs.WriteFile(filepath.Join(s.sealDir, SealedDataFname), sealedData, 0o600); err != nil {
@@ -195,6 +237,24 @@ func (s *StdStore) commit(data map[string][]byte) error {
 
 	s.data = data
 	s.txmux.Unlock()
+
+	return nil
+}
+
+// unsealEncryptionKey loads the encrypted seal key from disk and decrypts it.
+func (s *StdStore) unsealEncryptionKey() error {
+	encryptedKey, err := s.fs.ReadFile(filepath.Join(s.sealDir, SealedKeyFname))
+	if err != nil {
+		return fmt.Errorf("reading encrypted key from disk: %w", err)
+	}
+	key, err := s.sealer.UnsealEncryptionKey(encryptedKey)
+	if err != nil {
+		return fmt.Errorf("decrypting data key: %w", err)
+	}
+
+	if _, err := s.sealer.SetEncryptionKey(key); err != nil {
+		return fmt.Errorf("setting encryption key: %w", err)
+	}
 
 	return nil
 }

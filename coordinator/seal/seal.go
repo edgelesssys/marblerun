@@ -32,11 +32,15 @@ func (e *EncryptionKeyError) Unwrap() error {
 // ErrMissingEncryptionKey occurs if the encryption key is not set.
 var ErrMissingEncryptionKey = errors.New("encryption key not set")
 
-// Sealer is an interface for the Core object to seal information to the filesystem for persistence.
+// Sealer handles encryption and decryption of data.
 type Sealer interface {
+	// Seal encrypts data using the encryption key of the Sealer.
 	Seal(unencryptedData []byte, toBeEncrypted []byte) (encryptedData []byte, err error)
+	// Unseal decrypts the given data and returns the plain text, as well as the unencrypted metadata.
 	Unseal(encryptedData []byte) (unencryptedData []byte, decryptedData []byte, err error)
+	// SetEncryptionKey sets the encryption key of the Sealer.
 	SetEncryptionKey(key []byte) (encryptedKey []byte, err error)
+	// UnsealEncryptionKey decrypts an encrypted key.
 	UnsealEncryptionKey(encryptedKey []byte) ([]byte, error)
 }
 
@@ -50,9 +54,25 @@ func NewAESGCMSealer() *AESGCMSealer {
 	return &AESGCMSealer{}
 }
 
-// Unseal reads and decrypts stored information from the fs.
+// Unseal decrypts sealedData and returns the decrypted data,
+// as well as the prefixed unencrypted metadata of the cipher text.
 func (s *AESGCMSealer) Unseal(sealedData []byte) ([]byte, []byte, error) {
-	return unsealData(sealedData, s.encryptionKey)
+	unencryptedData, cipherText, err := prepareCipherText(sealedData)
+	if err != nil {
+		return unencryptedData, nil, err
+	}
+
+	if s.encryptionKey == nil {
+		return unencryptedData, nil, fmt.Errorf("decrypting sealed data: %w", ErrMissingEncryptionKey)
+	}
+
+	// Decrypt data with the unsealed encryption key and return it
+	decryptedData, err := ecrypto.Decrypt(cipherText, s.encryptionKey, nil)
+	if err != nil {
+		return unencryptedData, nil, fmt.Errorf("decrypting sealed data: %w", err)
+	}
+
+	return unencryptedData, decryptedData, nil
 }
 
 // Seal encrypts and stores information to the fs.
@@ -60,7 +80,7 @@ func (s *AESGCMSealer) Seal(unencryptedData []byte, toBeEncrypted []byte) ([]byt
 	return sealData(unencryptedData, toBeEncrypted, s.encryptionKey)
 }
 
-// SetEncryptionKey sets or restores an encryption key.
+// SetEncryptionKey sets an encryption key, and returns the key encrypted with the enclave's product key.
 func (s *AESGCMSealer) SetEncryptionKey(encryptionKey []byte) ([]byte, error) {
 	// Encrypt encryption key with seal key
 	encryptedKeyData, err := ecrypto.SealWithProductKey(encryptionKey, nil)
@@ -96,55 +116,47 @@ func GenerateEncryptionKey() ([]byte, error) {
 	return encryptionKey, nil
 }
 
-// unsealData decrypts the sealed data using the given key.
-// It returns the unencrypted metadata and the decrypted data.
-func unsealData(sealedData, encryptionKey []byte) (unencryptedData []byte, decryptedData []byte, err error) {
+// prepareCipherText validates format of the given sealed data.
+// It returns the unencrypted metadata and the cipher text.
+func prepareCipherText(sealedData []byte) (unencryptedData []byte, cipherText []byte, err error) {
 	if len(sealedData) <= 4 {
 		return nil, nil, errors.New("sealed state is missing data")
 	}
 
 	// Retrieve recovery secret hash map
-	encodedUnencryptDataLength := binary.LittleEndian.Uint32(sealedData[:4])
+	encodedUnencryptedDataLength := binary.LittleEndian.Uint32(sealedData[:4])
 
 	// Check if we do not go out of bounds
-	if 4+encodedUnencryptDataLength > uint32(len(sealedData)) {
+	if 4+encodedUnencryptedDataLength > uint32(len(sealedData)) {
 		return nil, nil, errors.New("sealed state is corrupted, embedded length does not fit the data")
 	}
 
-	if encodedUnencryptDataLength != 0 {
-		unencryptedData = sealedData[4 : 4+encodedUnencryptDataLength]
+	if encodedUnencryptedDataLength != 0 {
+		unencryptedData = sealedData[4 : 4+encodedUnencryptedDataLength]
 	}
-	ciphertext := sealedData[4+encodedUnencryptDataLength:]
+	cipherText = sealedData[4+encodedUnencryptedDataLength:]
 
-	if encryptionKey == nil {
-		return unencryptedData, nil, ErrMissingEncryptionKey
-	}
-
-	// Decrypt data with the unsealed encryption key and return it
-	decryptedData, err = ecrypto.Decrypt(ciphertext, encryptionKey, nil)
-	if err != nil {
-		return unencryptedData, nil, err
-	}
-
-	return unencryptedData, decryptedData, nil
+	return unencryptedData, cipherText, nil
 }
 
 // sealData encrypts data and seals it with the given key.
 // It returns the encrypted data prefixed with the unencrypted data and it's length.
+//
+// Format: uint32(littleEndian(len(unencryptedData))) || unencryptedData || encrypt(toBeEncrypted)
 func sealData(unencryptedData, toBeEncrypted, encryptionKey []byte) ([]byte, error) {
 	if encryptionKey == nil {
-		return nil, ErrMissingEncryptionKey
+		return nil, fmt.Errorf("encrypting data: %w", ErrMissingEncryptionKey)
 	}
 
 	// Encrypt data to seal with generated encryption key
 	encryptedData, err := ecrypto.Encrypt(toBeEncrypted, encryptionKey, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("encrypting data: %w", err)
 	}
 
-	unencryptDataLength := make([]byte, 4)
-	binary.LittleEndian.PutUint32(unencryptDataLength, uint32(len(unencryptedData)))
-	unencryptedData = append(unencryptDataLength, unencryptedData...)
+	unencryptedDataLength := make([]byte, 4)
+	binary.LittleEndian.PutUint32(unencryptedDataLength, uint32(len(unencryptedData)))
+	unencryptedData = append(unencryptedDataLength, unencryptedData...)
 
 	// Append unencrypted data with encrypted data
 	encryptedData = append(unencryptedData, encryptedData...)
