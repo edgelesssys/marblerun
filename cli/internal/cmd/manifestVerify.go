@@ -9,10 +9,11 @@ package cmd
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
-	"os"
 
+	"github.com/edgelesssys/marblerun/cli/internal/file"
 	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -51,7 +52,7 @@ func runManifestVerify(cmd *cobra.Command, args []string) error {
 // getSignatureFromString checks if a string is a file or a valid signature.
 func getSignatureFromString(manifest string, fs afero.Afero) (string, error) {
 	if _, err := fs.Stat(manifest); err != nil {
-		if !os.IsNotExist(err) {
+		if !errors.Is(err, afero.ErrFileNotFound) {
 			return "", err
 		}
 
@@ -67,7 +68,7 @@ func getSignatureFromString(manifest string, fs afero.Afero) (string, error) {
 	}
 
 	// manifest is an existing file -> return the signature of the file
-	rawManifest, err := fs.ReadFile(manifest)
+	rawManifest, err := loadManifestFile(file.New(manifest, fs))
 	if err != nil {
 		return "", err
 	}

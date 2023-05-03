@@ -307,25 +307,64 @@ func TestGetSignatureFromString(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	fs := afero.Afero{Fs: afero.NewMemMapFs()}
-
-	testValue := []byte("TestSignature")
+	testValue := []byte(`{"TestSignature": "signature"}`)
 	hash := sha256.Sum256(testValue)
 	directSignature := hex.EncodeToString(hash[:])
 
-	filename := "testSignature"
-	require.NoError(fs.WriteFile(filename, testValue, 0o644))
+	testCases := map[string]struct {
+		signature string
+		expected  string
+		fs        afero.Afero
+		wantErr   bool
+	}{
+		"direct signature": {
+			signature: directSignature,
+			expected:  directSignature,
+			fs:        afero.Afero{Fs: afero.NewMemMapFs()},
+		},
+		"json manifest file": {
+			signature: "testSignature",
+			expected:  directSignature,
+			fs: func() afero.Afero {
+				fs := afero.Afero{Fs: afero.NewMemMapFs()}
+				require.NoError(fs.WriteFile("testSignature", testValue, 0o644))
+				return fs
+			}(),
+		},
+		"yaml manifest file": {
+			signature: "testSignature",
+			expected: func() string {
+				hash := sha256.Sum256([]byte(`{"TestSignature":"signature"}`)) // JSON converted from YAML has no whitespace
+				return hex.EncodeToString(hash[:])
+			}(),
+			fs: func() afero.Afero {
+				fs := afero.Afero{Fs: afero.NewMemMapFs()}
+				require.NoError(fs.WriteFile("testSignature", []byte(`TestSignature: signature`), 0o644))
+				return fs
+			}(),
+		},
+		"invalid file": {
+			signature: "testSignature",
+			fs: func() afero.Afero {
+				fs := afero.Afero{Fs: afero.NewMemMapFs()}
+				require.NoError(fs.WriteFile("testSignature", []byte(`invalid: manifest: file`), 0o644))
+				return fs
+			}(),
+			wantErr: true,
+		},
+	}
 
-	testSignature1, err := getSignatureFromString(directSignature, fs)
-	assert.NoError(err)
-	assert.Equal(directSignature, testSignature1)
-
-	testSignature2, err := getSignatureFromString(filename, fs)
-	assert.NoError(err)
-	assert.Equal(directSignature, testSignature2)
-
-	_, err = getSignatureFromString("invalidFilename", fs)
-	assert.Error(err)
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			testSignature, err := getSignatureFromString(tc.signature, tc.fs)
+			if tc.wantErr {
+				assert.Error(err)
+				return
+			}
+			assert.NoError(err)
+			assert.Equal(tc.expected, testSignature)
+		})
+	}
 }
 
 func TestManifestUpdateAcknowledge(t *testing.T) {

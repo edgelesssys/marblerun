@@ -93,9 +93,9 @@ func loadManifestFile(file *file.Handler) ([]byte, error) {
 
 	// if Valid is true the file was in JSON format and we can just return the data
 	if json.Valid(manifestData) {
-		return manifestData, err
+		return manifestData, nil
 	}
 
 	// otherwise we try to convert from YAML to json
-	return yaml.YAMLToJSON(manifestData)
+	return yaml.YAMLToJSONStrict(manifestData)
 }
