@@ -29,6 +29,7 @@ import (
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
 	"github.com/spacemonkeygo/openssl"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -52,7 +53,7 @@ func TestOpenSSLVerify(t *testing.T) {
 	// create core
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
-	stor := stdstore.New(&seal.MockSealer{})
+	stor := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "")
 	recovery := recovery.NewSinglePartyRecovery()
 	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, stor, recovery, zapLogger, nil, nil)
 	require.NoError(err)
