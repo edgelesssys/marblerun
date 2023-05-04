@@ -26,10 +26,14 @@ func (s *MockSealer) Seal(unencryptedData []byte, toBeEncrypted []byte) ([]byte,
 	return toBeEncrypted, nil
 }
 
-// SetEncryptionKey implements the Sealer interface.
-func (s *MockSealer) SetEncryptionKey(_ []byte) ([]byte, error) {
-	return nil, nil
+// SealEncryptionKey implements the Sealer interface.
+// Since the MockSealer does not support sealing with an enclave key, it returns the key as is.
+func (s *MockSealer) SealEncryptionKey(key []byte) ([]byte, error) {
+	return key, nil
 }
+
+// SetEncryptionKey implements the Sealer interface.
+func (s *MockSealer) SetEncryptionKey(_ []byte) {}
 
 // UnsealEncryptionKey implements the Sealer interface.
 func (s *MockSealer) UnsealEncryptionKey(key []byte) ([]byte, error) {

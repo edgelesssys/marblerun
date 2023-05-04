@@ -162,17 +162,17 @@ func (s *StdStore) SetEncryptionKey(encryptionKey []byte) error {
 	// If there already is an existing key file stored on disk, save it
 	s.backupEncryptionKey()
 
-	encryptedKey, err := s.sealer.SetEncryptionKey(encryptionKey)
+	encryptedKey, err := s.sealer.SealEncryptionKey(encryptionKey)
 	if err != nil {
 		return fmt.Errorf("encrypting data key: %w", err)
 	}
 
 	// Write the sealed encryption key to disk
 	if err = s.fs.WriteFile(filepath.Join(s.sealDir, SealedKeyFname), encryptedKey, 0o600); err != nil {
-		// Reset encryption key if writing to disk fails
-		_, _ = s.sealer.SetEncryptionKey(encryptionKey)
 		return fmt.Errorf("writing encrypted key to disk: %w", err)
 	}
+
+	s.sealer.SetEncryptionKey(encryptionKey)
 
 	return nil
 }
@@ -241,7 +241,7 @@ func (s *StdStore) commit(data map[string][]byte) error {
 	return nil
 }
 
-// unsealEncryptionKey loads the encrypted seal key from disk and decrypts it.
+// unsealEncryptionKey sets the seal key for the store's sealer by loading the encrypted key from disk.
 func (s *StdStore) unsealEncryptionKey() error {
 	encryptedKey, err := s.fs.ReadFile(filepath.Join(s.sealDir, SealedKeyFname))
 	if err != nil {
@@ -251,11 +251,7 @@ func (s *StdStore) unsealEncryptionKey() error {
 	if err != nil {
 		return fmt.Errorf("decrypting data key: %w", err)
 	}
-
-	if _, err := s.sealer.SetEncryptionKey(key); err != nil {
-		return fmt.Errorf("setting encryption key: %w", err)
-	}
-
+	s.sealer.SetEncryptionKey(key)
 	return nil
 }
 
