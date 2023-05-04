@@ -37,11 +37,7 @@ func (s *NoEnclaveSealer) Unseal(sealedData []byte) ([]byte, []byte, error) {
 	// Decrypt data with the unsealed encryption key and return it
 	decryptedData, err := ecrypto.Decrypt(cipherText, s.encryptionKey, nil)
 	if err != nil {
-		// NoEnclaveSealer needs to return EncryptionKeyError if decryption fails
-		// so that the Coordinator enters recovery mode.
-		// This is required for integration tests to work that corrupt the encryption key.
-		// (The AESGCMSealer already fails in UnsealEncryptionKey with this error.)
-		return unencryptedData, nil, fmt.Errorf("decrypting sealed data: %w", &EncryptionKeyError{Err: err})
+		return unencryptedData, nil, fmt.Errorf("decrypting sealed data: %w", err)
 	}
 
 	return unencryptedData, decryptedData, nil

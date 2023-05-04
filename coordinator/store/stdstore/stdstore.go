@@ -128,7 +128,7 @@ func (s *StdStore) LoadState() ([]byte, error) {
 		// And retry unsealing the sealed data
 		if err := s.unsealEncryptionKey(); err != nil {
 			s.recoveryMode = true
-			return encodedRecoveryData, fmt.Errorf("unsealing encryption key: %w", err)
+			return encodedRecoveryData, &seal.EncryptionKeyError{Err: err}
 		}
 
 		encodedRecoveryData, stateRaw, err = s.sealer.Unseal(sealedData)

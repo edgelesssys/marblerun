@@ -103,7 +103,7 @@ func (s *AESGCMSealer) UnsealEncryptionKey(encryptedKey []byte) ([]byte, error) 
 	// Decrypt stored encryption key with seal key
 	encryptionKey, err := ecrypto.Unseal(encryptedKey, nil)
 	if err != nil {
-		return nil, &EncryptionKeyError{Err: err}
+		return nil, err
 	}
 
 	return encryptionKey, nil
