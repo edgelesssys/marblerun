@@ -21,6 +21,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	promtest "github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -93,7 +94,7 @@ func newTestClientAPI(t *testing.T) *clientapi.ClientAPI {
 
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
-	store := stdstore.New(&seal.MockSealer{})
+	store := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "")
 	recovery := recovery.NewSinglePartyRecovery()
 	core, err := core.NewCore([]string{"localhost"}, validator, issuer, store, recovery, log, nil, nil)
 	require.NoError(err)

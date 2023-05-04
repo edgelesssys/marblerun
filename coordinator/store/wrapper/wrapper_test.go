@@ -19,6 +19,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
 	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/edgelesssys/marblerun/test"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
@@ -33,7 +34,7 @@ func TestStoreWrapper(t *testing.T) {
 	require := require.New(t)
 	ctx := context.Background()
 
-	store := stdstore.New(&seal.MockSealer{})
+	store := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "")
 	rawManifest := []byte(test.ManifestJSON)
 	curState := state.AcceptingManifest
 	testSecret := manifest.Secret{
@@ -86,7 +87,7 @@ func TestStoreWrapperRollback(t *testing.T) {
 	require := require.New(t)
 	ctx := context.Background()
 
-	stor := stdstore.New(&seal.MockSealer{})
+	stor := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "")
 	data := New(stor)
 
 	startingState := state.AcceptingManifest

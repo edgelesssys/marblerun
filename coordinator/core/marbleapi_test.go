@@ -33,6 +33,7 @@ import (
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -57,8 +58,9 @@ func TestActivate(t *testing.T) {
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
+	fs := afero.NewMemMapFs()
 	recovery := recovery.NewSinglePartyRecovery()
-	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer), recovery, zapLogger, nil, nil)
+	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, ""), recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	require.NotNil(coreServer)
 
@@ -465,8 +467,9 @@ func TestSecurityLevelUpdate(t *testing.T) {
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
+	fs := afero.NewMemMapFs()
 	recovery := recovery.NewSinglePartyRecovery()
-	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer), recovery, zapLogger, nil, nil)
+	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, ""), recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	require.NotNil(coreServer)
 
@@ -497,7 +500,7 @@ func TestSecurityLevelUpdate(t *testing.T) {
 	spawner.newMarble(t, "frontend", "Azure", false)
 
 	// Use a new core and test if updated manifest persisted after restart
-	coreServer2, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer), recovery, zapLogger, nil, nil)
+	coreServer2, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, ""), recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	coreServer2State := testutil.GetState(t, coreServer2.txHandle)
 	coreServer2UpdatedPkg := testutil.GetPackage(t, coreServer2.txHandle, "frontend")
@@ -574,8 +577,9 @@ func TestActivateWithMissingParameters(t *testing.T) {
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
+	fs := afero.NewMemMapFs()
 	recovery := recovery.NewSinglePartyRecovery()
-	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer), recovery, zapLogger, nil, nil)
+	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, ""), recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	require.NotNil(coreServer)
 

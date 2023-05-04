@@ -24,6 +24,7 @@ import (
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/spf13/afero"
 	"go.uber.org/zap"
 )
 
@@ -81,7 +82,7 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer 
 		go server.RunPrometheusServer(promServerAddr, log, promRegistry, eventlog)
 	}
 
-	store := stdstore.New(sealer)
+	store := stdstore.New(sealer, afero.NewOsFs(), sealDir)
 
 	// creating core
 	log.Info("creating the Core object")
