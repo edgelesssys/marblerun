@@ -121,7 +121,7 @@ func NewCore(
 	}
 	c.metrics = newCoreMetrics(promFactory, c, "coordinator")
 
-	zapLogger.Info("loading state")
+	zapLogger.Info("Loading state")
 	recoveryData, loadErr := txHandle.LoadState()
 	if err := c.recovery.SetRecoveryData(recoveryData); err != nil {
 		c.log.Error("Could not retrieve recovery data from state. Recovery will be unavailable", zap.Error(err))
@@ -150,7 +150,7 @@ func NewCore(
 			return nil, loadErr
 		}
 		// sealed state was found, but couldn't be decrypted, go to recovery mode or reset manifest
-		c.log.Error("Failed to decrypt sealed state. Processing with a new state. Use the /recover API endpoint to load an old state, or submit a new manifest to overwrite the old state. Look up the documentation for more information on how to proceed.")
+		c.log.Error("Failed to decrypt sealed state. Proceeding with a new state. Use the /recover API endpoint to load an old state, or submit a new manifest to overwrite the old state. Look up the documentation for more information on how to proceed.")
 		if err := c.setCAData(dnsNames, transaction); err != nil {
 			return nil, err
 		}
@@ -286,7 +286,7 @@ func (c *Core) GetQuote() []byte {
 // If no quote can be generated due to the system not supporting SGX, no error is returned,
 // and the Coordinator proceeds to run in simulation mode.
 func (c *Core) GenerateQuote(cert []byte) error {
-	c.log.Info("generating quote")
+	c.log.Info("Generating quote")
 	quote, err := c.qi.Issue(cert)
 	if err != nil {
 		if err.Error() == "OE_UNSUPPORTED" {
@@ -366,7 +366,7 @@ func (c *Core) GenerateSecrets(
 			continue
 		}
 
-		c.log.Info("generating secret", zap.String("name", name), zap.String("type", secret.Type), zap.Uint("size", secret.Size))
+		c.log.Info("Generating secret", zap.String("name", name), zap.String("type", secret.Type), zap.Uint("size", secret.Size))
 		switch secret.Type {
 		// Raw = Symmetric Key
 		case manifest.SecretTypeSymmetricKey:
