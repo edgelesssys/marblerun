@@ -121,7 +121,7 @@ func RunClientServer(mux http.Handler, address string, tlsConfig *tls.Config, za
 		Handler:   mux,
 		TLSConfig: tlsConfig,
 	}
-	zapLogger.Info("starting client https server", zap.String("address", address))
+	zapLogger.Info("Starting client https server", zap.String("address", address))
 	err := server.ListenAndServeTLS("", "")
 	zapLogger.Warn(err.Error())
 }
@@ -131,7 +131,7 @@ func RunPrometheusServer(address string, zapLogger *zap.Logger, reg *prometheus.
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.InstrumentMetricHandler(reg, promhttp.HandlerFor(reg, promhttp.HandlerOpts{Registry: reg})))
 	mux.Handle("/events", eventlog.Handler())
-	zapLogger.Info("starting prometheus /metrics endpoint", zap.String("address", address))
+	zapLogger.Info("Starting prometheus /metrics endpoint", zap.String("address", address))
 	err := http.ListenAndServe(address, mux)
 	zapLogger.Warn(err.Error())
 }

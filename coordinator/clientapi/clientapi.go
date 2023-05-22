@@ -447,7 +447,7 @@ func (a *ClientAPI) SetManifest(ctx context.Context, rawManifest []byte) (recove
 		}
 	}
 
-	a.updateLog.Info("initial manifest set")
+	a.updateLog.Info("Initial manifest set")
 	if err := txdata.PutUpdateLog(a.updateLog.String()); err != nil {
 		return nil, fmt.Errorf("saving update log to store: %w", err)
 	}
@@ -721,7 +721,7 @@ func (a *ClientAPI) WriteSecrets(ctx context.Context, rawSecretManifest []byte, 
 		if err := txdata.PutSecret(secretName, secret); err != nil {
 			return fmt.Errorf("saving secret %q to store: %w", secretName, err)
 		}
-		a.updateLog.Info("secret set", zap.String("user", updater.Name()), zap.String("secret", secretName), zap.String("type", secret.Type))
+		a.updateLog.Info("Secret set", zap.String("user", updater.Name()), zap.String("secret", secretName), zap.String("type", secret.Type))
 	}
 	if err := txdata.AppendUpdateLog(a.updateLog.String()); err != nil {
 		return fmt.Errorf("saving update log to store: %w", err)

@@ -85,7 +85,7 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer 
 	store := stdstore.New(sealer, afero.NewOsFs(), sealDir)
 
 	// creating core
-	log.Info("creating the Core object")
+	log.Info("Creating the Core object")
 	if err := os.MkdirAll(sealDir, 0o700); err != nil {
 		log.Fatal("Cannot create or access sealdir. Please check the permissions for the specified path.", zap.Error(err))
 	}
@@ -114,7 +114,7 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer 
 	}
 
 	// start client server
-	log.Info("starting the client server")
+	log.Info("Starting the client server")
 	mux := server.CreateServeMux(clientServer, promFactoryPtr)
 	clientServerTLSConfig, err := co.GetTLSConfig()
 	if err != nil {
