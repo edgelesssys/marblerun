@@ -278,6 +278,7 @@ func (a *ClientAPI) Recover(ctx context.Context, encryptionKey []byte) (keysLeft
 		return -1, fmt.Errorf("loading state: %w", err)
 	}
 
+	a.txHandle.SetRecoveryData(recoveryData)
 	if err := a.recovery.SetRecoveryData(recoveryData); err != nil {
 		a.log.Error("Could not retrieve recovery data from state. Recovery will be unavailable", zap.Error(err))
 	}

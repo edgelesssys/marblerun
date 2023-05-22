@@ -535,6 +535,7 @@ func TestRecover(t *testing.T) {
 				assert.False(tc.store.loadCalled)
 				return
 			}
+			assert.True(tc.store.setRecoveryDataCalled)
 			assert.True(tc.store.loadCalled)
 			assert.NotNil(tc.core.quote)
 		})
@@ -656,14 +657,15 @@ func (c *fakeCore) GenerateQuote(quoteData []byte) error {
 }
 
 type fakeStore struct {
-	store               store.Store
-	beginTransactionErr error
-	recoveryData        []byte
-	encryptionKey       []byte
-	setEncryptionKeyErr error
-	loadStateRes        []byte
-	loadStateErr        error
-	loadCalled          bool
+	store                 store.Store
+	beginTransactionErr   error
+	setRecoveryDataCalled bool
+	recoveryData          []byte
+	encryptionKey         []byte
+	setEncryptionKeyErr   error
+	loadStateRes          []byte
+	loadStateErr          error
+	loadCalled            bool
 }
 
 func (s *fakeStore) BeginTransaction(ctx context.Context) (store.Transaction, error) {
@@ -682,6 +684,7 @@ func (s *fakeStore) SetEncryptionKey(key []byte) error {
 }
 
 func (s *fakeStore) SetRecoveryData(recoveryData []byte) {
+	s.setRecoveryDataCalled = true
 	s.recoveryData = recoveryData
 }
 
