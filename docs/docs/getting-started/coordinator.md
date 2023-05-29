@@ -9,6 +9,8 @@ The Coordinator can be configured with several environment variables:
 * `EDG_COORDINATOR_DNS_NAMES`: The DNS names for the cluster's root certificate
 * `EDG_COORDINATOR_SEAL_DIR`: The file path for storing sealed data
 
+When you use MarbleRun [with Kubernetes](../deployment/kubernetes.md), you can [scale the Coordinator to multiple instances](../features/recovery.md#distributed-coordinator) to increase availability and minimize situations where [manual recovery](../workflows/recover-coordinator.md) is required.
+
 The Coordinator clients can be divided into two major groups.
 
 * The owners/providers/administrators who need to interact with the Coordinator for deploying their confidential application and administrative tasks

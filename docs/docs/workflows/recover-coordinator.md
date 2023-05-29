@@ -3,6 +3,12 @@
 Different situations require the [recovery](../features/recovery.md) of the Coordinator.
 If the Coordinator fails to unseal its state, it will enter recovery mode.
 
+:::tip
+
+Use [distributed Coordinator instances](../features/recovery.md#distributed-coordinator) to minimize situations where manual recovery is required.
+
+:::
+
 You need the corresponding private key to the [`RecoveryKeys` defined in the manifest](define-manifest.md#recoverykeys) and the [recovery secret returned to you during the initial upload of the manifest](set-manifest.md).
 
 :::info
@@ -47,6 +53,19 @@ On success, the Coordinator applies the sealed state again. If the Coordinator c
 <enterpriseBanner/>
 
 If you've [configured your MarbleRun deployment for multi-party recovery](define-manifest.md#multi-party-recovery), send each party the corresponding [recovery secret](set-manifest.md). Ask them to perform the steps above. Once all parties have uploaded their secrets, the Coordinator recovers the sealed state and continues its operations.
+
+:::note
+
+If your MarbleRun deployment uses [distributed Coordinator instances](../features/recovery.md#distributed-coordinator), make sure all parties send their secrets to the same Coordinator instance.
+One way to achieve this is scaling the Coordinator to a single instance:
+
+```bash
+kubectl scale --replicas=1 -n marblerun deployment/marblerun-coordinator
+```
+
+After recovery, you can scale the Coordinator back to the desired number of instances.
+
+:::
 
 ### Example
 
