@@ -32,7 +32,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestMain(m *testing.M) {
@@ -62,10 +62,7 @@ func TestSeal(t *testing.T) {
 	require := require.New(t)
 	ctx := context.Background()
 
-	// setup mock zaplogger which can be passed to Core
-	zapLogger, err := zap.NewDevelopment()
-	require.NoError(err)
-	defer zapLogger.Sync()
+	zapLogger := zaptest.NewLogger(t)
 
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
@@ -119,10 +116,7 @@ func TestRecover(t *testing.T) {
 	require := require.New(t)
 	ctx := context.Background()
 
-	// setup mock zaplogger which can be passed to Core
-	zapLogger, err := zap.NewDevelopment()
-	require.NoError(err)
-	defer zapLogger.Sync()
+	zapLogger := zaptest.NewLogger(t)
 
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
@@ -301,9 +295,7 @@ func TestUnsetRestart(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	zapLogger, err := zap.NewDevelopment()
-	require.NoError(err)
-	defer zapLogger.Sync()
+	zapLogger := zaptest.NewLogger(t)
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}

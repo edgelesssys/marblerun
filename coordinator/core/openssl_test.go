@@ -32,7 +32,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
 )
@@ -45,10 +45,7 @@ func TestOpenSSLVerify(t *testing.T) {
 	var manifest manifest.Manifest
 	require.NoError(json.Unmarshal([]byte(test.ManifestJSON), &manifest))
 
-	// setup mock zaplogger which can be passed to Core
-	zapLogger, err := zap.NewDevelopment()
-	require.NoError(err)
-	defer zapLogger.Sync()
+	zapLogger := zaptest.NewLogger(t)
 
 	// create core
 	validator := quote.NewMockValidator()
