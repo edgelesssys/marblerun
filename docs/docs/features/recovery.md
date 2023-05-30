@@ -16,15 +16,15 @@ This narrows the challenge of persistent storage down to the Coordinator itself.
 
 The straightforward way to run MarbleRun is with a single Coordinator.
 In this case, the state is encrypted with the SGX seal key and stored on disk.
-When being pinned to a single host, the Coordinator can unseal its state automatically.
-However, when the Coordinator is moved to another physical host, a [manual step](#recovery) is required to ensure the Coordinator's state can be recovered.
+When pinned to a single host, the Coordinator can unseal its state automatically.
+However, when the Coordinator is moved to another physical host, a [manual step](#recovery) is required to recover the Coordinator's state.
 
 ### Distributed Coordinator
 
 <enterpriseBanner/>
 
 When you use MarbleRun [with Kubernetes](../deployment/kubernetes.md), you can scale the Coordinator to multiple instances.
-The instances share a common state, which is encrypted and stored as a Kubernetes secret.
+The instances share a common state, encrypted and stored as a Kubernetes secret.
 The encryption key is securely distributed among the Coordinator instances via attested TLS.
 Additionally, each Coordinator encrypts the encryption key with its SGX seal key and stores it in a ConfigMap.
 
