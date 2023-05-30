@@ -10,9 +10,34 @@ In sum, this means that the usual SGX programming model isn't suited for virtual
 
 With MarbleRun, the Coordinator [manages the Marbles' secrets](../features/secrets-management.md) and Marbles obtain them securely on start.
 Thus, Marbles can be distributed and rescheduled on arbitrary machines.
+This narrows the challenge of persistent storage down to the Coordinator itself.
 
-Still, the Coordinator itself must keep its state persistent somehow. When being pinned to a single host the default SGX sealing methods are used. However, when the Coordinator is moved to another physical host, a manual step is required to ensure the Coordinator's state can be recovered.
-Therefore, the manifest allows for specifying a designated *Recovery Key*. The Recovery Key is a public RSA key. Upon startup, the Coordinator encrypts its symmetric state-encryption key with this public key. The holder of the corresponding private key can recover the Coordinator, as is described [in the recovery workflow](../workflows/recover-coordinator.md).
+### Single Coordinator
+
+The straightforward way to run MarbleRun is with a single Coordinator.
+In this case, the state is encrypted with the SGX seal key and stored on disk.
+When pinned to a single host, the Coordinator can unseal its state automatically.
+However, when the Coordinator is moved to another physical host, a [manual step](#recovery) is required to recover the Coordinator's state.
+
+### Distributed Coordinator
+
+<enterpriseBanner/>
+
+When you use MarbleRun [with Kubernetes](../deployment/kubernetes.md), you can scale the Coordinator to multiple instances.
+The instances share a common state, encrypted and stored as a Kubernetes secret.
+The encryption key is securely distributed among the Coordinator instances via attested TLS.
+Additionally, each Coordinator encrypts the encryption key with its SGX seal key and stores it in a ConfigMap.
+
+In this mode of operation, manual recovery is only required when
+
+* all Coordinator instances are stopped at the same time, and
+* all new instances are scheduled on new physical hosts.
+
+In other words, if at least one instance is scheduled on a host where a previous instance was running, the state can be recovered automatically.
+
+## Recovery
+
+The manifest allows for specifying a designated *Recovery Key*. The Recovery Key is a public RSA key. Upon startup, the Coordinator encrypts its symmetric state-encryption key with this public key. The holder of the corresponding private key can recover the Coordinator, as is described [in the recovery workflow](../workflows/recover-coordinator.md).
 
 :::caution
 
@@ -20,13 +45,7 @@ The owner of the Recovery Key can access the raw state of the Coordinator.
 
 :::
 
-<!--
-## Distributed Coordinators with external store
-
-<enterpriseBanner/>
--->
-
-## Multi-party recovery
+### Multi-party recovery
 
 <enterpriseBanner/>
 

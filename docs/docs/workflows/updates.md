@@ -22,8 +22,11 @@ helm upgrade marblerun edgeless/marblerun \
     --set coordinator.version=latest
 ```
 
-If the Coordinator is rescheduled on the same host as before, it will continue running with the same manifest as before.
-However, if the Coordinator gets rescheduled to another node during the updating process you need to perform the [recovery step](../features/recovery.md).
+:::caution
+
+If you've deployed only [one Coordinator instance](../features/recovery.md#single-coordinator) and it gets rescheduled to another node during the updating process, you need to perform the [recovery step](../features/recovery.md).
+
+:::
 
 The Marbles won't be affected by the Coordinator update and will continue running.
 New Marbles that are started can interact with existing ones.

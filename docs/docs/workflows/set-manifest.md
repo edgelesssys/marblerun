@@ -14,6 +14,6 @@ If the manifest contains a `RecoveryKeys` entry, you will receive a JSON reply i
 
 :::caution
 
-Keep these values somewhere safe. Without it, you can't recover the Coordinator in case the SGX seal key changed.
+Keep these values somewhere safe. Without it, you can't [recover the Coordinator](../features/recovery.md).
 
 :::
