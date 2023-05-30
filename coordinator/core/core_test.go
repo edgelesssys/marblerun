@@ -116,7 +116,6 @@ func TestRecover(t *testing.T) {
 	require := require.New(t)
 	ctx := context.Background()
 
-	// setup mock zaplogger which can be passed to Core
 	zapLogger := zaptest.NewLogger(t)
 
 	validator := quote.NewMockValidator()
