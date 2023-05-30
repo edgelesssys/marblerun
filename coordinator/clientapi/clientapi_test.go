@@ -26,6 +26,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
 	"github.com/edgelesssys/marblerun/coordinator/store/wrapper"
 	"github.com/edgelesssys/marblerun/coordinator/store/wrapper/testutil"
+	"github.com/edgelesssys/marblerun/coordinator/updatelog"
 	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/google/uuid"
@@ -33,7 +34,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestMain(m *testing.M) {
@@ -126,9 +127,7 @@ func TestGetCertQuote(t *testing.T) {
 			assert := assert.New(t)
 			require := require.New(t)
 
-			log, err := zap.NewDevelopment()
-			require.NoError(err)
-			defer log.Sync()
+			log := zaptest.NewLogger(t)
 
 			api := &ClientAPI{
 				core:     tc.core,
@@ -189,11 +188,8 @@ func TestGetManifestSignature(t *testing.T) {
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			assert := assert.New(t)
-			require := require.New(t)
 
-			log, err := zap.NewDevelopment()
-			require.NoError(err)
-			defer log.Sync()
+			log := zaptest.NewLogger(t)
 
 			api := &ClientAPI{
 				txHandle: tc.store,
@@ -322,9 +318,7 @@ func TestGetSecrets(t *testing.T) {
 			assert := assert.New(t)
 			require := require.New(t)
 
-			log, err := zap.NewDevelopment()
-			require.NoError(err)
-			defer log.Sync()
+			log := zaptest.NewLogger(t)
 
 			api := &ClientAPI{
 				txHandle: tc.store,
@@ -369,9 +363,7 @@ func TestGetStatus(t *testing.T) {
 			assert := assert.New(t)
 			require := require.New(t)
 
-			log, err := zap.NewDevelopment()
-			require.NoError(err)
-			defer log.Sync()
+			log := zaptest.NewLogger(t)
 
 			api := &ClientAPI{
 				core: tc.core,
@@ -511,9 +503,7 @@ func TestRecover(t *testing.T) {
 			assert := assert.New(t)
 			require := require.New(t)
 
-			log, err := zap.NewDevelopment()
-			require.NoError(err)
-			defer log.Sync()
+			log := zaptest.NewLogger(t)
 
 			api := &ClientAPI{
 				txHandle: tc.store,
@@ -543,7 +533,90 @@ func TestRecover(t *testing.T) {
 }
 
 func TestSetManifest(t *testing.T) {
-	t.Log("WARNING: Missing unit Test for SetManifest")
+	testCases := map[string]struct {
+		store    *fakeStoreTransaction
+		core     *fakeCore
+		manifest []byte
+		wantErr  bool
+	}{
+		"success": {
+			store: &fakeStoreTransaction{
+				state: make(map[string][]byte),
+			},
+			core: &fakeCore{
+				state: state.AcceptingManifest,
+			},
+			manifest: []byte(test.ManifestJSON),
+		},
+		"wrong state": {
+			store: &fakeStoreTransaction{
+				state: make(map[string][]byte),
+			},
+			core: &fakeCore{
+				state: state.AcceptingMarbles,
+			},
+			manifest: []byte(test.ManifestJSON),
+			wantErr:  true,
+		},
+		"transaction cannot be committed": {
+			store: &fakeStoreTransaction{
+				state:     make(map[string][]byte),
+				commitErr: assert.AnError,
+			},
+			core: &fakeCore{
+				state: state.AcceptingManifest,
+			},
+			manifest: []byte(test.ManifestJSON),
+			wantErr:  true,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
+			require := require.New(t)
+
+			log := zaptest.NewLogger(t)
+
+			updateLog, err := updatelog.New()
+			require.NoError(err)
+
+			api := &ClientAPI{
+				txHandle:  tc.store,
+				core:      tc.core,
+				recovery:  &stubRecovery{},
+				updateLog: updateLog,
+				log:       log,
+			}
+
+			wrapper := wrapper.New(tc.store)
+			rootCert, rootKey, err := crypto.GenerateCert([]string{"localhost"}, "MarbleRun Unit Test Root", nil, nil, nil)
+			require.NoError(err)
+			intermediateCert, intermediateKey, err := crypto.GenerateCert([]string{"localhost"}, "MarbleRun Unit Test Intermediate", nil, rootCert, rootKey)
+			require.NoError(err)
+			marbleCert, _, err := crypto.GenerateCert([]string{"localhost"}, "MarbleRun Unit Test Marble", intermediateKey, nil, nil)
+			require.NoError(err)
+
+			require.NoError(wrapper.PutCertificate(constants.SKCoordinatorRootCert, rootCert))
+			require.NoError(wrapper.PutCertificate(constants.SKCoordinatorIntermediateCert, intermediateCert))
+			require.NoError(wrapper.PutCertificate(constants.SKMarbleRootCert, marbleCert))
+			require.NoError(wrapper.PutPrivateKey(constants.SKCoordinatorRootKey, rootKey))
+			require.NoError(wrapper.PutPrivateKey(constants.SKCoordinatorIntermediateKey, intermediateKey))
+
+			_, err = api.SetManifest(context.Background(), tc.manifest)
+			if tc.wantErr {
+				assert.Error(err)
+				if tc.store.beginTransactionCalled {
+					assert.True(tc.store.rollbackCalled)
+				}
+				return
+			}
+
+			require.NoError(err)
+			assert.True(tc.core.unlockCalled)
+			assert.True(tc.store.commitCalled)
+		})
+	}
 }
 
 func TestUpdateManifest(t *testing.T) {
@@ -734,4 +807,81 @@ func mustEncodeToPem(t *testing.T, cert *x509.Certificate) string {
 		t.Fatal("failed to encode certificate to PEM")
 	}
 	return string(pemCert)
+}
+
+type fakeStoreTransaction struct {
+	beginTransactionCalled bool
+	beginTransactionErr    error
+	setEncryptionKeyCalled bool
+	setEncryptionKeyErr    error
+	loadStateCalled        bool
+	loadStateErr           error
+	setRecoveryDataCalled  bool
+
+	state          map[string][]byte
+	getErr         error
+	putErr         error
+	deleteErr      error
+	iteratorErr    error
+	commitErr      error
+	commitCalled   bool
+	rollbackCalled bool
+}
+
+func (s *fakeStoreTransaction) BeginTransaction(ctx context.Context) (store.Transaction, error) {
+	s.beginTransactionCalled = true
+	return s, s.beginTransactionErr
+}
+
+func (s *fakeStoreTransaction) SetEncryptionKey([]byte) error {
+	s.setEncryptionKeyCalled = true
+	return s.setEncryptionKeyErr
+}
+
+func (s *fakeStoreTransaction) SetRecoveryData([]byte) {
+	s.setRecoveryDataCalled = true
+}
+
+func (s *fakeStoreTransaction) LoadState() ([]byte, error) {
+	s.loadStateCalled = true
+	return nil, s.loadStateErr
+}
+
+func (s *fakeStoreTransaction) Get(key string) ([]byte, error) {
+	if s.getErr != nil {
+		return nil, s.getErr
+	}
+	return s.state[key], nil
+}
+
+func (s *fakeStoreTransaction) Put(key string, data []byte) error {
+	if s.putErr != nil {
+		return s.putErr
+	}
+	s.state[key] = data
+	return nil
+}
+
+func (s *fakeStoreTransaction) Delete(key string) error {
+	if s.deleteErr != nil {
+		return s.deleteErr
+	}
+	delete(s.state, key)
+	return nil
+}
+
+func (s *fakeStoreTransaction) Iterator(string) (store.Iterator, error) {
+	if s.iteratorErr != nil {
+		return nil, s.iteratorErr
+	}
+	return nil, nil
+}
+
+func (s *fakeStoreTransaction) Commit(context.Context) error {
+	s.commitCalled = true
+	return s.commitErr
+}
+
+func (s *fakeStoreTransaction) Rollback() {
+	s.rollbackCalled = true
 }

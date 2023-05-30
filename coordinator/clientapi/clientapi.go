@@ -459,6 +459,7 @@ func (a *ClientAPI) SetManifest(ctx context.Context, rawManifest []byte) (recove
 	a.txHandle.SetRecoveryData(recoveryData)
 	if err := commit(ctx); err != nil {
 		a.log.Error("sealing of state failed", zap.Error(err))
+		return nil, fmt.Errorf("sealing state: %w", err)
 	}
 
 	a.log.Info("SetManifest successful")
