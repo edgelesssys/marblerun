@@ -5,7 +5,7 @@ If the Coordinator fails to unseal its state, it will enter recovery mode.
 
 :::tip
 
-Use [distributed Coordinator instances](../features/recovery.md#distributed-coordinator) to minimize situations where manual recovery is required.
+Use [distributed Coordinator instances](../features/recovery.md#distributed-coordinator) to reduce the occurrence of events that require manual recovery.
 
 :::
 
