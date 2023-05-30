@@ -24,7 +24,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestClientApiRequestMetrics(t *testing.T) {
@@ -88,9 +88,7 @@ func newTestClientAPI(t *testing.T) *clientapi.ClientAPI {
 	t.Helper()
 	require := require.New(t)
 
-	log, err := zap.NewDevelopment()
-	require.NoError(err)
-	defer log.Sync()
+	log := zaptest.NewLogger(t)
 
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()

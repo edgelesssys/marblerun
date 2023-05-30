@@ -30,7 +30,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestSetManifest_Legacy(t *testing.T) {
@@ -604,8 +604,7 @@ func setupAPI(t *testing.T) (*ClientAPI, wrapper.Wrapper) {
 	require := require.New(t)
 
 	store := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "")
-	log, err := zap.NewDevelopment()
-	require.NoError(err)
+	log := zaptest.NewLogger(t)
 
 	wrapper := wrapper.New(store)
 

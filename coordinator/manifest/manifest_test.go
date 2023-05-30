@@ -19,7 +19,7 @@ import (
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestFile(t *testing.T) {
@@ -264,15 +264,14 @@ func TestManifestCheck(t *testing.T) {
 	err := json.Unmarshal([]byte(test.ManifestJSONWithRecoveryKey), &manifest)
 	require.NoError(err)
 
-	zap, err := zap.NewDevelopment()
-	require.NoError(err)
-	err = manifest.Check(zap)
+	log := zaptest.NewLogger(t)
+	err = manifest.Check(log)
 	assert.NoError(err)
 
 	manifest.Users["anotherUser"] = User{
 		Certificate: manifest.Users["admin"].Certificate,
 	}
-	err = manifest.Check(zap)
+	err = manifest.Check(log)
 	assert.Error(err)
 }
 
