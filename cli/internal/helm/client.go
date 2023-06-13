@@ -18,7 +18,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/util/k8sutil"
 	"github.com/gofrs/flock"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
