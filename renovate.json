@@ -47,6 +47,13 @@
       "groupName": "K8s dependencies"
     },
     {
+      "matchLanguages": [
+        "js",
+        "node"
+      ],
+      "prPriority": -20
+    },
+    {
       "matchManagers": [
         "github-actions"
       ],
