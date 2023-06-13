@@ -1,6 +1,81 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:base"
+    "config:base",
+    ":preserveSemverRanges",
+    "helpers:pinGitHubActionDigests",
+    ":separateMajorReleases",
+    ":semanticCommitsDisabled"
+  ],
+  "commitMessagePrefix": "deps:",
+  "commitMessageAction": "update",
+  "addLabels": [
+    "dependencies"
+  ],
+  "postUpdateOptions": [
+    "gomodTidy",
+    "gomodUpdateImportPaths"
+  ],
+  "prConcurrentLimit": 4,
+  "assignees": ["daniel-weisse"],
+  "packageRules": [
+    {
+      "matchManagers": [
+        "gomod"
+      ],
+      "matchDepTypes": [
+        "indirect"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "pin",
+        "pinDigest",
+        "digest",
+        "lockFileMaintenance",
+        "rollback",
+        "bump"
+      ],
+      "enabled": true,
+      "prPriority": -30
+    },
+    {
+      "matchPackagePatterns": [
+        "^k8s.io",
+        "^sigs.k8s.io"
+      ],
+      "groupName": "K8s dependencies"
+    },
+    {
+      "matchManagers": [
+        "github-actions"
+      ],
+      "groupName": "GitHub action dependencies",
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "pin",
+        "pinDigest",
+        "digest",
+        "lockFileMaintenance",
+        "rollback",
+        "bump"
+      ]
+    },
+    {
+      "matchPackageNames": [
+        "^k8s.io/client-go"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "enabled": false
+    },
+    {
+      "matchDatasources": [
+        "golang-version"
+      ],
+      "allowedVersions": "1.20"
+    }
   ]
 }
