@@ -122,10 +122,10 @@ async function createConfig() {
             //   label: 'Docs',
             // },
             // right
-            // {
-            //   type: 'docsVersionDropdown',
-            //   position: 'right',
-            // },
+            {
+              type: 'docsVersionDropdown',
+              position: 'right',
+            },
             {
               href: 'https://github.com/edgelesssys/marblerun',
               position: 'right',
