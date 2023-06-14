@@ -1,9 +1,9 @@
 # Redis manifest file example
 
-################################## GRAMINE ###################################
+################################## GRAMINE ####################################
 
-# LibOS layer library of Gramine. There is currently only one implementation,
-# so it is always set to libsysdb.so.
+# PAL entrypoint (points to the LibOS layer library of Gramine). There is
+# currently only one implementation, so it is always set to libsysdb.so.
 loader.entrypoint = "file:{{ gramine.libos }}"
 
 # MARBLERUN: entrypoint must be premain-libos
@@ -23,8 +23,8 @@ loader.argv = ["redis-server"]
 ################################# ENV VARS ####################################
 
 # Specify paths to search for libraries. The usual LD_LIBRARY_PATH syntax
-# applies. Paths must be in-Gramine visible paths, not host-OS paths (i.e.,
-# paths must be taken from fs.mount.xxx.path, not fs.mount.xxx.uri).
+# applies. Paths must be in-Gramine visible paths, not host paths (i.e.,
+# paths must be taken from fs.mounts[...].path, not fs.mounts[...].uri).
 #
 # In case of Redis:
 # - /lib is searched for Glibc libraries (ld, libc, libpthread)
@@ -38,10 +38,11 @@ loader.env.EDG_MARBLE_DNS_NAMES = { passthrough = true }
 
 ################################## SIGNALS ####################################
 
-# Allow for injecting SIGTERM signal from the host.
+# Allow for injecting SIGTERM signal from the host. Without this option,
+# pressing `Ctrl + C` wouldn't terminate Redis.
 sys.enable_sigterm_injection = true
 
-################################# MOUNT FS  ###################################
+################################# MOUNT FS ####################################
 
 # General notes:
 # - All mount points are mounted using the default 'chroot' type.
@@ -83,8 +84,15 @@ sgx.debug = true
 # typical Redis workloads.
 sgx.enclave_size = "1024M"
 
+# Enable Enclave Dynamic Memory Management (EDMM) feature based on EDMM
+# environment variable. This allows for addition of pages to enclave in runtime,
+# instead of allocating them upfront at startup. If this feature is enabled,
+# `sgx.enclave_size` above describes a maximal enclave size and can usually be
+# increased without negative consequences (it does not impact startup time).
+sgx.edmm_enable = {{ 'true' if env.get('EDMM', '0') == '1' else 'false' }}
+
 # Set maximum number of in-enclave threads (somewhat arbitrarily) to 8. Recall
-# that SGX v1 requires to specify the maximum number of simulteneous threads at
+# that SGX v1 requires to specify the maximum number of simultaneous threads at
 # enclave creation time.
 #
 # Note that internally Gramine may spawn two additional threads, one for IPC
@@ -94,33 +102,26 @@ sgx.enclave_size = "1024M"
 # MARBLERUN: enclave must have enough threads for Go runtime of premain
 sgx.thread_num = 16
 
-# Redis executable is typically a PIE (Position Independent Executable) on most
-# modern OS distros (e.g., Ubuntu 18.04). However, on some OS distros (notably,
-# CentOS), Redis executable is built as non-PIE. We mark Redis as a non-PIE
-# binary for the SGX PAL unconditionally -- this makes it work on CentOS and
-# doesn't hurt on Ubuntu. (Note that the Linux PAL correctly distinguishes
-# between PIE and non-PIE binaries, but for SGX we need to prearrange enclave
-# memory layout, hence the below option.)
-sgx.nonpie_binary = true
-
 ############################# SGX: TRUSTED FILES ###############################
 
 # Specify all files used by Redis and its dependencies (including all libraries
 # which can be loaded at runtime via dlopen), as well as other static read-only
 # files (like configuration files).
 #
-# The paths to files are host-OS paths. These files will be searched for in
+# The paths to files are on-host paths. These files will be searched for in
 # in-Gramine visible paths according to mount points above.
 #
 # As part of the build process, Gramine-SGX script (`gramine-sgx-sign`) finds
 # each specified file, measures its hash, and adds it to the manifest entry for
 # that file (converting each entry to a table with "uri" and "sha256" keys).
-# Note that this happens on the developer machine or a build server.
+# Note that this happens on the developer machine or a build server. If a
+# directory is specified in the list below, then this directory is recursively
+# traversed and each found file is processed as described above.
 #
 # At runtime, during loading of each "trusted file", Gramine-SGX measures its
 # hash and compares with the "sha256" value in the corresponding manifest entry.
 # If hashes match, this file is trusted and allowed to be loaded and used. Note
-# that this happens on the client machine.
+# that this happens on the deployment machine.
 
 # MARBLERUN: must trust premain-libos
 sgx.trusted_files = [

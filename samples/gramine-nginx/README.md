@@ -2,7 +2,7 @@
 
 This example is a slightly modified variant of the [Gramine nginx example](https://github.com/gramineproject/gramine/tree/master/CI-Examples/nginx). These changes are required to run it with MarbleRun.
 
-*Prerequisite*: Gramine is installed on [release v1.3](https://github.com/gramineproject/gramine/releases/tag/v1.3.1) and the original nginx example is working. You will need hardware with Intel SGX support, and the Coordinator must not run in simulation mode.
+*Prerequisite*: Gramine is installed on [release v1.4](https://github.com/gramineproject/gramine/releases/tag/v1.4) and the original nginx example is working. You will need hardware with Intel SGX support, and the Coordinator must not run in simulation mode.
 
 To marbleize the example we edited [nginx.manifest.template](nginx.manifest.template). See comments starting with `MARBLERUN` for explanations of the required changes.
 
@@ -14,6 +14,8 @@ We now build the example as follows:
 openssl genrsa -3 -out enclave-key.pem 3072
 make SGX=1
 ```
+
+Then get `Measurement` from the build output and set it as `UniqueID` in `manifest.json`.
 
 Start the Coordinator in a SGX enclave:
 
