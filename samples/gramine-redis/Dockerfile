@@ -12,7 +12,7 @@ WORKDIR /premain/build
 RUN cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
 RUN make premain-libos
 
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 RUN apt update && \
     apt install -y libssl-dev gnupg software-properties-common
 
