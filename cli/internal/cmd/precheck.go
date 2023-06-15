@@ -15,6 +15,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// NewPrecheckCmd returns the precheck command.
 func NewPrecheckCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "precheck",
@@ -27,7 +28,7 @@ func NewPrecheckCmd() *cobra.Command {
 	return cmd
 }
 
-func runPrecheck(cmd *cobra.Command, args []string) error {
+func runPrecheck(cmd *cobra.Command, _ []string) error {
 	kubeClient, err := kube.NewClient()
 	if err != nil {
 		return err

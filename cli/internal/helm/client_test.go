@@ -83,10 +83,7 @@ func TestNeedsDeletion(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			assert := assert.New(t)
-
-			delete := needsDeletion(tc.existingKey, tc.sgxKey)
-			assert.Equal(tc.wantDeletion, delete)
+			assert.Equal(t, tc.wantDeletion, needsDeletion(tc.existingKey, tc.sgxKey))
 		})
 	}
 }

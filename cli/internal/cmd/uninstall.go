@@ -17,6 +17,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// NewUninstallCmd returns the uninstall command.
 func NewUninstallCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "uninstall",
@@ -31,7 +32,7 @@ func NewUninstallCmd() *cobra.Command {
 	return cmd
 }
 
-func runUninstall(cmd *cobra.Command, args []string) error {
+func runUninstall(cmd *cobra.Command, _ []string) error {
 	kubeClient, err := kube.NewClient()
 	if err != nil {
 		return err

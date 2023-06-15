@@ -30,7 +30,7 @@ func NewVersionCmd() *cobra.Command {
 	return cmd
 }
 
-func runVersion(cmd *cobra.Command, args []string) {
+func runVersion(cmd *cobra.Command, _ []string) {
 	cmd.Printf("CLI Version: v%s \nCommit: %s\n", Version, GitCommit)
 
 	cVersion, err := kube.CoordinatorVersion(cmd.Context())

@@ -50,9 +50,9 @@ An admin certificate specified in the original manifest is needed to verify the 
 	}
 
 	cmd.Flags().StringP("cert", "c", "", "PEM encoded admin certificate file (required)")
-	cmd.MarkFlagRequired("cert")
+	must(cmd.MarkFlagRequired("cert"))
 	cmd.Flags().StringP("key", "k", "", "PEM encoded admin key file (required)")
-	cmd.MarkFlagRequired("key")
+	must(cmd.MarkFlagRequired("key"))
 
 	return cmd
 }
@@ -72,9 +72,9 @@ All participants must use the same manifest to acknowledge the pending update.
 	}
 
 	cmd.Flags().StringP("cert", "c", "", "PEM encoded admin certificate file (required)")
-	cmd.MarkFlagRequired("cert")
+	must(cmd.MarkFlagRequired("cert"))
 	cmd.Flags().StringP("key", "k", "", "PEM encoded admin key file (required)")
-	cmd.MarkFlagRequired("key")
+	must(cmd.MarkFlagRequired("key"))
 	return cmd
 }
 
@@ -89,9 +89,9 @@ func newUpdateCancel() *cobra.Command {
 	}
 
 	cmd.Flags().StringP("cert", "c", "", "PEM encoded admin certificate file (required)")
-	cmd.MarkFlagRequired("cert")
+	must(cmd.MarkFlagRequired("cert"))
 	cmd.Flags().StringP("key", "k", "", "PEM encoded admin key file (required)")
-	cmd.MarkFlagRequired("key")
+	must(cmd.MarkFlagRequired("key"))
 	return cmd
 }
 

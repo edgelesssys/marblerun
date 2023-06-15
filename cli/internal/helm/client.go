@@ -29,6 +29,7 @@ import (
 	"helm.sh/helm/v3/pkg/strvals"
 )
 
+// Options contains the values to set in the helm chart.
 type Options struct {
 	Hostname            string
 	DCAPQPL             string
@@ -221,7 +222,7 @@ func (c *Client) getRepo(name string, url string) error {
 	// Ensure the file directory exists as it is required for file locking
 	err := os.MkdirAll(filepath.Dir(repoFile), 0o755)
 	if err != nil && !os.IsExist(err) {
-		return err
+		return fmt.Errorf("creating helm repository directory: %w", err)
 	}
 
 	// Acquire a file lock for process synchronization
@@ -230,15 +231,15 @@ func (c *Client) getRepo(name string, url string) error {
 	defer cancel()
 	locked, err := fileLock.TryLockContext(lockCtx, time.Second)
 	if err == nil && locked {
-		defer fileLock.Unlock()
+		defer func() { _ = fileLock.Unlock() }()
 	}
 	if err != nil {
-		return err
+		return fmt.Errorf("acquiring helm repository lock: %w", err)
 	}
 
 	b, err := os.ReadFile(repoFile)
 	if err != nil && !os.IsNotExist(err) {
-		return err
+		return fmt.Errorf("reading helm repository file: %w", err)
 	}
 
 	var f repo.File
@@ -253,17 +254,17 @@ func (c *Client) getRepo(name string, url string) error {
 
 	r, err := repo.NewChartRepository(entry, getter.All(c.settings))
 	if err != nil {
-		return err
+		return fmt.Errorf("creating helm repository: %w", err)
 	}
 
 	if _, err := r.DownloadIndexFile(); err != nil {
-		return errors.New("chart repository cannot be reached")
+		return fmt.Errorf("downloading helm repository index file: %w", err)
 	}
 
 	f.Update(entry)
 
 	if err := f.WriteFile(repoFile, 0o644); err != nil {
-		return err
+		return fmt.Errorf("writing helm repository file: %w", err)
 	}
 	return nil
 }
@@ -344,5 +345,4 @@ func keyInList(key string, list []string) bool {
 	return false
 }
 
-func nopLog(format string, v ...interface{}) {
-}
+func nopLog(_ string, _ ...interface{}) {}

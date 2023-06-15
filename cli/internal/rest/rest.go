@@ -290,7 +290,11 @@ func fetchLatestCoordinatorConfiguration(ctx context.Context, out io.Writer) err
 	}
 
 	fmt.Fprintf(out, "No era config file specified, getting config from %s\n", eraURL)
-	resp, err := http.Get(eraURL)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, eraURL, http.NoBody)
+	if err != nil {
+		return err
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("downloading era config for version %s: %w", coordinatorVersion, err)
 	}

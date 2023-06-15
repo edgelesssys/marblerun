@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// NewPackageInfoCmd returns the package-info command.
 func NewPackageInfoCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "package-info",

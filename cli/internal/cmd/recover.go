@@ -17,6 +17,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+// NewRecoverCmd returns the recover command.
 func NewRecoverCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "recover <recovery_key_decrypted> <IP:PORT>",

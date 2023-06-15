@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// NewCertificateCmd returns the certificate command.
 func NewCertificateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "certificate",
@@ -26,7 +27,7 @@ func NewCertificateCmd() *cobra.Command {
 	return cmd
 }
 
-func outputFlagNotEmpty(cmd *cobra.Command, args []string) error {
+func outputFlagNotEmpty(cmd *cobra.Command, _ []string) error {
 	output, err := cmd.Flags().GetString("output")
 	if err != nil {
 		return err

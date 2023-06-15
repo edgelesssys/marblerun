@@ -43,15 +43,16 @@ func TestConsolidateManifest(t *testing.T) {
 
 func TestDecodeManifest(t *testing.T) {
 	assert := assert.New(t)
+	ctx := context.Background()
 
 	manifestRaw := base64.StdEncoding.EncodeToString([]byte(test.ManifestJSON))
 
-	manifest, err := decodeManifest(context.Background(), false, manifestRaw, &stubGetter{})
+	manifest, err := decodeManifest(ctx, false, manifestRaw, &stubGetter{})
 	assert.NoError(err)
 	assert.Equal(test.ManifestJSON, manifest)
 
 	getter := &stubGetter{response: testLog}
-	manifest, err = decodeManifest(context.Background(), true, string(manifestRaw), getter)
+	manifest, err = decodeManifest(ctx, true, manifestRaw, getter)
 	assert.NoError(err)
 	assert.Contains(manifest, `"SecurityVersion": 12`)
 }

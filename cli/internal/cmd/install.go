@@ -24,6 +24,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// NewInstallCmd returns the install command.
 func NewInstallCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "install",
@@ -55,7 +56,7 @@ marblerun install --dcap-qpl intel --dcap-pccs-url https://pccs.example.com/sgx/
 	return cmd
 }
 
-func runInstall(cmd *cobra.Command, args []string) error {
+func runInstall(cmd *cobra.Command, _ []string) error {
 	kubeClient, err := kube.NewClient()
 	if err != nil {
 		return err
@@ -243,8 +244,8 @@ func getSGXResourceKey(ctx context.Context, kubeClient kubernetes.Interface) (st
 // This prevents secrets and CSRs to stay on the cluster after a failed installation attempt.
 func errorAndCleanup(ctx context.Context, err error, kubeClient kubernetes.Interface) error {
 	// We dont care about any additional errors here
-	cleanupCSR(ctx, kubeClient)
-	cleanupSecrets(ctx, kubeClient)
+	_ = cleanupCSR(ctx, kubeClient)
+	_ = cleanupSecrets(ctx, kubeClient)
 	return err
 }
 
