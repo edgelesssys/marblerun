@@ -57,8 +57,10 @@ func (m *Mutator) HandleMutate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Write(mutatedBody)
+	if _, err := w.Write(mutatedBody); err != nil {
+		http.Error(w, fmt.Sprintf("unable to write response: %v", err), http.StatusInternalServerError)
+		return
+	}
 }
 
 // mutate handles the creation of json patches for pods.
