@@ -95,7 +95,7 @@ func generateQuote(sgxDevice *os.File, sgxQuoteSize uint32, cert []byte) ([]byte
 	// Fill struct for quote generation
 	dcapQuote := C.sgxioc_gen_dcap_quote_arg_t{
 		report_data: (*C.uint8_t)(&reportData[0]),
-		quote_len:   (*C.uint32_t)(&dcapCQuoteSize),
+		quote_len:   &dcapCQuoteSize,
 		quote_buf:   (*C.uint8_t)(&dcapQuoteBuffer[0]),
 	}
 
