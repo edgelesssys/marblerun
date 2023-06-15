@@ -4,7 +4,7 @@ This example shows how to run a [Gramine](https://github.com/gramineproject/gram
 
 ## Requirements
 
-First, install Gramine on [release v1.3](https://github.com/gramineproject/gramine/releases/tag/v1.3.1). You will need hardware with Intel SGX support.
+First, install Gramine on [release v1.4](https://github.com/gramineproject/gramine/releases/tag/v1.4). You will need hardware with Intel SGX support.
 
 Then, before you can run the example, make sure you got the prerequisites for ECDSA remote attestation installed on your system. You can collectively install them with the following command:
 
@@ -21,7 +21,7 @@ openssl genrsa -3 -out enclave-key.pem 3072
 make
 ```
 
-Then get `mr_enclave` from the build output and set it as `UniqueID` in `manifest.json`.
+Then get `Measurement` from the build output and set it as `UniqueID` in `manifest.json`.
 
 ## Run
 

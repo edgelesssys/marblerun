@@ -23,7 +23,7 @@ endif
 .PHONY: all
 all: $(INSTALL_DIR)/sbin/nginx nginx.manifest config testdata ssldata
 ifeq ($(SGX),1)
-all: nginx.manifest.sgx nginx.sig nginx.token
+all: nginx.manifest.sgx nginx.sig
 endif
 
 # Note that Gramine doesn't support eventfd() and PR_SET_DUMPABLE, so we manually
@@ -73,9 +73,6 @@ sgx_sign: nginx.manifest $(INSTALL_DIR)/sbin/nginx \
 		--key $(SGX_SIGNER_KEY) \
 		--output $<.sgx
 
-nginx.token: nginx.sig
-	gramine-sgx-get-token --output $@ --sig $<
-
 # Nginx configuration and test data
 .PHONY: config
 config: $(INSTALL_DIR)/conf/nginx-gramine.conf
@@ -84,7 +81,6 @@ $(INSTALL_DIR)/conf/nginx-gramine.conf: nginx-gramine.conf.template $(INSTALL_DI
 	sed -e 's|$$(LISTEN_PORT)|'"$(LISTEN_PORT)"'|g' \
 		-e 's|$$(LISTEN_SSL_PORT)|'"$(LISTEN_SSL_PORT)"'|g' \
 		-e 's|$$(LISTEN_HOST)|'"$(LISTEN_HOST)"'|g' \
-		-e 's|$$(INSTALL_DIR)|'"$(INSTALL_DIR)"'|g' \
 	$< > $@
 
 # HTTP docs: Generating random HTML files in $(INSTALL_DIR)/html/random
@@ -125,13 +121,10 @@ else
 GRAMINE = gramine-sgx
 endif
 
-.PHONY: start-gramine-server
-start-gramine-server: all
-	$(GRAMINE) ./nginx -c conf/nginx-gramine.conf
-
 .PHONY: clean
 clean:
 	$(RM) *.manifest *.manifest.sgx *.token *.sig OUTPUT result-* tmp
+	$(RM) -r uuid secrets/
 
 .PHONY: distclean
 distclean: clean

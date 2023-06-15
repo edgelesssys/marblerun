@@ -1,37 +1,28 @@
-# syntax=docker/dockerfile:experimental
-
 FROM alpine/git:latest AS pull_marblerun
-RUN git clone https://github.com/edgelesssys/marblerun.git /marblerun
+RUN git clone --depth=1 https://github.com/edgelesssys/marblerun.git /marblerun
 
 FROM alpine/git:latest AS pull_gramine
-RUN git clone --branch v1.3.1 https://github.com/gramineproject/gramine /gramine
+RUN git clone --depth=1 --branch v1.4 https://github.com/gramineproject/gramine /gramine
 
-FROM ghcr.io/edgelesssys/edgelessrt-dev AS build-premain
+FROM ghcr.io/edgelesssys/edgelessrt-dev:latest AS build-premain
 COPY --from=pull_marblerun /marblerun /premain
 WORKDIR /premain/build
 RUN cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
 RUN make premain-libos
 
-FROM ubuntu:20.04
-RUN apt update && \
-    apt install -y libssl-dev gnupg software-properties-common
-
-RUN apt-key adv --fetch-keys https://packages.microsoft.com/keys/microsoft.asc && \
-    apt-add-repository 'https://packages.microsoft.com/ubuntu/20.04/prod main' && \
-    apt-key adv --fetch-keys https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key && \
-    add-apt-repository 'https://download.01.org/intel-sgx/sgx_repo/ubuntu main' && \
-    apt-key adv --fetch-keys https://packages.gramineproject.io/gramine-keyring.gpg && \
-    apt-add-repository 'deb [arch=amd64] https://packages.gramineproject.io/ focal main'
+FROM gramineproject/gramine:v1.4 AS release
+RUN curl -fsSLo /usr/share/keyrings/microsoft.asc https://packages.microsoft.com/keys/microsoft.asc && \
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.asc] https://packages.microsoft.com/ubuntu/20.04/prod focal main" | \
+    tee /etc/apt/sources.list.d/msprod.list
 
 RUN apt-get update && apt-get install -y \
     az-dcap-client \
     wget \
+    libssl-dev \
     libsgx-quote-ex-dev \
-    libsgx-aesm-launch-plugin \
     build-essential \
     libprotobuf-c-dev \
-    gramine && \
-    apt-get clean -y && apt-get autoclean -y && apt-get autoremove -y
+    && apt-get clean -y && apt-get autoclean -y && apt-get autoremove -y
 
 COPY --from=pull_gramine /gramine /gramine
 COPY --from=build-premain /premain/build/premain-libos /gramine/CI-Examples/redis/

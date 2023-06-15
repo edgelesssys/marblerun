@@ -6,7 +6,7 @@ libos.entrypoint = "premain-libos"
 
 loader.log_level = "{{ log_level }}"
 
-loader.env.LD_LIBRARY_PATH = "/lib:{{ arch_libdir }}:/usr/local/lib:/usr/{{ arch_libdir }}"
+loader.env.LD_LIBRARY_PATH = "/lib:{{ arch_libdir }}:/usr/{{ arch_libdir }}"
 
 # MARBLERUN: argv0 must be the path to the actual application
 loader.argv = [ "{{ install_dir }}/sbin/nginx" ]
@@ -30,7 +30,7 @@ fs.mounts = [
 ]
 
 sgx.debug = true
-sgx.nonpie_binary = true
+sgx.edmm_enable = {{ 'true' if env.get('EDMM', '0') == '1' else 'false' }}
 # MARBLERUN: enclave must have enough memory for Go runtime of premain
 sgx.enclave_size = "1024M"
 # MARBLERUN: enclave must have enough threads for Go runtime of premain
