@@ -441,7 +441,7 @@ func (i IntegrationTest) TriggerRecovery(coordinatorCfg CoordinatorConfig, coord
 }
 
 // VerifyCertAfterRecovery verifies the certificate after a recovery.
-func (i IntegrationTest) VerifyCertAfterRecovery(cert string, coordinatorProc *os.Process, cfg CoordinatorConfig, assert *assert.Assertions, require *require.Assertions) *os.Process {
+func (i IntegrationTest) VerifyCertAfterRecovery(cert string, coordinatorProc *os.Process, cfg CoordinatorConfig) *os.Process {
 	// Test with certificate
 	log.Println("Verifying certificate after recovery, without a restart.")
 	pool := x509.NewCertPool()
@@ -449,7 +449,7 @@ func (i IntegrationTest) VerifyCertAfterRecovery(cert string, coordinatorProc *o
 	client := http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{RootCAs: pool}}}
 	clientAPIURL := url.URL{Scheme: "https", Host: i.ClientServerAddr, Path: "status"}
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, clientAPIURL.String(), http.NoBody)
-	require.NoError(err)
+	i.require.NoError(err)
 	resp, err := client.Do(req)
 	i.require.NoError(err)
 	resp.Body.Close()
@@ -474,7 +474,7 @@ func (i IntegrationTest) VerifyCertAfterRecovery(cert string, coordinatorProc *o
 	// test with certificate
 	log.Println("Verifying certificate after restart.")
 	req, err = http.NewRequestWithContext(context.Background(), http.MethodGet, clientAPIURL.String(), http.NoBody)
-	require.NoError(err)
+	i.require.NoError(err)
 	resp, err = client.Do(req)
 	i.require.NoError(err)
 	resp.Body.Close()
