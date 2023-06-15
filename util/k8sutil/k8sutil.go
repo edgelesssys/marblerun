@@ -8,6 +8,7 @@ package k8sutil
 
 import corev1 "k8s.io/api/core/v1"
 
+// Resource tags for Kubernetes SGX device plugins.
 const (
 	IntelEpc       corev1.ResourceName = "sgx.intel.com/epc"
 	IntelEnclave   corev1.ResourceName = "sgx.intel.com/enclave"
