@@ -8,6 +8,7 @@ package quote
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 
 	"github.com/google/go-cmp/cmp"
@@ -84,6 +85,29 @@ func (required PackageProperties) IsCompliant(given PackageProperties) bool {
 		return false
 	}
 	return true
+}
+
+// String returns a string representation of the package properties.
+func (p PackageProperties) String() string {
+	values := []string{
+		fmt.Sprintf("Debug: %t", p.Debug),
+	}
+	if p.UniqueID != "" {
+		values = append(values, fmt.Sprintf("UniqueID: %q", p.UniqueID))
+	}
+	if p.SignerID != "" {
+		values = append(values, fmt.Sprintf("SignerID: %q", p.SignerID))
+	}
+	if p.ProductID != nil {
+		values = append(values, fmt.Sprintf("ProductID: %d", *p.ProductID))
+	}
+	if p.SecurityVersion != nil {
+		values = append(values, fmt.Sprintf("SecurityVersion: %d", *p.SecurityVersion))
+	}
+	if len(p.AcceptedTCBStatuses) > 0 {
+		values = append(values, fmt.Sprintf("AcceptedTCBStatuses: %v", p.AcceptedTCBStatuses))
+	}
+	return fmt.Sprintf("{%s}", strings.Join(values, ", "))
 }
 
 // Equal returns true if both infrastructures are equal.
