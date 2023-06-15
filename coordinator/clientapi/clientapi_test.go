@@ -828,17 +828,17 @@ type fakeStoreTransaction struct {
 	rollbackCalled bool
 }
 
-func (s *fakeStoreTransaction) BeginTransaction(ctx context.Context) (store.Transaction, error) {
+func (s *fakeStoreTransaction) BeginTransaction(_ context.Context) (store.Transaction, error) {
 	s.beginTransactionCalled = true
 	return s, s.beginTransactionErr
 }
 
-func (s *fakeStoreTransaction) SetEncryptionKey([]byte) error {
+func (s *fakeStoreTransaction) SetEncryptionKey(_ []byte) error {
 	s.setEncryptionKeyCalled = true
 	return s.setEncryptionKeyErr
 }
 
-func (s *fakeStoreTransaction) SetRecoveryData([]byte) {
+func (s *fakeStoreTransaction) SetRecoveryData(_ []byte) {
 	s.setRecoveryDataCalled = true
 }
 
@@ -870,14 +870,14 @@ func (s *fakeStoreTransaction) Delete(key string) error {
 	return nil
 }
 
-func (s *fakeStoreTransaction) Iterator(string) (store.Iterator, error) {
+func (s *fakeStoreTransaction) Iterator(_ string) (store.Iterator, error) {
 	if s.iteratorErr != nil {
 		return nil, s.iteratorErr
 	}
 	return nil, nil
 }
 
-func (s *fakeStoreTransaction) Commit(context.Context) error {
+func (s *fakeStoreTransaction) Commit(_ context.Context) error {
 	s.commitCalled = true
 	return s.commitErr
 }

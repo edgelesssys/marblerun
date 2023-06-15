@@ -147,7 +147,7 @@ func prepareCipherText(sealedData []byte) (unencryptedData []byte, cipherText []
 // sealData encrypts data and seals it with the given key.
 // It returns the encrypted data prefixed with the unencrypted data and it's length.
 //
-// Format: uint32(littleEndian(len(unencryptedData))) || unencryptedData || encrypt(toBeEncrypted)
+// Format: uint32(littleEndian(len(unencryptedData))) || unencryptedData || encrypt(toBeEncrypted).
 func sealData(unencryptedData, toBeEncrypted, encryptionKey []byte) ([]byte, error) {
 	if encryptionKey == nil {
 		return nil, fmt.Errorf("encrypting data: %w", ErrMissingEncryptionKey)

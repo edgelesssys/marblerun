@@ -71,6 +71,6 @@ func (r *SinglePartyRecovery) GetRecoveryData() ([]byte, error) {
 }
 
 // SetRecoveryData sets the recovery hash map retrieved from the sealer on (failed) decryption. Given that we do not need to store any additional data in the state for Single Party Recovery, it does nothing here.
-func (r *SinglePartyRecovery) SetRecoveryData(data []byte) error {
+func (r *SinglePartyRecovery) SetRecoveryData(_ []byte) error {
 	return nil
 }

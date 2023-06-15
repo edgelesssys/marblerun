@@ -20,7 +20,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 )
 
-// ERTValidator is a Quote validatior based on EdgelessRT.
+// ERTValidator is a Quote validator based on EdgelessRT.
 type ERTValidator struct{}
 
 // NewERTValidator returns a new ERTValidator object.
@@ -28,8 +28,8 @@ func NewERTValidator() *ERTValidator {
 	return &ERTValidator{}
 }
 
-// Validate implements the Validator interface for ERTValidator.
-func (m *ERTValidator) Validate(givenQuote []byte, cert []byte, pp quote.PackageProperties, ip quote.InfrastructureProperties) error {
+// Validate validates an SGX quote using EdgelessRT.
+func (v *ERTValidator) Validate(givenQuote []byte, cert []byte, pp quote.PackageProperties, _ quote.InfrastructureProperties) error {
 	// Verify Quote
 	report, err := enclave.VerifyRemoteReport(givenQuote)
 	if errors.Is(err, attestation.ErrTCBLevelInvalid) {
@@ -74,7 +74,7 @@ func NewERTIssuer() *ERTIssuer {
 }
 
 // Issue implements the Issuer interface.
-func (m *ERTIssuer) Issue(cert []byte) ([]byte, error) {
+func (i *ERTIssuer) Issue(cert []byte) ([]byte, error) {
 	hash := sha256.Sum256(cert)
 	return enclave.GetRemoteReport(hash[:])
 }

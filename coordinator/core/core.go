@@ -554,16 +554,16 @@ func (c *Core) setCAData(dnsNames []string, putter interface {
 ) error {
 	rootCert, rootPrivK, err := corecrypto.GenerateCert(dnsNames, constants.CoordinatorName, nil, nil, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("generating root certificate and key: %w", err)
 	}
 	// Creating a cross-signed intermediate cert. See https://github.com/edgelesssys/marblerun/issues/175
 	intermediateCert, intermediatePrivK, err := corecrypto.GenerateCert(dnsNames, constants.CoordinatorIntermediateName, nil, rootCert, rootPrivK)
 	if err != nil {
-		return err
+		return fmt.Errorf("generating intermediate certificate and key: %w", err)
 	}
 	marbleRootCert, _, err := corecrypto.GenerateCert(dnsNames, constants.CoordinatorIntermediateName, intermediatePrivK, nil, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("generating marble root certificate: %w", err)
 	}
 
 	if err := putter.PutCertificate(constants.SKCoordinatorRootCert, rootCert); err != nil {
@@ -578,11 +578,7 @@ func (c *Core) setCAData(dnsNames []string, putter interface {
 	if err := putter.PutPrivateKey(constants.SKCoordinatorRootKey, rootPrivK); err != nil {
 		return err
 	}
-	if err := putter.PutPrivateKey(constants.SKCoordinatorIntermediateKey, intermediatePrivK); err != nil {
-		return err
-	}
-
-	return nil
+	return putter.PutPrivateKey(constants.SKCoordinatorIntermediateKey, intermediatePrivK)
 }
 
 // QuoteError is returned when the quote could not be retrieved.
