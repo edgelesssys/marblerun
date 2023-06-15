@@ -1,0 +1,33 @@
+name: Golang-ci lint
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - "**.go"
+      - "**/go.mod"
+      - "**/go.sum"
+      - ".github/workflows/lint.yml"
+  pull_request:
+    paths:
+      - "**.go"
+      - "**/go.mod"
+      - "**/go.sum"
+      - ".github/workflows/lint.yml"
+
+jobs:
+  golangci:
+    name: lint
+    runs-on: ubuntu-22.04
+    container: ghcr.io/edgelesssys/edgelessrt-dev:ci
+    steps:
+      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@639cd343e1d3b897ff35927a75193d57cfcba299 # v3.6.0
+        with:
+          skip-pkg-cache: true
+          skip-build-cache: true
+          args: --timeout=30m
