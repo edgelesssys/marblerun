@@ -103,6 +103,8 @@ func PreMain() error {
 }
 
 // PreMainEgo works similar to PreMain, but let's EGo's premain handle the in-enclave memory filesystem mounting.
+//
+//nolint:revive
 func PreMainEgo() error {
 	hostfs := afero.NewBasePathFs(afero.NewOsFs(), filepath.Join(filepath.FromSlash("/edg"), "hostfs"))
 	enclavefs := afero.NewOsFs()
@@ -110,12 +112,16 @@ func PreMainEgo() error {
 }
 
 // PreMainMock mocks the quoting and file system handling in the PreMain routine for testing.
+//
+//nolint:revive
 func PreMainMock() error {
 	hostfs := afero.NewOsFs()
 	return PreMainEx(quote.NewFailIssuer(), ActivateRPC, hostfs, hostfs)
 }
 
 // PreMainEx is like PreMain, but allows to customize the quoting and file system handling.
+//
+//nolint:revive
 func PreMainEx(issuer quote.Issuer, activate ActivateFunc, hostfs, enclavefs afero.Fs) error {
 	prefixBackup := log.Prefix()
 	defer log.SetPrefix(prefixBackup)
