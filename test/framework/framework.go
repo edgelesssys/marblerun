@@ -104,15 +104,20 @@ func (i IntegrationTest) UpdateManifest() {
 type CoordinatorConfig struct {
 	dnsNames string
 	sealDir  string
+	extraEnv []string
 }
 
 // NewCoordinatorConfig creates a new CoordinatorConfig.
-func NewCoordinatorConfig() CoordinatorConfig {
+func NewCoordinatorConfig(extraEnv ...string) CoordinatorConfig {
 	sealDir, err := os.MkdirTemp("", "")
 	if err != nil {
 		panic(err)
 	}
-	return CoordinatorConfig{dnsNames: "localhost", sealDir: sealDir}
+	return CoordinatorConfig{
+		dnsNames: "localhost",
+		sealDir:  sealDir,
+		extraEnv: extraEnv,
+	}
 }
 
 // Cleanup removes the seal directory.
@@ -138,6 +143,7 @@ func (i IntegrationTest) StartCoordinator(cfg CoordinatorConfig) *os.Process {
 		MakeEnv(constants.SealDir, cfg.sealDir),
 		i.SimulationFlag,
 	}
+	cmd.Env = append(cmd.Env, cfg.extraEnv...)
 	output := i.StartCommand(cmd)
 
 	client := http.Client{Transport: i.transportSkipVerify}
