@@ -12,6 +12,7 @@ import (
 	"crypto/rsa"
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,7 +21,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-var MockConfig = `
+const testConfig = `
 apiVersion: v1
 clusters:
 - cluster:
@@ -69,13 +70,11 @@ func TestCertificateV1(t *testing.T) {
 	require.NoError(err)
 	assert.True((len(testCrt) == 0))
 
-	configFile, err := os.CreateTemp(os.TempDir(), "unittest")
-	require.NoError(err)
-	defer os.Remove(configFile.Name())
-	err = os.Setenv(clientcmd.RecommendedConfigPathEnvVar, configFile.Name())
-	require.NoError(err)
-	_, err = configFile.Write([]byte(MockConfig))
-	require.NoError(err)
+	tmpDir := t.TempDir()
+	fileName := filepath.Join(tmpDir, "test-config")
+
+	t.Setenv(clientcmd.RecommendedConfigPathEnvVar, fileName)
+	require.NoError(os.WriteFile(fileName, []byte(testConfig), 0o644))
 
 	testValues, err := testHandler.setCaBundle()
 	assert.NoError(err)

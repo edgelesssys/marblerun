@@ -10,7 +10,7 @@ on:
 
 jobs:
   publish-to-docs:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     container:
       image: ghcr.io/edgelesssys/edgelessrt-dev:ci
 

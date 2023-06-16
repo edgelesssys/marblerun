@@ -100,8 +100,9 @@ func TestCliCheck(t *testing.T) {
 	var out bytes.Buffer
 	cmd.SetOut(&out)
 
+	const testNamespace = "test"
 	// try without any deployments
-	err := cliCheck(cmd, testClient, 10)
+	err := cliCheck(cmd, testClient, testNamespace, 10)
 	assert.NoError(err)
 
 	// create a fake deployment with 1/1 available replicas
@@ -114,13 +115,13 @@ func TestCliCheck(t *testing.T) {
 			AvailableReplicas: 1,
 		},
 	}
-	_, err = testClient.AppsV1().Deployments(helm.Namespace).Create(ctx, testDeployment, metav1.CreateOptions{})
+	_, err = testClient.AppsV1().Deployments(testNamespace).Create(ctx, testDeployment, metav1.CreateOptions{})
 	require.NoError(err)
 
-	err = cliCheck(cmd, testClient, 10)
+	err = cliCheck(cmd, testClient, testNamespace, 10)
 	assert.NoError(err)
 
-	err = testClient.AppsV1().Deployments(helm.Namespace).Delete(ctx, helm.CoordinatorDeployment, metav1.DeleteOptions{})
+	err = testClient.AppsV1().Deployments(testNamespace).Delete(ctx, helm.CoordinatorDeployment, metav1.DeleteOptions{})
 	require.NoError(err)
 
 	timeoutDeployment := &appsv1.Deployment{
@@ -132,9 +133,9 @@ func TestCliCheck(t *testing.T) {
 			UnavailableReplicas: 0,
 		},
 	}
-	_, err = testClient.AppsV1().Deployments(helm.Namespace).Create(ctx, timeoutDeployment, metav1.CreateOptions{})
+	_, err = testClient.AppsV1().Deployments(testNamespace).Create(ctx, timeoutDeployment, metav1.CreateOptions{})
 	require.NoError(err)
 
-	err = cliCheck(cmd, testClient, 2)
+	err = cliCheck(cmd, testClient, testNamespace, 2)
 	assert.Error(err)
 }

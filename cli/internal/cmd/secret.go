@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// NewSecretCmd returns the secret command.
 func NewSecretCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "secret",

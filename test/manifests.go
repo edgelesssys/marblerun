@@ -16,13 +16,20 @@ import (
 	"time"
 )
 
-var RecoveryPublicKey, RecoveryPrivateKey = generateTestRecoveryKey()
+var (
+	recoveryPublicKey, recoveryPrivateKey = generateTestRecoveryKey()
 
-// AdminCert is an automatically generated test certificate used for unit tests for API features needing additional authentication.
-var AdminCert = mustGenerateAdminTestCert(RecoveryPrivateKey)
+	// RecoveryPublicKey is an automatically generated public key for testing recovery.
+	RecoveryPublicKey = recoveryPublicKey
+	// RecoveryPrivateKey is an automatically generated private key for testing recovery.
+	RecoveryPrivateKey = recoveryPrivateKey
+	// AdminCert is an automatically generated test certificate used in unit tests for API features needing additional authentication.
+	// The certificate's private key is [RecoveryPrivateKey].
+	AdminCert = mustGenerateAdminTestCert(RecoveryPrivateKey)
+)
 
 // ManifestJSON is a test manifest.
-const ManifestJSON string = `{
+const ManifestJSON = `{
 	"Packages": {
 		"backend": {
 			"UniqueID": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
@@ -169,7 +176,7 @@ const ManifestJSON string = `{
 }`
 
 // ManifestJSONWithRecoveryKey is a test manifest with a dynamically generated RSA key.
-var ManifestJSONWithRecoveryKey string = `{
+var ManifestJSONWithRecoveryKey = `{
 	"Packages": {
 		"frontend": {
 			"SignerID": "1f1e1d1c1b1a191817161514131211100f0e0d0c0b0a09080706050403020100",
@@ -297,7 +304,7 @@ var ManifestJSONWithRecoveryKey string = `{
 }`
 
 // IntegrationManifestJSON is a test manifest.
-var IntegrationManifestJSON string = `{
+var IntegrationManifestJSON = `{
 	"Packages": {
 		"backend": {
 			"Debug": true,
@@ -436,7 +443,7 @@ var IntegrationManifestJSON string = `{
 }`
 
 // ManifestJSONMissingParameters is a test manifest.
-var ManifestJSONMissingParameters string = `{
+var ManifestJSONMissingParameters = `{
 	"Packages": {
 		"frontend": {
 			"SignerID": "1f1e1d1c1b1a191817161514131211100f0e0d0c0b0a09080706050403020100",

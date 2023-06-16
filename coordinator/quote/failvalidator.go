@@ -19,7 +19,7 @@ func NewFailValidator() *FailValidator {
 }
 
 // Validate implements the Validator interface for FailValidator.
-func (m *FailValidator) Validate(quote []byte, cert []byte, pp PackageProperties, ip InfrastructureProperties) error {
+func (m *FailValidator) Validate(_ []byte, _ []byte, _ PackageProperties, _ InfrastructureProperties) error {
 	return fmt.Errorf("cannot validate quote")
 }
 
@@ -32,6 +32,6 @@ func NewFailIssuer() *FailIssuer {
 }
 
 // Issue implements the Issuer interface.
-func (m *FailIssuer) Issue(cert []byte) ([]byte, error) {
+func (m *FailIssuer) Issue(_ []byte) ([]byte, error) {
 	return nil, fmt.Errorf("OE_UNSUPPORTED")
 }

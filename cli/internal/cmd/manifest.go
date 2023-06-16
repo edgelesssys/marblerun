@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// NewManifestCmd returns the manifest command.
 func NewManifestCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "manifest",

@@ -60,7 +60,7 @@ To install and configure MarbleRun, run:
 	return rootCmd
 }
 
-func preRunRoot(cmd *cobra.Command, args []string) {
+func preRunRoot(cmd *cobra.Command, _ []string) {
 	cmd.SilenceUsage = true
 }
 

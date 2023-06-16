@@ -133,10 +133,10 @@ type NullBaseVec struct {
 }
 
 // Delete implements BaseVec.
-func (NullBaseVec) Delete(labels prometheus.Labels) bool { return false }
+func (NullBaseVec) Delete(_ prometheus.Labels) bool { return false }
 
 // DeleteLabelValues implements BaseVec.
-func (NullBaseVec) DeleteLabelValues(lvs ...string) bool { return false }
+func (NullBaseVec) DeleteLabelValues(_ ...string) bool { return false }
 
 // Reset implements BaseVec.
 func (NullBaseVec) Reset() {}
@@ -147,17 +147,17 @@ type NullCounterVec struct {
 }
 
 // GetMetricWith implements CounterVec.
-func (NullCounterVec) GetMetricWith(labels prometheus.Labels) (prometheus.Counter, error) {
+func (NullCounterVec) GetMetricWith(_ prometheus.Labels) (prometheus.Counter, error) {
 	return NullCounter{}, nil
 }
 
 // GetMetricWithLabelValues implements CounterVec.
-func (NullCounterVec) GetMetricWithLabelValues(lvs ...string) (prometheus.Counter, error) {
+func (NullCounterVec) GetMetricWithLabelValues(_ ...string) (prometheus.Counter, error) {
 	return NullCounter{}, nil
 }
 
 // With implements CounterVec.
-func (NullCounterVec) With(labels prometheus.Labels) prometheus.Counter { return NullCounter{} }
+func (NullCounterVec) With(_ prometheus.Labels) prometheus.Counter { return NullCounter{} }
 
 // WithLabelValues implements CounterVec.
-func (NullCounterVec) WithLabelValues(lvs ...string) prometheus.Counter { return NullCounter{} }
+func (NullCounterVec) WithLabelValues(_ ...string) prometheus.Counter { return NullCounter{} }

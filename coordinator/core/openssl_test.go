@@ -100,9 +100,9 @@ func TestOpenSSLVerify(t *testing.T) {
 
 	// Get marble credentials
 	params := resp.GetParameters()
-	pMarbleKey, _ := pem.Decode([]byte(params.Env[libMarble.MarbleEnvironmentPrivateKey]))
+	pMarbleKey, _ := pem.Decode(params.Env[libMarble.MarbleEnvironmentPrivateKey])
 	require.NotNil(pMarbleKey)
-	pLeaf, rest := pem.Decode([]byte(params.Env[libMarble.MarbleEnvironmentCertificateChain]))
+	pLeaf, rest := pem.Decode(params.Env[libMarble.MarbleEnvironmentCertificateChain])
 	require.NotNil(pLeaf)
 	require.NotEmpty(rest)
 	pMarbleRoot, rest := pem.Decode(rest)

@@ -7,6 +7,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -25,7 +26,9 @@ func main() {
 		return
 	}
 
-	runClient(addr)
+	if err := runClient(addr); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func runServer(addr string) {
@@ -55,18 +58,25 @@ func runClient(addr string) error {
 	// Retrieve client TLS config from ertgolib
 	tlsConfig, err := marble.GetTLSConfig(false)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	// Setup client
 	client := http.Client{Transport: &http.Transport{TLSClientConfig: tlsConfig}}
 	url := url.URL{Scheme: "https", Host: addr}
-	resp, err := client.Get(url.String())
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url.String(), http.NoBody)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
-		log.Fatalf("http.Get returned: %v", resp.Status)
+		return fmt.Errorf("http.Get returned: %s", resp.Status)
 	}
 	log.Printf("Successful connection to Server: %v", resp.Status)
 	return nil

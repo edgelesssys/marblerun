@@ -19,28 +19,28 @@ import (
 type PackageProperties struct {
 	// Debug Flag of the Attributes.
 	Debug bool
-	// Hash of the enclave.
+	// UniqueID is a hash of the enclave (MRENCLAVE).
 	UniqueID string
-	// Hash of the enclave signer's public key.
+	// SignerID is a hash of the enclave signer's public key (MRSIGNER).
 	SignerID string
-	// Product ID of the package.
+	// ProductID of the package (ISVPRODID).
 	ProductID *uint64
-	// Security version number of the package.
+	// SecurityVersion of the package (ISVSVN).
 	SecurityVersion *uint
-	// Accepted TCB levels
+	// AcceptedTCBStatuses is a list of TCB levels an enclave is allowed to have.
 	AcceptedTCBStatuses []string
 }
 
 // InfrastructureProperties contains the infrastructure-specific properties of a SGX DCAP quote.
 type InfrastructureProperties struct {
-	// Processor model and firmware security version number.
+	// CPUSVN is the processor model and firmware security version number.
 	// NOTE: the Intel manual states that CPUSVN "cannot be compared mathematically"
 	CPUSVN []byte
-	// Quoting Enclave security version number.
+	// QESVN is the quoting Enclave security version number.
 	QESVN *uint16
-	// Provisioning Certification Enclave security version number.
+	// PCESVN is the provisioning Certification Enclave security version number.
 	PCESVN *uint16
-	// Certificate of the root CA (not optional).
+	// RootCA is the Certificate of the root Certificate Authority (not optional).
 	RootCA []byte
 }
 
@@ -68,20 +68,20 @@ func (p PackageProperties) Equal(other PackageProperties) bool {
 }
 
 // IsCompliant checks if the given package properties comply with the requirements.
-func (required PackageProperties) IsCompliant(given PackageProperties) bool {
-	if required.Debug != given.Debug {
+func (p PackageProperties) IsCompliant(given PackageProperties) bool {
+	if p.Debug != given.Debug {
 		return false
 	}
-	if len(required.UniqueID) > 0 && !strings.EqualFold(required.UniqueID, given.UniqueID) {
+	if len(p.UniqueID) > 0 && !strings.EqualFold(p.UniqueID, given.UniqueID) {
 		return false
 	}
-	if len(required.SignerID) > 0 && !strings.EqualFold(required.SignerID, given.SignerID) {
+	if len(p.SignerID) > 0 && !strings.EqualFold(p.SignerID, given.SignerID) {
 		return false
 	}
-	if required.ProductID != nil && *required.ProductID != *given.ProductID {
+	if p.ProductID != nil && *p.ProductID != *given.ProductID {
 		return false
 	}
-	if required.SecurityVersion != nil && *required.SecurityVersion > *given.SecurityVersion {
+	if p.SecurityVersion != nil && *p.SecurityVersion > *given.SecurityVersion {
 		return false
 	}
 	return true
@@ -134,7 +134,7 @@ func (p InfrastructureProperties) Equal(other InfrastructureProperties) bool {
 }
 
 // IsCompliant checks if the given infrastructure properties comply with the requirements.
-func (required InfrastructureProperties) IsCompliant(given InfrastructureProperties) bool {
+func (p InfrastructureProperties) IsCompliant(given InfrastructureProperties) bool {
 	// TODO: implement proper logic including SVN comparison
-	return cmp.Equal(required, given)
+	return cmp.Equal(p, given)
 }

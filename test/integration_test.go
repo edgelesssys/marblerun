@@ -9,6 +9,7 @@
 package test
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
@@ -67,8 +68,8 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// sanity test of the integration test environment
 func TestTest(t *testing.T) {
+	// sanity test of the integration test environment
 	assert := assert.New(t)
 	f := newFramework(t)
 
@@ -92,7 +93,7 @@ func TestMarbleAPI(t *testing.T) {
 	defer cfg.Cleanup()
 	coordinatorProc := f.StartCoordinator(cfg)
 	require.NotNil(coordinatorProc)
-	defer coordinatorProc.Kill()
+	defer kill(coordinatorProc)
 
 	// set Manifest
 	log.Println("Setting the Manifest")
@@ -105,7 +106,7 @@ func TestMarbleAPI(t *testing.T) {
 	defer serverCfg.Cleanup()
 	serverProc := f.StartMarbleServer(serverCfg)
 	require.NotNil(serverProc, "failed to start server-marble")
-	defer serverProc.Kill()
+	defer kill(serverProc)
 
 	// start clients
 	log.Println("Starting a bunch of Client-Marbles...")
@@ -145,7 +146,7 @@ func TestRestart(t *testing.T) {
 	defer serverCfg.Cleanup()
 	serverProc := f.StartMarbleServer(serverCfg)
 	require.NotNil(serverProc, "failed to start server-marble")
-	defer serverProc.Kill()
+	defer kill(serverProc)
 
 	// start clients
 	log.Println("Starting a bunch of Client-Marbles...")
@@ -161,7 +162,7 @@ func TestRestart(t *testing.T) {
 	log.Println("Restarting the old instance")
 	coordinatorProc = f.StartCoordinator(cfg)
 	require.NotNil(coordinatorProc)
-	defer coordinatorProc.Kill()
+	defer kill(coordinatorProc)
 
 	// try do malicious update of manifest
 	log.Println("Trying to set a new Manifest, which should already be set")
@@ -184,13 +185,16 @@ func TestClientAPI(t *testing.T) {
 	defer cfg.Cleanup()
 	coordinatorProc := f.StartCoordinator(cfg)
 	require.NotNil(coordinatorProc, "could not start coordinator")
-	defer coordinatorProc.Kill()
+	defer kill(coordinatorProc)
 
 	// get certificate
 	client := http.Client{Transport: transportSkipVerify}
 	clientAPIURL := url.URL{Scheme: "https", Host: clientServerAddr, Path: "quote"}
-	resp, err := client.Get(clientAPIURL.String())
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, clientAPIURL.String(), http.NoBody)
 	require.NoError(err)
+	resp, err := client.Do(req)
+	require.NoError(err)
+
 	require.Equal(http.StatusOK, resp.StatusCode)
 	quote, err := io.ReadAll(resp.Body)
 	resp.Body.Close()
@@ -212,8 +216,11 @@ func TestClientAPI(t *testing.T) {
 
 	// test with certificate
 	clientAPIURL.Path = "manifest"
-	resp, err = client.Get(clientAPIURL.String())
+	req, err = http.NewRequestWithContext(context.Background(), http.MethodGet, clientAPIURL.String(), http.NoBody)
 	require.NoError(err)
+	resp, err = client.Do(req)
+	require.NoError(err)
+
 	require.Equal(http.StatusOK, resp.StatusCode)
 	manifest, err := io.ReadAll(resp.Body)
 	resp.Body.Close()
@@ -228,11 +235,14 @@ func TestClientAPI(t *testing.T) {
 	log.Println("Requesting a secret from the Coordinator")
 	clientAPIURL.Path = "secrets"
 	clientAPIURL.RawQuery = "s=symmetricKeyShared"
-	resp, err = client.Get(clientAPIURL.String())
+	req, err = http.NewRequestWithContext(context.Background(), http.MethodGet, clientAPIURL.String(), http.NoBody)
 	require.NoError(err)
+	resp, err = client.Do(req)
+	require.NoError(err)
+
 	require.Equal(http.StatusOK, resp.StatusCode)
 	secret, err := io.ReadAll(resp.Body)
-	resp.Body.Close()
+	defer resp.Body.Close()
 	require.NoError(err)
 	assert.Contains(string(secret), `{"status":"success","data":{"symmetricKeyShared":{"Type":"symmetric-key","Size":128,`)
 }
@@ -247,7 +257,7 @@ func TestSettingSecrets(t *testing.T) {
 	defer cfg.Cleanup()
 	coordinatorProc := f.StartCoordinator(cfg)
 	require.NotNil(coordinatorProc, "could not start coordinator")
-	defer coordinatorProc.Kill()
+	defer kill(coordinatorProc)
 
 	log.Println("Setting the Manifest")
 	_, err := f.SetManifest(f.TestManifest)
@@ -269,7 +279,7 @@ func TestSettingSecrets(t *testing.T) {
 	defer serverCfg.Cleanup()
 	serverProc := f.StartMarbleServer(serverCfg)
 	require.NotNil(serverProc, "failed to start server-marble")
-	defer serverProc.Kill()
+	defer kill(serverProc)
 
 	// start a marble
 	log.Println("Starting a Client-Marble with unset secret, this should fail...")
@@ -280,8 +290,11 @@ func TestSettingSecrets(t *testing.T) {
 	// test setting a secret
 	log.Println("Setting a custom secret")
 	clientAPIURL := url.URL{Scheme: "https", Host: clientServerAddr, Path: "secrets"}
-	_, err = client.Post(clientAPIURL.String(), "application/json", strings.NewReader(UserSecrets))
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, clientAPIURL.String(), strings.NewReader(UserSecrets))
 	require.NoError(err)
+	resp, err := client.Do(req)
+	require.NoError(err)
+	resp.Body.Close()
 
 	// start the marble again
 	log.Println("Starting the Client-Marble again, with the secret now set...")
@@ -299,7 +312,7 @@ func TestRecoveryRestoreKey(t *testing.T) {
 	defer cfg.Cleanup()
 	coordinatorProc := f.StartCoordinator(cfg)
 	require.NotNil(coordinatorProc, "could not start coordinator")
-	defer coordinatorProc.Kill()
+	defer kill(coordinatorProc)
 
 	// set Manifest
 	log.Println("Setting the Manifest")
@@ -312,11 +325,11 @@ func TestRecoveryRestoreKey(t *testing.T) {
 	defer serverCfg.Cleanup()
 	serverProc := f.StartMarbleServer(serverCfg)
 	require.NotNil(serverProc, "failed to start server-marble")
-	defer serverProc.Kill()
+	defer kill(serverProc)
 
 	// Trigger recovery mode
 	coordinatorProc, cert := f.TriggerRecovery(cfg, coordinatorProc)
-	defer coordinatorProc.Kill()
+	defer kill(coordinatorProc)
 
 	// Decode & Decrypt recovery data from when we set the manifest
 	key := gjson.GetBytes(recoveryResponse, "data.RecoverySecrets.testRecKey1").String()
@@ -333,7 +346,7 @@ func TestRecoveryRestoreKey(t *testing.T) {
 	assert.EqualValues(3, gjson.Get(statusResponse, "data.StatusCode").Int(), "Server is in wrong status after recovery.")
 
 	// Verify if old certificate is still valid
-	coordinatorProc = f.VerifyCertAfterRecovery(cert, coordinatorProc, cfg, assert, require)
+	coordinatorProc = f.VerifyCertAfterRecovery(cert, coordinatorProc, cfg)
 	require.NoError(coordinatorProc.Kill())
 }
 
@@ -347,7 +360,7 @@ func TestRecoveryReset(t *testing.T) {
 	defer cfg.Cleanup()
 	coordinatorProc := f.StartCoordinator(cfg)
 	require.NotNil(coordinatorProc, "could not start coordinator")
-	defer coordinatorProc.Kill()
+	defer kill(coordinatorProc)
 
 	// set Manifest
 	log.Println("Setting the Manifest")
@@ -360,11 +373,11 @@ func TestRecoveryReset(t *testing.T) {
 	defer serverCfg.Cleanup()
 	serverProc := f.StartMarbleServer(serverCfg)
 	require.NotNil(serverProc, "failed to start server-marble")
-	defer serverProc.Kill()
+	defer kill(serverProc)
 
 	// Trigger recovery mode
 	coordinatorProc, _ = f.TriggerRecovery(cfg, coordinatorProc)
-	defer coordinatorProc.Kill()
+	defer kill(coordinatorProc)
 
 	// Set manifest again
 	log.Println("Setting the Manifest")
@@ -393,7 +406,7 @@ func TestManifestUpdate(t *testing.T) {
 	defer cfg.Cleanup()
 	coordinatorProc := f.StartCoordinator(cfg)
 	require.NotNil(coordinatorProc)
-	defer coordinatorProc.Kill()
+	defer kill(coordinatorProc)
 
 	// set Manifest
 	log.Println("Setting the Manifest")
@@ -406,7 +419,7 @@ func TestManifestUpdate(t *testing.T) {
 	defer serverCfg.Cleanup()
 	serverProc := f.StartMarbleServer(serverCfg)
 	require.NotNil(serverProc, "failed to start server-marble")
-	defer serverProc.Kill()
+	defer kill(serverProc)
 
 	// start clients
 	log.Println("Starting a bunch of Client-Marbles (should start successfully)...")
@@ -435,4 +448,10 @@ func newFramework(t *testing.T) *framework.IntegrationTest {
 	f := framework.New(t, *buildDir, simFlag, *noenclave, marbleTestAddr, meshServerAddr, clientServerAddr, IntegrationManifestJSON, UpdateManifest)
 	f.UpdateManifest()
 	return f
+}
+
+func kill(p *os.Process) {
+	if p != nil {
+		_ = p.Kill()
+	}
 }

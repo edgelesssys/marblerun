@@ -20,6 +20,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// NewCheckCmd returns the check command.
 func NewCheckCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "check",
@@ -30,10 +31,11 @@ func NewCheckCmd() *cobra.Command {
 	}
 
 	cmd.Flags().Uint("timeout", 60, "Time to wait before aborting in seconds")
+	cmd.Flags().String("namespace", helm.Namespace, "Namespace MarbleRun is deployed to")
 	return cmd
 }
 
-func runCheck(cmd *cobra.Command, args []string) error {
+func runCheck(cmd *cobra.Command, _ []string) error {
 	kubeClient, err := kube.NewClient()
 	if err != nil {
 		return err
@@ -43,21 +45,21 @@ func runCheck(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	namespace, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return err
+	}
 
-	return cliCheck(cmd, kubeClient, timeout)
+	return cliCheck(cmd, kubeClient, namespace, timeout)
 }
 
 // cliCheck if MarbleRun control-plane deployments are ready to use.
-func cliCheck(cmd *cobra.Command, kubeClient kubernetes.Interface, timeout uint) error {
-	if err := checkDeploymentStatus(cmd, kubeClient, helm.InjectorDeployment, helm.Namespace, timeout); err != nil {
+func cliCheck(cmd *cobra.Command, kubeClient kubernetes.Interface, namespace string, timeout uint) error {
+	if err := checkDeploymentStatus(cmd, kubeClient, helm.InjectorDeployment, namespace, timeout); err != nil {
 		return err
 	}
 
-	if err := checkDeploymentStatus(cmd, kubeClient, helm.CoordinatorDeployment, helm.Namespace, timeout); err != nil {
-		return err
-	}
-
-	return nil
+	return checkDeploymentStatus(cmd, kubeClient, helm.CoordinatorDeployment, namespace, timeout)
 }
 
 // checkDeploymentStatus checks if a deployment is installed on the cluster.

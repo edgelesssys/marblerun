@@ -38,6 +38,7 @@ type statusResponse struct {
 	StatusMessage string `json:"StatusMessage"`
 }
 
+// NewStatusCmd returns the status command.
 func NewStatusCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "status <IP:PORT>",

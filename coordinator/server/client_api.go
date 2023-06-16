@@ -423,7 +423,7 @@ func (s *clientAPIServer) handleGetPost(getHandler, postHandler func(http.Respon
 	}
 }
 
-func (s *clientAPIServer) methodNotAllowedHandler(w http.ResponseWriter, r *http.Request) {
+func (s *clientAPIServer) methodNotAllowedHandler(w http.ResponseWriter, _ *http.Request) {
 	writeJSONError(w, "", http.StatusMethodNotAllowed)
 }
 
