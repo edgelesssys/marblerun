@@ -224,8 +224,9 @@ marblerun check [flags]
 ### Options
 
 ```
-  -h, --help           help for check
-      --timeout uint   Time to wait before aborting in seconds (default 60)
+  -h, --help               help for check
+      --namespace string   Namespace MarbleRun is deployed to (default "marblerun")
+      --timeout uint       Time to wait before aborting in seconds (default 60)
 ```
 
 ### Options inherited from parent commands
