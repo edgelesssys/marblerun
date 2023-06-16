@@ -12,6 +12,7 @@ import (
 	"crypto/rsa"
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -70,7 +71,7 @@ func TestCertificateV1(t *testing.T) {
 	assert.True((len(testCrt) == 0))
 
 	tmpDir := t.TempDir()
-	fileName := fmt.Sprintf("%s/%s", tmpDir, "test-config")
+	fileName := filepath.Join(tmpDir, "test-config")
 
 	t.Setenv(clientcmd.RecommendedConfigPathEnvVar, fileName)
 	require.NoError(os.WriteFile(fileName, []byte(testConfig), 0o644))

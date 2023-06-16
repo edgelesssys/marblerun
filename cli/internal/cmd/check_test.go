@@ -100,7 +100,7 @@ func TestCliCheck(t *testing.T) {
 	var out bytes.Buffer
 	cmd.SetOut(&out)
 
-	testNamespace := "test"
+	const testNamespace = "test"
 	// try without any deployments
 	err := cliCheck(cmd, testClient, testNamespace, 10)
 	assert.NoError(err)

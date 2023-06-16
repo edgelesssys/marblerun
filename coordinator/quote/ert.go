@@ -19,9 +19,9 @@ import (
 type PackageProperties struct {
 	// Debug Flag of the Attributes.
 	Debug bool
-	// UniqueID is a hash of the enclave (MR_ENCLAVE).
+	// UniqueID is a hash of the enclave (MRENCLAVE).
 	UniqueID string
-	// SignerID is a hash of the enclave signer's public key (MR_SIGNER).
+	// SignerID is a hash of the enclave signer's public key (MRSIGNER).
 	SignerID string
 	// ProductID of the package (ISVPRODID).
 	ProductID *uint64
