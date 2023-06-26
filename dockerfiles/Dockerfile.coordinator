@@ -1,19 +1,20 @@
-FROM ghcr.io/edgelesssys/marblerun/build-base:v1.1.0 AS build
+FROM ghcr.io/edgelesssys/marblerun/build-base:v1.2.0 AS build
 
 # don't run `apt-get update` because required packages are cached in build-base for reproducibility
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
   build-essential \
   ca-certificates \
-  clang-10 \
+  clang-11 \
   cmake \
   git \
   libssl-dev \
   ninja-build \
   wget
 
-ARG erttag=v0.3.8
-ARG mrtag=v1.1.0
-RUN wget -qO- https://golang.org/dl/go1.20.2.linux-amd64.tar.gz | tar -C /usr/local -xz \
+ARG erttag=v0.3.9
+ARG mrtag=v1.2.0
+ARG goversion=1.20.5
+RUN wget -qO- https://golang.org/dl/go${goversion}.linux-amd64.tar.gz | tar -C /usr/local -xz \
   && git clone -b $erttag --depth=1 https://github.com/edgelesssys/edgelessrt \
   && git clone -b $mrtag --depth=1 https://github.com/edgelesssys/marblerun \
   && mkdir ertbuild mrbuild
@@ -43,10 +44,10 @@ COPY --from=build \
   /
 
 # the coordinator container image
-FROM ubuntu:focal-20230308 AS release
+FROM ubuntu:focal-20230412 AS release
 ARG PSW_VERSION=2.19.100.3-focal1
 ARG DCAP_VERSION=1.16.100.2-focal1
-ARG AZ_VERSION=1.11.2
+ARG AZ_VERSION=1.12.0
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates gnupg libcurl4 wget \
   && wget -qO- https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | apt-key add \
   && echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu focal main' >> /etc/apt/sources.list \
