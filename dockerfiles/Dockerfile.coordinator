@@ -44,7 +44,7 @@ COPY --from=build \
   /
 
 # the coordinator container image
-FROM ubuntu:focal-20230412 AS release
+FROM ubuntu:focal-20230605 AS release
 ARG PSW_VERSION=2.19.100.3-focal1
 ARG DCAP_VERSION=1.16.100.2-focal1
 ARG AZ_VERSION=1.12.0
