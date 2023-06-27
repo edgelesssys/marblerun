@@ -16,8 +16,10 @@
     "gomodTidy",
     "gomodUpdateImportPaths"
   ],
-  "prConcurrentLimit": 4,
-  "assignees": ["daniel-weisse"],
+  "prConcurrentLimit": 6,
+  "assignees": [
+    "daniel-weisse"
+  ],
   "packageRules": [
     {
       "matchManagers": [
