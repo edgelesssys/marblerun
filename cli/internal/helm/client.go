@@ -67,7 +67,7 @@ func New() (*Client, error) {
 
 // GetChart loads the helm chart from the given path or from the edgeless helm repo.
 // This will add the edgeless helm repo if it is not already present on disk.
-func (c *Client) GetChart(chartPath, version string, enterpriseRelease bool) (*chart.Chart, error) {
+func (c *Client) GetChart(chartPath, version string) (*chart.Chart, error) {
 	if chartPath == "" {
 		// No chart was specified -> add or update edgeless helm repo
 		installer := action.NewInstall(c.config)
@@ -76,12 +76,6 @@ func (c *Client) GetChart(chartPath, version string, enterpriseRelease bool) (*c
 		err := c.getRepo(repoName, repoURI)
 		if err != nil {
 			return nil, fmt.Errorf("adding edgeless helm repo: %w", err)
-		}
-
-		// Enterprise chart is used if an access token is provided
-		chartName := chartName
-		if enterpriseRelease {
-			chartName = chartNameEnterprise
 		}
 
 		chartPath, err = installer.ChartPathOptions.LocateChart(chartName, c.settings)

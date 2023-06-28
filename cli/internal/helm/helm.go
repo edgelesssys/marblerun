@@ -13,7 +13,6 @@ const (
 	InjectorDeployment    = "marble-injector"
 	Namespace             = "marblerun"
 	chartName             = "edgeless/marblerun"
-	chartNameEnterprise   = "edgeless/marblerun-enterprise"
 	release               = "marblerun"
 	repoURI               = "https://helm.edgeless.systems/stable"
 	repoName              = "edgeless"
