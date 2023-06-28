@@ -91,7 +91,7 @@ func (c *Client) GetChart(chartPath, version string) (*chart.Chart, error) {
 }
 
 // UpdateValues merges the provided options with the default values of the chart.
-func (c *Client) UpdateValues(options Options, chartValues map[string]interface{}) (map[string]interface{}, error) {
+func UpdateValues(options Options, chartValues map[string]interface{}) (map[string]interface{}, error) {
 	stringValues := []string{}
 	stringValues = append(stringValues, fmt.Sprintf("coordinator.meshServerPort=%d", options.CoordinatorGRPCPort))
 	stringValues = append(stringValues, fmt.Sprintf("coordinator.clientServerPort=%d", options.CoordinatorRESTPort))
@@ -158,7 +158,14 @@ func (c *Client) UpdateValues(options Options, chartValues map[string]interface{
 			return nil, errors.New("coordinator.registry not found in chart values")
 		}
 
-		pullSecret := fmt.Sprintf(`{"auths":{"%s":{"auth":"%s"}}}`, repository, options.AccessToken)
+		token := options.AccessToken
+
+		// If the token is a PAT, we need to encode it as base64(user:password)
+		if strings.HasPrefix(token, "ghp_") {
+			token = base64.StdEncoding.EncodeToString([]byte(token + ":" + token))
+		}
+
+		pullSecret := fmt.Sprintf(`{"auths":{"%s":{"auth":"%s"}}}`, repository, token)
 		stringValues = append(stringValues, fmt.Sprintf("pullSecret.token=%s", base64.StdEncoding.EncodeToString([]byte(pullSecret))))
 	}
 

@@ -96,7 +96,7 @@ func cliInstall(cmd *cobra.Command, helmClient *helm.Client, kubeClient kubernet
 		}
 	}
 
-	values, err := helmClient.UpdateValues(
+	values, err := helm.UpdateValues(
 		helm.Options{
 			Hostname:            flags.hostname,
 			DCAPQPL:             flags.dcapQPL,
