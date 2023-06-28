@@ -76,7 +76,7 @@ func cliInstall(cmd *cobra.Command, helmClient *helm.Client, kubeClient kubernet
 		return fmt.Errorf("parsing install flags: %w", err)
 	}
 
-	chart, err := helmClient.GetChart(flags.chartPath, flags.version, (flags.accessToken != ""))
+	chart, err := helmClient.GetChart(flags.chartPath, flags.version)
 	if err != nil {
 		return fmt.Errorf("loading MarbleRun helm chart: %w", err)
 	}
@@ -317,6 +317,10 @@ func parseInstallFlags(cmd *cobra.Command) (installFlags, error) {
 	meshPort, err := cmd.Flags().GetInt("mesh-server-port")
 	if err != nil {
 		return installFlags{}, err
+	}
+
+	if accessToken != "" && chartPath == "" {
+		return installFlags{}, fmt.Errorf("--marblerun-chart-path is required when using an enterprise access token")
 	}
 
 	return installFlags{
