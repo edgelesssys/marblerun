@@ -25,6 +25,35 @@ const sidebars = {
     },
     {
       type: 'category',
+      label: 'Basics',
+      link: {
+        type: 'generated-index',
+      },
+      items: [
+        {
+          type: 'doc',
+          label: 'Concepts',
+          id: 'basics/concepts',
+        },
+        {
+          type: 'doc',
+          label: 'Security Benefits',
+          id: 'basics/security-benefits',
+        },
+        {
+          type: 'doc',
+          label: 'Product Features',
+          id: 'basics/product',
+        },
+        {
+          type: 'doc',
+          label: 'License',
+          id: 'basics/license',
+        },
+      ],
+    },
+    {
+      type: 'category',
       label: 'Getting started',
       link: {
         type: 'generated-index',

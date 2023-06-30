@@ -8,6 +8,16 @@ Confidential computing protects data in use by performing computations in hardwa
 Enclaves prevent unauthorized access or modification of applications and data while in use, thereby increasing the security assurances for organizations that manage sensitive and regulated data.
 For information about confidential computing, see the Confidential Computing Consortium [white paper](https://confidentialcomputing.io/white-papers/).
 
+## Confidential Containers
+
+We use the term *Confidential Containers* to refer to the concept of applying confidential-computing technology to shield and protect individual containers using hardware-based secure enclaves. The three defining properties of this concept are:
+
+1. **Memory encryption**: the confidentiality and integrity of all container-related data and code are enforced by the CPU. Blocking all unauthorized software and hardware access.
+2. **Isolation**: the container and its related data and code are isolated and shielded against all software access outside of specified interfaces.
+3. **Attestation and verifiability**: the two properties above can be verified remotely based on hardware-rooted cryptographic certificates.
+
+Each of the above properties is equally important. Only with all three in conjunction, a container can be effectively shielded against its infrastructure.
+
 ## Service meshes
 
 A service mesh is an infrastructure layer for managing, observing, and securing communications in a container-based cluster. In the Kubernetes world, [Istio](https://istio.io), [HashiCorp Consul](https://www.consul.io/), and [Linkerd](https://linkerd.io/) are the most popular general-purpose service meshes.
