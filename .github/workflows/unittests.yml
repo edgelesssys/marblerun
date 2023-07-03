@@ -68,6 +68,7 @@ jobs:
                                 "imagename":"marblerun/coordinator-debug",
                                 "tag":"nightly",
                                 "file": "dockerfiles/Dockerfile.coordinator",
+                                "args": "--build-arg erttag=master --build-arg mrtag=master",
                                 "target":"release"}}' \
           https://api.github.com/repos/edgelesssys/deployment/dispatches
 
