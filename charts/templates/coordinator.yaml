@@ -62,16 +62,19 @@ spec:
               path: /status
               scheme: HTTPS
               port: {{ .Values.coordinator.clientServerPort }}
-            periodSeconds: 60
+            periodSeconds: {{ .Values.coordinator.probe.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.coordinator.probe.liveness.timeoutSeconds }}
           readinessProbe:
             failureThreshold: 7
-            periodSeconds: 60
+            periodSeconds: {{ .Values.coordinator.probe.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.coordinator.probe.readiness.timeoutSeconds }}
             httpGet:
               path: /status
               scheme: HTTPS
               port: {{ .Values.coordinator.clientServerPort }}
           startupProbe:
-            periodSeconds: 2
+            periodSeconds: {{ .Values.coordinator.probe.startup.periodSeconds }}
+            timeoutSeconds: {{ .Values.coordinator.probe.startup.timeoutSeconds }}
             httpGet:
               path: /status
               scheme: HTTPS

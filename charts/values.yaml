@@ -77,6 +77,17 @@ coordinator:
   # OE_SIMULATION needs be set to "1" when running on systems without SGX1+FLC capabilities
   simulation: false
 
+  probes:
+    readiness:
+      periodSeconds: 60
+      timeoutSeconds: 15
+    liveness:
+      periodSeconds: 60
+      timeoutSeconds: 15
+    startup:
+      periodSeconds: 2
+      timeoutSeconds: 15
+
   # Resource limits for the Coordinator
   resources:
     limits:
