@@ -4,17 +4,15 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-//go:build openssl_test
-
 package core
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
-	"net"
 	"testing"
 
 	libMarble "github.com/edgelesssys/ego/marble"
@@ -28,7 +26,6 @@ import (
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
-	"github.com/spacemonkeygo/openssl"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -37,7 +34,7 @@ import (
 	"google.golang.org/grpc/peer"
 )
 
-func TestOpenSSLVerify(t *testing.T) {
+func TestCertificateVerify(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -95,46 +92,37 @@ func TestOpenSSLVerify(t *testing.T) {
 		UUID:       uuid.New().String(),
 	})
 
-	assert.NoError(err, "Activate failed: %v", err)
+	assert.NoError(err, "Activate failed: %s", err)
 	assert.NotNil(resp)
 
 	// Get marble credentials
 	params := resp.GetParameters()
-	pMarbleKey, _ := pem.Decode(params.Env[libMarble.MarbleEnvironmentPrivateKey])
-	require.NotNil(pMarbleKey)
-	pLeaf, rest := pem.Decode(params.Env[libMarble.MarbleEnvironmentCertificateChain])
-	require.NotNil(pLeaf)
+	marbleKeyPEM, _ := pem.Decode(params.Env[libMarble.MarbleEnvironmentPrivateKey])
+	require.NotNil(marbleKeyPEM)
+	marbleKey, err := x509.ParsePKCS8PrivateKey(marbleKeyPEM.Bytes)
+	require.NoError(err)
+	leafCertPEM, rest := pem.Decode(params.Env[libMarble.MarbleEnvironmentCertificateChain])
+	require.NotNil(leafCertPEM)
 	require.NotEmpty(rest)
-	pMarbleRoot, rest := pem.Decode(rest)
-	require.NotNil(pMarbleRoot)
+	leafCert, err := x509.ParseCertificate(leafCertPEM.Bytes)
+	require.NoError(err)
+	marbleRootPEM, rest := pem.Decode(rest)
+	require.NotNil(marbleRootPEM)
 	require.Empty(rest)
 
-	// Verify cert-chain with OpenSSL
-	openSSLCtx, err := openssl.NewCtx()
-	require.NoError(err)
-	certStore := openSSLCtx.GetCertificateStore()
-	rootCert, err := openssl.LoadCertificateFromPEM(pem.EncodeToMemory(pMarbleRoot))
-	require.NoError(err)
-	leafCert, err := openssl.LoadCertificateFromPEM(pem.EncodeToMemory(pLeaf))
-	require.NoError(err)
-	privKey, err := openssl.LoadPrivateKeyFromPEM(pem.EncodeToMemory(pMarbleKey))
-	require.NoError(err)
-	require.NoError(certStore.AddCertificate(rootCert))
-	require.NoError(openSSLCtx.AddChainCertificate(rootCert))
-	require.NoError(openSSLCtx.UseCertificate(leafCert))
-	require.NoError(openSSLCtx.UsePrivateKey(privKey))
-	openSSLCtx.SetVerifyMode(openssl.VerifyPeer)
+	// Verify cert-chain
+	roots := x509.NewCertPool()
+	assert.True(roots.AppendCertsFromPEM(pem.EncodeToMemory(marbleRootPEM)))
+	opts := x509.VerifyOptions{
+		Roots: roots,
+	}
+	_, err = leafCert.Verify(opts)
+	assert.NoError(err, "failed to verify certificate with Go: %s", err)
 
-	server, client := net.Pipe()
-	go func() {
-		sslServer, err := openssl.Server(server, openSSLCtx)
-		require.NoError(err)
-		assert.NoError(sslServer.Handshake())
-		server.Close()
-	}()
-	sslClient, err := openssl.Client(client, openSSLCtx)
-	require.NoError(err)
-	assert.NoError(sslClient.Handshake())
-	verifyResult := sslClient.VerifyResult()
-	assert.Equal(openssl.Ok, verifyResult, "failed to verify certificate with openssl: %v", verifyResult)
+	// Verify certificate uses the correct public key
+	leafPublicKey, ok := leafCert.PublicKey.(*ecdsa.PublicKey)
+	require.True(ok)
+	marblePrivateKey, ok := marbleKey.(*ecdsa.PrivateKey)
+	require.True(ok)
+	assert.True(leafPublicKey.Equal(&marblePrivateKey.PublicKey), "public key mismatch")
 }
