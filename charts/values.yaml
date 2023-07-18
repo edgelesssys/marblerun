@@ -79,12 +79,15 @@ coordinator:
 
   probes:
     readiness:
+      failureThreshold: 7
       periodSeconds: 60
       timeoutSeconds: 15
     liveness:
+      failureThreshold: 3
       periodSeconds: 60
       timeoutSeconds: 15
     startup:
+      failureThreshold: 3
       periodSeconds: 2
       timeoutSeconds: 15
 

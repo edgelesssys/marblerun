@@ -40,6 +40,7 @@ their default values.
 | `coordinator.meshServerHost`                 | string         | Hostname of the mesh-api server | `"0.0.0.0"` |
 | `coordinator.meshServerPort`                 | int            | Port of the mesh-api server configuration | `2001` |
 | `coordinator.pvcName`                        | string         | Name of a [Persistent Volume Claim](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) to use for the Coordinator's state. Leave empty to create a new one using the configured StorageClass |
+| `coordinator.probes`                         | object         | Configuration for Kubernetes readiness, liveness, and startup probes. See the [Kubernetes docs](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/) for more information on probes. | `{"probes":{"readiness":{"failureThreshold":7,"periodSeconds":60,"timeoutSeconds":15},"liveness":{"failureThreshold":3,"periodSeconds":60,"timeoutSeconds":15},"startup":{"failureThreshold":3,"periodSeconds":2,"timeoutSeconds":15}}}` |
 | `coordinator.replicas`                       | int            | Number of replicas for each control plane pod | `1` |
 | `coordinator.repository`                     | string         | Name of the container registry to pull the coordinator image from | `"ghcr.io/edgelesssys/marblerun"` |
 | `coordinator.sealDir`                        | string         | Path to the directory used for sealing data. Needs to be consistent with the persisten storage setup | `"/coordinator/data/"` |
