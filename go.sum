@@ -145,8 +145,8 @@ github.com/docker/go-units v0.5.0 h1:69rxXcBk27SvSaaxTtLh/8llcHD8vYHT7WSdRZ/jvr4
 github.com/docker/go-units v0.5.0/go.mod h1:fgPhTUdO+D/Jk86RDLlptpiXQzgHJF7gydDDbaIK4Dk=
 github.com/docker/libtrust v0.0.0-20150114040149-fa567046d9b1 h1:ZClxb8laGDf5arXfYcAtECDFgAgHklGI8CxgjHnXKJ4=
 github.com/docopt/docopt-go v0.0.0-20180111231733-ee0de3bc6815/go.mod h1:WwZ+bS3ebgob9U8Nd0kOddGdZWjyMGR8Wziv+TBNwSE=
-github.com/edgelesssys/ego v1.3.0 h1:UOhfLfZJljrkIJXTYJnz7bBy1hncF4bhf8COLbJ1F/Y=
-github.com/edgelesssys/ego v1.3.0/go.mod h1:i1mcuzHXoTC6GV/SyUapnJXQ5yXxedNOTNT/dzYE5wY=
+github.com/edgelesssys/ego v1.4.0 h1:LvGJe9ZJ13Fj2h7um8+sVYaTLaNLodWPvQXKswf2sBo=
+github.com/edgelesssys/ego v1.4.0/go.mod h1:MV0PvBnI8N2QI5PBtR2l2ng3ZuUHODFYvyJbmyU3HOc=
 github.com/edgelesssys/era v0.3.3 h1:EyZvkR/WJceMaV+15lt+CYI0h6mC8pUOFklbbKT8KwQ=
 github.com/edgelesssys/era v0.3.3/go.mod h1:yGYrnt8vxxFUsbMQCMwEBItNK9vNqS0f9YONvr78lBY=
 github.com/emicklei/go-restful/v3 v3.10.1 h1:rc42Y5YTp7Am7CS630D7JmhRjq4UlEUuEKfrDac4bSQ=
