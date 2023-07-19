@@ -32,33 +32,18 @@ const sidebars = {
       items: [
         {
           type: 'doc',
-          label: 'Quickstart',
+          label: 'Installation',
+          id: 'getting-started/installation',
+        },
+        {
+          type: 'doc',
+          label: 'First steps',
           id: 'getting-started/quickstart',
         },
         {
           type: 'doc',
-          label: 'Quickstart SGX',
-          id: 'getting-started/quickstart-sgx',
-        },
-        {
-          type: 'doc',
-          label: 'Quickstart Simulation',
-          id: 'getting-started/quickstart-simulation',
-        },
-        {
-          type: 'doc',
-          label: 'Concepts',
-          id: 'getting-started/concepts',
-        },
-        {
-          type: 'doc',
-          label: 'Coordinator',
-          id: 'getting-started/coordinator',
-        },
-        {
-          type: 'doc',
-          label: 'Marbles',
-          id: 'getting-started/marbles',
+          label: 'Examples',
+          id: 'getting-started/examples',
         },
       ],
     },
@@ -190,6 +175,30 @@ const sidebars = {
     },
     {
       type: 'category',
+      label: 'Architecture',
+      link: {
+        'type': 'generated-index',
+      },
+      items: [
+        {
+          type: 'doc',
+          label: 'Concepts',
+          id: 'architecture/concepts',
+        },
+        {
+          type: 'doc',
+          label: 'Coordinator',
+          id: 'architecture/coordinator',
+        },
+        {
+          type: 'doc',
+          label: 'Marbles',
+          id: 'architecture//marbles',
+        },
+      ]
+    },
+    {
+      type: 'category',
       label: 'Building services',
       link: {
         type: 'generated-index',
@@ -211,11 +220,6 @@ const sidebars = {
           id: 'building-services/occlum',
         },
       ],
-    },
-    {
-      type: 'doc',
-      label: 'Examples',
-      id: 'examples',
     },
     {
       type: 'category',

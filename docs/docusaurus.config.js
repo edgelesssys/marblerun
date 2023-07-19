@@ -158,11 +158,11 @@ async function createConfig() {
                 },
                 {
                   label: 'Concepts',
-                  to: '/getting-started/concepts',
+                  to: '/architecture/concepts',
                 },
                 {
                   label: 'Examples',
-                  to: '/examples',
+                  to: '/getting-started/examples',
                 },
               ],
             },
