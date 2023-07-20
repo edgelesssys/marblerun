@@ -32,7 +32,6 @@ import (
 // Options contains the values to set in the helm chart.
 type Options struct {
 	Hostname            string
-	DCAPQPL             string
 	PCCSURL             string
 	UseSecureCert       string
 	AccessToken         string
@@ -108,7 +107,6 @@ func UpdateValues(options Options, chartValues map[string]interface{}) (map[stri
 	} else {
 		stringValues = append(stringValues,
 			fmt.Sprintf("coordinator.hostname=%s", options.Hostname),
-			fmt.Sprintf("dcap.qpl=%s", options.DCAPQPL),
 			fmt.Sprintf("dcap.pccsUrl=%s", options.PCCSURL),
 			fmt.Sprintf("dcap.useSecureCert=%s", options.UseSecureCert),
 		)
