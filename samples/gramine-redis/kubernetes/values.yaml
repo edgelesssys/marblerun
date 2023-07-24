@@ -1,4 +1,9 @@
 imagePullSecrets:
   - name: regcred
 
+image: ghcr.io/edgelesssys/redis-gramine-marble
+imageTag: latest
 imagePullPolicy: IfNotPresent
+
+pccsURL: "https://global.acccache.azure.net/sgx/certification/v4/"
+secureCert: "true"

@@ -31,9 +31,13 @@ spec:
     spec:
       serviceAccountName: redis
       containers:
-      - image: ghcr.io/edgelesssys/redis-gramine-marble:latest
+      - image: {{ .Values.image }}:{{ .Values.imageTag }}
         imagePullPolicy: {{ .Values.imagePullPolicy }}
         env:
+        - name: PCCS_URL
+          value: {{ .Values.pccsURL }}
+        - name: PCCS_USE_SECURE_CERT
+          value: "{{ .Values.secureCert }}"
         - name: SGX_AESM_ADDR
           value: "1"
         - name: EDG_MARBLE_UUID_FILE
@@ -80,9 +84,13 @@ spec:
     spec:
       serviceAccountName: redis
       containers:
-      - image: ghcr.io/edgelesssys/redis-gramine-marble:latest
+      - image: {{ .Values.image }}:{{ .Values.imageTag }}
         imagePullPolicy: {{ .Values.imagePullPolicy }}
         env:
+        - name: PCCS_URL
+          value: {{ .Values.pccsURL }}
+        - name: PCCS_USE_SECURE_CERT
+          value: "{{ .Values.secureCert }}"
         - name: SGX_AESM_ADDR
           value: "1"
         - name: EDG_MARBLE_UUID_FILE
