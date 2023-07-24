@@ -199,7 +199,7 @@ const sidebars = {
     },
     {
       type: 'category',
-      label: 'Building services',
+      label: 'Building Enclaves',
       link: {
         type: 'generated-index',
       },
@@ -207,17 +207,17 @@ const sidebars = {
         {
           type: 'doc',
           label: 'EGo',
-          id: 'building-services/ego',
+          id: 'building-enclaves/ego',
         },
         {
           type: 'doc',
           label: 'Gramine',
-          id: 'building-services/gramine',
+          id: 'building-enclaves/gramine',
         },
         {
           type: 'doc',
           label: 'Occlum',
-          id: 'building-services/occlum',
+          id: 'building-enclaves/occlum',
         },
       ],
     },

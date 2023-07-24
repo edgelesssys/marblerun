@@ -38,7 +38,7 @@ See the [how to add a service](../workflows/add-service.md) documentation for mo
 ### Run your workloads
 
 You first need to build your workloads together with our Marble data plane.
-See our guides for building [EGo](../building-services/ego.md), [Gramine](../building-services/gramine.md), and [Occlum](../building-services/occlum.md) workloads.
+See our guides for building [EGo](../building-enclaves/ego.md), [Gramine](../building-enclaves/gramine.md), and [Occlum](../building-enclaves/occlum.md) workloads.
 
 You can then run your Marble as follows:
 
