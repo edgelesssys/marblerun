@@ -125,16 +125,15 @@ marblerun install [flags]
 # Install MarbleRun in simulation mode
 marblerun install --simulation
 
-# Install MarbleRun using the Intel QPL and custom PCCS
-marblerun install --dcap-qpl intel --dcap-pccs-url https://pccs.example.com/sgx/certification/v3/ --dcap-secure-cert FALSE
+# Install MarbleRun using a custom PCCS
+marblerun install --dcap-pccs-url https://pccs.example.com/sgx/certification/v4/ --dcap-secure-cert FALSE
 ```
 
 ### Options
 
 ```
       --client-server-port int           Set the client server port. Needs to be configured to the same port as in your client tool stack (default 4433)
-      --dcap-pccs-url string             Provisioning Certificate Caching Service (PCCS) server address (default "https://localhost:8081/sgx/certification/v3/")
-      --dcap-qpl string                  Quote provider library to use by the Coordinator. One of {"azure", "intel"} (default "azure")
+      --dcap-pccs-url string             Provisioning Certificate Caching Service (PCCS) server address. Defaults to Azure PCCS. (default "https://global.acccache.azure.net/sgx/certification/v4/")
       --dcap-secure-cert string          To accept insecure HTTPS certificate from the PCCS, set this option to FALSE (default "TRUE")
       --disable-auto-injection           Install MarbleRun without auto-injection webhook
       --domain string                    Sets the CNAME for the Coordinator certificate (default "localhost")
