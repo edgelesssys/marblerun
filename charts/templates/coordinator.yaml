@@ -50,10 +50,6 @@ spec:
             value: "{{ .Values.coordinator.sealDir }}"
           - name: OE_SIMULATION
             value: {{ if .Values.coordinator.simulation }}"1"{{ else }}"0"{{ end }}
-          {{ if .Values.dcap  }}
-          - name: DCAP_LIBRARY
-            value: "{{ .Values.dcap.qpl }}"
-          {{ end }}
           name: coordinator
           image: "{{ .Values.coordinator.repository }}/{{ .Values.coordinator.image }}:{{ .Values.coordinator.version }}"
           imagePullPolicy: {{ .Values.coordinator.pullPolicy }}
@@ -74,6 +70,7 @@ spec:
               scheme: HTTPS
               port: {{ .Values.coordinator.clientServerPort }}
           startupProbe:
+            initialDelaySeconds: {{ .Values.coordinator.probes.startup.initialDelaySeconds }}
             failureThreshold: {{ .Values.coordinator.probes.startup.failureThreshold }}
             periodSeconds: {{ .Values.coordinator.probes.startup.periodSeconds }}
             timeoutSeconds: {{ .Values.coordinator.probes.startup.timeoutSeconds }}

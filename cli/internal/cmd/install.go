@@ -33,8 +33,8 @@ func NewInstallCmd() *cobra.Command {
 		Example: `# Install MarbleRun in simulation mode
 marblerun install --simulation
 
-# Install MarbleRun using the Intel QPL and custom PCCS
-marblerun install --dcap-qpl intel --dcap-pccs-url https://pccs.example.com/sgx/certification/v3/ --dcap-secure-cert FALSE`,
+# Install MarbleRun using a custom PCCS
+marblerun install --dcap-pccs-url https://pccs.example.com/sgx/certification/v4/ --dcap-secure-cert FALSE`,
 		Args: cobra.NoArgs,
 		RunE: runInstall,
 	}
@@ -44,7 +44,7 @@ marblerun install --dcap-qpl intel --dcap-pccs-url https://pccs.example.com/sgx/
 	cmd.Flags().String("version", "", "Version of the Coordinator to install, latest by default")
 	cmd.Flags().String("resource-key", "", "Resource providing SGX, different depending on used device plugin. Use this to set tolerations/resources if your device plugin is not supported by MarbleRun")
 	cmd.Flags().String("dcap-qpl", "azure", `Quote provider library to use by the Coordinator. One of {"azure", "intel"}`)
-	cmd.Flags().String("dcap-pccs-url", "https://localhost:8081/sgx/certification/v3/", "Provisioning Certificate Caching Service (PCCS) server address")
+	cmd.Flags().String("dcap-pccs-url", "https://global.acccache.azure.net/sgx/certification/v4/", "Provisioning Certificate Caching Service (PCCS) server address. Defaults to Azure PCCS.")
 	cmd.Flags().String("dcap-secure-cert", "TRUE", "To accept insecure HTTPS certificate from the PCCS, set this option to FALSE")
 	cmd.Flags().String("enterprise-access-token", "", "Access token for Enterprise Coordinator. Leave empty for default installation")
 	cmd.Flags().Bool("simulation", false, "Set MarbleRun to start in simulation mode")
@@ -52,6 +52,8 @@ marblerun install --dcap-qpl intel --dcap-pccs-url https://pccs.example.com/sgx/
 	cmd.Flags().Bool("wait", false, "Wait for MarbleRun installation to complete before returning")
 	cmd.Flags().Int("mesh-server-port", 2001, "Set the mesh server port. Needs to be configured to the same port as in the data-plane marbles")
 	cmd.Flags().Int("client-server-port", 4433, "Set the client server port. Needs to be configured to the same port as in your client tool stack")
+
+	must(cmd.Flags().MarkDeprecated("dcap-qpl", "All platforms use the same QPL now. Use --dcap-pccs-url to configure the PCCS server address."))
 
 	return cmd
 }
@@ -99,7 +101,6 @@ func cliInstall(cmd *cobra.Command, helmClient *helm.Client, kubeClient kubernet
 	values, err := helm.UpdateValues(
 		helm.Options{
 			Hostname:            flags.hostname,
-			DCAPQPL:             flags.dcapQPL,
 			PCCSURL:             flags.pccsURL,
 			UseSecureCert:       flags.useSecureCert,
 			AccessToken:         flags.accessToken,
@@ -254,7 +255,6 @@ type installFlags struct {
 	hostname         string
 	version          string
 	resourceKey      string
-	dcapQPL          string
 	pccsURL          string
 	useSecureCert    string
 	accessToken      string
@@ -279,10 +279,6 @@ func parseInstallFlags(cmd *cobra.Command) (installFlags, error) {
 		return installFlags{}, err
 	}
 	resourceKey, err := cmd.Flags().GetString("resource-key")
-	if err != nil {
-		return installFlags{}, err
-	}
-	dcapQPL, err := cmd.Flags().GetString("dcap-qpl")
 	if err != nil {
 		return installFlags{}, err
 	}
@@ -328,7 +324,6 @@ func parseInstallFlags(cmd *cobra.Command) (installFlags, error) {
 		hostname:         hostname,
 		version:          version,
 		resourceKey:      resourceKey,
-		dcapQPL:          dcapQPL,
 		pccsURL:          pccsURL,
 		useSecureCert:    useSecureCert,
 		accessToken:      accessToken,
