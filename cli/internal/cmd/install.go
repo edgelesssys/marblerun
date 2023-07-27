@@ -34,7 +34,7 @@ func NewInstallCmd() *cobra.Command {
 marblerun install --simulation
 
 # Install MarbleRun using a custom PCCS
-marblerun install --dcap-pccs-url https://pccs.example.com/sgx/certification/v3/ --dcap-secure-cert FALSE`,
+marblerun install --dcap-pccs-url https://pccs.example.com/sgx/certification/v4/ --dcap-secure-cert FALSE`,
 		Args: cobra.NoArgs,
 		RunE: runInstall,
 	}

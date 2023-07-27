@@ -69,5 +69,4 @@ COPY --from=build /mrbuild/coordinator-enclave.signed /mrbuild/coordinator-confi
 COPY --from=build /opt/edgelessrt/bin/erthost /opt/edgelessrt/bin/
 RUN chgrp -R 0 /usr/lib/ && chmod -R g=u /usr/lib/
 ENV PATH=${PATH}:/opt/edgelessrt/bin
-ENV AZDCAP_DEBUG_LOG_LEVEL=ERROR
 ENTRYPOINT ["erthost", "/coordinator-enclave.signed"]
