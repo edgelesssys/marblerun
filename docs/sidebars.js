@@ -100,16 +100,6 @@ const sidebars = {
       items: [
         {
           type: 'doc',
-          label: 'Cloud',
-          id: 'deployment/cloud',
-        },
-        {
-          type: 'doc',
-          label: 'On-premises',
-          id: 'deployment/on-prem',
-        },
-        {
-          type: 'doc',
           label: 'Kubernetes',
           id: 'deployment/kubernetes',
         },
@@ -117,6 +107,28 @@ const sidebars = {
           type: 'doc',
           label: 'Standalone',
           id: 'deployment/standalone',
+        },
+        {
+          type: 'category',
+          label: 'Platforms',
+          link: { type: 'doc', id: 'deployment/platforms/platforms' },
+          items: [
+            {
+              type: 'doc',
+              label: 'Alibaba Cloud',
+              id: 'deployment/platforms/alibaba',
+            },
+            {
+              type: 'doc',
+              label: 'Azure',
+              id: 'deployment/platforms/azure',
+            },
+            {
+              type: 'doc',
+              label: 'On-premises',
+              id: 'deployment/platforms/on-prem',
+            },
+          ],
         },
       ],
     }, {
@@ -193,7 +205,12 @@ const sidebars = {
         {
           type: 'doc',
           label: 'Marbles',
-          id: 'architecture//marbles',
+          id: 'architecture/marbles',
+        },
+        {
+          type: 'doc',
+          label: 'Keys and cryptography',
+          id: 'architecture/security',
         },
       ]
     },

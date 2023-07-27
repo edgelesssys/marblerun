@@ -1,6 +1,6 @@
 # Supported Platforms
 
-MarbleRun supports all platforms where SGX and the [Data Center Attestation Primitives (DCAP)](https://download.01.org/intel-sgx/sgx-dcap/1.11/linux/docs/DCAP_ECDSA_Orientation.pdf) is available.
+MarbleRun supports all platforms where Intel SGX and the [Data Center Attestation Primitives (DCAP)](https://download.01.org/intel-sgx/sgx-dcap/1.11/linux/docs/DCAP_ECDSA_Orientation.pdf) is available.
 
 The following gives you an updated list of supported platforms:
 

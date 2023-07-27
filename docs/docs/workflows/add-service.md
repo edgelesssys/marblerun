@@ -5,10 +5,10 @@ Adding a service to your application requires three steps, which are described i
 ## **Step 1:** Get your service ready for MarbleRun
 
 To get your service ready for MarbleRun, you need to rebuild it with one of the supported [runtimes](../features/runtimes.md):
-* [EGo](../building-services/ego.md)
+* [EGo](../building-enclaves/ego.md)
 * [Edgeless RT](https://github.com/edgelesssys/marblerun/blob/master/samples/helloc%2B%2B)
-* [Gramine](../building-services/gramine.md)
-* [Occlum](../building-services/occlum.md)
+* [Gramine](../building-enclaves/gramine.md)
+* [Occlum](../building-enclaves/occlum.md)
 
 ### Make your service use the provided TLS credentials
 

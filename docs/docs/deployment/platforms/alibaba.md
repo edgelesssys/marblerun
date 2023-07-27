@@ -10,7 +10,7 @@ Alibaba Cloud Container Service for Kubernetes (ACK) offers a popular deployment
 
 ### Deploy MarbleRun
 
-See our [Kubernetes guide](../deployment/kubernetes.md) on how to install MarbleRun in your ACK cluster.
+See our [Kubernetes guide](../kubernetes.md) on how to install MarbleRun in your ACK cluster.
 
 
 ## Alibaba Cloud Elastic Compute Service
@@ -63,5 +63,5 @@ The description below uses a VM running Ubuntu 18.04.
 
 ### Deploy MarbleRun
 
-You can run MarbleRun standalone on your Alibaba Cloud ECS VM, see our [standalone guide](../deployment/standalone.md).
-Alternatively, you can install a Kubernetes cluster, probably the simplest option would be [minikube](https://minikube.sigs.k8s.io/docs/start/), see our [Kubernetes guide](../deployment/kubernetes.md) on how to install MarbleRun in minikube.
+You can run MarbleRun standalone on your Alibaba Cloud ECS VM, see our [standalone guide](../standalone.md).
+Alternatively, you can install a Kubernetes cluster, probably the simplest option would be [minikube](https://minikube.sigs.k8s.io/docs/start/), see our [Kubernetes guide](../kubernetes.md) on how to install MarbleRun in minikube.

@@ -90,4 +90,4 @@ Similarly, the [EGo image](https://github.com/orgs/edgelesssys/packages?repo_nam
 You have made sure your hardware supports SGX, updated all firmware, installed the SGX driver, and configured DCAP on all your machines and VMs?
 Great! Now it's time to install MarbleRun and get going.
 
-You can either [use MarbleRun in standalone mode](../deployment/standalone.md) or [install it in your Kubernetes cluster](../deployment/kubernetes.md).
+You can either [use MarbleRun in standalone mode](../standalone.md) or [install it in your Kubernetes cluster](../kubernetes.md).

@@ -10,7 +10,7 @@ Depending on your setup you may follow the quickstart for SGX-enabled clusters. 
 Install MarbleRun's *Coordinator* control plane by running:
 
 <tabs groupId="install">
-<tabItem value="SGX" label="With SGX capabilities">
+<tabItem value="SGX" label="With SGX">
 
 ```bash
 marblerun install
@@ -58,7 +58,7 @@ For this, we utilize SGX remote attestation and obtain the Coordinator's root ce
 Verify the quote and get the Coordinator's root certificate
 
 <tabs groupId="verify">
-<tabItem value="SGX" label="With SGX capabilities">
+<tabItem value="SGX" label="With SGX">
 
 ```bash
 marblerun certificate root $MARBLERUN -o marblerun.crt
@@ -99,7 +99,7 @@ MarbleRun verifies the integrity of services, bootstraps them, and sets up encry
 The emojivoto demo already comes with a [manifest](https://github.com/edgelesssys/emojivoto/blob/main/tools/manifest.json), which you can deploy onto MarbleRun by running:
 
 <tabs groupId="configure">
-<tabItem value="SGX" label="With SGX capabilities">
+<tabItem value="SGX" label="With SGX">
 
 ```bash
 marblerun manifest set tools/manifest.json $MARBLERUN --insecure
@@ -119,7 +119,7 @@ marblerun manifest set tools/manifest.json $MARBLERUN --insecure
 You can check that the state of MarbleRun changed and is now ready to authenticate your services by running:
 
 <tabs groupId="status">
-<tabItem value="SGX" label="With SGX capabilities">
+<tabItem value="SGX" label="With SGX">
 
 ```bash
 marblerun status $MARBLERUN
@@ -142,7 +142,7 @@ Please make sure you have [Helm](https://helm.sh/docs/intro/install/) ("the pack
 Install emojivoto into the emojivoto namespace by running:
 
 <tabs groupId="verify">
-<tabItem value="SGX" label="With SGX capabilities">
+<tabItem value="SGX" label="With SGX">
 
 ```bash
 helm install -f ./kubernetes/sgx_values.yaml emojivoto ./kubernetes --create-namespace -n emojivoto

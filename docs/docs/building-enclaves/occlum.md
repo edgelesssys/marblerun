@@ -2,7 +2,7 @@
 Running an Occlum app with MarbleRun requires some changes to its manifest.
 
 ## Requirements
-Set up an environment to create Occlum images. For an easy start, we recommend that you use either the official [Occlum Docker image](https://hub.docker.com/r/occlum/occlum) or use [our provided Dockerfile](https://github.com/edgelesssys/marblerun/blob/master/samples/occlum-hello/Dockerfile). For a working DCAP remote attestation environment, we recommend [our cloud deployment guide](../deployment/cloud.md).
+Set up an environment to create Occlum images. For an easy start, we recommend that you use either the official [Occlum Docker image](https://hub.docker.com/r/occlum/occlum) or use [our provided Dockerfile](https://github.com/edgelesssys/marblerun/blob/master/samples/occlum-hello/Dockerfile). For a working DCAP remote attestation environment, we recommend [our platform deployment guide](../deployment/platforms/platforms.md).
 
 To build your service, you can start with [Occlum's Introduction](https://github.com/occlum/occlum#introduction) to get your application up and running, and then come back here to adapt it for use with MarbleRun.
 
