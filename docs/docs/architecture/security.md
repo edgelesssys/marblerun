@@ -23,40 +23,45 @@ The following graphic gives an overview of the architecture and the components.
 
 MarbleRun uses the SGX remote attestation capability to authenticate the Coordinator and the Marble enclaves. See our section on [attestation](../features/attestation.md) for more information on this process.
 For authorization, the [manifest](../features/manifest.md) defines the Marble's access to secrets and keys after successful attestation.
-Furthermore, MarbleRun's' [RBAC](../workflows/define-manifest.md#roles) attaches a Marble's identity to a role in the manifest.
-Each role is associated with a set of operations that Marble can perform in the deployment.
-Roles can also be attached to [users](../workflows/define-manifest.md#users), which are authenticated by the Coordinator using an RSA or ECDSA public key defined in the manifest.
+Furthermore, MarbleRun's' [RBAC](../workflows/define-manifest.md#roles) attaches [users](../workflows/define-manifest.md#users) identities to roles in the manifest.
+Each role is associated with a set of operations that the user can perform in the deployment.
+Users are authenticated by the Coordinator using an RSA or ECDSA public key defined in the manifest.
 
 ## Public Key Infrastructure and Certificate Authority
 
 The Coordinator establishes a public key infrastructure (PKI) for MarbleRun and acts as the Certificate Authority (CA).
 The goal of the PKI is to make authentication of confidential applications based on remote attestation accessible and usable.
-The Coordinator embeds its attestation statement into its root CA certificate, see the [attested TLS](#attested-tls-atls) section for details behind that concept.
-All MarbleRun clients and Marbles can then use the attested root CA certificate for authenticating TLS connections.
+The Coordinator provides an [API](../reference/coordinator.md) for retrieving an SGX attestation statement that embeds its *Root CA Certificate* in the user-defined body.
+By verifying the statement, clients can verify the certificate's authenticity and, thereby, the MarbleRun CA.
+See the [attested TLS](#attested-tls-atls) section for details behind that concept.
+All MarbleRun clients and Marbles can then use the attested *Root CA Certificate* for authenticating TLS connections.
 This is further illustrated conceptionally in the [attestation](../features/attestation.md) section. We now focus on the cryptography.
 
 During initialization the Coordinator generates a root x509 certificate and corrisponding asymmetric key pair.
 The [Elliptic Curve Digital Signature Algorithm (ECDSA)](https://www.secg.org/sec1-v2.pdf#page=49) is used with curve [P256](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-4.pdf#page=111).
-The root certificate has no expiary date set and lives as long as the MarbleRun deployment.
+The *Root CA Certificate* has no expiary date set and lives as long as the MarbleRun deployment.
 
-Alongside the root certificate, the Coordinator generates an intermediate x509 certificate and corresponding asymmetric key pair, again using ECDSA with P256.
-The intermediate certificate is signed by the Coordinator's root certificate and rotated with every update of the manifest.
-When you push an update to the manifest (for example bump up the *SecurityVersion* of a Mable) the intermediate certificate will change.
+Alongside the *Root CA Certificate*, the Coordinator generates an x509 *Intermediate Certificate* and corresponding asymmetric key pair, again using ECDSA with P256.
+The *Intermediate Certificate* is signed by the Coordinator's *Root CA Certificate* and rotated with every update of the manifest.
+When you push an update to the manifest (for example bump up the *SecurityVersion* of a Mable) the *Intermediate Certificate* will change.
 Instances with the new version will not authenticate with instances of the old version and vice versa.
 Hence, no data flow is happening between different *SecurityVersions* of your application.
-However, the root certificate doesn't change. So you can still verify the Coordinator and your application from the outside and make sure it is the same instance you might have interacted with before.
-
-The Coordinator creates a second intermediate certificate that is called the *Marble root certificate*.
-The Marble root certificate is self-signed using the intermediate certificate's private key implementing a  [cross-signed certificate chain](https://www.ssltrust.com.au/blog/understanding-certificate-cross-signing).
-In that way, the Marbles see a self-signed root certificate, hence, the are dealing with a terminating certificate chain without knowing about the Coordinator's root certificate.
-The "outside world" sees an intermediate certificate signed by the Coordinator's root certificate and the corresponding root certificate.
+However, the *Root CA Certificate* doesn't change. So you can still verify the Coordinator and your application from the outside and make sure it is the same instance you might have interacted with before.
 Applications interacting with the MarbleRun deployment can decide wether to use the intermediate or the root certificate as CA depending on if they want to notice and handle manifest updates explicitely or not.
 
-For every Marble the Coordinator generates a unique leaf "Marble" certificate and corresponding key pair using ECDSA with P256.
-The Marble certificate is signed by the Marble root certificate.
-The Marble certificate is provisioned to the Marble's enclave via the secure channel established during the [attestation procedure](../features/attestation.md).
+The Coordinator creates a second certificate, with the same key material as the *Intermediate Certificate*, that is called the *Marble Root Certificate*.
+In that sense they are siblings containing the same public key.
+Howerver, while the *Intermediate Certificate* is signed by the *Root Certificate*, the *Marble Root Certificate* is self-signed using its own private key.
+The goal here is to implement a  [cross-signed certificate chain](https://www.ssltrust.com.au/blog/understanding-certificate-cross-signing).
+In that way, the Marbles see the *Marble Root Certificate* as a self-signed root certificate, hence, they are dealing with a terminating certificate chain without knowing about the Coordinator's *Root CA Certificate*.
+The "outside world" sees an intermediate certificate signed by the Coordinator's *Root CA Certificate*.
 
-![Security architecture](../_media/cert-chain.svg)
+For every Marble the Coordinator generates a unique leaf *Marble Certificate* and corresponding key pair using ECDSA with P256.
+The *Marble Certificate* is signed by the *Marble Root Certificate*.
+The *Marble Certificate* is provisioned to the Marble's enclave via the secure channel established during the [attestation procedure](../features/attestation.md).
+Depending on the Marble's runtime the certificate can either be used [manually](../workflows/add-service.md#make-your-service-use-the-provided-tls-credentials) or [automatically](../features/transparent-TLS.md) for establishing mutually authenticated TLS connetions.
+
+![PKI Certificate chain](../_media/cert-chain.svg)
 
 
 ## Attested TLS (aTLS)
@@ -65,11 +70,6 @@ In a CC environment, attested TLS (aTLS) can be used to establish secure connect
 aTLS modifies the TLS handshake by embedding an attestation statement into the TLS certificate. Instead of relying on a certificate authority, aTLS uses this attestation statement to establish trust in the certificate.
 The protocol can be used by clients to verify a server certificate, by a server to verify a client certificate, or for mutual verification (mutual aTLS).
 
-### Mutual TLS authentication
-
-Based on MarbleRun's PKI Marbles are provided with a unique leaf certificate and corresponding private key.
-As described above these are generated by the Coordinator and provided during the Marble's initialization via the secure aTLS channel.
-Depending on the Marble's runtime the certificate can either be used [manually](../workflows/add-service.md#make-your-service-use-the-provided-tls-credentials) or [automatically](../features/transparent-TLS.md) for establishing mutually authenticated TLS connetions.
 
 ## Encryption of state
 
@@ -82,6 +82,16 @@ The KEK MarbleRun uses the SGX sealing key called `Product key`, which is bound 
 In other words, a fresh and benign enclave instance of the same identity can recover that key.
 Hence, as long as the Coordinator is restarted on the same CPU, it can obtain the same KEK from the CPU based on its identity, decrypt the DEK and recover its state.
 
+If the Coordinator is restarted on a different CPU, it won't be able to obtain the same SGX sealing key from the CPU.
+Therefore, MarbleRun provides a [recovery feature](../features/recovery.md#recovery).
+The manifest allows for specifying a designated Recovery Key. The Recovery Key is a public RSA key. Upon startup, the Coordinator encrypts the DEK with this public key and returns it to the user.
+In case of a recovery event, the user decrypts the DEK locally and [uploads it to the Coordinator](../workflows/recover-coordinator.md).
+The Coordinator will decrypt the state with the DEK and proceed with operations.
+
+For [multi-party use cases](../features/recovery.md#multi-party-recovery), MarbleRun allows to split the Recovery Key between parties.
+Every recovery party is defined in the manifest with its own public RSA key.
+The Coordinator generates a share of the recovery secret for every party and encrypts it with the corresponding RSA key.
+During a recovery event, every party will upload their share of the secret, which are all XOR'ed together by the Coordinator to receive the combined key for decrypting the DEK.
 
 ![Encrypted state single instance](../_media/enc-state-single.svg)
 
