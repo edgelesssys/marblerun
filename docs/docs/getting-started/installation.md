@@ -5,13 +5,6 @@ In this guide, you will install MarbleRun into your Kubernetes cluster and deplo
 Installing MarbleRun is easy. First, you will install the CLI (command-line interface) onto your local machine. Using this CLI, you’ll then install the control plane onto your Kubernetes cluster.
 Finally, you will add your own services and set up a corresponding manifest.
 
-:::tip
-
-A working SGX DCAP environment is required for MarbleRun to work. For the ease of exploring and testing we provide a simulation mode with `--simulation` that runs without SGX hardware.
-Depending on your setup you may follow the [first steps for SGX-enabled clusters](../getting-started/quickstart.md). Alternatively, if your setup doesn't support SGX, you can follow the [first steps in simulation mode](../getting-started/quickstart.md).
-
-:::
-
 ## Prerequisites
 
 Make sure the following requirements are met:

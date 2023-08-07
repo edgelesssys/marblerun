@@ -115,13 +115,13 @@ const sidebars = {
           items: [
             {
               type: 'doc',
-              label: 'Alibaba Cloud',
-              id: 'deployment/platforms/alibaba',
+              label: 'Azure',
+              id: 'deployment/platforms/azure',
             },
             {
               type: 'doc',
-              label: 'Azure',
-              id: 'deployment/platforms/azure',
+              label: 'Alibaba Cloud',
+              id: 'deployment/platforms/alibaba',
             },
             {
               type: 'doc',
@@ -216,7 +216,7 @@ const sidebars = {
     },
     {
       type: 'category',
-      label: 'Building Enclaves',
+      label: 'Building Marbles',
       link: {
         type: 'generated-index',
       },

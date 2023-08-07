@@ -3,12 +3,10 @@
 ## Alibaba Cloud Container Service for Kubernetes (ACK)
 
 Alibaba Cloud Container Service for Kubernetes (ACK) offers a popular deployment technique relying on Alibaba's cloud resources.
-[ACK hosts Kubernetes pods in SGX-capabale Alibaba VMs](https://www.alibabacloud.com/help/en/ack/ack-managed-and-ack-dedicated/user-guide/tee-based-confidential-computing?spm=a2c63.p38356.0.0.31b6925dUJDMZC#task-2490003) and exposes the underlying SGX hardware.
+[ACK hosts Kubernetes pods in SGX-capabale Alibaba VMs](https://www.alibabacloud.com/help/en/ack/ack-managed-and-ack-dedicated/user-guide/tee-based-confidential-computing) and exposes the underlying SGX hardware.
 
 ### Prerequisites
 * Follow the instructions on the [ACK Confidential Computing Quick Start guide](https://www.alibabacloud.com/help/en/ack/ack-managed-and-ack-dedicated/user-guide/create-an-ack-managed-cluster-for-confidential-computing) to provision an ACK cluster with Intel SGX enabled worker nodes.
-* [Update and install the Intel DCAP Quote Provider Library](./alibaba.md#prerequisites-1)
-
 
 ### Deploy MarbleRun
 
@@ -17,8 +15,8 @@ See our [Kubernetes guide](../kubernetes.md) on how to install MarbleRun in your
 
 ## Alibaba Cloud Elastic Compute Service
 
-With 7th generation [security-enhanced ECS instances](https://www.alibabacloud.com/help/doc-detail/207734.htm) users can use Intel SGX on Alibaba Cloud.
-You can follow the guide for creating a [g7t, c7t, or r7t](https://www.alibabacloud.com/help/en/elastic-compute-service/latest/create-security-enhanced-instances#task-2038128) instance.
+With 7th generation [security-enhanced ECS instances](https://www.alibabacloud.com/help/en/ecs/user-guide/overview-25) users can use Intel SGX on Alibaba Cloud.
+You can follow the guide for creating a [g7t, c7t, or r7t](https://www.alibabacloud.com/help/en/elastic-compute-service/latest/create-security-enhanced-instances) instance.
 
 The description below uses a VM running Ubuntu 18.04.
 
