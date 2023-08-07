@@ -9,6 +9,7 @@ config
 Dockerfile
 emojivoto
 Env
+Equinix
 [Gg]ramine
 hardcode
 helloworld
@@ -32,5 +33,6 @@ Tensorflow
 toleration
 toolchain
 updatable
+VM
 walkthrough
 Xeon
