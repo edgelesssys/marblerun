@@ -5,6 +5,7 @@ Alibaba
 auto-injection
 [Cc]loud
 collateral
+conceptionally
 config
 Dockerfile
 emojivoto
@@ -36,3 +37,4 @@ updatable
 VM
 walkthrough
 Xeon
+XORed
