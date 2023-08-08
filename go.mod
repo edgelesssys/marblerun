@@ -3,7 +3,7 @@ module github.com/edgelesssys/marblerun
 go 1.20
 
 require (
-	github.com/edgelesssys/ego v1.4.0
+	github.com/edgelesssys/ego v1.4.1
 	github.com/edgelesssys/era v0.3.3
 	github.com/fatih/color v1.15.0
 	github.com/gofrs/flock v0.8.1
