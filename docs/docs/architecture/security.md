@@ -11,7 +11,7 @@ The [Coordinator](coordinator.md) and the [Marbles](marbles.md) run inside SGX E
 MarbleRun uses cryptography for the following tasks.
 
 * Authentication and authorization
-* Establishing a public key infrastructure (PKI) for MarbleRun
+* Establishing a public critical infrastructure (PKI) for MarbleRun
 * Encrypting network traffic via mutual TLS between enclaves
 * Encrypting persistent state
 

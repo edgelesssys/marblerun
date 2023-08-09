@@ -6,7 +6,7 @@ MarbleRun strives to be runtime-agnostic. Currently, supported runtimes are desc
 [EGo](https://github.com/edgelesssys/ego) is the preferred way for writing confidential Go applications from scratch as well as porting existing ones. Usage is similar to conventional Go programming. Start [building your service with EGo](../building-enclaves/ego.md) to use it with MarbleRun.
 
 ## Edgeless RT
-With [Edgeless RT](https://github.com/edgelesssys/edgelessrt), you can create confidential C++ applications with a low TCB. Please follow the build instructions provided [in our C++ sample](https://github.com/edgelesssys/marblerun/blob/master/samples/helloc%2B%2B) to use it with MarbleRun.
+With [Edgeless RT](https://github.com/edgelesssys/edgelessrt), you can create confidential C++ applications with a low TCB. Please follow the build instructions provided [in the C++ sample](https://github.com/edgelesssys/marblerun/blob/master/samples/helloc%2B%2B) to use it with MarbleRun.
 
 ## Gramine
 [Gramine](https://gramineproject.io/) is a popular choice for wrapping unmodified applications into enclaves.

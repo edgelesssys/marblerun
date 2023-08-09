@@ -6,6 +6,7 @@ auto-injection
 [Cc]loud
 collateral
 config
+CPU
 Dockerfile
 emojivoto
 Env
@@ -14,6 +15,7 @@ Equinix
 hardcode
 helloworld
 hostname
+IP
 Istio
 kubectl
 Linkerd
@@ -33,6 +35,7 @@ Tensorflow
 toleration
 toolchain
 updatable
+vSphere
 VM
 walkthrough
 Xeon

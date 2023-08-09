@@ -2,8 +2,8 @@
 
 The following steps guide you through the process of deploying MarbleRun in your cluster and deploying a sample app. This example assumes that you have successfully [installed MarbleRun](./installation.md), and have access to a Kubernetes cluster.
 
-A working SGX DCAP environment is required for MarbleRun to work. For the ease of exploring and testing we provide a simulation mode with `--simulation` that runs without SGX hardware.
-Depending on your setup you may follow the quickstart for SGX-enabled clusters. Alternatively, if your setup doesn't support SGX, you can follow the quickstart in simulation mode by selecting the respective tabs.
+A working SGX DCAP environment is required for MarbleRun to work. For ease of exploring and testing, we provide a simulation mode with `--simulation` that runs without SGX hardware.
+Depending on your setup, you may follow the quickstart for SGX-enabled clusters. Alternatively, if your setup doesn't support SGX, you can follow the quickstart in simulation mode by selecting the respective tabs.
 
 ## Step 1: Install the control plane onto your cluster
 
@@ -28,7 +28,7 @@ marblerun install --simulation
 
 The `marblerun install` command generates a Kubernetes manifest with all the necessary control plane resources.
 This includes a deployment for the Coordinator and for MarbleRun's [admission controller.](../features/kubernetes-integration.md)
-The simulation flag tells MarbleRun that real SGX hardware might not be present and the SGX-layer should be emulated.
+The simulation flag tells MarbleRun that real SGX hardware might not be present and the SGX layer should be emulated.
 
 </tabItem>
 </tabs>
@@ -52,7 +52,7 @@ export MARBLERUN=localhost:4433
 
 ## Step 2: Verify the Coordinator
 
-After installing the Coordinator we need to verify its integrity.
+After installing the Coordinator, we need to verify its integrity.
 For this, we utilize SGX remote attestation and obtain the Coordinator's root certificate.
 
 Verify the quote and get the Coordinator's root certificate
@@ -84,9 +84,9 @@ It can also be used as a root of trust for [authenticating your confidential app
 ## Step 3: Deploy the demo application
 
 To get a feel for how MarbleRun would work for one of your services, you can install a demo application.
-The emojivoto application is a standalone Kubernetes application that uses a mix of gRPC and HTTP calls to allow the users to vote on their favorite emojis.
+The emojivoto application is a standalone Kubernetes application that uses a mix of gRPC and HTTP calls to allow users to vote on their favorite emojis.
 Created as a demo application for the popular [Linkerd](https://linkerd.io) service mesh, we've made a confidential variant that uses a confidential service mesh for all gRPC and HTTP connections.
-Clone the [demo application's repository](https://github.com/edgelesssys/emojivoto.git) from GitHub by running:
+Clone the [demo application's repository](https://github.com/edgelesssys/emojivoto.git) from GitHub by running the following:
 
 ```bash
 git clone https://github.com/edgelesssys/emojivoto.git && cd emojivoto
@@ -96,7 +96,7 @@ git clone https://github.com/edgelesssys/emojivoto.git && cd emojivoto
 
 MarbleRun guarantees that the topology of your distributed app adheres to a manifest specified in simple JSON.
 MarbleRun verifies the integrity of services, bootstraps them, and sets up encrypted connections between them.
-The emojivoto demo already comes with a [manifest](https://github.com/edgelesssys/emojivoto/blob/main/tools/manifest.json), which you can deploy onto MarbleRun by running:
+The emojivoto demo already comes with a [manifest](https://github.com/edgelesssys/emojivoto/blob/main/tools/manifest.json), which you can deploy onto MarbleRun by running the following:
 
 <tabs groupId="configure">
 <tabItem value="SGX" label="With SGX">
@@ -116,7 +116,7 @@ marblerun manifest set tools/manifest.json $MARBLERUN --insecure
 </tabs>
 
 
-You can check that the state of MarbleRun changed and is now ready to authenticate your services by running:
+You can check that the state of MarbleRun has changed and is now ready to authenticate your services by running:
 
 <tabs groupId="status">
 <tabItem value="SGX" label="With SGX">
@@ -173,7 +173,7 @@ kubectl -n emojivoto port-forward svc/web-svc 8443:443 --address 0.0.0.0
 ```
 
 Now visit [https://localhost:8443](https://localhost:8443).
-You'll be presented with a certificate warning because your browser by default doesn't trust certificates signed by MarbleRun.
+You'll be presented with a certificate warning because your browser, by default, doesn't trust certificates signed by MarbleRun.
 You can ignore this error for now and proceed to the website.\
 Voila! Your emoji votes have never been safer!
 
