@@ -102,7 +102,7 @@ The emojivoto demo already comes with a [manifest](https://github.com/edgelesssy
 <tabItem value="SGX" label="With SGX">
 
 ```bash
-marblerun manifest set tools/manifest.json $MARBLERUN --insecure
+marblerun manifest set tools/manifest.json $MARBLERUN
 ```
 
 </tabItem>

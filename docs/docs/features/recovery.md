@@ -8,7 +8,7 @@ The application can use the SGX seal key as its root secret.
 However, this binds the application and its state to the physical machine because seal keys are unique to a single CPU.
 The usual SGX programming model isn't suited for virtual environments or distributed applications.
 
-With MarbleRun, the Coordinator [manages the Marbles[' secrets](../features/secrets-management.md), and Marbles obtain them securely on start.
+With MarbleRun, the Coordinator [manages the Marbles' secrets](../features/secrets-management.md), and Marbles obtain them securely on start.
 Thus, Marbles can be distributed and rescheduled on arbitrary machines.
 This narrows the challenge of persistent storage down to the Coordinator itself.
 

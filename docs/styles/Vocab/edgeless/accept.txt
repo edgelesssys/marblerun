@@ -5,7 +5,6 @@ Alibaba
 auto-injection
 [Cc]loud
 collateral
-conceptionally
 config
 Dockerfile
 emojivoto

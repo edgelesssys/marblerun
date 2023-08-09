@@ -11,7 +11,7 @@ The [Coordinator](coordinator.md) and the [Marbles](marbles.md) run inside SGX E
 MarbleRun uses cryptography for the following tasks.
 
 * Authentication and authorization
-* Establishing a Public Key Infrastructure (PKI) for MarbleRun
+* Establishing a public key infrastructure (PKI) for MarbleRun
 * Encrypting network traffic via mutual TLS between enclaves
 * Encrypting persistent state
 
@@ -21,32 +21,36 @@ The following graphic gives an overview of the architecture and the components.
 
 ## Authentication and authorization
 
-MarbleRun uses the SGX remote attestation capability to authenticate the Coordinator and the Marble enclaves. See the section on [attestation](../features/attestation.md) for more information on this process.
+MarbleRun uses the SGX [remote attestation](../features/attestation.md) capability to authenticate the Coordinator and the Marble enclaves.
 For authorization, the [manifest](../features/manifest.md) defines the Marble's access to secrets and keys after successful attestation.
-Furthermore, MarbleRun's' [RBAC](../workflows/define-manifest.md#roles) attaches [users'](../workflows/define-manifest.md#users) identities to roles in the manifest.
+Furthermore, MarbleRun's [RBAC](../workflows/define-manifest.md#roles) attaches [users'](../workflows/define-manifest.md#users) identities to roles in the manifest.
 Each role is associated with a set of operations the user can perform in the deployment.
 Users are authenticated by the Coordinator using an RSA or ECDSA public key defined in the manifest.
 
-## Public Key Infrastructure and Certificate Authority
+## Public key infrastructure and certificate authority
 
-The Coordinator establishes a public key infrastructure (PKI) for MarbleRun and acts as the Certificate Authority (CA).
+The Coordinator establishes a public key infrastructure (PKI) for MarbleRun and acts as the certificate authority (CA).
 The goal of the PKI is to make authentication of confidential applications based on remote attestation accessible and usable.
 The Coordinator provides an [API](../reference/coordinator.md) for retrieving an SGX attestation statement that embeds its *Root CA Certificate* in the user-defined body.
 By verifying the statement, clients can verify the certificate's authenticity and, thereby, the MarbleRun CA.
 See the [attested TLS](#attested-tls-atls) section for details behind that concept.
 All MarbleRun clients and Marbles can then use the attested *Root CA Certificate* for authenticating TLS connections.
-This is further illustrated conceptionally in the [attestation](../features/attestation.md) section. The following focuses on the cryptographic primitives.
-The Coordinator generates a root x509 certificate and corresponding asymmetric key pair during initialization.
+This is further illustrated conceptually in the [attestation](../features/attestation.md) section. The following focuses on the cryptographic primitives.
+The Coordinator generates a root X.509 certificate and corresponding asymmetric key pair during initialization.
 The [Elliptic Curve Digital Signature Algorithm (ECDSA)](https://www.secg.org/sec1-v2.pdf#page=49) is used with curve [P256](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-4.pdf#page=111).
 The *Root CA Certificate* has no expiry date and lives as long as the MarbleRun deployment.
 
-Alongside the *Root CA Certificate*, the Coordinator generates an x509 *Intermediate Certificate* and corresponding asymmetric key pair, again using ECDSA with P256.
+Alongside the *Root CA Certificate*, the Coordinator generates an X.509 *Intermediate Certificate* and corresponding asymmetric key pair, again using ECDSA with P256.
 The *Intermediate Certificate* is signed by the Coordinator's *Root CA Certificate* and rotated with every manifest update.
 When you push an update to the manifest (for example, bump up the *SecurityVersion* of a Mable), the *Intermediate Certificate* will change.
 Instances with the new version won't authenticate with instances of the old version and vice versa.
 Hence, no data flow is happening between different *SecurityVersions* of your application.
 However, the *Root CA Certificate* doesn't change. So you can still verify the Coordinator and your application from the outside and ensure it's the same instance you might have interacted with.
-Applications interacting with the MarbleRun deployment can decide whether to use the intermediate or the root certificate as CA, depending on whether they want to notice and explicitly handle manifest updates.
+Applications interacting with the MarbleRun deployment should use the intermediate certificate as CA to make manifest updates observable:
+if the manifest changes, connections to the deployment will fail.
+The application owner can then review the changes and install the new intermediate certificate to approve them.
+If such observability isn't required, the application can use the root certificate as CA.
+In that case, the application will continue to work even if the manifest changes.
 
 The Coordinator creates a second certificate with the same key material as the *Intermediate Certificate* called the *Marble Root Certificate*.
 In that sense, they're siblings containing the same public key.
@@ -71,14 +75,14 @@ The protocol can be used by clients to verify a server certificate, by a server 
 
 ## Encryption of state
 
-The Coordinator holds the MarbleRuns state, which consists of the [manifest](../features/manifest.md), the [managed secrets](../features/secrets-management.md), and the [certificates for its CA](../features/attestation.md).
-The state is stored encrypted in persistent storage. Therefore Constellation uses [AES128-GCM](https://www.rfc-editor.org/rfc/rfc5116#section-5.1) and a generated 16-byte Data Encryption Key (KEK) to seal the state to persistent storage.
+The Coordinator holds MarbleRun's state, which consists of the [manifest](../features/manifest.md), the [managed secrets](../features/secrets-management.md), and the [certificates for its CA](../features/attestation.md).
+The state is stored encrypted in persistent storage. For this, MarbleRun uses [AES128-GCM](https://www.rfc-editor.org/rfc/rfc5116#section-5.1) and a generated 16-byte Data Encryption Key (KEK) to seal the state to persistent storage.
 The DEK is also sealed to persistent storage to recover the state in case of a restart autonomously.
 [SGX sealing](https://www.intel.com/content/www/us/en/developer/articles/technical/introduction-to-intel-sgx-sealing.html) is used for that purpose.
 The Coordinator encrypts the DEK with a key encryption key (KEK).
-The KEK MarbleRun uses the SGX sealing key called `Product key`, which is bound to its `Product ID` and the enclave's author `MRSIGNER` identity.
+MarbleRun uses the SGX sealing key called `Product key` as its KEK, which is bound to its `Product ID` and the enclave's author `MRSIGNER` identity.
 In other words, a fresh and benign enclave instance of the same identity can recover that key.
-Hence, as long as the Coordinator is restarted on the same CPU, it can obtain the same KEK from the CPU based on its identity, decrypt the DEK and recover its state.
+Hence, if the Coordinator is restarted on the same CPU, it can obtain the same KEK from the CPU, decrypt the DEK, and recover its state.
 
 If the Coordinator is restarted on a different CPU, it won't be able to obtain the same SGX sealing key from the CPU.
 Therefore, MarbleRun provides a [recovery feature](../features/recovery.md#recovery).
