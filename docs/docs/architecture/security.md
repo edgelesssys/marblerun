@@ -11,7 +11,7 @@ The [Coordinator](coordinator.md) and the [Marbles](marbles.md) run inside SGX E
 MarbleRun uses cryptography for the following tasks.
 
 * Authentication and authorization
-* Establishing a public critical infrastructure (PKI) for MarbleRun
+* Establishing a public key infrastructure (PKI) for MarbleRun
 * Encrypting network traffic via mutual TLS between enclaves
 * Encrypting persistent state
 
@@ -69,7 +69,7 @@ Depending on the Marble's runtime, the certificate can be used [manually](../wor
 ## Attested TLS (aTLS)
 
 In a CC environment, attested TLS (aTLS) can establish secure connections between two parties using the remote attestation features of the CC components.
-With aTLS, the party to be authenticated somehow binds its TLS certificate to an attestation statement.
+With aTLS, the party to be authenticated binds its TLS certificate to an attestation statement.
 For example, it embeds the certificate's public key into an attestation statement.
 Instead of relying on a certificate authority, aTLS uses this attestation statement to establish trust in the certificate.
 The protocol can be used by clients to verify a server certificate, by a server to verify a client certificate, or for mutual verification (mutual aTLS).

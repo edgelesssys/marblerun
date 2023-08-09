@@ -68,7 +68,7 @@ left: `SGX_QL_SUCCESS`,
 right: `SGX_QL_NETWORK_ERROR`: fail to launch QE', src/util/sgx/dcap/quote_generator.rs:22:13
 ```
 
-You might need to check the DCAP configuration on your system. Note that when using the Docker image, the local Intel DCAP configuration must be correctly set **inside the container.****
+You might need to check the DCAP configuration on your system. Note that when using the Docker image, the local Intel DCAP configuration must be correctly set **inside the container.**
 
 If you use an Azure Confidential Computing machine, you can use our [provided Dockerfile](https://github.com/edgelesssys/marblerun/blob/master/samples/occlum-hello/Dockerfile). It patches the official Occlum image to use the Azure DCAP client, which handles the configuration automatically.
 
