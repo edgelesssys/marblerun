@@ -32,7 +32,7 @@ In this mode of operation, manual recovery is only required when
 
 * all Coordinator instances are stopped at the same time, and
 * all new instances are scheduled on new physical hosts.
-In other words, if at least one instance is scheduled on a host running a previous instance, the state can be recovered automatically.
+In other words, if at least one instance is scheduled on a host where a previous instance was running, the state can be recovered automatically.
 
 ## Recovery
 

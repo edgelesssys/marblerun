@@ -7,7 +7,7 @@ slug: /
 MarbleRun is a framework for deploying distributed confidential computing applications.
 MarbleRun acts as a confidential operator for your deployment. Think of a trusted party in the control plane.
 
-Build your confidential microservices with tools like [EGo, Gramine, or similar runtimes](./features/runtimes.md), orchestrate them with Kubernetes on an SGX-enabled cluster, and let MarbleRun take care of the rest.
+Build your confidential microservices with [EGo, Gramine, or similar runtimes](./features/runtimes.md), orchestrate them with Kubernetes on an SGX-enabled cluster, and let MarbleRun take care of the rest.
 Deploy end-to-end secure and verifiable AI pipelines or crunch on sensitive big data in the cloud. Confidential computing at scale has never been easier.
 
 MarbleRun simplifies the process by handling much of the groundwork.

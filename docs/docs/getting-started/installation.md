@@ -9,7 +9,7 @@ Finally, you will add your own services and set up a corresponding manifest.
 
 Make sure the following requirements are met:
 
-* Your machine is running Linux on an x86 (AMD64) CPU
+* Your machine is running Ubuntu 20.04 on an x86 (AMD64) CPU
 * You have access to a Kubernetes cluster and kubectl installed and configured
 
 Probably the easiest way to get started is to run Kubernetes on your local machine using [minikube](https://minikube.sigs.k8s.io/docs/start/). Please check our [prerequisites](../deployment/kubernetes.md#prerequisites) if you want to setup an SGX-enabled cluster. Another easy way is to use [Azure Kubernetes Service (AKS)](https://docs.microsoft.com/en-us/azure/aks/kubernetes-walkthrough-portal), which offers SGX-enabled nodes.

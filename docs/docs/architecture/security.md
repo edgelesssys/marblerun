@@ -69,7 +69,9 @@ Depending on the Marble's runtime, the certificate can be used [manually](../wor
 ## Attested TLS (aTLS)
 
 In a CC environment, attested TLS (aTLS) can establish secure connections between two parties using the remote attestation features of the CC components.
-aTLS modifies the TLS handshake by embedding an attestation statement into the TLS certificate. Instead of relying on a certificate authority, aTLS uses this attestation statement to establish trust in the certificate.
+With aTLS, the party to be authenticated somehow binds its TLS certificate to an attestation statement.
+For example, it embeds the certificate's public key into an attestation statement.
+Instead of relying on a certificate authority, aTLS uses this attestation statement to establish trust in the certificate.
 The protocol can be used by clients to verify a server certificate, by a server to verify a client certificate, or for mutual verification (mutual aTLS).
 
 
