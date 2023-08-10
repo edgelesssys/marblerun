@@ -2,7 +2,7 @@
 
 The following steps guide you through the process of deploying MarbleRun in your cluster and deploying a sample app. This example assumes that you have successfully [installed MarbleRun](./installation.md), and have access to a Kubernetes cluster.
 
-A working SGX DCAP environment is required for MarbleRun to work. For ease of exploring and testing, we provide a simulation mode with `--simulation` that runs without SGX hardware.
+A working SGX DCAP environment is required for MarbleRun. For ease of exploring and testing, we provide a simulation mode with `--simulation` that runs without SGX hardware.
 Depending on your setup, you may follow the quickstart for SGX-enabled clusters. Alternatively, if your setup doesn't support SGX, you can follow the quickstart in simulation mode by selecting the respective tabs.
 
 ## Step 1: Install the control plane onto your cluster

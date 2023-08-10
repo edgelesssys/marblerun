@@ -2,7 +2,7 @@
 
 The Coordinator is MarbleRun's control plane.
 Conceptually, it operates as trusted controller in your confidential deployment.
-Therefore, it securely holds the deployment's state, including the [manifest](../features/manifest.md) and the defined [secrets](../features/secrets-management.md).
+It securely holds the deployment's state, including the [manifest](../features/manifest.md) and the defined [secrets](../features/secrets-management.md).
 Based on the manifest, the Coordinator uses [remote attestation](../features/attestation.md) to authenticate the application's enclaves.
 
 

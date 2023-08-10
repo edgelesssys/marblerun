@@ -7,7 +7,7 @@ MarbleRun optionally injects [tolerations](https://kubernetes.io/docs/concepts/s
 You can enable auto-injection of the data-plane configuration using Pod labels.
 
 ## The `marbletype` label
-MarbleRun defines Marbles (i.e., secure enclaves) in the [manifest](../workflows/define-manifest.md). You need to reference Marbles in your Kubernetes resource description as follows using the `marblerun/marbletype` label:
+In MarbleRun, Marbles (i.e, secure enclaves) are defined in the [manifest](../workflows/define-manifest.md). You need to reference Marbles in your Kubernetes resource description as follows using the `marblerun/marbletype` label:
 
 ```javascript
 {

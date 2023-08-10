@@ -1,7 +1,7 @@
 # Key management and cryptographic primitives
 
 MarbleRun protects and isolates your deployments and workloads. To that end, cryptography is the foundation that ensures the confidentiality and integrity of all components.
-Evaluating the security and compliance of MarbleRun requires a precise understanding of the cryptographic primitives and keys used.
+Evaluating the security of MarbleRun requires a precise understanding of the cryptographic primitives and keys used.
 The following gives an overview of the architecture and explains the technical details.
 
 ## High-level architecture
@@ -11,11 +11,11 @@ The [Coordinator](coordinator.md) and the [Marbles](marbles.md) run inside SGX E
 MarbleRun uses cryptography for the following tasks.
 
 * Authentication and authorization
-* Establishing a public key infrastructure (PKI) for MarbleRun
-* Encrypting network traffic via mutual TLS between enclaves
+* Establishment of a public key infrastructure (PKI) for MarbleRun
+* Encryption of network traffic via mutual TLS between enclaves
 * Encrypting persistent state
 
-The following graphic gives an overview of the architecture and the components.
+The following diagram gives an overview of the architecture and the components.
 
 ![Security architecture](../_media/security_architecture.svg)
 
@@ -42,13 +42,13 @@ The *Root CA Certificate* has no expiry date and lives as long as the MarbleRun 
 
 Alongside the *Root CA Certificate*, the Coordinator generates an X.509 *Intermediate Certificate* and corresponding asymmetric key pair, again using ECDSA with P256.
 The *Intermediate Certificate* is signed by the Coordinator's *Root CA Certificate* and rotated with every manifest update.
-When you push an update to the manifest (for example, bump up the *SecurityVersion* of a Mable), the *Intermediate Certificate* will change.
-Instances with the new version won't authenticate with instances of the old version and vice versa.
+When you push an update to the manifest (for example, bump up the *SecurityVersion* of a Marble), the *Intermediate Certificate* will change.
+Marbles instances of the new version won't authenticate with instances of the old version and vice versa.
 Hence, no data flow is happening between different *SecurityVersions* of your application.
 However, the *Root CA Certificate* doesn't change. So you can still verify the Coordinator and your application from the outside and ensure it's the same instance you might have interacted with.
 Applications interacting with the MarbleRun deployment should use the intermediate certificate as CA to make manifest updates observable:
-if the manifest changes, connections to the deployment will fail.
-The application owner can then review the changes and install the new intermediate certificate to approve them.
+If the manifest changes, connections to the deployment will fail.
+The application user can then review the changes and install the new intermediate certificate to approve them.
 If such observability isn't required, the application can use the root certificate as CA.
 In that case, the application will continue to work even if the manifest changes.
 
@@ -86,9 +86,11 @@ MarbleRun uses the SGX sealing key called `Product key` as its KEK, which is bou
 In other words, a fresh and benign enclave instance of the same identity can recover that key.
 Hence, if the Coordinator is restarted on the same CPU, it can obtain the same KEK from the CPU, decrypt the DEK, and recover its state.
 
+![Encrypted state single instance](../_media/enc-state-single.svg)
+
 If the Coordinator is restarted on a different CPU, it won't be able to obtain the same SGX sealing key from the CPU.
-Therefore, MarbleRun provides a [recovery feature](../features/recovery.md#recovery).
-The manifest allows for specifying a designated Recovery Key. The Recovery Key is a public RSA key. Upon startup, the Coordinator encrypts the DEK with this public key and returns it to the user.
+To address this, MarbleRun provides a [recovery feature](../features/recovery.md#recovery).
+The manifest allows for specifying a designated Recovery Key. The Recovery Key is a RSA public key. Upon startup, the Coordinator encrypts the DEK with this public key and returns it to the user.
 In case of a recovery event, the user decrypts the DEK locally and [uploads it to the Coordinator](../workflows/recover-coordinator.md).
 The Coordinator will decrypt the state with the DEK and proceed with operations.
 
@@ -96,8 +98,6 @@ For [multi-party use cases](../features/recovery.md#multi-party-recovery), Marbl
 Every recovery party is defined in the manifest with its own public RSA key.
 The Coordinator generates a share of the recovery secret for every party and encrypts it with the corresponding RSA key.
 During a recovery event, every party will upload their share of the secret, which are all XORed together by the Coordinator to receive the combined key for decrypting the DEK.
-
-![Encrypted state single instance](../_media/enc-state-single.svg)
 
 
 ### Distributed Coordinator
