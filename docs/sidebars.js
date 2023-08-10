@@ -224,17 +224,17 @@ const sidebars = {
         {
           type: 'doc',
           label: 'EGo',
-          id: 'building-enclaves/ego',
+          id: 'building-marbles/ego',
         },
         {
           type: 'doc',
           label: 'Gramine',
-          id: 'building-enclaves/gramine',
+          id: 'building-marbles/gramine',
         },
         {
           type: 'doc',
           label: 'Occlum',
-          id: 'building-enclaves/occlum',
+          id: 'building-marbles/occlum',
         },
       ],
     },
