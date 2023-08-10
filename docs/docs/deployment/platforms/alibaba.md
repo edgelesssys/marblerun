@@ -14,7 +14,7 @@ See the [Kubernetes guide](../kubernetes.md) on installing MarbleRun in your ACK
 
 
 ## Alibaba Cloud Elastic Compute Service
-With 7th-generation [security-enhanced ECS](https://www.alibabacloud.com/help/en/ecs/user-guide/overview-25) instances](https://www.alibabacloud.com/help/en/ecs/user-guide/overview-25), users can use Intel SGX on Alibaba Cloud.
+With 7th-generation [security-enhanced ECS instances](https://www.alibabacloud.com/help/en/ecs/user-guide/overview-25), users can use Intel SGX on Alibaba Cloud.
 You can follow the guide for creating a [g7t, c7t, or r7t](https://www.alibabacloud.com/help/en/elastic-compute-service/latest/create-security-enhanced-instances) instance.
 
 The description below uses a VM running Ubuntu 18.04.
@@ -62,5 +62,5 @@ The description below uses a VM running Ubuntu 18.04.
 
 ### Deploy MarbleRun
 
-You can run MarbleRun standalone on your Alibaba Cloud ECS VM. See the [standalone](../standalone.md) guide](../standalone.md).
+You can run MarbleRun standalone on your Alibaba Cloud ECS VM. See the [standalone guide](../standalone.md).
 Alternatively, you can install a Kubernetes cluster. Probably the simplest option would be [minikube](https://minikube.sigs.k8s.io/docs/start/). See the [Kubernetes guide](../kubernetes.md) on how to install MarbleRun in minikube.

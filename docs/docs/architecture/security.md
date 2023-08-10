@@ -68,9 +68,9 @@ Depending on the Marble's runtime, the certificate can be used [manually](../wor
 
 ## Attested TLS (aTLS)
 
-In a CC environment, attested TLS (aTLS) can establish secure connections between two parties using the remote attestation features of the CC components.
+In a confidential computing (CC) environment, attested TLS (aTLS) can establish secure connections between two parties using the remote attestation features of the CC components.
 With aTLS, the party to be authenticated binds its TLS certificate to an attestation statement.
-For example, it embeds the certificate's public key into an attestation statement.
+For example, it embeds the certificate's public key into the attestation statement.
 Instead of relying on a certificate authority, aTLS uses this attestation statement to establish trust in the certificate.
 The protocol can be used by clients to verify a server certificate, by a server to verify a client certificate, or for mutual verification (mutual aTLS).
 
@@ -78,7 +78,7 @@ The protocol can be used by clients to verify a server certificate, by a server 
 ## Encryption of state
 
 The Coordinator holds MarbleRun's state, which consists of the [manifest](../features/manifest.md), the [managed secrets](../features/secrets-management.md), and the [certificates for its CA](../features/attestation.md).
-The state is stored encrypted in persistent storage. For this, MarbleRun uses [AES128-GCM](https://www.rfc-editor.org/rfc/rfc5116#section-5.1) and a generated 16-byte Data Encryption Key (KEK) to seal the state to persistent storage.
+The state is stored encrypted in persistent storage. For this, MarbleRun uses [AES128-GCM](https://www.rfc-editor.org/rfc/rfc5116#section-5.1) and a generated 16-byte data encryption key (DEK).
 The DEK is also sealed to persistent storage to recover the state in case of a restart autonomously.
 [SGX sealing](https://www.intel.com/content/www/us/en/developer/articles/technical/introduction-to-intel-sgx-sealing.html) is used for that purpose.
 The Coordinator encrypts the DEK with a key encryption key (KEK).

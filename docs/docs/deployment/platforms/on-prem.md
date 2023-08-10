@@ -38,11 +38,11 @@ Most of the popular hypervisors support SGX:
 #### Driver
 
 You need to install the [DCAP SGX Driver](https://download.01.org/intel-sgx/sgx-dcap/1.11/linux/docs/Intel_SGX_SW_Installation_Guide_for_Linux.pdf).
-Azure provides instructions on [how](https://docs.microsoft.com/en-us/azure/confidential-computing/quick-create-portal#2-install-the-intel-sgx-dcap-driver) to install this driver](https://docs.microsoft.com/en-us/azure/confidential-computing/quick-create-portal#2-install-the-intel-sgx-dcap-driver) that you can use for your on-premises machines.
+Azure provides instructions on [how to install this driver](https://docs.microsoft.com/en-us/azure/confidential-computing/quick-create-portal#2-install-the-intel-sgx-dcap-driver) that you can use for your on-premises machines.
 
 ### SGX Data Center Attestation Primitives (DCAP)
 
-DCAP is the new attestation mechanism for SGX, [replacing](https://software.intel.com/content/www/us/en/develop/blogs/an-update-on-3rd-party-attestation.html)[ EPID](https://software.intel.com/content/www/us/en/develop/blogs/an-update-on-3rd-party-attestation.html).
+DCAP is the new attestation mechanism for SGX, [replacing EPID](https://software.intel.com/content/www/us/en/develop/blogs/an-update-on-3rd-party-attestation.html).
 You can find an overview of DCAP in the [official Intel docs](https://download.01.org/intel-sgx/sgx-dcap/1.11/linux/docs/DCAP_ECDSA_Orientation.pdf).
 MarbleRun only supports DCAP and requires DCAP libraries installed and configured on your system.
 
