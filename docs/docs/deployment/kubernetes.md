@@ -19,7 +19,7 @@ The SGX device plugin can either be deployed manually or as a DaemonSet in the c
 
 :::info
 
-If you are using a CC-enlightened, managed Kubernetes cluster, you will usually already have an SGX device plugin installed.
+If you are using a confidential computing-enlightened, managed Kubernetes cluster, you will usually already have an SGX device plugin installed.
 For example, creating a confidential computing cluster on AKS has a pre-configured SGX device plugin.
 
 :::

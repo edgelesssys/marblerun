@@ -68,7 +68,7 @@ Depending on the Marble's runtime, the certificate can be used [manually](../wor
 
 ## Attested TLS (aTLS)
 
-In a confidential computing (CC) environment, attested TLS (aTLS) can establish secure connections between two parties using the remote attestation features of the CC components.
+In a confidential computing environment, attested TLS (aTLS) can establish secure connections between two parties using the remote attestation features of the confidential computing components.
 With aTLS, the party to be authenticated binds its TLS certificate to an attestation statement.
 For example, it embeds the certificate's public key into the attestation statement.
 Instead of relying on a certificate authority, aTLS uses this attestation statement to establish trust in the certificate.
