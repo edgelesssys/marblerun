@@ -43,7 +43,7 @@ The *Root CA Certificate* has no expiry date and lives as long as the MarbleRun 
 Alongside the *Root CA Certificate*, the Coordinator generates an X.509 *Intermediate Certificate* and corresponding asymmetric key pair, again using ECDSA with P256.
 The *Intermediate Certificate* is signed by the Coordinator's *Root CA Certificate* and rotated with every manifest update.
 When you push an update to the manifest (for example, bump up the *SecurityVersion* of a Marble), the *Intermediate Certificate* will change.
-Marbles instances of the new version won't authenticate with instances of the old version and vice versa.
+Marble instances of the new version won't authenticate with instances of the old version and vice versa.
 Hence, no data flow is happening between different *SecurityVersions* of your application.
 However, the *Root CA Certificate* doesn't change. So you can still verify the Coordinator and your application from the outside and ensure it's the same instance you might have interacted with.
 Applications interacting with the MarbleRun deployment should use the intermediate certificate as CA to make manifest updates observable:
