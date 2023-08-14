@@ -1,0 +1,70 @@
+FROM ghcr.io/edgelesssys/marblerun/build-base-focal:v0.0.0 AS build
+
+# don't run `apt-get update` because required packages are cached in build-base for reproducibility
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+  build-essential \
+  clang-11 \
+  cmake \
+  file \
+  git \
+  libsgx-dcap-default-qpl \
+  libssl-dev \
+  ninja-build \
+  wget
+
+ARG erttag=v0.4.1
+ARG mrtag=v1.2.0
+ARG goversion=1.20.6
+RUN wget -qO- https://go.dev/dl/go${goversion}.linux-amd64.tar.gz | tar -C /usr/local -xz \
+  && git clone -b $erttag --depth=1 https://github.com/edgelesssys/edgelessrt \
+  && git clone -b $mrtag --depth=1 https://github.com/edgelesssys/marblerun \
+  && mkdir ertbuild mrbuild
+
+# install ert
+RUN cd edgelessrt && export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct) && cd /ertbuild \
+  && cmake -GNinja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF /edgelessrt \
+  && ninja install
+
+# build cli
+RUN cd marblerun && export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct) && cd /mrbuild \
+  && . /opt/edgelessrt/share/openenclave/openenclaverc \
+  && cmake -DCMAKE_BUILD_TYPE=Release /marblerun \
+  && PATH=$PATH:/usr/local/go/bin make cli
+
+# create AppImage
+RUN chmod +x linuxdeploy-x86_64.AppImage && touch marblerun.svg \
+  # workaround for reproducibility based on https://github.com/AppImage/AppImageKit/issues/929#issuecomment-926001098
+  && /linuxdeploy-x86_64.AppImage --appimage-extract \
+  && cd squashfs-root/plugins/linuxdeploy-plugin-appimage/appimagetool-prefix/usr/lib/appimagekit \
+  && mv mksquashfs mksquashfs_orig \
+  && echo '$0_orig $(echo $* | sed -e "s/-mkfs-time 0//")' > mksquashfs \
+  && chmod +x mksquashfs \
+  && cd / \
+  # create AppDir
+  && squashfs-root/AppRun \
+  --appdir=marblerun.AppDir \
+  --create-desktop-file \
+  -imarblerun.svg \
+  -e/mrbuild/marblerun \
+  -l/usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so.1 \
+  # workaround for hardcoded CA bundle path in libcurl
+  && cd marblerun.AppDir/usr \
+  && mkdir lib-fedora \
+  && cp lib/libcurl.so.4 lib-fedora \
+  && sed -i 's|/etc/ssl/certs/ca-certificates.crt|/./etc/pki/tls/certs/ca-bundle.crt|' lib-fedora/libcurl.so.4 \
+  && cd / \
+  && echo \
+  '#!/bin/sh\n\
+DIR=$(dirname "$(readlink -f "$0")")\n\
+[ ! -e /etc/ssl/certs/ca-certificates.crt ] && [ -e /etc/pki/tls/certs/ca-bundle.crt ] && export LD_LIBRARY_PATH="${DIR}/usr/lib-fedora:${DIR}/usr/lib"\n\
+exec "${DIR}/usr/bin/marblerun" "$@"\n' \
+  > AppRun \
+  # build AppImage
+  && SOURCE_DATE_EPOCH=$(git -C /marblerun log -1 --pretty=%ct) ARCH=x86_64 LDAI_RUNTIME_FILE=runtime-x86_64 squashfs-root/AppRun \
+  --appdir=marblerun.AppDir \
+  --custom-apprun=AppRun \
+  -oappimage
+
+FROM scratch
+COPY --from=build /mrbuild/marblerun /marblerun-ubuntu-20.04
+COPY --from=build /marblerun-x86_64.AppImage /

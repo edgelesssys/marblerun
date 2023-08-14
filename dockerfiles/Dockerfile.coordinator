@@ -1,7 +1,7 @@
-FROM ghcr.io/edgelesssys/marblerun/build-base:v1.2.0 AS build
+FROM ghcr.io/edgelesssys/marblerun/build-base:v0.0.0 AS build
 
 # don't run `apt-get update` because required packages are cached in build-base for reproducibility
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+RUN apt-get install -y --no-install-recommends \
   build-essential \
   ca-certificates \
   clang-11 \
@@ -11,10 +11,10 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
   ninja-build \
   wget
 
-ARG erttag=v0.4.0
+ARG erttag=v0.4.1
 ARG mrtag=v1.2.0
-ARG goversion=1.20.5
-RUN wget -qO- https://golang.org/dl/go${goversion}.linux-amd64.tar.gz | tar -C /usr/local -xz \
+ARG goversion=1.20.6
+RUN wget -qO- https://go.dev/dl/go${goversion}.linux-amd64.tar.gz | tar -C /usr/local -xz \
   && git clone -b $erttag --depth=1 https://github.com/edgelesssys/edgelessrt \
   && git clone -b $mrtag --depth=1 https://github.com/edgelesssys/marblerun \
   && mkdir ertbuild mrbuild
@@ -37,21 +37,19 @@ COPY --from=build \
   /mrbuild/coordinator-enclave.signed \
   /mrbuild/coordinator-config.json \
   /mrbuild/coordinator-noenclave \
-  /mrbuild/marblerun \
   /mrbuild/marble-injector \
   /mrbuild/premain-libos \
   /opt/edgelessrt/bin/erthost \
   /
+COPY --from=build /mrbuild/marblerun /marblerun-ubuntu-22.04
 
 # the coordinator container image
-FROM ubuntu:focal-20230605 AS release
-ARG PSW_VERSION=2.19.100.3-focal1
-ARG DCAP_VERSION=1.16.100.2-focal1
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates gnupg libcurl4 wget \
-  && wget -qO- https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | apt-key add \
-  && echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu focal main' >> /etc/apt/sources.list \
-  && wget -qO- https://packages.microsoft.com/keys/microsoft.asc | apt-key add \
-  && echo 'deb [arch=amd64] https://packages.microsoft.com/ubuntu/20.04/prod focal main' >> /etc/apt/sources.list \
+FROM ubuntu:jammy-20230624 AS release
+ARG PSW_VERSION=2.20.100.4-jammy1
+ARG DCAP_VERSION=1.17.100.4-jammy1
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates wget \
+  && wget -qO /etc/apt/keyrings/intel-sgx-keyring.asc https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key \
+  && echo 'deb [signed-by=/etc/apt/keyrings/intel-sgx-keyring.asc arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu jammy main' > /etc/apt/sources.list.d/intel-sgx.list \
   && apt-get update && apt-get install -y --no-install-recommends \
   libsgx-ae-id-enclave=$DCAP_VERSION \
   libsgx-ae-pce=$PSW_VERSION \
