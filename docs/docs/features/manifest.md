@@ -1,7 +1,7 @@
 # Manifest and deployment updates
 
 The manifest is a JSON document that defines the essential properties of your deployment: allowed software packages, secrets, access control, update policy, etc.
-Particularly, the manifest contains all information required by the [Coordinator](../getting-started/coordinator.md) to verify the confidentiality and integrity of a newly spawned [Marble](../getting-started/marbles.md).
+Particularly, the manifest contains all information required by the [Coordinator](../architecture/coordinator.md) to verify the confidentiality and integrity of a newly spawned [Marble](../architecture/marbles.md).
 On successful verification, the Coordinator provisions the Marble with configuration and secrets.
 
 As a cluster owner, you can define in the manifest how rigid you want your deployment to be.

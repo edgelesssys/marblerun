@@ -32,33 +32,18 @@ const sidebars = {
       items: [
         {
           type: 'doc',
-          label: 'Quickstart',
+          label: 'Installation',
+          id: 'getting-started/installation',
+        },
+        {
+          type: 'doc',
+          label: 'First steps',
           id: 'getting-started/quickstart',
         },
         {
           type: 'doc',
-          label: 'Quickstart SGX',
-          id: 'getting-started/quickstart-sgx',
-        },
-        {
-          type: 'doc',
-          label: 'Quickstart Simulation',
-          id: 'getting-started/quickstart-simulation',
-        },
-        {
-          type: 'doc',
-          label: 'Concepts',
-          id: 'getting-started/concepts',
-        },
-        {
-          type: 'doc',
-          label: 'Coordinator',
-          id: 'getting-started/coordinator',
-        },
-        {
-          type: 'doc',
-          label: 'Marbles',
-          id: 'getting-started/marbles',
+          label: 'Examples',
+          id: 'getting-started/examples',
         },
       ],
     },
@@ -115,16 +100,6 @@ const sidebars = {
       items: [
         {
           type: 'doc',
-          label: 'Cloud',
-          id: 'deployment/cloud',
-        },
-        {
-          type: 'doc',
-          label: 'On-premises',
-          id: 'deployment/on-prem',
-        },
-        {
-          type: 'doc',
           label: 'Kubernetes',
           id: 'deployment/kubernetes',
         },
@@ -132,6 +107,28 @@ const sidebars = {
           type: 'doc',
           label: 'Standalone',
           id: 'deployment/standalone',
+        },
+        {
+          type: 'category',
+          label: 'Platforms',
+          link: { type: 'doc', id: 'deployment/platforms/platforms' },
+          items: [
+            {
+              type: 'doc',
+              label: 'Azure',
+              id: 'deployment/platforms/azure',
+            },
+            {
+              type: 'doc',
+              label: 'Alibaba Cloud',
+              id: 'deployment/platforms/alibaba',
+            },
+            {
+              type: 'doc',
+              label: 'On-premises',
+              id: 'deployment/platforms/on-prem',
+            },
+          ],
         },
       ],
     }, {
@@ -190,7 +187,36 @@ const sidebars = {
     },
     {
       type: 'category',
-      label: 'Building services',
+      label: 'Architecture',
+      link: {
+        'type': 'generated-index',
+      },
+      items: [
+        {
+          type: 'doc',
+          label: 'Concepts',
+          id: 'architecture/concepts',
+        },
+        {
+          type: 'doc',
+          label: 'Coordinator',
+          id: 'architecture/coordinator',
+        },
+        {
+          type: 'doc',
+          label: 'Marbles',
+          id: 'architecture/marbles',
+        },
+        {
+          type: 'doc',
+          label: 'Keys and cryptography',
+          id: 'architecture/security',
+        },
+      ]
+    },
+    {
+      type: 'category',
+      label: 'Building Marbles',
       link: {
         type: 'generated-index',
       },
@@ -198,24 +224,19 @@ const sidebars = {
         {
           type: 'doc',
           label: 'EGo',
-          id: 'building-services/ego',
+          id: 'building-marbles/ego',
         },
         {
           type: 'doc',
           label: 'Gramine',
-          id: 'building-services/gramine',
+          id: 'building-marbles/gramine',
         },
         {
           type: 'doc',
           label: 'Occlum',
-          id: 'building-services/occlum',
+          id: 'building-marbles/occlum',
         },
       ],
-    },
-    {
-      type: 'doc',
-      label: 'Examples',
-      id: 'examples',
     },
     {
       type: 'category',

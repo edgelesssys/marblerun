@@ -150,23 +150,6 @@ async function createConfig() {
           style: 'dark',
           links: [
             {
-              title: 'Learn',
-              items: [
-                {
-                  label: 'Quickstart',
-                  to: '/getting-started/quickstart',
-                },
-                {
-                  label: 'Concepts',
-                  to: '/getting-started/concepts',
-                },
-                {
-                  label: 'Examples',
-                  to: '/examples',
-                },
-              ],
-            },
-            {
               title: 'Community',
               items: [
                 {
