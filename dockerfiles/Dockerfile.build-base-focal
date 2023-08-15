@@ -1,0 +1,21 @@
+FROM alpine AS download
+RUN wget \
+  https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key \
+  https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage \
+  https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-x86_64
+
+FROM ubuntu:focal-20230801
+COPY --from=download /intel-sgx-deb.key /etc/apt/keyrings/intel-sgx-keyring.asc
+COPY --from=download /*-x86_64* /
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+  && echo 'deb [signed-by=/etc/apt/keyrings/intel-sgx-keyring.asc arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu focal main' > /etc/apt/sources.list.d/intel-sgx.list \
+  && apt-get update && apt-get install -dy --no-install-recommends \
+  build-essential \
+  clang-11 \
+  cmake \
+  file \
+  git \
+  libsgx-dcap-default-qpl \
+  libssl-dev \
+  ninja-build \
+  wget
