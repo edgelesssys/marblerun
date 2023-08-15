@@ -21,8 +21,22 @@ MarbleRun is written entirely in Go and builds on Edgeless RT, which is written 
 
 ## Build
 
+### With Docker
+
+You can build the MarbleRun binaries with Docker by providing a signing key:
+
+```bash
+openssl genrsa -out private.pem -3 3072
+export DOCKER_BUILDKIT=1
+docker build --secret id=signingkey,src=private.pem --target export -o. - < dockerfiles/Dockerfile.coordinator
+docker build -o. - < dockerfiles/Dockerfile.cli
+```
+
+### In your environment
+
 *Prerequisites*:
 
+* Ubuntu 20.04 or 22.04
 * [Edgeless RT](https://github.com/edgelesssys/edgelessrt) is installed and sourced
 * Go 1.20 or newer
 
