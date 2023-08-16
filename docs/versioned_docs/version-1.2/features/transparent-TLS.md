@@ -4,7 +4,7 @@ Authenticated and encrypted connections between services are essential for the s
 
 Transparent TLS (TTLS) can wrap any connection in TLS on the MarbleRun layer. MarbleRun adds secure communication to your cluster even if your application doesn't support the required TLS features. Just define the desired [connections in the manifest](../workflows/define-manifest.md#tls).
 
-TTLS is currently available with [EGo Marbles](../building-services/ego.md). Other [runtimes](../features/runtimes.md) will be supported in future.
+TTLS is currently available with [EGo Marbles](../building-marbles/ego.md). Other [runtimes](../features/runtimes.md) will be supported in future.
 
 ## Authentication and credentials
 By default the Marble's credentials are automatically configured. Connections between two Marbles are mutually authenticated.

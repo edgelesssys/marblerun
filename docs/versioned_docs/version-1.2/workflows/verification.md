@@ -57,7 +57,7 @@ To verify the coordinator, `era` requires the Coordinator's UniqueID (or MRENCLA
 
 In production, the expected values in `coordinator-era.json` would be generated when building the Coordinator and distributed to your clients. When you build MarbleRun from source, you can find the file in your build directory.
 For testing with a pre-built release, there's a Coordinator image at `ghcr.io/edgelesssys/marblerun/coordinator`.
-You can pull the corresponding `coordinator-era.json` file from our release page:
+You can pull the corresponding `coordinator-era.json` file from the release page:
 
 ```bash
 wget https://github.com/edgelesssys/marblerun/releases/latest/download/coordinator-era.json
