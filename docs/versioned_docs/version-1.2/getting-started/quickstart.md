@@ -1,66 +1,190 @@
-# Quickstart
+# First steps with MarbleRun
 
-In this guide, you will install MarbleRun into your Kubernetes cluster and deploy a sample confidential application to demonstrate the capabilities of MarbleRun.
+The following steps guide you through the process of deploying MarbleRun in your cluster and deploying a sample app. This example assumes that you have successfully [installed MarbleRun](./installation.md), and have access to a Kubernetes cluster.
 
-Installing MarbleRun is easy. First, you will install the CLI (command-line interface) onto your local machine. Using this CLI, you’ll then install the control plane onto your Kubernetes cluster.
-Finally, you will add your own services and set up a corresponding manifest.
+A working SGX DCAP environment is required for MarbleRun. For ease of exploring and testing, we provide a simulation mode with `--simulation` that runs without SGX hardware.
+Depending on your setup, you may follow the quickstart for SGX-enabled clusters. Alternatively, if your setup doesn't support SGX, you can follow the quickstart in simulation mode by selecting the respective tabs.
 
-:::tip
+## Step 1: Install the control plane onto your cluster
 
-A working SGX DCAP environment is required for MarbleRun to work. For the ease of exploring and testing we provide a simulation mode with `--simulation` that runs without SGX hardware.
-Depending on your setup you may follow the [quickstart for SGX-enabled clusters](../getting-started/quickstart-sgx.md). Alternatively, if your setup doesn't support SGX, you can follow the [quickstart in simulation mode](../getting-started/quickstart-simulation.md).
+Install MarbleRun's *Coordinator* control plane by running:
 
-:::
-
-## Step 0: Setup
-
-First, ensure you have access to a Kubernetes cluster and kubectl installed and configured. Probably the easiest way to get started is to run Kubernetes on your local machine using [minikube](https://minikube.sigs.k8s.io/docs/start/). Please check our [prerequisites](../deployment/kubernetes.md#prerequisites) if you want to setup an SGX-enabled cluster. Another easy way is to use [Azure Kubernetes Service (AKS)](https://docs.microsoft.com/en-us/azure/aks/kubernetes-walkthrough-portal), which offers SGX-enabled nodes.
-
-You can validate your setup by running:
+<tabs groupId="install">
+<tabItem value="SGX" label="With SGX">
 
 ```bash
-kubectl version --short
+marblerun install
 ```
 
-You should see an output with both a Client Version and Server Version component.
-Now your cluster is ready and we’ll install the MarbleRun CLI.
+The `marblerun install` command generates a Kubernetes manifest with all the necessary control plane resources.
+This includes a deployment for the Coordinator and for MarbleRun's [admission controller.](../features/kubernetes-integration.md)
 
-## Step 0.5: Install the CLI
-
-If this is your first time running MarbleRun, you will need to download the MarbleRun command-line interface (CLI) onto your local machine. The CLI will allow you to interact with your MarbleRun deployment.
-
-To install the CLI, run:
-
-<tabs groupId="user">
-<tabItem value="current-user" label="For the current user">
+</tabItem>
+<tabItem value="Simulation" label="In simulation mode">
 
 ```bash
-wget -P ~/.local/bin https://github.com/edgelesssys/marblerun/releases/latest/download/marblerun
-chmod +x ~/.local/bin/marblerun
+marblerun install --simulation
+```
+
+The `marblerun install` command generates a Kubernetes manifest with all the necessary control plane resources.
+This includes a deployment for the Coordinator and for MarbleRun's [admission controller.](../features/kubernetes-integration.md)
+The simulation flag tells MarbleRun that real SGX hardware might not be present and the SGX layer should be emulated.
+
+</tabItem>
+</tabs>
+
+
+
+Wait for the control plane to finish installing:
+
+```bash
+marblerun check
+```
+
+This command will wait until all components of MarbleRun are ready to be used or return an error after a timeout period is reached.
+
+Port forward the Coordinator's Client API:
+
+```bash
+kubectl -n marblerun port-forward svc/coordinator-client-api 4433:4433 --address localhost >/dev/null &
+export MARBLERUN=localhost:4433
+```
+
+## Step 2: Verify the Coordinator
+
+After installing the Coordinator, we need to verify its integrity.
+For this, we utilize SGX remote attestation and obtain the Coordinator's root certificate.
+
+Verify the quote and get the Coordinator's root certificate
+
+<tabs groupId="verify">
+<tabItem value="SGX" label="With SGX">
+
+```bash
+marblerun certificate root $MARBLERUN -o marblerun.crt
 ```
 
 </tabItem>
-<tabItem value="global" label="Global install (requires root)">
+<tabItem value="Simulation" label="In simulation mode">
 
 ```bash
-sudo wget -O /usr/local/bin/marblerun https://github.com/edgelesssys/marblerun/releases/latest/download/marblerun
-sudo chmod +x /usr/local/bin/marblerun
+marblerun certificate root $MARBLERUN -o marblerun.crt --insecure
+```
+The insecure flag tells MarbleRun that real SGX hardware might not be present and the quote verification should be omitted.
+
+</tabItem>
+</tabs>
+
+The CLI will obtain the Coordinator's remote attestation quote and verify it against the configuration on our [release page](https://github.com/edgelesssys/marblerun/releases/latest/download/coordinator-era.json).
+The SGX quote proves the integrity of the Coordinator pod.
+The CLI returns a certificate and stores it as `marblerun.crt` in your current directory.
+The certificate is bound to the quote and can be used for future verification.
+It can also be used as a root of trust for [authenticating your confidential applications](../features/attestation.md).
+
+## Step 3: Deploy the demo application
+
+To get a feel for how MarbleRun would work for one of your services, you can install a demo application.
+The emojivoto application is a standalone Kubernetes application that uses a mix of gRPC and HTTP calls to allow users to vote on their favorite emojis.
+Created as a demo application for the popular [Linkerd](https://linkerd.io) service mesh, we've made a confidential variant that uses a confidential service mesh for all gRPC and HTTP connections.
+Clone the [demo application's repository](https://github.com/edgelesssys/emojivoto.git) from GitHub by running the following:
+
+```bash
+git clone https://github.com/edgelesssys/emojivoto.git && cd emojivoto
+```
+
+### Step 3.1: Configure MarbleRun
+
+MarbleRun guarantees that the topology of your distributed app adheres to a manifest specified in simple JSON.
+MarbleRun verifies the integrity of services, bootstraps them, and sets up encrypted connections between them.
+The emojivoto demo already comes with a [manifest](https://github.com/edgelesssys/emojivoto/blob/main/tools/manifest.json), which you can deploy onto MarbleRun by running the following:
+
+<tabs groupId="configure">
+<tabItem value="SGX" label="With SGX">
+
+```bash
+marblerun manifest set tools/manifest.json $MARBLERUN
+```
+
+</tabItem>
+<tabItem value="Simulation" label="In simulation mode">
+
+```bash
+marblerun manifest set tools/manifest.json $MARBLERUN --insecure
 ```
 
 </tabItem>
 </tabs>
 
-Once installed, verify the CLI is running correctly with:
+
+You can check that the state of MarbleRun has changed and is now ready to authenticate your services by running:
+
+<tabs groupId="status">
+<tabItem value="SGX" label="With SGX">
 
 ```bash
-marblerun
+marblerun status $MARBLERUN
 ```
 
-You can use the CLI to check if your cluster is configured to run SGX workloads:
+</tabItem>
+<tabItem value="Simulation" label="In simulation mode">
 
 ```bash
-marblerun precheck
+marblerun status $MARBLERUN --insecure
 ```
 
-If your cluster supports SGX, you can follow the [quickstart for clusters with SGX support.](../getting-started/quickstart-sgx.md)
-Otherwise, please follow the [quickstart in simulation mode.](../getting-started/quickstart-simulation.md)
+</tabItem>
+</tabs>
+
+### Step 3.2: Deploy emojivoto
+
+Finally, install the demo application onto your cluster.
+Please make sure you have [Helm](https://helm.sh/docs/intro/install/) ("the package manager for Kubernetes") installed at least at Version v3.2.0.
+Install emojivoto into the emojivoto namespace by running:
+
+<tabs groupId="verify">
+<tabItem value="SGX" label="With SGX">
+
+```bash
+helm install -f ./kubernetes/sgx_values.yaml emojivoto ./kubernetes --create-namespace -n emojivoto
+```
+
+</tabItem>
+<tabItem value="Simulation" label="In simulation mode">
+
+```bash
+helm install -f ./kubernetes/nosgx_values.yaml emojivoto ./kubernetes --create-namespace -n emojivoto
+```
+
+</tabItem>
+</tabs>
+
+## Step 4: Watch it run
+
+You can now check the MarbleRun log and see the services being authenticated by the Coordinator.
+
+```bash
+kubectl -n marblerun logs -f -l edgeless.systems/control-plane-component=coordinator
+```
+
+Port forward the front-end web service to access it on your local machine by running:
+
+```bash
+kubectl -n emojivoto port-forward svc/web-svc 8443:443 --address 0.0.0.0
+```
+
+Now visit [https://localhost:8443](https://localhost:8443).
+You'll be presented with a certificate warning because your browser, by default, doesn't trust certificates signed by MarbleRun.
+You can ignore this error for now and proceed to the website.\
+Voila! Your emoji votes have never been safer!
+
+## That’s it 👏
+
+Congratulations, you’re now a MarbleRun user! Here are some suggested next steps:
+
+* Explore how [MarbleRun takes care of your secrets](../features/secrets-management.md)
+* [Add your own service](../workflows/add-service.md) to MarbleRun
+* Learn more about [MarbleRun’s architecture](../architecture/concepts.md)
+* Chat with us on [Discord](https://discord.gg/rH8QTH56JN)
+* Try out the full demo on [GitHub](https://github.com/edgelesssys/emojivoto)
+
+Welcome to the MarbleRun community!

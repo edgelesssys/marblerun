@@ -5,18 +5,18 @@ Adding a service to your application requires three steps, which are described i
 ## **Step 1:** Get your service ready for MarbleRun
 
 To get your service ready for MarbleRun, you need to rebuild it with one of the supported [runtimes](../features/runtimes.md):
-* [EGo](../building-services/ego.md)
+* [EGo](../building-marbles/ego.md)
 * [Edgeless RT](https://github.com/edgelesssys/marblerun/blob/master/samples/helloc%2B%2B)
-* [Gramine](../building-services/gramine.md)
-* [Occlum](../building-services/occlum.md)
+* [Gramine](../building-marbles/gramine.md)
+* [Occlum](../building-marbles/occlum.md)
 
 ### Make your service use the provided TLS credentials
 
 Skip this step, when using EGo with [TTLS](../features/transparent-TLS.md).
 
-Quick refresher: MarbleRun's Coordinator issues TLS credentials for each verified Marble (i.e., a service running in a secure enclave) as is described in our [secrets management chapter](../features/secrets-management.md).
+Quick refresher: MarbleRun's Coordinator issues TLS credentials for each verified Marble (i.e., a service running in a secure enclave) as is described in the [secrets management chapter](../features/secrets-management.md).
 
-The TLS X.509 certificate and the corresponding private key can be securely passed to a service through files, environment variables, or command line arguments. This is defined in the manifest as is described in our [writing a manifest hands-on](../workflows/define-manifest.md#marbles).
+The TLS X.509 certificate and the corresponding private key can be securely passed to a service through files, environment variables, or command line arguments. This is defined in the manifest as is described in the [writing a manifest hands-on](../workflows/define-manifest.md#marbles).
 
 Make sure that your service reads the credentials from one of these sources, e.g., the file `/tmp/mycert.cert` or the environment variable `MY_PRIVATE_KEY`, and uses them for internal and external connections. If you're lucky, your service already does this and you don't need to change a thing in the code.
 
@@ -26,7 +26,7 @@ Now that your service is ready, you need to make two types of entries in the man
 
 ### **Step 2.1:** Define the enclave software package
 
-As is described in more detail in our [writing a manifest hands-on](../workflows/define-manifest.md#packages), the manifest contains a section `Packages`, in which allowed enclave software packages are defined.
+As is described in more detail in the [writing a manifest hands-on](../workflows/define-manifest.md#packages), the manifest contains a section `Packages`, in which allowed enclave software packages are defined.
 
 #### EGo / EdgelessRT
 To add an entry for your EGo / EdgelessRT service, run the `oesign` tool on the enclave file you built in the previous step as follows. (`oesign` is installed with [Edgeless RT](https://github.com/edgelesssys/edgelessrt).)
@@ -96,7 +96,7 @@ Use `UniqueID` (i.e., `MRENCLAVE` in Intel SGX speak) or the triplet of `SignerI
 
 ### **Step 2.2:** Define the parameters
 
-Now you can define with which parameters (i.e., files, environment variables, and command line arguments) your service is allowed to run. This is done in the `Marbles` section of the manifest as is described in our [writing a manifest hands-on](../workflows/define-manifest.md#marbles). When using EGo, define all TTLS connections as described in the [manifest hands-on](../workflows/define-manifest.md#tls).
+Now you can define with which parameters (i.e., files, environment variables, and command line arguments) your service is allowed to run. This is done in the `Marbles` section of the manifest as is described in the [writing a manifest hands-on](../workflows/define-manifest.md#marbles). When using EGo, define all TTLS connections as described in the [manifest hands-on](../workflows/define-manifest.md#tls).
 
 Otherwise, as discussed in [Step #1](#make-your-service-use-the-provided-tls-credentials), make sure that the TLS credentials for your service (i.e., `MarbleRun.MarbleCert.Cert` and `MarbleRun.MarbleCert.Private`) are injected such that your service finds them at runtime.
 
@@ -117,7 +117,7 @@ For EGo (`ego marblerun`), Gramine (`gramine-sgx`), and Occlum (`occlum run`) us
 
 The environment variables have the following purposes.
 
-* `EDG_MARBLE_COORDINATOR_ADDR` is the network address of the Coordinator's API for Marbles. When you deploy the Coordinator using our Helm repository as is described in our [deploying MarbleRun hands-on](../deployment/kubernetes.md), the default address is `coordinator-mesh-api.marblerun:2001`.
+* `EDG_MARBLE_COORDINATOR_ADDR` is the network address of the Coordinator's API for Marbles. When you deploy the Coordinator using the Helm repository as is described in the [deploying MarbleRun hands-on](../deployment/kubernetes.md), the default address is `coordinator-mesh-api.marblerun:2001`.
 
 * `EDG_MARBLE_TYPE` needs to reference one entry from your manifest's `Marbles` section.
 
@@ -164,4 +164,4 @@ spec:
         value: "$PWD/uuid"
 ```
 
-Refer to our [emojivoto](https://github.com/edgelesssys/emojivoto) app for complete Helm chart examples.
+Refer to the [emojivoto](https://github.com/edgelesssys/emojivoto) app for complete Helm chart examples.

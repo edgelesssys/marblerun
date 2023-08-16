@@ -2,18 +2,18 @@
 Running an Occlum app with MarbleRun requires some changes to its manifest.
 
 ## Requirements
-Set up an environment to create Occlum images. For an easy start, we recommend that you use either the official [Occlum Docker image](https://hub.docker.com/r/occlum/occlum) or use [our provided Dockerfile](https://github.com/edgelesssys/marblerun/blob/master/samples/occlum-hello/Dockerfile). For a working DCAP remote attestation environment, we recommend [our cloud deployment guide](../deployment/cloud.md).
+Set up an environment to create Occlum images. For an easy start, we recommend using either the official [Occlum Docker image](https://hub.docker.com/r/occlum/occlum) or [our provided Dockerfile](https://github.com/edgelesssys/marblerun/blob/master/samples/occlum-hello/Dockerfile). For a working DCAP remote attestation environment, we recommend [our platform deployment guide](../deployment/platforms/platforms.md).
 
-To build your service, you can start with [Occlum's Introduction](https://github.com/occlum/occlum#introduction) to get your application up and running, and then come back here to adapt it for use with MarbleRun.
+To build your service, you can start with [Occlum's Introduction](https://github.com/occlum/occlum#introduction) to get your application up and running and then come back here to adapt it for use with MarbleRun.
 
 ## Configuration
 ### Premain executable
-Add our pre-built [premain-libos](https://github.com/edgelesssys/marblerun/releases/latest/download/premain-libos) executable to your Occlum image, e.g., by copying it to `image/bin/premain-libos`. By default, Occlum restricts executable files to the `/bin` directory. If you placed the `premain-libos` binary to a different path, you need to adjust this setting accordingly.
+Add our pre-built [premain-libos](https://github.com/edgelesssys/marblerun/releases/latest/download/premain-libos) executable to your Occlum image, e.g., by copying it to `image/bin/premain-libos`. By default, Occlum restricts executable files to the `/bin` directory. If you placed the `premain-libos` binary at a different path, you must adjust this setting accordingly.
 
 Finally, define the original entry point for your Occlum instance as the first `Argv` parameter for your Marble in MarbleRun's `manifest.json`. See [Defining a manifest](../workflows/define-manifest.md) for more information on how to define the `Argv` parameters. This lets MarbleRun launch your application after it succeeded in authenticating with the Coordinator and provides entrypoint pinning similar to the one offered in `Occlum.json`.
 
 ### Environment variables
-The Marble needs to retrieve the MarbleRun specific configuration parameters via environment variables, as [described under Step 3 in "Adding a service."](../workflows/add-service.md)
+The Marble needs to retrieve the MarbleRun-specific configuration parameters via environment variables, as [described under Step 3 in "Adding a service."](../workflows/add-service.md)
 
 To pass environment variables to the enclave, Occlum requires them to be specified in the `env` section in `Occlum.json`.
 
@@ -41,9 +41,9 @@ For example, consider this configuration:
 This will allow you to embed the expected default values during build time. It also lets the user/host system change them during run time when a non-default Coordinator configuration is used.
 
 ### Resource limits
-The premain process is written in Go. The enclave needs to have enough resources for the Go runtime, plus additional memory to launch your application.
+The premain process is written in Go. The enclave must have enough resources for the Go runtime and additional memory to launch your application.
 
-We recommend starting with the following values which should work fine for light-weight to medium memory demanding applications:
+We recommend starting with the following values, which should work fine for light-weight to medium memory-demanding applications:
 ```javascript
 "user_space_size": "2048MB",
 "default_mmap_size": "900MB"
@@ -68,7 +68,7 @@ left: `SGX_QL_SUCCESS`,
 right: `SGX_QL_NETWORK_ERROR`: fail to launch QE', src/util/sgx/dcap/quote_generator.rs:22:13
 ```
 
-You might need to check the DCAP configuration on your system. Note that when using the Docker image, the local Intel DCAP configuration needs to be correctly set from **inside the container.**
+You might need to check the DCAP configuration on your system. Note that when using the Docker image, the local Intel DCAP configuration must be correctly set **inside the container.**
 
 If you use an Azure Confidential Computing machine, you can use our [provided Dockerfile](https://github.com/edgelesssys/marblerun/blob/master/samples/occlum-hello/Dockerfile). It patches the official Occlum image to use the Azure DCAP client, which handles the configuration automatically.
 
