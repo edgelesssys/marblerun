@@ -190,13 +190,14 @@ If you're using an ingress-controller or gateway for managing access to the `coo
 
 ## DCAP configuration
 
-By default the Coordinator will generate its quote using the [Azure-DCAP-Client](https://github.com/microsoft/Azure-DCAP-Client). If you choose to use this, no additional steps are required.
-If you want to use a PCCS other than Azure's you can do so by setting the [necessary configuration](https://github.com/intel/SGXDataCenterAttestationPrimitives/blob/master/QuoteGeneration/qpl/README.md#configuration) during installation:
+By default, the Coordinator's quote provider is configured to generate its quote using the Azure PCCS.
+If you're running on Azure, no additional steps are required.
+Otherwise, set the [necessary configuration](https://github.com/intel/SGXDataCenterAttestationPrimitives/blob/master/QuoteGeneration/qpl/README.md#configuration) during installation:
 
 * Using the CLI
 
   ```bash
-  marblerun install --dcap-qpl intel --dcap-pccs-url <PCCS_URL> --dcap-secure-cert <TRUE/FALSE>
+  marblerun install --dcap-pccs-url <PCCS_URL> --dcap-secure-cert <TRUE/FALSE>
   ```
 
 * Using Helm
@@ -206,7 +207,6 @@ If you want to use a PCCS other than Azure's you can do so by setting the [neces
         --create-namespace \
         -n marblerun \
         --set coordinator.hostname=mycluster.uksouth.cloudapp.azure.com \
-        --set dcap.qpl=intel \
         --set dcap.pccsUrl=<PCCS_URL> \
         --set dcap.useSecureCert=<TRUE/FALSE>
   ```
