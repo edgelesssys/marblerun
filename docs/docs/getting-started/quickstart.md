@@ -9,7 +9,7 @@ Depending on your setup, you may follow the quickstart for SGX-enabled clusters.
 
 Install MarbleRun's *Coordinator* control plane by running:
 
-<tabs groupId="install">
+<tabs groupId="mode">
 <tabItem value="SGX" label="With SGX">
 
 ```bash
@@ -33,8 +33,6 @@ The simulation flag tells MarbleRun that real SGX hardware might not be present 
 </tabItem>
 </tabs>
 
-
-
 Wait for the control plane to finish installing:
 
 ```bash
@@ -57,7 +55,7 @@ For this, we utilize SGX remote attestation and obtain the Coordinator's root ce
 
 Verify the quote and get the Coordinator's root certificate
 
-<tabs groupId="verify">
+<tabs groupId="mode">
 <tabItem value="SGX" label="With SGX">
 
 ```bash
@@ -70,6 +68,7 @@ marblerun certificate root $MARBLERUN -o marblerun.crt
 ```bash
 marblerun certificate root $MARBLERUN -o marblerun.crt --insecure
 ```
+
 The insecure flag tells MarbleRun that real SGX hardware might not be present and the quote verification should be omitted.
 
 </tabItem>
@@ -98,7 +97,7 @@ MarbleRun guarantees that the topology of your distributed app adheres to a mani
 MarbleRun verifies the integrity of services, bootstraps them, and sets up encrypted connections between them.
 The emojivoto demo already comes with a [manifest](https://github.com/edgelesssys/emojivoto/blob/main/tools/manifest.json), which you can deploy onto MarbleRun by running the following:
 
-<tabs groupId="configure">
+<tabs groupId="mode">
 <tabItem value="SGX" label="With SGX">
 
 ```bash
@@ -115,10 +114,9 @@ marblerun manifest set tools/manifest.json $MARBLERUN --insecure
 </tabItem>
 </tabs>
 
-
 You can check that the state of MarbleRun has changed and is now ready to authenticate your services by running:
 
-<tabs groupId="status">
+<tabs groupId="mode">
 <tabItem value="SGX" label="With SGX">
 
 ```bash
@@ -141,7 +139,7 @@ Finally, install the demo application onto your cluster.
 Please make sure you have [Helm](https://helm.sh/docs/intro/install/) ("the package manager for Kubernetes") installed at least at Version v3.2.0.
 Install emojivoto into the emojivoto namespace by running:
 
-<tabs groupId="verify">
+<tabs groupId="mode">
 <tabItem value="SGX" label="With SGX">
 
 ```bash
