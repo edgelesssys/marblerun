@@ -10,8 +10,7 @@ WORKDIR /premain/build
 RUN cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
 RUN make premain-libos
 
-FROM gramineproject/gramine:v1.4 AS release
-
+FROM gramineproject/gramine:v1.5 AS release
 RUN apt-get update && apt-get install -y \
     wget \
     libssl-dev \

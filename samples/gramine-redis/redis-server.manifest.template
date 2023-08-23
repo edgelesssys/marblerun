@@ -67,7 +67,7 @@ fs.mounts = [
   { path = "/etc", uri = "file:/etc" },
 
   # Redis encrypted data dir
-  { type = "encrypted", path = "/redis-data/", uri = "file:redis-data/" },
+  { type = "encrypted", path = "/redis-data/", uri = "file:redis-data/", key_name = "redis-key" },
 ]
 
 ############################### SGX: GENERAL ##################################
@@ -100,7 +100,7 @@ sgx.edmm_enable = {{ 'true' if env.get('EDMM', '0') == '1' else 'false' }}
 # but spawns couple additional threads to do background bookkeeping. Therefore,
 # specifying '8' allows to run a maximum of 6 Redis threads which is enough.
 # MARBLERUN: enclave must have enough threads for Go runtime of premain
-sgx.thread_num = 16
+sgx.max_threads = 16
 
 ############################# SGX: TRUSTED FILES ###############################
 

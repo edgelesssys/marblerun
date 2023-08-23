@@ -73,7 +73,7 @@ The premain process is written in Go. The enclave needs to have enough resources
 
 ```toml
 sgx.enclave_size = "1024M"
-sgx.thread_num = 16
+sgx.max_threads = 16
 ```
 
 If your application has high memory demands, you may need to increase the size even further.

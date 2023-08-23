@@ -16,7 +16,7 @@
                     "/redis-data/redis.conf"
                 ],
                 "Files": {
-                    "/dev/attestation/protected_files_key": "{{ hex .Secrets.ProtectedFilesKey }}",
+                    "/dev/attestation/keys/redis-key": "{{ raw .Secrets.ProtectedFilesKey }}",
                     "/redis-data/redis.conf": "bind 0.0.0.0\nprotected-mode no\nport 0\ntls-port 6379\ntls-cert-file redis.crt\ntls-key-file redis.key\ntls-ca-cert-file ca.crt\ntls-auth-clients no\ntls-replication yes\ntls-cluster yes\nsave ''\ndir /redis-data/",
                     "/redis-data/redis.crt": "{{ pem .MarbleRun.MarbleCert.Cert }}",
                     "/redis-data/redis.key": "{{ pem .MarbleRun.MarbleCert.Private }}",
@@ -32,7 +32,7 @@
                     "/redis-data/redis.conf"
                 ],
                 "Files": {
-                    "/dev/attestation/protected_files_key": "{{ hex .Secrets.ProtectedFilesKey }}",
+                    "/dev/attestation/keys/redis-key": "{{ raw .Secrets.ProtectedFilesKey }}",
                     "/redis-data/redis.conf": "bind 0.0.0.0\nprotected-mode no\nport 0\ntls-port 6379\ntls-cert-file redis.crt\ntls-key-file redis.key\ntls-ca-cert-file ca.crt\ntls-auth-clients no\ntls-replication yes\ntls-cluster yes\nsave ''\ndir /redis-data/\nreplicaof redis-main.redis 6379",
                     "/redis-data/redis.crt": "{{ pem .MarbleRun.MarbleCert.Cert  }}",
                     "/redis-data/redis.key": "{{ pem .MarbleRun.MarbleCert.Private }}",

@@ -67,7 +67,7 @@ First, we are installing MarbleRun on your cluster.
 * Port-forward the Redis service to localhost
 
     ```bash
-    kubectl -n redis port-forward svc/redis 6379:6379 --address localhost >/dev/null &
+    kubectl -n redis port-forward svc/redis-main 6379:6379 --address localhost >/dev/null &
     ```
 
 ### Step 3: Using Redis
@@ -79,7 +79,7 @@ You can now securely connect to the Redis server using the `redis-cli` and the M
     ```bash
     wget http://download.redis.io/redis-stable.tar.gz
     tar xzf redis-stable.tar.gz && cd redis-stable
-    make BUILD_TLS=yes && cp redis-stable/src/redis-cli /usr/local/bin
+    make BUILD_TLS=yes && cp src/redis-cli /usr/local/bin
     ```
 
 * Obtain the Coordinator's CA certificate
