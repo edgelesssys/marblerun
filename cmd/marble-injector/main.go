@@ -7,7 +7,9 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -38,11 +40,28 @@ func main() {
 	mux.HandleFunc("/mutate", w.HandleMutate)
 
 	s := &http.Server{
-		// Addresse forwarding to 443 should be handled by the marble-injector service object
+		// Address forwarding to 443 should be handled by the marble-injector service object
 		Addr:    ":8443",
 		Handler: mux,
+		TLSConfig: &tls.Config{
+			GetCertificate: loadWebhookCert(certFile, keyFile),
+		},
 	}
 
 	log.Println("Starting Server")
-	log.Fatal(s.ListenAndServeTLS(certFile, keyFile))
+	log.Fatal(s.ListenAndServeTLS("", ""))
+}
+
+// loadWebhookCert loads the certificate and key file for the webhook server.
+// We need to use this function since the certificate may be updated by cert-manager,
+// requiring us to reload the certificate.
+func loadWebhookCert(certFile, keyFile string) func(chi *tls.ClientHelloInfo) (*tls.Certificate, error) {
+	return func(chi *tls.ClientHelloInfo) (*tls.Certificate, error) {
+		pair, err := tls.LoadX509KeyPair(certFile, keyFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed loading tls key pair: %w", err)
+		}
+
+		return &pair, nil
+	}
 }
