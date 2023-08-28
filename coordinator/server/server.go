@@ -11,6 +11,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"net"
 	"net/http"
 
@@ -20,10 +21,8 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
 	"github.com/edgelesssys/marblerun/coordinator/state"
 	"github.com/edgelesssys/marblerun/coordinator/user"
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
-	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	grpcprometheus "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -57,21 +56,19 @@ func RunMarbleServer(core *core.Core, addr string, addrChan chan string, errChan
 	creds := credentials.NewTLS(&tlsConfig)
 
 	// Make sure that log statements internal to gRPC library are logged using the zapLogger as well.
-	grpc_zap.ReplaceGrpcLoggerV2(zapLogger)
+	replaceGRPCLogger(zapLogger)
 
-	grpcMetrics := grpc_prometheus.NewServerMetrics()
+	grpcMetrics := grpcprometheus.NewServerMetrics()
 	grpcServer := grpc.NewServer(
 		grpc.Creds(creds),
-		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
-			grpc_ctxtags.StreamServerInterceptor(),
-			grpc_zap.StreamServerInterceptor(zapLogger),
+		grpc.ChainStreamInterceptor(
+			logging.StreamServerInterceptor(middlewareLogger(zapLogger)),
 			grpcMetrics.StreamServerInterceptor(),
-		)),
-		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
-			grpc_ctxtags.UnaryServerInterceptor(),
-			grpc_zap.UnaryServerInterceptor(zapLogger),
+		),
+		grpc.ChainUnaryInterceptor(
+			logging.UnaryServerInterceptor(middlewareLogger(zapLogger)),
 			grpcMetrics.UnaryServerInterceptor(),
-		)),
+		),
 	)
 
 	rpc.RegisterMarbleServer(grpcServer, core)
@@ -134,4 +131,41 @@ func RunPrometheusServer(address string, zapLogger *zap.Logger, reg *prometheus.
 	zapLogger.Info("Starting prometheus /metrics endpoint", zap.String("address", address))
 	err := http.ListenAndServe(address, mux)
 	zapLogger.Warn(err.Error())
+}
+
+func middlewareLogger(log *zap.Logger) logging.Logger {
+	return logging.LoggerFunc(func(ctx context.Context, lvl logging.Level, msg string, fields ...any) {
+		f := make([]zap.Field, 0, len(fields)/2)
+
+		for i := 0; i < len(fields); i += 2 {
+			key := fields[i]
+			value := fields[i+1]
+
+			switch v := value.(type) {
+			case string:
+				f = append(f, zap.String(key.(string), v))
+			case int:
+				f = append(f, zap.Int(key.(string), v))
+			case bool:
+				f = append(f, zap.Bool(key.(string), v))
+			default:
+				f = append(f, zap.Any(key.(string), v))
+			}
+		}
+
+		logger := log.WithOptions(zap.AddCallerSkip(1)).With(f...)
+
+		switch lvl {
+		case logging.LevelDebug:
+			logger.Debug(msg)
+		case logging.LevelInfo:
+			logger.Info(msg)
+		case logging.LevelWarn:
+			logger.Warn(msg)
+		case logging.LevelError:
+			logger.Error(msg)
+		default:
+			panic(fmt.Sprintf("unknown level %v", lvl))
+		}
+	})
 }
