@@ -1,4 +1,3 @@
-# Replace standard Intel DCAP plugin with Azure DCAP plugin
 FROM occlum/occlum:0.29.7-ubuntu20.04
 
 ARG ERT_VERSION="0.4.1"

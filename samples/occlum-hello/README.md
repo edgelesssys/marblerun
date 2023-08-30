@@ -47,14 +47,7 @@ occlum print mrenclave
 cd ..
 ```
 
-The output is similar to the following:
-
-```sh
-$ occlum print mrenclave
-40cde1ce0111be2a7a62cf193a226c8f898323c7559c48102f49d904e40a3952
-```
-
-From this point, you can take the `UniqueID` and insert it into [`manifest.json`](manifest.json).
+From this point, you can take the output and insert it as `UniqueID` into [`manifest.json`](manifest.json).
 
 If you want to change the entry point of your application, you can also edit the first `Argv` value in the manifest. This needs to be a path to the virtual file system of your Occlum image.
 
