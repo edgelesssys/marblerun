@@ -4,54 +4,50 @@ This sample shows how to run an [Occlum](https://github.com/occlum/occlum) appli
 
 ## Requirements
 
-First, get Occlum and its build toolchain up and running. This can become quite complex if you run it on your existing environment. Therefore, we use the official Docker image and expose the SGX device to it:
-
-```sh
-docker run -it --network host --device /dev/sgx_enclave --device /dev/sgx_provision -v /dev/sgx:/dev/sgx occlum/occlum:0.29.3-ubuntu20.04
-```
-
-If you are trying to run this sample on Azure, you might want to use the provided [Dockerfile](Dockerfile) instead. It is based on the official Occlum image, but replaces the default Intel DCAP client with the [Azure DCAP Client](https://github.com/microsoft/Azure-DCAP-Client). This is required to get correct quotes on Azure's Confidential Computing virtual machines. You can build and use the image in the following way:
-
-```sh
-# Assuming `samples/occlum-hello` is the current working directory
-DOCKER_BUILDKIT=1 docker build -t occlum-azure .
-docker run -it --network host --device /dev/sgx_enclave --device /dev/sgx_provision -v /dev/sgx:/dev/sgx occlum-azure
-```
-
+First, get Occlum and its build toolchain up and running. This can become quite complex if you run it on your existing environment. Therefore, we use the official Docker image and expose the SGX device to it.
+Make sure to mount your `/etc/sgx_default_qcnl.conf` so your application has access to your PCCS.
 Note that we also chose `--network host` here, as we assume you do not run the coordinator in the same Docker instance. **This option is potentially insecure in production use**, as it disables the isolation of the container network. For a production setup, we recommend that you choose a setup that exposes the coordinator to the container.
+
+```sh
+docker run -it --network host --device /dev/sgx_enclave --device /dev/sgx_provision -v /dev/sgx:/dev/sgx -v /etc/sgx_default_qcnl.conf:/etc/sgx_default_qcnl.conf occlum/occlum:0.29.7-ubuntu20.04
+```
+
+Inside the Docker instance, install EdgelessRT.
+
+```sh
+ERT_VERSION="0.4.1"
+ERT_DEB=edgelessrt_${ERT_VERSION}_amd64_ubuntu-20.04.deb
+wget https://github.com/edgelesssys/edgelessrt/releases/download/v${ERT_VERSION}/$ERT_DEB
+sudo apt install -y ./$ERT_DEB build-essential
+. /opt/edgelessrt/share/openenclave/openenclaverc
+```
+
+Alternatively, run the provided Docker image, which comes with EdgelessRT preinstalled:
+
+```sh
+DOCKER_BUILDKIT=1 docker build -t occlum-ert .
+docker run -it --network host --device /dev/sgx_enclave --device /dev/sgx_provision -v /dev/sgx:/dev/sgx -v /etc/sgx_default_qcnl.conf:/etc/sgx_default_qcnl.conf occlum-ert
+```
 
 ## Build
 
 Inside the Docker instance, clone the MarbleRun repository and run the Makefile included in this directory. It will automatically build the premain process and "Hello World" application, create the Occlum instance and run `occlum build` to create the final image.
 
 ```sh
-# remove Occlum Go from path
-PATH=":$PATH:" && PATH="${PATH//:\/opt\/occlum\/toolchains\/golang\/bin:/:}" && PATH="${PATH#:}" && PATH="${PATH%:}"
 git clone https://github.com/edgelesssys/marblerun.git
 cd marblerun/samples/occlum-hello
 make
 ```
 
-After you build the Occlum image, you need to retrieve either the `UniqueID` or the `SignerID`/`ProductID`/`SecurityVersion` triple for MarbleRun's [`manifest.json`](manifest.json). You can get the values using the MarbleRun CLI tool:
+After you build the Occlum image, retrieve the `UniqueID` of the enclave for MarbleRun's [`manifest.json`](manifest.json). You can get the values using the Occlum CLI:
 
 ```sh
-wget https://github.com/edgelesssys/marblerun/releases/latest/download/marblerun
-chmod +x marblerun
-./marblerun package-info ./occlum-instance
+cd occlum-instance
+occlum print mrenclave
+cd ..
 ```
 
-The output is similar to the following:
-
-```sh
-Detected Occlum image.
-PackageProperties for Occlum image at './occlum-instance':
-UniqueID (MRENCLAVE)      : ccad2391e0b79d9108209135c26b2c276c5a24f4f55bc67ccf5ab90fd3f5fc22
-SignerID (MRSIGNER)       : 43361affedeb75affee9baec7e054a5e14883213e5a121b67d74a0e12e9d2b7a
-ProductID (ISVPRODID)     : 0
-SecurityVersion (ISVSVN)  : 0
-```
-
-From this point, you can take the `UniqueID` (or `SignerID`/`ProductID`/`SecurityVersion` triple) and insert it into [`manifest.json`](manifest.json).
+From this point, you can take the output and insert it as `UniqueID` into [`manifest.json`](manifest.json).
 
 If you want to change the entry point of your application, you can also edit the first `Argv` value in the manifest. This needs to be a path to the virtual file system of your Occlum image.
 
@@ -79,7 +75,7 @@ make run
 Or manually:
 
 ```sh
-cd occlum_instance
+cd occlum-instance
 occlum run /bin/premain-libos
 ```
 

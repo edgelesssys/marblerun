@@ -22,8 +22,7 @@ hello: hello.c
 	occlum-gcc -Os -o$@ $<
 
 premain-libos:
-	wget https://github.com/edgelesssys/marblerun/releases/latest/download/premain-libos
-	chmod +x premain-libos
+	ertgo build -o premain-libos -buildmode=pie -buildvcs=false ../../cmd/premain-libos
 
 run:
 	cd occlum-instance; occlum run /bin/premain-libos
