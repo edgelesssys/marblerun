@@ -18,7 +18,6 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -157,7 +156,7 @@ func (i IntegrationTest) StartCoordinator(ctx context.Context, cfg CoordinatorCo
 	client := http.Client{Transport: i.transportSkipVerify}
 	url := url.URL{Scheme: "https", Host: i.ClientServerAddr, Path: "status"}
 
-	log.Println("Coordinator starting...")
+	i.t.Log("Coordinator starting...")
 	for {
 		time.Sleep(10 * time.Millisecond)
 		select {
@@ -172,7 +171,7 @@ func (i IntegrationTest) StartCoordinator(ctx context.Context, cfg CoordinatorCo
 
 		resp, err := client.Do(req)
 		if err == nil {
-			log.Println("Coordinator started")
+			i.t.Log("Coordinator started")
 			resp.Body.Close()
 			i.require.Equal(http.StatusOK, resp.StatusCode)
 			return
@@ -386,7 +385,7 @@ func (i IntegrationTest) StartMarbleServer(ctx context.Context, cfg MarbleConfig
 	cmd := i.GetMarbleCmd(ctx, cfg)
 	cmdErr := i.StartCommand("serv", cmd)
 
-	log.Println("Waiting for server...")
+	i.t.Log("Waiting for server...")
 	timeout := time.Second * 5
 	for {
 		time.Sleep(100 * time.Millisecond)
@@ -399,7 +398,7 @@ func (i IntegrationTest) StartMarbleServer(ctx context.Context, cfg MarbleConfig
 		conn, err := net.DialTimeout("tcp", i.MarbleTestAddr, timeout)
 		if err == nil {
 			conn.Close()
-			log.Println("Server started")
+			i.t.Log("Server started")
 			return
 		}
 	}
@@ -424,7 +423,7 @@ func (i IntegrationTest) StartMarbleClient(ctx context.Context, cfg MarbleConfig
 // TriggerRecovery triggers a recovery.
 func (i IntegrationTest) TriggerRecovery(coordinatorCfg CoordinatorConfig, cancelCoordinator func()) (func(), string) {
 	// get certificate
-	log.Println("Save certificate before we try to recover.")
+	i.t.Log("Save certificate before we try to recover.")
 	client := http.Client{Transport: i.transportSkipVerify}
 	clientAPIURL := url.URL{Scheme: "https", Host: i.ClientServerAddr, Path: "quote"}
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, clientAPIURL.String(), http.NoBody)
@@ -439,21 +438,21 @@ func (i IntegrationTest) TriggerRecovery(coordinatorCfg CoordinatorConfig, cance
 	i.require.NotEmpty(cert)
 
 	// simulate restart of coordinator
-	log.Println("Simulating a restart of the coordinator enclave...")
-	log.Println("Killing the old instance")
+	i.t.Log("Simulating a restart of the coordinator enclave...")
+	i.t.Log("Killing the old instance")
 	cancelCoordinator()
 
 	// Remove sealed encryption key to trigger recovery state
-	log.Println("Deleting sealed key to trigger recovery state...")
+	i.t.Log("Deleting sealed key to trigger recovery state...")
 	os.Remove(filepath.Join(coordinatorCfg.sealDir, stdstore.SealedKeyFname))
 
 	// Restart server, we should be in recovery mode
-	log.Println("Restarting the old instance")
+	i.t.Log("Restarting the old instance")
 	ctx, cancel := context.WithCancel(i.Ctx)
 	i.StartCoordinator(ctx, coordinatorCfg)
 
 	// Query status API, check if status response begins with Code 1 (recovery state)
-	log.Println("Checking status...")
+	i.t.Log("Checking status...")
 	statusResponse, err := i.GetStatus()
 	i.require.NoError(err)
 	i.assert.EqualValues(1, gjson.Get(statusResponse, "data.StatusCode").Int(), "Server is not in recovery state, but should be.")
@@ -464,7 +463,7 @@ func (i IntegrationTest) TriggerRecovery(coordinatorCfg CoordinatorConfig, cance
 // VerifyCertAfterRecovery verifies the certificate after a recovery.
 func (i IntegrationTest) VerifyCertAfterRecovery(cert string, cancelCoordinator func(), cfg CoordinatorConfig) func() {
 	// Test with certificate
-	log.Println("Verifying certificate after recovery, without a restart.")
+	i.t.Log("Verifying certificate after recovery, without a restart.")
 	pool := x509.NewCertPool()
 	i.require.True(pool.AppendCertsFromPEM([]byte(cert)))
 	client := http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{RootCAs: pool}}}
@@ -477,23 +476,23 @@ func (i IntegrationTest) VerifyCertAfterRecovery(cert string, cancelCoordinator 
 	i.require.Equal(http.StatusOK, resp.StatusCode)
 
 	// Simulate restart of coordinator
-	log.Println("Simulating a restart of the coordinator enclave...")
-	log.Println("Killing the old instance")
+	i.t.Log("Simulating a restart of the coordinator enclave...")
+	i.t.Log("Killing the old instance")
 	cancelCoordinator()
 
 	// Restart server, we should be in recovery mode
-	log.Println("Restarting the old instance")
+	i.t.Log("Restarting the old instance")
 	ctx, cancel := context.WithCancel(i.Ctx)
 	i.StartCoordinator(ctx, cfg)
 
 	// Finally, check if we survive a restart.
-	log.Println("Restarted instance, now let's see if the state can be restored again successfully.")
+	i.t.Log("Restarted instance, now let's see if the state can be restored again successfully.")
 	statusResponse, err := i.GetStatus()
 	i.require.NoError(err)
 	i.assert.EqualValues(3, gjson.Get(statusResponse, "data.StatusCode").Int(), "Server is in wrong status after recovery.")
 
 	// test with certificate
-	log.Println("Verifying certificate after restart.")
+	i.t.Log("Verifying certificate after restart.")
 	req, err = http.NewRequestWithContext(context.Background(), http.MethodGet, clientAPIURL.String(), http.NoBody)
 	i.require.NoError(err)
 	resp, err = client.Do(req)
@@ -507,23 +506,23 @@ func (i IntegrationTest) VerifyCertAfterRecovery(cert string, cancelCoordinator 
 // VerifyResetAfterRecovery verifies the Coordinator after a recovery as been reset by setting a new manifest.
 func (i IntegrationTest) VerifyResetAfterRecovery(cancelCoordinator func(), cfg CoordinatorConfig) func() {
 	// Check status after setting a new manifest, we should be able
-	log.Println("Check if the manifest was accepted and we are ready to accept Marbles")
+	i.t.Log("Check if the manifest was accepted and we are ready to accept Marbles")
 	statusResponse, err := i.GetStatus()
 	i.require.NoError(err)
 	i.assert.EqualValues(3, gjson.Get(statusResponse, "data.StatusCode").Int(), "Server is in wrong status after recovery.")
 
 	// simulate restart of coordinator
-	log.Println("Simulating a restart of the coordinator enclave...")
-	log.Println("Killing the old instance")
+	i.t.Log("Simulating a restart of the coordinator enclave...")
+	i.t.Log("Killing the old instance")
 	cancelCoordinator()
 
 	// Restart server, we should be in recovery mode
-	log.Println("Restarting the old instance")
+	i.t.Log("Restarting the old instance")
 	ctx, cancel := context.WithCancel(i.Ctx)
 	i.StartCoordinator(ctx, cfg)
 
 	// Finally, check if we survive a restart.
-	log.Println("Restarted instance, now let's see if the new state can be decrypted successfully...")
+	i.t.Log("Restarted instance, now let's see if the new state can be decrypted successfully...")
 	statusResponse, err = i.GetStatus()
 	i.require.NoError(err)
 	i.assert.EqualValues(3, gjson.Get(statusResponse, "data.StatusCode").Int(), "Server is in wrong status after recovery.")
