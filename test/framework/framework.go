@@ -8,6 +8,7 @@
 package framework
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/rsa"
@@ -39,6 +40,7 @@ import (
 
 // IntegrationTest is a testing framework for MarbleRun tests.
 type IntegrationTest struct {
+	t       *testing.T
 	assert  *assert.Assertions
 	require *require.Assertions
 
@@ -63,6 +65,7 @@ func New(t *testing.T, buildDir, simulation string, noenclave bool,
 	t.Cleanup(cancel)
 
 	i := &IntegrationTest{
+		t:       t,
 		assert:  assert.New(t),
 		require: require.New(t),
 
@@ -149,7 +152,7 @@ func (i IntegrationTest) StartCoordinator(ctx context.Context, cfg CoordinatorCo
 		i.SimulationFlag,
 	}
 	cmd.Env = append(cmd.Env, cfg.extraEnv...)
-	output := i.StartCommand(cmd)
+	cmdErr := i.StartCommand("coor", cmd)
 
 	client := http.Client{Transport: i.transportSkipVerify}
 	url := url.URL{Scheme: "https", Host: i.ClientServerAddr, Path: "status"}
@@ -158,10 +161,9 @@ func (i IntegrationTest) StartCoordinator(ctx context.Context, cfg CoordinatorCo
 	for {
 		time.Sleep(10 * time.Millisecond)
 		select {
-		case out := <-output:
+		case err := <-cmdErr:
 			// process died
-			log.Println(out)
-			return
+			i.t.Fatal(err)
 		default:
 		}
 
@@ -178,20 +180,27 @@ func (i IntegrationTest) StartCoordinator(ctx context.Context, cfg CoordinatorCo
 	}
 }
 
-// StartCommand starts the given command and returns a channel that contains the output.
-func (i IntegrationTest) StartCommand(cmd *exec.Cmd) chan string {
-	output := make(chan string)
-	go func() {
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			if _, ok := err.(*exec.ExitError); !ok {
-				output <- err.Error()
-				return
-			}
+// StartCommand starts the given command and returns a channel that contains the error (or nil) when the process exited.
+func (i IntegrationTest) StartCommand(friendlyName string, cmd *exec.Cmd) chan error {
+	stdout, err := cmd.StdoutPipe()
+	i.require.NoError(err)
+	stderr, err := cmd.StderrPipe()
+	i.require.NoError(err)
+	i.require.NoError(cmd.Start())
+
+	log := func(pipe io.ReadCloser, pipeName string) {
+		for scanner := bufio.NewScanner(pipe); scanner.Scan(); {
+			i.t.Log(friendlyName, pipeName+":", scanner.Text())
 		}
-		output <- string(out)
+	}
+	go log(stdout, "out")
+	go log(stderr, "err")
+
+	waitErr := make(chan error)
+	go func() {
+		waitErr <- cmd.Wait()
 	}()
-	return output
+	return waitErr
 }
 
 // SetManifest sets the manifest of the Coordinator.
@@ -375,17 +384,16 @@ func (i IntegrationTest) GetMarbleCmd(ctx context.Context, cfg MarbleConfig) *ex
 // StartMarbleServer starts a Server Marble.
 func (i IntegrationTest) StartMarbleServer(ctx context.Context, cfg MarbleConfig) {
 	cmd := i.GetMarbleCmd(ctx, cfg)
-	output := i.StartCommand(cmd)
+	cmdErr := i.StartCommand("serv", cmd)
 
 	log.Println("Waiting for server...")
 	timeout := time.Second * 5
 	for {
 		time.Sleep(100 * time.Millisecond)
 		select {
-		case out := <-output:
+		case err := <-cmdErr:
 			// process died
-			log.Println(out)
-			return
+			i.t.Fatal(err)
 		default:
 		}
 		conn, err := net.DialTimeout("tcp", i.MarbleTestAddr, timeout)
@@ -399,7 +407,8 @@ func (i IntegrationTest) StartMarbleServer(ctx context.Context, cfg MarbleConfig
 
 // StartMarbleClient starts a Client Marble.
 func (i IntegrationTest) StartMarbleClient(ctx context.Context, cfg MarbleConfig) bool {
-	out, err := i.GetMarbleCmd(ctx, cfg).CombinedOutput()
+	cmd := i.GetMarbleCmd(ctx, cfg)
+	err := <-i.StartCommand("clnt", cmd)
 	if err == nil {
 		return true
 	}
@@ -408,7 +417,8 @@ func (i IntegrationTest) StartMarbleClient(ctx context.Context, cfg MarbleConfig
 		return false
 	}
 
-	panic(err.Error() + "\n" + string(out))
+	i.require.NoError(err)
+	return false
 }
 
 // TriggerRecovery triggers a recovery.
