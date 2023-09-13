@@ -198,7 +198,14 @@ func (i IntegrationTest) StartCommand(friendlyName string, cmd *exec.Cmd) chan e
 	waitErr := make(chan error)
 	go func() {
 		waitErr <- cmd.Wait()
+		close(waitErr)
 	}()
+
+	// On test end, wait until the process actually exited so that the next test can start cleanly.
+	i.t.Cleanup(func() {
+		_ = cmd.Cancel()
+		<-waitErr
+	})
 	return waitErr
 }
 
