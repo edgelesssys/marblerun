@@ -75,11 +75,11 @@ func TestTest(t *testing.T) {
 
 	cfg := framework.NewCoordinatorConfig()
 	defer cfg.Cleanup()
-	assert.Nil(f.StartCoordinator(cfg).Kill())
+	f.StartCoordinator(f.Ctx, cfg)
 
 	marbleCfg := framework.NewMarbleConfig(meshServerAddr, "testMarbleClient", "localhost")
 	defer marbleCfg.Cleanup()
-	assert.False(f.StartMarbleClient(marbleCfg))
+	assert.False(f.StartMarbleClient(f.Ctx, marbleCfg))
 }
 
 func TestMarbleAPI(t *testing.T) {
@@ -91,9 +91,7 @@ func TestMarbleAPI(t *testing.T) {
 	log.Println("Starting a coordinator enclave")
 	cfg := framework.NewCoordinatorConfig()
 	defer cfg.Cleanup()
-	coordinatorProc := f.StartCoordinator(cfg)
-	require.NotNil(coordinatorProc)
-	defer kill(coordinatorProc)
+	f.StartCoordinator(f.Ctx, cfg)
 
 	// set Manifest
 	log.Println("Setting the Manifest")
@@ -104,22 +102,20 @@ func TestMarbleAPI(t *testing.T) {
 	log.Println("Starting a Server-Marble...")
 	serverCfg := framework.NewMarbleConfig(meshServerAddr, "testMarbleServer", "server,backend,localhost")
 	defer serverCfg.Cleanup()
-	serverProc := f.StartMarbleServer(serverCfg)
-	require.NotNil(serverProc, "failed to start server-marble")
-	defer kill(serverProc)
+	f.StartMarbleServer(f.Ctx, serverCfg)
 
 	// start clients
 	log.Println("Starting a bunch of Client-Marbles...")
 	clientCfg := framework.NewMarbleConfig(meshServerAddr, "testMarbleClient", "client,frontend,localhost")
 	defer clientCfg.Cleanup()
-	assert.True(f.StartMarbleClient(clientCfg))
-	assert.True(f.StartMarbleClient(clientCfg))
+	assert.True(f.StartMarbleClient(f.Ctx, clientCfg))
+	assert.True(f.StartMarbleClient(f.Ctx, clientCfg))
 	if !*simulationMode && !*noenclave {
 		// start bad marbles (would be accepted if we run in SimulationMode)
 		badCfg := framework.NewMarbleConfig(meshServerAddr, "badMarble", "bad,localhost")
 		defer badCfg.Cleanup()
-		assert.False(f.StartMarbleClient(badCfg))
-		assert.False(f.StartMarbleClient(badCfg))
+		assert.False(f.StartMarbleClient(f.Ctx, badCfg))
+		assert.False(f.StartMarbleClient(f.Ctx, badCfg))
 	}
 }
 
@@ -133,8 +129,8 @@ func TestRestart(t *testing.T) {
 	log.Println("Starting a coordinator enclave...")
 	cfg := framework.NewCoordinatorConfig()
 	defer cfg.Cleanup()
-	coordinatorProc := f.StartCoordinator(cfg)
-	require.NotNil(coordinatorProc)
+	coordinatorCtx, cancelCoordinator := context.WithCancel(f.Ctx)
+	f.StartCoordinator(coordinatorCtx, cfg)
 
 	// set Manifest
 	_, err := f.SetManifest(f.TestManifest)
@@ -144,25 +140,21 @@ func TestRestart(t *testing.T) {
 	log.Println("Starting a Server-Marble...")
 	serverCfg := framework.NewMarbleConfig(meshServerAddr, "testMarbleServer", "server,backend,localhost")
 	defer serverCfg.Cleanup()
-	serverProc := f.StartMarbleServer(serverCfg)
-	require.NotNil(serverProc, "failed to start server-marble")
-	defer kill(serverProc)
+	f.StartMarbleServer(f.Ctx, serverCfg)
 
 	// start clients
 	log.Println("Starting a bunch of Client-Marbles...")
 	clientCfg := framework.NewMarbleConfig(meshServerAddr, "testMarbleClient", "client,frontend,localhost")
 	defer clientCfg.Cleanup()
-	assert.True(f.StartMarbleClient(clientCfg))
-	assert.True(f.StartMarbleClient(clientCfg))
+	assert.True(f.StartMarbleClient(f.Ctx, clientCfg))
+	assert.True(f.StartMarbleClient(f.Ctx, clientCfg))
 
 	// simulate restart of coordinator
 	log.Println("Simulating a restart of the coordinator enclave...")
 	log.Println("Killing the old instance")
-	require.NoError(coordinatorProc.Kill())
+	cancelCoordinator()
 	log.Println("Restarting the old instance")
-	coordinatorProc = f.StartCoordinator(cfg)
-	require.NotNil(coordinatorProc)
-	defer kill(coordinatorProc)
+	f.StartCoordinator(f.Ctx, cfg)
 
 	// try do malicious update of manifest
 	log.Println("Trying to set a new Manifest, which should already be set")
@@ -171,8 +163,8 @@ func TestRestart(t *testing.T) {
 
 	// start a bunch of client marbles and assert they still work with old server marble
 	log.Println("Starting a bunch of Client-Marbles, which should still authenticate successfully with the Server-Marble...")
-	assert.True(f.StartMarbleClient(clientCfg))
-	assert.True(f.StartMarbleClient(clientCfg))
+	assert.True(f.StartMarbleClient(f.Ctx, clientCfg))
+	assert.True(f.StartMarbleClient(f.Ctx, clientCfg))
 }
 
 func TestClientAPI(t *testing.T) {
@@ -183,9 +175,7 @@ func TestClientAPI(t *testing.T) {
 	// start Coordinator
 	cfg := framework.NewCoordinatorConfig()
 	defer cfg.Cleanup()
-	coordinatorProc := f.StartCoordinator(cfg)
-	require.NotNil(coordinatorProc, "could not start coordinator")
-	defer kill(coordinatorProc)
+	f.StartCoordinator(f.Ctx, cfg)
 
 	// get certificate
 	client := http.Client{Transport: transportSkipVerify}
@@ -255,9 +245,7 @@ func TestSettingSecrets(t *testing.T) {
 	// start Coordinator
 	cfg := framework.NewCoordinatorConfig()
 	defer cfg.Cleanup()
-	coordinatorProc := f.StartCoordinator(cfg)
-	require.NotNil(coordinatorProc, "could not start coordinator")
-	defer kill(coordinatorProc)
+	f.StartCoordinator(f.Ctx, cfg)
 
 	log.Println("Setting the Manifest")
 	_, err := f.SetManifest(f.TestManifest)
@@ -277,15 +265,13 @@ func TestSettingSecrets(t *testing.T) {
 	log.Println("Starting a Server-Marble...")
 	serverCfg := framework.NewMarbleConfig(meshServerAddr, "testMarbleServer", "server,backend,localhost")
 	defer serverCfg.Cleanup()
-	serverProc := f.StartMarbleServer(serverCfg)
-	require.NotNil(serverProc, "failed to start server-marble")
-	defer kill(serverProc)
+	f.StartMarbleServer(f.Ctx, serverCfg)
 
 	// start a marble
 	log.Println("Starting a Client-Marble with unset secret, this should fail...")
 	clientCfg := framework.NewMarbleConfig(meshServerAddr, "testMarbleUnset", "client,frontend,localhost")
 	defer clientCfg.Cleanup()
-	assert.False(f.StartMarbleClient(clientCfg))
+	assert.False(f.StartMarbleClient(f.Ctx, clientCfg))
 
 	// test setting a secret
 	log.Println("Setting a custom secret")
@@ -298,7 +284,7 @@ func TestSettingSecrets(t *testing.T) {
 
 	// start the marble again
 	log.Println("Starting the Client-Marble again, with the secret now set...")
-	assert.True(f.StartMarbleClient(clientCfg))
+	assert.True(f.StartMarbleClient(f.Ctx, clientCfg))
 }
 
 func TestRecoveryRestoreKey(t *testing.T) {
@@ -310,9 +296,8 @@ func TestRecoveryRestoreKey(t *testing.T) {
 	log.Println("Starting a coordinator enclave")
 	cfg := framework.NewCoordinatorConfig()
 	defer cfg.Cleanup()
-	coordinatorProc := f.StartCoordinator(cfg)
-	require.NotNil(coordinatorProc, "could not start coordinator")
-	defer kill(coordinatorProc)
+	coordinatorCtx, cancelCoordinator := context.WithCancel(f.Ctx)
+	f.StartCoordinator(coordinatorCtx, cfg)
 
 	// set Manifest
 	log.Println("Setting the Manifest")
@@ -323,13 +308,10 @@ func TestRecoveryRestoreKey(t *testing.T) {
 	log.Println("Starting a Server-Marble")
 	serverCfg := framework.NewMarbleConfig(f.MeshServerAddr, "testMarbleServer", "server,backend,localhost")
 	defer serverCfg.Cleanup()
-	serverProc := f.StartMarbleServer(serverCfg)
-	require.NotNil(serverProc, "failed to start server-marble")
-	defer kill(serverProc)
+	f.StartMarbleServer(f.Ctx, serverCfg)
 
 	// Trigger recovery mode
-	coordinatorProc, cert := f.TriggerRecovery(cfg, coordinatorProc)
-	defer kill(coordinatorProc)
+	cancelCoordinator, cert := f.TriggerRecovery(cfg, cancelCoordinator)
 
 	// Decode & Decrypt recovery data from when we set the manifest
 	key := gjson.GetBytes(recoveryResponse, "data.RecoverySecrets.testRecKey1").String()
@@ -346,8 +328,7 @@ func TestRecoveryRestoreKey(t *testing.T) {
 	assert.EqualValues(3, gjson.Get(statusResponse, "data.StatusCode").Int(), "Server is in wrong status after recovery.")
 
 	// Verify if old certificate is still valid
-	coordinatorProc = f.VerifyCertAfterRecovery(cert, coordinatorProc, cfg)
-	require.NoError(coordinatorProc.Kill())
+	f.VerifyCertAfterRecovery(cert, cancelCoordinator, cfg)
 }
 
 func TestRecoveryReset(t *testing.T) {
@@ -358,9 +339,8 @@ func TestRecoveryReset(t *testing.T) {
 	log.Println("Starting a coordinator enclave")
 	cfg := framework.NewCoordinatorConfig()
 	defer cfg.Cleanup()
-	coordinatorProc := f.StartCoordinator(cfg)
-	require.NotNil(coordinatorProc, "could not start coordinator")
-	defer kill(coordinatorProc)
+	coordinatorCtx, cancelCoordinator := context.WithCancel(f.Ctx)
+	f.StartCoordinator(coordinatorCtx, cfg)
 
 	// set Manifest
 	log.Println("Setting the Manifest")
@@ -371,13 +351,10 @@ func TestRecoveryReset(t *testing.T) {
 	log.Println("Starting a Server-Marble")
 	serverCfg := framework.NewMarbleConfig(f.MeshServerAddr, "testMarbleServer", "server,backend,localhost")
 	defer serverCfg.Cleanup()
-	serverProc := f.StartMarbleServer(serverCfg)
-	require.NotNil(serverProc, "failed to start server-marble")
-	defer kill(serverProc)
+	f.StartMarbleServer(f.Ctx, serverCfg)
 
 	// Trigger recovery mode
-	coordinatorProc, _ = f.TriggerRecovery(cfg, coordinatorProc)
-	defer kill(coordinatorProc)
+	cancelCoordinator, _ = f.TriggerRecovery(cfg, cancelCoordinator)
 
 	// Set manifest again
 	log.Println("Setting the Manifest")
@@ -385,8 +362,7 @@ func TestRecoveryReset(t *testing.T) {
 	require.NoError(err, "failed to set Manifest")
 
 	// Verify if a new manifest has been set correctly and we are off to a fresh start
-	coordinatorProc = f.VerifyResetAfterRecovery(coordinatorProc, cfg)
-	require.NoError(coordinatorProc.Kill())
+	f.VerifyResetAfterRecovery(cancelCoordinator, cfg)
 }
 
 func TestManifestUpdate(t *testing.T) {
@@ -404,9 +380,7 @@ func TestManifestUpdate(t *testing.T) {
 	log.Println("Starting a coordinator enclave")
 	cfg := framework.NewCoordinatorConfig()
 	defer cfg.Cleanup()
-	coordinatorProc := f.StartCoordinator(cfg)
-	require.NotNil(coordinatorProc)
-	defer kill(coordinatorProc)
+	f.StartCoordinator(f.Ctx, cfg)
 
 	// set Manifest
 	log.Println("Setting the Manifest")
@@ -417,21 +391,19 @@ func TestManifestUpdate(t *testing.T) {
 	log.Println("Starting a Server-Marble")
 	serverCfg := framework.NewMarbleConfig(meshServerAddr, "testMarbleServer", "server,backend,localhost")
 	defer serverCfg.Cleanup()
-	serverProc := f.StartMarbleServer(serverCfg)
-	require.NotNil(serverProc, "failed to start server-marble")
-	defer kill(serverProc)
+	f.StartMarbleServer(f.Ctx, serverCfg)
 
 	// start clients
 	log.Println("Starting a bunch of Client-Marbles (should start successfully)...")
 	clientCfg := framework.NewMarbleConfig(meshServerAddr, "testMarbleClient", "client,frontend,localhost")
 	defer clientCfg.Cleanup()
-	assert.True(f.StartMarbleClient(clientCfg))
-	assert.True(f.StartMarbleClient(clientCfg))
+	assert.True(f.StartMarbleClient(f.Ctx, clientCfg))
+	assert.True(f.StartMarbleClient(f.Ctx, clientCfg))
 	// start bad marbles (would be accepted if we run in SimulationMode)
 	badCfg := framework.NewMarbleConfig(meshServerAddr, "badMarble", "bad,localhost")
 	defer badCfg.Cleanup()
-	assert.False(f.StartMarbleClient(badCfg))
-	assert.False(f.StartMarbleClient(badCfg))
+	assert.False(f.StartMarbleClient(f.Ctx, badCfg))
+	assert.False(f.StartMarbleClient(f.Ctx, badCfg))
 
 	// Set the update manifest
 	log.Println("Setting the Update Manifest")
@@ -440,18 +412,12 @@ func TestManifestUpdate(t *testing.T) {
 
 	// Try to start marbles again, should fail now due to increased minimum SecurityVersion
 	log.Println("Starting the same bunch of outdated Client-Marbles again (should fail now)...")
-	assert.False(f.StartMarbleClient(clientCfg), "Did start successfully, but must not run successfully. The increased minimum SecurityVersion was ignored.")
-	assert.False(f.StartMarbleClient(clientCfg), "Did start successfully, but must not run successfully. The increased minimum SecurityVersion was ignored.")
+	assert.False(f.StartMarbleClient(f.Ctx, clientCfg), "Did start successfully, but must not run successfully. The increased minimum SecurityVersion was ignored.")
+	assert.False(f.StartMarbleClient(f.Ctx, clientCfg), "Did start successfully, but must not run successfully. The increased minimum SecurityVersion was ignored.")
 }
 
 func newFramework(t *testing.T) *framework.IntegrationTest {
 	f := framework.New(t, *buildDir, simFlag, *noenclave, marbleTestAddr, meshServerAddr, clientServerAddr, IntegrationManifestJSON, UpdateManifest)
 	f.UpdateManifest()
 	return f
-}
-
-func kill(p *os.Process) {
-	if p != nil {
-		_ = p.Kill()
-	}
 }

@@ -42,6 +42,7 @@ type IntegrationTest struct {
 	assert  *assert.Assertions
 	require *require.Assertions
 
+	Ctx                 context.Context
 	TestManifest        manifest.Manifest
 	UpdatedManifest     manifest.Manifest
 	BuildDir            string
@@ -58,10 +59,14 @@ func New(t *testing.T, buildDir, simulation string, noenclave bool,
 	marbleTestAddr, meshServerAddr, clientServerAddr,
 	testManifest, updatedManifest string,
 ) *IntegrationTest {
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+
 	i := &IntegrationTest{
 		assert:  assert.New(t),
 		require: require.New(t),
 
+		Ctx:                 ctx,
 		BuildDir:            buildDir,
 		SimulationFlag:      simulation,
 		NoEnclave:           noenclave,
@@ -128,12 +133,12 @@ func (c CoordinatorConfig) Cleanup() {
 }
 
 // StartCoordinator starts the Coordinator defined by the given config.
-func (i IntegrationTest) StartCoordinator(cfg CoordinatorConfig) *os.Process {
+func (i IntegrationTest) StartCoordinator(ctx context.Context, cfg CoordinatorConfig) {
 	var cmd *exec.Cmd
 	if i.NoEnclave {
-		cmd = exec.Command(filepath.Join(i.BuildDir, "coordinator-noenclave"))
+		cmd = exec.CommandContext(ctx, filepath.Join(i.BuildDir, "coordinator-noenclave"))
 	} else {
-		cmd = exec.Command("erthost", filepath.Join(i.BuildDir, "coordinator-enclave.signed"))
+		cmd = exec.CommandContext(ctx, "erthost", filepath.Join(i.BuildDir, "coordinator-enclave.signed"))
 	}
 	cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGKILL} // kill if parent dies
 	cmd.Env = []string{
@@ -156,7 +161,7 @@ func (i IntegrationTest) StartCoordinator(cfg CoordinatorConfig) *os.Process {
 		case out := <-output:
 			// process died
 			log.Println(out)
-			return nil
+			return
 		default:
 		}
 
@@ -168,7 +173,7 @@ func (i IntegrationTest) StartCoordinator(cfg CoordinatorConfig) *os.Process {
 			log.Println("Coordinator started")
 			resp.Body.Close()
 			i.require.Equal(http.StatusOK, resp.StatusCode)
-			return cmd.Process
+			return
 		}
 	}
 }
@@ -347,12 +352,12 @@ func (c MarbleConfig) Cleanup() {
 }
 
 // GetMarbleCmd returns the command to start a Marble.
-func (i IntegrationTest) GetMarbleCmd(cfg MarbleConfig) *exec.Cmd {
+func (i IntegrationTest) GetMarbleCmd(ctx context.Context, cfg MarbleConfig) *exec.Cmd {
 	var cmd *exec.Cmd
 	if i.NoEnclave {
-		cmd = exec.Command(filepath.Join(i.BuildDir, "marble-test-noenclave"))
+		cmd = exec.CommandContext(ctx, filepath.Join(i.BuildDir, "marble-test-noenclave"))
 	} else {
-		cmd = exec.Command("erthost", filepath.Join(i.BuildDir, "marble-test-enclave.signed"))
+		cmd = exec.CommandContext(ctx, "erthost", filepath.Join(i.BuildDir, "marble-test-enclave.signed"))
 	}
 	cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGKILL} // kill if parent dies
 	uuidFile := filepath.Join(cfg.dataDir, "uuid")
@@ -368,8 +373,8 @@ func (i IntegrationTest) GetMarbleCmd(cfg MarbleConfig) *exec.Cmd {
 }
 
 // StartMarbleServer starts a Server Marble.
-func (i IntegrationTest) StartMarbleServer(cfg MarbleConfig) *os.Process {
-	cmd := i.GetMarbleCmd(cfg)
+func (i IntegrationTest) StartMarbleServer(ctx context.Context, cfg MarbleConfig) {
+	cmd := i.GetMarbleCmd(ctx, cfg)
 	output := i.StartCommand(cmd)
 
 	log.Println("Waiting for server...")
@@ -380,21 +385,21 @@ func (i IntegrationTest) StartMarbleServer(cfg MarbleConfig) *os.Process {
 		case out := <-output:
 			// process died
 			log.Println(out)
-			return nil
+			return
 		default:
 		}
 		conn, err := net.DialTimeout("tcp", i.MarbleTestAddr, timeout)
 		if err == nil {
 			conn.Close()
 			log.Println("Server started")
-			return cmd.Process
+			return
 		}
 	}
 }
 
 // StartMarbleClient starts a Client Marble.
-func (i IntegrationTest) StartMarbleClient(cfg MarbleConfig) bool {
-	out, err := i.GetMarbleCmd(cfg).CombinedOutput()
+func (i IntegrationTest) StartMarbleClient(ctx context.Context, cfg MarbleConfig) bool {
+	out, err := i.GetMarbleCmd(ctx, cfg).CombinedOutput()
 	if err == nil {
 		return true
 	}
@@ -407,7 +412,7 @@ func (i IntegrationTest) StartMarbleClient(cfg MarbleConfig) bool {
 }
 
 // TriggerRecovery triggers a recovery.
-func (i IntegrationTest) TriggerRecovery(coordinatorCfg CoordinatorConfig, coordinatorProc *os.Process) (*os.Process, string) {
+func (i IntegrationTest) TriggerRecovery(coordinatorCfg CoordinatorConfig, cancelCoordinator func()) (func(), string) {
 	// get certificate
 	log.Println("Save certificate before we try to recover.")
 	client := http.Client{Transport: i.transportSkipVerify}
@@ -426,7 +431,7 @@ func (i IntegrationTest) TriggerRecovery(coordinatorCfg CoordinatorConfig, coord
 	// simulate restart of coordinator
 	log.Println("Simulating a restart of the coordinator enclave...")
 	log.Println("Killing the old instance")
-	i.require.NoError(coordinatorProc.Kill())
+	cancelCoordinator()
 
 	// Remove sealed encryption key to trigger recovery state
 	log.Println("Deleting sealed key to trigger recovery state...")
@@ -434,8 +439,8 @@ func (i IntegrationTest) TriggerRecovery(coordinatorCfg CoordinatorConfig, coord
 
 	// Restart server, we should be in recovery mode
 	log.Println("Restarting the old instance")
-	coordinatorProc = i.StartCoordinator(coordinatorCfg)
-	i.require.NotNil(coordinatorProc)
+	ctx, cancel := context.WithCancel(i.Ctx)
+	i.StartCoordinator(ctx, coordinatorCfg)
 
 	// Query status API, check if status response begins with Code 1 (recovery state)
 	log.Println("Checking status...")
@@ -443,11 +448,11 @@ func (i IntegrationTest) TriggerRecovery(coordinatorCfg CoordinatorConfig, coord
 	i.require.NoError(err)
 	i.assert.EqualValues(1, gjson.Get(statusResponse, "data.StatusCode").Int(), "Server is not in recovery state, but should be.")
 
-	return coordinatorProc, cert
+	return cancel, cert
 }
 
 // VerifyCertAfterRecovery verifies the certificate after a recovery.
-func (i IntegrationTest) VerifyCertAfterRecovery(cert string, coordinatorProc *os.Process, cfg CoordinatorConfig) *os.Process {
+func (i IntegrationTest) VerifyCertAfterRecovery(cert string, cancelCoordinator func(), cfg CoordinatorConfig) func() {
 	// Test with certificate
 	log.Println("Verifying certificate after recovery, without a restart.")
 	pool := x509.NewCertPool()
@@ -464,12 +469,12 @@ func (i IntegrationTest) VerifyCertAfterRecovery(cert string, coordinatorProc *o
 	// Simulate restart of coordinator
 	log.Println("Simulating a restart of the coordinator enclave...")
 	log.Println("Killing the old instance")
-	i.require.NoError(coordinatorProc.Kill())
+	cancelCoordinator()
 
 	// Restart server, we should be in recovery mode
 	log.Println("Restarting the old instance")
-	coordinatorProc = i.StartCoordinator(cfg)
-	i.require.NotNil(coordinatorProc)
+	ctx, cancel := context.WithCancel(i.Ctx)
+	i.StartCoordinator(ctx, cfg)
 
 	// Finally, check if we survive a restart.
 	log.Println("Restarted instance, now let's see if the state can be restored again successfully.")
@@ -486,11 +491,11 @@ func (i IntegrationTest) VerifyCertAfterRecovery(cert string, coordinatorProc *o
 	resp.Body.Close()
 	i.require.Equal(http.StatusOK, resp.StatusCode)
 
-	return coordinatorProc
+	return cancel
 }
 
 // VerifyResetAfterRecovery verifies the Coordinator after a recovery as been reset by setting a new manifest.
-func (i IntegrationTest) VerifyResetAfterRecovery(coordinatorProc *os.Process, cfg CoordinatorConfig) *os.Process {
+func (i IntegrationTest) VerifyResetAfterRecovery(cancelCoordinator func(), cfg CoordinatorConfig) func() {
 	// Check status after setting a new manifest, we should be able
 	log.Println("Check if the manifest was accepted and we are ready to accept Marbles")
 	statusResponse, err := i.GetStatus()
@@ -500,12 +505,12 @@ func (i IntegrationTest) VerifyResetAfterRecovery(coordinatorProc *os.Process, c
 	// simulate restart of coordinator
 	log.Println("Simulating a restart of the coordinator enclave...")
 	log.Println("Killing the old instance")
-	i.require.NoError(coordinatorProc.Kill())
+	cancelCoordinator()
 
 	// Restart server, we should be in recovery mode
 	log.Println("Restarting the old instance")
-	coordinatorProc = i.StartCoordinator(cfg)
-	i.require.NotNil(coordinatorProc)
+	ctx, cancel := context.WithCancel(i.Ctx)
+	i.StartCoordinator(ctx, cfg)
 
 	// Finally, check if we survive a restart.
 	log.Println("Restarted instance, now let's see if the new state can be decrypted successfully...")
@@ -513,7 +518,7 @@ func (i IntegrationTest) VerifyResetAfterRecovery(coordinatorProc *os.Process, c
 	i.require.NoError(err)
 	i.assert.EqualValues(3, gjson.Get(statusResponse, "data.StatusCode").Int(), "Server is in wrong status after recovery.")
 
-	return coordinatorProc
+	return cancel
 }
 
 // MakeEnv returns a string that can be used as an environment variable.
