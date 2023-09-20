@@ -38,7 +38,6 @@ COPY --from=build \
   /mrbuild/coordinator-config.json \
   /mrbuild/coordinator-noenclave \
   /mrbuild/marble-injector \
-  /mrbuild/premain-libos \
   /opt/edgelessrt/bin/erthost \
   /
 COPY --from=build /mrbuild/marblerun /marblerun-ubuntu-22.04

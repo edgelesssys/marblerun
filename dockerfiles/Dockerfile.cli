@@ -25,11 +25,11 @@ RUN cd edgelessrt && export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct) && cd /
   && cmake -GNinja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF /edgelessrt \
   && ninja install
 
-# build cli
+# build cli and premain
 RUN cd marblerun && export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct) && cd /mrbuild \
   && . /opt/edgelessrt/share/openenclave/openenclaverc \
   && cmake -DCMAKE_BUILD_TYPE=Release /marblerun \
-  && PATH=$PATH:/usr/local/go/bin make cli
+  && PATH=$PATH:/usr/local/go/bin make cli premain-libos
 
 # create AppImage
 RUN chmod +x linuxdeploy-x86_64.AppImage && touch marblerun.svg \
@@ -67,4 +67,4 @@ exec "${DIR}/usr/bin/marblerun" "$@"\n' \
 
 FROM scratch
 COPY --from=build /mrbuild/marblerun /marblerun-ubuntu-20.04
-COPY --from=build /marblerun-x86_64.AppImage /
+COPY --from=build /mrbuild/premain-libos /marblerun-x86_64.AppImage /
