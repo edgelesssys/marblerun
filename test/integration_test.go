@@ -129,8 +129,7 @@ func TestRestart(t *testing.T) {
 	t.Log("Starting a coordinator enclave...")
 	cfg := framework.NewCoordinatorConfig()
 	defer cfg.Cleanup()
-	coordinatorCtx, cancelCoordinator := context.WithCancel(f.Ctx)
-	f.StartCoordinator(coordinatorCtx, cfg)
+	cancelCoordinator := f.StartCoordinator(f.Ctx, cfg)
 
 	// set Manifest
 	_, err := f.SetManifest(f.TestManifest)
@@ -296,8 +295,7 @@ func TestRecoveryRestoreKey(t *testing.T) {
 	t.Log("Starting a coordinator enclave")
 	cfg := framework.NewCoordinatorConfig()
 	defer cfg.Cleanup()
-	coordinatorCtx, cancelCoordinator := context.WithCancel(f.Ctx)
-	f.StartCoordinator(coordinatorCtx, cfg)
+	cancelCoordinator := f.StartCoordinator(f.Ctx, cfg)
 
 	// set Manifest
 	t.Log("Setting the Manifest")
@@ -339,8 +337,7 @@ func TestRecoveryReset(t *testing.T) {
 	t.Log("Starting a coordinator enclave")
 	cfg := framework.NewCoordinatorConfig()
 	defer cfg.Cleanup()
-	coordinatorCtx, cancelCoordinator := context.WithCancel(f.Ctx)
-	f.StartCoordinator(coordinatorCtx, cfg)
+	cancelCoordinator := f.StartCoordinator(f.Ctx, cfg)
 
 	// set Manifest
 	t.Log("Setting the Manifest")
