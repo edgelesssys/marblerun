@@ -135,7 +135,8 @@ func (c CoordinatorConfig) Cleanup() {
 }
 
 // StartCoordinator starts the Coordinator defined by the given config.
-func (i IntegrationTest) StartCoordinator(ctx context.Context, cfg CoordinatorConfig) {
+// The returned func cancels the Coordinator and waits until it exited.
+func (i IntegrationTest) StartCoordinator(ctx context.Context, cfg CoordinatorConfig) func() {
 	var cmd *exec.Cmd
 	if i.NoEnclave {
 		cmd = exec.CommandContext(ctx, filepath.Join(i.BuildDir, "coordinator-noenclave"))
@@ -174,7 +175,10 @@ func (i IntegrationTest) StartCoordinator(ctx context.Context, cfg CoordinatorCo
 			i.t.Log("Coordinator started")
 			resp.Body.Close()
 			i.require.Equal(http.StatusOK, resp.StatusCode)
-			return
+			return func() {
+				_ = cmd.Cancel()
+				<-cmdErr
+			}
 		}
 	}
 }
@@ -455,8 +459,7 @@ func (i IntegrationTest) TriggerRecovery(coordinatorCfg CoordinatorConfig, cance
 
 	// Restart server, we should be in recovery mode
 	i.t.Log("Restarting the old instance")
-	ctx, cancel := context.WithCancel(i.Ctx)
-	i.StartCoordinator(ctx, coordinatorCfg)
+	cancelCoordinator = i.StartCoordinator(i.Ctx, coordinatorCfg)
 
 	// Query status API, check if status response begins with Code 1 (recovery state)
 	i.t.Log("Checking status...")
@@ -464,7 +467,7 @@ func (i IntegrationTest) TriggerRecovery(coordinatorCfg CoordinatorConfig, cance
 	i.require.NoError(err)
 	i.assert.EqualValues(1, gjson.Get(statusResponse, "data.StatusCode").Int(), "Server is not in recovery state, but should be.")
 
-	return cancel, cert
+	return cancelCoordinator, cert
 }
 
 // VerifyCertAfterRecovery verifies the certificate after a recovery.
@@ -489,8 +492,7 @@ func (i IntegrationTest) VerifyCertAfterRecovery(cert string, cancelCoordinator 
 
 	// Restart server, we should be in recovery mode
 	i.t.Log("Restarting the old instance")
-	ctx, cancel := context.WithCancel(i.Ctx)
-	i.StartCoordinator(ctx, cfg)
+	cancelCoordinator = i.StartCoordinator(i.Ctx, cfg)
 
 	// Finally, check if we survive a restart.
 	i.t.Log("Restarted instance, now let's see if the state can be restored again successfully.")
@@ -507,7 +509,7 @@ func (i IntegrationTest) VerifyCertAfterRecovery(cert string, cancelCoordinator 
 	resp.Body.Close()
 	i.require.Equal(http.StatusOK, resp.StatusCode)
 
-	return cancel
+	return cancelCoordinator
 }
 
 // VerifyResetAfterRecovery verifies the Coordinator after a recovery as been reset by setting a new manifest.
@@ -525,8 +527,7 @@ func (i IntegrationTest) VerifyResetAfterRecovery(cancelCoordinator func(), cfg 
 
 	// Restart server, we should be in recovery mode
 	i.t.Log("Restarting the old instance")
-	ctx, cancel := context.WithCancel(i.Ctx)
-	i.StartCoordinator(ctx, cfg)
+	cancelCoordinator = i.StartCoordinator(i.Ctx, cfg)
 
 	// Finally, check if we survive a restart.
 	i.t.Log("Restarted instance, now let's see if the new state can be decrypted successfully...")
@@ -534,7 +535,7 @@ func (i IntegrationTest) VerifyResetAfterRecovery(cancelCoordinator func(), cfg 
 	i.require.NoError(err)
 	i.assert.EqualValues(3, gjson.Get(statusResponse, "data.StatusCode").Int(), "Server is in wrong status after recovery.")
 
-	return cancel
+	return cancelCoordinator
 }
 
 // MakeEnv returns a string that can be used as an environment variable.
