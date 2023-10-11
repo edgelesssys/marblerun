@@ -7,7 +7,7 @@ require (
 	github.com/edgelesssys/era v0.3.3
 	github.com/fatih/color v1.15.0
 	github.com/gofrs/flock v0.8.1
-	github.com/google/go-cmp v0.5.9
+	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.3.1
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.0.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.0.1
