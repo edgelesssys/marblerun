@@ -418,6 +418,12 @@ func (i IntegrationTest) StartMarbleServer(ctx context.Context, cfg MarbleConfig
 // StartMarbleClient starts a Client Marble.
 func (i IntegrationTest) StartMarbleClient(ctx context.Context, cfg MarbleConfig) bool {
 	cmd := i.GetMarbleCmd(ctx, cfg)
+
+	// Tests sometimes time out with a goroutine at `cmd.Wait()` waiting for the client to end. This is hard to reproduce.
+	// Maybe the client process doesn't exit cleanly. Temporarily increase OE log level to see if we can get more info.
+	// TODO remove this when the bug is identified
+	cmd.Env = append(cmd.Env, "OE_LOG_LEVEL=INFO")
+
 	err := <-i.StartCommand("clnt", cmd)
 	if err == nil {
 		return true
