@@ -29,12 +29,14 @@ The description below uses a VM running Ubuntu 18.04.
 1. Install Intel DCAP Quote Provider Library
 
     Add the Intel SGX APT repository:
+
     ```bash
     wget -qO - https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo apt-key add -
     echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu bionic main' | sudo tee /etc/apt/sources.list.d/intel-sgx.list
     ```
 
     Download and install the QPL:
+
     ```bash
     sudo apt update
     sudo apt install libsgx-dcap-default-qpl
@@ -46,12 +48,14 @@ The description below uses a VM running Ubuntu 18.04.
     The configuration is set in `/etc/sgx_default_qcnl.conf`.
 
     * If your instance is assigned a public IP address, change the configuration to the following, where `[Region-ID]` is the ID of your instance's region:
+
         ```
         PCCS_URL=https://sgx-dcap-server.[Region-ID].aliyuncs.com/sgx/certification/v3/
         USE_SECURE_CERT=TRUE
         ```
 
     * If your instance is in a virtual private cloud and has only internal IP addresses, change the configuration to the following, where `[Region-ID]` is the ID of your instance's region:
+
         ```
         PCCS_URL=https://sgx-dcap-server-vpc.[Region-ID].aliyuncs.com/sgx/certification/v3/
         USE_SECURE_CERT=TRUE
@@ -59,7 +63,7 @@ The description below uses a VM running Ubuntu 18.04.
 
     :::note
 
-    Currently, the Alibaba Cloud SGX remote attestation service is only supported within [mainland China regions](https://www.alibabacloud.com/help/doc-detail/40654.htm#concept-2459516)
+    Currently, the Alibaba Cloud SGX remote attestation service is only supported within [mainland China regions](https://www.alibabacloud.com/help/en/beginner-guide/latest/regions-and-zones#concept-2459516)
 
     :::
 
