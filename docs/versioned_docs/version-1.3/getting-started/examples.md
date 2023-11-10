@@ -15,12 +15,13 @@ The popular [Linkerd](https://linkerd.io) service mesh uses the simple and fun s
 
 We provide a hands-on example for a confidential multi-stakeholder inference service.
 
-* Read the [blog post](https://blog.edgeless.systems/confidential-multi-stakeholder-machine-learning-2292f842e95a)
+* Read the [blog post](https://www.edgeless.systems/blog/confidential-multi-stakeholder-machine-learning-2292f842e95a)
 * Check it out [on GitHub](https://github.com/edgelesssys/marblerun-tensorflow-demo)
 
-
 ## Gramine-based examples
+
 We provide two examples for Gramine-based Marbles:
+
 * A [helloworld](https://github.com/edgelesssys/marblerun/tree/master/samples/gramine-hello) example to get you started. 🤓
 * An [nginx web server](https://github.com/edgelesssys/marblerun/tree/master/samples/gramine-nginx) for an example of converting an existing Gramine application to a Marble. :rocket:
 
