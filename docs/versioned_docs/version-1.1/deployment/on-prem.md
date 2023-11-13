@@ -12,7 +12,7 @@ To deploy MarbleRun with Intel SGX, the machine or VM has to support Intel SGX.
 Particularly, MarbleRun requires support for the SGX Data Center Attestation Primitives (DCAP).
 You can verify [if your CPU supports DCAP](https://www.intel.com/content/www/us/en/support/articles/000057420/software/intel-security-products.html).
 
-For more information read this article on [detecting Intel Software Guard Extensions](https://www.intel.com/content/www/us/en/develop/articles/properly-detecting-intel-software-guard-extensions-in-your-applications.html) in your applications.
+For more information read this article on [detecting Intel Software Guard Extensions](https://www.intel.com/content/www/us/en/developer/articles/guide/properly-detecting-intel-software-guard-extensions-in-your-applications.html) in your applications.
 
 #### BIOS
 
@@ -30,7 +30,7 @@ If your BIOS/firmware is outdated, you will see errors as `Platform TCB (2) is n
 If you are using VMs for your MarbleRun deployment, you need to make sure your hypervisor has SGX enabled.
 Most of the popular hypervisors support SGX:
 
-* [QEMU/KVM](https://www.intel.com/content/www/us/en/develop/articles/virtualizing-intel-software-guard-extensions-with-kvm-and-qemu.html)
+* [QEMU/KVM](https://www.intel.com/content/www/us/en/developer/articles/technical/virtualizing-intel-software-guard-extensions-with-kvm-and-qemu.html)
 * [XEN](https://wiki.xenproject.org/wiki/Xen_and_Intel_Hardware-Assisted_Virtualization_Security)
 * Hyper-V: Hyper-V will only expose SGX to Gen 2 VMs
 * [VMWare vSphere](https://blogs.vmware.com/vsphere/2020/04/vsphere-7-vsgx-secure-enclaves.html)
