@@ -19,7 +19,7 @@
     "@docusaurus/preset-classic": "2.4.3",
     "@mdx-js/react": "1.6.22",
     "redocusaurus": "1.6.4",
-    "asciinema-player": "3.5.0",
+    "asciinema-player": "3.6.3",
     "clsx": "1.2.1",
     "prism-react-renderer": "2.2.0",
     "react": "17.0.2",
