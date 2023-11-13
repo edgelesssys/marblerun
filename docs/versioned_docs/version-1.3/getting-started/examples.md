@@ -15,7 +15,7 @@ The popular [Linkerd](https://linkerd.io) service mesh uses the simple and fun s
 
 We provide a hands-on example for a confidential multi-stakeholder inference service.
 
-* Read the [blog post](https://www.edgeless.systems/blog/confidential-multi-stakeholder-machine-learning-2292f842e95a)
+* Read the [blog post](https://www.edgeless.systems/blog/confidential-multi-stakeholder-ai/)
 * Check it out [on GitHub](https://github.com/edgelesssys/marblerun-tensorflow-demo)
 
 ## Gramine-based examples
