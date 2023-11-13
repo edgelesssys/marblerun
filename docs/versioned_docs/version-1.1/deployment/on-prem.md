@@ -12,8 +12,6 @@ To deploy MarbleRun with Intel SGX, the machine or VM has to support Intel SGX.
 Particularly, MarbleRun requires support for the SGX Data Center Attestation Primitives (DCAP).
 You can verify [if your CPU supports DCAP](https://www.intel.com/content/www/us/en/support/articles/000057420/software/intel-security-products.html).
 
-For more information read this article on [detecting Intel Software Guard Extensions](https://www.intel.com/content/www/us/en/developer/articles/guide/properly-detecting-intel-software-guard-extensions-in-your-applications.html) in your applications.
-
 #### BIOS
 
 BIOS support is required for Intel SGX to provide the capability to enable and configure the Intel SGX feature in the system.
