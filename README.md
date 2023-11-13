@@ -51,7 +51,7 @@ See the [documentation][docs] for details.
 * Got a question? Please get in touch via [Discord][discord] or file an [issue](https://github.com/edgelesssys/marblerun/issues).
 * If you see an error message or run into an issue, please make sure to create a [bug report](https://github.com/edgelesssys/marblerun/issues).
 * Get the latest news and announcements on [Twitter](https://twitter.com/EdgelessSystems), [LinkedIn](https://www.linkedin.com/company/edgeless-systems/) or sign up for our monthly [newsletter](https://www.edgeless.systems/#newsletter-signup).
-* Visit our [blog](https://blog.edgeless.systems/) for technical deep-dives and tutorials.
+* Visit our [blog](https://www.edgeless.systems/blog/) for technical deep-dives and tutorials.
 
 ## Contributing
 
@@ -59,7 +59,7 @@ See the [documentation][docs] for details.
 * [`BUILD.md`](BUILD.md) includes general information on how to work in this repo.
 * Pull requests are welcome! You need to agree to our [Contributor License Agreement](https://cla-assistant.io/edgelesssys/marblerun).
 * This project and everyone participating in it are governed by the [Code of Conduct](/CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
-* Please report any security issue via a [private GitHub vulnerability report](https://github.com/edgelesssys/marblerun/security/advisories/new) or write to security@edgeless.systems.
+* Please report any security issue via a [private GitHub vulnerability report](https://github.com/edgelesssys/marblerun/security/advisories/new) or write to <security@edgeless.systems>.
 
 ## Examples
 
@@ -100,8 +100,5 @@ The popular [Linkerd][linkerd] service mesh uses the simple and scalable *emojiv
 [linkerd]: https://linkerd.io
 [marblerunsh]: https://marblerun.sh
 [occlum]: https://github.com/occlum/occlum
-[sgx-lkl]: https://github.com/lsds/sgx-lkl
-[slack]: https://join.slack.com/t/confidentialcloud/shared_invite/zt-ix8nzzr6-vVNb6IM76Ab8z9a_5NMJnQ
-[twitter]: https://twitter.com/EdgelessSystems
 [discord]: https://discord.gg/rH8QTH56JN
 [discord-badge]: https://img.shields.io/badge/chat-on%20Discord-blue

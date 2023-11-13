@@ -11,7 +11,6 @@ This guide walks you through setting up MarbleRun for your on-premises deploymen
 To deploy MarbleRun with Intel SGX, the machine or VM has to support Intel SGX.
 Particularly, MarbleRun requires support for the SGX Data Center Attestation Primitives (DCAP).
 You can verify [if your CPU supports DCAP](https://www.intel.com/content/www/us/en/support/articles/000057420/software/intel-security-products.html).
-For more information, read this article on [detecting Intel Software Guard Extensions](https://software.intel.com/content/www/us/en/develop/articles/properly-detecting-intel-software-guard-extensions-in-your-applications.html) in your applications.
 
 #### BIOS
 
@@ -29,7 +28,7 @@ If your BIOS/firmware is outdated, you will see errors as `Platform TCB (2) is n
 If you are using VMs for your MarbleRun deployment, you need to make sure your hypervisor has SGX enabled.
 Most of the popular hypervisors support SGX:
 
-* [QEMU/KVM](https://software.intel.com/content/www/us/en/develop/articles/virtualizing-intel-software-guard-extensions-with-kvm-and-qemu.html)
+* [QEMU/KVM](https://www.intel.com/content/www/us/en/developer/articles/technical/virtualizing-intel-software-guard-extensions-with-kvm-and-qemu.html)
 * [XEN](https://wiki.xenproject.org/wiki/Xen_and_Intel_Hardware-Assisted_Virtualization_Security)
 * Hyper-V: Hyper-V will only expose SGX to Gen 2 VMs
 * [VMWare vSphere](https://blogs.vmware.com/vsphere/2020/04/vsphere-7-vsgx-secure-enclaves.html)
@@ -42,7 +41,7 @@ Azure provides instructions on [how to install this driver](https://docs.microso
 
 ### SGX Data Center Attestation Primitives (DCAP)
 
-DCAP is the new attestation mechanism for SGX, [replacing EPID](https://software.intel.com/content/www/us/en/develop/blogs/an-update-on-3rd-party-attestation.html).
+DCAP is the new attestation mechanism for SGX, [replacing EPID](https://www.intel.com/content/www/us/en/developer/articles/technical/an-update-on-3rd-party-attestation.html).
 You can find an overview of DCAP in the [official Intel docs](https://download.01.org/intel-sgx/sgx-dcap/1.11/linux/docs/DCAP_ECDSA_Orientation.pdf).
 MarbleRun only supports DCAP and requires DCAP libraries installed and configured on your system.
 
