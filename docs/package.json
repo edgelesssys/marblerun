@@ -17,7 +17,7 @@
     "@cmfcmf/docusaurus-search-local": "1.1.0",
     "@docusaurus/core": "2.4.3",
     "@docusaurus/preset-classic": "2.4.3",
-    "@mdx-js/react": "1.6.22",
+    "@mdx-js/react": "3.0.0",
     "redocusaurus": "1.6.4",
     "asciinema-player": "3.5.0",
     "clsx": "1.2.1",
