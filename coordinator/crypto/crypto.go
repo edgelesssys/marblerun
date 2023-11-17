@@ -15,6 +15,7 @@ import (
 	"crypto/x509/pkix"
 	"fmt"
 	"math"
+	"net"
 	"time"
 
 	"github.com/edgelesssys/marblerun/util"
@@ -44,13 +45,23 @@ func GenerateCert(
 		return nil, nil, fmt.Errorf("generating serial number: %w", err)
 	}
 
+	var additionalDNSNames []string
+	var additionalIPs []net.IP
+	for _, name := range dnsNames {
+		if ip := net.ParseIP(name); ip != nil {
+			additionalIPs = append(additionalIPs, ip)
+		} else {
+			additionalDNSNames = append(additionalDNSNames, name)
+		}
+	}
+
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
 			CommonName: commonName,
 		},
-		DNSNames:    dnsNames,
-		IPAddresses: util.DefaultCertificateIPAddresses,
+		DNSNames:    additionalDNSNames,
+		IPAddresses: append(util.DefaultCertificateIPAddresses, additionalIPs...),
 		NotBefore:   notBefore,
 		NotAfter:    notAfter,
 
