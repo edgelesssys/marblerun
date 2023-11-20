@@ -15,7 +15,6 @@ import (
 	"crypto/x509/pkix"
 	"fmt"
 	"math"
-	"net"
 	"time"
 
 	"github.com/edgelesssys/marblerun/util"
@@ -24,7 +23,7 @@ import (
 // GenerateCert creates a new certificate with the given parameters.
 // If privk is nil, a new private key is generated.
 func GenerateCert(
-	dnsNames []string, commonName string, privk *ecdsa.PrivateKey,
+	subjAltNames []string, commonName string, privk *ecdsa.PrivateKey,
 	parentCertificate *x509.Certificate, parentPrivateKey *ecdsa.PrivateKey,
 ) (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	// Generate private key
@@ -45,22 +44,14 @@ func GenerateCert(
 		return nil, nil, fmt.Errorf("generating serial number: %w", err)
 	}
 
-	var additionalDNSNames []string
-	var additionalIPs []net.IP
-	for _, name := range dnsNames {
-		if ip := net.ParseIP(name); ip != nil {
-			additionalIPs = append(additionalIPs, ip)
-		} else {
-			additionalDNSNames = append(additionalDNSNames, name)
-		}
-	}
+	additionalIPs, dnsNames := util.ExtractIPsFromAltNames(subjAltNames)
 
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
 			CommonName: commonName,
 		},
-		DNSNames:    additionalDNSNames,
+		DNSNames:    dnsNames,
 		IPAddresses: append(util.DefaultCertificateIPAddresses, additionalIPs...),
 		NotBefore:   notBefore,
 		NotAfter:    notAfter,

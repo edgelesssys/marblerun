@@ -42,7 +42,7 @@ func MustGenerateTestMarbleCredentials() (cert *x509.Certificate, csrRaw []byte,
 }
 
 // GenerateCert generates a new self-signed certificate associated key-pair.
-func GenerateCert(dnsNames []string, ipAddrs []net.IP, isCA bool) (*x509.Certificate, *ecdsa.PrivateKey, error) {
+func GenerateCert(subjAltNames []string, ipAddrs []net.IP, isCA bool) (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	privk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, nil, err
@@ -56,8 +56,8 @@ func GenerateCert(dnsNames []string, ipAddrs []net.IP, isCA bool) (*x509.Certifi
 		return nil, nil, err
 	}
 
-	// TODO: what else do we need to set here?
-	// Do we need x509.KeyUsageKeyEncipherment?
+	additionalIPs, dnsNames := ExtractIPsFromAltNames(subjAltNames)
+
 	template := x509.Certificate{
 		Subject: pkix.Name{
 			CommonName: marbleName,
@@ -66,7 +66,7 @@ func GenerateCert(dnsNames []string, ipAddrs []net.IP, isCA bool) (*x509.Certifi
 		NotBefore:    notBefore,
 		NotAfter:     notAfter,
 		DNSNames:     dnsNames,
-		IPAddresses:  ipAddrs,
+		IPAddresses:  append(additionalIPs, ipAddrs...),
 
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyAgreement,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
@@ -86,10 +86,12 @@ func GenerateCert(dnsNames []string, ipAddrs []net.IP, isCA bool) (*x509.Certifi
 }
 
 // GenerateCSR generates a new CSR for the given DNSNames and private key.
-func GenerateCSR(dnsNames []string, privk *ecdsa.PrivateKey) (*x509.CertificateRequest, error) {
+func GenerateCSR(subjAltNames []string, privk *ecdsa.PrivateKey) (*x509.CertificateRequest, error) {
+	additionalIPs, dnsNames := ExtractIPsFromAltNames(subjAltNames)
+
 	template := x509.CertificateRequest{
 		DNSNames:    dnsNames,
-		IPAddresses: DefaultCertificateIPAddresses,
+		IPAddresses: append(DefaultCertificateIPAddresses, additionalIPs...),
 	}
 	csrRaw, err := x509.CreateCertificateRequest(rand.Reader, &template, privk)
 	if err != nil {
@@ -121,4 +123,18 @@ func LoadGRPCTLSCredentials(cert *x509.Certificate, privk *ecdsa.PrivateKey, ins
 // TLSCertFromDER converts a DER certificate to a TLS certificate.
 func TLSCertFromDER(certDER []byte, privk interface{}) *tls.Certificate {
 	return &tls.Certificate{Certificate: [][]byte{certDER}, PrivateKey: privk}
+}
+
+// ExtractIPsFromAltNames extracts IP addresses and DNS names from a list of subject alternative names.
+func ExtractIPsFromAltNames(subjAltNames []string) ([]net.IP, []string) {
+	var dnsNames []string
+	var additionalIPs []net.IP
+	for _, name := range subjAltNames {
+		if ip := net.ParseIP(name); ip != nil {
+			additionalIPs = append(additionalIPs, ip)
+		} else {
+			dnsNames = append(dnsNames, name)
+		}
+	}
+	return additionalIPs, dnsNames
 }
