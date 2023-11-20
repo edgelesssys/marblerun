@@ -123,7 +123,7 @@ The environment variables have the following purposes.
 
 * `EDG_MARBLE_UUID_FILE` is the local file path where the Marble stores its UUID. Every instance of a Marble has its unique and public UUID. The file is needed to allow a Marble to restart under its UUID.
 
-* `EDG_MARBLE_DNS_NAMES` is the list of DNS names the Coordinator will issue the Marble's certificate for.
+* `EDG_MARBLE_DNS_NAMES` is the list of DNS names and IPs the Coordinator will issue the Marble's certificate for.
 
 ## **Step 4:** Deploy your service with Kubernetes
 

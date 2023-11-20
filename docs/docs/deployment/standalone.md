@@ -23,7 +23,7 @@ Per default, the Coordinator starts with the following default values. You can s
 | --- | --- | --- |
 | the listener address for the gRPC server | localhost:2001 |  EDG_COORDINATOR_MESH_ADDR |
 | the listener address for the HTTP server | localhost: 4433 | EDG_COORDINATOR_CLIENT_ADDR |
-| the DNS names for the cluster’s root certificate | localhost | EDG_COORDINATOR_DNS_NAMES |
+| the DNS names and IPs for the cluster’s root certificate | localhost | EDG_COORDINATOR_DNS_NAMES |
 | the file path for storing sealed data | $PWD/marblerun-coordinator-data | EDG_COORDINATOR_SEAL_DIR |
 
 :::tip
@@ -53,4 +53,4 @@ Per default, a Marble starts with the following default values. You can set your
 | network address of the Coordinator’s API for Marbles | `localhost:2001` |  EDG_MARBLE_COORDINATOR_ADDR |
 | reference on one entry from your manifest’s `Marbles` section | - (this needs to be set every time) | EDG_MARBLE_TYPE |
 | local file path where the Marble stores its UUID | `$PWD/uuid` | EDG_MARBLE_UUID_FILE |
-| DNS names the Coordinator will issue the Marble’s certificate for | `$EDG_MARBLE_TYPE` | EDG_MARBLE_DNS_NAMES |
+| DNS names and IPs the Coordinator will issue the Marble’s certificate for | `$EDG_MARBLE_TYPE` | EDG_MARBLE_DNS_NAMES |
