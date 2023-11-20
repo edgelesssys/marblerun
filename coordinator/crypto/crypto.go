@@ -23,7 +23,7 @@ import (
 // GenerateCert creates a new certificate with the given parameters.
 // If privk is nil, a new private key is generated.
 func GenerateCert(
-	dnsNames []string, commonName string, privk *ecdsa.PrivateKey,
+	subjAltNames []string, commonName string, privk *ecdsa.PrivateKey,
 	parentCertificate *x509.Certificate, parentPrivateKey *ecdsa.PrivateKey,
 ) (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	// Generate private key
@@ -44,13 +44,15 @@ func GenerateCert(
 		return nil, nil, fmt.Errorf("generating serial number: %w", err)
 	}
 
+	additionalIPs, dnsNames := util.ExtractIPsFromAltNames(subjAltNames)
+
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
 			CommonName: commonName,
 		},
 		DNSNames:    dnsNames,
-		IPAddresses: util.DefaultCertificateIPAddresses,
+		IPAddresses: append(util.DefaultCertificateIPAddresses, additionalIPs...),
 		NotBefore:   notBefore,
 		NotAfter:    notAfter,
 

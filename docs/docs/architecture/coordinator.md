@@ -14,7 +14,7 @@ The Coordinator can be configured with several environment variables:
 
 * `EDG_COORDINATOR_MESH_ADDR`: The listener address for the gRPC server
 * `EDG_COORDINATOR_CLIENT_ADDR`: The listener address for the HTTP REST server
-* `EDG_COORDINATOR_DNS_NAMES`: The DNS names for the cluster's root certificate
+* `EDG_COORDINATOR_DNS_NAMES`: The DNS names and IPs for the cluster's root certificate
 * `EDG_COORDINATOR_SEAL_DIR`: The file path for storing sealed data
 
 When you use MarbleRun [with Kubernetes](../deployment/kubernetes.md), you can [scale the Coordinator to multiple instances](../features/recovery.md#distributed-coordinator) to increase availability and reduce the occurrence of events that require [manual recovery](../workflows/recover-coordinator.md).
