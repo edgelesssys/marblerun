@@ -21,7 +21,7 @@
     "redocusaurus": "1.6.4",
     "asciinema-player": "3.6.3",
     "clsx": "2.0.0",
-    "prism-react-renderer": "2.2.0",
+    "prism-react-renderer": "2.3.0",
     "react": "17.0.2",
     "react-dom": "17.0.2"
   },
