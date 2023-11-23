@@ -1,8 +1,7 @@
 // @ts-check
 // Note: type annotations allow type checking and IDEs autocompletion
 
-const lightCodeTheme = require('prism-react-renderer').themes.github;
-const darkCodeTheme = require('prism-react-renderer').themes.dracula;
+import { themes as prismThemes } from 'prism-react-renderer';
 
 /** @type {import('@docusaurus/types').Config} */
 async function createConfig() {
@@ -12,7 +11,7 @@ async function createConfig() {
     url: 'https://marblerun-docs.netlify.app',
     baseUrl: '/marblerun/',
     onBrokenLinks: 'throw',
-    onBrokenMarkdownLinks: 'warn',
+    onBrokenMarkdownLinks: 'throw',
     favicon: 'img/favicon.png',
 
     // GitHub pages deployment config.
@@ -45,7 +44,7 @@ async function createConfig() {
             // sidebarPath: 'sidebars.js',
             // Please change this to your repo.
             // Remove this to remove the "edit this page" links.
-            editUrl: 'https://github.com/edgelesssys/marblerun/edit/main/docs',
+            editUrl: 'https://github.com/edgelesssys/marblerun/edit/master/docs',
             routeBasePath: "/"
           },
           blog: false,
@@ -135,7 +134,7 @@ async function createConfig() {
                 },
                 {
                   label: 'Newsletter',
-                  href: 'https://www.edgeless.systems/#newsletter-signup'
+                  href: 'https://www.edgeless.systems/#footer'
                 },
               ],
             },
@@ -166,11 +165,11 @@ async function createConfig() {
               items: [
                 {
                   label: 'Imprint',
-                  href: 'https://www.edgeless.systems/imprint',
+                  href: 'https://www.edgeless.systems/imprint/',
                 },
                 {
                   label: 'Privacy Policy',
-                  href: 'https://www.edgeless.systems/privacy',
+                  href: 'https://www.edgeless.systems/privacy/',
                 },
                 {
                   html: `<a href="javascript: Cookiebot.renew()" class="footer__link-item">Cookie Settings</a>`
@@ -178,7 +177,7 @@ async function createConfig() {
 
                 {
                   label: 'Contact Us',
-                  href: 'https://www.edgeless.systems/contact/',
+                  href: 'https://www.edgeless.systems/contact-us/',
                 },
               ],
             },
@@ -186,9 +185,9 @@ async function createConfig() {
           copyright: `Copyright © ${new Date().getFullYear()} Edgeless Systems`,
         },
         prism: {
-          theme: lightCodeTheme,
-          darkTheme: darkCodeTheme,
-          additionalLanguages: ['shell-session'],
+          theme: prismThemes.github,
+          darkTheme: prismThemes.dracula,
+          additionalLanguages: ['bash', 'shell-session', 'toml'],
         },
       }),
 
