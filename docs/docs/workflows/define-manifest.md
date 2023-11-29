@@ -417,7 +417,7 @@ awk 1 ORS='\\n' public_key.pem
 
 ### Multi-party recovery
 
-<enterpriseBanner/>
+<EnterpriseBanner/>
 
 To enable [multi-party recovery](../features/recovery.md#multi-party-recovery), first ask the other parties to generate key pairs as described above and receive their public keys via an authenticated channel.
 

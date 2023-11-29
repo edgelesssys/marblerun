@@ -28,8 +28,8 @@ Now your cluster is ready and you can install the MarbleRun CLI.
 CLI executables for different platforms are available at [GitHub](https://github.com/edgelesssys/marblerun/releases).
 The CLI needs an SGX [quote provider](https://download.01.org/intel-sgx/latest/dcap-latest/linux/docs/DCAP_ECDSA_Orientation.pdf) to verify attestation reports.
 
-<tabs groupId="platform">
-<tabItem value="appimage" label="AppImage">
+<Tabs groupId="platform">
+<TabItem value="appimage" label="AppImage">
 
 The AppImage runs on all x86-64 Linux distributions with glibc v2.29 or higher.
 It includes the quote provider.
@@ -40,8 +40,8 @@ wget https://github.com/edgelesssys/marblerun/releases/latest/download/marblerun
 sudo install marblerun-x86_64.AppImage /usr/local/bin/marblerun
 ```
 
-</tabItem>
-<tabItem value="ub2004" label="Ubuntu 20.04">
+</TabItem>
+<TabItem value="ub2004" label="Ubuntu 20.04">
 
 Install the CLI and the quote provider with the following commands:
 
@@ -58,8 +58,8 @@ sudo apt update
 sudo apt install libsgx-dcap-default-qpl
 ```
 
-</tabItem>
-<tabItem value="ub2204" label="Ubuntu 22.04">
+</TabItem>
+<TabItem value="ub2204" label="Ubuntu 22.04">
 
 Install the CLI and the quote provider with the following commands:
 
@@ -75,8 +75,8 @@ sudo apt update
 sudo apt install libsgx-dcap-default-qpl
 ```
 
-</tabItem>
-</tabs>
+</TabItem>
+</Tabs>
 
 Once installed, verify the CLI is running correctly with the following:
 
