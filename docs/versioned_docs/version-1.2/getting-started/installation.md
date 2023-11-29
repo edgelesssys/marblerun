@@ -29,24 +29,24 @@ If this is your first time running MarbleRun, you will need to download the Marb
 
 To install the CLI, run the following:
 
-<tabs groupId="user">
-<tabItem value="current-user" label="For the current user">
+<Tabs groupId="user">
+<TabItem value="current-user" label="For the current user">
 
 ```bash
 wget -P ~/.local/bin https://github.com/edgelesssys/marblerun/releases/latest/download/marblerun
 chmod +x ~/.local/bin/marblerun
 ```
 
-</tabItem>
-<tabItem value="global" label="Global install (requires root)">
+</TabItem>
+<TabItem value="global" label="Global install (requires root)">
 
 ```bash
 sudo wget -O /usr/local/bin/marblerun https://github.com/edgelesssys/marblerun/releases/latest/download/marblerun
 sudo chmod +x /usr/local/bin/marblerun
 ```
 
-</tabItem>
-</tabs>
+</TabItem>
+</Tabs>
 
 Once installed, verify the CLI is running correctly with the following:
 

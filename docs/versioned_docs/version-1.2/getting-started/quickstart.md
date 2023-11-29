@@ -9,8 +9,8 @@ Depending on your setup, you may follow the quickstart for SGX-enabled clusters.
 
 Install MarbleRun's *Coordinator* control plane by running:
 
-<tabs groupId="mode">
-<tabItem value="SGX" label="With SGX">
+<Tabs groupId="mode">
+<TabItem value="SGX" label="With SGX">
 
 ```bash
 marblerun install
@@ -19,8 +19,8 @@ marblerun install
 The `marblerun install` command generates a Kubernetes manifest with all the necessary control plane resources.
 This includes a deployment for the Coordinator and for MarbleRun's [admission controller.](../features/kubernetes-integration.md)
 
-</tabItem>
-<tabItem value="Simulation" label="In simulation mode">
+</TabItem>
+<TabItem value="Simulation" label="In simulation mode">
 
 ```bash
 marblerun install --simulation
@@ -30,8 +30,8 @@ The `marblerun install` command generates a Kubernetes manifest with all the nec
 This includes a deployment for the Coordinator and for MarbleRun's [admission controller.](../features/kubernetes-integration.md)
 The simulation flag tells MarbleRun that real SGX hardware might not be present and the SGX layer should be emulated.
 
-</tabItem>
-</tabs>
+</TabItem>
+</Tabs>
 
 Wait for the control plane to finish installing:
 
@@ -55,15 +55,15 @@ For this, we utilize SGX remote attestation and obtain the Coordinator's root ce
 
 Verify the quote and get the Coordinator's root certificate
 
-<tabs groupId="mode">
-<tabItem value="SGX" label="With SGX">
+<Tabs groupId="mode">
+<TabItem value="SGX" label="With SGX">
 
 ```bash
 marblerun certificate root $MARBLERUN -o marblerun.crt
 ```
 
-</tabItem>
-<tabItem value="Simulation" label="In simulation mode">
+</TabItem>
+<TabItem value="Simulation" label="In simulation mode">
 
 ```bash
 marblerun certificate root $MARBLERUN -o marblerun.crt --insecure
@@ -71,8 +71,8 @@ marblerun certificate root $MARBLERUN -o marblerun.crt --insecure
 
 The insecure flag tells MarbleRun that real SGX hardware might not be present and the quote verification should be omitted.
 
-</tabItem>
-</tabs>
+</TabItem>
+</Tabs>
 
 The CLI will obtain the Coordinator's remote attestation quote and verify it against the configuration on our [release page](https://github.com/edgelesssys/marblerun/releases/latest/download/coordinator-era.json).
 The SGX quote proves the integrity of the Coordinator pod.
@@ -97,41 +97,41 @@ MarbleRun guarantees that the topology of your distributed app adheres to a mani
 MarbleRun verifies the integrity of services, bootstraps them, and sets up encrypted connections between them.
 The emojivoto demo already comes with a [manifest](https://github.com/edgelesssys/emojivoto/blob/main/tools/manifest.json), which you can deploy onto MarbleRun by running the following:
 
-<tabs groupId="mode">
-<tabItem value="SGX" label="With SGX">
+<Tabs groupId="mode">
+<TabItem value="SGX" label="With SGX">
 
 ```bash
 marblerun manifest set tools/manifest.json $MARBLERUN
 ```
 
-</tabItem>
-<tabItem value="Simulation" label="In simulation mode">
+</TabItem>
+<TabItem value="Simulation" label="In simulation mode">
 
 ```bash
 marblerun manifest set tools/manifest.json $MARBLERUN --insecure
 ```
 
-</tabItem>
-</tabs>
+</TabItem>
+</Tabs>
 
 You can check that the state of MarbleRun has changed and is now ready to authenticate your services by running:
 
-<tabs groupId="mode">
-<tabItem value="SGX" label="With SGX">
+<Tabs groupId="mode">
+<TabItem value="SGX" label="With SGX">
 
 ```bash
 marblerun status $MARBLERUN
 ```
 
-</tabItem>
-<tabItem value="Simulation" label="In simulation mode">
+</TabItem>
+<TabItem value="Simulation" label="In simulation mode">
 
 ```bash
 marblerun status $MARBLERUN --insecure
 ```
 
-</tabItem>
-</tabs>
+</TabItem>
+</Tabs>
 
 ### Step 3.2: Deploy emojivoto
 
@@ -139,22 +139,22 @@ Finally, install the demo application onto your cluster.
 Please make sure you have [Helm](https://helm.sh/docs/intro/install/) ("the package manager for Kubernetes") installed at least at Version v3.2.0.
 Install emojivoto into the emojivoto namespace by running:
 
-<tabs groupId="mode">
-<tabItem value="SGX" label="With SGX">
+<Tabs groupId="mode">
+<TabItem value="SGX" label="With SGX">
 
 ```bash
 helm install -f ./kubernetes/sgx_values.yaml emojivoto ./kubernetes --create-namespace -n emojivoto
 ```
 
-</tabItem>
-<tabItem value="Simulation" label="In simulation mode">
+</TabItem>
+<TabItem value="Simulation" label="In simulation mode">
 
 ```bash
 helm install -f ./kubernetes/nosgx_values.yaml emojivoto ./kubernetes --create-namespace -n emojivoto
 ```
 
-</tabItem>
-</tabs>
+</TabItem>
+</Tabs>
 
 ## Step 4: Watch it run
 
