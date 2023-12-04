@@ -4,7 +4,7 @@ RUN wget \
   https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage \
   https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-x86_64
 
-FROM ubuntu:focal-20231128
+FROM ubuntu:22.04
 COPY --from=download /intel-sgx-deb.key /etc/apt/keyrings/intel-sgx-keyring.asc
 COPY --from=download /*-x86_64* /
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
