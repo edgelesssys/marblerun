@@ -1,4 +1,4 @@
-FROM ubuntu:jammy-20230804
+FROM ubuntu:jammy-20231128
 RUN apt-get update && apt-get install -dy --no-install-recommends \
   build-essential \
   ca-certificates \
