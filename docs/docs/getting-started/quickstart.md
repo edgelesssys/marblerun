@@ -5,6 +5,17 @@ The following steps guide you through the process of deploying MarbleRun in your
 A working SGX DCAP environment is required for MarbleRun. For ease of exploring and testing, we provide a simulation mode with `--simulation` that runs without SGX hardware.
 Depending on your setup, you may follow the quickstart for SGX-enabled clusters. Alternatively, if your setup doesn't support SGX, you can follow the quickstart in simulation mode by selecting the respective tabs.
 
+## Step 0: Clone the demo repository
+
+To get a feel for how MarbleRun would work for one of your services, you can install a demo application.
+The emojivoto application is a standalone Kubernetes application that uses a mix of gRPC and HTTP calls to allow users to vote on their favorite emojis.
+Created as a demo application for the popular [Linkerd](https://linkerd.io) service mesh, we've made a confidential variant that uses a confidential service mesh for all gRPC and HTTP connections.
+Clone the [demo application's repository](https://github.com/edgelesssys/emojivoto.git) from GitHub by running the following:
+
+```bash
+git clone https://github.com/edgelesssys/emojivoto.git && cd emojivoto
+```
+
 ## Step 1: Install the control plane onto your cluster
 
 Install MarbleRun's *Coordinator* control plane by running:
@@ -48,50 +59,7 @@ kubectl -n marblerun port-forward svc/coordinator-client-api 4433:4433 --address
 export MARBLERUN=localhost:4433
 ```
 
-## Step 2: Verify the Coordinator
-
-After installing the Coordinator, we need to verify its integrity.
-For this, we utilize SGX remote attestation and obtain the Coordinator's root certificate.
-
-Verify the quote and get the Coordinator's root certificate
-
-<Tabs groupId="mode">
-<TabItem value="SGX" label="With SGX">
-
-```bash
-marblerun certificate root $MARBLERUN -o marblerun.crt
-```
-
-</TabItem>
-<TabItem value="Simulation" label="In simulation mode">
-
-```bash
-marblerun certificate root $MARBLERUN -o marblerun.crt --insecure
-```
-
-The insecure flag tells MarbleRun that real SGX hardware might not be present and the quote verification should be omitted.
-
-</TabItem>
-</Tabs>
-
-The CLI will obtain the Coordinator's remote attestation quote and verify it against the configuration on our [release page](https://github.com/edgelesssys/marblerun/releases/latest/download/coordinator-era.json).
-The SGX quote proves the integrity of the Coordinator pod.
-The CLI returns a certificate and stores it as `marblerun.crt` in your current directory.
-The certificate is bound to the quote and can be used for future verification.
-It can also be used as a root of trust for [authenticating your confidential applications](../features/attestation.md).
-
-## Step 3: Deploy the demo application
-
-To get a feel for how MarbleRun would work for one of your services, you can install a demo application.
-The emojivoto application is a standalone Kubernetes application that uses a mix of gRPC and HTTP calls to allow users to vote on their favorite emojis.
-Created as a demo application for the popular [Linkerd](https://linkerd.io) service mesh, we've made a confidential variant that uses a confidential service mesh for all gRPC and HTTP connections.
-Clone the [demo application's repository](https://github.com/edgelesssys/emojivoto.git) from GitHub by running the following:
-
-```bash
-git clone https://github.com/edgelesssys/emojivoto.git && cd emojivoto
-```
-
-### Step 3.1: Configure MarbleRun
+### Step 2: Configure MarbleRun
 
 MarbleRun guarantees that the topology of your distributed app adheres to a manifest specified in simple JSON.
 MarbleRun verifies the integrity of services, bootstraps them, and sets up encrypted connections between them.
@@ -104,12 +72,30 @@ The emojivoto demo already comes with a [manifest](https://github.com/edgelesssy
 marblerun manifest set tools/manifest.json $MARBLERUN
 ```
 
+The CLI will obtain the Coordinator's remote attestation quote and verify it against the configuration on our [release page](https://github.com/edgelesssys/marblerun/releases/latest/download/coordinator-era.json).
+The SGX quote proves the integrity of the Coordinator pod.
+The CLI saves the TLS certificate of the Coordinator as `coordinator-cert.pem` in your config directory.
+The certificate is bound to the quote and is used by the CLI for future verification.
+It can also be used as a root of trust for [authenticating your confidential applications](../features/attestation.md).
+
+:::info
+
+By default the certificate is saved to `$XDG_CONFIG_HOME/marblerun/coordinator-cert.pem`,
+or `$HOME/.config/marblerun/coordinator-cert.pem` if `$XDG_CONFIG_HOME` is not set.
+Subsequent CLI commands will try loading the certificate from that location.
+Use the `--coordinator-cert` flag to choose your own location to save or load the certificate.
+
+:::
+
 </TabItem>
 <TabItem value="Simulation" label="In simulation mode">
 
 ```bash
 marblerun manifest set tools/manifest.json $MARBLERUN --insecure
 ```
+
+The insecure flag tells MarbleRun that real SGX hardware might not be present and the quote verification should be omitted.
+Since this bypasses all security checks on the TLS connection to the Coordinator, you MUST NOT use it in production.
 
 </TabItem>
 </Tabs>
@@ -133,7 +119,7 @@ marblerun status $MARBLERUN --insecure
 </TabItem>
 </Tabs>
 
-### Step 3.2: Deploy emojivoto
+## Step 3: Deploy the demo application
 
 Finally, install the demo application onto your cluster.
 Please make sure you have [Helm](https://helm.sh/docs/intro/install/) ("the package manager for Kubernetes") installed at least at Version v3.2.0.

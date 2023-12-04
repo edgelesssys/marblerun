@@ -41,3 +41,15 @@ You can verify your local `manifest.json` against the Coordinator's version with
 ```bash
 marblerun manifest verify manifest.json $MARBLERUN
 ```
+
+If successful, the TLS root certificate of the Coordinator is saved for future connections with the MarbleRun instance.
+This ensures you are always talking to the same instance that you verified the manifest against.
+
+:::info
+
+By default `marblerun manifest verify` will save the Coordinators certificate chain to `$XDG_CONFIG_HOME/marblerun/coordinator-cert.pem`,
+or `$HOME/.config/marblerun/coordinator-cert.pem` if `$XDG_CONFIG_HOME` is not set.
+Subsequent CLI commands will try loading the certificate from that location.
+Use the `--coordinator-cert` flag to choose your own location to save or load the certificate.
+
+:::

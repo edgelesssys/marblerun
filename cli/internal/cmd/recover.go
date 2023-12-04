@@ -34,13 +34,30 @@ func NewRecoverCmd() *cobra.Command {
 func runRecover(cmd *cobra.Command, args []string) error {
 	keyFile := args[0]
 	hostname := args[1]
+	fs := afero.NewOsFs()
 
-	recoveryKey, err := file.New(keyFile, afero.NewOsFs()).Read()
+	recoveryKey, err := file.New(keyFile, fs).Read()
 	if err != nil {
 		return err
 	}
 
-	client, err := rest.NewClient(cmd, hostname)
+	flags, err := parseRestFlags(cmd.Flags())
+	if err != nil {
+		return err
+	}
+
+	// A Coordinator in recovery mode will have a different certificate than what is cached
+	// Only unsealing the Coordinator will allow it to use the original certificate again
+	// Therefore we need to verify the Coordinator is running in the expected enclave instead
+	caCert, err := rest.VerifyCoordinator(
+		cmd.Context(), cmd.OutOrStdout(), hostname,
+		flags.eraConfig, flags.k8sNamespace, flags.insecure, flags.acceptedTCBStatuses,
+	)
+	if err != nil {
+		return err
+	}
+
+	client, err := rest.NewClient(hostname, caCert, nil, flags.insecure)
 	if err != nil {
 		return err
 	}

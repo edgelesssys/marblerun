@@ -44,23 +44,25 @@ type Options struct {
 
 // Client provides functionality to install and uninstall Helm charts.
 type Client struct {
-	config   *action.Configuration
-	settings *cli.EnvSettings
+	namespace string
+	config    *action.Configuration
+	settings  *cli.EnvSettings
 }
 
 // New initializes a new helm client.
-func New() (*Client, error) {
+func New(namespace string) (*Client, error) {
 	settings := cli.New()
 	// settings.KubeConfig = kubeConfigPath
 
 	actionConfig := &action.Configuration{}
-	if err := actionConfig.Init(settings.RESTClientGetter(), Namespace, os.Getenv("HELM_DRIVER"), nopLog); err != nil {
+	if err := actionConfig.Init(settings.RESTClientGetter(), namespace, os.Getenv("HELM_DRIVER"), nopLog); err != nil {
 		return nil, err
 	}
 
 	return &Client{
-		config:   actionConfig,
-		settings: settings,
+		namespace: namespace,
+		config:    actionConfig,
+		settings:  settings,
 	}, nil
 }
 
@@ -189,7 +191,7 @@ func UpdateValues(options Options, chartValues map[string]interface{}) (map[stri
 // Install installs MarbleRun using the provided chart and values.
 func (c *Client) Install(ctx context.Context, wait bool, chart *chart.Chart, values map[string]interface{}) error {
 	installer := action.NewInstall(c.config)
-	installer.Namespace = Namespace
+	installer.Namespace = c.namespace
 	installer.ReleaseName = release
 	installer.CreateNamespace = true
 	installer.Wait = wait

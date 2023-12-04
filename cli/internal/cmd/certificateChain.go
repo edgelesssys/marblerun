@@ -13,8 +13,6 @@ import (
 	"io"
 
 	"github.com/edgelesssys/marblerun/cli/internal/file"
-	"github.com/edgelesssys/marblerun/cli/internal/rest"
-	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 )
 
@@ -24,7 +22,7 @@ func newCertificateChain() *cobra.Command {
 		Short:   "Returns the certificate chain of the MarbleRun Coordinator",
 		Long:    `Returns the certificate chain of the MarbleRun Coordinator`,
 		Args:    cobra.ExactArgs(1),
-		RunE:    runCertificateChain,
+		RunE:    runCertificate(saveCertChain),
 		PreRunE: outputFlagNotEmpty,
 	}
 
@@ -33,29 +31,8 @@ func newCertificateChain() *cobra.Command {
 	return cmd
 }
 
-func runCertificateChain(cmd *cobra.Command, args []string) error {
-	hostname := args[0]
-	flags, err := rest.ParseFlags(cmd)
-	if err != nil {
-		return err
-	}
-	output, err := cmd.Flags().GetString("output")
-	if err != nil {
-		return err
-	}
-
-	certs, err := rest.VerifyCoordinator(
-		cmd.Context(), cmd.OutOrStdout(), hostname,
-		flags.EraConfig, flags.Insecure, flags.AcceptedTCBStatuses,
-	)
-	if err != nil {
-		return fmt.Errorf("retrieving certificate chain from Coordinator: %w", err)
-	}
-	return cliCertificateChain(cmd.OutOrStdout(), file.New(output, afero.NewOsFs()), certs)
-}
-
-// cliCertificateChain gets the certificate chain of the MarbleRun Coordinator.
-func cliCertificateChain(out io.Writer, file *file.Handler, certs []*pem.Block) error {
+// saveCertChain saves the certificate chain of the MarbleRun Coordinator.
+func saveCertChain(out io.Writer, certFile *file.Handler, certs []*pem.Block) error {
 	if len(certs) == 0 {
 		return errors.New("no certificates received from Coordinator")
 	}
@@ -68,10 +45,10 @@ func cliCertificateChain(out io.Writer, file *file.Handler, certs []*pem.Block) 
 		chain = append(chain, pem.EncodeToMemory(cert)...)
 	}
 
-	if err := file.Write(chain); err != nil {
+	if err := certFile.Write(chain, file.OptOverwrite); err != nil {
 		return err
 	}
-	fmt.Fprintf(out, "Certificate chain written to %s\n", file.Name())
+	fmt.Fprintf(out, "Certificate chain written to %s\n", certFile.Name())
 
 	return nil
 }

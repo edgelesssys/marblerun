@@ -47,13 +47,13 @@ func TestCreateSecret(t *testing.T) {
 	_, err = testClient.CoreV1().Namespaces().Create(ctx, newNamespace1, metav1.CreateOptions{})
 	require.NoError(err)
 
-	err = createSecret(ctx, testKey, crt, testClient)
+	err = createSecret(ctx, helm.Namespace, testKey, crt, testClient)
 	require.NoError(err)
 	_, err = testClient.CoreV1().Secrets(helm.Namespace).Get(context.TODO(), "marble-injector-webhook-certs", metav1.GetOptions{})
 	require.NoError(err)
 
 	// we should get an error since the secret was already created in the previous step
-	err = createSecret(ctx, testKey, crt, testClient)
+	err = createSecret(ctx, helm.Namespace, testKey, crt, testClient)
 	require.Error(err)
 }
 
@@ -131,7 +131,7 @@ func TestInstallWebhook(t *testing.T) {
 	var out bytes.Buffer
 	cmd.SetOut(&out)
 
-	testValues, err := installWebhook(cmd, testClient)
+	testValues, err := installWebhook(cmd, testClient, helm.Namespace)
 	assert.NoError(err)
 	assert.Equal("marbleInjector.start=true", testValues[0], "failed to set start to true")
 	assert.Contains(testValues[1], "LS0t", "failed to set CABundle")
@@ -178,7 +178,7 @@ func TestErrorAndCleanup(t *testing.T) {
 	ctx := context.Background()
 
 	testError := errors.New("test")
-	err := errorAndCleanup(ctx, testError, testClient)
+	err := errorAndCleanup(ctx, testError, testClient, helm.Namespace)
 	assert.Equal(testError, err)
 
 	// Create and test for CSR
@@ -201,7 +201,7 @@ func TestErrorAndCleanup(t *testing.T) {
 	_, err = testClient.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), webhookName, metav1.GetOptions{})
 	require.NoError(err)
 
-	err = errorAndCleanup(ctx, testError, testClient)
+	err = errorAndCleanup(ctx, testError, testClient, helm.Namespace)
 	assert.Equal(testError, err)
 
 	_, err = testClient.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), webhookName, metav1.GetOptions{})

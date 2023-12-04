@@ -9,10 +9,21 @@ package cmd
 import (
 	"context"
 	"os"
+	"path/filepath"
 
 	"github.com/edgelesssys/marblerun/cli/internal/cmd"
+	"github.com/edgelesssys/marblerun/cli/internal/helm"
 	"github.com/spf13/cobra"
 )
+
+// defaultCoordinatorCertCache is the default path to the Coordinator's certificate cache.
+var defaultCoordinatorCertCache = func() string {
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		panic(err)
+	}
+	return filepath.Join(configDir, "marblerun", "coordinator-cert.pem")
+}()
 
 // Execute starts the CLI.
 func Execute() error {
@@ -51,10 +62,13 @@ To install and configure MarbleRun, run:
 	rootCmd.AddCommand(cmd.NewPackageInfoCmd())
 	rootCmd.AddCommand(cmd.NewVersionCmd())
 
+	rootCmd.PersistentFlags().String("coordinator-cert", defaultCoordinatorCertCache, "Path to MarbleRun Coordinator's root certificate to use for TLS connections")
 	rootCmd.PersistentFlags().String("era-config", "", "Path to remote attestation config file in json format, if none provided the newest configuration will be loaded from github")
 	rootCmd.PersistentFlags().BoolP("insecure", "i", false, "Set to skip quote verification, needed when running in simulation mode")
 	rootCmd.PersistentFlags().StringSlice("accepted-tcb-statuses", []string{"UpToDate"}, "Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded)")
+	rootCmd.PersistentFlags().StringP("namespace", "n", helm.Namespace, "Kubernetes namespace of the MarbleRun installation")
 
+	must(rootCmd.MarkPersistentFlagFilename("coordinator-cert", "pem", "crt"))
 	must(rootCmd.MarkPersistentFlagFilename("era-config", "json"))
 
 	return rootCmd

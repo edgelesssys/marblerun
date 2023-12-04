@@ -45,13 +45,13 @@ func NewClient() (*kubernetes.Clientset, error) {
 }
 
 // CoordinatorVersion returns the version of the Coordinator deployment.
-func CoordinatorVersion(ctx context.Context) (string, error) {
+func CoordinatorVersion(ctx context.Context, namespace string) (string, error) {
 	kubeClient, err := NewClient()
 	if err != nil {
 		return "", err
 	}
 
-	coordinatorDeployment, err := kubeClient.AppsV1().Deployments(helm.Namespace).Get(ctx, helm.CoordinatorDeployment, metav1.GetOptions{})
+	coordinatorDeployment, err := kubeClient.AppsV1().Deployments(namespace).Get(ctx, helm.CoordinatorDeployment, metav1.GetOptions{})
 	if err != nil {
 		return "", fmt.Errorf("retrieving deployment information: %w", err)
 	}

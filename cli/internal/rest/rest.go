@@ -25,7 +25,6 @@ import (
 	"github.com/edgelesssys/era/era"
 	"github.com/edgelesssys/era/util"
 	"github.com/edgelesssys/marblerun/cli/internal/kube"
-	"github.com/spf13/cobra"
 	"github.com/tidwall/gjson"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -49,124 +48,37 @@ const (
 	dataField        = "data"
 )
 
-// Flags are command line flags used to configure the REST client.
-type Flags struct {
-	EraConfig           string
-	Insecure            bool
-	AcceptedTCBStatuses []string
-}
-
-// ParseFlags parses the command line flags used to configure the REST client.
-func ParseFlags(cmd *cobra.Command) (Flags, error) {
-	eraConfig, err := cmd.Flags().GetString("era-config")
-	if err != nil {
-		return Flags{}, err
-	}
-	insecure, err := cmd.Flags().GetBool("insecure")
-	if err != nil {
-		return Flags{}, err
-	}
-	acceptedTCBStatuses, err := cmd.Flags().GetStringSlice("accepted-tcb-statuses")
-	if err != nil {
-		return Flags{}, err
-	}
-
-	return Flags{
-		EraConfig:           eraConfig,
-		Insecure:            insecure,
-		AcceptedTCBStatuses: acceptedTCBStatuses,
-	}, nil
-}
-
-type authenticatedFlags struct {
-	Flags
-	ClientCert tls.Certificate
-}
-
-func parseAuthenticatedFlags(cmd *cobra.Command) (authenticatedFlags, error) {
-	flags, err := ParseFlags(cmd)
-	if err != nil {
-		return authenticatedFlags{}, err
-	}
-	certFile, err := cmd.Flags().GetString("cert")
-	if err != nil {
-		return authenticatedFlags{}, err
-	}
-	keyFile, err := cmd.Flags().GetString("key")
-	if err != nil {
-		return authenticatedFlags{}, err
-	}
-	clientCert, err := tls.LoadX509KeyPair(certFile, keyFile)
-	if err != nil {
-		return authenticatedFlags{}, err
-	}
-
-	return authenticatedFlags{
-		Flags:      flags,
-		ClientCert: clientCert,
-	}, nil
-}
-
 // Client is a REST client for the MarbleRun Coordinator.
 type Client struct {
 	client *http.Client
 	host   string
 }
 
-// NewClient creates and returns an http client using the flags of cmd.
-func NewClient(cmd *cobra.Command, host string) (*Client, error) {
-	flags, err := ParseFlags(cmd)
-	if err != nil {
-		return nil, fmt.Errorf("parsing flags: %w", err)
-	}
-	caCert, err := VerifyCoordinator(
-		cmd.Context(), cmd.OutOrStdout(), host,
-		flags.EraConfig, flags.Insecure, flags.AcceptedTCBStatuses,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to verify Coordinator enclave: %w", err)
-	}
-	return newClient(host, caCert, nil)
-}
-
-// NewAuthenticatedClient creates and returns an http client with client authentication using the flags of cmd.
-func NewAuthenticatedClient(cmd *cobra.Command, host string) (*Client, error) {
-	flags, err := parseAuthenticatedFlags(cmd)
-	if err != nil {
-		return nil, fmt.Errorf("parsing flags: %w", err)
-	}
-	caCert, err := VerifyCoordinator(
-		cmd.Context(), cmd.OutOrStdout(), host,
-		flags.EraConfig, flags.Insecure, flags.AcceptedTCBStatuses,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to verify Coordinator enclave: %w", err)
-	}
-	return newClient(host, caCert, &flags.ClientCert)
-}
-
-func newClient(host string, caCert []*pem.Block, clCert *tls.Certificate) (*Client, error) {
+// NewClient creates and returns an http client using the given certificate of the server.
+// An optional clientCert can be used to enable client authentication.
+func NewClient(host string, caCert []*pem.Block, clientCert *tls.Certificate, insecureTLS bool) (*Client, error) {
 	// Set rootCA for connection to Coordinator
 	certPool := x509.NewCertPool()
-	if ok := certPool.AppendCertsFromPEM(pem.EncodeToMemory(caCert[len(caCert)-1])); !ok {
-		return nil, errors.New("failed to parse certificate")
-	}
-	// Add intermediate cert if applicable
-	if len(caCert) > 1 {
-		if ok := certPool.AppendCertsFromPEM(pem.EncodeToMemory(caCert[0])); !ok {
+
+	if len(caCert) == 0 && !insecureTLS {
+		return nil, errors.New("no certificates provided")
+	} else if !insecureTLS {
+		if ok := certPool.AppendCertsFromPEM(pem.EncodeToMemory(caCert[len(caCert)-1])); !ok {
 			return nil, errors.New("failed to parse certificate")
 		}
 	}
 
 	var tlsConfig *tls.Config
-	if clCert != nil {
+	if clientCert != nil {
 		tlsConfig = &tls.Config{
-			RootCAs:      certPool,
-			Certificates: []tls.Certificate{*clCert},
+			RootCAs:            certPool,
+			Certificates:       []tls.Certificate{*clientCert},
+			InsecureSkipVerify: insecureTLS,
 		}
 	} else {
 		tlsConfig = &tls.Config{
-			RootCAs: certPool,
+			RootCAs:            certPool,
+			InsecureSkipVerify: insecureTLS,
 		}
 	}
 	client := &http.Client{
@@ -244,7 +156,7 @@ func (c *Client) do(req *http.Request) ([]byte, error) {
 
 // VerifyCoordinator verifies the connection to the MarbleRun Coordinator.
 func VerifyCoordinator(
-	ctx context.Context, out io.Writer, host, configFilename string,
+	ctx context.Context, out io.Writer, host, configFilename, k8sNamespace string,
 	insecure bool, acceptedTCBStatuses []string,
 ) ([]*pem.Block, error) {
 	// skip verification if specified
@@ -260,7 +172,7 @@ func VerifyCoordinator(
 		// or try to get latest config from github if it does not exist
 		if _, err := os.Stat(configFilename); err == nil {
 			fmt.Fprintln(out, "Reusing existing config file")
-		} else if err := fetchLatestCoordinatorConfiguration(ctx, out); err != nil {
+		} else if err := fetchLatestCoordinatorConfiguration(ctx, out, k8sNamespace); err != nil {
 			return nil, err
 		}
 	}
@@ -276,8 +188,8 @@ func VerifyCoordinator(
 	return pemBlock, nil
 }
 
-func fetchLatestCoordinatorConfiguration(ctx context.Context, out io.Writer) error {
-	coordinatorVersion, err := kube.CoordinatorVersion(ctx)
+func fetchLatestCoordinatorConfiguration(ctx context.Context, out io.Writer, k8sNamespace string) error {
+	coordinatorVersion, err := kube.CoordinatorVersion(ctx, k8sNamespace)
 	eraURL := fmt.Sprintf("https://github.com/edgelesssys/marblerun/releases/download/%s/coordinator-era.json", coordinatorVersion)
 	if err != nil {
 		// if errors were caused by an empty kube config file or by being unable to connect to a cluster we assume the Coordinator is running as a standalone

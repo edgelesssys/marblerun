@@ -13,8 +13,6 @@ import (
 	"io"
 
 	"github.com/edgelesssys/marblerun/cli/internal/file"
-	"github.com/edgelesssys/marblerun/cli/internal/rest"
-	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 )
 
@@ -24,7 +22,7 @@ func newCertificateRoot() *cobra.Command {
 		Short:   "Returns the root certificate of the MarbleRun Coordinator",
 		Long:    `Returns the root certificate of the MarbleRun Coordinator`,
 		Args:    cobra.ExactArgs(1),
-		RunE:    runCertificateRoot,
+		RunE:    runCertificate(saveRootCert),
 		PreRunE: outputFlagNotEmpty,
 	}
 
@@ -33,36 +31,15 @@ func newCertificateRoot() *cobra.Command {
 	return cmd
 }
 
-func runCertificateRoot(cmd *cobra.Command, args []string) error {
-	hostname := args[0]
-	flags, err := rest.ParseFlags(cmd)
-	if err != nil {
-		return err
-	}
-	output, err := cmd.Flags().GetString("output")
-	if err != nil {
-		return err
-	}
-
-	certs, err := rest.VerifyCoordinator(
-		cmd.Context(), cmd.OutOrStdout(), hostname,
-		flags.EraConfig, flags.Insecure, flags.AcceptedTCBStatuses,
-	)
-	if err != nil {
-		return fmt.Errorf("retrieving root certificate from Coordinator: %w", err)
-	}
-	return cliCertificateRoot(cmd.OutOrStdout(), file.New(output, afero.NewOsFs()), certs)
-}
-
-// cliCertificateRoot gets the root certificate of the MarbleRun Coordinator and saves it to a file.
-func cliCertificateRoot(out io.Writer, file *file.Handler, certs []*pem.Block) error {
+// saveRootCert saves the root certificate of the MarbleRun Coordinator to a file.
+func saveRootCert(out io.Writer, certFile *file.Handler, certs []*pem.Block) error {
 	if len(certs) == 0 {
 		return errors.New("no certificates received from Coordinator")
 	}
-	if err := file.Write(pem.EncodeToMemory(certs[len(certs)-1])); err != nil {
+	if err := certFile.Write(pem.EncodeToMemory(certs[len(certs)-1]), file.OptOverwrite); err != nil {
 		return err
 	}
-	fmt.Fprintf(out, "Root certificate written to %s\n", file.Name())
+	fmt.Fprintf(out, "Root certificate written to %s\n", certFile.Name())
 
 	return nil
 }

@@ -32,8 +32,13 @@ func NewVersionCmd() *cobra.Command {
 
 func runVersion(cmd *cobra.Command, _ []string) {
 	cmd.Printf("CLI Version: v%s \nCommit: %s\n", Version, GitCommit)
+	namespace, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		cmd.Println(err)
+		return
+	}
 
-	cVersion, err := kube.CoordinatorVersion(cmd.Context())
+	cVersion, err := kube.CoordinatorVersion(cmd.Context(), namespace)
 	if err != nil {
 		cmd.Println("Unable to find MarbleRun Coordinator")
 		return

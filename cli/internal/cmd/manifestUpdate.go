@@ -13,7 +13,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 
 	"github.com/edgelesssys/marblerun/cli/internal/file"
 	"github.com/edgelesssys/marblerun/cli/internal/rest"
@@ -114,13 +113,14 @@ func newUpdateGet() *cobra.Command {
 func runUpdateApply(cmd *cobra.Command, args []string) error {
 	manifestFile := args[0]
 	hostname := args[1]
+	fs := afero.NewOsFs()
 
-	client, err := rest.NewAuthenticatedClient(cmd, hostname)
+	client, err := newMutualAuthClient(hostname, cmd.Flags(), fs)
 	if err != nil {
 		return err
 	}
 
-	manifest, err := loadManifestFile(file.New(manifestFile, afero.NewOsFs()))
+	manifest, err := loadManifestFile(file.New(manifestFile, fs))
 	if err != nil {
 		return err
 	}
@@ -143,13 +143,14 @@ func cliManifestUpdateApply(cmd *cobra.Command, manifest []byte, client poster) 
 func runUpdateAcknowledge(cmd *cobra.Command, args []string) error {
 	manifestFile := args[0]
 	hostname := args[1]
+	fs := afero.NewOsFs()
 
-	client, err := rest.NewAuthenticatedClient(cmd, hostname)
+	client, err := newMutualAuthClient(hostname, cmd.Flags(), fs)
 	if err != nil {
 		return err
 	}
 
-	manifest, err := loadManifestFile(file.New(manifestFile, afero.NewOsFs()))
+	manifest, err := loadManifestFile(file.New(manifestFile, fs))
 	if err != nil {
 		return err
 	}
@@ -171,7 +172,7 @@ func cliManifestUpdateAcknowledge(cmd *cobra.Command, manifest []byte, client po
 func runUpdateCancel(cmd *cobra.Command, args []string) error {
 	hostname := args[0]
 
-	client, err := rest.NewAuthenticatedClient(cmd, hostname)
+	client, err := newMutualAuthClient(hostname, cmd.Flags(), afero.NewOsFs())
 	if err != nil {
 		return err
 	}
@@ -191,6 +192,7 @@ func cliManifestUpdateCancel(cmd *cobra.Command, client poster) error {
 
 func runUpdateGet(cmd *cobra.Command, args []string) (retErr error) {
 	hostname := args[0]
+	fs := afero.NewOsFs()
 
 	outputFile, err := cmd.Flags().GetString("output")
 	if err != nil {
@@ -200,21 +202,31 @@ func runUpdateGet(cmd *cobra.Command, args []string) (retErr error) {
 	if err != nil {
 		return err
 	}
-	client, err := rest.NewClient(cmd, hostname)
+	insecureTLS, err := cmd.Flags().GetBool("insecure")
+	if err != nil {
+		return err
+	}
+
+	caCert, err := rest.LoadCoordinatorCachedCert(cmd.Flags(), fs)
+	if err != nil {
+		return err
+	}
+
+	client, err := rest.NewClient(hostname, caCert, nil, insecureTLS)
 	if err != nil {
 		return err
 	}
 
 	var out io.Writer
 	if outputFile != "" {
-		file, err := os.Create(outputFile)
+		file, err := fs.Create(outputFile)
 		if err != nil {
 			return err
 		}
 		defer func() {
 			_ = file.Close()
 			if retErr != nil {
-				_ = os.Remove(outputFile)
+				_ = fs.Remove(outputFile)
 			}
 		}()
 		out = file

@@ -36,21 +36,38 @@ func newManifestVerify() *cobra.Command {
 func runManifestVerify(cmd *cobra.Command, args []string) error {
 	manifest := args[0]
 	hostname := args[1]
+	fs := afero.NewOsFs()
 
-	localSignature, err := getSignatureFromString(manifest, afero.Afero{Fs: afero.NewOsFs()})
+	localSignature, err := getSignatureFromString(manifest, fs)
 	if err != nil {
 		return err
 	}
 
-	client, err := rest.NewClient(cmd, hostname)
+	restFlags, err := parseRestFlags(cmd.Flags())
 	if err != nil {
 		return err
 	}
-	return cliManifestVerify(cmd, localSignature, client)
+	caCert, err := rest.VerifyCoordinator(
+		cmd.Context(), cmd.OutOrStdout(), hostname,
+		restFlags.eraConfig, restFlags.k8sNamespace, restFlags.insecure, restFlags.acceptedTCBStatuses,
+	)
+	if err != nil {
+		return err
+	}
+
+	client, err := rest.NewClient(hostname, caCert, nil, restFlags.insecure)
+	if err != nil {
+		return err
+	}
+	if err := cliManifestVerify(cmd, localSignature, client); err != nil {
+		return err
+	}
+
+	return rest.SaveCoordinatorCachedCert(cmd.Flags(), fs, caCert)
 }
 
 // getSignatureFromString checks if a string is a file or a valid signature.
-func getSignatureFromString(manifest string, fs afero.Afero) (string, error) {
+func getSignatureFromString(manifest string, fs afero.Fs) (string, error) {
 	if _, err := fs.Stat(manifest); err != nil {
 		if !errors.Is(err, afero.ErrFileNotFound) {
 			return "", err

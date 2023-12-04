@@ -33,34 +33,53 @@ func newManifestSet() *cobra.Command {
 	return cmd
 }
 
-func runManifestSet(cmd *cobra.Command, args []string) error {
+func runManifestSet(cmd *cobra.Command, args []string) (retErr error) {
 	manifestFile := args[0]
 	hostname := args[1]
+	fs := afero.NewOsFs()
 
 	recoveryFilename, err := cmd.Flags().GetString("recoverydata")
 	if err != nil {
 		return err
 	}
 
-	client, err := rest.NewClient(cmd, hostname)
+	restFlags, err := parseRestFlags(cmd.Flags())
+	if err != nil {
+		return err
+	}
+
+	caCert, err := rest.VerifyCoordinator(
+		cmd.Context(), cmd.OutOrStdout(), hostname,
+		restFlags.eraConfig, restFlags.k8sNamespace, restFlags.insecure, restFlags.acceptedTCBStatuses,
+	)
+	if err != nil {
+		return err
+	}
+
+	client, err := rest.NewClient(hostname, caCert, nil, restFlags.insecure)
 	if err != nil {
 		return err
 	}
 
 	cmd.Println("Successfully verified Coordinator, now uploading manifest")
 
-	manifest, err := loadManifestFile(file.New(manifestFile, afero.NewOsFs()))
+	manifest, err := loadManifestFile(file.New(manifestFile, fs))
 	if err != nil {
 		return err
 	}
 	signature := cliManifestSignature(manifest)
 	cmd.Printf("Manifest signature: %s\n", signature)
 
-	return cliManifestSet(cmd, manifest, file.New(recoveryFilename, afero.NewOsFs()), client)
+	if err := cliManifestSet(cmd, manifest, file.New(recoveryFilename, afero.NewOsFs()), client); err != nil {
+		return err
+	}
+
+	// Save the certificate of this Coordinator instance to disk
+	return rest.SaveCoordinatorCachedCert(cmd.Flags(), fs, caCert)
 }
 
 // cliManifestSet sets the Coordinators manifest using its rest api.
-func cliManifestSet(cmd *cobra.Command, manifest []byte, file *file.Handler, client poster) error {
+func cliManifestSet(cmd *cobra.Command, manifest []byte, recFile *file.Handler, client poster) error {
 	resp, err := client.Post(cmd.Context(), rest.ManifestEndpoint, rest.ContentJSON, bytes.NewReader(manifest))
 	if err != nil {
 		return fmt.Errorf("setting manifest: %w", err)
@@ -72,11 +91,11 @@ func cliManifestSet(cmd *cobra.Command, manifest []byte, file *file.Handler, cli
 		return nil
 	}
 	// recovery secret was sent, print or save to file
-	if file != nil {
-		if err := file.Write(resp); err != nil {
+	if recFile != nil {
+		if err := recFile.Write(resp, file.OptOverwrite); err != nil {
 			return err
 		}
-		cmd.Printf("Recovery data saved to: %s\n", file.Name())
+		cmd.Printf("Recovery data saved to: %s\n", recFile.Name())
 	} else {
 		cmd.Println(string(resp))
 	}

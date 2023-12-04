@@ -32,6 +32,7 @@ Optionally get the manifests signature or merge updates into the displayed manif
 		RunE:    runManifestGet,
 	}
 
+	cmd.Flags().Bool("keep-cert", false, "Set to keep the certificate of the Coordinator and save it to the location specified by --coordinator-cert")
 	cmd.Flags().BoolP("signature", "s", false, "Set to additionally display the manifests signature")
 	cmd.Flags().BoolP("display-update", "u", false, "Set to merge updates into the displayed manifest")
 	cmd.Flags().StringP("output", "o", "", "Save output to file instead of printing to stdout")
@@ -40,7 +41,21 @@ Optionally get the manifests signature or merge updates into the displayed manif
 
 func runManifestGet(cmd *cobra.Command, args []string) error {
 	hostname := args[0]
-	client, err := rest.NewClient(cmd, hostname)
+	fs := afero.NewOsFs()
+
+	restFlags, err := parseRestFlags(cmd.Flags())
+	if err != nil {
+		return err
+	}
+	caCert, err := rest.VerifyCoordinator(
+		cmd.Context(), cmd.OutOrStdout(), hostname,
+		restFlags.eraConfig, restFlags.k8sNamespace, restFlags.insecure, restFlags.acceptedTCBStatuses,
+	)
+	if err != nil {
+		return err
+	}
+
+	client, err := rest.NewClient(hostname, caCert, nil, restFlags.insecure)
 	if err != nil {
 		return err
 	}
@@ -50,12 +65,20 @@ func runManifestGet(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	file := file.New(flags.output, afero.NewOsFs())
+	file := file.New(flags.output, fs)
 
-	return cliManifestGet(cmd, flags, file, client)
+	if err := cliManifestGet(cmd, flags, file, client); err != nil {
+		return err
+	}
+
+	keep, err := cmd.Flags().GetBool("keep-cert")
+	if err == nil && keep {
+		return rest.SaveCoordinatorCachedCert(cmd.Flags(), fs, caCert)
+	}
+	return err
 }
 
-func cliManifestGet(cmd *cobra.Command, flags manifestGetFlags, file *file.Handler, client getter) error {
+func cliManifestGet(cmd *cobra.Command, flags manifestGetFlags, mnfFile *file.Handler, client getter) error {
 	resp, err := client.Get(cmd.Context(), rest.ManifestEndpoint, http.NoBody)
 	if err != nil {
 		return fmt.Errorf("getting manifest: %w", err)
@@ -70,8 +93,8 @@ func cliManifestGet(cmd *cobra.Command, flags manifestGetFlags, file *file.Handl
 		manifest = fmt.Sprintf("{\n\"ManifestSignature\": \"%s\",\n\"Manifest\": %s}", gjson.GetBytes(resp, "ManifestSignature"), manifest)
 	}
 
-	if file != nil {
-		return file.Write([]byte(manifest))
+	if mnfFile != nil {
+		return mnfFile.Write([]byte(manifest), file.OptOverwrite)
 	}
 	cmd.Println(manifest)
 	return nil

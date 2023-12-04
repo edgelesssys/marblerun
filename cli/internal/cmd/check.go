@@ -31,7 +31,6 @@ func NewCheckCmd() *cobra.Command {
 	}
 
 	cmd.Flags().Uint("timeout", 60, "Time to wait before aborting in seconds")
-	cmd.Flags().String("namespace", helm.Namespace, "Namespace MarbleRun is deployed to")
 	return cmd
 }
 

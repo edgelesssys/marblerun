@@ -12,6 +12,7 @@ import (
 	"net/http"
 
 	"github.com/edgelesssys/marblerun/cli/internal/rest"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 )
 
@@ -53,7 +54,16 @@ func NewStatusCmd() *cobra.Command {
 
 func runStatus(cmd *cobra.Command, args []string) error {
 	hostname := args[0]
-	client, err := rest.NewClient(cmd, hostname)
+	caCert, err := rest.LoadCoordinatorCachedCert(cmd.Flags(), afero.NewOsFs())
+	if err != nil {
+		return err
+	}
+	insecureTLS, err := cmd.Flags().GetBool("insecure")
+	if err != nil {
+		return err
+	}
+
+	client, err := rest.NewClient(hostname, caCert, nil, insecureTLS)
 	if err != nil {
 		return err
 	}

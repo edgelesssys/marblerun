@@ -50,13 +50,14 @@ marblerun secret set certificate.pem $MARBLERUN -c admin.crt -k admin.key --from
 func runSecretSet(cmd *cobra.Command, args []string) error {
 	secretFile := args[0]
 	hostname := args[1]
+	fs := afero.NewOsFs()
 
 	fromPem, err := cmd.Flags().GetString("from-pem")
 	if err != nil {
 		return err
 	}
 
-	newSecrets, err := file.New(secretFile, afero.NewOsFs()).Read()
+	newSecrets, err := file.New(secretFile, fs).Read()
 	if err != nil {
 		return err
 	}
@@ -68,7 +69,7 @@ func runSecretSet(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	client, err := rest.NewAuthenticatedClient(cmd, hostname)
+	client, err := newMutualAuthClient(hostname, cmd.Flags(), fs)
 	if err != nil {
 		return err
 	}

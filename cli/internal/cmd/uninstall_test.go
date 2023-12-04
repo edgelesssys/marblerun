@@ -97,7 +97,7 @@ func TestCleanupWebhook(t *testing.T) {
 	_, err = testClient.CoreV1().Secrets(helm.Namespace).Get(ctx, "marble-injector-webhook-certs", metav1.GetOptions{})
 	require.Error(err)
 
-	err = cleanupSecrets(ctx, testClient)
+	err = cleanupSecrets(ctx, testClient, helm.Namespace)
 	require.Error(err)
 	assert.True(errors.IsNotFound(err), "function returned an error other than not found")
 
@@ -119,6 +119,6 @@ func TestCleanupWebhook(t *testing.T) {
 	_, err = testClient.CoreV1().Secrets(helm.Namespace).Get(ctx, "marble-injector-webhook-certs", metav1.GetOptions{})
 	require.NoError(err)
 
-	err = cleanupSecrets(ctx, testClient)
+	err = cleanupSecrets(ctx, testClient, helm.Namespace)
 	require.NoError(err)
 }

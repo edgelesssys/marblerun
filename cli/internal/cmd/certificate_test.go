@@ -99,7 +99,7 @@ func TestCertificateRoot(t *testing.T) {
 
 			var out bytes.Buffer
 
-			err := cliCertificateRoot(&out, tc.file, tc.certs)
+			err := saveRootCert(&out, tc.file, tc.certs)
 			if tc.wantErr {
 				assert.Error(err)
 				return
@@ -154,7 +154,7 @@ func TestCertificateIntermediate(t *testing.T) {
 
 			var out bytes.Buffer
 
-			err := cliCertificateIntermediate(&out, tc.file, tc.certs)
+			err := saveIntermediateCert(&out, tc.file, tc.certs)
 			if tc.wantErr {
 				assert.Error(err)
 				return
@@ -208,7 +208,7 @@ func TestCertificateChain(t *testing.T) {
 
 			var out bytes.Buffer
 
-			err := cliCertificateChain(&out, tc.file, tc.certs)
+			err := saveCertChain(&out, tc.file, tc.certs)
 			if tc.wantErr {
 				assert.Error(err)
 				return

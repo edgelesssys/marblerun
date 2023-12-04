@@ -59,20 +59,25 @@ marblerun install --dcap-pccs-url https://pccs.example.com/sgx/certification/v4/
 }
 
 func runInstall(cmd *cobra.Command, _ []string) error {
+	namespace, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return err
+	}
+
 	kubeClient, err := kube.NewClient()
 	if err != nil {
 		return err
 	}
-	helmClient, err := helm.New()
+	helmClient, err := helm.New(namespace)
 	if err != nil {
 		return err
 	}
 
-	return cliInstall(cmd, helmClient, kubeClient)
+	return cliInstall(cmd, helmClient, kubeClient, namespace)
 }
 
 // cliInstall installs MarbleRun on the cluster.
-func cliInstall(cmd *cobra.Command, helmClient *helm.Client, kubeClient kubernetes.Interface) error {
+func cliInstall(cmd *cobra.Command, helmClient *helm.Client, kubeClient kubernetes.Interface, namespace string) error {
 	flags, err := parseInstallFlags(cmd)
 	if err != nil {
 		return fmt.Errorf("parsing install flags: %w", err)
@@ -92,9 +97,9 @@ func cliInstall(cmd *cobra.Command, helmClient *helm.Client, kubeClient kubernet
 
 	var webhookSettings []string
 	if !flags.disableInjection {
-		webhookSettings, err = installWebhook(cmd, kubeClient)
+		webhookSettings, err = installWebhook(cmd, kubeClient, namespace)
 		if err != nil {
-			return errorAndCleanup(cmd.Context(), fmt.Errorf("installing webhook certs: %w", err), kubeClient)
+			return errorAndCleanup(cmd.Context(), fmt.Errorf("installing webhook certs: %w", err), kubeClient, namespace)
 		}
 	}
 
@@ -113,11 +118,11 @@ func cliInstall(cmd *cobra.Command, helmClient *helm.Client, kubeClient kubernet
 		chart.Values,
 	)
 	if err != nil {
-		return errorAndCleanup(cmd.Context(), fmt.Errorf("generating helm values: %w", err), kubeClient)
+		return errorAndCleanup(cmd.Context(), fmt.Errorf("generating helm values: %w", err), kubeClient, namespace)
 	}
 
 	if err := helmClient.Install(cmd.Context(), flags.wait, chart, values); err != nil {
-		return errorAndCleanup(cmd.Context(), fmt.Errorf("installing MarbleRun: %w", err), kubeClient)
+		return errorAndCleanup(cmd.Context(), fmt.Errorf("installing MarbleRun: %w", err), kubeClient, namespace)
 	}
 
 	cmd.Println("MarbleRun installed successfully")
@@ -125,9 +130,9 @@ func cliInstall(cmd *cobra.Command, helmClient *helm.Client, kubeClient kubernet
 }
 
 // installWebhook enables a mutating admission webhook to allow automatic injection of values into pods.
-func installWebhook(cmd *cobra.Command, kubeClient kubernetes.Interface) ([]string, error) {
+func installWebhook(cmd *cobra.Command, kubeClient kubernetes.Interface, namespace string) ([]string, error) {
 	// verify 'marblerun' namespace exists, if not create it
-	if err := verifyNamespace(cmd.Context(), helm.Namespace, kubeClient); err != nil {
+	if err := verifyNamespace(cmd.Context(), namespace, kubeClient); err != nil {
 		return nil, err
 	}
 
@@ -154,7 +159,7 @@ func installWebhook(cmd *cobra.Command, kubeClient kubernetes.Interface) ([]stri
 	}
 	cmd.Print(".")
 
-	if err := createSecret(cmd.Context(), certificateHandler.getKey(), cert, kubeClient); err != nil {
+	if err := createSecret(cmd.Context(), namespace, certificateHandler.getKey(), cert, kubeClient); err != nil {
 		return nil, err
 	}
 	cmd.Printf(" Done\n")
@@ -162,7 +167,7 @@ func installWebhook(cmd *cobra.Command, kubeClient kubernetes.Interface) ([]stri
 }
 
 // createSecret creates a secret containing the signed certificate and private key for the webhook server.
-func createSecret(ctx context.Context, privKey *rsa.PrivateKey, crt []byte, kubeClient kubernetes.Interface) error {
+func createSecret(ctx context.Context, namespace string, privKey *rsa.PrivateKey, crt []byte, kubeClient kubernetes.Interface) error {
 	rsaPEM := pem.EncodeToMemory(
 		&pem.Block{
 			Type:  "RSA PRIVATE KEY",
@@ -173,7 +178,7 @@ func createSecret(ctx context.Context, privKey *rsa.PrivateKey, crt []byte, kube
 	newSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "marble-injector-webhook-certs",
-			Namespace: helm.Namespace,
+			Namespace: namespace,
 		},
 		Data: map[string][]byte{
 			"tls.crt": crt,
@@ -181,7 +186,7 @@ func createSecret(ctx context.Context, privKey *rsa.PrivateKey, crt []byte, kube
 		},
 	}
 
-	_, err := kubeClient.CoreV1().Secrets(helm.Namespace).Create(ctx, newSecret, metav1.CreateOptions{})
+	_, err := kubeClient.CoreV1().Secrets(namespace).Create(ctx, newSecret, metav1.CreateOptions{})
 	return err
 }
 
@@ -243,10 +248,10 @@ func getSGXResourceKey(ctx context.Context, kubeClient kubernetes.Interface) (st
 
 // errorAndCleanup returns the given error and deletes resources which might have been created previously.
 // This prevents secrets and CSRs to stay on the cluster after a failed installation attempt.
-func errorAndCleanup(ctx context.Context, err error, kubeClient kubernetes.Interface) error {
+func errorAndCleanup(ctx context.Context, err error, kubeClient kubernetes.Interface, namespace string) error {
 	// We dont care about any additional errors here
 	_ = cleanupCSR(ctx, kubeClient)
-	_ = cleanupSecrets(ctx, kubeClient)
+	_ = cleanupSecrets(ctx, kubeClient, namespace)
 	return err
 }
 

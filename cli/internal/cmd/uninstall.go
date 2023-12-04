@@ -33,19 +33,26 @@ func NewUninstallCmd() *cobra.Command {
 }
 
 func runUninstall(cmd *cobra.Command, _ []string) error {
+	namespace, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return err
+	}
+
 	kubeClient, err := kube.NewClient()
 	if err != nil {
 		return err
 	}
-	helmClient, err := helm.New()
+	helmClient, err := helm.New(namespace)
 	if err != nil {
 		return err
 	}
-	return cliUninstall(cmd, helmClient, kubeClient)
+	return cliUninstall(cmd, helmClient, kubeClient, namespace)
 }
 
 // cliUninstall uninstalls MarbleRun.
-func cliUninstall(cmd *cobra.Command, helmClient *helm.Client, kubeClient kubernetes.Interface) error {
+func cliUninstall(
+	cmd *cobra.Command, helmClient *helm.Client, kubeClient kubernetes.Interface, namespace string,
+) error {
 	wait, err := cmd.Flags().GetBool("wait")
 	if err != nil {
 		return err
@@ -56,7 +63,7 @@ func cliUninstall(cmd *cobra.Command, helmClient *helm.Client, kubeClient kubern
 
 	// If we get a "not found" error the resource was already removed / never created
 	// and we can continue on without a problem
-	if err := cleanupSecrets(cmd.Context(), kubeClient); err != nil && !errors.IsNotFound(err) {
+	if err := cleanupSecrets(cmd.Context(), kubeClient, namespace); err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 
@@ -70,8 +77,8 @@ func cliUninstall(cmd *cobra.Command, helmClient *helm.Client, kubeClient kubern
 }
 
 // cleanupSecrets removes secretes set for the Admission Controller.
-func cleanupSecrets(ctx context.Context, kubeClient kubernetes.Interface) error {
-	return kubeClient.CoreV1().Secrets(helm.Namespace).Delete(ctx, "marble-injector-webhook-certs", metav1.DeleteOptions{})
+func cleanupSecrets(ctx context.Context, kubeClient kubernetes.Interface, namespace string) error {
+	return kubeClient.CoreV1().Secrets(namespace).Delete(ctx, "marble-injector-webhook-certs", metav1.DeleteOptions{})
 }
 
 // cleanupCSR removes a potentially leftover CSR from the Admission Controller.

@@ -33,28 +33,39 @@ func newManifestLog() *cobra.Command {
 
 func runManifestLog(cmd *cobra.Command, args []string) error {
 	hostname := args[0]
+	fs := afero.NewOsFs()
 
 	output, err := cmd.Flags().GetString("output")
 	if err != nil {
 		return err
 	}
-	client, err := rest.NewClient(cmd, hostname)
+	insecureTLS, err := cmd.Flags().GetBool("insecure")
+	if err != nil {
+		return err
+	}
+
+	caCert, err := rest.LoadCoordinatorCachedCert(cmd.Flags(), fs)
+	if err != nil {
+		return err
+	}
+
+	client, err := rest.NewClient(hostname, caCert, nil, insecureTLS)
 	if err != nil {
 		return err
 	}
 
 	cmd.Println("Successfully verified Coordinator, now requesting update log")
-	return cliManifestLog(cmd, file.New(output, afero.NewOsFs()), client)
+	return cliManifestLog(cmd, file.New(output, fs), client)
 }
 
-func cliManifestLog(cmd *cobra.Command, file *file.Handler, client getter) error {
+func cliManifestLog(cmd *cobra.Command, logFile *file.Handler, client getter) error {
 	resp, err := client.Get(cmd.Context(), rest.UpdateEndpoint, http.NoBody)
 	if err != nil {
 		return fmt.Errorf("retrieving update log: %w", err)
 	}
 
-	if file != nil {
-		return file.Write(resp)
+	if logFile != nil {
+		return logFile.Write(resp, file.OptOverwrite)
 	}
 	cmd.Printf("Update log:\n%s", resp)
 	return nil

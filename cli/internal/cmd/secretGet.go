@@ -41,22 +41,23 @@ and need permissions in the manifest to read the requested secrets.
 func runSecretGet(cmd *cobra.Command, args []string) error {
 	hostname := args[len(args)-1]
 	secretIDs := args[0 : len(args)-1]
+	fs := afero.NewOsFs()
 
 	output, err := cmd.Flags().GetString("output")
 	if err != nil {
 		return err
 	}
 
-	client, err := rest.NewAuthenticatedClient(cmd, hostname)
+	client, err := newMutualAuthClient(hostname, cmd.Flags(), fs)
 	if err != nil {
 		return err
 	}
 
-	return cliSecretGet(cmd, secretIDs, file.New(output, afero.NewOsFs()), client)
+	return cliSecretGet(cmd, secretIDs, file.New(output, fs), client)
 }
 
 // cliSecretGet requests one or more secrets from the MarbleRun Coordinator.
-func cliSecretGet(cmd *cobra.Command, secretIDs []string, file *file.Handler, client getter) error {
+func cliSecretGet(cmd *cobra.Command, secretIDs []string, secFile *file.Handler, client getter) error {
 	var query []string
 	for _, secretID := range secretIDs {
 		query = append(query, "s", secretID)
@@ -72,14 +73,14 @@ func cliSecretGet(cmd *cobra.Command, secretIDs []string, file *file.Handler, cl
 		return fmt.Errorf("did not receive the same number of secrets as requested")
 	}
 
-	if file == nil {
+	if secFile == nil {
 		return printSecrets(cmd.OutOrStdout(), response)
 	}
 
-	if err := file.Write([]byte(response.String())); err != nil {
+	if err := secFile.Write([]byte(response.String()), file.OptOverwrite); err != nil {
 		return err
 	}
-	cmd.Printf("Saved secrets to: %s\n", file.Name())
+	cmd.Printf("Saved secrets to: %s\n", secFile.Name())
 
 	return nil
 }
