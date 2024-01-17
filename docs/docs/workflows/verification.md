@@ -1,42 +1,29 @@
 # Verifying a deployment
 
-MarbleRun provides a simple HTTP REST API for clients to verify the confidentiality and integrity of the Coordinator and the deployed Marbles.
+The Coordinator provides an API for clients to verify the identity and integrity of the Coordinator itself and the deployed Marbles.
 
-## Requirements
+Specifically, the Coordinator exposes the `/quote` endpoint that returns a quote and a certificate chain consisting of a root CA and an intermediate CA. The root CA is fixed for the lifetime of your deployment, while the intermediate CA changes in case you [update](../workflows/update-manifest.md) the packages specified in your manifest.
 
-You need to [install and configure a quote provider](../getting-started/installation.md#install-the-marblerun-cli).
+::: info
 
-## Establishing trust in the Coordinator
+You need to [install and configure a quote provider](../getting-started/installation.md#install-the-marblerun-cli) on the machine that is verifying the quote.
 
-MarbleRun exposes the `/quote` endpoint that returns a quote and a certificate chain consisting of a root and intermediate CA. The root CA is fixed for the lifetime of your deployment, while the intermediate CA changes in case you [update](../workflows/update-manifest.md) the packages specified in your manifest.
+:::
 
-The simplest way to verify the quote is via the Edgeless Remote Attestation ([era](https://github.com/edgelesssys/era)) tool.
+There are two recommended ways to verify the Coordinator's quote: The `marblerun manifest verify` command connects to the Coordinator *and* verifies its quote according to a given policy and then checks that the expected manifest is in effect. Alternatively, the standalone `era` tool can be used. It only performs the verification step. In both cases, the quote is verified against a given policy. This policy includes the Coordinator's `UniqueID` or the tuple `ProductID`, `SecurityVersion`, and `SignerID`. `UniqueID` and `SignerID` are also known as `MRENCLAVE` and `MRSIGNER` in SGX terminology.
 
-To verify the coordinator, `era` requires the Coordinator's UniqueID (or MRENCLAVE in SGX terms) or the tuple ProductID, SecurityVersion, SignerID (MRSIGNER) to verify the quote. `era` contacts the Coordinator, and receives an SGX quote from it which contains the actual UniqueID or ProductID/SecurityVersion/SignerID tuple of the running instance. The tool verifies it against the expected values defined in `coordinator-era.json` and can therefore determine if an authentic copy of the Coordinator is running, or if an unknown version is contacted.
+Both ways are detailed in the following.
 
-In production, the expected values in `coordinator-era.json` would be generated when building the Coordinator and distributed to your clients. When you build MarbleRun from source, you can find the file in your build directory.
-For testing with a pre-built release, there's a Coordinator image at `ghcr.io/edgelesssys/marblerun/coordinator`.
-You can pull the corresponding `coordinator-era.json` file from the release page:
+::: info
 
-```bash
-wget https://github.com/edgelesssys/marblerun/releases/latest/download/coordinator-era.json
-```
+The policy for a given Coordinator is generated at build time and written to a file named `coordinator-era.json`. This file ships with every release of MarbleRun. You can find the policy file for the latest MarbleRun release at `https://github.com/edgelesssys/marblerun/releases/latest/download/coordinator-era.json`
 
-After installing `era`, you can verify the quote with the following command:
+:::
 
-```bash
-era -c coordinator-era.json -h $MARBLERUN -output-chain marblerun-chain.pem -output-root marblerun-root.pem -output-intermediate marblerun-intermedite.pem
-```
+## Verifying the quote and the manifest using the CLI
 
-After successful verification, you'll have `marblerun-chain.pem`, `marblerun-root.pem`, and `marblerun-intermediate.pem` in your directory. In case you want to pin against specific versions of your application, using the intermediate CA as a trust anchor is a good choice. Else you can pin against the root CA in which case different versions of your application can talk with each other. However, you may not be able to launch them if they don't meet the minimum `SecurityVersion` specified in your original or updated manifest.
-
-## Verifying the manifest
-
-Establishing trust with the service mesh allows you to verify the deployed manifest in the second step.
-To that end, MarbleRun exposes the endpoint `/manifest`.
-Using the CLI, you can get the manifest's signature and compare it against your local version of the manifest which should have been provided to you by the operator.
-
-You can verify your local `manifest.json` against the Coordinator's version with the following command:
+The Coordinator makes the effective manifest available via the `/manifest` endpoint.
+The following CLI command first verifies the Coordinator's quote and then checks that effective `manifest.json` matches the supplied local one.
 
 ```bash
 marblerun manifest verify manifest.json $MARBLERUN
@@ -47,9 +34,26 @@ This ensures you are always talking to the same instance that you verified the m
 
 :::info
 
+The `--era-config` lets you optionally specify a custom policy for the verification of the quote. See the [documentation of the command](../reference/cli.md#marblerun-manifest-verify) for details.
+
+:::
+
+:::info
+
 By default `marblerun manifest verify` will save the Coordinators certificate chain to `$XDG_CONFIG_HOME/marblerun/coordinator-cert.pem`,
 or `$HOME/.config/marblerun/coordinator-cert.pem` if `$XDG_CONFIG_HOME` is not set.
 Subsequent CLI commands will try loading the certificate from that location.
 Use the `--coordinator-cert` flag to choose your own location to save or load the certificate.
 
 :::
+
+## Verifying the quote using the ERA tool
+
+The `era` tool enables standalone verification of quotes. For example, it enables clients to establish trust into a MarbleRun deployment without having to install the MarbleRun CLI.
+The following command verifies the Coordinator's quote against a given policy file `coordinator-era.json`. The policy file is to be distributed to clients via a trusted channel a priori.
+
+```bash
+era -c coordinator-era.json -h $MARBLERUN -output-chain marblerun-chain.pem -output-root marblerun-root.pem -output-intermediate marblerun-intermedite.pem
+```
+
+After successful verification, you'll have `marblerun-chain.pem`, `marblerun-root.pem`, and `marblerun-intermediate.pem` in your directory. In case you want to pin against specific versions of your application, using the intermediate CA as a trust anchor is a good choice. Else you can pin against the root CA in which case different versions of your application can talk with each other. However, you may not be able to launch them if they don't meet the minimum `SecurityVersion` specified in your original or updated manifest.
