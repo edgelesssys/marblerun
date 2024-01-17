@@ -4,7 +4,7 @@ The Coordinator provides an API for clients to verify the identity and integrity
 
 Specifically, the Coordinator exposes the `/quote` endpoint that returns a quote and a certificate chain consisting of a root CA and an intermediate CA. The root CA is fixed for the lifetime of your deployment, while the intermediate CA changes in case you [update](../workflows/update-manifest.md) the packages specified in your manifest.
 
-::: info
+:::info
 
 You need to [install and configure a quote provider](../getting-started/installation.md#install-the-marblerun-cli) on the machine that is verifying the quote.
 
@@ -12,18 +12,18 @@ You need to [install and configure a quote provider](../getting-started/installa
 
 There are two recommended ways to verify the Coordinator's quote: The `marblerun manifest verify` command connects to the Coordinator *and* verifies its quote according to a given policy and then checks that the expected manifest is in effect. Alternatively, the standalone `era` tool can be used. It only performs the verification step. In both cases, the quote is verified against a given policy. This policy includes the Coordinator's `UniqueID` or the tuple `ProductID`, `SecurityVersion`, and `SignerID`. `UniqueID` and `SignerID` are also known as `MRENCLAVE` and `MRSIGNER` in SGX terminology.
 
-Both ways are detailed in the following.
-
-::: info
+:::info
 
 The policy for a given Coordinator is generated at build time and written to a file named `coordinator-era.json`. This file ships with every release of MarbleRun. You can find the policy file for the latest MarbleRun release at `https://github.com/edgelesssys/marblerun/releases/latest/download/coordinator-era.json`
 
 :::
 
+Both ways are detailed in the following.
+
 ## Verifying the quote and the manifest using the CLI
 
 The Coordinator makes the effective manifest available via the `/manifest` endpoint.
-The following CLI command first verifies the Coordinator's quote and then checks that effective `manifest.json` matches the supplied local one.
+The following CLI command first verifies the Coordinator's quote and then checks that the effective `manifest.json` matches the supplied local one.
 
 ```bash
 marblerun manifest verify manifest.json $MARBLERUN
@@ -34,13 +34,13 @@ This ensures you are always talking to the same instance that you verified the m
 
 :::info
 
-The `--era-config` lets you optionally specify a custom policy for the verification of the quote. See the [documentation of the command](../reference/cli.md#marblerun-manifest-verify) for details.
+The flag `--era-config` lets you optionally specify a custom policy for the verification of the quote. See the [documentation of the command](../reference/cli.md#marblerun-manifest-verify) for details.
 
 :::
 
 :::info
 
-By default `marblerun manifest verify` will save the Coordinators certificate chain to `$XDG_CONFIG_HOME/marblerun/coordinator-cert.pem`,
+By default, the command will save the Coordinators certificate chain to `$XDG_CONFIG_HOME/marblerun/coordinator-cert.pem`,
 or `$HOME/.config/marblerun/coordinator-cert.pem` if `$XDG_CONFIG_HOME` is not set.
 Subsequent CLI commands will try loading the certificate from that location.
 Use the `--coordinator-cert` flag to choose your own location to save or load the certificate.
