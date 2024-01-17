@@ -63,7 +63,7 @@ To install and configure MarbleRun, run:
 	rootCmd.AddCommand(cmd.NewVersionCmd())
 
 	rootCmd.PersistentFlags().String("coordinator-cert", defaultCoordinatorCertCache, "Path to MarbleRun Coordinator's root certificate to use for TLS connections")
-	rootCmd.PersistentFlags().String("era-config", "", "Path to a remote-attestation config file in JSON format. If none is provided, the command try attempt to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository")
+	rootCmd.PersistentFlags().String("era-config", "", "Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository")
 	rootCmd.PersistentFlags().BoolP("insecure", "i", false, "Set to skip quote verification, needed when running in simulation mode")
 	rootCmd.PersistentFlags().StringSlice("accepted-tcb-statuses", []string{"UpToDate"}, "Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded)")
 	rootCmd.PersistentFlags().StringP("namespace", "n", helm.Namespace, "Kubernetes namespace of the MarbleRun installation")
