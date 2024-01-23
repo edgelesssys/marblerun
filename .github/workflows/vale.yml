@@ -1,4 +1,4 @@
-name: Linting
+name: Vale
 on:
   push:
     branches:
@@ -10,17 +10,14 @@ on:
       - "docs/**"
 
 jobs:
-  prose:
+  vale:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
       - name: Vale
-        uses: errata-ai/vale-action@c4213d4de3d5f718b8497bd86161531c78992084 # v2.0.1
+        uses: errata-ai/vale-action@3f7188c866bcb3259339a09f517d7c4a8838303c # reviewdog
         with:
           files: docs/docs
-        env:
-          # Required, set by GitHub actions automatically:
-          # https://docs.github.com/en/actions/security-guides/automatic-token-authentication#about-the-github_token-secret
-          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          fail_on_error: true
