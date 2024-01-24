@@ -8,7 +8,7 @@ require (
 	github.com/fatih/color v1.16.0
 	github.com/gofrs/flock v0.8.1
 	github.com/google/go-cmp v0.6.0
-	github.com/google/uuid v1.5.0
+	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.0.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.0.1
 	github.com/prometheus/client_golang v1.18.0
