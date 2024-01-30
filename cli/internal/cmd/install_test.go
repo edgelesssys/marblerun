@@ -69,7 +69,7 @@ func TestGetCertificateHandler(t *testing.T) {
 		Minor:      "19",
 		GitVersion: "v1.19.4",
 	}
-	testHandler, err := getCertificateHandler(&out, testClient)
+	testHandler, err := getCertificateHandler(&out, testClient, helm.Namespace)
 	require.NoError(err)
 	assert.Equal("*cmd.certificateV1", reflect.TypeOf(testHandler).String())
 	assert.Empty(out.String())
@@ -80,7 +80,7 @@ func TestGetCertificateHandler(t *testing.T) {
 		Minor:      "18",
 		GitVersion: "v1.18.4",
 	}
-	testHandler, err = getCertificateHandler(&out, testClient)
+	testHandler, err = getCertificateHandler(&out, testClient, helm.Namespace)
 	require.NoError(err)
 	assert.Equal("*cmd.certificateLegacy", reflect.TypeOf(testHandler).String())
 	assert.NotEmpty(out.String())
@@ -91,7 +91,7 @@ func TestGetCertificateHandler(t *testing.T) {
 		Minor:      "24+",
 		GitVersion: "v1.24.3-2+63243a96d1c393",
 	}
-	testHandler, err = getCertificateHandler(&out, testClient)
+	testHandler, err = getCertificateHandler(&out, testClient, helm.Namespace)
 	require.NoError(err)
 	assert.Equal("*cmd.certificateV1", reflect.TypeOf(testHandler).String())
 	assert.Empty(out.String())
@@ -184,7 +184,7 @@ func TestErrorAndCleanup(t *testing.T) {
 	// Create and test for CSR
 	csr := &certv1.CertificateSigningRequest{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: webhookName,
+			Name: webhookDNSName(helm.Namespace),
 		},
 		Spec: certv1.CertificateSigningRequestSpec{
 			Request:    []byte{0xAA, 0xAA, 0xAA},
@@ -198,12 +198,12 @@ func TestErrorAndCleanup(t *testing.T) {
 	_, err = testClient.CertificatesV1().CertificateSigningRequests().Create(context.TODO(), csr, metav1.CreateOptions{})
 	require.NoError(err)
 
-	_, err = testClient.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), webhookName, metav1.GetOptions{})
+	_, err = testClient.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), webhookDNSName(helm.Namespace), metav1.GetOptions{})
 	require.NoError(err)
 
 	err = errorAndCleanup(ctx, testError, testClient, helm.Namespace)
 	assert.Equal(testError, err)
 
-	_, err = testClient.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), webhookName, metav1.GetOptions{})
+	_, err = testClient.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), webhookDNSName(helm.Namespace), metav1.GetOptions{})
 	assert.True(kubeErrors.IsNotFound(err))
 }

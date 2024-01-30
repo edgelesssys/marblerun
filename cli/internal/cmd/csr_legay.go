@@ -22,6 +22,7 @@ import (
 
 // certificateLegacy acts as a handler for generating signed certificates.
 type certificateLegacy struct {
+	namespace     string
 	serverPrivKey *rsa.PrivateKey
 	serverCert    *pem.Block
 	caPrivKey     *rsa.PrivateKey
@@ -29,12 +30,12 @@ type certificateLegacy struct {
 }
 
 // newCertificateLegacy creates a certificate handler for kubernetes versions <=18.
-func newCertificateLegacy() (*certificateLegacy, error) {
+func newCertificateLegacy(namespace string) (*certificateLegacy, error) {
 	serial, err := util.GenerateCertificateSerialNumber()
 	if err != nil {
 		return nil, err
 	}
-	crt := &certificateLegacy{}
+	crt := &certificateLegacy{namespace: namespace}
 
 	caCert := &x509.Certificate{
 		SerialNumber: serial,
@@ -100,10 +101,10 @@ func (crt *certificateLegacy) signRequest(_ context.Context) error {
 	serverCert := &x509.Certificate{
 		SerialNumber: serial,
 		Subject: pkix.Name{
-			CommonName:   "system:node:marble-injector.marblerun.svc",
+			CommonName:   fmt.Sprintf("system:node:%s.svc", webhookDNSName(crt.namespace)),
 			Organization: []string{"system:nodes"},
 		},
-		DNSNames:           []string{"marble-injector.marblerun.svc"},
+		DNSNames:           []string{fmt.Sprintf("%s.svc", webhookDNSName(crt.namespace))},
 		SignatureAlgorithm: x509.SHA256WithRSA,
 		KeyUsage:           x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
 		ExtKeyUsage:        []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},

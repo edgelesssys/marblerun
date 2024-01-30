@@ -137,7 +137,7 @@ func installWebhook(cmd *cobra.Command, kubeClient kubernetes.Interface, namespa
 	}
 
 	cmd.Print("Setting up MarbleRun Webhook")
-	certificateHandler, err := getCertificateHandler(cmd.OutOrStdout(), kubeClient)
+	certificateHandler, err := getCertificateHandler(cmd.OutOrStdout(), kubeClient, namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -190,16 +190,16 @@ func createSecret(ctx context.Context, namespace string, privKey *rsa.PrivateKey
 	return err
 }
 
-func getCertificateHandler(out io.Writer, kubeClient kubernetes.Interface) (certificateInterface, error) {
+func getCertificateHandler(out io.Writer, kubeClient kubernetes.Interface, namespace string) (certificateInterface, error) {
 	isLegacy, err := checkLegacyKubernetesVersion(kubeClient)
 	if err != nil {
 		return nil, err
 	}
 	if isLegacy {
 		fmt.Fprintf(out, "\nKubernetes version lower than 1.19 detected, using self-signed certificates as CABundle")
-		return newCertificateLegacy()
+		return newCertificateLegacy(namespace)
 	}
-	return newCertificateV1(kubeClient)
+	return newCertificateV1(kubeClient, namespace)
 }
 
 func verifyNamespace(ctx context.Context, namespace string, kubeClient kubernetes.Interface) error {
@@ -250,7 +250,7 @@ func getSGXResourceKey(ctx context.Context, kubeClient kubernetes.Interface) (st
 // This prevents secrets and CSRs to stay on the cluster after a failed installation attempt.
 func errorAndCleanup(ctx context.Context, err error, kubeClient kubernetes.Interface, namespace string) error {
 	// We dont care about any additional errors here
-	_ = cleanupCSR(ctx, kubeClient)
+	_ = cleanupCSR(ctx, kubeClient, namespace)
 	_ = cleanupSecrets(ctx, kubeClient, namespace)
 	return err
 }
