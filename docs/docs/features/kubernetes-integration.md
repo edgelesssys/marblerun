@@ -6,7 +6,21 @@ MarbleRun optionally injects [tolerations](https://kubernetes.io/docs/concepts/s
 
 You can enable auto-injection of the data-plane configuration using Pod labels.
 
+:::caution
+
+When running multiple MarbleRun deployments in the same cluster,
+the auto-injection feature of the different deployments can interfere with each other by injecting the same Pods.
+
+To prevent issues from running multiple MarbleRun deployments, you may want to either disable auto-injection,
+or [adjust the Helm chart](../deployment/kubernetes.md#option-2-install-with-helm) to customize the injection rules.
+Specifically, you can adjust the [object and namespace selectors](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-objectselector),
+`marbleInjector.objectSelector` and `marbleInjector.namespaceSelector`,
+to limit the injection to only specific namespaces or specially labelled pods.
+
+:::
+
 ## The `marbletype` label
+
 In MarbleRun, Marbles (i.e., secure enclaves) are defined in the [manifest](../workflows/define-manifest.md). You need to reference Marbles in your Kubernetes resource description as follows using the `marblerun/marbletype` label:
 
 ```javascript
@@ -35,6 +49,7 @@ It will then inject environment variables and SGX resources into the Pod contain
 The Pod's injection is skipped if the `marblerun/marbletype` label is missing.
 
 ## The `marblecontainer` label
+
 By default, MarbleRun will inject environment variables and resource requests into all containers of the Pod.
 You can use the `marblerun/marblecontainer=<ContainerName>` label to limit injection to the specified container.
 This is useful if your configuration uses multiple containers in the same Pod, e.g., a sidecar proxy, and you wish to prevent non-enclave containers from taking up resources.
