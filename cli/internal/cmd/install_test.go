@@ -118,23 +118,51 @@ func TestVerifyNamespace(t *testing.T) {
 }
 
 func TestInstallWebhook(t *testing.T) {
-	assert := assert.New(t)
-
-	testClient := fake.NewSimpleClientset()
-	testClient.Discovery().(*fakediscovery.FakeDiscovery).FakedServerVersion = &version.Info{
-		Major:      "1",
-		Minor:      "18",
-		GitVersion: "v1.18.4",
+	testCases := map[string]struct {
+		kubeClient *fake.Clientset
+		cmChecker  stubCMChecker
+		assert     func(t *testing.T, values []string, err error)
+	}{
+		"set up webhook certs": {
+			kubeClient: func() *fake.Clientset {
+				testClient := fake.NewSimpleClientset()
+				testClient.Discovery().(*fakediscovery.FakeDiscovery).FakedServerVersion = &version.Info{
+					Major:      "1",
+					Minor:      "18",
+					GitVersion: "v1.18.4",
+				}
+				return testClient
+			}(),
+			cmChecker: stubCMChecker{err: assert.AnError},
+			assert: func(t *testing.T, values []string, err error) {
+				assert.NoError(t, err)
+				require.Len(t, values, 2)
+				assert.Equal(t, "marbleInjector.start=true", values[0], "failed to set start to true")
+				assert.Contains(t, values[1], "LS0t", "failed to set CABundle")
+			},
+		},
+		"use cert-manager": {
+			kubeClient: fake.NewSimpleClientset(),
+			cmChecker:  stubCMChecker{err: nil},
+			assert: func(t *testing.T, values []string, err error) {
+				assert.NoError(t, err)
+				require.Len(t, values, 2)
+				assert.Equal(t, "marbleInjector.start=true", values[0], "failed to set start to true")
+				assert.Equal(t, "marbleInjector.useCertManager=true", values[1], "failed to set useCertManager to true")
+			},
+		},
 	}
 
-	cmd := &cobra.Command{}
-	var out bytes.Buffer
-	cmd.SetOut(&out)
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			cmd := &cobra.Command{}
+			var out bytes.Buffer
+			cmd.SetOut(&out)
 
-	testValues, err := installWebhook(cmd, testClient, helm.Namespace)
-	assert.NoError(err)
-	assert.Equal("marbleInjector.start=true", testValues[0], "failed to set start to true")
-	assert.Contains(testValues[1], "LS0t", "failed to set CABundle")
+			testValues, err := installWebhook(cmd, tc.kubeClient, tc.cmChecker, helm.Namespace)
+			tc.assert(t, testValues, err)
+		})
+	}
 }
 
 func TestGetSGXResourceKey(t *testing.T) {
@@ -206,4 +234,12 @@ func TestErrorAndCleanup(t *testing.T) {
 
 	_, err = testClient.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), webhookDNSName(helm.Namespace), metav1.GetOptions{})
 	assert.True(kubeErrors.IsNotFound(err))
+}
+
+type stubCMChecker struct {
+	err error
+}
+
+func (s stubCMChecker) Check(_ context.Context) error {
+	return s.err
 }

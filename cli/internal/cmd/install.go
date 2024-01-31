@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/cert-manager/cert-manager/pkg/util/cmapichecker"
 	"github.com/edgelesssys/marblerun/cli/internal/helm"
 	"github.com/edgelesssys/marblerun/cli/internal/kube"
 	"github.com/edgelesssys/marblerun/util/k8sutil"
@@ -72,12 +73,16 @@ func runInstall(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
+	cmChecker, err := kube.NewCertManagerChecker()
+	if err != nil {
+		return err
+	}
 
-	return cliInstall(cmd, helmClient, kubeClient, namespace)
+	return cliInstall(cmd, helmClient, kubeClient, cmChecker, namespace)
 }
 
 // cliInstall installs MarbleRun on the cluster.
-func cliInstall(cmd *cobra.Command, helmClient *helm.Client, kubeClient kubernetes.Interface, namespace string) error {
+func cliInstall(cmd *cobra.Command, helmClient *helm.Client, kubeClient kubernetes.Interface, cmChecker cmapichecker.Interface, namespace string) error {
 	flags, err := parseInstallFlags(cmd)
 	if err != nil {
 		return fmt.Errorf("parsing install flags: %w", err)
@@ -95,9 +100,14 @@ func cliInstall(cmd *cobra.Command, helmClient *helm.Client, kubeClient kubernet
 		}
 	}
 
+	// verify namespace exists, if not create it
+	if err := verifyNamespace(cmd.Context(), namespace, kubeClient); err != nil {
+		return err
+	}
+
 	var webhookSettings []string
 	if !flags.disableInjection {
-		webhookSettings, err = installWebhook(cmd, kubeClient, namespace)
+		webhookSettings, err = installWebhook(cmd, kubeClient, cmChecker, namespace)
 		if err != nil {
 			return errorAndCleanup(cmd.Context(), fmt.Errorf("installing webhook certs: %w", err), kubeClient, namespace)
 		}
@@ -130,13 +140,17 @@ func cliInstall(cmd *cobra.Command, helmClient *helm.Client, kubeClient kubernet
 }
 
 // installWebhook enables a mutating admission webhook to allow automatic injection of values into pods.
-func installWebhook(cmd *cobra.Command, kubeClient kubernetes.Interface, namespace string) ([]string, error) {
-	// verify 'marblerun' namespace exists, if not create it
-	if err := verifyNamespace(cmd.Context(), namespace, kubeClient); err != nil {
-		return nil, err
+func installWebhook(cmd *cobra.Command, kubeClient kubernetes.Interface, cmChecker cmapichecker.Interface, namespace string) ([]string, error) {
+	cmd.Print("Setting up MarbleRun Webhook")
+
+	if err := cmChecker.Check(cmd.Context()); err == nil {
+		cmd.Printf("... Done\n")
+		return []string{
+			fmt.Sprintf("marbleInjector.start=%t", true),
+			fmt.Sprintf("marbleInjector.useCertManager=%t", true),
+		}, nil
 	}
 
-	cmd.Print("Setting up MarbleRun Webhook")
 	certificateHandler, err := getCertificateHandler(cmd.OutOrStdout(), kubeClient, namespace)
 	if err != nil {
 		return nil, err

@@ -12,9 +12,12 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/cert-manager/cert-manager/pkg/util/cmapichecker"
 	"github.com/edgelesssys/marblerun/cli/internal/helm"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -22,16 +25,7 @@ const versionLabel = "app.kubernetes.io/version"
 
 // NewClient returns the kubernetes Clientset to interact with the k8s API.
 func NewClient() (*kubernetes.Clientset, error) {
-	path := os.Getenv(clientcmd.RecommendedConfigPathEnvVar)
-	if path == "" {
-		homedir, err := os.UserHomeDir()
-		if err != nil {
-			return nil, err
-		}
-		path = filepath.Join(homedir, clientcmd.RecommendedHomeDir, clientcmd.RecommendedFileName)
-	}
-
-	kubeConfig, err := clientcmd.BuildConfigFromFlags("", path)
+	kubeConfig, err := getRestConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -61,4 +55,27 @@ func CoordinatorVersion(ctx context.Context, namespace string) (string, error) {
 		return "", fmt.Errorf("deployment has no label %s", versionLabel)
 	}
 	return version, nil
+}
+
+// NewCertManagerChecker checks if cert-manager is installed in the cluster.
+func NewCertManagerChecker() (cmapichecker.Interface, error) {
+	kubeConfig, err := getRestConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	return cmapichecker.New(kubeConfig, runtime.NewScheme(), "default")
+}
+
+func getRestConfig() (*rest.Config, error) {
+	path := os.Getenv(clientcmd.RecommendedConfigPathEnvVar)
+	if path == "" {
+		homedir, err := os.UserHomeDir()
+		if err != nil {
+			return nil, err
+		}
+		path = filepath.Join(homedir, clientcmd.RecommendedHomeDir, clientcmd.RecommendedFileName)
+	}
+
+	return clientcmd.BuildConfigFromFlags("", path)
 }
