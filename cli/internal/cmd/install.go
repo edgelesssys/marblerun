@@ -107,7 +107,7 @@ func cliInstall(cmd *cobra.Command, helmClient *helm.Client, kubeClient kubernet
 
 	var webhookSettings []string
 	if !flags.disableInjection {
-		webhookSettings, err = installWebhook(cmd, kubeClient, cmChecker, namespace)
+		webhookSettings, err = installWebhookCerts(cmd, kubeClient, cmChecker, namespace)
 		if err != nil {
 			return errorAndCleanup(cmd.Context(), fmt.Errorf("installing webhook certs: %w", err), kubeClient, namespace)
 		}
@@ -139,8 +139,9 @@ func cliInstall(cmd *cobra.Command, helmClient *helm.Client, kubeClient kubernet
 	return nil
 }
 
-// installWebhook enables a mutating admission webhook to allow automatic injection of values into pods.
-func installWebhook(cmd *cobra.Command, kubeClient kubernetes.Interface, cmChecker cmapichecker.Interface, namespace string) ([]string, error) {
+// installWebhookCerts sets up TLS certificates and keys required by MarbleRun's mutating admission webhook.
+// Depending on the cluster, either a certificate issued by cert-manager or a self-created certificate using the Kubernetes API is used.
+func installWebhookCerts(cmd *cobra.Command, kubeClient kubernetes.Interface, cmChecker cmapichecker.Interface, namespace string) ([]string, error) {
 	cmd.Print("Setting up MarbleRun Webhook")
 
 	if err := cmChecker.Check(cmd.Context()); err == nil {

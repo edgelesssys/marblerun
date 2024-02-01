@@ -159,7 +159,7 @@ func TestInstallWebhook(t *testing.T) {
 			var out bytes.Buffer
 			cmd.SetOut(&out)
 
-			testValues, err := installWebhook(cmd, tc.kubeClient, tc.cmChecker, helm.Namespace)
+			testValues, err := installWebhookCerts(cmd, tc.kubeClient, tc.cmChecker, helm.Namespace)
 			tc.assert(t, testValues, err)
 		})
 	}
