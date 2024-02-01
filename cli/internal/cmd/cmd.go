@@ -18,7 +18,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-const webhookName = "marble-injector.marblerun"
+func webhookDNSName(namespace string) string {
+	return "marble-injector." + namespace
+}
 
 type getter interface {
 	Get(ctx context.Context, path string, body io.Reader, queryParameters ...string) ([]byte, error)

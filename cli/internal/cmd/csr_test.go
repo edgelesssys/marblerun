@@ -14,7 +14,9 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
+	"github.com/edgelesssys/marblerun/cli/internal/helm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes/fake"
@@ -41,7 +43,7 @@ func TestCreateCSR(t *testing.T) {
 	testKey, err := rsa.GenerateKey(rand.Reader, 1024)
 	require.NoError(err)
 
-	pem, err := createCSR(testKey)
+	pem, err := createCSR(testKey, helm.Namespace)
 	require.NoError(err)
 	assert.Equal("CERTIFICATE REQUEST", pem.Type)
 }
@@ -53,13 +55,13 @@ func TestCertificateV1(t *testing.T) {
 
 	testClient := fake.NewSimpleClientset()
 
-	testHandler, err := newCertificateV1(testClient)
+	testHandler, err := newCertificateV1(testClient, helm.Namespace)
 	require.NoError(err)
+	testHandler.waitInterval = 10 * time.Millisecond
 
 	testKey := testHandler.getKey()
 	assert.Equal(testKey, testHandler.privKey, "private key of the handler and private key returned by its method were not equal")
 
-	testHandler.timeout = 2
 	// this should error with a timeout since the fakeClient does not keep updated resources, but only returns them once on API call
 	err = testHandler.signRequest(ctx)
 	require.Error(err)
@@ -87,7 +89,7 @@ func TestCertificateLegacy(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.Background()
 
-	testHandler, err := newCertificateLegacy()
+	testHandler, err := newCertificateLegacy(helm.Namespace)
 	require.NoError(err)
 	assert.True(len(testHandler.caCert.Bytes) > 0, "failed creating caCert")
 

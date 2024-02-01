@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/cert-manager/cert-manager/pkg/util/cmapichecker"
 	"github.com/edgelesssys/marblerun/cli/internal/helm"
 	"github.com/edgelesssys/marblerun/cli/internal/kube"
 	"github.com/edgelesssys/marblerun/util/k8sutil"
@@ -72,12 +73,16 @@ func runInstall(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
+	cmChecker, err := kube.NewCertManagerChecker()
+	if err != nil {
+		return err
+	}
 
-	return cliInstall(cmd, helmClient, kubeClient, namespace)
+	return cliInstall(cmd, helmClient, kubeClient, cmChecker, namespace)
 }
 
 // cliInstall installs MarbleRun on the cluster.
-func cliInstall(cmd *cobra.Command, helmClient *helm.Client, kubeClient kubernetes.Interface, namespace string) error {
+func cliInstall(cmd *cobra.Command, helmClient *helm.Client, kubeClient kubernetes.Interface, cmChecker cmapichecker.Interface, namespace string) error {
 	flags, err := parseInstallFlags(cmd)
 	if err != nil {
 		return fmt.Errorf("parsing install flags: %w", err)
@@ -95,9 +100,14 @@ func cliInstall(cmd *cobra.Command, helmClient *helm.Client, kubeClient kubernet
 		}
 	}
 
+	// verify namespace exists, if not create it
+	if err := verifyNamespace(cmd.Context(), namespace, kubeClient); err != nil {
+		return err
+	}
+
 	var webhookSettings []string
 	if !flags.disableInjection {
-		webhookSettings, err = installWebhook(cmd, kubeClient, namespace)
+		webhookSettings, err = installWebhookCerts(cmd, kubeClient, cmChecker, namespace)
 		if err != nil {
 			return errorAndCleanup(cmd.Context(), fmt.Errorf("installing webhook certs: %w", err), kubeClient, namespace)
 		}
@@ -129,15 +139,20 @@ func cliInstall(cmd *cobra.Command, helmClient *helm.Client, kubeClient kubernet
 	return nil
 }
 
-// installWebhook enables a mutating admission webhook to allow automatic injection of values into pods.
-func installWebhook(cmd *cobra.Command, kubeClient kubernetes.Interface, namespace string) ([]string, error) {
-	// verify 'marblerun' namespace exists, if not create it
-	if err := verifyNamespace(cmd.Context(), namespace, kubeClient); err != nil {
-		return nil, err
+// installWebhookCerts sets up TLS certificates and keys required by MarbleRun's mutating admission webhook.
+// Depending on the cluster, either a certificate issued by cert-manager or a self-created certificate using the Kubernetes API is used.
+func installWebhookCerts(cmd *cobra.Command, kubeClient kubernetes.Interface, cmChecker cmapichecker.Interface, namespace string) ([]string, error) {
+	cmd.Print("Setting up MarbleRun Webhook")
+
+	if err := cmChecker.Check(cmd.Context()); err == nil {
+		cmd.Printf("... Done\n")
+		return []string{
+			fmt.Sprintf("marbleInjector.start=%t", true),
+			fmt.Sprintf("marbleInjector.useCertManager=%t", true),
+		}, nil
 	}
 
-	cmd.Print("Setting up MarbleRun Webhook")
-	certificateHandler, err := getCertificateHandler(cmd.OutOrStdout(), kubeClient)
+	certificateHandler, err := getCertificateHandler(cmd.OutOrStdout(), kubeClient, namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -190,16 +205,16 @@ func createSecret(ctx context.Context, namespace string, privKey *rsa.PrivateKey
 	return err
 }
 
-func getCertificateHandler(out io.Writer, kubeClient kubernetes.Interface) (certificateInterface, error) {
+func getCertificateHandler(out io.Writer, kubeClient kubernetes.Interface, namespace string) (certificateInterface, error) {
 	isLegacy, err := checkLegacyKubernetesVersion(kubeClient)
 	if err != nil {
 		return nil, err
 	}
 	if isLegacy {
 		fmt.Fprintf(out, "\nKubernetes version lower than 1.19 detected, using self-signed certificates as CABundle")
-		return newCertificateLegacy()
+		return newCertificateLegacy(namespace)
 	}
-	return newCertificateV1(kubeClient)
+	return newCertificateV1(kubeClient, namespace)
 }
 
 func verifyNamespace(ctx context.Context, namespace string, kubeClient kubernetes.Interface) error {
@@ -250,7 +265,7 @@ func getSGXResourceKey(ctx context.Context, kubeClient kubernetes.Interface) (st
 // This prevents secrets and CSRs to stay on the cluster after a failed installation attempt.
 func errorAndCleanup(ctx context.Context, err error, kubeClient kubernetes.Interface, namespace string) error {
 	// We dont care about any additional errors here
-	_ = cleanupCSR(ctx, kubeClient)
+	_ = cleanupCSR(ctx, kubeClient, namespace)
 	_ = cleanupSecrets(ctx, kubeClient, namespace)
 	return err
 }

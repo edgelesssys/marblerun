@@ -34,17 +34,17 @@ func TestCleanupWebhook(t *testing.T) {
 	ctx := context.Background()
 
 	// Try to remove non existent CSR using function
-	_, err := testClient.CertificatesV1().CertificateSigningRequests().Get(ctx, webhookName, metav1.GetOptions{})
+	_, err := testClient.CertificatesV1().CertificateSigningRequests().Get(ctx, webhookDNSName(helm.Namespace), metav1.GetOptions{})
 	require.Error(err)
 
-	err = cleanupCSR(ctx, testClient)
+	err = cleanupCSR(ctx, testClient, helm.Namespace)
 	require.Error(err)
 	assert.True(errors.IsNotFound(err), "function returned an error other than not found")
 
 	// Create and test for CSR
 	csr := &certv1.CertificateSigningRequest{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: webhookName,
+			Name: webhookDNSName(helm.Namespace),
 		},
 		Spec: certv1.CertificateSigningRequestSpec{
 			Request:    []byte{0xAA, 0xAA, 0xAA},
@@ -58,14 +58,14 @@ func TestCleanupWebhook(t *testing.T) {
 	_, err = testClient.CertificatesV1().CertificateSigningRequests().Create(ctx, csr, metav1.CreateOptions{})
 	require.NoError(err)
 
-	_, err = testClient.CertificatesV1().CertificateSigningRequests().Get(ctx, webhookName, metav1.GetOptions{})
+	_, err = testClient.CertificatesV1().CertificateSigningRequests().Get(ctx, webhookDNSName(helm.Namespace), metav1.GetOptions{})
 	require.NoError(err)
 
 	// Remove CSR using function
-	err = cleanupCSR(ctx, testClient)
+	err = cleanupCSR(ctx, testClient, helm.Namespace)
 	require.NoError(err)
 
-	_, err = testClient.CertificatesV1().CertificateSigningRequests().Get(ctx, webhookName, metav1.GetOptions{})
+	_, err = testClient.CertificatesV1().CertificateSigningRequests().Get(ctx, webhookDNSName(helm.Namespace), metav1.GetOptions{})
 	require.Error(err)
 
 	// try changing to version lower than 19 and removing CSR (this should always return nil)
@@ -74,7 +74,7 @@ func TestCleanupWebhook(t *testing.T) {
 		Minor:      "18",
 		GitVersion: "v1.18.4",
 	}
-	err = cleanupCSR(ctx, testClient)
+	err = cleanupCSR(ctx, testClient, helm.Namespace)
 	require.NoError(err)
 
 	// try changing to version string containing non-digit characters and removing the CSR
@@ -82,7 +82,7 @@ func TestCleanupWebhook(t *testing.T) {
 	_, err = testClient.CertificatesV1().CertificateSigningRequests().Create(ctx, csr, metav1.CreateOptions{})
 	require.NoError(err)
 
-	_, err = testClient.CertificatesV1().CertificateSigningRequests().Get(ctx, webhookName, metav1.GetOptions{})
+	_, err = testClient.CertificatesV1().CertificateSigningRequests().Get(ctx, webhookDNSName(helm.Namespace), metav1.GetOptions{})
 	require.NoError(err)
 
 	testClient.Discovery().(*fakediscovery.FakeDiscovery).FakedServerVersion = &version.Info{
@@ -90,7 +90,7 @@ func TestCleanupWebhook(t *testing.T) {
 		Minor:      "24+",
 		GitVersion: "v1.24.3-2+63243a96d1c393",
 	}
-	err = cleanupCSR(ctx, testClient)
+	err = cleanupCSR(ctx, testClient, helm.Namespace)
 	require.NoError(err)
 
 	// Try to remove non existent Secret using function

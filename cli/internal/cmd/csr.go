@@ -41,15 +41,22 @@ type certificateInterface interface {
 // certificateV1 acts as a handler for generating signed certificates.
 type certificateV1 struct {
 	kubeClient kubernetes.Interface
+	namespace  string
 	privKey    *rsa.PrivateKey
 	csr        *certv1.CertificateSigningRequest
-	timeout    int
+
+	retryAttempts int
+	waitInterval  time.Duration
 }
 
 // newCertificateV1 creates a certificate handler using the certificatesv1 kubernetes api.
-func newCertificateV1(kubeClient kubernetes.Interface) (*certificateV1, error) {
-	crt := &certificateV1{kubeClient: kubeClient}
-	crt.timeout = 10
+func newCertificateV1(kubeClient kubernetes.Interface, namespace string) (*certificateV1, error) {
+	crt := &certificateV1{
+		kubeClient:    kubeClient,
+		namespace:     namespace,
+		retryAttempts: 20,
+		waitInterval:  1 * time.Second,
+	}
 
 	privKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
@@ -58,7 +65,7 @@ func newCertificateV1(kubeClient kubernetes.Interface) (*certificateV1, error) {
 
 	crt.privKey = privKey
 
-	csrPEM, err := createCSR(privKey)
+	csrPEM, err := createCSR(privKey, crt.namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +73,7 @@ func newCertificateV1(kubeClient kubernetes.Interface) (*certificateV1, error) {
 	// create the k8s certificate request which bundles the x509 csr
 	certificateRequest := &certv1.CertificateSigningRequest{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: webhookName,
+			Name: webhookDNSName(crt.namespace),
 		},
 		Spec: certv1.CertificateSigningRequestSpec{
 			Request:    pem.EncodeToMemory(csrPEM),
@@ -84,7 +91,7 @@ func newCertificateV1(kubeClient kubernetes.Interface) (*certificateV1, error) {
 
 // get returns the certificate signed by the kubernetes api server.
 func (crt *certificateV1) get(ctx context.Context) ([]byte, error) {
-	csr, err := crt.kubeClient.CertificatesV1().CertificateSigningRequests().Get(ctx, webhookName, metav1.GetOptions{})
+	csr, err := crt.kubeClient.CertificatesV1().CertificateSigningRequests().Get(ctx, webhookDNSName(crt.namespace), metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -137,10 +144,12 @@ func (crt *certificateV1) signRequest(ctx context.Context) error {
 		return err
 	}
 
-	if err := waitForResource(webhookName, crt.kubeClient, crt.timeout, func(name string, client kubernetes.Interface) bool {
-		_, err := client.CertificatesV1().CertificateSigningRequests().Get(ctx, name, metav1.GetOptions{})
-		return err == nil
-	}); err != nil {
+	if err := waitForResource(
+		webhookDNSName(crt.namespace), crt.kubeClient, crt.retryAttempts, crt.waitInterval,
+		func(name string, client kubernetes.Interface) bool {
+			_, err := client.CertificatesV1().CertificateSigningRequests().Get(ctx, name, metav1.GetOptions{})
+			return err == nil
+		}); err != nil {
 		return err
 	}
 
@@ -154,21 +163,23 @@ func (crt *certificateV1) signRequest(ctx context.Context) error {
 		LastUpdateTime: metav1.Now(),
 	})
 
-	_, err = crt.kubeClient.CertificatesV1().CertificateSigningRequests().UpdateApproval(ctx, webhookName, certReturn, metav1.UpdateOptions{})
+	_, err = crt.kubeClient.CertificatesV1().CertificateSigningRequests().UpdateApproval(ctx, webhookDNSName(crt.namespace), certReturn, metav1.UpdateOptions{})
 	if err != nil {
 		return err
 	}
 
-	return waitForResource(webhookName, crt.kubeClient, crt.timeout, func(name string, client kubernetes.Interface) bool {
-		csr, err := client.CertificatesV1().CertificateSigningRequests().Get(ctx, webhookName, metav1.GetOptions{})
-		if err != nil {
-			return false
-		}
-		if len(csr.Status.Certificate) <= 0 {
-			return false
-		}
-		return true
-	})
+	return waitForResource(
+		webhookDNSName(crt.namespace), crt.kubeClient, crt.retryAttempts, crt.waitInterval,
+		func(name string, client kubernetes.Interface) bool {
+			csr, err := client.CertificatesV1().CertificateSigningRequests().Get(ctx, name, metav1.GetOptions{})
+			if err != nil {
+				return false
+			}
+			if len(csr.Status.Certificate) <= 0 {
+				return false
+			}
+			return true
+		})
 }
 
 // getKey returns the private key of the webhook server.
@@ -177,9 +188,9 @@ func (crt *certificateV1) getKey() *rsa.PrivateKey {
 }
 
 // createCSR creates a x509 certificate signing request.
-func createCSR(privKey *rsa.PrivateKey) (*pem.Block, error) {
+func createCSR(privKey *rsa.PrivateKey, namespace string) (*pem.Block, error) {
 	subj := pkix.Name{
-		CommonName:   "system:node:marble-injector.marblerun.svc",
+		CommonName:   fmt.Sprintf("system:node:%s.svc", webhookDNSName(namespace)),
 		Organization: []string{"system:nodes"},
 	}
 
@@ -204,7 +215,7 @@ func createCSR(privKey *rsa.PrivateKey) (*pem.Block, error) {
 		Subject:            subj,
 		SignatureAlgorithm: x509.SHA256WithRSA,
 		Extensions:         []pkix.Extension{extendedUsage, keyUsage},
-		DNSNames:           []string{"marble-injector.marblerun.svc"},
+		DNSNames:           []string{fmt.Sprintf("%s.svc", webhookDNSName(namespace))},
 	}
 
 	csrRaw, err := x509.CreateCertificateRequest(rand.Reader, template, privKey)
@@ -222,12 +233,15 @@ func createCSR(privKey *rsa.PrivateKey) (*pem.Block, error) {
 
 // calls to the CertificateSigningRequests interface are non blocking, we use this function
 // to check if a resource has been created and can be used.
-func waitForResource(name string, kubeClient kubernetes.Interface, timeout int, resourceCheck func(string, kubernetes.Interface) bool) error {
-	for i := 0; i < timeout; i++ {
+func waitForResource(
+	name string, kubeClient kubernetes.Interface, retryAttempts int, waitInterval time.Duration,
+	resourceCheck func(string, kubernetes.Interface) bool,
+) error {
+	for i := 0; i < retryAttempts; i++ {
 		if resourceCheck(name, kubeClient) {
 			return nil
 		}
-		time.Sleep(1 * time.Second)
+		time.Sleep(waitInterval)
 	}
-	return fmt.Errorf("certificate signing request was not updated after %d attempts. Giving up", timeout)
+	return fmt.Errorf("certificate signing request was not updated after %d attempts. Giving up", retryAttempts)
 }

@@ -67,7 +67,7 @@ func cliUninstall(
 		return err
 	}
 
-	if err := cleanupCSR(cmd.Context(), kubeClient); err != nil && !errors.IsNotFound(err) {
+	if err := cleanupCSR(cmd.Context(), kubeClient, namespace); err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 
@@ -82,7 +82,7 @@ func cleanupSecrets(ctx context.Context, kubeClient kubernetes.Interface, namesp
 }
 
 // cleanupCSR removes a potentially leftover CSR from the Admission Controller.
-func cleanupCSR(ctx context.Context, kubeClient kubernetes.Interface) error {
+func cleanupCSR(ctx context.Context, kubeClient kubernetes.Interface, namespace string) error {
 	// in case of kubernetes version < 1.19 no CSR was created by the install command
 	isLegacy, err := checkLegacyKubernetesVersion(kubeClient)
 	if err != nil {
@@ -92,5 +92,5 @@ func cleanupCSR(ctx context.Context, kubeClient kubernetes.Interface) error {
 		return nil
 	}
 
-	return kubeClient.CertificatesV1().CertificateSigningRequests().Delete(ctx, webhookName, metav1.DeleteOptions{})
+	return kubeClient.CertificatesV1().CertificateSigningRequests().Delete(ctx, webhookDNSName(namespace), metav1.DeleteOptions{})
 }

@@ -69,7 +69,7 @@ func TestGetCertificateHandler(t *testing.T) {
 		Minor:      "19",
 		GitVersion: "v1.19.4",
 	}
-	testHandler, err := getCertificateHandler(&out, testClient)
+	testHandler, err := getCertificateHandler(&out, testClient, helm.Namespace)
 	require.NoError(err)
 	assert.Equal("*cmd.certificateV1", reflect.TypeOf(testHandler).String())
 	assert.Empty(out.String())
@@ -80,7 +80,7 @@ func TestGetCertificateHandler(t *testing.T) {
 		Minor:      "18",
 		GitVersion: "v1.18.4",
 	}
-	testHandler, err = getCertificateHandler(&out, testClient)
+	testHandler, err = getCertificateHandler(&out, testClient, helm.Namespace)
 	require.NoError(err)
 	assert.Equal("*cmd.certificateLegacy", reflect.TypeOf(testHandler).String())
 	assert.NotEmpty(out.String())
@@ -91,7 +91,7 @@ func TestGetCertificateHandler(t *testing.T) {
 		Minor:      "24+",
 		GitVersion: "v1.24.3-2+63243a96d1c393",
 	}
-	testHandler, err = getCertificateHandler(&out, testClient)
+	testHandler, err = getCertificateHandler(&out, testClient, helm.Namespace)
 	require.NoError(err)
 	assert.Equal("*cmd.certificateV1", reflect.TypeOf(testHandler).String())
 	assert.Empty(out.String())
@@ -118,23 +118,51 @@ func TestVerifyNamespace(t *testing.T) {
 }
 
 func TestInstallWebhook(t *testing.T) {
-	assert := assert.New(t)
-
-	testClient := fake.NewSimpleClientset()
-	testClient.Discovery().(*fakediscovery.FakeDiscovery).FakedServerVersion = &version.Info{
-		Major:      "1",
-		Minor:      "18",
-		GitVersion: "v1.18.4",
+	testCases := map[string]struct {
+		kubeClient *fake.Clientset
+		cmChecker  stubCMChecker
+		assert     func(t *testing.T, values []string, err error)
+	}{
+		"set up webhook certs": {
+			kubeClient: func() *fake.Clientset {
+				testClient := fake.NewSimpleClientset()
+				testClient.Discovery().(*fakediscovery.FakeDiscovery).FakedServerVersion = &version.Info{
+					Major:      "1",
+					Minor:      "18",
+					GitVersion: "v1.18.4",
+				}
+				return testClient
+			}(),
+			cmChecker: stubCMChecker{err: assert.AnError},
+			assert: func(t *testing.T, values []string, err error) {
+				assert.NoError(t, err)
+				require.Len(t, values, 2)
+				assert.Equal(t, "marbleInjector.start=true", values[0], "failed to set start to true")
+				assert.Contains(t, values[1], "LS0t", "failed to set CABundle")
+			},
+		},
+		"use cert-manager": {
+			kubeClient: fake.NewSimpleClientset(),
+			cmChecker:  stubCMChecker{err: nil},
+			assert: func(t *testing.T, values []string, err error) {
+				assert.NoError(t, err)
+				require.Len(t, values, 2)
+				assert.Equal(t, "marbleInjector.start=true", values[0], "failed to set start to true")
+				assert.Equal(t, "marbleInjector.useCertManager=true", values[1], "failed to set useCertManager to true")
+			},
+		},
 	}
 
-	cmd := &cobra.Command{}
-	var out bytes.Buffer
-	cmd.SetOut(&out)
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			cmd := &cobra.Command{}
+			var out bytes.Buffer
+			cmd.SetOut(&out)
 
-	testValues, err := installWebhook(cmd, testClient, helm.Namespace)
-	assert.NoError(err)
-	assert.Equal("marbleInjector.start=true", testValues[0], "failed to set start to true")
-	assert.Contains(testValues[1], "LS0t", "failed to set CABundle")
+			testValues, err := installWebhookCerts(cmd, tc.kubeClient, tc.cmChecker, helm.Namespace)
+			tc.assert(t, testValues, err)
+		})
+	}
 }
 
 func TestGetSGXResourceKey(t *testing.T) {
@@ -184,7 +212,7 @@ func TestErrorAndCleanup(t *testing.T) {
 	// Create and test for CSR
 	csr := &certv1.CertificateSigningRequest{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: webhookName,
+			Name: webhookDNSName(helm.Namespace),
 		},
 		Spec: certv1.CertificateSigningRequestSpec{
 			Request:    []byte{0xAA, 0xAA, 0xAA},
@@ -198,12 +226,20 @@ func TestErrorAndCleanup(t *testing.T) {
 	_, err = testClient.CertificatesV1().CertificateSigningRequests().Create(context.TODO(), csr, metav1.CreateOptions{})
 	require.NoError(err)
 
-	_, err = testClient.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), webhookName, metav1.GetOptions{})
+	_, err = testClient.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), webhookDNSName(helm.Namespace), metav1.GetOptions{})
 	require.NoError(err)
 
 	err = errorAndCleanup(ctx, testError, testClient, helm.Namespace)
 	assert.Equal(testError, err)
 
-	_, err = testClient.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), webhookName, metav1.GetOptions{})
+	_, err = testClient.CertificatesV1().CertificateSigningRequests().Get(context.TODO(), webhookDNSName(helm.Namespace), metav1.GetOptions{})
 	assert.True(kubeErrors.IsNotFound(err))
+}
+
+type stubCMChecker struct {
+	err error
+}
+
+func (s stubCMChecker) Check(_ context.Context) error {
+	return s.err
 }
