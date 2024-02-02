@@ -14,13 +14,12 @@ Kubernetes manages hardware resources like Intel SGX through its [device plugin 
 The SGX device plugin can either be deployed manually or as a DaemonSet in the cluster. Different vendors provide open-source device plugins for SGX:
 
 * [Intel](https://intel.github.io/intel-device-plugins-for-kubernetes/cmd/sgx_plugin/README.html)
-* [Azure](https://github.com/Azure/aks-engine/blob/master/docs/topics/sgx.md#deploying-the-sgx-device-plugin)
 * [Alibaba Cloud](https://github.com/AliyunContainerService/sgx-device-plugin)
 
 :::info
 
 If you are using a confidential computing-enlightened, managed Kubernetes cluster, you will usually already have an SGX device plugin installed.
-For example, creating a confidential computing cluster on AKS has a pre-configured SGX device plugin.
+For example, creating a [confidential computing cluster on AKS](https://learn.microsoft.com/en-us/azure/confidential-computing/confidential-enclave-nodes-aks-get-started) comes with a pre-configured SGX device plugin.
 
 :::
 
@@ -64,7 +63,6 @@ Note, that every plugin uses its own way of injecting SGX resources into deploym
 MarbleRun supports [automatic injection](../features/kubernetes-integration.md) of those values for a selection of popular plugins:
 
 * [Intel](https://intel.github.io/intel-device-plugins-for-kubernetes/cmd/sgx_plugin/README.html) using `sgx.intel.com/epc`, `sgx.intel.com/enclave`, and `sgx.intel.com/provision`
-* [Azure](https://github.com/Azure/aks-engine/blob/master/docs/topics/sgx.md#deploying-the-sgx-device-plugin) using `kubernetes.azure.com/sgx_epc_mem_in_MiB`
 * [Alibaba Cloud](https://github.com/AliyunContainerService/sgx-device-plugin) using `alibabacloud.com/sgx_epc_MiB`
 * You can use the `--resource-key` flag, during installation with the CLI, to declare your own SGX resource key for injection
 
