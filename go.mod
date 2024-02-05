@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/cert-manager/cert-manager v1.13.3
-	github.com/edgelesssys/ego v1.4.1
+	github.com/edgelesssys/ego v1.4.2
 	github.com/edgelesssys/era v0.3.3
 	github.com/fatih/color v1.16.0
 	github.com/gofrs/flock v0.8.1
