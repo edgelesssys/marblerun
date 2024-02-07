@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
       - name: Vale
-        uses: errata-ai/vale-action@3f7188c866bcb3259339a09f517d7c4a8838303c # reviewdog
+        uses: errata-ai/vale-action@38bf078c328061f59879b347ca344a718a736018 # reviewdog
         with:
           files: docs/docs
           fail_on_error: true
