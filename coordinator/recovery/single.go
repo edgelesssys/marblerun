@@ -31,7 +31,6 @@ func (r *SinglePartyRecovery) GenerateEncryptionKey(recoveryKeys map[string]stri
 
 	var err error
 	r.encryptionKey, err = generateRandomKey()
-
 	if err != nil {
 		return nil, err
 	}
