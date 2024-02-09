@@ -305,7 +305,6 @@ func TestCliManifestVerify(t *testing.T) {
 }
 
 func TestGetSignatureFromString(t *testing.T) {
-	assert := assert.New(t)
 	require := require.New(t)
 
 	testValue := []byte(`{"TestSignature": "signature"}`)
@@ -357,6 +356,7 @@ func TestGetSignatureFromString(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
 			testSignature, err := getSignatureFromString(tc.signature, tc.fs)
 			if tc.wantErr {
 				assert.Error(err)
