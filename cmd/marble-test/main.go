@@ -45,7 +45,7 @@ func runServer(addr string) {
 	}
 
 	// handle '/' route
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprint(w, "Welcome to this Marbelous world!")
 	})
 

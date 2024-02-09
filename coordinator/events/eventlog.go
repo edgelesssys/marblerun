@@ -46,7 +46,7 @@ func (l *Log) Activation(marbleType string, uuid string, quote []byte) {
 
 // Handler returns a http.HandlerFunc which writes the log as JSON array.
 func (l *Log) Handler() http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(l.events)

@@ -56,7 +56,7 @@ func main() {
 // We need to use this function since the certificate may be updated by cert-manager,
 // requiring us to reload the certificate.
 func loadWebhookCert(certFile, keyFile string) func(chi *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	return func(chi *tls.ClientHelloInfo) (*tls.Certificate, error) {
+	return func(_ *tls.ClientHelloInfo) (*tls.Certificate, error) {
 		pair, err := tls.LoadX509KeyPair(certFile, keyFile)
 		if err != nil {
 			return nil, fmt.Errorf("failed loading tls key pair: %w", err)

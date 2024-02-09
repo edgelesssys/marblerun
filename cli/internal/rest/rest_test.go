@@ -35,7 +35,7 @@ func newTestClient(fn roundTripFunc) *http.Client {
 
 func TestGet(t *testing.T) {
 	require := require.New(t)
-	defaultResponseFunc := func(req *http.Request) *http.Response {
+	defaultResponseFunc := func(_ *http.Request) *http.Response {
 		response := server.GeneralResponse{
 			Message: "response message",
 			Data:    "response data",
@@ -77,7 +77,7 @@ func TestGet(t *testing.T) {
 			wantErr:       true,
 		},
 		"server error": {
-			roundTripFunc: func(req *http.Request) *http.Response {
+			roundTripFunc: func(_ *http.Request) *http.Response {
 				return &http.Response{
 					StatusCode: http.StatusInternalServerError,
 					Body:       io.NopCloser(&bytes.Reader{}),
@@ -111,7 +111,7 @@ func TestGet(t *testing.T) {
 
 func TestPost(t *testing.T) {
 	require := require.New(t)
-	defaultResponseFunc := func(req *http.Request) *http.Response {
+	defaultResponseFunc := func(_ *http.Request) *http.Response {
 		response := server.GeneralResponse{
 			Message: "response message",
 			Data:    "response data",
@@ -142,7 +142,7 @@ func TestPost(t *testing.T) {
 			wantResponse:  []byte("response data"),
 		},
 		"server error": {
-			roundTripFunc: func(req *http.Request) *http.Response {
+			roundTripFunc: func(_ *http.Request) *http.Response {
 				return &http.Response{
 					StatusCode: http.StatusInternalServerError,
 					Body:       io.NopCloser(&bytes.Reader{}),
