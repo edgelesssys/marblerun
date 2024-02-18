@@ -21,10 +21,9 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/edgelesssys/ego/attestation"
 	"github.com/edgelesssys/era/era"
-	"github.com/edgelesssys/era/util"
 	"github.com/edgelesssys/marblerun/cli/internal/kube"
+	"github.com/edgelesssys/marblerun/internal/tcb"
 	"github.com/tidwall/gjson"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -178,13 +177,17 @@ func VerifyCoordinator(
 	}
 
 	pemBlock, tcbStatus, err := era.GetCertificate(host, configFilename)
-	if !errors.Is(err, attestation.ErrTCBLevelInvalid) {
-		return pemBlock, err
+	validity, err := tcb.CheckStatus(tcbStatus, err, acceptedTCBStatuses)
+	if err != nil {
+		return nil, err
 	}
-	if !util.StringSliceContains(acceptedTCBStatuses, tcbStatus.String()) {
-		return nil, fmt.Errorf("TCB level invalid: %v", tcbStatus)
+	switch validity {
+	case tcb.ValidityUnconditional:
+	case tcb.ValidityConditional:
+		fmt.Fprintln(out, "TCB level accepted by configuration:", tcbStatus)
+	default:
+		fmt.Fprintln(out, "Warning: TCB level invalid, but accepted by configuration:", tcbStatus)
 	}
-	fmt.Fprintln(out, "Warning: TCB level invalid, but accepted by configuration:", tcbStatus)
 	return pemBlock, nil
 }
 

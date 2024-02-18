@@ -34,22 +34,7 @@ var Version = "0.0.0" // Don't touch! Automatically injected at build-time.
 // GitCommit is the git commit hash.
 var GitCommit = "0000000000000000000000000000000000000000" // Don't touch! Automatically injected at build-time.
 
-func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer seal.Sealer, recovery recovery.Recovery) {
-	devMode := util.Getenv(constants.DevMode, constants.DevModeDefault) == "1"
-
-	// Setup logging with Zap Logger
-	var cfg zap.Config
-	if devMode {
-		cfg = zap.NewDevelopmentConfig()
-	} else {
-		cfg = zap.NewProductionConfig()
-		cfg.DisableStacktrace = true // Disable stacktraces in production
-	}
-	log, err := cfg.Build()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to create logger: %s\n", err)
-		os.Exit(1)
-	}
+func run(log *zap.Logger, validator quote.Validator, issuer quote.Issuer, sealDir string, sealer seal.Sealer, recovery recovery.Recovery) {
 	defer log.Sync() // flushes buffer, if any
 
 	log.Info("Starting coordinator", zap.String("version", Version), zap.String("commit", GitCommit))
@@ -91,7 +76,7 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer 
 	}
 	co, err := core.NewCore(dnsNames, validator, issuer, store, recovery, log, promFactoryPtr, eventlog)
 	if err != nil {
-		if _, ok := err.(core.QuoteError); !ok || !devMode {
+		if _, ok := err.(core.QuoteError); !ok || !isDevMode() {
 			log.Fatal("Cannot create Coordinator core", zap.Error(err))
 		}
 	}
@@ -138,4 +123,24 @@ func run(validator quote.Validator, issuer quote.Issuer, sealDir string, sealer 
 			log.Info("Started gRPC server", zap.String("grpcAddr", grpcAddr))
 		}
 	}
+}
+
+func isDevMode() bool {
+	return util.Getenv(constants.DevMode, constants.DevModeDefault) == "1"
+}
+
+func newLogger() *zap.Logger {
+	var cfg zap.Config
+	if isDevMode() {
+		cfg = zap.NewDevelopmentConfig()
+	} else {
+		cfg = zap.NewProductionConfig()
+		cfg.DisableStacktrace = true // Disable stacktraces in production
+	}
+	log, err := cfg.Build()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to create logger: %s\n", err)
+		os.Exit(1)
+	}
+	return log
 }

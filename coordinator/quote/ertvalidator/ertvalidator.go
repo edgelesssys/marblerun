@@ -11,35 +11,43 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
-	"errors"
 	"fmt"
 
-	"github.com/edgelesssys/ego/attestation"
+	"github.com/edgelesssys/ego/attestation/tcbstatus"
 	"github.com/edgelesssys/ego/enclave"
-	"github.com/edgelesssys/era/util"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
+	"github.com/edgelesssys/marblerun/internal/tcb"
+	"go.uber.org/zap"
 )
 
 // ERTValidator is a Quote validator based on EdgelessRT.
-type ERTValidator struct{}
+type ERTValidator struct {
+	log *zap.Logger
+}
 
 // NewERTValidator returns a new ERTValidator object.
-func NewERTValidator() *ERTValidator {
-	return &ERTValidator{}
+func NewERTValidator(log *zap.Logger) *ERTValidator {
+	return &ERTValidator{log: log}
 }
 
 // Validate validates an SGX quote using EdgelessRT.
 func (v *ERTValidator) Validate(givenQuote []byte, cert []byte, pp quote.PackageProperties, _ quote.InfrastructureProperties) error {
 	// Verify Quote
+	accepted := pp.AcceptedTCBStatuses
+	if len(accepted) == 0 {
+		accepted = []string{tcbstatus.SWHardeningNeeded.String()}
+	}
 	report, err := enclave.VerifyRemoteReport(givenQuote)
-	if errors.Is(err, attestation.ErrTCBLevelInvalid) {
-		if util.StringSliceContains(pp.AcceptedTCBStatuses, report.TCBStatus.String()) {
-			fmt.Println("Warning: TCB level invalid, but accepted by configuration", report.TCBStatus)
-		} else {
-			return fmt.Errorf("TCB level invalid: %v", report.TCBStatus)
-		}
-	} else if err != nil {
-		return fmt.Errorf("verifying quote: %w", err)
+	validity, err := tcb.CheckStatus(report.TCBStatus, err, accepted)
+	if err != nil {
+		return err
+	}
+	switch validity {
+	case tcb.ValidityUnconditional:
+	case tcb.ValidityConditional:
+		v.log.Info("TCB level accepted by configuration", zap.String("packageProperties", pp.String()), zap.String("tcbStatus", report.TCBStatus.String()))
+	default:
+		v.log.Warn("TCB level invalid, but accepted by configuration", zap.String("packageProperties", pp.String()), zap.String("tcbStatus", report.TCBStatus.String()))
 	}
 
 	// Check that cert is equal

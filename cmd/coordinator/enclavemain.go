@@ -19,12 +19,13 @@ import (
 )
 
 func main() {
-	validator := ertvalidator.NewERTValidator()
+	log := newLogger()
+	validator := ertvalidator.NewERTValidator(log)
 	issuer := ertvalidator.NewERTIssuer()
 	sealDirPrefix := filepath.Join(filepath.FromSlash("/edg"), "hostfs")
 	sealDir := util.Getenv(constants.SealDir, constants.SealDirDefault())
 	sealDir = filepath.Join(sealDirPrefix, sealDir)
 	sealer := seal.NewAESGCMSealer()
 	recovery := recovery.NewSinglePartyRecovery()
-	run(validator, issuer, sealDir, sealer, recovery)
+	run(log, validator, issuer, sealDir, sealer, recovery)
 }
