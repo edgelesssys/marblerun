@@ -30,6 +30,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/store"
 	"github.com/edgelesssys/marblerun/coordinator/store/request"
 	"github.com/edgelesssys/marblerun/coordinator/store/wrapper"
+	globalconstants "github.com/edgelesssys/marblerun/internal/constants"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -144,7 +145,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (res *rpc.A
 	}
 
 	// add TTLS config to Env
-	if err := c.setTTLSConfig(txdata, marble, authSecrets, secrets); err != nil {
+	if err := c.setTTLSConfig(txdata, &marble, authSecrets, secrets); err != nil {
 		c.log.Error("Couldn't create TTLS config", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "creating TTLS config: %s", err)
 	}
@@ -415,7 +416,7 @@ func (c *Core) generateMarbleAuthSecrets(txdata storeGetter, req *rpc.Activation
 	return authSecrets, nil
 }
 
-func (c *Core) setTTLSConfig(txdata storeGetter, marble manifest.Marble, specialSecrets reservedSecrets, userSecrets map[string]manifest.Secret) error {
+func (c *Core) setTTLSConfig(txdata storeGetter, marble *manifest.Marble, specialSecrets reservedSecrets, userSecrets map[string]manifest.Secret) error {
 	if len(marble.TLS) == 0 {
 		return nil
 	}
@@ -485,7 +486,7 @@ func (c *Core) setTTLSConfig(txdata storeGetter, marble manifest.Marble, special
 	if marble.Parameters.Env == nil {
 		marble.Parameters.Env = make(map[string]manifest.File)
 	}
-	marble.Parameters.Env["MARBLE_TTLS_CONFIG"] = manifest.File{Data: string(ttlsConfJSON), Encoding: "string"}
+	marble.Parameters.Env[globalconstants.EnvMarbleTTLSConfig] = manifest.File{Data: string(ttlsConfJSON), Encoding: "string"}
 
 	return nil
 }
