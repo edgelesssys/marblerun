@@ -14,6 +14,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
+	"github.com/edgelesssys/marblerun/internal/constants"
 	"github.com/edgelesssys/marblerun/marble/config"
 	"github.com/google/uuid"
 	"github.com/spf13/afero"
@@ -142,6 +143,22 @@ func TestPreMain(t *testing.T) {
 
 		assert.Equal("", os.Getenv("EDG_TEST_1"))
 		assert.Equal("", os.Getenv("EDG_TEST_2"))
+
+		assert.Equal([]string{"not modified"}, os.Args)
+	}
+	{ // fail on empty TTLS config
+		parameters = &rpc.Parameters{
+			Env: map[string][]byte{
+				constants.EnvMarbleTTLSConfig: []byte(`{"tls":{}}`),
+			},
+		}
+		activateError = nil
+
+		os.Args = []string{"not modified"}
+
+		hostfs := afero.NewMemMapFs()
+		enclavefs := afero.NewMemMapFs()
+		require.Error(PreMainEx(issuer, activate, hostfs, enclavefs))
 
 		assert.Equal([]string{"not modified"}, os.Args)
 	}
