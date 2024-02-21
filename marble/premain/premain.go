@@ -11,6 +11,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/x509"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -191,6 +192,9 @@ func PreMainEx(issuer quote.Issuer, activate ActivateFunc, hostfs, enclavefs afe
 		return err
 	}
 
+	if err := logTTLS(params.Env); err != nil {
+		return err
+	}
 	if err := applyParameters(params, enclavefs); err != nil {
 		return err
 	}
@@ -229,6 +233,41 @@ func activateRPC(req *rpc.ActivationReq, coordAddr string, tlsCredentials creden
 	}
 
 	return activationResp.GetParameters(), nil
+}
+
+func logTTLS(env map[string][]byte) error {
+	ttlsConfigJSON, ok := env[constants.EnvMarbleTTLSConfig]
+	if !ok {
+		log.Println("Not using TTLS")
+		return nil
+	}
+
+	var ttlsConfig map[string]map[string]map[string]map[string]interface{}
+	if err := json.Unmarshal(ttlsConfigJSON, &ttlsConfig); err != nil {
+		return fmt.Errorf("unmarshaling TTLS config: %w", err)
+	}
+	tls := ttlsConfig["tls"]
+	incoming := tls["Incoming"]
+	outgoing := tls["Outgoing"]
+	if len(incoming) == 0 && len(outgoing) == 0 {
+		return errors.New("TTLS config is empty")
+	}
+
+	log.Println("TTLS config")
+	if len(incoming) > 0 {
+		log.Println("  Incoming")
+		for k := range incoming {
+			log.Print("    ", k)
+		}
+	}
+	if len(outgoing) > 0 {
+		log.Println("  Outgoing")
+		for k := range outgoing {
+			log.Print("    ", k)
+		}
+	}
+
+	return nil
 }
 
 func applyParameters(params *rpc.Parameters, fs afero.Fs) error {

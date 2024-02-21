@@ -497,3 +497,10 @@ Incoming connections are defined by `Port`. For services used by external client
     }
 }
 ```
+
+:::tip
+
+On startup, a Marble logs its effective TTLS policy.
+This helps to verify that the manifest configuration is applied as intended.
+
+:::
