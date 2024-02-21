@@ -19,7 +19,7 @@ import (
 // GramineActivate sends an activation request to the Coordinator and initializes protected files.
 func GramineActivate(req *rpc.ActivationReq, coordAddr string, tlsCredentials credentials.TransportCredentials) (*rpc.Parameters, error) {
 	// call the actual Activate function
-	params, err := ActivateRPC(req, coordAddr, tlsCredentials)
+	params, err := ActivateRPCNoTTLS(req, coordAddr, tlsCredentials)
 	if err != nil {
 		return nil, err
 	}

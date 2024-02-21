@@ -116,7 +116,7 @@ func prepareGramine(hostfs afero.Fs) (string, error) {
 
 func prepareOcclum(hostfs afero.Fs) (string, error) {
 	// Run MarbleRun premain
-	if err := marblePremain.PreMainEx(marblePremain.OcclumQuoteIssuer{}, marblePremain.ActivateRPC, hostfs, hostfs); err != nil {
+	if err := marblePremain.PreMainEx(marblePremain.OcclumQuoteIssuer{}, marblePremain.ActivateRPCNoTTLS, hostfs, hostfs); err != nil {
 		return "", err
 	}
 

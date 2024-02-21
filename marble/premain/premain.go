@@ -11,6 +11,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -21,6 +22,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/quote/ertvalidator"
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
+	"github.com/edgelesssys/marblerun/internal/constants"
 	"github.com/edgelesssys/marblerun/marble/config"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
@@ -99,7 +101,7 @@ func PreMain() error {
 		return err
 	}
 	enclavefs := afero.NewOsFs()
-	return PreMainEx(ertvalidator.NewERTIssuer(), ActivateRPC, hostfs, enclavefs)
+	return PreMainEx(ertvalidator.NewERTIssuer(), activateRPC, hostfs, enclavefs)
 }
 
 // PreMainEgo works similar to PreMain, but let's EGo's premain handle the in-enclave memory filesystem mounting.
@@ -108,7 +110,7 @@ func PreMain() error {
 func PreMainEgo() error {
 	hostfs := afero.NewBasePathFs(afero.NewOsFs(), filepath.Join(filepath.FromSlash("/edg"), "hostfs"))
 	enclavefs := afero.NewOsFs()
-	return PreMainEx(ertvalidator.NewERTIssuer(), ActivateRPC, hostfs, enclavefs)
+	return PreMainEx(ertvalidator.NewERTIssuer(), activateRPC, hostfs, enclavefs)
 }
 
 // PreMainMock mocks the quoting and file system handling in the PreMain routine for testing.
@@ -116,7 +118,7 @@ func PreMainEgo() error {
 //nolint:revive
 func PreMainMock() error {
 	hostfs := afero.NewOsFs()
-	return PreMainEx(quote.NewFailIssuer(), ActivateRPC, hostfs, hostfs)
+	return PreMainEx(quote.NewFailIssuer(), activateRPC, hostfs, hostfs)
 }
 
 // PreMainEx is like PreMain, but allows to customize the quoting and file system handling.
@@ -200,8 +202,20 @@ func PreMainEx(issuer quote.Issuer, activate ActivateFunc, hostfs, enclavefs afe
 // ActivateFunc is called by premain to activate the Marble and get its parameters.
 type ActivateFunc func(req *rpc.ActivationReq, coordAddr string, tlsCredentials credentials.TransportCredentials) (*rpc.Parameters, error)
 
-// ActivateRPC sends an activation request to the Coordinator.
-func ActivateRPC(req *rpc.ActivationReq, coordAddr string, tlsCredentials credentials.TransportCredentials) (*rpc.Parameters, error) {
+// ActivateRPCNoTTLS sends an activation request to the Coordinator. It fails if TTLS is configured.
+func ActivateRPCNoTTLS(req *rpc.ActivationReq, coordAddr string, tlsCredentials credentials.TransportCredentials) (*rpc.Parameters, error) {
+	params, err := activateRPC(req, coordAddr, tlsCredentials)
+	if err != nil {
+		return nil, err
+	}
+	if _, ok := params.Env[constants.EnvMarbleTTLSConfig]; ok {
+		return nil, errors.New("TTLS configured, but Marble runtime doesn't support TTLS")
+	}
+	return params, nil
+}
+
+// activateRPC sends an activation request to the Coordinator.
+func activateRPC(req *rpc.ActivationReq, coordAddr string, tlsCredentials credentials.TransportCredentials) (*rpc.Parameters, error) {
 	connection, err := grpc.Dial(coordAddr, grpc.WithTransportCredentials(tlsCredentials))
 	if err != nil {
 		return nil, err
