@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"math/big"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -30,6 +31,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/state"
 	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
 	"github.com/edgelesssys/marblerun/coordinator/store/wrapper/testutil"
+	globalconstants "github.com/edgelesssys/marblerun/internal/constants"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
@@ -251,7 +253,7 @@ func (ms *marbleSpawner) newMarble(t *testing.T, marbleType string, infraName st
 
 	// Validate ttls conf
 	config := make(map[string]map[string]map[string]map[string]interface{})
-	configBytes := params.Env["MARBLE_TTLS_CONFIG"]
+	configBytes := params.Env[globalconstants.EnvMarbleTTLSConfig]
 	if marbleType == "backendFirst" {
 		ms.assert.NoError(json.Unmarshal(configBytes, &config))
 
@@ -589,4 +591,65 @@ func TestActivateWithMissingParameters(t *testing.T) {
 	require.NoError(err)
 
 	spawner.shortMarbleActivation(t, "frontend", "Azure")
+}
+
+func TestActivateWithTTLSforMarbleWithoutEnvVars(t *testing.T) {
+	// Regression: TTLS config wasn't correctly set for marbles without env vars
+
+	assert := assert.New(t)
+	require := require.New(t)
+
+	validator := quote.NewMockValidator()
+	issuer := quote.NewMockIssuer()
+	store := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "")
+	coreServer, err := NewCore(nil, validator, issuer, store, recovery.NewSinglePartyRecovery(), zaptest.NewLogger(t), nil, nil)
+	require.NoError(err)
+
+	clientAPI, err := clientapi.New(coreServer.txHandle, coreServer.recovery, coreServer, coreServer.log)
+	require.NoError(err)
+
+	_, err = clientAPI.SetManifest(context.Background(), []byte(`
+{
+    "Packages": {
+        "pkg": {
+            "UniqueID": "0"
+        }
+    },
+    "Marbles": {
+        "marble": {
+            "Package": "pkg",
+            "TLS": [
+                "tls"
+            ]
+        }
+    },
+    "TLS": {
+        "tls": {
+            "Incoming": [
+                {
+                    "Port": "2000"
+                }
+            ]
+        }
+    }
+}
+	`))
+	require.NoError(err)
+
+	cert, csr, _ := util.MustGenerateTestMarbleCredentials()
+	qu, err := issuer.Issue(cert.Raw)
+	require.NoError(err)
+	validator.AddValidQuote(qu, cert.Raw, quote.PackageProperties{UniqueID: "0"}, quote.InfrastructureProperties{})
+
+	ctx := peer.NewContext(context.Background(), &peer.Peer{
+		AuthInfo: credentials.TLSInfo{
+			State: tls.ConnectionState{
+				PeerCertificates: []*x509.Certificate{cert},
+			},
+		},
+	})
+
+	resp, err := coreServer.Activate(ctx, &rpc.ActivationReq{Quote: qu, CSR: csr, MarbleType: "marble", UUID: uuid.NewString()})
+	require.NoError(err)
+	assert.True(strings.HasPrefix(string(resp.Parameters.Env[globalconstants.EnvMarbleTTLSConfig]), `{"tls":{"Incoming":{"*:2000":{"cacrt":"-----BEGIN CERTIFICATE-----`))
 }
