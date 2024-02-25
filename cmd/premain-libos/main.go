@@ -15,7 +15,6 @@ import (
 	"strings"
 
 	marblePremain "github.com/edgelesssys/marblerun/marble/premain"
-	"github.com/fatih/color"
 	"github.com/spf13/afero"
 	"golang.org/x/sys/unix"
 )
@@ -31,7 +30,7 @@ func exit(format string, args ...interface{}) {
 	// Print error message in red and append newline
 	// then exit with error code 1
 	msg := fmt.Sprintf("Error: %s\n", format)
-	_, _ = color.New(color.FgRed).Fprintf(os.Stderr, msg, args...)
+	fmt.Fprintf(os.Stderr, msg, args...)
 	os.Exit(1)
 }
 
@@ -123,8 +122,8 @@ func prepareOcclum(hostfs afero.Fs) (string, error) {
 
 	// Check if the entrypoint defined in os.Args[0] actually exists
 	if _, err := os.Stat(os.Args[0]); os.IsNotExist(err) {
-		color.Red("ERROR: The entrypoint does not seem to exist: '$%s'", os.Args[0])
-		color.Red("Please make sure that you define a valid entrypoint in your manifest (for example: /bin/hello_world).")
+		fmt.Printf("ERROR: The entrypoint does not seem to exist: '$%s'\n", os.Args[0])
+		fmt.Println("Please make sure that you define a valid entrypoint in your manifest (for example: /bin/hello_world).")
 		return "", errors.New("invalid entrypoint definition in argv[0]")
 	}
 
