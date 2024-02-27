@@ -81,7 +81,7 @@ marblerun install --dcap-pccs-url https://pccs.example.com/sgx/certification/v4/
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "/github/home/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
@@ -110,7 +110,7 @@ marblerun uninstall [flags]
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "/github/home/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
@@ -138,7 +138,7 @@ marblerun precheck [flags]
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "/github/home/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
@@ -167,7 +167,7 @@ marblerun check [flags]
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "/github/home/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
@@ -200,7 +200,7 @@ manifest set manifest.json example.com:4433 [--era-config=config.json] [--insecu
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "/github/home/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
@@ -239,7 +239,7 @@ marblerun manifest get $MARBLERUN -s --era-config=era.json
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "/github/home/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
@@ -276,7 +276,7 @@ marblerun manifest log $MARBLERUN
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "/github/home/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
@@ -311,7 +311,7 @@ marblerun manifest set manifest.json $MARBLERUN --recovery-data=recovery-secret.
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "/github/home/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
@@ -339,7 +339,7 @@ marblerun manifest signature <manifest.json> [flags]
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "/github/home/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
@@ -363,7 +363,7 @@ Manage manifest updates for the MarbleRun Coordinator.
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "/github/home/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
@@ -402,7 +402,7 @@ marblerun manifest update apply update-manifest.json $MARBLERUN --cert=admin-cer
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "/github/home/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
@@ -442,7 +442,7 @@ marblerun manifest update acknowledge update-manifest.json $MARBLERUN --cert=adm
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "/github/home/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
@@ -478,7 +478,7 @@ marblerun manifest update cancel $MARBLERUN --cert=admin-cert.pem --key=admin-ke
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "/github/home/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
@@ -514,7 +514,7 @@ marblerun manifest update get $MARBLERUN --era-config=era.json
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "/github/home/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
@@ -548,7 +548,7 @@ marblerun manifest verify manifest.json $MARBLERUN
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "/github/home/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
@@ -572,7 +572,7 @@ Retrieves the certificate of the MarbleRun Coordinator
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "/github/home/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
@@ -601,7 +601,7 @@ marblerun certificate root <IP:PORT> [flags]
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "/github/home/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
@@ -630,7 +630,7 @@ marblerun certificate intermediate <IP:PORT> [flags]
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "/github/home/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
@@ -659,7 +659,7 @@ marblerun certificate chain <IP:PORT> [flags]
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "/github/home/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
@@ -687,7 +687,7 @@ Set or retrieve a secret defined in the manifest.
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "/github/home/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
@@ -733,7 +733,7 @@ marblerun secret set certificate.pem $MARBLERUN -c admin.crt -k admin.key --from
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
   -c, --cert string                     PEM encoded MarbleRun user certificate file (required)
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "/github/home/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
@@ -774,7 +774,7 @@ marblerun secret get genericSecret symmetricKeyShared $MARBLERUN -c admin.crt -k
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
   -c, --cert string                     PEM encoded MarbleRun user certificate file (required)
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "/github/home/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
@@ -820,7 +820,7 @@ marblerun status <IP:PORT> [flags]
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "/github/home/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
@@ -854,7 +854,7 @@ marblerun recover recovery_key_decrypted $MARBLERUN
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "/github/home/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
@@ -882,7 +882,7 @@ marblerun package-info [flags]
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "/github/home/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
@@ -910,7 +910,7 @@ marblerun version [flags]
 ### Options inherited from parent commands
 
 ```
-      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (e.g. ConfigurationNeeded,ConfigurationAndSWHardeningNeeded) (default [UpToDate])
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "/github/home/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
