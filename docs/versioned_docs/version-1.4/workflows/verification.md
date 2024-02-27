@@ -6,7 +6,7 @@ Specifically, the Coordinator exposes the `/quote` endpoint that returns a quote
 
 ## Verifying the quote and the manifest using the CLI
 
-The `marblerun manifest verify` command uses the two endpoints described above. It first verifies the Coordinator's quote according to a given policy and then checks that the expected `manifest.json` is in effect. 
+The `marblerun manifest verify` command uses the two endpoints described above. It first verifies the Coordinator's quote according to a given policy and then checks that the expected `manifest.json` is in effect.
 
 :::info
 
@@ -27,7 +27,7 @@ If successful, the certificates of the root CA and the intermediate CA are saved
 :::info
 
 By default, the command will save the Coordinators certificate chain to `$XDG_CONFIG_HOME/marblerun/coordinator-cert.pem`,
-or `$HOME/.config/marblerun/coordinator-cert.pem` if `$XDG_CONFIG_HOME` is not set.
+or `$HOME/.config/marblerun/coordinator-cert.pem` if `$XDG_CONFIG_HOME` isn't set.
 Subsequent CLI commands will try loading the certificate from that location.
 Use the `--coordinator-cert` flag to choose your own location to save or load the certificate.
 

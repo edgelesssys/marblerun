@@ -13,7 +13,7 @@ the auto-injection feature of the different deployments can interfere with each 
 
 To prevent issues from running multiple MarbleRun deployments, you may want to either disable auto-injection,
 or [adjust the Helm chart](../deployment/kubernetes.md#option-2-install-with-helm) to customize the injection rules.
-Specifically, you can adjust the [oject and namespace selectors](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-objectselector),
+Specifically, you can adjust the [object and namespace selectors](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-objectselector),
 `marbleInjector.objectSelector` and `marbleInjector.namespaceSelector`,
 to limit the injection to only specific namespaces or specially labelled pods.
 
