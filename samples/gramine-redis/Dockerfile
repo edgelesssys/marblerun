@@ -10,7 +10,7 @@ WORKDIR /premain/build
 RUN cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
 RUN make premain-libos
 
-FROM gramineproject/gramine:v1.5 AS release
+FROM gramineproject/gramine:1.7-jammy AS release
 RUN apt-get update && apt-get install -y \
     wget \
     libssl-dev \
@@ -24,7 +24,7 @@ COPY --from=pull_gramine /gramine /gramine
 COPY --from=build-premain /premain/build/premain-libos /gramine/CI-Examples/redis/
 COPY ./redis-server.manifest.template ./start.sh /gramine/CI-Examples/redis/
 WORKDIR /gramine/CI-Examples/redis/
-ENV BUILD_TLS yes
+ENV BUILD_TLS=yes
 RUN --mount=type=secret,id=signingkey,dst=/root/.config/gramine/enclave-key.pem,required=true \
-    make clean && make SGX=1
+    make clean && make SGX=1 && chmod +x start.sh
 ENTRYPOINT [ "/gramine/CI-Examples/redis/start.sh" ]
