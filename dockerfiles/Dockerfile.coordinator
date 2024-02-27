@@ -1,4 +1,4 @@
-FROM ghcr.io/edgelesssys/marblerun/build-base:v1.4.0 AS build
+FROM ghcr.io/edgelesssys/marblerun/build-base:v1.4.1 AS build
 
 # don't run `apt-get update` because required packages are cached in build-base for reproducibility
 RUN apt-get install -y --no-install-recommends \
