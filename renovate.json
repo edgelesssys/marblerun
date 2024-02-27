@@ -79,12 +79,6 @@
         "major"
       ],
       "enabled": false
-    },
-    {
-      "matchDatasources": [
-        "golang-version"
-      ],
-      "allowedVersions": "1.20"
     }
   ]
 }
