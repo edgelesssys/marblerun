@@ -43,7 +43,7 @@ The following gives an example of a simple `Packages` section with made-up value
 
 In this example, `backend` is identified through `UniqueID`. Since `UniqueID` is the hash of the enclave software package, this means that `backend` can't be updated. (That' s because any update to the package will change the hash.)
 
-In contrast, `frontend` is identified through the triplet `SignerID`, `ProductID`, and `SecurityVersion`. `SignerID` cryptographically identifies the vendor of the package; `ProductID` is an arbitrary product ID chosen by the vendor, and `SecurityVersion` is the security-patch level of the product. See our [adding a service hands-on](../workflows/add-service.md#step-21-define-the-enclave-software-package) on how to get these values for a given service.
+In contrast, `frontend` is identified through the triplet `SignerID`, `ProductID`, and `SecurityVersion`. `SignerID` cryptographically identifies the vendor of the package; `ProductID` is an arbitrary product ID chosen by the vendor, and `SecurityVersion` is the security-patch level of the product. See the [adding a service hands-on](../workflows/add-service.md#step-21-define-the-enclave-software-package) on how to get these values for a given service.
 
 ## Marbles
 
@@ -73,6 +73,7 @@ Marbles represent the actual services in your mesh. They're defined in the `Marb
                     "MARBLE_KEY": "{{ pem .MarbleRun.MarbleCert.Private }}"
                 },
                 "Argv": [
+                    "./backend",
                     "--first",
                     "serve"
                 ]
@@ -106,29 +107,35 @@ Each Marble corresponds to a [`Package`](#packages) and defines a set of optiona
 * `Argv`: Command line arguments
 
 ### Files and Env
+
 Entries for these types can be defined in two ways:
+
 * By using a direct mapping of filename to content: `"<FileName>": "<Content>"`
 * By specifying an encoding for the content, and optionally, if the content contains templates:
-    ```javascript
-    "<FileName>": {
-        "Data": "<Content>",
-        "Encoding": "<EncodingType>",
-        "NoTemplates": true/false
-    }
+
+  ```javascript
+  "<FileName>": {
+      "Data": "<Content>",
+      "Encoding": "<EncodingType>",
+      "NoTemplates": true/false
+  }
     ```
-    * `Data`: The file content
-    * `Encoding`: Allows users to encode the `Data` field of the manifest. Marbles receive the decoded value. The following options are available:
-        * `string`: No encoding. This is the default
-        * `base64`: The manifest contains `Data` in [Base64](https://pkg.go.dev/encoding/base64). This can be useful to set content that can otherwise not be parsed in JSON format, or to avoid having to worry about correctly escaping newlines in a multi-line document
-        * `hex`: Same as `base64`, but [Hex Encoding](https://pkg.go.dev/encoding/hex) is used instead
-    * `NoTemplates`: If this flag is set, content in `Data` isn't processed for templates. Use this if your file contains [Go Templates](https://golang.org/pkg/text/template/) structures that shouldn't be interpreted by MarbleRun.
+
+  * `Data`: The file content
+  * `Encoding`: Allows users to encode the `Data` field of the manifest. Marbles receive the decoded value. The following options are available:
+    * `string`: No encoding. This is the default
+    * `base64`: The manifest contains `Data` in [Base64](https://pkg.go.dev/encoding/base64). This can be useful to set content that can otherwise not be parsed in JSON format, or to avoid having to worry about correctly escaping newlines in a multi-line document
+    * `hex`: Same as `base64`, but [Hex Encoding](https://pkg.go.dev/encoding/hex) is used instead
+  * `NoTemplates`: If this flag is set, content in `Data` isn't processed for templates. Use this if your file contains [Go Templates](https://golang.org/pkg/text/template/) structures that shouldn't be interpreted by MarbleRun.
 
 ### Argv
+
 Command line arguments are defined as an array. Entries are passed to the Marble in order, with the first being `argv[0]`.
 Usually, `argv[0]` is expected to be the name of the executable.
 Templates aren't supported.
 
 The general format is the following:
+
 ```javascript
 "Argv": [
     "<AppName>"
@@ -141,7 +148,7 @@ The general format is the following:
 
 ### Templates
 
-`Parameters` are passed from the Coordinator to secure enclaves (i.e., Marbles) after successful initial remote attestation. In the remote attestation step, the Coordinator ensures that enclaves run the software defined in the `Packages` section. It's important to note that `Parameters` are only accessible from within the corresponding secure enclave. `Parameters` may contain arbitrary static data. However, they can also be used to securely communicate different types of dynamically generated cryptographic keys and certificates to Marbles. For this, we use [Go Templates](https://golang.org/pkg/text/template/) with the following syntax.
+`Parameters` are passed from the Coordinator to secure enclaves (i.e., Marbles) after successful initial remote attestation. In the remote attestation step, the Coordinator ensures that enclaves run the software defined in the `Packages` section. It's important to note that `Parameters` are only accessible from within the corresponding secure enclave. `Parameters` may contain arbitrary static data. However, they can also be used to securely communicate different types of dynamically generated cryptographic keys and certificates to Marbles. For this, you can use [Go Templates](https://golang.org/pkg/text/template/) with the following syntax.
 
 `{{ <encoding> <name of secret> }}`
 
@@ -150,7 +157,6 @@ The following encoding types are available to both `Files` and `Env`:
 * `hex`: hex string
 * `base64`: Base64 encoding
 * `pem`: PEM encoding with a header matching the type of the requested key or certificate
-
 
 The following encoding types are only available to `Files`:
 
@@ -170,7 +176,7 @@ Finally, the optional field `MaxActivations` can be used to restrict the number 
 
 ## Secrets
 
-In the [previous section](#marbles), we discussed how certain cryptographic keys and certificates can be injected into a Marble's `Parameters` using Go Templates. In addition, MarbleRun also allows for the specification of custom cryptographic keys and certificates in the `Secrets` section. A typical `Secrets` section looks like the following.
+The [previous section](#marbles) discussed how certain cryptographic keys and certificates can be injected into a Marble's `Parameters` using Go Templates. In addition, MarbleRun also allows for the specification of custom cryptographic keys and certificates in the `Secrets` section. A typical `Secrets` section looks like the following.
 
 ```javascript
 {
@@ -257,13 +263,16 @@ When specifying a custom certificate in the `Secrets` section, the following pro
         "PolicyIdentifiers": null
     }
 ```
+
 Typically, you only define a subset of these. Commonly used properties include for example:
+
 * `DNSNames`
 * `IPAdresses`
 * `KeyUsage` & `ExtKeyUsage`
 * `Subject` (+ children)
 
 The following X.509 properties can't be specified because they're set by the Coordinator when creating a certificate.
+
 * `Issuer`: always set to "MarbleRun Coordinator"
 * `SerialNumber`: always set to a unique, random value
 * `BasicConstraintsValid`: always set to "true"
@@ -290,6 +299,7 @@ The following gives some examples.
 * Inject a symmetric key in hex format: `{{ hex .Secrets.secretAESKey }}`
 
 ## Users
+
 The optional entry `Users` defines user credentials and role bindings for authentication and access control.
 Each user is authenticated via a client certificate. The certificate needs to be specified as a PEM-encoded self-signed X.509 certificate.
 Users with the appropriate roles can [update a manifest](../workflows/update-manifest.md) and [read or write secrets](../workflows/managing-secrets.md).
@@ -316,6 +326,7 @@ Users with the appropriate roles can [update a manifest](../workflows/update-man
     //...
 }
 ```
+
 When verifying certificates in this context, MarbleRun ignores their `issuer`, `subject`, and `expiration date` fields. Thus, users can't lock themselves out through expired certificates.
 
 Use OpenSSL to generate a compatible certificate.
@@ -329,6 +340,7 @@ Use the following command to preserve newlines correctly:
 ```bash
 awk 'NF {sub(/\r/, ""); printf "%s\\n",$0;}' admin_certificate.pem
 ```
+
 ## Roles
 
 MarbleRun supports Role-based access control (RBAC).
@@ -336,6 +348,7 @@ An RBAC Role represents a set of permissions for a MarbleRun `User`. Permissions
 Each role defines a `ResourceType` (one of `Packages` or `Secrets`), a list of `ResourceNames` of that type, and a list of `Actions` that role permits on the listed resources.
 
 Valid `Actions` are:
+
 * For `"ResourceType": "Secrets"`: `ReadSecret` and `WriteSecret`, allowing reading and writing a secret respectively
 * For `"ResourceType": "Packages"`: `UpdateSecurityVersion`, allowing to update the `SecurityVersion` of a given package
 * For `"ResourceType": "Manifest"`: `UpdateManifest`, allowing to update the full manifest (MarbleRun Enterprise only)
