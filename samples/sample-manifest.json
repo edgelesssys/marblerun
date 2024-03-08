@@ -48,6 +48,7 @@
                     "TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.certPrivate.Cert }}"
                 },
                 "Argv": [
+                    "./backend",
                     "--first",
                     "serve"
                 ]
@@ -64,6 +65,7 @@
                     "TEST_SECRET_PRIVATE_CERT": "{{ pem .Secrets.certPrivate.Cert }}"
                 },
                 "Argv": [
+                    "./backend",
                     "serve"
                 ]
             },

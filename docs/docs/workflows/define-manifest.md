@@ -75,6 +75,7 @@ Marbles represent the actual services in your mesh. They're defined in the `Marb
                     "MARBLE_KEY": "{{ pem .MarbleRun.MarbleCert.Private }}"
                 },
                 "Argv": [
+                    "./backend",
                     "--first",
                     "serve"
                 ]
