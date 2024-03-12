@@ -65,7 +65,6 @@ Depending on the Marble's runtime, the certificate can be used [manually](../wor
 
 ![PKI Certificate chain](../_media/cert-chain.svg)
 
-
 ## Attested TLS (aTLS)
 
 In a confidential computing environment, attested TLS (aTLS) can establish secure connections between two parties using the remote attestation features of the confidential computing components.
@@ -73,7 +72,6 @@ With aTLS, the party to be authenticated binds its TLS certificate to an attesta
 For example, it embeds the certificate's public key into the attestation statement.
 Instead of relying on a certificate authority, aTLS uses this attestation statement to establish trust in the certificate.
 The protocol can be used by clients to verify a server certificate, by a server to verify a client certificate, or for mutual verification (mutual aTLS).
-
 
 ## Encryption of state
 
@@ -99,13 +97,11 @@ Every recovery party is defined in the manifest with its own public RSA key.
 The Coordinator generates a share of the recovery secret for every party and encrypts it with the corresponding RSA key.
 During a recovery event, every party will upload their share of the secret, which are all XORed together by the Coordinator to receive the combined key for decrypting the DEK.
 
-
 ### Distributed Coordinator
 
-The [distributed Coordinator](../features/recovery.md#distributed-coordinator) works similarly. However, all Coordinators share the same state stored encrypted in the Kubernetes [Secret](https://kubernetes.io/docs/concepts/configuration/secret/) called *marble-state*.
+The [distributed Coordinator](../features/recovery.md#distributed-coordinator) works similarly. However, all Coordinators share the same state stored encrypted in the Kubernetes [Secret](https://kubernetes.io/docs/concepts/configuration/secret/) called *marblerun-state*.
 In contrast to the single instance, the KEK is generated at start-up by the first instance.
 The existing Coordinators authenticate every new Coordinator instance via remote attestation, and the KEK is subsequently shared via the secure and attested TLS connection.
-Every Coordinator instance uses its own SGX Product (Sealing) Key to seal the KEK into a Kubernetes [ConfigMap](https://kubernetes.io/docs/concepts/configuration/configmap/) structure called "KEK."
-
+Every Coordinator instance uses its own SGX Product (Sealing) Key to seal the KEK into a Kubernetes [ConfigMap](https://kubernetes.io/docs/concepts/configuration/configmap/) called *marblerun-sealed-kek*.
 
 ![Encrypted state distributed](../_media/enc-state-distributed.svg)
