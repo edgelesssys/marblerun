@@ -23,7 +23,7 @@ jobs:
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
       - name: Test
-        run: ertgo test -race -count=3 ./...
+        run: go test -race -count=3 ./...
 
       - name: Setup
         run: |
@@ -37,11 +37,11 @@ jobs:
         working-directory: build
 
       - name: Integration test
-        run: ertgo test -tags integration -b ../build -s
+        run: go test -tags integration -b ../build -s
         working-directory: test
 
       - name: Integration test (-noenclave)
-        run: ertgo test -tags integration -b ../build -noenclave
+        run: go test -tags integration -b ../build -noenclave
         working-directory: test
 
       - name: Build artifact

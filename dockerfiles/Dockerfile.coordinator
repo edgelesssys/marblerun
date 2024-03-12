@@ -11,9 +11,9 @@ RUN apt-get install -y --no-install-recommends \
   ninja-build \
   wget
 
-ARG erttag=v0.4.2
-ARG mrtag=v1.4.1
-ARG goversion=1.20.6
+ARG erttag=v0.4.3
+ARG mrtag=v1.5.0
+ARG goversion=1.21.8
 RUN wget -qO- https://go.dev/dl/go${goversion}.linux-amd64.tar.gz | tar -C /usr/local -xz \
   && git clone -b $erttag --depth=1 https://github.com/edgelesssys/edgelessrt \
   && git clone -b $mrtag --depth=1 https://github.com/edgelesssys/marblerun \

@@ -38,7 +38,7 @@ docker build -o. - < dockerfiles/Dockerfile.cli
 
 * Ubuntu 20.04 or 22.04
 * [Edgeless RT](https://github.com/edgelesssys/edgelessrt) is installed and sourced
-* Go 1.20 or newer
+* Go 1.21 or newer
 
 Build the Coordinator control plane and Marble test applications:
 
