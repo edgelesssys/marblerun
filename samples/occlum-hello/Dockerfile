@@ -1,4 +1,4 @@
-FROM occlum/occlum:0.30.0-ubuntu20.04
+FROM occlum/occlum:0.30.1-ubuntu20.04
 
 ARG ERT_VERSION="0.4.1"
 ARG ERT_DEB=edgelessrt_${ERT_VERSION}_amd64_ubuntu-20.04.deb
