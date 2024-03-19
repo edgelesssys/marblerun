@@ -39,7 +39,6 @@ MarbleRun supports services built with one of the following frameworks:
 * [Occlum][occlum]
 * [Edgeless RT][edgelessrt]
 
-More are coming soon.
 
 ## Quickstart and documentation
 
