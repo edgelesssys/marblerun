@@ -9,24 +9,7 @@ Make sure to mount your `/etc/sgx_default_qcnl.conf` so your application has acc
 Note that we also chose `--network host` here, as we assume you do not run the coordinator in the same Docker instance. **This option is potentially insecure in production use**, as it disables the isolation of the container network. For a production setup, we recommend that you choose a setup that exposes the coordinator to the container.
 
 ```sh
-docker run -it --network host --device /dev/sgx_enclave --device /dev/sgx_provision -v /dev/sgx:/dev/sgx -v /etc/sgx_default_qcnl.conf:/etc/sgx_default_qcnl.conf occlum/occlum:0.30.0-ubuntu20.04
-```
-
-Inside the Docker instance, install EdgelessRT.
-
-```sh
-ERT_VERSION="0.4.1"
-ERT_DEB=edgelessrt_${ERT_VERSION}_amd64_ubuntu-20.04.deb
-wget https://github.com/edgelesssys/edgelessrt/releases/download/v${ERT_VERSION}/$ERT_DEB
-sudo apt install -y ./$ERT_DEB build-essential
-. /opt/edgelessrt/share/openenclave/openenclaverc
-```
-
-Alternatively, run the provided Docker image, which comes with EdgelessRT preinstalled:
-
-```sh
-DOCKER_BUILDKIT=1 docker build -t occlum-ert .
-docker run -it --network host --device /dev/sgx_enclave --device /dev/sgx_provision -v /dev/sgx:/dev/sgx -v /etc/sgx_default_qcnl.conf:/etc/sgx_default_qcnl.conf occlum-ert
+docker run -it --network host --device /dev/sgx_enclave --device /dev/sgx_provision -v /dev/sgx:/dev/sgx -v /etc/sgx_default_qcnl.conf:/etc/sgx_default_qcnl.conf occlum/occlum:0.30.1-ubuntu20.04
 ```
 
 ## Build
