@@ -2,7 +2,8 @@
 Running an Occlum app with MarbleRun requires some changes to its manifest.
 
 ## Requirements
-Set up an environment to create Occlum images. For an easy start, we recommend using either the official [Occlum Docker image](https://hub.docker.com/r/occlum/occlum) or [our provided Dockerfile](https://github.com/edgelesssys/marblerun/blob/master/samples/occlum-hello/Dockerfile). For a working DCAP remote attestation environment, we recommend [our platform deployment guide](../deployment/platforms/platforms.md).
+Set up an environment to create Occlum images. For an easy start, we recommend using the official [Occlum Docker image](https://hub.docker.com/r/occlum/occlum).
+For a working DCAP remote attestation environment, we recommend [our platform deployment guide](../deployment/platforms/platforms.md).
 
 To build your service, you can start with [Occlum's Introduction](https://github.com/occlum/occlum#introduction) to get your application up and running and then come back here to adapt it for use with MarbleRun.
 
@@ -69,10 +70,6 @@ right: `SGX_QL_NETWORK_ERROR`: fail to launch QE', src/util/sgx/dcap/quote_gener
 ```
 
 You might need to check the DCAP configuration on your system. Note that when using the Docker image, the local Intel DCAP configuration must be correctly set **inside the container.**
-
-If you use an Azure Confidential Computing machine, you can use our [provided Dockerfile](https://github.com/edgelesssys/marblerun/blob/master/samples/occlum-hello/Dockerfile). It patches the official Occlum image to use the Azure DCAP client, which handles the configuration automatically.
-
-For other DCAP setups, please consult the documentation of your Intel Provisioning Certificate Caching Service (PCCS) service running locally or remotely.
 
 ### Other issues
 If you are running into other issues, Occlum's error logging might help:
