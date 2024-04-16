@@ -12,6 +12,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -21,8 +22,8 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/edgelesssys/era/era"
 	"github.com/edgelesssys/marblerun/cli/internal/kube"
+	"github.com/edgelesssys/marblerun/internal/attestation"
 	"github.com/edgelesssys/marblerun/internal/tcb"
 	"github.com/tidwall/gjson"
 	"k8s.io/client-go/tools/clientcmd"
@@ -161,7 +162,8 @@ func VerifyCoordinator(
 	// skip verification if specified
 	if insecure {
 		fmt.Fprintln(out, "Warning: skipping quote verification")
-		return era.InsecureGetCertificate(host)
+		certs, _, err := attestation.InsecureGetCertificate(ctx, host)
+		return certs, err
 	}
 
 	if configFilename == "" {
@@ -176,7 +178,17 @@ func VerifyCoordinator(
 		}
 	}
 
-	pemBlock, tcbStatus, err := era.GetCertificate(host, configFilename)
+	eraCfgRaw, err := os.ReadFile(configFilename)
+	if err != nil {
+		return nil, fmt.Errorf("reading era config file: %w", err)
+	}
+
+	var eraCfg attestation.Config
+	if err := json.Unmarshal(eraCfgRaw, &eraCfg); err != nil {
+		return nil, fmt.Errorf("unmarshalling era config: %w", err)
+	}
+
+	pemBlock, tcbStatus, _, err := attestation.GetCertificate(ctx, host, nil, eraCfg)
 	validity, err := tcb.CheckStatus(tcbStatus, err, acceptedTCBStatuses)
 	if err != nil {
 		return nil, err

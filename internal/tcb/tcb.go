@@ -9,10 +9,10 @@ package tcb
 import (
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/edgelesssys/ego/attestation"
 	"github.com/edgelesssys/ego/attestation/tcbstatus"
-	"github.com/edgelesssys/era/util"
 )
 
 // Validity is the validity of a TCB level.
@@ -44,7 +44,7 @@ func CheckStatus(status tcbstatus.Status, tcbErr error, accepted []string) (Vali
 	} else if status == tcbstatus.UpToDate {
 		return ValidityInvalid, fmt.Errorf("unexpected: TCB level invalid: %v", status)
 	}
-	if !util.StringSliceContains(accepted, status.String()) {
+	if !slices.Contains(accepted, status.String()) {
 		return ValidityInvalid, fmt.Errorf("TCB level invalid: %v", status)
 	}
 	if invalid {
