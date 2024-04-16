@@ -99,6 +99,11 @@ func cliManifestVerify(cmd *cobra.Command, localSignature string, client getter)
 		return err
 	}
 	remoteSignature := gjson.GetBytes(resp, "ManifestSignature").String()
+
+	if remoteSignature == "" {
+		return errors.New("Coordinator returned no manifest signature. Is the Coordinator in the correct state?")
+	}
+
 	if remoteSignature != localSignature {
 		return fmt.Errorf("remote signature differs from local signature: %s != %s", remoteSignature, localSignature)
 	}
