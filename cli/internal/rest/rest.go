@@ -239,6 +239,10 @@ func fetchLatestCoordinatorConfiguration(ctx context.Context, out io.Writer, k8s
 		return fmt.Errorf("writing era config file: %w", err)
 	}
 
-	fmt.Fprintf(out, "Got era config for version %s\n", coordinatorVersion)
+	if coordinatorVersion != "" {
+		fmt.Fprintf(out, "Got era config for version %s\n", coordinatorVersion)
+	} else {
+		fmt.Fprintln(out, "Got latest era config")
+	}
 	return nil
 }
