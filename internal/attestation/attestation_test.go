@@ -210,7 +210,7 @@ func TestGetCertificate(t *testing.T) {
 				}
 			}
 
-			actualCerts, tcbStatus, _, err := getCertificate(context.Background(), addr, tc.nonce, tc.config, verify)
+			actualCerts, tcbStatus, actualQuote, err := getCertificate(context.Background(), addr, tc.nonce, tc.config, verify)
 			if tc.wantTCBErr {
 				require.Equal(attestation.ErrTCBLevelInvalid, err)
 				assert.Equal(tc.tcbStatus, tcbStatus)
@@ -223,6 +223,7 @@ func TestGetCertificate(t *testing.T) {
 			}
 
 			assert.EqualValues(expectedCert, pem.EncodeToMemory(actualCerts[0]))
+			assert.Equal(quote, actualQuote)
 		})
 	}
 }

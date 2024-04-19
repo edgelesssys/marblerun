@@ -11,6 +11,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
@@ -162,8 +163,8 @@ func httpGetCertQuote(ctx context.Context, host string, nonce []byte) (string, [
 	}
 
 	url := url.URL{Scheme: "https", Host: host, Path: "quote"}
-	if nonce != nil {
-		url.Query().Add("nonce", hex.EncodeToString(nonce))
+	if len(nonce) > 0 {
+		url.Query().Add("nonce", base64.URLEncoding.EncodeToString(nonce))
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url.String(), nil)
@@ -193,7 +194,6 @@ func httpGetCertQuote(ctx context.Context, host string, nonce []byte) (string, [
 	if err := json.Unmarshal([]byte(gjson.GetBytes(body, "data").String()), &certQuote); err != nil {
 		return "", nil, err
 	}
-	resp.Body.Close()
 	return certQuote.Cert, certQuote.Quote, nil
 }
 
