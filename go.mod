@@ -3,7 +3,7 @@ module github.com/edgelesssys/marblerun
 go 1.21
 
 require (
-	github.com/cert-manager/cert-manager v1.14.4
+	github.com/cert-manager/cert-manager v1.14.5
 	github.com/edgelesssys/ego v1.5.0
 	github.com/gofrs/flock v0.8.1
 	github.com/google/go-cmp v0.6.0
