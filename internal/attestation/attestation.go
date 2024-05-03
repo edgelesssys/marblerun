@@ -162,12 +162,15 @@ func httpGetCertQuote(ctx context.Context, host string, nonce []byte) (string, [
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 	}
 
-	url := url.URL{Scheme: "https", Host: host, Path: "quote"}
+	path := "quote"
+	var query string
 	if len(nonce) > 0 {
-		url.Query().Add("nonce", base64.URLEncoding.EncodeToString(nonce))
+		path = "api/v2/quote"
+		query = url.Values{"nonce": []string{base64.URLEncoding.EncodeToString(nonce)}}.Encode()
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url.String(), nil)
+	url := url.URL{Scheme: "https", Host: host, Path: path, RawQuery: query}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url.String(), http.NoBody)
 	if err != nil {
 		return "", nil, err
 	}
