@@ -57,6 +57,7 @@ func TestGetCertQuote(t *testing.T) {
 	testCases := map[string]struct {
 		store   store.Store
 		core    *fakeCore
+		nonce   []byte
 		wantErr bool
 	}{
 		"success state accepting Marbles": {
@@ -120,6 +121,14 @@ func TestGetCertQuote(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		"get quote with nonce": {
+			store: prepareDefaultStore(),
+			core: &fakeCore{
+				state: state.AcceptingMarbles,
+				quote: []byte("quote"),
+			},
+			nonce: []byte("nonce"),
+		},
 	}
 
 	for name, tc := range testCases {
@@ -141,7 +150,7 @@ func TestGetCertQuote(t *testing.T) {
 				rootCert = testutil.GetCertificate(t, tc.store, constants.SKCoordinatorRootCert)
 			}
 
-			cert, quote, err := api.GetCertQuote(context.Background())
+			cert, quote, err := api.GetCertQuote(context.Background(), tc.nonce)
 			if tc.wantErr {
 				assert.Error(err)
 				return
@@ -715,8 +724,8 @@ func (c *fakeCore) GenerateSecrets(
 	return secrets, nil
 }
 
-func (c *fakeCore) GetQuote() []byte {
-	return c.quote
+func (c *fakeCore) GetQuote(_ []byte) ([]byte, error) {
+	return c.quote, nil
 }
 
 func (c *fakeCore) GenerateQuote(quoteData []byte) error {
