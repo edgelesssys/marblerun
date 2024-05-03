@@ -157,7 +157,7 @@ func (c *Client) do(req *http.Request) ([]byte, error) {
 // VerifyCoordinator verifies the connection to the MarbleRun Coordinator.
 func VerifyCoordinator(
 	ctx context.Context, out io.Writer, host, configFilename, k8sNamespace string,
-	insecure bool, acceptedTCBStatuses []string,
+	nonce []byte, insecure bool, acceptedTCBStatuses []string,
 ) ([]*pem.Block, error) {
 	// skip verification if specified
 	if insecure {
@@ -188,7 +188,7 @@ func VerifyCoordinator(
 		return nil, fmt.Errorf("unmarshalling era config: %w", err)
 	}
 
-	pemBlock, tcbStatus, _, err := attestation.GetCertificate(ctx, host, nil, eraCfg)
+	pemBlock, tcbStatus, _, err := attestation.GetCertificate(ctx, host, nonce, eraCfg)
 	validity, err := tcb.CheckStatus(tcbStatus, err, acceptedTCBStatuses)
 	if err != nil {
 		return nil, err

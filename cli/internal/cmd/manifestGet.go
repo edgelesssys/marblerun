@@ -49,7 +49,7 @@ func runManifestGet(cmd *cobra.Command, args []string) error {
 	}
 	caCert, err := rest.VerifyCoordinator(
 		cmd.Context(), cmd.OutOrStdout(), hostname,
-		restFlags.eraConfig, restFlags.k8sNamespace, restFlags.insecure, restFlags.acceptedTCBStatuses,
+		restFlags.eraConfig, restFlags.k8sNamespace, restFlags.nonce, restFlags.insecure, restFlags.acceptedTCBStatuses,
 	)
 	if err != nil {
 		return err

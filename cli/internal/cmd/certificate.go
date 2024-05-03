@@ -59,7 +59,7 @@ func runCertificate(saveCert func(io.Writer, *file.Handler, []*pem.Block) error,
 
 		certs, err := rest.VerifyCoordinator(
 			cmd.Context(), cmd.OutOrStdout(), hostname,
-			flags.eraConfig, flags.k8sNamespace, flags.insecure, flags.acceptedTCBStatuses,
+			flags.eraConfig, flags.k8sNamespace, flags.nonce, flags.insecure, flags.acceptedTCBStatuses,
 		)
 		if err != nil {
 			return fmt.Errorf("retrieving certificate from Coordinator: %w", err)
