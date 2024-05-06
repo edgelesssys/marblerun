@@ -87,6 +87,7 @@ marblerun install --dcap-pccs-url https://pccs.example.com/sgx/certification/v4/
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
+      --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
 ```
 
 ## marblerun uninstall
@@ -117,6 +118,7 @@ marblerun uninstall [flags]
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
+      --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
 ```
 
 ## marblerun precheck
@@ -146,6 +148,7 @@ marblerun precheck [flags]
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
+      --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
 ```
 
 ## marblerun check
@@ -176,6 +179,7 @@ marblerun check [flags]
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
+      --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
 ```
 
 ## marblerun manifest
@@ -210,6 +214,7 @@ manifest set manifest.json example.com:4433 [--era-config=config.json] [--insecu
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
+      --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
 ```
 
 ## marblerun manifest get
@@ -250,6 +255,7 @@ marblerun manifest get $MARBLERUN -s --era-config=era.json
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
+      --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
 ```
 
 ## marblerun manifest log
@@ -288,6 +294,7 @@ marblerun manifest log $MARBLERUN
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
+      --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
 ```
 
 ## marblerun manifest set
@@ -324,6 +331,7 @@ marblerun manifest set manifest.json $MARBLERUN --recovery-data=recovery-secret.
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
+      --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
 ```
 
 ## marblerun manifest signature
@@ -353,6 +361,7 @@ marblerun manifest signature <manifest.json> [flags]
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
+      --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
 ```
 
 ## marblerun manifest update
@@ -378,6 +387,7 @@ Manage manifest updates for the MarbleRun Coordinator.
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
+      --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
 ```
 
 ## marblerun manifest update apply
@@ -418,6 +428,7 @@ marblerun manifest update apply update-manifest.json $MARBLERUN --cert=admin-cer
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
+      --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
 ```
 
 ## marblerun manifest update acknowledge
@@ -459,6 +470,7 @@ marblerun manifest update acknowledge update-manifest.json $MARBLERUN --cert=adm
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
+      --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
 ```
 
 ## marblerun manifest update cancel
@@ -496,6 +508,7 @@ marblerun manifest update cancel $MARBLERUN --cert=admin-cert.pem --key=admin-ke
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
+      --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
 ```
 
 ## marblerun manifest update get
@@ -533,6 +546,7 @@ marblerun manifest update get $MARBLERUN --era-config=era.json
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
+      --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
 ```
 
 ## marblerun manifest verify
@@ -568,6 +582,7 @@ marblerun manifest verify manifest.json $MARBLERUN
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
+      --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
 ```
 
 ## marblerun certificate
@@ -593,6 +608,7 @@ Retrieves the certificate of the MarbleRun Coordinator
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
+      --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
 ```
 
 ## marblerun certificate root
@@ -623,6 +639,7 @@ marblerun certificate root <IP:PORT> [flags]
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
+      --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
 ```
 
 ## marblerun certificate intermediate
@@ -653,6 +670,7 @@ marblerun certificate intermediate <IP:PORT> [flags]
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
+      --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
 ```
 
 ## marblerun certificate chain
@@ -683,6 +701,7 @@ marblerun certificate chain <IP:PORT> [flags]
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
+      --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
 ```
 
 ## marblerun secret
@@ -712,6 +731,7 @@ Set or retrieve a secret defined in the manifest.
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
+      --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
 ```
 
 ## marblerun secret set
@@ -761,6 +781,7 @@ marblerun secret set certificate.pem $MARBLERUN -c admin.crt -k admin.key --from
   -k, --key string                      PEM encoded MarbleRun user key file (required)
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
+      --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
 ```
 
 ## marblerun secret get
@@ -803,6 +824,7 @@ marblerun secret get genericSecret symmetricKeyShared $MARBLERUN -c admin.crt -k
   -k, --key string                      PEM encoded MarbleRun user key file (required)
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
+      --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
 ```
 
 ## marblerun status
@@ -848,6 +870,7 @@ marblerun status <IP:PORT> [flags]
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
+      --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
 ```
 
 ## marblerun recover
@@ -883,6 +906,7 @@ marblerun recover recovery_key_decrypted $MARBLERUN
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
+      --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
 ```
 
 ## marblerun package-info
@@ -912,6 +936,7 @@ marblerun package-info [flags]
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
+      --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
 ```
 
 ## marblerun version
@@ -941,5 +966,6 @@ marblerun version [flags]
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
+      --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
 ```
 
