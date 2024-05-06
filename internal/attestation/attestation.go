@@ -162,7 +162,7 @@ func httpGetCertQuote(ctx context.Context, host string, nonce []byte) (string, [
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 	}
 
-	path := "quote"
+	path := "quote" // use v1 path for compatibility with old Coordinators if nonce is not provided
 	var query string
 	if len(nonce) > 0 {
 		path = "api/v2/quote"
