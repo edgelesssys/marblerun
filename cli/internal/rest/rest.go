@@ -157,7 +157,7 @@ func (c *Client) do(req *http.Request) ([]byte, error) {
 // VerifyCoordinator verifies the connection to the MarbleRun Coordinator.
 func VerifyCoordinator(
 	ctx context.Context, out io.Writer, host, configFilename, k8sNamespace string,
-	nonce []byte, insecure bool, acceptedTCBStatuses []string,
+	nonce []byte, insecure bool, acceptedTCBStatuses []string, sgxQuotePath string,
 ) ([]*pem.Block, error) {
 	// skip verification if specified
 	if insecure {
@@ -188,7 +188,7 @@ func VerifyCoordinator(
 		return nil, fmt.Errorf("unmarshalling era config: %w", err)
 	}
 
-	pemBlock, tcbStatus, _, err := attestation.GetCertificate(ctx, host, nonce, eraCfg)
+	pemBlock, tcbStatus, rawQuote, err := attestation.GetCertificate(ctx, host, nonce, eraCfg)
 	validity, err := tcb.CheckStatus(tcbStatus, err, acceptedTCBStatuses)
 	if err != nil {
 		return nil, err
@@ -200,6 +200,13 @@ func VerifyCoordinator(
 	default:
 		fmt.Fprintln(out, "Warning: TCB level invalid, but accepted by configuration:", tcbStatus)
 	}
+
+	if sgxQuotePath != "" {
+		if err := os.WriteFile(sgxQuotePath, rawQuote, 0o644); err != nil {
+			return pemBlock, fmt.Errorf("error saving SGX quote to disk: %s", err)
+		}
+	}
+
 	return pemBlock, nil
 }
 

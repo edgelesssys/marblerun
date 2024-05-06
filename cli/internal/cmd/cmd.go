@@ -44,6 +44,8 @@ type restFlags struct {
 	acceptedTCBStatuses []string
 	// nonce is a user supplied nonce to be used in the attestation process.
 	nonce []byte
+	// sgxQuotePath is the path to save SGX quote file.
+	sgxQuotePath string
 }
 
 // parseRestFlags parses the command line flags used to configure the REST client.
@@ -68,6 +70,10 @@ func parseRestFlags(flags *pflag.FlagSet) (restFlags, error) {
 	if err != nil {
 		return restFlags{}, err
 	}
+	sgxQuotePath, err := flags.GetString("save-sgx-quote")
+	if err != nil {
+		return restFlags{}, err
+	}
 
 	return restFlags{
 		k8sNamespace:        k8snamespace,
@@ -75,6 +81,7 @@ func parseRestFlags(flags *pflag.FlagSet) (restFlags, error) {
 		insecure:            insecure,
 		acceptedTCBStatuses: acceptedTCBStatuses,
 		nonce:               []byte(nonce),
+		sgxQuotePath:        sgxQuotePath,
 	}, nil
 }
 
