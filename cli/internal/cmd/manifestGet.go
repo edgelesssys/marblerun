@@ -43,19 +43,16 @@ func runManifestGet(cmd *cobra.Command, args []string) error {
 	hostname := args[0]
 	fs := afero.NewOsFs()
 
-	restFlags, err := parseRestFlags(cmd.Flags())
+	verifyOpts, err := parseRestFlags(cmd.Flags())
 	if err != nil {
 		return err
 	}
-	caCert, err := rest.VerifyCoordinator(
-		cmd.Context(), cmd.OutOrStdout(), hostname,
-		restFlags.eraConfig, restFlags.k8sNamespace, restFlags.nonce, restFlags.insecure, restFlags.acceptedTCBStatuses, restFlags.sgxQuotePath,
-	)
+	caCert, err := rest.VerifyCoordinator(cmd.Context(), cmd.OutOrStdout(), hostname, verifyOpts)
 	if err != nil {
 		return err
 	}
 
-	client, err := rest.NewClient(hostname, caCert, nil, restFlags.insecure)
+	client, err := rest.NewClient(hostname, caCert, nil, verifyOpts.Insecure)
 	if err != nil {
 		return err
 	}

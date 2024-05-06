@@ -39,7 +39,7 @@ func runCertificate(saveCert func(io.Writer, *file.Handler, []*pem.Block) error,
 	return func(cmd *cobra.Command, args []string) error {
 		hostname := args[0]
 		fs := afero.NewOsFs()
-		flags, err := parseRestFlags(cmd.Flags())
+		verifyOpts, err := parseRestFlags(cmd.Flags())
 		if err != nil {
 			return err
 		}
@@ -57,10 +57,7 @@ func runCertificate(saveCert func(io.Writer, *file.Handler, []*pem.Block) error,
 			return fmt.Errorf("parsing root certificate from local cache: %w", err)
 		}
 
-		certs, err := rest.VerifyCoordinator(
-			cmd.Context(), cmd.OutOrStdout(), hostname,
-			flags.eraConfig, flags.k8sNamespace, flags.nonce, flags.insecure, flags.acceptedTCBStatuses, flags.sgxQuotePath,
-		)
+		certs, err := rest.VerifyCoordinator(cmd.Context(), cmd.OutOrStdout(), hostname, verifyOpts)
 		if err != nil {
 			return fmt.Errorf("retrieving certificate from Coordinator: %w", err)
 		}

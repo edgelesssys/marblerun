@@ -41,7 +41,7 @@ func runRecover(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	flags, err := parseRestFlags(cmd.Flags())
+	verifyOpts, err := parseRestFlags(cmd.Flags())
 	if err != nil {
 		return err
 	}
@@ -49,15 +49,12 @@ func runRecover(cmd *cobra.Command, args []string) error {
 	// A Coordinator in recovery mode will have a different certificate than what is cached
 	// Only unsealing the Coordinator will allow it to use the original certificate again
 	// Therefore we need to verify the Coordinator is running in the expected enclave instead
-	caCert, err := rest.VerifyCoordinator(
-		cmd.Context(), cmd.OutOrStdout(), hostname,
-		flags.eraConfig, flags.k8sNamespace, flags.nonce, flags.insecure, flags.acceptedTCBStatuses, flags.sgxQuotePath,
-	)
+	caCert, err := rest.VerifyCoordinator(cmd.Context(), cmd.OutOrStdout(), hostname, verifyOpts)
 	if err != nil {
 		return err
 	}
 
-	client, err := rest.NewClient(hostname, caCert, nil, flags.insecure)
+	client, err := rest.NewClient(hostname, caCert, nil, verifyOpts.Insecure)
 	if err != nil {
 		return err
 	}

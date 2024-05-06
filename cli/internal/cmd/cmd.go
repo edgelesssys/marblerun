@@ -30,58 +30,40 @@ type poster interface {
 	Post(ctx context.Context, path, contentType string, body io.Reader) ([]byte, error)
 }
 
-// restFlags are command line flags used to configure the REST client to talk to the Coordinator.
-type restFlags struct {
-	// k8sNamespace is the namespace of the MarbleRun installation.
-	// We use this to try to find the Coordinator when retrieving the era config.
-	k8sNamespace string
-	// eraConfig is the path to the era config file.
-	eraConfig string
-	// insecure is a flag to disable TLS verification.
-	insecure bool
-	// acceptedTCBStatuses is a list of TCB statuses that are accepted by the CLI.
-	// This can be used to allow connections to Coordinator instances running on outdated hardware or firmware.
-	acceptedTCBStatuses []string
-	// nonce is a user supplied nonce to be used in the attestation process.
-	nonce []byte
-	// sgxQuotePath is the path to save SGX quote file.
-	sgxQuotePath string
-}
-
 // parseRestFlags parses the command line flags used to configure the REST client.
-func parseRestFlags(flags *pflag.FlagSet) (restFlags, error) {
+func parseRestFlags(flags *pflag.FlagSet) (rest.VerifyCoordinatorOptions, error) {
 	eraConfig, err := flags.GetString("era-config")
 	if err != nil {
-		return restFlags{}, err
+		return rest.VerifyCoordinatorOptions{}, err
 	}
 	insecure, err := flags.GetBool("insecure")
 	if err != nil {
-		return restFlags{}, err
+		return rest.VerifyCoordinatorOptions{}, err
 	}
 	acceptedTCBStatuses, err := flags.GetStringSlice("accepted-tcb-statuses")
 	if err != nil {
-		return restFlags{}, err
+		return rest.VerifyCoordinatorOptions{}, err
 	}
 	k8snamespace, err := flags.GetString("namespace")
 	if err != nil {
-		return restFlags{}, err
+		return rest.VerifyCoordinatorOptions{}, err
 	}
 	nonce, err := flags.GetString("nonce")
 	if err != nil {
-		return restFlags{}, err
+		return rest.VerifyCoordinatorOptions{}, err
 	}
 	sgxQuotePath, err := flags.GetString("save-sgx-quote")
 	if err != nil {
-		return restFlags{}, err
+		return rest.VerifyCoordinatorOptions{}, err
 	}
 
-	return restFlags{
-		k8sNamespace:        k8snamespace,
-		eraConfig:           eraConfig,
-		insecure:            insecure,
-		acceptedTCBStatuses: acceptedTCBStatuses,
-		nonce:               []byte(nonce),
-		sgxQuotePath:        sgxQuotePath,
+	return rest.VerifyCoordinatorOptions{
+		K8sNamespace:        k8snamespace,
+		ConfigFilename:      eraConfig,
+		Insecure:            insecure,
+		AcceptedTCBStatuses: acceptedTCBStatuses,
+		Nonce:               []byte(nonce),
+		SGXQuotePath:        sgxQuotePath,
 	}, nil
 }
 
