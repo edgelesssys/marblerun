@@ -55,10 +55,11 @@ func TestGetCertQuote(t *testing.T) {
 	}
 
 	testCases := map[string]struct {
-		store   store.Store
-		core    *fakeCore
-		nonce   []byte
-		wantErr bool
+		store     store.Store
+		core      *fakeCore
+		nonce     []byte
+		wantQuote []byte
+		wantErr   bool
 	}{
 		"success state accepting Marbles": {
 			store: prepareDefaultStore(),
@@ -66,6 +67,7 @@ func TestGetCertQuote(t *testing.T) {
 				state: state.AcceptingMarbles,
 				quote: []byte("quote"),
 			},
+			wantQuote: []byte("quote"),
 		},
 		"success state accepting manifest": {
 			store: prepareDefaultStore(),
@@ -73,6 +75,7 @@ func TestGetCertQuote(t *testing.T) {
 				state: state.AcceptingManifest,
 				quote: []byte("quote"),
 			},
+			wantQuote: []byte("quote"),
 		},
 		"success state recovery": {
 			store: prepareDefaultStore(),
@@ -80,6 +83,7 @@ func TestGetCertQuote(t *testing.T) {
 				state: state.Recovery,
 				quote: []byte("quote"),
 			},
+			wantQuote: []byte("quote"),
 		},
 		"unsupported state": {
 			store: prepareDefaultStore(),
@@ -127,7 +131,8 @@ func TestGetCertQuote(t *testing.T) {
 				state: state.AcceptingMarbles,
 				quote: []byte("quote"),
 			},
-			nonce: []byte("nonce"),
+			nonce:     []byte("nonce"),
+			wantQuote: []byte("nonce" + "quote"),
 		},
 	}
 
@@ -157,7 +162,7 @@ func TestGetCertQuote(t *testing.T) {
 			}
 
 			require.NoError(err)
-			assert.Equal(tc.core.quote, quote)
+			assert.Equal(tc.wantQuote, quote)
 			assert.Equal(mustEncodeToPem(t, intermediateCert)+mustEncodeToPem(t, rootCert), cert)
 		})
 	}
@@ -724,7 +729,10 @@ func (c *fakeCore) GenerateSecrets(
 	return secrets, nil
 }
 
-func (c *fakeCore) GetQuote(_ []byte) ([]byte, error) {
+func (c *fakeCore) GetQuote(reportData []byte) ([]byte, error) {
+	if reportData != nil {
+		return append([]byte("nonce"), c.quote...), nil
+	}
 	return c.quote, nil
 }
 

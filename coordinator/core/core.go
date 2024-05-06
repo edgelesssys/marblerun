@@ -280,13 +280,12 @@ func (c *Core) GetTLSMarbleRootCertificate(clientHello *tls.ClientHelloInfo) (*t
 // GetQuote returns the quote of the Coordinator.
 // If reportData is not nil, a new quote is generated over the data and returned.
 func (c *Core) GetQuote(reportData []byte) ([]byte, error) {
-	quote := c.quote
-	if reportData != nil {
-		var err error
-		quote, err = c.qi.Issue(reportData)
-		if err != nil && err.Error() != "OE_UNSUPPORTED" {
-			return nil, QuoteError{err}
-		}
+	if len(reportData) == 0 {
+		return c.quote, nil
+	}
+	quote, err := c.qi.Issue(reportData)
+	if err != nil && err.Error() != "OE_UNSUPPORTED" {
+		return nil, QuoteError{err}
 	}
 	return quote, nil
 }

@@ -141,7 +141,7 @@ func (a *ClientAPI) GetCertQuote(ctx context.Context, nonce []byte) (cert string
 
 	// Get existing quote for root cert, or generate a new one over provided nonce
 	var reportData []byte
-	if nonce != nil {
+	if len(nonce) > 0 {
 		reportData = append(rootCert.Raw, nonce...)
 	}
 	quote, err := a.core.GetQuote(reportData)

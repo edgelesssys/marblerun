@@ -13,6 +13,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"errors"
 	"math/big"
 	"testing"
 	"time"
@@ -316,4 +317,66 @@ func TestUnsetRestart(t *testing.T) {
 	assert.Equal(state.AcceptingManifest, c2State)
 	c2Cert := testutil.GetCertificate(t, c2.txHandle, constants.SKCoordinatorRootCert)
 	assert.NotEqual(*cCert, *c2Cert)
+}
+
+func TestGetQuote(t *testing.T) {
+	testCases := map[string]struct {
+		reportData []byte
+		savedQuote []byte
+		issuer     stubIssuer
+		wantErr    bool
+	}{
+		"no report data": {
+			reportData: nil,
+			savedQuote: []byte("quote"),
+			issuer:     stubIssuer{},
+		},
+		"with report data": {
+			reportData: []byte("report data"),
+			savedQuote: []byte("quote"),
+			issuer:     stubIssuer{},
+		},
+		"issuer error": {
+			reportData: []byte("report data"),
+			savedQuote: []byte("quote"),
+			issuer:     stubIssuer{err: assert.AnError},
+			wantErr:    true,
+		},
+		"OE_UNSUPPORTED error is ignored": {
+			issuer: stubIssuer{err: errors.New("OE_UNSUPPORTED")},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
+
+			zapLogger := zaptest.NewLogger(t)
+			core := Core{
+				qi:    &tc.issuer,
+				log:   zapLogger,
+				quote: tc.savedQuote,
+			}
+
+			quote, err := core.GetQuote(tc.reportData)
+			if tc.wantErr {
+				assert.Error(err)
+				return
+			}
+			assert.NoError(err)
+			if len(tc.reportData) == 0 {
+				assert.Equal(tc.savedQuote, quote)
+			} else {
+				assert.Equal(tc.reportData, quote) // stubIssuer returns the input message as quote
+			}
+		})
+	}
+}
+
+type stubIssuer struct {
+	err error
+}
+
+func (s *stubIssuer) Issue(message []byte) ([]byte, error) {
+	return message, s.err
 }
