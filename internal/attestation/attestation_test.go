@@ -12,8 +12,10 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
+	"fmt"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -187,7 +189,11 @@ func TestGetCertificate(t *testing.T) {
 			var cert string
 
 			server, addr, expectedCert := newServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				assert.Equal("/quote", r.RequestURI)
+				if tc.nonce != nil {
+					assert.Equal(fmt.Sprintf("/api/v2/quote?nonce=%s", base64.URLEncoding.EncodeToString(tc.nonce)), r.RequestURI)
+				} else {
+					assert.Equal("/quote", r.RequestURI)
+				}
 				writeJSON(w, certQuoteResp{cert, quote})
 			}))
 			defer server.Close()

@@ -45,7 +45,7 @@ type core interface {
 	GenerateSecrets(
 		map[string]manifest.Secret, uuid.UUID, *x509.Certificate, *ecdsa.PrivateKey, *ecdsa.PrivateKey,
 	) (map[string]manifest.Secret, error)
-	GetQuote() []byte
+	GetQuote(reportData []byte) ([]byte, error)
 	GenerateQuote([]byte) error
 }
 
@@ -93,7 +93,7 @@ func New(txHandle transactionHandle, recovery recovery.Recovery, core core, log 
 //
 // Returns the remote attestation quote of its own certificate alongside this certificate,
 // which allows to verify the Coordinator's integrity and authentication for use of the ClientAPI.
-func (a *ClientAPI) GetCertQuote(ctx context.Context) (cert string, certQuote []byte, err error) {
+func (a *ClientAPI) GetCertQuote(ctx context.Context, nonce []byte) (cert string, certQuote []byte, err error) {
 	a.log.Info("GetCertQuote called")
 	defer a.core.Unlock()
 	if err := a.core.RequireState(ctx, state.AcceptingManifest, state.AcceptingMarbles, state.Recovery); err != nil {
@@ -139,8 +139,18 @@ func (a *ClientAPI) GetCertQuote(ctx context.Context) (cert string, certQuote []
 		return "", nil, errors.New("pem.EncodeToMemory failed for intermediate certificate")
 	}
 
+	// Get existing quote for root cert, or generate a new one over provided nonce
+	var reportData []byte
+	if len(nonce) > 0 {
+		reportData = append(rootCert.Raw, nonce...)
+	}
+	quote, err := a.core.GetQuote(reportData)
+	if err != nil {
+		return "", nil, fmt.Errorf("getting quote: %w", err)
+	}
+
 	a.log.Info("GetCertQuote successful")
-	return string(pemCertIntermediate) + string(pemCertRoot), a.core.GetQuote(), nil
+	return string(pemCertIntermediate) + string(pemCertRoot), quote, nil
 }
 
 // GetManifestSignature returns the hash of the manifest.

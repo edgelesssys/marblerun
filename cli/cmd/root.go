@@ -67,6 +67,7 @@ To install and configure MarbleRun, run:
 	rootCmd.PersistentFlags().BoolP("insecure", "i", false, "Set to skip quote verification, needed when running in simulation mode")
 	rootCmd.PersistentFlags().StringSlice("accepted-tcb-statuses", []string{"UpToDate", "SWHardeningNeeded"}, "Comma-separated list of user accepted TCB statuses")
 	rootCmd.PersistentFlags().StringP("namespace", "n", helm.Namespace, "Kubernetes namespace of the MarbleRun installation")
+	rootCmd.PersistentFlags().String("nonce", "", "(Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)")
 
 	must(rootCmd.MarkPersistentFlagFilename("coordinator-cert", "pem", "crt"))
 	must(rootCmd.MarkPersistentFlagFilename("era-config", "json"))

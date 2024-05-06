@@ -55,9 +55,11 @@ func TestGetCertQuote(t *testing.T) {
 	}
 
 	testCases := map[string]struct {
-		store   store.Store
-		core    *fakeCore
-		wantErr bool
+		store     store.Store
+		core      *fakeCore
+		nonce     []byte
+		wantQuote []byte
+		wantErr   bool
 	}{
 		"success state accepting Marbles": {
 			store: prepareDefaultStore(),
@@ -65,6 +67,7 @@ func TestGetCertQuote(t *testing.T) {
 				state: state.AcceptingMarbles,
 				quote: []byte("quote"),
 			},
+			wantQuote: []byte("quote"),
 		},
 		"success state accepting manifest": {
 			store: prepareDefaultStore(),
@@ -72,6 +75,7 @@ func TestGetCertQuote(t *testing.T) {
 				state: state.AcceptingManifest,
 				quote: []byte("quote"),
 			},
+			wantQuote: []byte("quote"),
 		},
 		"success state recovery": {
 			store: prepareDefaultStore(),
@@ -79,6 +83,7 @@ func TestGetCertQuote(t *testing.T) {
 				state: state.Recovery,
 				quote: []byte("quote"),
 			},
+			wantQuote: []byte("quote"),
 		},
 		"unsupported state": {
 			store: prepareDefaultStore(),
@@ -120,6 +125,15 @@ func TestGetCertQuote(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		"get quote with nonce": {
+			store: prepareDefaultStore(),
+			core: &fakeCore{
+				state: state.AcceptingMarbles,
+				quote: []byte("quote"),
+			},
+			nonce:     []byte("nonce"),
+			wantQuote: []byte("nonce" + "quote"),
+		},
 	}
 
 	for name, tc := range testCases {
@@ -141,14 +155,14 @@ func TestGetCertQuote(t *testing.T) {
 				rootCert = testutil.GetCertificate(t, tc.store, constants.SKCoordinatorRootCert)
 			}
 
-			cert, quote, err := api.GetCertQuote(context.Background())
+			cert, quote, err := api.GetCertQuote(context.Background(), tc.nonce)
 			if tc.wantErr {
 				assert.Error(err)
 				return
 			}
 
 			require.NoError(err)
-			assert.Equal(tc.core.quote, quote)
+			assert.Equal(tc.wantQuote, quote)
 			assert.Equal(mustEncodeToPem(t, intermediateCert)+mustEncodeToPem(t, rootCert), cert)
 		})
 	}
@@ -715,8 +729,11 @@ func (c *fakeCore) GenerateSecrets(
 	return secrets, nil
 }
 
-func (c *fakeCore) GetQuote() []byte {
-	return c.quote
+func (c *fakeCore) GetQuote(reportData []byte) ([]byte, error) {
+	if reportData != nil {
+		return append([]byte("nonce"), c.quote...), nil
+	}
+	return c.quote, nil
 }
 
 func (c *fakeCore) GenerateQuote(quoteData []byte) error {

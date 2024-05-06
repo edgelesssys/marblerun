@@ -33,7 +33,7 @@ import (
 
 type clientAPI interface {
 	SetManifest(ctx context.Context, rawManifest []byte) (recoverySecretMap map[string][]byte, err error)
-	GetCertQuote(context.Context) (cert string, certQuote []byte, err error)
+	GetCertQuote(ctx context.Context, nonce []byte) (cert string, certQuote []byte, err error)
 	GetManifestSignature(context.Context) (manifestSignatureRootECDSA, manifestSignature, manifest []byte)
 	GetSecrets(ctx context.Context, requestedSecrets []string, requestUser *user.User) (map[string]manifest.Secret, error)
 	GetStatus(context.Context) (statusCode state.State, status string, err error)
@@ -90,24 +90,27 @@ func RunMarbleServer(core *core.Core, addr string, addrChan chan string, errChan
 
 // CreateServeMux creates a mux that serves the client API.
 func CreateServeMux(api clientAPI, promFactory *promauto.Factory) serveMux {
-	server := clientAPIServer{api}
+	serverV1 := clientAPIServer{api}
+	serverV2 := clientAPIServerV2{api}
 	var router serveMux
 	if promFactory != nil {
 		muxRouter := newPromServeMux(promFactory, "server", "client_api")
-		muxRouter.setMethodNotAllowedHandler(server.methodNotAllowedHandler)
+		muxRouter.setMethodNotAllowedHandler(methodNotAllowedHandler)
 		router = muxRouter
 	} else {
 		muxRouter := http.NewServeMux()
-		muxRouter.HandleFunc("/", server.methodNotAllowedHandler)
+		muxRouter.HandleFunc("/", methodNotAllowedHandler)
 		router = muxRouter
 	}
 
-	router.HandleFunc("/manifest", server.handleGetPost(server.manifestGet, server.manifestPost))
-	router.HandleFunc("/update", server.handleGetPost(server.updateGet, server.updatePost))
-	router.HandleFunc("/secrets", server.handleGetPost(server.secretsGet, server.secretsPost))
-	router.HandleFunc("/status", server.handleGetPost(server.statusGet, server.methodNotAllowedHandler))
-	router.HandleFunc("/quote", server.handleGetPost(server.quoteGet, server.methodNotAllowedHandler))
-	router.HandleFunc("/recover", server.handleGetPost(server.methodNotAllowedHandler, server.recoverPost))
+	router.HandleFunc("/manifest", handleGetPost(serverV1.manifestGet, serverV1.manifestPost))
+	router.HandleFunc("/update", handleGetPost(serverV1.updateGet, serverV1.updatePost))
+	router.HandleFunc("/secrets", handleGetPost(serverV1.secretsGet, serverV1.secretsPost))
+	router.HandleFunc("/status", handleGetPost(serverV1.statusGet, methodNotAllowedHandler))
+	router.HandleFunc("/quote", handleGetPost(serverV1.quoteGet, methodNotAllowedHandler))
+	router.HandleFunc("/recover", handleGetPost(methodNotAllowedHandler, serverV1.recoverPost))
+
+	router.HandleFunc("/api/v2/quote", handleGetPost(serverV2.quoteGet, methodNotAllowedHandler))
 	return router
 }
 

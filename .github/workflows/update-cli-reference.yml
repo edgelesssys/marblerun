@@ -25,7 +25,7 @@ jobs:
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Generate reference docs
-        run: go run . | cat header.md - > ../../cli.md
+        run: XDG_CONFIG_HOME=\$HOME/.config go run . | cat header.md - > ../../cli.md
         working-directory: hack/clidocgen
 
       - name: Get commit sha

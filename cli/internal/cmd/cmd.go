@@ -42,6 +42,8 @@ type restFlags struct {
 	// acceptedTCBStatuses is a list of TCB statuses that are accepted by the CLI.
 	// This can be used to allow connections to Coordinator instances running on outdated hardware or firmware.
 	acceptedTCBStatuses []string
+	// nonce is a user supplied nonce to be used in the attestation process.
+	nonce []byte
 }
 
 // parseRestFlags parses the command line flags used to configure the REST client.
@@ -62,12 +64,17 @@ func parseRestFlags(flags *pflag.FlagSet) (restFlags, error) {
 	if err != nil {
 		return restFlags{}, err
 	}
+	nonce, err := flags.GetString("nonce")
+	if err != nil {
+		return restFlags{}, err
+	}
 
 	return restFlags{
 		k8sNamespace:        k8snamespace,
 		eraConfig:           eraConfig,
 		insecure:            insecure,
 		acceptedTCBStatuses: acceptedTCBStatuses,
+		nonce:               []byte(nonce),
 	}, nil
 }
 

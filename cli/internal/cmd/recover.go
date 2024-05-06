@@ -51,7 +51,7 @@ func runRecover(cmd *cobra.Command, args []string) error {
 	// Therefore we need to verify the Coordinator is running in the expected enclave instead
 	caCert, err := rest.VerifyCoordinator(
 		cmd.Context(), cmd.OutOrStdout(), hostname,
-		flags.eraConfig, flags.k8sNamespace, flags.insecure, flags.acceptedTCBStatuses,
+		flags.eraConfig, flags.k8sNamespace, flags.nonce, flags.insecure, flags.acceptedTCBStatuses,
 	)
 	if err != nil {
 		return err
