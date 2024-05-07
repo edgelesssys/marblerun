@@ -218,7 +218,7 @@ func VerifyCoordinator(ctx context.Context, out io.Writer, host string, opts Ver
 
 	if opts.SGXQuotePath != "" {
 		if err := os.WriteFile(opts.SGXQuotePath, rawQuote, 0o644); err != nil {
-			return pemBlock, fmt.Errorf("error saving SGX quote to disk: %s", err)
+			return nil, fmt.Errorf("saving SGX quote to disk: %w", err)
 		}
 	}
 
