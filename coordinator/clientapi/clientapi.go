@@ -13,11 +13,13 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
 
+	"github.com/edgelesssys/ego/enclave"
 	"github.com/edgelesssys/marblerun/coordinator/constants"
 	"github.com/edgelesssys/marblerun/coordinator/crypto"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
@@ -60,6 +62,21 @@ type updateLog interface {
 	Info(msg string, fields ...zapcore.Field)
 	Reset()
 	String() string
+}
+
+// QuoteVerifyError is returned if a given quote could not be verified.
+type QuoteVerifyError struct {
+	err error
+}
+
+// Error returns the error message.
+func (e QuoteVerifyError) Error() string {
+	return fmt.Sprintf("quote verification failed: %s", e.err)
+}
+
+// Unwrap returns the wrapped error.
+func (e QuoteVerifyError) Unwrap() error {
+	return e.err
 }
 
 // ClientAPI implements the client API.
@@ -740,4 +757,42 @@ func (a *ClientAPI) WriteSecrets(ctx context.Context, rawSecretManifest []byte, 
 	}
 
 	return commit(ctx)
+}
+
+// SignQuote verifies the quote and signs it with the Coordinator's root key.
+func (a *ClientAPI) SignQuote(ctx context.Context, quote []byte) (signedQuote []byte, tcbStatus string, err error) {
+	a.log.Info("SignQuote called")
+	defer func() {
+		if err != nil {
+			a.log.Error("SignQuote failed", zap.Error(err))
+		} else {
+			a.log.Info("SignQuote successful")
+		}
+	}()
+
+	// Verify the quote
+	var verifyErr error
+	report, err := enclave.VerifyRemoteReport(quote)
+	if err != nil {
+		return nil, "", &QuoteVerifyError{err}
+	}
+
+	// Sign quote and TCB status using Coordinator's root key
+	txdata, rollback, _, err := wrapper.WrapTransaction(ctx, a.txHandle)
+	if err != nil {
+		return nil, "", err
+	}
+	defer rollback()
+	rootKey, err := txdata.GetPrivateKey(constants.SKCoordinatorRootKey)
+	if err != nil {
+		return nil, "", fmt.Errorf("loading root private key from store: %w", err)
+	}
+
+	hash := sha256.Sum256([]byte(base64.StdEncoding.EncodeToString(quote) + report.TCBStatus.String()))
+	signature, err := ecdsa.SignASN1(rand.Reader, rootKey, hash[:])
+	if err != nil {
+		return nil, "", fmt.Errorf("signing quote: %w", err)
+	}
+
+	return signature, report.TCBStatus.String(), verifyErr
 }
