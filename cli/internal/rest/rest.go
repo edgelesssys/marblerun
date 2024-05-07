@@ -48,6 +48,24 @@ const (
 	dataField        = "data"
 )
 
+// VerifyCoordinatorOptions defines the options for verifying the connection to the MarbleRun Coordinator.
+type VerifyCoordinatorOptions struct {
+	// ConfigFilename is the path to the era config file.
+	ConfigFilename string
+	// K8sNamespace is the namespace of the MarbleRun installation.
+	// We use this to try to find the Coordinator when retrieving the era config.
+	K8sNamespace string
+	// Insecure is a flag to disable TLS verification.
+	Insecure bool
+	// AcceptedTCBStatuses is a list of TCB statuses that are accepted by the CLI.
+	// This can be used to allow connections to Coordinator instances running on outdated hardware or firmware.
+	AcceptedTCBStatuses []string
+	// Nonce is a user supplied nonce to be used in the attestation process.
+	Nonce []byte
+	// SGXQuotePath is the path to save SGX quote file.
+	SGXQuotePath string
+}
+
 // Client is a REST client for the MarbleRun Coordinator.
 type Client struct {
 	client *http.Client
@@ -155,30 +173,27 @@ func (c *Client) do(req *http.Request) ([]byte, error) {
 }
 
 // VerifyCoordinator verifies the connection to the MarbleRun Coordinator.
-func VerifyCoordinator(
-	ctx context.Context, out io.Writer, host, configFilename, k8sNamespace string,
-	nonce []byte, insecure bool, acceptedTCBStatuses []string,
-) ([]*pem.Block, error) {
+func VerifyCoordinator(ctx context.Context, out io.Writer, host string, opts VerifyCoordinatorOptions) ([]*pem.Block, error) {
 	// skip verification if specified
-	if insecure {
+	if opts.Insecure {
 		fmt.Fprintln(out, "Warning: skipping quote verification")
 		certs, _, err := attestation.InsecureGetCertificate(ctx, host)
 		return certs, err
 	}
 
-	if configFilename == "" {
-		configFilename = eraDefaultConfig
+	if opts.ConfigFilename == "" {
+		opts.ConfigFilename = eraDefaultConfig
 
 		// reuse existing config from current working directory if none specified
 		// or try to get latest config from github if it does not exist
-		if _, err := os.Stat(configFilename); err == nil {
+		if _, err := os.Stat(opts.ConfigFilename); err == nil {
 			fmt.Fprintln(out, "Reusing existing config file")
-		} else if err := fetchLatestCoordinatorConfiguration(ctx, out, k8sNamespace); err != nil {
+		} else if err := fetchLatestCoordinatorConfiguration(ctx, out, opts.K8sNamespace); err != nil {
 			return nil, err
 		}
 	}
 
-	eraCfgRaw, err := os.ReadFile(configFilename)
+	eraCfgRaw, err := os.ReadFile(opts.ConfigFilename)
 	if err != nil {
 		return nil, fmt.Errorf("reading era config file: %w", err)
 	}
@@ -188,8 +203,8 @@ func VerifyCoordinator(
 		return nil, fmt.Errorf("unmarshalling era config: %w", err)
 	}
 
-	pemBlock, tcbStatus, _, err := attestation.GetCertificate(ctx, host, nonce, eraCfg)
-	validity, err := tcb.CheckStatus(tcbStatus, err, acceptedTCBStatuses)
+	pemBlock, tcbStatus, rawQuote, err := attestation.GetCertificate(ctx, host, opts.Nonce, eraCfg)
+	validity, err := tcb.CheckStatus(tcbStatus, err, opts.AcceptedTCBStatuses)
 	if err != nil {
 		return nil, err
 	}
@@ -200,6 +215,13 @@ func VerifyCoordinator(
 	default:
 		fmt.Fprintln(out, "Warning: TCB level invalid, but accepted by configuration:", tcbStatus)
 	}
+
+	if opts.SGXQuotePath != "" {
+		if err := os.WriteFile(opts.SGXQuotePath, rawQuote, 0o644); err != nil {
+			return nil, fmt.Errorf("saving SGX quote to disk: %w", err)
+		}
+	}
+
 	return pemBlock, nil
 }
 
