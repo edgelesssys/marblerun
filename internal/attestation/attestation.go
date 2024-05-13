@@ -89,7 +89,7 @@ func getCertificate(ctx context.Context, host string, nonce []byte, config Confi
 	}
 
 	report, verifyErr := verifyRemoteReport(quote)
-	if verifyErr != nil && verifyErr != attestation.ErrTCBLevelInvalid {
+	if verifyErr != nil && !errors.Is(verifyErr, attestation.ErrTCBLevelInvalid) {
 		return nil, tcbstatus.Unknown, quote, verifyErr
 	}
 

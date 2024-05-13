@@ -7,7 +7,6 @@
 package server
 
 import (
-	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -116,11 +115,7 @@ func (s *clientAPIServer) manifestPost(w http.ResponseWriter, r *http.Request) {
 
 	// If recovery data is set, return it
 	if len(recoverySecretMap) > 0 {
-		secretMap := make(map[string]string, len(recoverySecretMap))
-		for name, secret := range recoverySecretMap {
-			secretMap[name] = base64.StdEncoding.EncodeToString(secret)
-		}
-		writeJSON(w, RecoveryDataResp{secretMap})
+		writeJSON(w, RecoveryDataResp{recoverySecretMap})
 	} else {
 		writeJSON(w, nil)
 	}

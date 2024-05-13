@@ -80,22 +80,16 @@ func TestManifestWithRecoveryKey(t *testing.T) {
 	require.Equal(http.StatusOK, resp.Code)
 
 	// Decode JSON response from server
-	var b64EncryptedRecoveryData RecoveryDataResp
+	var encryptedRecoveryData RecoveryDataResp
 	b64EncryptedRecoveryDataJSON := gjson.Get(resp.Body.String(), "data")
-	require.NoError(json.Unmarshal([]byte(b64EncryptedRecoveryDataJSON.String()), &b64EncryptedRecoveryData))
+	require.NoError(json.Unmarshal([]byte(b64EncryptedRecoveryDataJSON.String()), &encryptedRecoveryData))
 
-	var encryptedRecoveryData []byte
-
-	for _, value := range b64EncryptedRecoveryData.RecoverySecrets {
-		var err error
-		encryptedRecoveryData, err = base64.StdEncoding.DecodeString(value)
+	for _, encryptedRecoveryData := range encryptedRecoveryData.RecoverySecrets {
+		// Decrypt recovery data and see if it matches the key used by the mock sealer
+		recoveryData, err := util.DecryptOAEP(test.RecoveryPrivateKey, encryptedRecoveryData)
 		require.NoError(err)
+		require.NotNil(recoveryData)
 	}
-
-	// Decrypt recovery data and see if it matches the key used by the mock sealer
-	recoveryData, err := util.DecryptOAEP(test.RecoveryPrivateKey, encryptedRecoveryData)
-	require.NoError(err)
-	require.NotNil(recoveryData)
 }
 
 func TestGetUpdateLog(t *testing.T) {

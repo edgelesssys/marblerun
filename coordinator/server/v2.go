@@ -8,7 +8,9 @@ package server
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 )
 
@@ -36,4 +38,44 @@ func (s *clientAPIServerV2) quoteGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, CertQuoteResp{cert, quote})
+}
+
+// recoverPost performs recovery of the Coordinator enclave when unsealing of the existing state fails.
+// This API endpoint is only available when the coordinator is in recovery mode.
+func (s *clientAPIServerV2) recoverPost(w http.ResponseWriter, r *http.Request) {
+	var req RecoveryV2Request
+	if err := json.NewDecoder(io.LimitReader(r.Body, 2048)).Decode(&req); err != nil {
+		writeJSONFailure(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Perform recover and receive amount of remaining secrets (for multi-party recovery)
+	remaining, err := s.api.Recover(r.Context(), req.RecoverySecret)
+	if err != nil {
+		writeJSONError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Construct status message based on remaining keys
+	var statusMessage string
+	if remaining != 0 {
+		statusMessage = fmt.Sprintf("Secret was processed successfully. Upload the next secret. Remaining secrets: %d", remaining)
+	} else {
+		statusMessage = "Recovery successful."
+	}
+
+	writeJSON(w, RecoveryV2Resp{
+		Remaining: remaining,
+		Message:   statusMessage,
+	})
+}
+
+// writeJSONFailure wires a JSend failure response to the client.
+func writeJSONFailure(w http.ResponseWriter, v interface{}, httpErrorCode int) {
+	w.Header().Set("Content-Type", "application/json")
+	dataToReturn := GeneralResponse{Status: "fail", Data: v}
+	w.WriteHeader(httpErrorCode)
+	if err := json.NewEncoder(w).Encode(dataToReturn); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }

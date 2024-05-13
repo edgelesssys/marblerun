@@ -54,7 +54,21 @@ type ManifestSignatureResp struct {
 type RecoveryDataResp struct {
 	// An array containing key-value mappings for encrypted secrets to be used for recovering the Coordinator in case of disaster recovery.
 	// The key matches each supplied key from RecoveryKeys in the manifest.
-	RecoverySecrets map[string]string
+	RecoverySecrets map[string][]byte
+}
+
+// RecoveryV2Request is the request structure for the recovery process.
+type RecoveryV2Request struct {
+	// RecoverySecret is the decrypted secret (or secret share) to recover the Coordinator.
+	RecoverySecret []byte `json:"recoverySecret"`
+}
+
+// RecoveryV2Resp contains the response for the recovery process.
+type RecoveryV2Resp struct {
+	// Remaining is the number of remaining secret shares to finish the recovery process.
+	Remaining int `json:"remaining"`
+	// Message is a human readable message about the recovery process.
+	Message string `json:"message"`
 }
 
 // RecoveryStatusResp contains the status of the recovery process.

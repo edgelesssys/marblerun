@@ -111,6 +111,7 @@ func CreateServeMux(api clientAPI, promFactory *promauto.Factory) serveMux {
 	router.HandleFunc("/recover", handleGetPost(methodNotAllowedHandler, serverV1.recoverPost))
 
 	router.HandleFunc("/api/v2/quote", handleGetPost(serverV2.quoteGet, methodNotAllowedHandler))
+	router.HandleFunc("/api/v2/recover", handleGetPost(methodNotAllowedHandler, serverV2.recoverPost))
 	return router
 }
 
