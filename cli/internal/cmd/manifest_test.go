@@ -213,16 +213,16 @@ func TestGetSignatureFromString(t *testing.T) {
 
 	testValue := []byte(`{"TestSignature": "signature"}`)
 	hash := sha256.Sum256(testValue)
-	directSignature := hex.EncodeToString(hash[:])
+	directSignature := hash[:]
 
 	testCases := map[string]struct {
 		signature string
-		expected  string
+		expected  []byte
 		fs        afero.Afero
 		wantErr   bool
 	}{
 		"direct signature": {
-			signature: directSignature,
+			signature: hex.EncodeToString(directSignature),
 			expected:  directSignature,
 			fs:        afero.Afero{Fs: afero.NewMemMapFs()},
 		},
@@ -237,9 +237,9 @@ func TestGetSignatureFromString(t *testing.T) {
 		},
 		"yaml manifest file": {
 			signature: "testSignature",
-			expected: func() string {
+			expected: func() []byte {
 				hash := sha256.Sum256([]byte(`{"TestSignature":"signature"}`)) // JSON converted from YAML has no whitespace
-				return hex.EncodeToString(hash[:])
+				return hash[:]
 			}(),
 			fs: func() afero.Afero {
 				fs := afero.Afero{Fs: afero.NewMemMapFs()}

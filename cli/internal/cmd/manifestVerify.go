@@ -59,6 +59,8 @@ func runManifestVerify(cmd *cobra.Command, args []string) error {
 }
 
 // getSignatureFromString checks if a string is a file or a valid signature.
+// If the string is a file, it returns the signature of the file (sha256 hash),
+// otherwise it returns the decoded signature.
 func getSignatureFromString(manifest string, fs afero.Fs) ([]byte, error) {
 	if _, err := fs.Stat(manifest); err != nil {
 		if !errors.Is(err, afero.ErrFileNotFound) {

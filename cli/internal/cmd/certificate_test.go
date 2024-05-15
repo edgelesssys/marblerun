@@ -180,6 +180,7 @@ func TestCertificateChain(t *testing.T) {
 			root: &x509.Certificate{
 				Raw: []byte("ROOT CERTIFICATE"),
 			},
+			wantErr: true,
 		},
 		"multiple certs": {
 			file: file.New("unit-test", afero.NewMemMapFs()),
