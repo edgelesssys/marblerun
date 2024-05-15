@@ -7,8 +7,8 @@
 package cmd
 
 import (
+	"crypto/x509"
 	"encoding/pem"
-	"errors"
 	"fmt"
 	"io"
 
@@ -32,18 +32,15 @@ func newCertificateChain() *cobra.Command {
 }
 
 // saveCertChain saves the certificate chain of the MarbleRun Coordinator.
-func saveCertChain(out io.Writer, certFile *file.Handler, certs []*pem.Block) error {
-	if len(certs) == 0 {
-		return errors.New("no certificates received from Coordinator")
-	}
-	if len(certs) == 1 {
-		fmt.Fprintln(out, "WARNING: Only received root certificate from Coordinator")
+func saveCertChain(out io.Writer, certFile *file.Handler, rootCert, intermediateCert *x509.Certificate) error {
+	if rootCert == nil || intermediateCert == nil {
+		return fmt.Errorf("root and intermediate certificates must not be nil")
 	}
 
-	var chain []byte
-	for _, cert := range certs {
-		chain = append(chain, pem.EncodeToMemory(cert)...)
-	}
+	chain := append(
+		pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: intermediateCert.Raw}),
+		pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: rootCert.Raw})...,
+	)
 
 	if err := certFile.Write(chain, file.OptOverwrite); err != nil {
 		return err

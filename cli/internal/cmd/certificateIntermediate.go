@@ -7,8 +7,8 @@
 package cmd
 
 import (
+	"crypto/x509"
 	"encoding/pem"
-	"errors"
 	"fmt"
 	"io"
 
@@ -32,11 +32,15 @@ func newCertificateIntermediate() *cobra.Command {
 }
 
 // cliCertificateIntermediate saves the intermediate certificate of the MarbleRun Coordinator.
-func saveIntermediateCert(out io.Writer, certFile *file.Handler, certs []*pem.Block) error {
-	if len(certs) < 2 {
-		return errors.New("no intermediate certificate received from Coordinator")
+func saveIntermediateCert(out io.Writer, certFile *file.Handler, _, intermediate *x509.Certificate) error {
+	if intermediate == nil {
+		return fmt.Errorf("intermediate certificate must not be nil")
 	}
-	if err := certFile.Write(pem.EncodeToMemory(certs[0]), file.OptOverwrite); err != nil {
+
+	if err := certFile.Write(pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: intermediate.Raw,
+	}), file.OptOverwrite); err != nil {
 		return err
 	}
 	fmt.Fprintf(out, "Intermediate certificate written to %s\n", certFile.Name())
