@@ -14,6 +14,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -121,14 +122,31 @@ func VerifyMarbleRunDeployment(ctx context.Context, endpoint string, opts Verify
 	}
 
 	// Verify that the Coordinator is using the expected manifest
-	deploymentManifest, err := ManifestGet(ctx, endpoint, rootCert)
+	_, remoteHashHex, _, err := ManifestGet(ctx, endpoint, rootCert)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("getting Coordinator manifest: %w", err)
 	}
+
+	if remoteHashHex == "" {
+		return nil, nil, nil, errors.New("Coordinator returned no manifest signature. Is the Coordinator in the correct state?")
+	}
+
+	remoteHash, err := hex.DecodeString(remoteHashHex)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("decoding Coordinator manifest hash: %w", err)
+	}
+
 	localHash := sha256.Sum256(manifest)
-	remoteHash := sha256.Sum256(deploymentManifest)
-	if !bytes.Equal(localHash[:], remoteHash[:]) {
-		return nil, nil, nil, fmt.Errorf("MarbleRun deployment is using a different manifest than expected: %x != %x", remoteHash, localHash)
+	// If the given data is exactly 32 bytes, assume it is already a hash of the manifest
+	if len(manifest) == sha256.Size {
+		localHash = [32]byte(manifest)
+	}
+
+	if !bytes.Equal(localHash[:], remoteHash) {
+		return nil, nil, nil, fmt.Errorf(
+			"MarbleRun deployment is using a different manifest than expected: manifest hash does not match local hash: %q != %q",
+			remoteHashHex, hex.EncodeToString(localHash[:]),
+		)
 	}
 	return rootCert, intermediateCert, sgxQuote, nil
 }
@@ -198,24 +216,22 @@ func GetStatus(ctx context.Context, endpoint string, trustedRoot *x509.Certifica
 }
 
 // ManifestGet retrieves the manifest of a MarbleRun deployment.
-func ManifestGet(ctx context.Context, endpoint string, trustedRoot *x509.Certificate) ([]byte, error) {
+func ManifestGet(ctx context.Context, endpoint string, trustedRoot *x509.Certificate) (manifest []byte, manifestHash string, manifestSignatureECDSA []byte, err error) {
 	client, err := rest.NewClient(endpoint, trustedRoot, nil, false)
 	if err != nil {
-		return nil, err
+		return nil, "", nil, err
 	}
 	resp, err := client.Get(ctx, rest.ManifestEndpoint, http.NoBody)
 	if err != nil {
-		return nil, err
+		return nil, "", nil, err
 	}
 
-	var response struct {
-		Manifest []byte `json:"Manifest"`
-	}
+	var response server.ManifestSignatureResp
 	if err := json.Unmarshal(resp, &response); err != nil {
-		return nil, err
+		return nil, "", nil, err
 	}
 
-	return response.Manifest, nil
+	return response.Manifest, response.ManifestSignature, response.ManifestSignatureRootECDSA, nil
 }
 
 // ManifestLog retrieves the update log of a MarbleRun deployment.
@@ -262,8 +278,8 @@ func ManifestUpdateApply(ctx context.Context, endpoint string, trustedRoot *x509
 }
 
 // ManifestUpdateGet retrieves a pending manifest update of a MarbleRun deployment.
-func ManifestUpdateGet(ctx context.Context, endpoint string, trustedRoot *x509.Certificate, clientKeyPair *tls.Certificate) (pendingManifest []byte, missingUsers []string, err error) {
-	client, err := rest.NewClient(endpoint, trustedRoot, clientKeyPair, false)
+func ManifestUpdateGet(ctx context.Context, endpoint string, trustedRoot *x509.Certificate) (pendingManifest []byte, missingUsers []string, err error) {
+	client, err := rest.NewClient(endpoint, trustedRoot, nil, false)
 	if err != nil {
 		return nil, nil, err
 	}

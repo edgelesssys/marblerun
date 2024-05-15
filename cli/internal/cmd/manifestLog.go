@@ -7,11 +7,13 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
-	"net/http"
+	"strings"
 
+	"github.com/edgelesssys/marblerun/api"
+	"github.com/edgelesssys/marblerun/cli/internal/certcache"
 	"github.com/edgelesssys/marblerun/cli/internal/file"
-	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 )
@@ -39,34 +41,34 @@ func runManifestLog(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	insecureTLS, err := cmd.Flags().GetBool("insecure")
+
+	root, _, err := certcache.LoadCoordinatorCachedCert(cmd.Flags(), fs)
 	if err != nil {
 		return err
 	}
 
-	caCert, err := rest.LoadCoordinatorCachedCert(cmd.Flags(), fs)
-	if err != nil {
-		return err
-	}
-
-	client, err := rest.NewClient(hostname, caCert, nil, insecureTLS)
-	if err != nil {
-		return err
+	getManifestLog := func(ctx context.Context) ([]string, error) {
+		return api.ManifestLog(ctx, hostname, root)
 	}
 
 	cmd.Println("Successfully verified Coordinator, now requesting update log")
-	return cliManifestLog(cmd, file.New(output, fs), client)
+	return cliManifestLog(cmd, file.New(output, fs), getManifestLog)
 }
 
-func cliManifestLog(cmd *cobra.Command, logFile *file.Handler, client getter) error {
-	resp, err := client.Get(cmd.Context(), rest.UpdateEndpoint, http.NoBody)
+func cliManifestLog(
+	cmd *cobra.Command, logFile *file.Handler,
+	getManifetLog func(context.Context) ([]string, error),
+) error {
+	log, err := getManifetLog(cmd.Context())
 	if err != nil {
 		return fmt.Errorf("retrieving update log: %w", err)
 	}
 
+	logStr := strings.Join(log, "\n")
+
 	if logFile != nil {
-		return logFile.Write(resp, file.OptOverwrite)
+		return logFile.Write([]byte(logStr), file.OptOverwrite)
 	}
-	cmd.Printf("Update log:\n%s", resp)
+	cmd.Printf("Update log:\n%s\n", logStr)
 	return nil
 }

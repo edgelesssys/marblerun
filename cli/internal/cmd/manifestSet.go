@@ -7,12 +7,13 @@
 package cmd
 
 import (
-	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 
+	"github.com/edgelesssys/marblerun/api"
+	"github.com/edgelesssys/marblerun/cli/internal/certcache"
 	"github.com/edgelesssys/marblerun/cli/internal/file"
-	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/yaml"
@@ -43,21 +44,15 @@ func runManifestSet(cmd *cobra.Command, args []string) (retErr error) {
 		return err
 	}
 
-	verifyOpts, err := parseRestFlags(cmd.Flags())
+	verifyOpts, sgxQuotePath, err := parseRestFlags(cmd)
 	if err != nil {
 		return err
 	}
 
-	caCert, err := rest.VerifyCoordinator(cmd.Context(), cmd.OutOrStdout(), hostname, verifyOpts)
+	root, intermediate, sgxQuote, err := api.VerifyCoordinator(cmd.Context(), hostname, verifyOpts)
 	if err != nil {
 		return err
 	}
-
-	client, err := rest.NewClient(hostname, caCert, nil, verifyOpts.Insecure)
-	if err != nil {
-		return err
-	}
-
 	cmd.Println("Successfully verified Coordinator, now uploading manifest")
 
 	manifest, err := loadManifestFile(file.New(manifestFile, fs))
@@ -67,34 +62,53 @@ func runManifestSet(cmd *cobra.Command, args []string) (retErr error) {
 	signature := cliManifestSignature(manifest)
 	cmd.Printf("Manifest signature: %s\n", signature)
 
-	if err := cliManifestSet(cmd, manifest, file.New(recoveryFilename, afero.NewOsFs()), client); err != nil {
+	manifestSet := func(ctx context.Context) (map[string][]byte, error) {
+		return api.ManifestSet(ctx, hostname, root, manifest)
+	}
+	if err := cliManifestSet(cmd, manifest, file.New(recoveryFilename, afero.NewOsFs()), manifestSet); err != nil {
 		return err
 	}
 
+	if err := saveSgxQuote(fs, sgxQuote, sgxQuotePath); err != nil {
+		return err
+	}
 	// Save the certificate of this Coordinator instance to disk
-	return rest.SaveCoordinatorCachedCert(cmd.Flags(), fs, caCert)
+	return certcache.SaveCoordinatorCachedCert(cmd.Flags(), fs, root, intermediate)
 }
 
 // cliManifestSet sets the Coordinators manifest using its rest api.
-func cliManifestSet(cmd *cobra.Command, manifest []byte, recFile *file.Handler, client poster) error {
-	resp, err := client.Post(cmd.Context(), rest.ManifestEndpoint, rest.ContentJSON, bytes.NewReader(manifest))
+func cliManifestSet(
+	cmd *cobra.Command, manifest []byte, recFile *file.Handler,
+	setManifest func(context.Context) (map[string][]byte, error),
+) error {
+	recoveryData, err := setManifest(cmd.Context())
 	if err != nil {
 		return fmt.Errorf("setting manifest: %w", err)
 	}
 	cmd.Println("Manifest successfully set")
 
 	// Skip outputting secrets if we do not get any recovery secrets back
-	if len(resp) == 0 {
+	if len(recoveryData) == 0 {
 		return nil
 	}
+
 	// recovery secret was sent, print or save to file
+	wrappedRecoveryData := struct {
+		RecoverySecrets map[string][]byte `json:"RecoverySecrets"`
+	}{
+		RecoverySecrets: recoveryData,
+	}
+	recoveryDataJSON, err := json.Marshal(wrappedRecoveryData)
+	if err != nil {
+		return fmt.Errorf("marshalling recovery data: %w", err)
+	}
 	if recFile != nil {
-		if err := recFile.Write(resp, file.OptOverwrite); err != nil {
+		if err := recFile.Write(recoveryDataJSON, file.OptOverwrite); err != nil {
 			return err
 		}
 		cmd.Printf("Recovery data saved to: %s\n", recFile.Name())
 	} else {
-		cmd.Println(string(resp))
+		cmd.Println(string(recoveryDataJSON))
 	}
 
 	return nil

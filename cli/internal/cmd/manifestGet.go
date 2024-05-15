@@ -8,13 +8,12 @@ package cmd
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"net/http"
 
+	"github.com/edgelesssys/marblerun/api"
+	"github.com/edgelesssys/marblerun/cli/internal/certcache"
 	"github.com/edgelesssys/marblerun/cli/internal/file"
-	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -43,16 +42,11 @@ func runManifestGet(cmd *cobra.Command, args []string) error {
 	hostname := args[0]
 	fs := afero.NewOsFs()
 
-	verifyOpts, err := parseRestFlags(cmd.Flags())
+	verifyOpts, sgxQuotePath, err := parseRestFlags(cmd)
 	if err != nil {
 		return err
 	}
-	caCert, err := rest.VerifyCoordinator(cmd.Context(), cmd.OutOrStdout(), hostname, verifyOpts)
-	if err != nil {
-		return err
-	}
-
-	client, err := rest.NewClient(hostname, caCert, nil, verifyOpts.Insecure)
+	root, intermediate, sgxQuote, err := api.VerifyCoordinator(cmd.Context(), hostname, verifyOpts)
 	if err != nil {
 		return err
 	}
@@ -62,32 +56,53 @@ func runManifestGet(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	file := file.New(flags.output, fs)
+	outFile := file.New(flags.output, fs)
 
-	if err := cliManifestGet(cmd, flags, file, client); err != nil {
+	getManifest := func(ctx context.Context) (string, string, error) {
+		mnf, hash, _, err := api.ManifestGet(ctx, hostname, root)
+		return string(mnf), hash, err
+	}
+	getManifestLog := func(ctx context.Context) ([]string, error) {
+		return api.ManifestLog(ctx, hostname, root)
+	}
+	if err := cliManifestGet(cmd, flags, outFile, getManifest, getManifestLog); err != nil {
 		return err
 	}
 
+	if err := saveSgxQuote(fs, sgxQuote, sgxQuotePath); err != nil {
+		return err
+	}
 	keep, err := cmd.Flags().GetBool("keep-cert")
 	if err == nil && keep {
-		return rest.SaveCoordinatorCachedCert(cmd.Flags(), fs, caCert)
+		return certcache.SaveCoordinatorCachedCert(cmd.Flags(), fs, root, intermediate)
 	}
 	return err
 }
 
-func cliManifestGet(cmd *cobra.Command, flags manifestGetFlags, mnfFile *file.Handler, client getter) error {
-	resp, err := client.Get(cmd.Context(), rest.ManifestEndpoint, http.NoBody)
+func cliManifestGet(
+	cmd *cobra.Command, flags manifestGetFlags, mnfFile *file.Handler,
+	getManifest func(context.Context) (string, string, error),
+	getManifestLog func(context.Context) ([]string, error),
+) error {
+	manifest, hash, err := getManifest(cmd.Context())
 	if err != nil {
 		return fmt.Errorf("getting manifest: %w", err)
 	}
 
-	manifest, err := decodeManifest(cmd.Context(), flags.displayUpdate, gjson.GetBytes(resp, "Manifest").String(), client)
-	if err != nil {
-		return err
+	if flags.displayUpdate {
+		updateLog, err := getManifestLog(cmd.Context())
+		if err != nil {
+			return fmt.Errorf("getting update log: %w", err)
+		}
+		manifest, err = consolidateManifest([]byte(manifest), updateLog)
+		if err != nil {
+			return fmt.Errorf("consolidating manifest: %w", err)
+		}
 	}
+
 	if flags.signature {
 		// wrap the signature and manifest into one json object
-		manifest = fmt.Sprintf("{\n\"ManifestSignature\": \"%s\",\n\"Manifest\": %s}", gjson.GetBytes(resp, "ManifestSignature"), manifest)
+		manifest = fmt.Sprintf("{\n\"ManifestSignature\": \"%s\",\n\"Manifest\": %s}", hash, manifest)
 	}
 
 	if mnfFile != nil {
@@ -97,35 +112,24 @@ func cliManifestGet(cmd *cobra.Command, flags manifestGetFlags, mnfFile *file.Ha
 	return nil
 }
 
-// decodeManifest parses a base64 encoded manifest and optionally merges updates.
-func decodeManifest(ctx context.Context, displayUpdate bool, encodedManifest string, client getter) (string, error) {
-	manifest, err := base64.StdEncoding.DecodeString(encodedManifest)
-	if err != nil {
-		return "", err
-	}
-
-	if !displayUpdate {
-		return string(manifest), nil
-	}
-
-	log, err := client.Get(ctx, rest.UpdateEndpoint, http.NoBody)
-	if err != nil {
-		return "", fmt.Errorf("retrieving update log: %w", err)
-	}
-	return consolidateManifest(manifest, log)
-}
-
 // consolidateManifest updates a base manifest with values from an update log.
-func consolidateManifest(rawManifest, log []byte) (string, error) {
+func consolidateManifest(rawManifest []byte, log []string) (string, error) {
 	var baseManifest manifest.Manifest
 	if err := json.Unmarshal(rawManifest, &baseManifest); err != nil {
 		return "", err
 	}
 
-	pkg := gjson.GetBytes(log, "..#.package").Array()
-	svn := gjson.GetBytes(log, "..#.new version").Array()
-	for idx, sPkg := range pkg {
-		*baseManifest.Packages[sPkg.String()].SecurityVersion = uint(svn[idx].Uint())
+	for _, logEntry := range log {
+		if gjson.Get(logEntry, "package").Exists() {
+			pkg := gjson.Get(logEntry, "package").String()
+			if _, ok := baseManifest.Packages[pkg]; !ok {
+				return "", fmt.Errorf("package %s not found in base manifest", pkg)
+			}
+
+			if gjson.Get(logEntry, "new version").Exists() {
+				*baseManifest.Packages[pkg].SecurityVersion = uint(gjson.Get(logEntry, "new version").Uint())
+			}
+		}
 	}
 
 	updated, err := json.Marshal(baseManifest)
