@@ -220,7 +220,7 @@ func ActivateRPCNoTTLS(req *rpc.ActivationReq, coordAddr string, tlsCredentials 
 
 // activateRPC sends an activation request to the Coordinator.
 func activateRPC(req *rpc.ActivationReq, coordAddr string, tlsCredentials credentials.TransportCredentials) (*rpc.Parameters, error) {
-	connection, err := grpc.Dial(coordAddr, grpc.WithTransportCredentials(tlsCredentials))
+	connection, err := grpc.NewClient(coordAddr, grpc.WithTransportCredentials(tlsCredentials))
 	if err != nil {
 		return nil, err
 	}
