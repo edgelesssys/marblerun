@@ -7,16 +7,17 @@
 package cmd
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 
+	"github.com/edgelesssys/marblerun/api"
+	"github.com/edgelesssys/marblerun/cli/internal/certcache"
 	"github.com/edgelesssys/marblerun/cli/internal/file"
-	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
-	"github.com/tidwall/gjson"
 )
 
 func newSecretGet() *cobra.Command {
@@ -48,36 +49,40 @@ func runSecretGet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client, err := newMutualAuthClient(hostname, cmd.Flags(), fs)
+	root, _, err := certcache.LoadCoordinatorCachedCert(cmd.Flags(), fs)
+	if err != nil {
+		return err
+	}
+	keyPair, err := certcache.LoadClientCert(cmd.Flags())
 	if err != nil {
 		return err
 	}
 
-	return cliSecretGet(cmd, secretIDs, file.New(output, fs), client)
+	getSecrets := func(ctx context.Context) (map[string]manifest.Secret, error) {
+		return api.SecretGet(ctx, hostname, root, keyPair, secretIDs)
+	}
+	return cliSecretGet(cmd, file.New(output, fs), getSecrets)
 }
 
 // cliSecretGet requests one or more secrets from the MarbleRun Coordinator.
-func cliSecretGet(cmd *cobra.Command, secretIDs []string, secFile *file.Handler, client getter) error {
-	var query []string
-	for _, secretID := range secretIDs {
-		query = append(query, "s", secretID)
-	}
-
-	resp, err := client.Get(cmd.Context(), rest.SecretEndpoint, http.NoBody, query...)
+func cliSecretGet(
+	cmd *cobra.Command, secFile *file.Handler,
+	getSecrets func(context.Context) (map[string]manifest.Secret, error),
+) error {
+	secrets, err := getSecrets(cmd.Context())
 	if err != nil {
-		return fmt.Errorf("retrieving secret: %w", err)
-	}
-
-	response := gjson.ParseBytes(resp)
-	if len(response.Map()) != len(secretIDs) {
-		return fmt.Errorf("did not receive the same number of secrets as requested")
+		return fmt.Errorf("retrieving secrets: %w", err)
 	}
 
 	if secFile == nil {
-		return printSecrets(cmd.OutOrStdout(), response)
+		return printSecrets(cmd.OutOrStdout(), secrets)
 	}
 
-	if err := secFile.Write([]byte(response.String()), file.OptOverwrite); err != nil {
+	secretsJSON, err := json.Marshal(secrets)
+	if err != nil {
+		return fmt.Errorf("marshalling secrets: %w", err)
+	}
+	if err := secFile.Write(secretsJSON, file.OptOverwrite); err != nil {
 		return err
 	}
 	cmd.Printf("Saved secrets to: %s\n", secFile.Name())
@@ -86,36 +91,30 @@ func cliSecretGet(cmd *cobra.Command, secretIDs []string, secFile *file.Handler,
 }
 
 // printSecrets prints secrets formatted in a readable way.
-func printSecrets(out io.Writer, response gjson.Result) error {
-	for secretName, singleResponse := range response.Map() {
-		secretType := singleResponse.Get("Type")
-		userDefined := singleResponse.Get("UserDefined")
-		secretSize := singleResponse.Get("Size")
-		validFor := singleResponse.Get("ValidFor")
-		cert := singleResponse.Get("Cert")
-		public := singleResponse.Get("Public")
-		private := singleResponse.Get("Private")
-
-		fmt.Fprintf(out, "%s:\n", secretName)
+func printSecrets(out io.Writer, secrets map[string]manifest.Secret) error {
+	for name, secret := range secrets {
+		fmt.Fprintf(out, "%s:\n", name)
 		var output string
-		output = prettyFormat(output, "Type:", secretType.String())
+		output = prettyFormat(output, "Type:", secret.Type)
 
-		switch secretType.String() {
+		switch secret.Type {
 		case manifest.SecretTypeCertRSA, manifest.SecretTypeCertECDSA, manifest.SecretTypeCertED25519:
-			output = prettyFormat(output, "UserDefined:", userDefined.String())
-			if secretType.String() == manifest.SecretTypeCertRSA || secretType.String() == manifest.SecretTypeCertECDSA {
-				output = prettyFormat(output, "Size:", secretSize.String())
+			output = prettyFormat(output, "UserDefined:", secret.UserDefined)
+
+			if secret.Type == manifest.SecretTypeCertRSA || secret.Type == manifest.SecretTypeCertECDSA {
+				output = prettyFormat(output, "Size:", secret.Size)
 			}
-			output = prettyFormat(output, "Valid For:", validFor.String())
-			output = prettyFormat(output, "Certificate:", cert.String())
-			output = prettyFormat(output, "Public Key:", public.String())
-			output = prettyFormat(output, "Private Key:", private.String())
+
+			output = prettyFormat(output, "Valid For:", secret.ValidFor)
+			output = prettyFormat(output, "Certificate:", secret.Cert)
+			output = prettyFormat(output, "Public Key:", secret.Public)
+			output = prettyFormat(output, "Private Key:", secret.Private)
 		case manifest.SecretTypeSymmetricKey:
-			output = prettyFormat(output, "UserDefined:", userDefined.String())
-			output = prettyFormat(output, "Size:", secretSize.String())
-			output = prettyFormat(output, "Key:", public.String())
+			output = prettyFormat(output, "UserDefined:", secret.UserDefined)
+			output = prettyFormat(output, "Size:", secret.Size)
+			output = prettyFormat(output, "Key:", secret.Public)
 		case manifest.SecretTypePlain:
-			output = prettyFormat(output, "Data:", public.String())
+			output = prettyFormat(output, "Data:", secret.Public)
 		default:
 			return fmt.Errorf("unknown secret type")
 		}
@@ -124,6 +123,6 @@ func printSecrets(out io.Writer, response gjson.Result) error {
 	return nil
 }
 
-func prettyFormat(previous, label, value string) string {
-	return fmt.Sprintf("%s\t%-14s %s\n", previous, label, value)
+func prettyFormat(previous, label, value any) string {
+	return fmt.Sprintf("%s\t%-14s %v\n", previous, label, value)
 }

@@ -7,13 +7,11 @@
 package cmd
 
 import (
-	"bytes"
+	"context"
 	"encoding/json"
-	"errors"
 	"testing"
 
 	"github.com/edgelesssys/marblerun/cli/internal/file"
-	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -21,69 +19,30 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSetSecrets(t *testing.T) {
-	testCases := map[string]struct {
-		poster  *stubPoster
-		wantErr bool
-	}{
-		"success": {
-			poster:  &stubPoster{},
-			wantErr: false,
-		},
-		"error": {
-			poster: &stubPoster{
-				err: errors.New("failed"),
-			},
-			wantErr: true,
-		},
-	}
-
-	for name, tc := range testCases {
-		t.Run(name, func(t *testing.T) {
-			assert := assert.New(t)
-
-			cmd := &cobra.Command{}
-
-			var out bytes.Buffer
-			cmd.SetOut(&out)
-
-			err := cliSecretSet(cmd, []byte{0x00}, tc.poster)
-			if tc.wantErr {
-				assert.Error(err)
-				return
-			}
-			assert.NoError(err)
-			assert.Contains(out.String(), "Secret successfully set")
-			assert.Equal(rest.SecretEndpoint, tc.poster.requestPath)
-			assert.Equal(rest.ContentJSON, tc.poster.header)
-		})
-	}
-}
-
 func TestGetSecrets(t *testing.T) {
-	someErr := errors.New("failed")
 	testCases := map[string]struct {
-		getter    *stubGetter
-		file      *file.Handler
-		secretIDs []string
-		wantErr   bool
+		getSecretsResp map[string]manifest.Secret
+		getSecretsErr  error
+		file           *file.Handler
+		secretIDs      []string
+		wantErr        bool
 	}{
 		"success": {
-			getter:    &stubGetter{response: []byte(`{"test": "ABCDEF"}`)},
-			file:      file.New("unit-test", afero.NewMemMapFs()),
-			secretIDs: []string{"test"},
+			getSecretsResp: map[string]manifest.Secret{"test": {Type: manifest.SecretTypePlain}},
+			file:           file.New("unit-test", afero.NewMemMapFs()),
+			secretIDs:      []string{"test"},
 		},
 		"get error": {
-			getter:    &stubGetter{err: someErr},
-			file:      file.New("unit-test", afero.NewMemMapFs()),
-			secretIDs: []string{"test"},
-			wantErr:   true,
+			getSecretsErr: assert.AnError,
+			file:          file.New("unit-test", afero.NewMemMapFs()),
+			secretIDs:     []string{"test"},
+			wantErr:       true,
 		},
 		"write error": {
-			getter:    &stubGetter{response: []byte(`{"test": "ABCDEF"}`)},
-			file:      file.New("unit-test", afero.NewReadOnlyFs(afero.NewMemMapFs())),
-			secretIDs: []string{"test"},
-			wantErr:   true,
+			getSecretsResp: map[string]manifest.Secret{"test": {Type: manifest.SecretTypePlain}},
+			file:           file.New("unit-test", afero.NewReadOnlyFs(afero.NewMemMapFs())),
+			secretIDs:      []string{"test"},
+			wantErr:        true,
 		},
 	}
 
@@ -93,20 +52,21 @@ func TestGetSecrets(t *testing.T) {
 
 			cmd := &cobra.Command{}
 
-			err := cliSecretGet(cmd, tc.secretIDs, tc.file, tc.getter)
+			err := cliSecretGet(cmd, tc.file, func(context.Context) (map[string]manifest.Secret, error) {
+				return tc.getSecretsResp, tc.getSecretsErr
+			})
 			if tc.wantErr {
 				assert.Error(err)
 				return
 			}
 			assert.NoError(err)
-			assert.Contains(tc.getter.requestPath, rest.SecretEndpoint)
 
-			expectedResponse, err := tc.file.Read()
+			savedSecretsJSON, err := tc.file.Read()
 			require.NoError(t, err)
-			assert.Equal(expectedResponse, tc.getter.response)
-			for _, id := range tc.secretIDs {
-				assert.Contains(tc.getter.query, id)
-			}
+			var savedSecrets map[string]manifest.Secret
+			require.NoError(t, json.Unmarshal(savedSecretsJSON, &savedSecrets))
+
+			assert.Equal(tc.getSecretsResp, savedSecrets)
 		})
 	}
 }
@@ -151,18 +111,13 @@ LuL049+D8bu8Z+Fe
 -----END PRIVATE KEY-----`
 
 	secretName := "test-secret"
-	secret, err := createSecretFromPEM(secretName, []byte(testCert))
+	secretMap, err := createSecretFromPEM(secretName, []byte(testCert))
 	assert.NoError(err)
-
-	var secretMap map[string]manifest.Secret
-	err = json.Unmarshal(secret, &secretMap)
-	require.NoError(err)
 
 	_, ok := secretMap[secretName]
 	require.True(ok)
 	assert.True(len(secretMap[secretName].Cert.Raw) > 0)
 	assert.True(len(secretMap[secretName].Private) > 0)
-	assert.True(len(secretMap[secretName].Public) == 0)
 
 	// no error here since we stop after finding the first cert-key pair
 	_, err = createSecretFromPEM(secretName, []byte(testCert+"\n-----BEGIN MESSAGE-----\ndGVzdA==\n-----END MESSAGE-----"))

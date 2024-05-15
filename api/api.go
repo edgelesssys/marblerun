@@ -40,9 +40,9 @@ import (
 func VerifyCoordinator(ctx context.Context, endpoint string, opts VerifyOptions) (rootCert *x509.Certificate, intermediateCert *x509.Certificate, sgxQuote []byte, err error) {
 	opts.setDefaults()
 
-	// Create a client to the Coordinator but explicitly disable TLS verification
+	// Create a client to the Coordinator without a trusted root certificate
 	// We will retrieve and verify the Coordinator's certificate using remote attestation
-	client, err := rest.NewClient(endpoint, nil, nil, true)
+	client, err := rest.NewClient(endpoint, nil, nil)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -164,7 +164,7 @@ func Recover(ctx context.Context, endpoint string, opts VerifyOptions, recoveryS
 		return -1, nil, err
 	}
 
-	client, err := rest.NewClient(endpoint, rootCert, nil, opts.InsecureSkipVerify)
+	client, err := rest.NewClient(endpoint, rootCert, nil)
 	if err != nil {
 		return -1, nil, err
 	}
@@ -196,7 +196,7 @@ func DecryptRecoveryData(recoveryData []byte, recoveryPrivateKey *rsa.PrivateKey
 //   - 2: waiting for manifest: Waiting for user to supply a manifest
 //   - 3: accepting marbles: The Coordinator is running, and Marbles can be added to the deployment
 func GetStatus(ctx context.Context, endpoint string, trustedRoot *x509.Certificate) (code int, msg string, err error) {
-	client, err := rest.NewClient(endpoint, trustedRoot, nil, false)
+	client, err := rest.NewClient(endpoint, trustedRoot, nil)
 	if err != nil {
 		return -1, "", err
 	}
@@ -217,7 +217,7 @@ func GetStatus(ctx context.Context, endpoint string, trustedRoot *x509.Certifica
 
 // ManifestGet retrieves the manifest of a MarbleRun deployment.
 func ManifestGet(ctx context.Context, endpoint string, trustedRoot *x509.Certificate) (manifest []byte, manifestHash string, manifestSignatureECDSA []byte, err error) {
-	client, err := rest.NewClient(endpoint, trustedRoot, nil, false)
+	client, err := rest.NewClient(endpoint, trustedRoot, nil)
 	if err != nil {
 		return nil, "", nil, err
 	}
@@ -236,7 +236,7 @@ func ManifestGet(ctx context.Context, endpoint string, trustedRoot *x509.Certifi
 
 // ManifestLog retrieves the update log of a MarbleRun deployment.
 func ManifestLog(ctx context.Context, endpoint string, trustedRoot *x509.Certificate) ([]string, error) {
-	client, err := rest.NewClient(endpoint, trustedRoot, nil, false)
+	client, err := rest.NewClient(endpoint, trustedRoot, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -250,7 +250,7 @@ func ManifestLog(ctx context.Context, endpoint string, trustedRoot *x509.Certifi
 // ManifestSet sets the manifest for a MarbleRun deployment.
 // If recovery secrets are defined, this function will return the encrypted recovery data.
 func ManifestSet(ctx context.Context, endpoint string, trustedRoot *x509.Certificate, manifest []byte) (recoveryData map[string][]byte, err error) {
-	client, err := rest.NewClient(endpoint, trustedRoot, nil, false)
+	client, err := rest.NewClient(endpoint, trustedRoot, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -269,7 +269,7 @@ func ManifestSet(ctx context.Context, endpoint string, trustedRoot *x509.Certifi
 
 // ManifestUpdateApply sets a manifest update for a MarbleRun deployment.
 func ManifestUpdateApply(ctx context.Context, endpoint string, trustedRoot *x509.Certificate, updateManifest []byte, clientKeyPair *tls.Certificate) error {
-	client, err := rest.NewClient(endpoint, trustedRoot, clientKeyPair, false)
+	client, err := rest.NewClient(endpoint, trustedRoot, clientKeyPair)
 	if err != nil {
 		return err
 	}
@@ -279,7 +279,7 @@ func ManifestUpdateApply(ctx context.Context, endpoint string, trustedRoot *x509
 
 // ManifestUpdateGet retrieves a pending manifest update of a MarbleRun deployment.
 func ManifestUpdateGet(ctx context.Context, endpoint string, trustedRoot *x509.Certificate) (pendingManifest []byte, missingUsers []string, err error) {
-	client, err := rest.NewClient(endpoint, trustedRoot, nil, false)
+	client, err := rest.NewClient(endpoint, trustedRoot, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -302,7 +302,7 @@ func ManifestUpdateGet(ctx context.Context, endpoint string, trustedRoot *x509.C
 // ManifestUpdateAcknowledge acknowledges the pending manifest update of a MarbleRun deployment.
 // On success, it returns the number of remaining acknowledgements before the update is applied.
 func ManifestUpdateAcknowledge(ctx context.Context, endpoint string, trustedRoot *x509.Certificate, updateManifest []byte, clientKeyPair *tls.Certificate) (missingUsers []string, err error) {
-	client, err := rest.NewClient(endpoint, trustedRoot, clientKeyPair, false)
+	client, err := rest.NewClient(endpoint, trustedRoot, clientKeyPair)
 	if err != nil {
 		return nil, err
 	}
@@ -323,7 +323,7 @@ func ManifestUpdateAcknowledge(ctx context.Context, endpoint string, trustedRoot
 
 // ManifestUpdateCancel cancels a pending manifest update of a MarbleRun deployment.
 func ManifestUpdateCancel(ctx context.Context, endpoint string, trustedRoot *x509.Certificate, clientKeyPair *tls.Certificate) error {
-	client, err := rest.NewClient(endpoint, trustedRoot, clientKeyPair, false)
+	client, err := rest.NewClient(endpoint, trustedRoot, clientKeyPair)
 	if err != nil {
 		return err
 	}
@@ -333,11 +333,16 @@ func ManifestUpdateCancel(ctx context.Context, endpoint string, trustedRoot *x50
 
 // SecretGet retrieves secrets from a MarbleRun deployment.
 func SecretGet(ctx context.Context, endpoint string, trustedRoot *x509.Certificate, clientKeyPair *tls.Certificate, secrets []string) (map[string]manifest.Secret, error) {
-	client, err := rest.NewClient(endpoint, trustedRoot, clientKeyPair, false)
+	client, err := rest.NewClient(endpoint, trustedRoot, clientKeyPair)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.Get(ctx, rest.SecretEndpoint, http.NoBody, secrets...)
+
+	var query []string
+	for _, secretID := range secrets {
+		query = append(query, "s", secretID)
+	}
+	resp, err := client.Get(ctx, rest.SecretEndpoint, http.NoBody, query...)
 	if err != nil {
 		return nil, err
 	}
@@ -350,8 +355,8 @@ func SecretGet(ctx context.Context, endpoint string, trustedRoot *x509.Certifica
 }
 
 // SecretSet sets secrets for a MarbleRun deployment.
-func SecretSet(ctx context.Context, endpoint string, trustedRoot *x509.Certificate, clientKeyPair *tls.Certificate, secrets map[string]manifest.Secret) error {
-	client, err := rest.NewClient(endpoint, trustedRoot, clientKeyPair, false)
+func SecretSet(ctx context.Context, endpoint string, trustedRoot *x509.Certificate, clientKeyPair *tls.Certificate, secrets map[string]manifest.UserSecret) error {
+	client, err := rest.NewClient(endpoint, trustedRoot, clientKeyPair)
 	if err != nil {
 		return err
 	}

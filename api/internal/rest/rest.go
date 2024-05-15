@@ -66,15 +66,16 @@ type Client struct {
 
 // NewClient creates and returns an http client using the given certificate of the server.
 // An optional clientCert can be used to enable client authentication.
-func NewClient(host string, rootCert *x509.Certificate, clientCert *tls.Certificate, insecureTLS bool) (*Client, error) {
-	tlsConfig := &tls.Config{}
+func NewClient(host string, rootCert *x509.Certificate, clientCert *tls.Certificate) (*Client, error) {
+	tlsConfig := &tls.Config{
+		RootCAs: x509.NewCertPool(),
+	}
 	if clientCert != nil {
 		tlsConfig.Certificates = []tls.Certificate{*clientCert}
 	}
-	if insecureTLS {
+	if rootCert == nil {
 		tlsConfig.InsecureSkipVerify = true
 	} else {
-		tlsConfig.RootCAs = x509.NewCertPool()
 		tlsConfig.RootCAs.AddCert(rootCert)
 	}
 
