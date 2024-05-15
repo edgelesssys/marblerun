@@ -7,14 +7,10 @@
 package cmd
 
 import (
-	"bytes"
-	"fmt"
-
+	"github.com/edgelesssys/marblerun/api"
 	"github.com/edgelesssys/marblerun/cli/internal/file"
-	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
-	"github.com/tidwall/gjson"
 )
 
 // NewRecoverCmd returns the recover command.
@@ -41,35 +37,24 @@ func runRecover(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	verifyOpts, err := parseRestFlags(cmd.Flags())
+	verifyOpts, sgxQuotePath, err := parseRestFlags(cmd)
 	if err != nil {
 		return err
 	}
 
-	// A Coordinator in recovery mode will have a different certificate than what is cached
-	// Only unsealing the Coordinator will allow it to use the original certificate again
-	// Therefore we need to verify the Coordinator is running in the expected enclave instead
-	caCert, err := rest.VerifyCoordinator(cmd.Context(), cmd.OutOrStdout(), hostname, verifyOpts)
+	remaining, sgxQuote, err := api.Recover(cmd.Context(), hostname, verifyOpts, recoveryKey)
 	if err != nil {
 		return err
 	}
 
-	client, err := rest.NewClient(hostname, caCert, nil, verifyOpts.Insecure)
-	if err != nil {
+	if remaining == 0 {
+		cmd.Println("Recovery successful.")
+	} else {
+		cmd.Printf("Secret was processed successfully. Upload the next secret. Remaining secrets: %d", remaining)
+	}
+
+	if err := saveSgxQuote(fs, sgxQuote, sgxQuotePath); err != nil {
 		return err
 	}
-	cmd.Println("Successfully verified Coordinator, now uploading key")
-	return cliRecover(cmd, recoveryKey, client)
-}
-
-// cliRecover tries to unseal the Coordinator by uploading the recovery key.
-func cliRecover(cmd *cobra.Command, key []byte, client poster) error {
-	resp, err := client.Post(cmd.Context(), rest.RecoverEndpoint, rest.ContentPlain, bytes.NewReader(key))
-	if err != nil {
-		return fmt.Errorf("recovering Coordinator: %w", err)
-	}
-
-	response := gjson.GetBytes(resp, "StatusMessage")
-	cmd.Println(response.String())
 	return nil
 }
