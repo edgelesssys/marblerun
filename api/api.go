@@ -44,7 +44,7 @@ func VerifyCoordinator(ctx context.Context, endpoint string, opts VerifyOptions)
 	// We will retrieve and verify the Coordinator's certificate using remote attestation
 	client, err := rest.NewClient(endpoint, nil, nil)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, fmt.Errorf("setting up client: %w", err)
 	}
 
 	var args []string
@@ -166,7 +166,7 @@ func Recover(ctx context.Context, endpoint string, opts VerifyOptions, recoveryS
 
 	client, err := rest.NewClient(endpoint, rootCert, nil)
 	if err != nil {
-		return -1, nil, err
+		return -1, nil, fmt.Errorf("setting up client: %w", err)
 	}
 
 	// Attempt recovery using the v2 API first
@@ -175,7 +175,7 @@ func Recover(ctx context.Context, endpoint string, opts VerifyOptions, recoveryS
 		// If the Coordinator does not support the v2 API, fall back to v1
 		var notAllowedErr *rest.NotAllowedError
 		if !errors.As(err, &notAllowedErr) {
-			return -1, nil, err
+			return -1, nil, fmt.Errorf("sending recovery request: %w", err)
 		}
 
 		remaining, err = recoverV1(ctx, client, recoverySecret)
@@ -198,11 +198,11 @@ func DecryptRecoveryData(recoveryData []byte, recoveryPrivateKey *rsa.PrivateKey
 func GetStatus(ctx context.Context, endpoint string, trustedRoot *x509.Certificate) (code int, msg string, err error) {
 	client, err := rest.NewClient(endpoint, trustedRoot, nil)
 	if err != nil {
-		return -1, "", err
+		return -1, "", fmt.Errorf("setting up client: %w", err)
 	}
 	resp, err := client.Get(ctx, rest.StatusEndpoint, http.NoBody)
 	if err != nil {
-		return -1, "", err
+		return -1, "", fmt.Errorf("retrieving Coordinator status: %w", err)
 	}
 
 	var response struct {
@@ -210,7 +210,7 @@ func GetStatus(ctx context.Context, endpoint string, trustedRoot *x509.Certifica
 		Msg  string `json:"StatusMessage"`
 	}
 	if err := json.Unmarshal(resp, &response); err != nil {
-		return -1, "", err
+		return -1, "", fmt.Errorf("unmarshalling Coordinator response: %w", err)
 	}
 	return response.Code, response.Msg, nil
 }
@@ -219,16 +219,16 @@ func GetStatus(ctx context.Context, endpoint string, trustedRoot *x509.Certifica
 func ManifestGet(ctx context.Context, endpoint string, trustedRoot *x509.Certificate) (manifest []byte, manifestHash string, manifestSignatureECDSA []byte, err error) {
 	client, err := rest.NewClient(endpoint, trustedRoot, nil)
 	if err != nil {
-		return nil, "", nil, err
+		return nil, "", nil, fmt.Errorf("setting up client: %w", err)
 	}
 	resp, err := client.Get(ctx, rest.ManifestEndpoint, http.NoBody)
 	if err != nil {
-		return nil, "", nil, err
+		return nil, "", nil, fmt.Errorf("retrieving Coordinator manifest: %w", err)
 	}
 
 	var response server.ManifestSignatureResp
 	if err := json.Unmarshal(resp, &response); err != nil {
-		return nil, "", nil, err
+		return nil, "", nil, fmt.Errorf("unmarshalling Coordinator response: %w", err)
 	}
 
 	return response.Manifest, response.ManifestSignature, response.ManifestSignatureRootECDSA, nil
@@ -238,11 +238,11 @@ func ManifestGet(ctx context.Context, endpoint string, trustedRoot *x509.Certifi
 func ManifestLog(ctx context.Context, endpoint string, trustedRoot *x509.Certificate) ([]string, error) {
 	client, err := rest.NewClient(endpoint, trustedRoot, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("setting up client: %w", err)
 	}
 	resp, err := client.Get(ctx, rest.UpdateEndpoint, http.NoBody)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("retrieving Coordinator update log: %w", err)
 	}
 	return strings.Split(strings.TrimSpace(string(resp)), "\n"), nil
 }
@@ -252,26 +252,29 @@ func ManifestLog(ctx context.Context, endpoint string, trustedRoot *x509.Certifi
 func ManifestSet(ctx context.Context, endpoint string, trustedRoot *x509.Certificate, manifest []byte) (recoveryData map[string][]byte, err error) {
 	client, err := rest.NewClient(endpoint, trustedRoot, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("setting up client: %w", err)
 	}
 	resp, err := client.Post(ctx, rest.ManifestEndpoint, rest.ContentJSON, bytes.NewReader(manifest))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("sending manifest to Coordinator: %w", err)
 	}
 
-	var response server.RecoveryDataResp
-	if err := json.Unmarshal(resp, &response); err != nil {
-		return nil, err
+	if len(resp) > 0 {
+		var response server.RecoveryDataResp
+		if err := json.Unmarshal(resp, &response); err != nil {
+			return nil, fmt.Errorf("unmarshalling Coordinator response: %w", err)
+		}
+		recoveryData = response.RecoverySecrets
 	}
 
-	return response.RecoverySecrets, nil
+	return recoveryData, nil
 }
 
 // ManifestUpdateApply sets a manifest update for a MarbleRun deployment.
 func ManifestUpdateApply(ctx context.Context, endpoint string, trustedRoot *x509.Certificate, updateManifest []byte, clientKeyPair *tls.Certificate) error {
 	client, err := rest.NewClient(endpoint, trustedRoot, clientKeyPair)
 	if err != nil {
-		return err
+		return fmt.Errorf("setting up client: %w", err)
 	}
 	_, err = client.Post(ctx, rest.UpdateEndpoint, rest.ContentJSON, bytes.NewReader(updateManifest))
 	return err
@@ -281,11 +284,11 @@ func ManifestUpdateApply(ctx context.Context, endpoint string, trustedRoot *x509
 func ManifestUpdateGet(ctx context.Context, endpoint string, trustedRoot *x509.Certificate) (pendingManifest []byte, missingUsers []string, err error) {
 	client, err := rest.NewClient(endpoint, trustedRoot, nil)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("setting up client: %w", err)
 	}
 	resp, err := client.Get(ctx, rest.UpdateEndpoint, http.NoBody)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("retrieving pending manifest update: %w", err)
 	}
 
 	var response struct {
@@ -293,7 +296,7 @@ func ManifestUpdateGet(ctx context.Context, endpoint string, trustedRoot *x509.C
 		MissingUsers []string `json:"missingUsers"`
 	}
 	if err := json.Unmarshal(resp, &response); err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("unmarshalling Coordinator response: %w", err)
 	}
 
 	return []byte(response.Manifest), response.MissingUsers, nil
@@ -304,7 +307,7 @@ func ManifestUpdateGet(ctx context.Context, endpoint string, trustedRoot *x509.C
 func ManifestUpdateAcknowledge(ctx context.Context, endpoint string, trustedRoot *x509.Certificate, updateManifest []byte, clientKeyPair *tls.Certificate) (missingUsers []string, err error) {
 	client, err := rest.NewClient(endpoint, trustedRoot, clientKeyPair)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("setting up client: %w", err)
 	}
 
 	// Attempt to acknowledge the update using the v2 API first
@@ -313,7 +316,7 @@ func ManifestUpdateAcknowledge(ctx context.Context, endpoint string, trustedRoot
 		// If the Coordinator does not support the v2 API, fall back to v1
 		var notAllowedErr *rest.NotAllowedError
 		if !errors.As(err, &notAllowedErr) {
-			return nil, err
+			return nil, fmt.Errorf("sending manifest update acknowledgement: %w", err)
 		}
 
 		missingUsers, err = manifestUpdateAcknowledgeV1(ctx, client, updateManifest)
@@ -325,7 +328,7 @@ func ManifestUpdateAcknowledge(ctx context.Context, endpoint string, trustedRoot
 func ManifestUpdateCancel(ctx context.Context, endpoint string, trustedRoot *x509.Certificate, clientKeyPair *tls.Certificate) error {
 	client, err := rest.NewClient(endpoint, trustedRoot, clientKeyPair)
 	if err != nil {
-		return err
+		return fmt.Errorf("setting up client: %w", err)
 	}
 	_, err = client.Post(ctx, rest.UpdateCancelEndpoint, "", http.NoBody)
 	return err
@@ -335,7 +338,7 @@ func ManifestUpdateCancel(ctx context.Context, endpoint string, trustedRoot *x50
 func SecretGet(ctx context.Context, endpoint string, trustedRoot *x509.Certificate, clientKeyPair *tls.Certificate, secrets []string) (map[string]manifest.Secret, error) {
 	client, err := rest.NewClient(endpoint, trustedRoot, clientKeyPair)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("setting up client: %w", err)
 	}
 
 	var query []string
@@ -344,12 +347,12 @@ func SecretGet(ctx context.Context, endpoint string, trustedRoot *x509.Certifica
 	}
 	resp, err := client.Get(ctx, rest.SecretEndpoint, http.NoBody, query...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("retrieving secrets: %w", err)
 	}
 
 	secretMap := make(map[string]manifest.Secret, len(secrets))
 	if err := json.Unmarshal(resp, &secretMap); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshalling Coordinator response: %w", err)
 	}
 	return secretMap, nil
 }
@@ -358,12 +361,12 @@ func SecretGet(ctx context.Context, endpoint string, trustedRoot *x509.Certifica
 func SecretSet(ctx context.Context, endpoint string, trustedRoot *x509.Certificate, clientKeyPair *tls.Certificate, secrets map[string]manifest.UserSecret) error {
 	client, err := rest.NewClient(endpoint, trustedRoot, clientKeyPair)
 	if err != nil {
-		return err
+		return fmt.Errorf("setting up client: %w", err)
 	}
 
 	secretDataJSON, err := json.Marshal(secrets)
 	if err != nil {
-		return err
+		return fmt.Errorf("marshalling secrets: %w", err)
 	}
 	_, err = client.Post(ctx, rest.SecretEndpoint, rest.ContentJSON, bytes.NewReader(secretDataJSON))
 	return err
@@ -435,7 +438,7 @@ func recoverV2(ctx context.Context, client *rest.Client, recoverySecret []byte) 
 		Remaining int `json:"Remaining"`
 	}
 	if err := json.Unmarshal(resp, &response); err != nil {
-		return -1, err
+		return -1, fmt.Errorf("unmarshalling Coordinator response: %w", err)
 	}
 	return response.Remaining, nil
 }
@@ -451,7 +454,7 @@ func recoverV1(ctx context.Context, client *rest.Client, recoverySecret []byte) 
 		Message string `json:"StatusMessage"`
 	}
 	if err := json.Unmarshal(resp, &response); err != nil {
-		return -1, err
+		return -1, fmt.Errorf("unmarshalling Coordinator response: %w", err)
 	}
 
 	if response.Message == "Recovery successful." {
@@ -486,7 +489,7 @@ func manifestUpdateAcknowledgeV2(ctx context.Context, client *rest.Client, updat
 		MissingUsers []string `json:"missingUsers"`
 	}
 	if err := json.Unmarshal(resp, &response); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshalling Coordinator response: %w", err)
 	}
 
 	return response.MissingUsers, nil

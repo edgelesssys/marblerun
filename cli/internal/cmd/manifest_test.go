@@ -110,7 +110,7 @@ func TestCliManifestSet(t *testing.T) {
 			var out bytes.Buffer
 			cmd.SetOut(&out)
 
-			err := cliManifestSet(cmd, []byte("manifest"), tc.file, func(ctx context.Context) (map[string][]byte, error) {
+			err := cliManifestSet(cmd, tc.file, func(ctx context.Context) (map[string][]byte, error) {
 				return tc.setMnfResponse, tc.setMnfErr
 			})
 

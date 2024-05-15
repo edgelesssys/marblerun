@@ -65,7 +65,7 @@ func runManifestSet(cmd *cobra.Command, args []string) (retErr error) {
 	manifestSet := func(ctx context.Context) (map[string][]byte, error) {
 		return api.ManifestSet(ctx, hostname, root, manifest)
 	}
-	if err := cliManifestSet(cmd, manifest, file.New(recoveryFilename, afero.NewOsFs()), manifestSet); err != nil {
+	if err := cliManifestSet(cmd, file.New(recoveryFilename, afero.NewOsFs()), manifestSet); err != nil {
 		return err
 	}
 
@@ -78,7 +78,7 @@ func runManifestSet(cmd *cobra.Command, args []string) (retErr error) {
 
 // cliManifestSet sets the Coordinators manifest using its rest api.
 func cliManifestSet(
-	cmd *cobra.Command, manifest []byte, recFile *file.Handler,
+	cmd *cobra.Command, recFile *file.Handler,
 	setManifest func(context.Context) (map[string][]byte, error),
 ) error {
 	recoveryData, err := setManifest(cmd.Context())
