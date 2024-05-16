@@ -33,11 +33,6 @@ The Coordinator will be in one of these 4 states:
     manifest using [marblerun manifest update].
 `
 
-type statusResponse struct {
-	StatusCode    int    `json:"StatusCode"`
-	StatusMessage string `json:"StatusMessage"`
-}
-
 // NewStatusCmd returns the status command.
 func NewStatusCmd() *cobra.Command {
 	cmd := &cobra.Command{

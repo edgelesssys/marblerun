@@ -110,7 +110,7 @@ func TestCliManifestSet(t *testing.T) {
 			var out bytes.Buffer
 			cmd.SetOut(&out)
 
-			err := cliManifestSet(cmd, tc.file, func(ctx context.Context) (map[string][]byte, error) {
+			err := cliManifestSet(cmd, tc.file, func(context.Context) (map[string][]byte, error) {
 				return tc.setMnfResponse, tc.setMnfErr
 			})
 
@@ -279,18 +279,18 @@ func TestManifestUpdateGet(t *testing.T) {
 		wantErr        bool
 	}{
 		"success": {
-			getManifest: func(ctx context.Context) ([]byte, []string, error) {
+			getManifest: func(context.Context) ([]byte, []string, error) {
 				return []byte(`"manifest"`), []string{"user1", "user2"}, nil
 			},
 		},
 		"success display missing": {
-			getManifest: func(ctx context.Context) ([]byte, []string, error) {
+			getManifest: func(context.Context) ([]byte, []string, error) {
 				return []byte(`"manifest"`), []string{"user1", "user2"}, nil
 			},
 			displayMissing: true,
 		},
 		"get error": {
-			getManifest: func(ctx context.Context) ([]byte, []string, error) {
+			getManifest: func(context.Context) ([]byte, []string, error) {
 				return nil, nil, assert.AnError
 			},
 			wantErr: true,

@@ -33,14 +33,6 @@ func webhookDNSName(namespace string) string {
 	return "marble-injector." + namespace
 }
 
-type getter interface {
-	Get(ctx context.Context, path string, body io.Reader, queryParameters ...string) ([]byte, error)
-}
-
-type poster interface {
-	Post(ctx context.Context, path, contentType string, body io.Reader) ([]byte, error)
-}
-
 // parseRestFlags parses the command line flags used to configure the REST client.
 func parseRestFlags(cmd *cobra.Command) (api.VerifyOptions, string, error) {
 	eraConfig, err := cmd.Flags().GetString("era-config")
