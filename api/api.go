@@ -292,14 +292,14 @@ func ManifestUpdateGet(ctx context.Context, endpoint string, trustedRoot *x509.C
 	}
 
 	var response struct {
-		Manifest     string   `json:"manifest"`
+		Manifest     []byte   `json:"manifest"`
 		MissingUsers []string `json:"missingUsers"`
 	}
 	if err := json.Unmarshal(resp, &response); err != nil {
 		return nil, nil, fmt.Errorf("unmarshalling Coordinator response: %w", err)
 	}
 
-	return []byte(response.Manifest), response.MissingUsers, nil
+	return response.Manifest, response.MissingUsers, nil
 }
 
 // ManifestUpdateAcknowledge acknowledges the pending manifest update of a MarbleRun deployment.
