@@ -286,7 +286,7 @@ func ManifestUpdateGet(ctx context.Context, endpoint string, trustedRoot *x509.C
 	if err != nil {
 		return nil, nil, fmt.Errorf("setting up client: %w", err)
 	}
-	resp, err := client.Get(ctx, rest.UpdateEndpoint, http.NoBody)
+	resp, err := client.Get(ctx, rest.UpdateStatusEndpoint, http.NoBody)
 	if err != nil {
 		return nil, nil, fmt.Errorf("retrieving pending manifest update: %w", err)
 	}
@@ -480,7 +480,7 @@ func manifestUpdateAcknowledgeV2(ctx context.Context, client *rest.Client, updat
 		return nil, err
 	}
 
-	resp, err := client.Post(ctx, rest.V2API+rest.UpdateEndpoint, rest.ContentJSON, bytes.NewReader(updateManifestJSON))
+	resp, err := client.Post(ctx, rest.V2API+rest.UpdateStatusEndpoint, rest.ContentJSON, bytes.NewReader(updateManifestJSON))
 	if err != nil {
 		return nil, err
 	}
@@ -496,7 +496,7 @@ func manifestUpdateAcknowledgeV2(ctx context.Context, client *rest.Client, updat
 }
 
 func manifestUpdateAcknowledgeV1(ctx context.Context, client *rest.Client, updateManifest []byte) (missingUsers []string, err error) {
-	resp, err := client.Post(ctx, rest.UpdateEndpoint, rest.ContentJSON, bytes.NewReader(updateManifest))
+	resp, err := client.Post(ctx, rest.UpdateStatusEndpoint, rest.ContentJSON, bytes.NewReader(updateManifest))
 	if err != nil {
 		return nil, err
 	}
