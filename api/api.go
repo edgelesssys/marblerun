@@ -330,7 +330,18 @@ func ManifestUpdateCancel(ctx context.Context, endpoint string, trustedRoot *x50
 	if err != nil {
 		return fmt.Errorf("setting up client: %w", err)
 	}
-	_, err = client.Post(ctx, rest.UpdateCancelEndpoint, "", http.NoBody)
+
+	// Attempt to cancel the update using the v2 API first
+	_, err = client.Post(ctx, rest.V2API+rest.UpdateCancelEndpoint, "", http.NoBody)
+	if err != nil {
+		// If the Coordinator does not support the v2 API, fall back to v1
+		var notAllowedErr *rest.NotAllowedError
+		if !errors.As(err, &notAllowedErr) {
+			return fmt.Errorf("sending manifest update cancel: %w", err)
+		}
+		_, err = client.Post(ctx, rest.UpdateCancelEndpoint, "", http.NoBody)
+
+	}
 	return err
 }
 
@@ -434,9 +445,7 @@ func recoverV2(ctx context.Context, client *rest.Client, recoverySecret []byte) 
 		return -1, err
 	}
 
-	var response struct {
-		Remaining int `json:"Remaining"`
-	}
+	var response server.RecoveryV2Resp
 	if err := json.Unmarshal(resp, &response); err != nil {
 		return -1, fmt.Errorf("unmarshalling Coordinator response: %w", err)
 	}
@@ -472,9 +481,9 @@ func recoverV1(ctx context.Context, client *rest.Client, recoverySecret []byte) 
 
 func manifestUpdateAcknowledgeV2(ctx context.Context, client *rest.Client, updateManifest []byte) (missingUsers []string, err error) {
 	updateManifestJSON, err := json.Marshal(struct {
-		UpdateManifest []byte `json:"updateManifest"`
+		Manifest []byte `json:"manifest"`
 	}{
-		UpdateManifest: updateManifest,
+		Manifest: updateManifest,
 	})
 	if err != nil {
 		return nil, err
