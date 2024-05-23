@@ -53,7 +53,14 @@ type Config struct {
 // VerifyCertificate verifies the Coordinator's TLS certificate against the Coordinator's SGX quote.
 // A config with the expected attestation metadata must be provided.
 func VerifyCertificate(out io.Writer, rootCert *x509.Certificate, quote []byte, config Config) error {
-	report, quoteErr := verifyRemoteReport(quote)
+	return verifyCertificate(out, rootCert, quote, config, verifyRemoteReport)
+}
+
+func verifyCertificate(
+	out io.Writer, rootCert *x509.Certificate, quote []byte, config Config,
+	verifyQuote func(quote []byte) (attestation.Report, error),
+) error {
+	report, quoteErr := verifyQuote(quote)
 	if quoteErr != nil && !errors.Is(quoteErr, attestation.ErrTCBLevelInvalid) {
 		return quoteErr
 	}

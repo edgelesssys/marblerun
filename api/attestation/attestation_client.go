@@ -13,6 +13,8 @@ import (
 	"github.com/edgelesssys/ego/eclient"
 )
 
+// verifyRemoteReport uses EGo's eclient VerifyRemoteReport function to verify the remote report.
+// This function can only be called from *outside* an EGo enclave.
 func verifyRemoteReport(quote []byte) (attestation.Report, error) {
 	return eclient.VerifyRemoteReport(quote)
 }
