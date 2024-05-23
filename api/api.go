@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -29,6 +30,13 @@ import (
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/spf13/afero"
 )
+
+var logSink = io.Discard
+
+// SetLogSink sets the writer to which logs are written.
+func SetLogSink(w io.Writer) {
+	logSink = w
+}
 
 // VerifyCoordinator performs remote attestation on a MarbleRun Coordinator.
 // On success, it returns the Coordinator's self signed root and intermediate certificates,
@@ -77,7 +85,7 @@ func VerifyCoordinator(ctx context.Context, endpoint string, opts VerifyOptions)
 	}
 
 	// Verify the SGX Quote against the Coordinator's certificate and the given configuration
-	if err := attestation.VerifyCertificate(rootCert, response.Quote, attestation.Config{
+	if err := attestation.VerifyCertificate(logSink, rootCert, response.Quote, attestation.Config{
 		SecurityVersion:     opts.SecurityVersion,
 		UniqueID:            opts.UniqueID,
 		SignerID:            opts.SignerID,

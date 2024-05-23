@@ -14,10 +14,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"slices"
+	"io"
 
 	"github.com/edgelesssys/ego/attestation"
 	"github.com/edgelesssys/ego/attestation/tcbstatus"
+	"github.com/edgelesssys/marblerun/internal/tcb"
 )
 
 // TCBStatusError is returned when the TCB status of a Coordinator enclave is not accepted by a given configuration.
@@ -51,20 +52,26 @@ type Config struct {
 
 // VerifyCertificate verifies the Coordinator's TLS certificate against the Coordinator's SGX quote.
 // A config with the expected attestation metadata must be provided.
-// It returns the TCB status of the enclave, the quote, and an error, if any.
-func VerifyCertificate(rootCert *x509.Certificate, quote []byte, config Config) error {
-	report, err := verifyRemoteReport(quote)
-	if err != nil && !errors.Is(err, attestation.ErrTCBLevelInvalid) {
-		return err
+func VerifyCertificate(out io.Writer, rootCert *x509.Certificate, quote []byte, config Config) error {
+	report, quoteErr := verifyRemoteReport(quote)
+	if quoteErr != nil && !errors.Is(quoteErr, attestation.ErrTCBLevelInvalid) {
+		return quoteErr
 	}
 
 	if err := verifyReport(report, rootCert.Raw, config); err != nil {
 		return err
 	}
 
-	// Check if the TCB status is accepted
-	if !slices.Contains(config.AcceptedTCBStatuses, report.TCBStatus.String()) {
+	validity, err := tcb.CheckStatus(report.TCBStatus, quoteErr, config.AcceptedTCBStatuses)
+	if err != nil {
 		return NewTCBStatusError(report.TCBStatus)
+	}
+	switch validity {
+	case tcb.ValidityUnconditional:
+	case tcb.ValidityConditional:
+		fmt.Fprintln(out, "TCB level accepted by configuration:", report.TCBStatus)
+	default:
+		fmt.Fprintln(out, "Warning: TCB level invalid, but accepted by configuration:", report.TCBStatus)
 	}
 
 	return nil
