@@ -7,15 +7,15 @@
 package cmd
 
 import (
-	"bytes"
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"strings"
 
+	"github.com/edgelesssys/marblerun/api"
+	"github.com/edgelesssys/marblerun/cli/internal/certcache"
 	"github.com/edgelesssys/marblerun/cli/internal/file"
-	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -57,31 +57,34 @@ func runSecretSet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	newSecrets, err := file.New(secretFile, fs).Read()
+	newSecretsRaw, err := file.New(secretFile, fs).Read()
 	if err != nil {
 		return err
 	}
 
+	var newSecrets map[string]manifest.UserSecret
 	if fromPem != "" {
-		newSecrets, err = createSecretFromPEM(fromPem, newSecrets)
+		newSecrets, err = createSecretFromPEM(fromPem, newSecretsRaw)
 		if err != nil {
+			return err
+		}
+	} else {
+		if err := json.Unmarshal(newSecretsRaw, &newSecrets); err != nil {
 			return err
 		}
 	}
 
-	client, err := newMutualAuthClient(hostname, cmd.Flags(), fs)
+	root, _, err := certcache.LoadCoordinatorCachedCert(cmd.Flags(), fs)
+	if err != nil {
+		return err
+	}
+	keyPair, err := certcache.LoadClientCert(cmd.Flags())
 	if err != nil {
 		return err
 	}
 
-	return cliSecretSet(cmd, newSecrets, client)
-}
-
-// cliSecretSet sets one or more secrets using a secrets manifest.
-func cliSecretSet(cmd *cobra.Command, newSecrets []byte, client poster) error {
-	_, err := client.Post(cmd.Context(), rest.SecretEndpoint, rest.ContentJSON, bytes.NewReader(newSecrets))
-	if err != nil {
-		return fmt.Errorf("setting secret: %w", err)
+	if err := api.SecretSet(cmd.Context(), hostname, root, keyPair, newSecrets); err != nil {
+		return err
 	}
 
 	cmd.Println("Secret successfully set")
@@ -90,7 +93,7 @@ func cliSecretSet(cmd *cobra.Command, newSecrets []byte, client poster) error {
 
 // createSecretFromPEM creates a JSON string from a certificate and/or private key in PEM format.
 // If the PEM data contains more than one cert of key only the first instance will be part of the secret.
-func createSecretFromPEM(secretName string, rawPEM []byte) ([]byte, error) {
+func createSecretFromPEM(secretName string, rawPEM []byte) (map[string]manifest.UserSecret, error) {
 	newSecret := manifest.UserSecret{}
 	for {
 		block, rest := pem.Decode(rawPEM)
@@ -118,8 +121,7 @@ func createSecretFromPEM(secretName string, rawPEM []byte) ([]byte, error) {
 		return nil, fmt.Errorf("found no certificate or private key in PEM data")
 	}
 
-	wrapped := map[string]manifest.UserSecret{
+	return map[string]manifest.UserSecret{
 		secretName: newSecret,
-	}
-	return json.Marshal(wrapped)
+	}, nil
 }

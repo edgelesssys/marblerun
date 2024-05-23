@@ -7,18 +7,15 @@
 package cmd
 
 import (
-	"bytes"
 	"context"
-	"encoding/base64"
 	"fmt"
 	"io"
-	"net/http"
 
+	"github.com/edgelesssys/marblerun/api"
+	"github.com/edgelesssys/marblerun/cli/internal/certcache"
 	"github.com/edgelesssys/marblerun/cli/internal/file"
-	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
-	"github.com/tidwall/gjson"
 )
 
 func newManifestUpdate() *cobra.Command {
@@ -115,7 +112,11 @@ func runUpdateApply(cmd *cobra.Command, args []string) error {
 	hostname := args[1]
 	fs := afero.NewOsFs()
 
-	client, err := newMutualAuthClient(hostname, cmd.Flags(), fs)
+	root, _, err := certcache.LoadCoordinatorCachedCert(cmd.Flags(), fs)
+	if err != nil {
+		return err
+	}
+	keyPair, err := certcache.LoadClientCert(cmd.Flags())
 	if err != nil {
 		return err
 	}
@@ -125,17 +126,9 @@ func runUpdateApply(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cmd.Println("Successfully verified Coordinator, now uploading manifest")
-	return cliManifestUpdateApply(cmd, manifest, client)
-}
-
-// cliManifestUpdate updates the Coordinators manifest using its rest api.
-func cliManifestUpdateApply(cmd *cobra.Command, manifest []byte, client poster) error {
-	_, err := client.Post(cmd.Context(), rest.UpdateEndpoint, rest.ContentJSON, bytes.NewReader(manifest))
-	if err != nil {
+	if err := api.ManifestUpdateApply(cmd.Context(), hostname, root, manifest, keyPair); err != nil {
 		return fmt.Errorf("applying update: %w", err)
 	}
-
 	cmd.Println("Update manifest set successfully")
 	return nil
 }
@@ -145,7 +138,11 @@ func runUpdateAcknowledge(cmd *cobra.Command, args []string) error {
 	hostname := args[1]
 	fs := afero.NewOsFs()
 
-	client, err := newMutualAuthClient(hostname, cmd.Flags(), fs)
+	root, _, err := certcache.LoadCoordinatorCachedCert(cmd.Flags(), fs)
+	if err != nil {
+		return err
+	}
+	keyPair, err := certcache.LoadClientCert(cmd.Flags())
 	if err != nil {
 		return err
 	}
@@ -155,35 +152,37 @@ func runUpdateAcknowledge(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cmd.Println("Successfully verified Coordinator")
-	return cliManifestUpdateAcknowledge(cmd, manifest, client)
-}
-
-func cliManifestUpdateAcknowledge(cmd *cobra.Command, manifest []byte, client poster) error {
-	resp, err := client.Post(cmd.Context(), rest.UpdateStatusEndpoint, rest.ContentJSON, bytes.NewReader(manifest))
+	missing, err := api.ManifestUpdateAcknowledge(cmd.Context(), hostname, root, manifest, keyPair)
 	if err != nil {
 		return fmt.Errorf("acknowledging update manifest: %w", err)
 	}
 
-	cmd.Printf("Acknowledgement successful: %s\n", resp)
+	cmd.Println("Acknowledgement successful:")
+	switch len(missing) {
+	case 0:
+		cmd.Println("All users have acknowledged the update manifest. Update successfully applied")
+	case 1:
+		cmd.Println("1 user still needs to acknowledge the update manifest")
+	default:
+		cmd.Printf("%d users still need to acknowledge the update manifest", len(missing))
+	}
 	return nil
 }
 
 func runUpdateCancel(cmd *cobra.Command, args []string) error {
 	hostname := args[0]
+	fs := afero.NewOsFs()
 
-	client, err := newMutualAuthClient(hostname, cmd.Flags(), afero.NewOsFs())
+	root, _, err := certcache.LoadCoordinatorCachedCert(cmd.Flags(), fs)
+	if err != nil {
+		return err
+	}
+	keyPair, err := certcache.LoadClientCert(cmd.Flags())
 	if err != nil {
 		return err
 	}
 
-	cmd.Println("Successfully verified Coordinator")
-	return cliManifestUpdateCancel(cmd, client)
-}
-
-func cliManifestUpdateCancel(cmd *cobra.Command, client poster) error {
-	_, err := client.Post(cmd.Context(), rest.UpdateCancelEndpoint, "", http.NoBody)
-	if err != nil {
+	if err := api.ManifestUpdateCancel(cmd.Context(), hostname, root, keyPair); err != nil {
 		return fmt.Errorf("canceling update: %w", err)
 	}
 	cmd.Println("Cancellation successful")
@@ -202,17 +201,8 @@ func runUpdateGet(cmd *cobra.Command, args []string) (retErr error) {
 	if err != nil {
 		return err
 	}
-	insecureTLS, err := cmd.Flags().GetBool("insecure")
-	if err != nil {
-		return err
-	}
 
-	caCert, err := rest.LoadCoordinatorCachedCert(cmd.Flags(), fs)
-	if err != nil {
-		return err
-	}
-
-	client, err := rest.NewClient(hostname, caCert, nil, insecureTLS)
+	root, _, err := certcache.LoadCoordinatorCachedCert(cmd.Flags(), fs)
 	if err != nil {
 		return err
 	}
@@ -234,29 +224,26 @@ func runUpdateGet(cmd *cobra.Command, args []string) (retErr error) {
 		out = cmd.OutOrStdout()
 	}
 
-	cmd.Println("Successfully verified Coordinator")
-	return cliManifestUpdateGet(cmd.Context(), out, displayMissing, client)
+	getManifestUpdate := func(ctx context.Context) ([]byte, []string, error) {
+		return api.ManifestUpdateGet(ctx, hostname, root)
+	}
+	return cliManifestUpdateGet(cmd.Context(), out, displayMissing, getManifestUpdate)
 }
 
-func cliManifestUpdateGet(ctx context.Context, out io.Writer, displayMissing bool, client getter) error {
-	resp, err := client.Get(ctx, rest.UpdateStatusEndpoint, http.NoBody)
+func cliManifestUpdateGet(
+	ctx context.Context, out io.Writer, displayMissing bool,
+	getManifestUpdate func(context.Context) ([]byte, []string, error),
+) error {
+	manifest, missingUsers, err := getManifestUpdate(ctx)
 	if err != nil {
 		return fmt.Errorf("retrieving pending update manifest: %w", err)
 	}
 
 	var response string
 	if displayMissing {
-		msg := gjson.GetBytes(resp, "message")
-		missingUsers := gjson.GetBytes(resp, "missingUsers")
-
-		response = fmt.Sprintf("%s\nThe following users have not yet acknowledged the update: %s\n", msg.String(), missingUsers.String())
+		response = fmt.Sprintf("The following users have not yet acknowledged the update: %s\n", missingUsers)
 	} else {
-		mnfB64 := gjson.GetBytes(resp, "manifest").String()
-		mnf, err := base64.StdEncoding.DecodeString(mnfB64)
-		if err != nil {
-			return err
-		}
-		response = string(mnf)
+		response = string(manifest)
 	}
 	fmt.Fprint(out, response)
 

@@ -8,13 +8,13 @@ package cmd
 
 import (
 	"crypto/x509"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
 
+	"github.com/edgelesssys/marblerun/api"
+	"github.com/edgelesssys/marblerun/cli/internal/certcache"
 	"github.com/edgelesssys/marblerun/cli/internal/file"
-	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 )
@@ -34,12 +34,12 @@ func NewCertificateCmd() *cobra.Command {
 	return cmd
 }
 
-func runCertificate(saveCert func(io.Writer, *file.Handler, []*pem.Block) error,
+func runCertificate(saveCert func(writer io.Writer, fh *file.Handler, root, intermediate *x509.Certificate) error,
 ) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		hostname := args[0]
 		fs := afero.NewOsFs()
-		verifyOpts, err := parseRestFlags(cmd.Flags())
+		verifyOpts, sgxQuotePath, err := parseRestFlags(cmd)
 		if err != nil {
 			return err
 		}
@@ -48,30 +48,24 @@ func runCertificate(saveCert func(io.Writer, *file.Handler, []*pem.Block) error,
 			return err
 		}
 
-		localCerts, err := rest.LoadCoordinatorCachedCert(cmd.Flags(), fs)
-		if err != nil {
-			return err
-		}
-		rootCert, err := getRootCertFromPEMChain(localCerts)
-		if err != nil {
-			return fmt.Errorf("parsing root certificate from local cache: %w", err)
-		}
-
-		certs, err := rest.VerifyCoordinator(cmd.Context(), cmd.OutOrStdout(), hostname, verifyOpts)
+		remoteRootCert, remoteIntermediateCert, sgxQuote, err := api.VerifyCoordinator(cmd.Context(), hostname, verifyOpts)
 		if err != nil {
 			return fmt.Errorf("retrieving certificate from Coordinator: %w", err)
 		}
 
-		remoteRootCert, err := getRootCertFromPEMChain(certs)
+		rootCert, _, err := certcache.LoadCoordinatorCachedCert(cmd.Flags(), fs)
 		if err != nil {
-			return fmt.Errorf("parsing root certificate from Coordinator: %w", err)
+			return err
 		}
 
 		if !remoteRootCert.Equal(rootCert) {
 			return errors.New("root certificate of Coordinator changed. Run 'marblerun manifest verify' to verify the instance and update the local cache")
 		}
 
-		return saveCert(cmd.OutOrStdout(), file.New(output, fs), certs)
+		if err := saveSgxQuote(fs, sgxQuote, sgxQuotePath); err != nil {
+			return err
+		}
+		return saveCert(cmd.OutOrStdout(), file.New(output, fs), remoteRootCert, remoteIntermediateCert)
 	}
 }
 
@@ -84,11 +78,4 @@ func outputFlagNotEmpty(cmd *cobra.Command, _ []string) error {
 		return errors.New("output flag must not be empty")
 	}
 	return nil
-}
-
-func getRootCertFromPEMChain(certs []*pem.Block) (*x509.Certificate, error) {
-	if len(certs) == 0 {
-		return nil, errors.New("no certificates received from Coordinator")
-	}
-	return x509.ParseCertificate(certs[len(certs)-1].Bytes)
 }

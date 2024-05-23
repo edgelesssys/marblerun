@@ -7,8 +7,8 @@
 package cmd
 
 import (
+	"crypto/x509"
 	"encoding/pem"
-	"errors"
 	"fmt"
 	"io"
 
@@ -32,11 +32,15 @@ func newCertificateRoot() *cobra.Command {
 }
 
 // saveRootCert saves the root certificate of the MarbleRun Coordinator to a file.
-func saveRootCert(out io.Writer, certFile *file.Handler, certs []*pem.Block) error {
-	if len(certs) == 0 {
-		return errors.New("no certificates received from Coordinator")
+func saveRootCert(out io.Writer, certFile *file.Handler, root, _ *x509.Certificate) error {
+	if root == nil {
+		return fmt.Errorf("root certificate must not be nil")
 	}
-	if err := certFile.Write(pem.EncodeToMemory(certs[len(certs)-1]), file.OptOverwrite); err != nil {
+
+	if err := certFile.Write(pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: root.Raw,
+	}), file.OptOverwrite); err != nil {
 		return err
 	}
 	fmt.Fprintf(out, "Root certificate written to %s\n", certFile.Name())

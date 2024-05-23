@@ -10,14 +10,11 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"testing"
 
 	"github.com/edgelesssys/marblerun/cli/internal/file"
-	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -25,36 +22,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var testLog = []byte(`{"time":"1970-01-01T01:00:00.0","update":"initial manifest set"}
-{"time":"1970-01-01T02:00:00.0","update":"SecurityVersion increased","user":"admin","package":"frontend","new version":5}
-{"time":"1970-01-01T03:00:00.0","update":"SecurityVersion increased","user":"admin","package":"frontend","new version":5}
-{"time":"1970-01-01T04:00:00.0","update":"SecurityVersion increased","user":"admin","package":"frontend","new version":8}
-{"time":"1970-01-01T05:00:00.0","update":"SecurityVersion increased","user":"admin","package":"frontend","new version":12}`)
-
 func TestConsolidateManifest(t *testing.T) {
 	assert := assert.New(t)
-	log := testLog
+	log := []string{
+		`{"time":"1970-01-01T01:00:00.0","update":"initial manifest set"}`,
+		`{"time":"1970-01-01T02:00:00.0","update":"SecurityVersion increased","user":"admin","package":"frontend","new version":5}`,
+		`{"time":"1970-01-01T03:00:00.0","update":"SecurityVersion increased","user":"admin","package":"frontend","new version":5}`,
+		`{"time":"1970-01-01T04:00:00.0","update":"SecurityVersion increased","user":"admin","package":"frontend","new version":8}`,
+		`{"time":"1970-01-01T05:00:00.0","update":"SecurityVersion increased","user":"admin","package":"frontend","new version":12}`,
+	}
 
 	manifest, err := consolidateManifest([]byte(test.ManifestJSON), log)
 	assert.NoError(err)
 	assert.Contains(manifest, `"SecurityVersion": 12`)
 	assert.NotContains(manifest, `"RecoveryKeys"`)
-}
-
-func TestDecodeManifest(t *testing.T) {
-	assert := assert.New(t)
-	ctx := context.Background()
-
-	manifestRaw := base64.StdEncoding.EncodeToString([]byte(test.ManifestJSON))
-
-	manifest, err := decodeManifest(ctx, false, manifestRaw, &stubGetter{})
-	assert.NoError(err)
-	assert.Equal(test.ManifestJSON, manifest)
-
-	getter := &stubGetter{response: testLog}
-	manifest, err = decodeManifest(ctx, true, manifestRaw, getter)
-	assert.NoError(err)
-	assert.Contains(manifest, `"SecurityVersion": 12`)
 }
 
 func TestRemoveNil(t *testing.T) {
@@ -87,37 +68,36 @@ func TestRemoveNil(t *testing.T) {
 	assert.NotContains(removedMap, `"3"`)
 	// 2.2 should be removed since its nil, but 2 stays since 2.1 is not nil
 	assert.NotContains(removedMap, `"2.2"`)
-	// 4 should be removed completly since it only contains empty maps
+	// 4 should be removed completely since it only contains empty maps
 	assert.NotContains(removedMap, `"4"`)
 }
 
 func TestCliManifestSet(t *testing.T) {
-	someErr := errors.New("failed")
 	testCases := map[string]struct {
-		poster  *stubPoster
-		file    *file.Handler
-		wantErr bool
+		setMnfErr      error
+		setMnfResponse map[string][]byte
+		file           *file.Handler
+		wantErr        bool
 	}{
 		"success": {
-			poster: &stubPoster{},
-			file:   file.New("unit-test", afero.NewMemMapFs()),
+			file: file.New("unit-test", afero.NewMemMapFs()),
 		},
 		"success with secrets": {
-			poster: &stubPoster{response: []byte("secret")},
-			file:   nil,
+			setMnfResponse: map[string][]byte{"secret": []byte("secret")},
+			file:           nil,
 		},
 		"success with secrets and file": {
-			poster: &stubPoster{response: []byte("secret")},
-			file:   file.New("unit-test", afero.NewMemMapFs()),
+			setMnfResponse: map[string][]byte{"secret": []byte("secret")},
+			file:           file.New("unit-test", afero.NewMemMapFs()),
 		},
 		"post error": {
-			poster:  &stubPoster{err: someErr},
-			wantErr: true,
+			setMnfErr: assert.AnError,
+			wantErr:   true,
 		},
 		"writing file error": {
-			poster:  &stubPoster{response: []byte("secret")},
-			file:    file.New("unit-test", afero.NewReadOnlyFs(afero.NewMemMapFs())),
-			wantErr: true,
+			setMnfResponse: map[string][]byte{"secret": []byte("secret")},
+			file:           file.New("unit-test", afero.NewReadOnlyFs(afero.NewMemMapFs())),
+			wantErr:        true,
 		},
 	}
 
@@ -130,7 +110,9 @@ func TestCliManifestSet(t *testing.T) {
 			var out bytes.Buffer
 			cmd.SetOut(&out)
 
-			err := cliManifestSet(cmd, []byte("manifest"), tc.file, tc.poster)
+			err := cliManifestSet(cmd, tc.file, func(context.Context) (map[string][]byte, error) {
+				return tc.setMnfResponse, tc.setMnfErr
+			})
 
 			if tc.wantErr {
 				assert.Error(err)
@@ -139,57 +121,21 @@ func TestCliManifestSet(t *testing.T) {
 
 			require.NoError(err)
 			assert.Contains(out.String(), "Manifest successfully set")
-			assert.Equal(rest.ManifestEndpoint, tc.poster.requestPath)
-			assert.Equal(rest.ContentJSON, tc.poster.header)
 
-			if tc.poster.response != nil {
+			if tc.setMnfResponse != nil {
+				respJSON, err := json.Marshal(struct {
+					RecoverySecrets map[string][]byte
+				}{RecoverySecrets: tc.setMnfResponse})
+				require.NoError(err)
+
 				if tc.file != nil {
 					manifestResponse, err := tc.file.Read()
 					require.NoError(err)
-					assert.Equal(tc.poster.response, manifestResponse)
+					assert.Equal(respJSON, manifestResponse)
 				} else {
-					assert.Contains(out.String(), string(tc.poster.response))
+					assert.Contains(out.String(), string(respJSON))
 				}
 			}
-		})
-	}
-}
-
-func TestCliManifestUpdateApply(t *testing.T) {
-	testCases := map[string]struct {
-		poster  *stubPoster
-		wantErr bool
-	}{
-		"success": {
-			poster:  &stubPoster{},
-			wantErr: false,
-		},
-		"error": {
-			poster: &stubPoster{
-				err: errors.New("failed"),
-			},
-			wantErr: true,
-		},
-	}
-
-	for name, tc := range testCases {
-		t.Run(name, func(t *testing.T) {
-			assert := assert.New(t)
-
-			cmd := &cobra.Command{}
-
-			var out bytes.Buffer
-			cmd.SetOut(&out)
-
-			err := cliManifestUpdateApply(cmd, []byte("manifest"), tc.poster)
-			if tc.wantErr {
-				assert.Error(err)
-				return
-			}
-			assert.NoError(err)
-			assert.Contains(out.String(), "Update manifest set successfully")
-			assert.Equal(rest.UpdateEndpoint, tc.poster.requestPath)
-			assert.Equal(rest.ContentJSON, tc.poster.header)
 		})
 	}
 }
@@ -262,63 +208,21 @@ func TestCliManifestSignature(t *testing.T) {
 	assert.Equal(signature, cliManifestSignature(testValue))
 }
 
-func TestCliManifestVerify(t *testing.T) {
-	testCases := map[string]struct {
-		localSignature string
-		getter         *stubGetter
-		wantErr        bool
-	}{
-		"success": {
-			localSignature: "signature",
-			getter:         &stubGetter{response: []byte(`{"ManifestSignature": "signature"}`)},
-		},
-		"get error": {
-			localSignature: "signature",
-			getter:         &stubGetter{err: errors.New("failed")},
-			wantErr:        true,
-		},
-		"invalid signature": {
-			localSignature: "signature",
-			getter:         &stubGetter{response: []byte(`{"ManifestSignature": "invalid"}`)},
-			wantErr:        true,
-		},
-	}
-
-	for name, tc := range testCases {
-		t.Run(name, func(t *testing.T) {
-			assert := assert.New(t)
-
-			cmd := &cobra.Command{}
-
-			var out bytes.Buffer
-			cmd.SetOut(&out)
-
-			err := cliManifestVerify(cmd, tc.localSignature, tc.getter)
-			if tc.wantErr {
-				assert.Error(err)
-				return
-			}
-			assert.NoError(err)
-			assert.Equal("OK\n", out.String())
-		})
-	}
-}
-
 func TestGetSignatureFromString(t *testing.T) {
 	require := require.New(t)
 
 	testValue := []byte(`{"TestSignature": "signature"}`)
 	hash := sha256.Sum256(testValue)
-	directSignature := hex.EncodeToString(hash[:])
+	directSignature := hash[:]
 
 	testCases := map[string]struct {
 		signature string
-		expected  string
+		expected  []byte
 		fs        afero.Afero
 		wantErr   bool
 	}{
 		"direct signature": {
-			signature: directSignature,
+			signature: hex.EncodeToString(directSignature),
 			expected:  directSignature,
 			fs:        afero.Afero{Fs: afero.NewMemMapFs()},
 		},
@@ -333,9 +237,9 @@ func TestGetSignatureFromString(t *testing.T) {
 		},
 		"yaml manifest file": {
 			signature: "testSignature",
-			expected: func() string {
+			expected: func() []byte {
 				hash := sha256.Sum256([]byte(`{"TestSignature":"signature"}`)) // JSON converted from YAML has no whitespace
-				return hex.EncodeToString(hash[:])
+				return hash[:]
 			}(),
 			fs: func() afero.Afero {
 				fs := afero.Afero{Fs: afero.NewMemMapFs()}
@@ -368,72 +272,28 @@ func TestGetSignatureFromString(t *testing.T) {
 	}
 }
 
-func TestManifestUpdateAcknowledge(t *testing.T) {
-	testCases := map[string]struct {
-		poster  *stubPoster
-		wantErr bool
-	}{
-		"success": {
-			poster:  &stubPoster{response: []byte("response")},
-			wantErr: false,
-		},
-		"error": {
-			poster: &stubPoster{
-				err: errors.New("failed"),
-			},
-			wantErr: true,
-		},
-	}
-
-	for name, tc := range testCases {
-		t.Run(name, func(t *testing.T) {
-			assert := assert.New(t)
-
-			cmd := &cobra.Command{}
-
-			var out bytes.Buffer
-			cmd.SetOut(&out)
-
-			err := cliManifestUpdateAcknowledge(cmd, []byte("manifest"), tc.poster)
-			if tc.wantErr {
-				assert.Error(err)
-				return
-			}
-			assert.NoError(err)
-			assert.Contains(out.String(), "Acknowledgement successful")
-			assert.Contains(out.String(), string(tc.poster.response))
-			assert.Equal(rest.UpdateStatusEndpoint, tc.poster.requestPath)
-			assert.Equal(rest.ContentJSON, tc.poster.header)
-		})
-	}
-}
-
 func TestManifestUpdateGet(t *testing.T) {
 	testCases := map[string]struct {
-		getter         *stubGetter
+		getManifest    func(context.Context) ([]byte, []string, error)
 		displayMissing bool
 		wantErr        bool
 	}{
 		"success": {
-			getter: &stubGetter{
-				response: []byte(`{"manifest": "bWFuaWZlc3Q=", "missingUsers": ["user1", "user2"]}`),
+			getManifest: func(context.Context) ([]byte, []string, error) {
+				return []byte(`"manifest"`), []string{"user1", "user2"}, nil
 			},
 		},
 		"success display missing": {
-			getter: &stubGetter{
-				response: []byte(`{"manifest": "bWFuaWZlc3Q=", "missingUsers": ["user1", "user2"]}`),
+			getManifest: func(context.Context) ([]byte, []string, error) {
+				return []byte(`"manifest"`), []string{"user1", "user2"}, nil
 			},
 			displayMissing: true,
 		},
 		"get error": {
-			getter:  &stubGetter{err: errors.New("failed")},
-			wantErr: true,
-		},
-		"invalid manifest encoding": {
-			getter: &stubGetter{
-				response: []byte(`{"manifest": "_invalid_data_", "missingUsers": ["user1", "user2"]}`),
+			getManifest: func(context.Context) ([]byte, []string, error) {
+				return nil, nil, assert.AnError
 			},
-			displayMissing: true,
+			wantErr: true,
 		},
 	}
 
@@ -443,51 +303,13 @@ func TestManifestUpdateGet(t *testing.T) {
 
 			var out bytes.Buffer
 
-			err := cliManifestUpdateGet(context.Background(), &out, tc.displayMissing, tc.getter)
+			err := cliManifestUpdateGet(context.Background(), &out, tc.displayMissing, tc.getManifest)
 			if tc.wantErr {
 				assert.Error(err)
 				return
 			}
 			assert.NoError(err)
 			assert.NotEmpty(out.String())
-		})
-	}
-}
-
-func TestManifestUpdateCancel(t *testing.T) {
-	testCases := map[string]struct {
-		poster  *stubPoster
-		wantErr bool
-	}{
-		"success": {
-			poster:  &stubPoster{},
-			wantErr: false,
-		},
-		"error": {
-			poster: &stubPoster{
-				err: errors.New("failed"),
-			},
-			wantErr: true,
-		},
-	}
-
-	for name, tc := range testCases {
-		t.Run(name, func(t *testing.T) {
-			assert := assert.New(t)
-
-			cmd := &cobra.Command{}
-
-			var out bytes.Buffer
-			cmd.SetOut(&out)
-
-			err := cliManifestUpdateCancel(cmd, tc.poster)
-			if tc.wantErr {
-				assert.Error(err)
-				return
-			}
-			assert.NoError(err)
-			assert.Contains(out.String(), "Cancellation successful")
-			assert.Equal(rest.UpdateCancelEndpoint, tc.poster.requestPath)
 		})
 	}
 }

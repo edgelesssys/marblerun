@@ -11,13 +11,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"net/http"
 
+	"github.com/edgelesssys/marblerun/api"
+	"github.com/edgelesssys/marblerun/cli/internal/certcache"
 	"github.com/edgelesssys/marblerun/cli/internal/file"
-	"github.com/edgelesssys/marblerun/cli/internal/rest"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
-	"github.com/tidwall/gjson"
 )
 
 func newManifestVerify() *cobra.Command {
@@ -43,68 +42,47 @@ func runManifestVerify(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	verifyOpts, err := parseRestFlags(cmd.Flags())
+	verifyOpts, sgxQuotePath, err := parseRestFlags(cmd)
 	if err != nil {
 		return err
 	}
-	caCert, err := rest.VerifyCoordinator(cmd.Context(), cmd.OutOrStdout(), hostname, verifyOpts)
+	root, intermediate, sgxQuote, err := api.VerifyMarbleRunDeployment(cmd.Context(), hostname, verifyOpts, localSignature)
 	if err != nil {
 		return err
 	}
+	cmd.Println("OK")
 
-	client, err := rest.NewClient(hostname, caCert, nil, verifyOpts.Insecure)
-	if err != nil {
+	if err := saveSgxQuote(fs, sgxQuote, sgxQuotePath); err != nil {
 		return err
 	}
-	if err := cliManifestVerify(cmd, localSignature, client); err != nil {
-		return err
-	}
-
-	return rest.SaveCoordinatorCachedCert(cmd.Flags(), fs, caCert)
+	return certcache.SaveCoordinatorCachedCert(cmd.Flags(), fs, root, intermediate)
 }
 
 // getSignatureFromString checks if a string is a file or a valid signature.
-func getSignatureFromString(manifest string, fs afero.Fs) (string, error) {
+// If the string is a file, it returns the signature of the file (sha256 hash),
+// otherwise it returns the decoded signature.
+func getSignatureFromString(manifest string, fs afero.Fs) ([]byte, error) {
 	if _, err := fs.Stat(manifest); err != nil {
 		if !errors.Is(err, afero.ErrFileNotFound) {
-			return "", err
+			return nil, err
 		}
 
 		// command was called with a string that is not an existing file
 		// check if the string could be a valid signature
 		if len(manifest) != hex.EncodedLen(sha256.Size) {
-			return "", fmt.Errorf("%s is not a file and of invalid length to be a signature (needs to be 32 bytes)", manifest)
+			return nil, fmt.Errorf("%s is not a file and of invalid length to be a signature (needs to be 32 bytes)", manifest)
 		}
-		if _, err := hex.DecodeString(manifest); err != nil {
-			return "", fmt.Errorf("%s is not a file and not a valid signature (needs to be in hex format)", manifest)
+		manifestHash, err := hex.DecodeString(manifest)
+		if err != nil {
+			return nil, fmt.Errorf("%s is not a file and not a valid signature (needs to be in hex format)", manifest)
 		}
-		return manifest, nil
+		return manifestHash, nil
 	}
 
 	// manifest is an existing file -> return the signature of the file
 	rawManifest, err := loadManifestFile(file.New(manifest, fs))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return cliManifestSignature(rawManifest), nil
-}
-
-// cliManifestVerify verifies if a signature returned by the MarbleRun Coordinator is equal to one locally created.
-func cliManifestVerify(cmd *cobra.Command, localSignature string, client getter) error {
-	resp, err := client.Get(cmd.Context(), rest.ManifestEndpoint, http.NoBody)
-	if err != nil {
-		return err
-	}
-	remoteSignature := gjson.GetBytes(resp, "ManifestSignature").String()
-
-	if remoteSignature == "" {
-		return errors.New("Coordinator returned no manifest signature. Is the Coordinator in the correct state?")
-	}
-
-	if remoteSignature != localSignature {
-		return fmt.Errorf("remote signature differs from local signature: %s != %s", remoteSignature, localSignature)
-	}
-
-	cmd.Println("OK")
-	return nil
+	return hex.DecodeString(cliManifestSignature(rawManifest))
 }

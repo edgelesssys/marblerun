@@ -780,8 +780,7 @@ var ManifestEnvTemplateFuncMap = template.FuncMap{
 	"base64": EncodeSecretDataToBase64,
 }
 
-// UserSecret is a secret uploaded by a user
-// swagger:model
+// UserSecret is a secret uploaded by a user.
 type UserSecret struct {
 	Cert    Certificate
 	Private PrivateKey

@@ -4,37 +4,40 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-package rest
+package certcache
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/pem"
+	"errors"
 
 	"github.com/edgelesssys/marblerun/cli/internal/file"
+	"github.com/edgelesssys/marblerun/util"
 	"github.com/spf13/afero"
 	"github.com/spf13/pflag"
 )
 
 // SaveCoordinatorCachedCert saves the Coordinator's certificate to a cert cache.
-func SaveCoordinatorCachedCert(flags *pflag.FlagSet, fs afero.Fs, caCert []*pem.Block) error {
+func SaveCoordinatorCachedCert(flags *pflag.FlagSet, fs afero.Fs, root, intermediate *x509.Certificate) error {
 	certName, err := flags.GetString("coordinator-cert")
 	if err != nil {
 		return err
 	}
-	return saveCert(file.New(certName, fs), caCert)
+	return saveCert(file.New(certName, fs), root, intermediate)
 }
 
 // LoadCoordinatorCachedCert loads a cached Coordinator certificate.
-func LoadCoordinatorCachedCert(flags *pflag.FlagSet, fs afero.Fs) (caCert []*pem.Block, err error) {
+func LoadCoordinatorCachedCert(flags *pflag.FlagSet, fs afero.Fs) (root, intermediate *x509.Certificate, err error) {
 	// Skip loading the certificate if we're accepting insecure connections.
 	if insecure, err := flags.GetBool("insecure"); err != nil {
-		return nil, err
+		return nil, nil, err
 	} else if insecure {
-		return nil, nil
+		return nil, nil, nil
 	}
 	certName, err := flags.GetString("coordinator-cert")
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	return loadCert(file.New(certName, fs))
 }
@@ -57,29 +60,30 @@ func LoadClientCert(flags *pflag.FlagSet) (*tls.Certificate, error) {
 	return &clientCert, nil
 }
 
-func saveCert(fh *file.Handler, caCert []*pem.Block) error {
-	var pemCert []byte
-	for _, block := range caCert {
-		pemCert = append(pemCert, pem.EncodeToMemory(block)...)
+func saveCert(fh *file.Handler, root, intermediate *x509.Certificate) error {
+	if root == nil || intermediate == nil {
+		return errors.New("root and intermediate certificate must not be nil")
 	}
 
-	return fh.Write(pemCert, file.OptMkdirAll|file.OptOverwrite)
+	pemChain := append(
+		pem.EncodeToMemory(&pem.Block{
+			Type:  "CERTIFICATE",
+			Bytes: intermediate.Raw,
+		}),
+		pem.EncodeToMemory(&pem.Block{
+			Type:  "CERTIFICATE",
+			Bytes: root.Raw,
+		})...,
+	)
+
+	return fh.Write(pemChain, file.OptMkdirAll|file.OptOverwrite)
 }
 
-func loadCert(file *file.Handler) ([]*pem.Block, error) {
-	pemCert, err := file.Read()
+func loadCert(file *file.Handler) (root, intermediate *x509.Certificate, err error) {
+	pemChain, err := file.Read()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	var caCert []*pem.Block
-	for {
-		var block *pem.Block
-		block, pemCert = pem.Decode(pemCert)
-		if block == nil {
-			break
-		}
-		caCert = append(caCert, block)
-	}
-	return caCert, nil
+	return util.CoordinatorCertChainFromPEM(pemChain)
 }

@@ -9,62 +9,125 @@ package cmd
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
+	"net"
+	"net/http"
+	"os"
 
-	"github.com/edgelesssys/marblerun/cli/internal/rest"
+	"github.com/edgelesssys/marblerun/api"
+	"github.com/edgelesssys/marblerun/cli/internal/file"
+	"github.com/edgelesssys/marblerun/cli/internal/kube"
 	"github.com/spf13/afero"
-	"github.com/spf13/pflag"
+	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 )
+
+const eraDefaultConfig = "era-config.json"
 
 func webhookDNSName(namespace string) string {
 	return "marble-injector." + namespace
 }
 
-type getter interface {
-	Get(ctx context.Context, path string, body io.Reader, queryParameters ...string) ([]byte, error)
-}
-
-type poster interface {
-	Post(ctx context.Context, path, contentType string, body io.Reader) ([]byte, error)
-}
-
 // parseRestFlags parses the command line flags used to configure the REST client.
-func parseRestFlags(flags *pflag.FlagSet) (rest.VerifyCoordinatorOptions, error) {
-	eraConfig, err := flags.GetString("era-config")
+func parseRestFlags(cmd *cobra.Command) (api.VerifyOptions, string, error) {
+	eraConfig, err := cmd.Flags().GetString("era-config")
 	if err != nil {
-		return rest.VerifyCoordinatorOptions{}, err
+		return api.VerifyOptions{}, "", err
 	}
-	insecure, err := flags.GetBool("insecure")
+	insecure, err := cmd.Flags().GetBool("insecure")
 	if err != nil {
-		return rest.VerifyCoordinatorOptions{}, err
+		return api.VerifyOptions{}, "", err
 	}
-	acceptedTCBStatuses, err := flags.GetStringSlice("accepted-tcb-statuses")
+	acceptedTCBStatuses, err := cmd.Flags().GetStringSlice("accepted-tcb-statuses")
 	if err != nil {
-		return rest.VerifyCoordinatorOptions{}, err
+		return api.VerifyOptions{}, "", err
 	}
-	k8snamespace, err := flags.GetString("namespace")
+	k8sNamespace, err := cmd.Flags().GetString("namespace")
 	if err != nil {
-		return rest.VerifyCoordinatorOptions{}, err
+		return api.VerifyOptions{}, "", err
 	}
-	nonce, err := flags.GetString("nonce")
+	nonce, err := cmd.Flags().GetString("nonce")
 	if err != nil {
-		return rest.VerifyCoordinatorOptions{}, err
+		return api.VerifyOptions{}, "", err
 	}
-	sgxQuotePath, err := flags.GetString("save-sgx-quote")
+	sgxQuotePath, err := cmd.Flags().GetString("save-sgx-quote")
 	if err != nil {
-		return rest.VerifyCoordinatorOptions{}, err
+		return api.VerifyOptions{}, "", err
 	}
 
-	return rest.VerifyCoordinatorOptions{
-		K8sNamespace:        k8snamespace,
-		ConfigFilename:      eraConfig,
-		Insecure:            insecure,
-		AcceptedTCBStatuses: acceptedTCBStatuses,
-		Nonce:               []byte(nonce),
-		SGXQuotePath:        sgxQuotePath,
-	}, nil
+	if eraConfig == "" {
+		eraConfig = eraDefaultConfig
+
+		// reuse existing config from current working directory if none specified
+		// or try to get latest config from github if it does not exist
+		if _, err := os.Stat(eraConfig); err == nil {
+			fmt.Fprintln(cmd.OutOrStdout(), "Reusing existing config file")
+		} else if err := fetchLatestCoordinatorConfiguration(cmd.Context(), cmd.OutOrStdout(), k8sNamespace); err != nil {
+			return api.VerifyOptions{}, "", err
+		}
+	}
+
+	verifyOptions, err := api.VerifyOptionsFromConfig(eraConfig)
+	if err != nil {
+		return api.VerifyOptions{}, "", fmt.Errorf("reading era config file: %w", err)
+	}
+	verifyOptions.AcceptedTCBStatuses = acceptedTCBStatuses
+	verifyOptions.Nonce = []byte(nonce)
+
+	if insecure {
+		fmt.Fprintln(cmd.OutOrStdout(), "Warning: skipping quote verification")
+		verifyOptions.InsecureSkipVerify = insecure
+	}
+
+	return verifyOptions, sgxQuotePath, nil
+}
+
+func fetchLatestCoordinatorConfiguration(ctx context.Context, out io.Writer, k8sNamespace string) error {
+	coordinatorVersion, err := kube.CoordinatorVersion(ctx, k8sNamespace)
+	eraURL := fmt.Sprintf("https://github.com/edgelesssys/marblerun/releases/download/%s/coordinator-era.json", coordinatorVersion)
+	if err != nil {
+		// if errors were caused by an empty kube config file or by being unable to connect to a cluster we assume the Coordinator is running as a standalone
+		// and we default to the latest era-config file
+		var dnsError *net.DNSError
+		if !clientcmd.IsEmptyConfig(err) && !errors.As(err, &dnsError) && !os.IsNotExist(err) {
+			return err
+		}
+		eraURL = "https://github.com/edgelesssys/marblerun/releases/latest/download/coordinator-era.json"
+	}
+
+	fmt.Fprintf(out, "No era config file specified, getting config from %s\n", eraURL)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, eraURL, http.NoBody)
+	if err != nil {
+		return err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("downloading era config for version %s: %w", coordinatorVersion, err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("downloading era config for version: %s: %d: %s", coordinatorVersion, resp.StatusCode, http.StatusText(resp.StatusCode))
+	}
+
+	era, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("downloading era config for version %s: %w", coordinatorVersion, err)
+	}
+
+	if err := os.WriteFile(eraDefaultConfig, era, 0o644); err != nil {
+		return fmt.Errorf("writing era config file: %w", err)
+	}
+
+	if coordinatorVersion != "" {
+		fmt.Fprintf(out, "Got era config for version %s\n", coordinatorVersion)
+	} else {
+		fmt.Fprintln(out, "Got latest era config")
+	}
+	return nil
 }
 
 func checkLegacyKubernetesVersion(kubeClient kubernetes.Interface) (bool, error) {
@@ -85,22 +148,11 @@ func checkLegacyKubernetesVersion(kubeClient kubernetes.Interface) (bool, error)
 	return false, nil
 }
 
-func newMutualAuthClient(hostname string, flags *pflag.FlagSet, fs afero.Fs) (*rest.Client, error) {
-	insecureTLS, err := flags.GetBool("insecure")
-	if err != nil {
-		return nil, err
+func saveSgxQuote(fs afero.Fs, quote []byte, path string) error {
+	if path == "" {
+		return nil
 	}
-
-	caCert, err := rest.LoadCoordinatorCachedCert(flags, fs)
-	if err != nil {
-		return nil, err
-	}
-	clientCert, err := rest.LoadClientCert(flags)
-	if err != nil {
-		return nil, err
-	}
-
-	return rest.NewClient(hostname, caCert, clientCert, insecureTLS)
+	return file.New(path, fs).Write(quote, file.OptOverwrite)
 }
 
 func must(err error) {

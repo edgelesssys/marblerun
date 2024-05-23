@@ -10,6 +10,9 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/x509"
+	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -104,4 +107,26 @@ func MustGetwd() string {
 		return wd
 	}
 	panic(err)
+}
+
+// CoordinatorCertChainFromPEM parses a Coordinator's PEM encoded certificate chain into x509.Certificate objects.
+func CoordinatorCertChainFromPEM(pemChain []byte) (rootCert, intermediateCert *x509.Certificate, err error) {
+	intermediatePEM, rest := pem.Decode(pemChain)
+	if intermediatePEM == nil {
+		return nil, nil, errors.New("could not parse Coordinator intermediate certificate from PEM data")
+	}
+	rootPEM, _ := pem.Decode(rest)
+	if rootPEM == nil {
+		return nil, nil, errors.New("could not parse Coordinator root certificate from PEM data")
+	}
+	intermediateCert, err = x509.ParseCertificate(intermediatePEM.Bytes)
+	if err != nil {
+		return nil, nil, fmt.Errorf("parsing Coordinator intermediate certificate: %w", err)
+	}
+	rootCert, err = x509.ParseCertificate(rootPEM.Bytes)
+	if err != nil {
+		return nil, nil, fmt.Errorf("parsing Coordinator root certificate: %w", err)
+	}
+
+	return rootCert, intermediateCert, nil
 }

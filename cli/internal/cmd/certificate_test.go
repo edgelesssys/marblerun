@@ -8,6 +8,7 @@ package cmd
 
 import (
 	"bytes"
+	"crypto/x509"
 	"encoding/pem"
 	"testing"
 
@@ -60,35 +61,30 @@ func TestOutputFlagNotEmpty(t *testing.T) {
 
 func TestCertificateRoot(t *testing.T) {
 	testCases := map[string]struct {
-		file    *file.Handler
-		certs   []*pem.Block
-		wantErr bool
+		file         *file.Handler
+		root         *x509.Certificate
+		intermediate *x509.Certificate
+		wantErr      bool
 	}{
 		"no certs": {
-			file:    file.New("unit-test", afero.NewMemMapFs()),
-			certs:   []*pem.Block{},
-			wantErr: true,
+			file:         file.New("unit-test", afero.NewMemMapFs()),
+			root:         nil,
+			intermediate: nil,
+			wantErr:      true,
 		},
 		"one cert": {
 			file: file.New("unit-test", afero.NewMemMapFs()),
-			certs: []*pem.Block{
-				{
-					Type:  "CERTIFICATE",
-					Bytes: []byte("ROOT CERTIFICATE"),
-				},
+			root: &x509.Certificate{
+				Raw: []byte("ROOT CERTIFICATE"),
 			},
 		},
 		"multiple certs": {
 			file: file.New("unit-test", afero.NewMemMapFs()),
-			certs: []*pem.Block{
-				{
-					Type:  "CERTIFICATE",
-					Bytes: []byte("INTERMEDIATE CERTIFICATE"),
-				},
-				{
-					Type:  "CERTIFICATE",
-					Bytes: []byte("ROOT CERTIFICATE"),
-				},
+			root: &x509.Certificate{
+				Raw: []byte("ROOT CERTIFICATE"),
+			},
+			intermediate: &x509.Certificate{
+				Raw: []byte("INTERMEDIATE CERTIFICATE"),
 			},
 		},
 	}
@@ -99,7 +95,7 @@ func TestCertificateRoot(t *testing.T) {
 
 			var out bytes.Buffer
 
-			err := saveRootCert(&out, tc.file, tc.certs)
+			err := saveRootCert(&out, tc.file, tc.root, tc.intermediate)
 			if tc.wantErr {
 				assert.Error(err)
 				return
@@ -107,43 +103,40 @@ func TestCertificateRoot(t *testing.T) {
 			assert.NoError(err)
 			writtenCert, err := tc.file.Read()
 			require.NoError(t, err)
-			assert.Equal(pem.EncodeToMemory(tc.certs[len(tc.certs)-1]), writtenCert)
+			assert.Equal(pem.EncodeToMemory(&pem.Block{
+				Type: "CERTIFICATE", Bytes: tc.root.Raw,
+			}), writtenCert)
 		})
 	}
 }
 
 func TestCertificateIntermediate(t *testing.T) {
 	testCases := map[string]struct {
-		file    *file.Handler
-		certs   []*pem.Block
-		wantErr bool
+		file         *file.Handler
+		root         *x509.Certificate
+		intermediate *x509.Certificate
+		wantErr      bool
 	}{
 		"no certs": {
-			file:    file.New("unit-test", afero.NewMemMapFs()),
-			certs:   []*pem.Block{},
-			wantErr: true,
+			file:         file.New("unit-test", afero.NewMemMapFs()),
+			root:         nil,
+			intermediate: nil,
+			wantErr:      true,
 		},
 		"one cert": {
 			file: file.New("unit-test", afero.NewMemMapFs()),
-			certs: []*pem.Block{
-				{
-					Type:  "CERTIFICATE",
-					Bytes: []byte("ROOT CERTIFICATE"),
-				},
+			root: &x509.Certificate{
+				Raw: []byte("ROOT CERTIFICATE"),
 			},
 			wantErr: true,
 		},
 		"multiple certs": {
 			file: file.New("unit-test", afero.NewMemMapFs()),
-			certs: []*pem.Block{
-				{
-					Type:  "CERTIFICATE",
-					Bytes: []byte("INTERMEDIATE CERTIFICATE"),
-				},
-				{
-					Type:  "CERTIFICATE",
-					Bytes: []byte("ROOT CERTIFICATE"),
-				},
+			root: &x509.Certificate{
+				Raw: []byte("ROOT CERTIFICATE"),
+			},
+			intermediate: &x509.Certificate{
+				Raw: []byte("INTERMEDIATE CERTIFICATE"),
 			},
 		},
 	}
@@ -154,7 +147,7 @@ func TestCertificateIntermediate(t *testing.T) {
 
 			var out bytes.Buffer
 
-			err := saveIntermediateCert(&out, tc.file, tc.certs)
+			err := saveIntermediateCert(&out, tc.file, tc.root, tc.intermediate)
 			if tc.wantErr {
 				assert.Error(err)
 				return
@@ -162,42 +155,40 @@ func TestCertificateIntermediate(t *testing.T) {
 			assert.NoError(err)
 			writtenCert, err := tc.file.Read()
 			require.NoError(t, err)
-			assert.Equal(pem.EncodeToMemory(tc.certs[0]), writtenCert)
+			assert.Equal(pem.EncodeToMemory(&pem.Block{
+				Type: "CERTIFICATE", Bytes: tc.intermediate.Raw,
+			}), writtenCert)
 		})
 	}
 }
 
 func TestCertificateChain(t *testing.T) {
 	testCases := map[string]struct {
-		file    *file.Handler
-		certs   []*pem.Block
-		wantErr bool
+		file         *file.Handler
+		root         *x509.Certificate
+		intermediate *x509.Certificate
+		wantErr      bool
 	}{
 		"no certs": {
-			file:    file.New("unit-test", afero.NewMemMapFs()),
-			certs:   []*pem.Block{},
-			wantErr: true,
+			file:         file.New("unit-test", afero.NewMemMapFs()),
+			root:         nil,
+			intermediate: nil,
+			wantErr:      true,
 		},
 		"one cert": {
 			file: file.New("unit-test", afero.NewMemMapFs()),
-			certs: []*pem.Block{
-				{
-					Type:  "CERTIFICATE",
-					Bytes: []byte("ROOT CERTIFICATE"),
-				},
+			root: &x509.Certificate{
+				Raw: []byte("ROOT CERTIFICATE"),
 			},
+			wantErr: true,
 		},
 		"multiple certs": {
 			file: file.New("unit-test", afero.NewMemMapFs()),
-			certs: []*pem.Block{
-				{
-					Type:  "CERTIFICATE",
-					Bytes: []byte("INTERMEDIATE CERTIFICATE"),
-				},
-				{
-					Type:  "CERTIFICATE",
-					Bytes: []byte("ROOT CERTIFICATE"),
-				},
+			root: &x509.Certificate{
+				Raw: []byte("ROOT CERTIFICATE"),
+			},
+			intermediate: &x509.Certificate{
+				Raw: []byte("INTERMEDIATE CERTIFICATE"),
 			},
 		},
 	}
@@ -208,7 +199,7 @@ func TestCertificateChain(t *testing.T) {
 
 			var out bytes.Buffer
 
-			err := saveCertChain(&out, tc.file, tc.certs)
+			err := saveCertChain(&out, tc.file, tc.root, tc.intermediate)
 			if tc.wantErr {
 				assert.Error(err)
 				return
@@ -216,9 +207,12 @@ func TestCertificateChain(t *testing.T) {
 			assert.NoError(err)
 			writtenCert, err := tc.file.Read()
 			require.NoError(t, err)
-			for _, cert := range tc.certs {
-				assert.Contains(string(writtenCert), string(pem.EncodeToMemory(cert)))
-			}
+			assert.Contains(string(writtenCert), string(pem.EncodeToMemory(
+				&pem.Block{Type: "CERTIFICATE", Bytes: tc.intermediate.Raw},
+			)))
+			assert.Contains(string(writtenCert), string(pem.EncodeToMemory(
+				&pem.Block{Type: "CERTIFICATE", Bytes: tc.root.Raw},
+			)))
 		})
 	}
 }

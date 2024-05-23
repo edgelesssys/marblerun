@@ -7,11 +7,10 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
-	"net/http"
 
-	"github.com/edgelesssys/marblerun/cli/internal/rest"
+	"github.com/edgelesssys/marblerun/api"
+	"github.com/edgelesssys/marblerun/cli/internal/certcache"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 )
@@ -34,11 +33,6 @@ The Coordinator will be in one of these 4 states:
     manifest using [marblerun manifest update].
 `
 
-type statusResponse struct {
-	StatusCode    int    `json:"StatusCode"`
-	StatusMessage string `json:"StatusMessage"`
-}
-
 // NewStatusCmd returns the status command.
 func NewStatusCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -54,34 +48,15 @@ func NewStatusCmd() *cobra.Command {
 
 func runStatus(cmd *cobra.Command, args []string) error {
 	hostname := args[0]
-	caCert, err := rest.LoadCoordinatorCachedCert(cmd.Flags(), afero.NewOsFs())
-	if err != nil {
-		return err
-	}
-	insecureTLS, err := cmd.Flags().GetBool("insecure")
+	root, _, err := certcache.LoadCoordinatorCachedCert(cmd.Flags(), afero.NewOsFs())
 	if err != nil {
 		return err
 	}
 
-	client, err := rest.NewClient(hostname, caCert, nil, insecureTLS)
+	code, msg, err := api.GetStatus(cmd.Context(), hostname, root)
 	if err != nil {
 		return err
 	}
-	return cliStatus(cmd, client)
-}
-
-// cliStatus requests the current status of the Coordinator.
-func cliStatus(cmd *cobra.Command, client getter) error {
-	resp, err := client.Get(cmd.Context(), rest.StatusEndpoint, http.NoBody)
-	if err != nil {
-		return fmt.Errorf("querying Coordinator status: %w", err)
-	}
-
-	var statusResp statusResponse
-	if err := json.Unmarshal(resp, &statusResp); err != nil {
-		return err
-	}
-	cmd.Printf("%d: %s\n", statusResp.StatusCode, statusResp.StatusMessage)
-
+	fmt.Printf("%d: %s\n", code, msg)
 	return nil
 }

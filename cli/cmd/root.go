@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/edgelesssys/marblerun/api"
 	"github.com/edgelesssys/marblerun/cli/internal/cmd"
 	"github.com/edgelesssys/marblerun/cli/internal/helm"
 	"github.com/spf13/cobra"
@@ -29,6 +30,7 @@ var defaultCoordinatorCertCache = func() string {
 func Execute() error {
 	cobra.EnableCommandSorting = false
 	rootCmd := NewRootCmd()
+	api.SetLogSink(rootCmd.OutOrStdout())
 	return rootCmd.ExecuteContext(context.Background())
 }
 
