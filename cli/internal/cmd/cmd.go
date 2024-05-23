@@ -9,7 +9,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -72,14 +71,9 @@ func parseRestFlags(cmd *cobra.Command) (api.VerifyOptions, string, error) {
 		}
 	}
 
-	eraCfgRaw, err := os.ReadFile(eraConfig)
+	verifyOptions, err := api.VerifyOptionsFromConfig(eraConfig)
 	if err != nil {
 		return api.VerifyOptions{}, "", fmt.Errorf("reading era config file: %w", err)
-	}
-
-	var verifyOptions api.VerifyOptions
-	if err := json.Unmarshal(eraCfgRaw, &verifyOptions); err != nil {
-		return api.VerifyOptions{}, "", fmt.Errorf("unmarshalling era config: %w", err)
 	}
 	verifyOptions.AcceptedTCBStatuses = acceptedTCBStatuses
 	verifyOptions.Nonce = []byte(nonce)
