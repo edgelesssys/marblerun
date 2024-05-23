@@ -11,9 +11,9 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
-	"fmt"
 
 	"github.com/edgelesssys/marblerun/cli/internal/file"
+	"github.com/edgelesssys/marblerun/util"
 	"github.com/spf13/afero"
 	"github.com/spf13/pflag"
 )
@@ -85,22 +85,5 @@ func loadCert(file *file.Handler) (root, intermediate *x509.Certificate, err err
 		return nil, nil, err
 	}
 
-	intermediatePEM, rest := pem.Decode(pemChain)
-	if intermediatePEM == nil {
-		return nil, nil, errors.New("could not parse Coordinator intermediate certificate from PEM data")
-	}
-	rootPEM, _ := pem.Decode(rest)
-	if rootPEM == nil {
-		return nil, nil, errors.New("could not parse Coordinator root certificate from PEM data")
-	}
-	intermediate, err = x509.ParseCertificate(intermediatePEM.Bytes)
-	if err != nil {
-		return nil, nil, fmt.Errorf("parsing Coordinator intermediate certificate: %w", err)
-	}
-	root, err = x509.ParseCertificate(rootPEM.Bytes)
-	if err != nil {
-		return nil, nil, fmt.Errorf("parsing Coordinator root certificate: %w", err)
-	}
-
-	return root, intermediate, nil
+	return util.CoordinatorCertChainFromPEM(pemChain)
 }

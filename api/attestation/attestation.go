@@ -9,9 +9,9 @@ package attestation
 import (
 	"bytes"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/binary"
 	"encoding/hex"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"slices"
@@ -52,13 +52,13 @@ type Config struct {
 // VerifyCertificate verifies the Coordinator's TLS certificate against the Coordinator's SGX quote.
 // A config with the expected attestation metadata must be provided.
 // It returns the TCB status of the enclave, the quote, and an error, if any.
-func VerifyCertificate(certificate *pem.Block, quote []byte, config Config) error {
+func VerifyCertificate(rootCert *x509.Certificate, quote []byte, config Config) error {
 	report, err := verifyRemoteReport(quote)
 	if err != nil && !errors.Is(err, attestation.ErrTCBLevelInvalid) {
 		return err
 	}
 
-	if err := verifyReport(report, certificate.Bytes, config); err != nil {
+	if err := verifyReport(report, rootCert.Raw, config); err != nil {
 		return err
 	}
 

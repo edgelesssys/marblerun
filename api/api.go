@@ -16,7 +16,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"net/http"
@@ -67,22 +66,9 @@ func VerifyCoordinator(ctx context.Context, endpoint string, opts VerifyOptions)
 		return nil, nil, nil, fmt.Errorf("unmarshalling Coordinator response: %w", err)
 	}
 
-	// Parse certificates from PEM data
-	intermediateCertPEM, rest := pem.Decode([]byte(response.Cert))
-	if intermediateCertPEM == nil {
-		return nil, nil, nil, errors.New("could not parse Coordinator intermediate certificate from PEM data")
-	}
-	rootCertPEM, _ := pem.Decode(rest)
-	if rootCertPEM == nil {
-		return nil, nil, nil, errors.New("could not parse Coordinator root certificate from PEM data")
-	}
-	intermediateCert, err = x509.ParseCertificate(intermediateCertPEM.Bytes)
+	rootCert, intermediateCert, err = util.CoordinatorCertChainFromPEM([]byte(response.Cert))
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("parsing Coordinator intermediate certificate: %w", err)
-	}
-	rootCert, err = x509.ParseCertificate(rootCertPEM.Bytes)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("parsing Coordinator root certificate: %w", err)
+		return nil, nil, nil, fmt.Errorf("parsing Coordinator certificate chain: %w", err)
 	}
 
 	// Return early if no quote verification should be performed
@@ -91,7 +77,7 @@ func VerifyCoordinator(ctx context.Context, endpoint string, opts VerifyOptions)
 	}
 
 	// Verify the SGX Quote against the Coordinator's certificate and the given configuration
-	if err := attestation.VerifyCertificate(rootCertPEM, response.Quote, attestation.Config{
+	if err := attestation.VerifyCertificate(rootCert, response.Quote, attestation.Config{
 		SecurityVersion:     opts.SecurityVersion,
 		UniqueID:            opts.UniqueID,
 		SignerID:            opts.SignerID,
