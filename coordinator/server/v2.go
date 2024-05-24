@@ -103,6 +103,7 @@ func (s *clientAPIServerV2) signQuotePost(w http.ResponseWriter, r *http.Request
 }
 
 // writeJSONFailure writes a JSend failure response to the client.
+// nolint:unparam
 func writeJSONFailure(w http.ResponseWriter, v interface{}, message string, httpErrorCode int) {
 	w.Header().Set("Content-Type", "application/json")
 	dataToReturn := GeneralResponse{Status: "fail", Data: v, Message: message}
