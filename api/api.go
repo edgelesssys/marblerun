@@ -169,8 +169,7 @@ func Recover(ctx context.Context, endpoint string, opts VerifyOptions, recoveryS
 	remaining, err = recoverV2(ctx, client, recoverySecret)
 	if err != nil {
 		// If the Coordinator does not support the v2 API, fall back to v1
-		var notAllowedErr *rest.NotAllowedError
-		if !errors.As(err, &notAllowedErr) {
+		if !rest.IsNotAllowedErr(err) {
 			return -1, nil, fmt.Errorf("sending recovery request: %w", err)
 		}
 
@@ -310,8 +309,7 @@ func ManifestUpdateAcknowledge(ctx context.Context, endpoint string, trustedRoot
 	missingUsers, err = manifestUpdateAcknowledgeV2(ctx, client, updateManifest)
 	if err != nil {
 		// If the Coordinator does not support the v2 API, fall back to v1
-		var notAllowedErr *rest.NotAllowedError
-		if !errors.As(err, &notAllowedErr) {
+		if !rest.IsNotAllowedErr(err) {
 			return nil, fmt.Errorf("sending manifest update acknowledgement: %w", err)
 		}
 
@@ -331,8 +329,7 @@ func ManifestUpdateCancel(ctx context.Context, endpoint string, trustedRoot *x50
 	_, err = client.Post(ctx, rest.V2API+rest.UpdateCancelEndpoint, "", http.NoBody)
 	if err != nil {
 		// If the Coordinator does not support the v2 API, fall back to v1
-		var notAllowedErr *rest.NotAllowedError
-		if !errors.As(err, &notAllowedErr) {
+		if !rest.IsNotAllowedErr(err) {
 			return fmt.Errorf("sending manifest update cancel: %w", err)
 		}
 		_, err = client.Post(ctx, rest.UpdateCancelEndpoint, "", http.NoBody)
