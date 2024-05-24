@@ -26,7 +26,7 @@ import (
 
 	"github.com/edgelesssys/ego/attestation/tcbstatus"
 	"github.com/edgelesssys/marblerun/api/attestation"
-	"github.com/edgelesssys/marblerun/api/internal/rest"
+	"github.com/edgelesssys/marblerun/api/rest"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/server"
 	"github.com/edgelesssys/marblerun/util"
