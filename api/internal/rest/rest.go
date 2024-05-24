@@ -31,6 +31,7 @@ const (
 	RecoverEndpoint      = "recover"
 	SecretEndpoint       = "secrets"
 	StatusEndpoint       = "status"
+	SignQuoteEndpoint    = "sign-quote"
 	V2API                = "/api/v2/"
 	ContentJSON          = "application/json"
 	ContentPlain         = "text/plain"

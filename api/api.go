@@ -9,6 +9,7 @@ package api
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/tls"
@@ -23,6 +24,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/edgelesssys/ego/attestation/tcbstatus"
 	"github.com/edgelesssys/marblerun/api/attestation"
 	"github.com/edgelesssys/marblerun/api/internal/rest"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
@@ -375,6 +377,67 @@ func SecretSet(ctx context.Context, endpoint string, trustedRoot *x509.Certifica
 	}
 	_, err = client.Post(ctx, rest.SecretEndpoint, rest.ContentJSON, bytes.NewReader(secretDataJSON))
 	return err
+}
+
+// SignQuote sends an SGX quote to a Coordinator for signing.
+// If the quote is valid, the Coordinator will sign the quote using its root ECDSA key, and return the signature with the TCB status of the quote.
+// The Coordinator does not verify if the quote matches any packages in the configured manifest.
+// The signature is created over the SHA-256 hash of the base64-encoded SGX quote and the TCB status:
+//
+//	signature = ECDSA_sign(root_priv_key, SHA256(base64(SGX_quote) + string(TCB_status)))
+//
+// Use [VerifySignedQuote] to verify the signature.
+func SignQuote(ctx context.Context, endpoint string, trustedRoot *x509.Certificate, sgxQuote []byte) (signature []byte, tcbStatus tcbstatus.Status, err error) {
+	client, err := rest.NewClient(endpoint, trustedRoot, nil)
+	if err != nil {
+		return nil, tcbstatus.Unknown, fmt.Errorf("setting up client: %w", err)
+	}
+
+	signReq, err := json.Marshal(server.QuoteSignReq{SGXQuote: sgxQuote})
+	if err != nil {
+		return nil, tcbstatus.Unknown, fmt.Errorf("marshalling quote sign request: %w", err)
+	}
+
+	resp, err := client.Post(ctx, rest.V2API+rest.SignQuoteEndpoint, rest.ContentJSON, bytes.NewReader(signReq))
+	if err != nil {
+		return nil, tcbstatus.Unknown, fmt.Errorf("sending quote sign request: %w", err)
+	}
+
+	var response server.QuoteSignResp
+	if err := json.Unmarshal(resp, &response); err != nil {
+		return nil, tcbstatus.Unknown, fmt.Errorf("unmarshalling Coordinator response: %w", err)
+	}
+
+	switch response.TCBStatus {
+	case tcbstatus.UpToDate.String():
+		tcbStatus = tcbstatus.UpToDate
+	case tcbstatus.OutOfDate.String():
+		tcbStatus = tcbstatus.OutOfDate
+	case tcbstatus.Revoked.String():
+		tcbStatus = tcbstatus.Revoked
+	case tcbstatus.ConfigurationNeeded.String():
+		tcbStatus = tcbstatus.ConfigurationNeeded
+	case tcbstatus.OutOfDateConfigurationNeeded.String():
+		tcbStatus = tcbstatus.OutOfDateConfigurationNeeded
+	case tcbstatus.SWHardeningNeeded.String():
+		tcbStatus = tcbstatus.SWHardeningNeeded
+	case tcbstatus.ConfigurationAndSWHardeningNeeded.String():
+		tcbStatus = tcbstatus.ConfigurationAndSWHardeningNeeded
+	default:
+		return nil, tcbstatus.Unknown, fmt.Errorf("Coordinator returned unknown TCB status: %q", response.TCBStatus)
+	}
+
+	return response.VerificationSignature, tcbStatus, nil
+}
+
+// VerifySignedQuote verifies an SGX quote against the signature created by a Coordinator.
+func VerifySignedQuote(trustedRoot *x509.Certificate, sgxQuote []byte, signature []byte, tcbStatus tcbstatus.Status) bool {
+	expected := sha256.Sum256([]byte(base64.StdEncoding.EncodeToString(sgxQuote) + tcbStatus.String()))
+	rootPub, ok := trustedRoot.PublicKey.(*ecdsa.PublicKey)
+	if !ok {
+		return false
+	}
+	return ecdsa.VerifyASN1(rootPub, expected[:], signature)
 }
 
 // VerifyOptions specifies how to verify the remote attestation of a Coordinator instances.
