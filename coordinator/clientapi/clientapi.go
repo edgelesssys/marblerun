@@ -18,6 +18,8 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"slices"
+	"strings"
 
 	"github.com/edgelesssys/ego/enclave"
 	"github.com/edgelesssys/marblerun/coordinator/constants"
@@ -795,4 +797,21 @@ func (a *ClientAPI) SignQuote(ctx context.Context, quote []byte) (signedQuote []
 	}
 
 	return signature, report.TCBStatus.String(), verifyErr
+}
+
+// FeatureEnabled returns true if the given feature is enabled in the manifest.
+func (a *ClientAPI) FeatureEnabled(ctx context.Context, feature string) bool {
+	txdata, rollback, _, err := wrapper.WrapTransaction(ctx, a.txHandle)
+	if err != nil {
+		return false
+	}
+	defer rollback()
+	mnf, err := txdata.GetManifest()
+	if err != nil {
+		return false
+	}
+
+	return slices.ContainsFunc(mnf.FeatureGates, func(s string) bool {
+		return strings.EqualFold(s, feature)
+	})
 }

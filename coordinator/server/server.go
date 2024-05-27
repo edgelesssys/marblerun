@@ -43,6 +43,7 @@ type clientAPI interface {
 	UpdateManifest(ctx context.Context, rawUpdateManifest []byte, updater *user.User) error
 	WriteSecrets(ctx context.Context, rawSecretManifest []byte, updater *user.User) error
 	SignQuote(ctx context.Context, quote []byte) (signedQuote []byte, tcbStatus string, err error)
+	FeatureEnabled(ctx context.Context, feature string) bool
 }
 
 // RunMarbleServer starts a gRPC with the given Coordinator core.

@@ -15,6 +15,7 @@ import (
 	"net/http"
 
 	"github.com/edgelesssys/marblerun/coordinator/clientapi"
+	"github.com/edgelesssys/marblerun/coordinator/manifest"
 )
 
 // clientAPIServerV2 serves the /api/v2 endpoints of the Coordinator.
@@ -78,6 +79,11 @@ func (s *clientAPIServerV2) recoverPost(w http.ResponseWriter, r *http.Request) 
 // signQuotePost receives an SGX quote and returns a signed quote.
 // The Coordinator will verify the quote and sign it together with the TCB status of the quote using the root ECDSA key.
 func (s *clientAPIServerV2) signQuotePost(w http.ResponseWriter, r *http.Request) {
+	// Check if the current manifest allows signing quotes
+	if !s.api.FeatureEnabled(r.Context(), manifest.FeatureSignQuoteEndpoint) {
+		writeJSONError(w, "sign-quote endpoint is not enabled", http.StatusForbidden)
+	}
+
 	var req QuoteSignReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSONFailure(w, nil, fmt.Sprintf("bad request: %s", err), http.StatusBadRequest)

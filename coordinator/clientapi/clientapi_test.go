@@ -12,6 +12,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"testing"
@@ -629,6 +630,65 @@ func TestSetManifest(t *testing.T) {
 			require.NoError(err)
 			assert.True(tc.core.unlockCalled)
 			assert.True(tc.store.commitCalled)
+		})
+	}
+}
+
+func TestFeatureEnabled(t *testing.T) {
+	testCases := map[string]struct {
+		store       *fakeStoreTransaction
+		feature     string
+		wantEnabled bool
+	}{
+		"sign-quote feature enabled": {
+			store: &fakeStoreTransaction{
+				state: map[string][]byte{
+					request.Manifest: []byte(test.ManifestJSON),
+				},
+			},
+			feature:     manifest.FeatureSignQuoteEndpoint,
+			wantEnabled: true,
+		},
+		"sign-quote feature disabled": {
+			store: &fakeStoreTransaction{
+				state: map[string][]byte{
+					request.Manifest: func() []byte {
+						var mnf manifest.Manifest
+						require.NoError(t, json.Unmarshal([]byte(test.ManifestJSON), &mnf))
+						mnf.FeatureGates = []string{}
+						mnfBytes, err := json.Marshal(mnf)
+						require.NoError(t, err)
+						return mnfBytes
+					}(),
+				},
+			},
+			feature:     manifest.FeatureSignQuoteEndpoint,
+			wantEnabled: false,
+		},
+		"unknown feature": {
+			store: &fakeStoreTransaction{
+				state: map[string][]byte{
+					request.Manifest: []byte(test.ManifestJSON),
+				},
+			},
+			feature:     "unknown",
+			wantEnabled: false,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
+
+			log := zaptest.NewLogger(t)
+
+			api := &ClientAPI{
+				txHandle: tc.store,
+				core:     &fakeCore{},
+				log:      log,
+			}
+
+			assert.Equal(tc.wantEnabled, api.FeatureEnabled(context.Background(), tc.feature))
 		})
 	}
 }
