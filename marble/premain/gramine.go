@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
+	"github.com/edgelesssys/marblerun/util"
 	"google.golang.org/grpc/credentials"
 )
 
@@ -82,5 +83,5 @@ func (GramineQuoteIssuer) Issue(cert []byte) ([]byte, error) {
 		return nil, errors.New("invalid quote size")
 	}
 
-	return prependOEHeaderToRawQuote(quote[:quoteSize]), nil
+	return util.AddOEQuoteHeader(quote[:quoteSize]), nil
 }

@@ -27,6 +27,8 @@ import (
 	"os"
 	"syscall"
 	"unsafe"
+
+	"github.com/edgelesssys/marblerun/util"
 )
 
 // ioctlGetQuoteSize holds the ioctl value for the SGX device to retrieve the size of the quote in bytes.
@@ -62,7 +64,7 @@ func (OcclumQuoteIssuer) Issue(cert []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return prependOEHeaderToRawQuote(quoteBytes[:dcapQuoteSize]), nil
+	return util.AddOEQuoteHeader(quoteBytes[:dcapQuoteSize]), nil
 }
 
 func getQuoteSize(sgxDevice *os.File) (uint32, error) {

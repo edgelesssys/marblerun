@@ -7,6 +7,7 @@
 package util
 
 import (
+	"encoding/binary"
 	"os"
 	"testing"
 
@@ -66,4 +67,44 @@ func TestXORBytes(t *testing.T) {
 	result, err := XORBytes(firstValue, secondValue)
 	require.NoError(err)
 	assert.Equal(expectedResult, result)
+}
+
+func TestAddOEQuoteHeader(t *testing.T) {
+	testCases := map[string]struct {
+		quote []byte
+	}{
+		"empty quote": {
+			quote: []byte{},
+		},
+		"quote without header": {
+			quote: []byte("quote"),
+		},
+		"quote with header": {
+			quote: func() []byte {
+				quote := []byte("quote")
+				quoteWithHeader := make([]byte, 16+len(quote))
+				binary.LittleEndian.PutUint32(quoteWithHeader[:4], 1)
+				binary.LittleEndian.PutUint32(quoteWithHeader[4:8], 2)
+				binary.LittleEndian.PutUint64(quoteWithHeader[8:16], uint64(len(quote)))
+				return quote
+			}(),
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
+			require := require.New(t)
+
+			quoteWithHeader := AddOEQuoteHeader(tc.quote)
+			require.GreaterOrEqual(len(quoteWithHeader), 16)
+			oeVersion := binary.LittleEndian.Uint32(quoteWithHeader[:4])
+			assert.Equal(uint32(1), oeVersion)
+			oeReportType := binary.LittleEndian.Uint32(quoteWithHeader[4:8])
+			assert.Equal(uint32(2), oeReportType)
+			oeQuoteSize := binary.LittleEndian.Uint64(quoteWithHeader[8:16])
+			assert.Equal(uint64(len(quoteWithHeader[16:])), oeQuoteSize)
+			assert.Equal(tc.quote, quoteWithHeader[16:])
+		})
+	}
 }

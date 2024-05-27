@@ -34,6 +34,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/store/wrapper"
 	"github.com/edgelesssys/marblerun/coordinator/updatelog"
 	"github.com/edgelesssys/marblerun/coordinator/user"
+	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -781,7 +782,7 @@ func (a *ClientAPI) verifyAndSignQuote(
 ) (signature []byte, tcbStatus string, err error) {
 	// Verify the quote
 	var verifyErr error
-	report, err := verify(quote)
+	report, err := verify(util.AddOEQuoteHeader(quote))
 	if err != nil && !errors.Is(err, attestation.ErrTCBLevelInvalid) {
 		return nil, "", &QuoteVerifyError{err}
 	}

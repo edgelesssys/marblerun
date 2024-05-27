@@ -11,6 +11,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/binary"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -18,6 +19,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"slices"
 
 	"golang.org/x/crypto/hkdf"
 )
@@ -129,4 +131,19 @@ func CoordinatorCertChainFromPEM(pemChain []byte) (rootCert, intermediateCert *x
 	}
 
 	return rootCert, intermediateCert, nil
+}
+
+// AddOEQuoteHeader adds an OpenEnclave quote header to the given quote.
+// If the quote already has a header, this is a no-op.
+func AddOEQuoteHeader(quote []byte) []byte {
+	quoteHeader := make([]byte, 16)
+	binary.LittleEndian.PutUint32(quoteHeader, 1)     // version
+	binary.LittleEndian.PutUint32(quoteHeader[4:], 2) // OE_REPORT_TYPE_SGX_REMOTE
+	binary.LittleEndian.PutUint64(quoteHeader[8:], uint64(len(quote)))
+
+	// If the quote already has a header, return it as is.
+	if len(quote) > 8 && slices.Equal(quoteHeader[:8], quote[:8]) {
+		return quote
+	}
+	return append(quoteHeader, quote...)
 }
