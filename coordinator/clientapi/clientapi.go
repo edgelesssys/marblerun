@@ -177,30 +177,29 @@ func (a *ClientAPI) GetCertQuote(ctx context.Context, nonce []byte) (cert string
 // GetManifestSignature returns the hash of the manifest.
 //
 // Returns ECDSA signature, SHA256 hash and byte encoded representation of the active manifest.
-func (a *ClientAPI) GetManifestSignature(ctx context.Context) (manifestSignatureRootECDSA, manifestSignature, manifest []byte) {
+func (a *ClientAPI) GetManifestSignature(ctx context.Context) (manifestSignatureRootECDSA, manifest []byte, err error) {
 	a.log.Info("GetManifestSignature called")
 
 	txdata, rollback, _, err := wrapper.WrapTransaction(ctx, a.txHandle)
 	if err != nil {
 		a.log.Error("GetManifestSignature failed: initializing store transaction", zap.Error(err))
-		return nil, nil, nil
+		return nil, nil, err
 	}
 	defer rollback()
 
 	rawManifest, err := txdata.GetRawManifest()
 	if err != nil {
 		a.log.Error("GetManifestSignature failed: loading manifest from store", zap.Error(err))
-		return nil, nil, nil
+		return nil, nil, err
 	}
-	hash := sha256.Sum256(rawManifest)
 	signature, err := txdata.GetManifestSignature()
 	if err != nil {
 		a.log.Error("GetManifestSignature failed: loading manifest signature from store", zap.Error(err))
-		return nil, nil, nil
+		return nil, nil, err
 	}
 
 	a.log.Info("GetManifestSignature successful")
-	return signature, hash[:], rawManifest
+	return signature, rawManifest, nil
 }
 
 // GetSecrets allows a user to retrieve secrets from the Coordinator.
@@ -249,28 +248,28 @@ func (a *ClientAPI) GetStatus(ctx context.Context) (state.State, string, error) 
 }
 
 // GetUpdateLog returns the update history of the Coordinator.
-func (a *ClientAPI) GetUpdateLog(ctx context.Context) (string, error) {
+func (a *ClientAPI) GetUpdateLog(ctx context.Context) ([]string, error) {
 	a.log.Info("GetUpdateLog called")
 	defer a.core.Unlock()
 	if err := a.core.RequireState(ctx, state.AcceptingMarbles); err != nil {
 		a.log.Error("GetUpdateLog: Coordinator not in correct state", zap.Error(err))
-		return "", err
+		return nil, err
 	}
 
 	txdata, rollback, _, err := wrapper.WrapTransaction(ctx, a.txHandle)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer rollback()
 
 	updateLog, err := txdata.GetUpdateLog()
 	if err != nil {
 		a.log.Error("GetUpdateLog failed: loading update log from store", zap.Error(err))
-		return "", fmt.Errorf("loading update log from store: %w", err)
+		return nil, fmt.Errorf("loading update log from store: %w", err)
 	}
 
 	a.log.Info("GetUpdateLog successful")
-	return updateLog, nil
+	return strings.Split(strings.TrimSpace(updateLog), "\n"), nil
 }
 
 // Recover sets an encryption key (ideally decrypted from the recovery data) and tries to unseal and load a saved state of the Coordinator.
@@ -685,7 +684,7 @@ func (a *ClientAPI) VerifyUser(ctx context.Context, clientCerts []*x509.Certific
 }
 
 // WriteSecrets allows a user to set certain user-defined secrets for the Coordinator.
-func (a *ClientAPI) WriteSecrets(ctx context.Context, rawSecretManifest []byte, updater *user.User) (err error) {
+func (a *ClientAPI) WriteSecrets(ctx context.Context, userSecrets map[string]manifest.UserSecret, updater *user.User) (err error) {
 	a.log.Info("WriteSecrets called", zap.String("user", updater.Name()))
 	defer a.core.Unlock()
 	// Only accept secrets if we already have a manifest
@@ -699,12 +698,6 @@ func (a *ClientAPI) WriteSecrets(ctx context.Context, rawSecretManifest []byte, 
 		}
 	}()
 
-	// Unmarshal & check secret manifest
-	var secretManifest map[string]manifest.UserSecret
-	if err := json.Unmarshal(rawSecretManifest, &secretManifest); err != nil {
-		return fmt.Errorf("unmarshaling secret manifest: %w", err)
-	}
-
 	txdata, rollback, commit, err := wrapper.WrapTransaction(ctx, a.txHandle)
 	if err != nil {
 		return err
@@ -716,7 +709,7 @@ func (a *ClientAPI) WriteSecrets(ctx context.Context, rawSecretManifest []byte, 
 	if err != nil {
 		return fmt.Errorf("loading existing secrets: %w", err)
 	}
-	newSecrets, err := manifest.ParseUserSecrets(secretManifest, secretMeta)
+	newSecrets, err := manifest.ParseUserSecrets(userSecrets, secretMeta)
 	if err != nil {
 		return fmt.Errorf("parsing new secrets: %w", err)
 	}

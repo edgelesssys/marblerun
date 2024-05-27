@@ -4,22 +4,32 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-package server
+package v1
 
 import (
+	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
-	"github.com/edgelesssys/marblerun/coordinator/user"
+	"github.com/edgelesssys/marblerun/coordinator/manifest"
+	"github.com/edgelesssys/marblerun/coordinator/server/handler"
 )
 
-type clientAPIServer struct {
-	api clientAPI
+// ClientAPIServer serves the Coordinator's v1 REST API.
+type ClientAPIServer struct {
+	api handler.ClientAPI
 }
 
-// swagger:route GET /status status statusGet
+// NewServer creates a new ClientAPIServer.
+func NewServer(api handler.ClientAPI) *ClientAPIServer {
+	return &ClientAPIServer{api: api}
+}
+
+// swagger:route GET /status status StatusGet
 //
 // Get the current status of the Coordinator.
 //
@@ -31,16 +41,16 @@ type clientAPIServer struct {
 //	    Responses:
 //	      200: StatusResponse
 //			 500: ErrorResponse
-func (s *clientAPIServer) statusGet(w http.ResponseWriter, r *http.Request) {
+func (s *ClientAPIServer) StatusGet(w http.ResponseWriter, r *http.Request) {
 	statusCode, status, err := s.api.GetStatus(r.Context())
 	if err != nil {
-		writeJSONError(w, err.Error(), http.StatusInternalServerError)
+		handler.WriteJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, StatusResp{int(statusCode), status})
+	handler.WriteJSON(w, StatusResp{int(statusCode), status})
 }
 
-// swagger:route GET /manifest manifest manifestGet
+// swagger:route GET /manifest manifest ManifestGet
 //
 // Get the currently set manifest.
 //
@@ -75,16 +85,27 @@ func (s *clientAPIServer) statusGet(w http.ResponseWriter, r *http.Request) {
 //	    Responses:
 //	      200: ManifestResponse
 //			 500: ErrorResponse
-func (s *clientAPIServer) manifestGet(w http.ResponseWriter, r *http.Request) {
-	signatureRootECDSA, signature, manifest := s.api.GetManifestSignature(r.Context())
-	writeJSON(w, ManifestSignatureResp{
+func (s *ClientAPIServer) ManifestGet(w http.ResponseWriter, r *http.Request) {
+	signatureRootECDSA, manifest, err := s.api.GetManifestSignature(r.Context())
+	if err != nil {
+		// backwards compatibility, return empty response
+		handler.WriteJSON(w, ManifestSignatureResp{
+			ManifestSignatureRootECDSA: nil,
+			ManifestSignature:          "",
+			Manifest:                   nil,
+		})
+		return
+	}
+
+	fingerprint := sha256.Sum256(manifest)
+	handler.WriteJSON(w, ManifestSignatureResp{
 		ManifestSignatureRootECDSA: signatureRootECDSA,
-		ManifestSignature:          hex.EncodeToString(signature),
+		ManifestSignature:          hex.EncodeToString(fingerprint[:]),
 		Manifest:                   manifest,
 	})
 }
 
-// swagger:route POST /manifest manifest manifestPost
+// swagger:route POST /manifest manifest ManifestPost
 //
 // Set a manifest.
 //
@@ -101,27 +122,27 @@ func (s *clientAPIServer) manifestGet(w http.ResponseWriter, r *http.Request) {
 //	    Responses:
 //	      200: RecoveryDataResponse
 //			 500: ErrorResponse
-func (s *clientAPIServer) manifestPost(w http.ResponseWriter, r *http.Request) {
+func (s *ClientAPIServer) ManifestPost(w http.ResponseWriter, r *http.Request) {
 	manifest, err := io.ReadAll(r.Body)
 	if err != nil {
-		writeJSONError(w, err.Error(), http.StatusInternalServerError)
+		handler.WriteJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	recoverySecretMap, err := s.api.SetManifest(r.Context(), manifest)
 	if err != nil {
-		writeJSONError(w, err.Error(), http.StatusBadRequest)
+		handler.WriteJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	// If recovery data is set, return it
 	if len(recoverySecretMap) > 0 {
-		writeJSON(w, RecoveryDataResp{recoverySecretMap})
+		handler.WriteJSON(w, RecoveryDataResp{recoverySecretMap})
 	} else {
-		writeJSON(w, nil)
+		handler.WriteJSON(w, nil)
 	}
 }
 
-// swagger:route GET /quote quote quoteGet
+// swagger:route GET /quote quote QuoteGet
 //
 // Retrieve a remote attestation quote and certificates.
 //
@@ -158,16 +179,16 @@ func (s *clientAPIServer) manifestPost(w http.ResponseWriter, r *http.Request) {
 //	    Responses:
 //	      200: CertQuoteResponse
 //			 500: ErrorResponse
-func (s *clientAPIServer) quoteGet(w http.ResponseWriter, r *http.Request) {
+func (s *ClientAPIServer) QuoteGet(w http.ResponseWriter, r *http.Request) {
 	cert, quote, err := s.api.GetCertQuote(r.Context(), nil)
 	if err != nil {
-		writeJSONError(w, err.Error(), http.StatusInternalServerError)
+		handler.WriteJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, CertQuoteResp{cert, quote})
+	handler.WriteJSON(w, CertQuoteResp{cert, quote})
 }
 
-// swagger:route POST /recover recover recoverPost
+// swagger:route POST /recover recover RecoverPost
 //
 // Recover the Coordinator when unsealing of the existing state fails.
 //
@@ -184,17 +205,17 @@ func (s *clientAPIServer) quoteGet(w http.ResponseWriter, r *http.Request) {
 //	    Responses:
 //	      200: RecoveryStatusResponse
 //			 500: ErrorResponse
-func (s *clientAPIServer) recoverPost(w http.ResponseWriter, r *http.Request) {
+func (s *ClientAPIServer) RecoverPost(w http.ResponseWriter, r *http.Request) {
 	key, err := io.ReadAll(r.Body)
 	if err != nil {
-		writeJSONError(w, err.Error(), http.StatusInternalServerError)
+		handler.WriteJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	// Perform recover and receive amount of remaining secrets (for multi-party recovery)
 	remaining, err := s.api.Recover(r.Context(), key)
 	if err != nil {
-		writeJSONError(w, err.Error(), http.StatusInternalServerError)
+		handler.WriteJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -206,10 +227,10 @@ func (s *clientAPIServer) recoverPost(w http.ResponseWriter, r *http.Request) {
 		statusMessage = "Recovery successful."
 	}
 
-	writeJSON(w, RecoveryStatusResp{statusMessage})
+	handler.WriteJSON(w, RecoveryStatusResp{statusMessage})
 }
 
-// swagger:route GET /update update updateGet
+// swagger:route GET /update update UpdateGet
 //
 // Get a log of all performed updates.
 //
@@ -218,15 +239,16 @@ func (s *clientAPIServer) recoverPost(w http.ResponseWriter, r *http.Request) {
 //	    Responses:
 //	      200: UpdateLogResponse
 //			 500: ErrorResponse
-func (s *clientAPIServer) updateGet(w http.ResponseWriter, r *http.Request) {
+func (s *ClientAPIServer) UpdateGet(w http.ResponseWriter, r *http.Request) {
 	updateLog, err := s.api.GetUpdateLog(r.Context())
 	if err != nil {
-		writeJSONError(w, err.Error(), http.StatusInternalServerError)
+		handler.WriteJSONError(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
-	writeJSON(w, updateLog)
+	handler.WriteJSON(w, strings.Join(updateLog, "\n")+"\n")
 }
 
-// swagger:route POST /update update updatePost
+// swagger:route POST /update update UpdatePost
 //
 // Update a specific package set in the manifest.
 //
@@ -243,25 +265,26 @@ func (s *clientAPIServer) updateGet(w http.ResponseWriter, r *http.Request) {
 //	      200: SuccessResponse
 //			 400: ErrorResponse
 //			 500: ErrorResponse
-func (s *clientAPIServer) updatePost(w http.ResponseWriter, r *http.Request) {
-	user := s.verifyUser(w, r)
-	if user == nil {
+func (s *ClientAPIServer) UpdatePost(w http.ResponseWriter, r *http.Request) {
+	verifiedUser, err := handler.VerifyUser(s.api.VerifyUser, r)
+	if err != nil {
+		handler.WriteJSONError(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 	updateManifest, err := io.ReadAll(r.Body)
 	if err != nil {
-		writeJSONError(w, err.Error(), http.StatusInternalServerError)
+		handler.WriteJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	err = s.api.UpdateManifest(r.Context(), updateManifest, user)
+	err = s.api.UpdateManifest(r.Context(), updateManifest, verifiedUser)
 	if err != nil {
-		writeJSONError(w, err.Error(), http.StatusBadRequest)
+		handler.WriteJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	writeJSON(w, nil)
+	handler.WriteJSON(w, nil)
 }
 
-// swagger:route GET /secrets secrets secretsGet
+// swagger:route GET /secrets secrets SecretsGet
 //
 // Retrieve secrets.
 //
@@ -286,33 +309,34 @@ func (s *clientAPIServer) updatePost(w http.ResponseWriter, r *http.Request) {
 //	      200: SuccessResponse
 //			 401: ErrorResponse
 //			 500: ErrorResponse
-func (s *clientAPIServer) secretsGet(w http.ResponseWriter, r *http.Request) {
-	user := s.verifyUser(w, r)
-	if user == nil {
+func (s *ClientAPIServer) SecretsGet(w http.ResponseWriter, r *http.Request) {
+	verifiedUser, err := handler.VerifyUser(s.api.VerifyUser, r)
+	if err != nil {
+		handler.WriteJSONError(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
 	// Secrets are requested via the query string in the form of ?s=<secretOne>&s=<secretTwo>&s=...
 	requestedSecrets := r.URL.Query()["s"]
 	if len(requestedSecrets) <= 0 {
-		writeJSONError(w, "invalid query", http.StatusBadRequest)
+		handler.WriteJSONError(w, "invalid query", http.StatusBadRequest)
 		return
 	}
 	for _, req := range requestedSecrets {
 		if len(req) <= 0 {
-			writeJSONError(w, "malformed query string", http.StatusBadRequest)
+			handler.WriteJSONError(w, "malformed query string", http.StatusBadRequest)
 			return
 		}
 	}
-	response, err := s.api.GetSecrets(r.Context(), requestedSecrets, user)
+	response, err := s.api.GetSecrets(r.Context(), requestedSecrets, verifiedUser)
 	if err != nil {
-		writeJSONError(w, err.Error(), http.StatusBadRequest)
+		handler.WriteJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	writeJSON(w, response)
+	handler.WriteJSON(w, response)
 }
 
-// swagger:route POST /secrets secrets secretsPost
+// swagger:route POST /secrets secrets SecretsPost
 //
 // Set secrets.
 //
@@ -333,34 +357,27 @@ func (s *clientAPIServer) secretsGet(w http.ResponseWriter, r *http.Request) {
 //			 400: ErrorResponse
 //			 401: ErrorResponse
 //			 500: ErrorResponse
-func (s *clientAPIServer) secretsPost(w http.ResponseWriter, r *http.Request) {
-	user := s.verifyUser(w, r)
-	if user == nil {
+func (s *ClientAPIServer) SecretsPost(w http.ResponseWriter, r *http.Request) {
+	verifiedUser, err := handler.VerifyUser(s.api.VerifyUser, r)
+	if err != nil {
+		handler.WriteJSONError(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
-	secretManifest, err := io.ReadAll(r.Body)
+	rawSecrets, err := io.ReadAll(r.Body)
 	if err != nil {
-		writeJSONError(w, err.Error(), http.StatusInternalServerError)
+		handler.WriteJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if err := s.api.WriteSecrets(r.Context(), secretManifest, user); err != nil {
-		writeJSONError(w, err.Error(), http.StatusBadRequest)
+	var secrets map[string]manifest.UserSecret
+	if err := json.Unmarshal(rawSecrets, &secrets); err != nil {
+		handler.WriteJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	writeJSON(w, nil)
-}
 
-func (s *clientAPIServer) verifyUser(w http.ResponseWriter, r *http.Request) *user.User {
-	// Abort if no user client certificate was provided
-	if r.TLS == nil {
-		writeJSONError(w, "no client certificate provided", http.StatusUnauthorized)
-		return nil
+	if err := s.api.WriteSecrets(r.Context(), secrets, verifiedUser); err != nil {
+		handler.WriteJSONError(w, err.Error(), http.StatusBadRequest)
+		return
 	}
-	verifiedUser, err := s.api.VerifyUser(r.Context(), r.TLS.PeerCertificates)
-	if err != nil {
-		writeJSONError(w, "unauthorized user", http.StatusUnauthorized)
-		return nil
-	}
-	return verifiedUser
+	handler.WriteJSON(w, nil)
 }

@@ -10,17 +10,16 @@ package server
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"net"
 	"net/http"
 
 	"github.com/edgelesssys/marblerun/coordinator/core"
 	"github.com/edgelesssys/marblerun/coordinator/events"
-	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
-	"github.com/edgelesssys/marblerun/coordinator/state"
-	"github.com/edgelesssys/marblerun/coordinator/user"
+	"github.com/edgelesssys/marblerun/coordinator/server/handler"
+	v1 "github.com/edgelesssys/marblerun/coordinator/server/v1"
+	v2 "github.com/edgelesssys/marblerun/coordinator/server/v2"
 	grpcprometheus "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/prometheus/client_golang/prometheus"
@@ -30,21 +29,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
-
-type clientAPI interface {
-	SetManifest(ctx context.Context, rawManifest []byte) (recoverySecretMap map[string][]byte, err error)
-	GetCertQuote(ctx context.Context, nonce []byte) (cert string, certQuote []byte, err error)
-	GetManifestSignature(context.Context) (manifestSignatureRootECDSA, manifestSignature, manifest []byte)
-	GetSecrets(ctx context.Context, requestedSecrets []string, requestUser *user.User) (map[string]manifest.Secret, error)
-	GetStatus(context.Context) (statusCode state.State, status string, err error)
-	GetUpdateLog(context.Context) (updateLog string, err error)
-	Recover(ctx context.Context, encryptionKey []byte) (int, error)
-	VerifyUser(ctx context.Context, clientCerts []*x509.Certificate) (*user.User, error)
-	UpdateManifest(ctx context.Context, rawUpdateManifest []byte, updater *user.User) error
-	WriteSecrets(ctx context.Context, rawSecretManifest []byte, updater *user.User) error
-	SignQuote(ctx context.Context, quote []byte) (signedQuote []byte, tcbStatus string, err error)
-	FeatureEnabled(ctx context.Context, feature string) bool
-}
 
 // RunMarbleServer starts a gRPC with the given Coordinator core.
 // `address` is the desired TCP address like "localhost:0".
@@ -91,30 +75,35 @@ func RunMarbleServer(core *core.Core, addr string, addrChan chan string, errChan
 }
 
 // CreateServeMux creates a mux that serves the client API.
-func CreateServeMux(api clientAPI, promFactory *promauto.Factory) serveMux {
-	serverV1 := clientAPIServer{api}
-	serverV2 := clientAPIServerV2{api}
+func CreateServeMux(api handler.ClientAPI, promFactory *promauto.Factory) serveMux {
+	serverV1 := v1.NewServer(api)
+	serverV2 := v2.NewServer(api)
 	var router serveMux
 	if promFactory != nil {
 		muxRouter := newPromServeMux(promFactory, "server", "client_api")
-		muxRouter.setMethodNotAllowedHandler(methodNotAllowedHandler)
+		muxRouter.setMethodNotAllowedHandler(handler.MethodNotAllowedHandler)
 		router = muxRouter
 	} else {
 		muxRouter := http.NewServeMux()
-		muxRouter.HandleFunc("/", methodNotAllowedHandler)
+		muxRouter.HandleFunc("/", handler.MethodNotAllowedHandler)
 		router = muxRouter
 	}
 
-	router.HandleFunc("/manifest", handleGetPost(serverV1.manifestGet, serverV1.manifestPost))
-	router.HandleFunc("/update", handleGetPost(serverV1.updateGet, serverV1.updatePost))
-	router.HandleFunc("/secrets", handleGetPost(serverV1.secretsGet, serverV1.secretsPost))
-	router.HandleFunc("/status", handleGetPost(serverV1.statusGet, methodNotAllowedHandler))
-	router.HandleFunc("/quote", handleGetPost(serverV1.quoteGet, methodNotAllowedHandler))
-	router.HandleFunc("/recover", handleGetPost(methodNotAllowedHandler, serverV1.recoverPost))
+	router.HandleFunc("/manifest", handler.GetPost(serverV1.ManifestGet, serverV1.ManifestPost))
+	router.HandleFunc("/update", handler.GetPost(serverV1.UpdateGet, serverV1.UpdatePost))
+	router.HandleFunc("/secrets", handler.GetPost(serverV1.SecretsGet, serverV1.SecretsPost))
+	router.HandleFunc("/status", handler.GetPost(serverV1.StatusGet, handler.MethodNotAllowedHandler))
+	router.HandleFunc("/quote", handler.GetPost(serverV1.QuoteGet, handler.MethodNotAllowedHandler))
+	router.HandleFunc("/recover", handler.GetPost(handler.MethodNotAllowedHandler, serverV1.RecoverPost))
 
-	router.HandleFunc("/api/v2/quote", handleGetPost(serverV2.quoteGet, methodNotAllowedHandler))
-	router.HandleFunc("/api/v2/recover", handleGetPost(methodNotAllowedHandler, serverV2.recoverPost))
-	router.HandleFunc("/api/v2/sign-quote", handleGetPost(methodNotAllowedHandler, serverV2.signQuotePost))
+	v2Endpoint := "/api/v2"
+	router.HandleFunc(v2Endpoint+"/manifest", handler.GetPost(serverV2.ManifestGet, serverV2.ManifestPost))
+	router.HandleFunc(v2Endpoint+"/update", handler.GetPost(serverV2.UpdateGet, serverV2.UpdatePost))
+	router.HandleFunc(v2Endpoint+"/secrets", handler.GetPost(serverV2.SecretsGet, serverV2.SecretsPost))
+	router.HandleFunc(v2Endpoint+"/status", handler.GetPost(serverV2.StatusGet, handler.MethodNotAllowedHandler))
+	router.HandleFunc(v2Endpoint+"/quote", handler.GetPost(serverV2.QuoteGet, handler.MethodNotAllowedHandler))
+	router.HandleFunc(v2Endpoint+"/recover", handler.GetPost(handler.MethodNotAllowedHandler, serverV2.RecoverPost))
+	router.HandleFunc(v2Endpoint+"/sign-quote", handler.GetPost(handler.MethodNotAllowedHandler, serverV2.SignQuotePost))
 	return router
 }
 

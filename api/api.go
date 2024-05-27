@@ -28,7 +28,8 @@ import (
 	"github.com/edgelesssys/marblerun/api/attestation"
 	"github.com/edgelesssys/marblerun/api/rest"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
-	"github.com/edgelesssys/marblerun/coordinator/server"
+	apiv1 "github.com/edgelesssys/marblerun/coordinator/server/v1"
+	apiv2 "github.com/edgelesssys/marblerun/coordinator/server/v2"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/spf13/afero"
 )
@@ -221,7 +222,7 @@ func ManifestGet(ctx context.Context, endpoint string, trustedRoot *x509.Certifi
 		return nil, "", nil, fmt.Errorf("retrieving Coordinator manifest: %w", err)
 	}
 
-	var response server.ManifestSignatureResp
+	var response apiv1.ManifestSignatureResp
 	if err := json.Unmarshal(resp, &response); err != nil {
 		return nil, "", nil, fmt.Errorf("unmarshalling Coordinator response: %w", err)
 	}
@@ -255,7 +256,7 @@ func ManifestSet(ctx context.Context, endpoint string, trustedRoot *x509.Certifi
 	}
 
 	if len(resp) > 0 {
-		var response server.RecoveryDataResp
+		var response apiv1.RecoveryDataResp
 		if err := json.Unmarshal(resp, &response); err != nil {
 			return nil, fmt.Errorf("unmarshalling Coordinator response: %w", err)
 		}
@@ -390,7 +391,7 @@ func SignQuote(ctx context.Context, endpoint string, trustedRoot *x509.Certifica
 		return nil, tcbstatus.Unknown, fmt.Errorf("setting up client: %w", err)
 	}
 
-	signReq, err := json.Marshal(server.QuoteSignReq{SGXQuote: sgxQuote})
+	signReq, err := json.Marshal(apiv2.QuoteSignReq{SGXQuote: sgxQuote})
 	if err != nil {
 		return nil, tcbstatus.Unknown, fmt.Errorf("marshalling quote sign request: %w", err)
 	}
@@ -400,7 +401,7 @@ func SignQuote(ctx context.Context, endpoint string, trustedRoot *x509.Certifica
 		return nil, tcbstatus.Unknown, fmt.Errorf("sending quote sign request: %w", err)
 	}
 
-	var response server.QuoteSignResp
+	var response apiv2.QuoteSignResp
 	if err := json.Unmarshal(resp, &response); err != nil {
 		return nil, tcbstatus.Unknown, fmt.Errorf("unmarshalling Coordinator response: %w", err)
 	}
@@ -489,7 +490,7 @@ func verifyOptionsFromConfig(fs afero.Afero, configPath string) (VerifyOptions, 
 
 // recoverV2 performs recovery of the Coordinator using the v2 API.
 func recoverV2(ctx context.Context, client *rest.Client, recoverySecret []byte) (remaining int, err error) {
-	recoverySecretJSON, err := json.Marshal(server.RecoveryV2Request{RecoverySecret: recoverySecret})
+	recoverySecretJSON, err := json.Marshal(apiv2.RecoveryRequest{RecoverySecret: recoverySecret})
 	if err != nil {
 		return -1, err
 	}
@@ -499,7 +500,7 @@ func recoverV2(ctx context.Context, client *rest.Client, recoverySecret []byte) 
 		return -1, err
 	}
 
-	var response server.RecoveryV2Resp
+	var response apiv2.RecoveryResp
 	if err := json.Unmarshal(resp, &response); err != nil {
 		return -1, fmt.Errorf("unmarshalling Coordinator response: %w", err)
 	}

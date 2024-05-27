@@ -214,23 +214,19 @@ func TestGetManifestSignature(t *testing.T) {
 				log:      log,
 			}
 
-			var rawManifest, manifestSignature, manifestHash []byte
+			var rawManifest, manifestSignature []byte
 			if !tc.wantErr {
 				rawManifest = testutil.GetRawManifest(t, tc.store)
 				manifestSignature = testutil.GetManifestSignature(t, tc.store)
-				h := sha256.Sum256(rawManifest)
-				manifestHash = h[:]
 			}
 
-			signature, hash, manifest := api.GetManifestSignature(context.Background())
+			signature, manifest, err := api.GetManifestSignature(context.Background())
 			if tc.wantErr {
-				assert.Nil(signature)
-				assert.Nil(hash)
-				assert.Nil(manifest)
+				assert.Error(err)
 				return
 			}
+			assert.NoError(err)
 			assert.Equal(rawManifest, manifest)
-			assert.Equal(manifestHash, hash)
 			assert.Equal(manifestSignature, signature)
 		})
 	}

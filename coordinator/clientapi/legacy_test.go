@@ -11,7 +11,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/sha256"
 	"crypto/x509"
-	"encoding/base64"
 	"encoding/json"
 	"testing"
 
@@ -202,9 +201,10 @@ func TestGetManifestSignature_Legacy(t *testing.T) {
 	_, err := api.SetManifest(ctx, []byte(test.ManifestJSON))
 	assert.NoError(err)
 
-	sigECDSA, hash, manifest := api.GetManifestSignature(ctx)
+	sigECDSA, manifest, err := api.GetManifestSignature(ctx)
+	assert.NoError(err)
+
 	expectedHash := sha256.Sum256([]byte(test.ManifestJSON))
-	assert.Equal(expectedHash[:], hash)
 
 	rootPrivK, err := data.GetPrivateKey(constants.SKCoordinatorRootKey)
 	require.NoError(err)
@@ -297,7 +297,9 @@ func TestWriteSecrets_Legacy(t *testing.T) {
 	assert.Empty(sec.Private)
 
 	// set a secret
-	err = c.WriteSecrets(ctx, []byte(test.UserSecrets), admin)
+	var userSecret map[string]manifest.UserSecret
+	require.NoError(json.Unmarshal([]byte(test.UserSecrets), &userSecret))
+	err = c.WriteSecrets(ctx, userSecret, admin)
 	require.NoError(err)
 	secret, err := data.GetSecret(symmetricSecret)
 	require.NoError(err)
@@ -307,11 +309,11 @@ func TestWriteSecrets_Legacy(t *testing.T) {
 	assert.Equal("MarbleRun Coordinator - Intermediate CA", secret.Cert.Issuer.CommonName)
 
 	// try to set a secret in plain format
-	genericSecret := []byte(`{
+	genericSecret := map[string]manifest.UserSecret{
 		"genericSecret": {
-			"Key": "` + base64.StdEncoding.EncodeToString([]byte("MarbleRun Unit Test")) + `"
-		}
-	}`)
+			Key: []byte("MarbleRun Unit Test"),
+		},
+	}
 	err = c.WriteSecrets(ctx, genericSecret, admin)
 	require.NoError(err)
 	secret, err = data.GetSecret("genericSecret")
@@ -319,20 +321,20 @@ func TestWriteSecrets_Legacy(t *testing.T) {
 	assert.Equal("MarbleRun Unit Test", string(secret.Public))
 
 	// try to set a secret with NULL bytes
-	genericSecret = []byte(`{
+	genericSecret = map[string]manifest.UserSecret{
 		"genericSecret": {
-			"Key": "` + base64.StdEncoding.EncodeToString([]byte{0x41, 0x41, 0x00, 0x41}) + `"
-		}
-	}`)
+			Key: []byte{0x41, 0x41, 0x00, 0x41},
+		},
+	}
 	err = c.WriteSecrets(ctx, genericSecret, admin)
 	assert.Error(err)
 
 	// try to set a secret incorrect size
-	invalidSecret := []byte(`{
+	invalidSecret := map[string]manifest.UserSecret{
 		"symmetricKeyUnset": {
-			"Key": "` + base64.StdEncoding.EncodeToString([]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}) + `"
-		}	
-	}`)
+			Key: []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+		},
+	}
 	err = c.WriteSecrets(ctx, invalidSecret, admin)
 	assert.Error(err)
 }
@@ -416,7 +418,8 @@ func TestUpdateManifest_Legacy(t *testing.T) {
 	// updating the manifest should have produced an entry for "frontend" in the updatelog
 	updateLog, err := c.GetUpdateLog(ctx)
 	assert.NoError(err)
-	assert.Contains(updateLog, `"package":"frontend"`)
+	require.Len(updateLog, 2) // One for the initial manifest, one for the update
+	assert.Contains(updateLog[1], `"package":"frontend"`)
 }
 
 func TestUpdateManifestInvalid_Legacy(t *testing.T) {

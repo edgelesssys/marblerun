@@ -8,6 +8,7 @@ package server
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
@@ -20,6 +21,7 @@ import (
 	"sync"
 	"testing"
 
+	v1 "github.com/edgelesssys/marblerun/coordinator/server/v1"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/stretchr/testify/assert"
@@ -57,8 +59,10 @@ func TestManifest(t *testing.T) {
 	mux.ServeHTTP(resp, req)
 	require.Equal(http.StatusOK, resp.Code)
 
-	sigRootECDSA, sig, manifest := c.GetManifestSignature(context.Background())
-	assert.JSONEq(`{"status":"success","data":{"ManifestSignatureRootECDSA":"`+base64.StdEncoding.EncodeToString(sigRootECDSA)+`","ManifestSignature":"`+hex.EncodeToString(sig)+`","Manifest":"`+base64.StdEncoding.EncodeToString(manifest)+`"}}`, resp.Body.String())
+	sigRootECDSA, manifest, err := c.GetManifestSignature(context.Background())
+	require.NoError(err)
+	fingerprint := sha256.Sum256(manifest)
+	assert.JSONEq(`{"status":"success","data":{"ManifestSignatureRootECDSA":"`+base64.StdEncoding.EncodeToString(sigRootECDSA)+`","ManifestSignature":"`+hex.EncodeToString(fingerprint[:])+`","Manifest":"`+base64.StdEncoding.EncodeToString(manifest)+`"}}`, resp.Body.String())
 
 	// try setting manifest again, should fail
 	req = httptest.NewRequest(http.MethodPost, "/manifest", strings.NewReader(test.ManifestJSON))
@@ -80,7 +84,7 @@ func TestManifestWithRecoveryKey(t *testing.T) {
 	require.Equal(http.StatusOK, resp.Code)
 
 	// Decode JSON response from server
-	var encryptedRecoveryData RecoveryDataResp
+	var encryptedRecoveryData v1.RecoveryDataResp
 	b64EncryptedRecoveryDataJSON := gjson.Get(resp.Body.String(), "data")
 	require.NoError(json.Unmarshal([]byte(b64EncryptedRecoveryDataJSON.String()), &encryptedRecoveryData))
 
