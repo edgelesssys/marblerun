@@ -21,6 +21,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/edgelesssys/ego/attestation"
 	"github.com/edgelesssys/ego/enclave"
 	"github.com/edgelesssys/marblerun/coordinator/constants"
 	"github.com/edgelesssys/marblerun/coordinator/crypto"
@@ -772,10 +773,16 @@ func (a *ClientAPI) SignQuote(ctx context.Context, quote []byte) (signature []by
 		}
 	}()
 
+	return a.verifyAndSignQuote(ctx, quote, enclave.VerifyRemoteReport)
+}
+
+func (a *ClientAPI) verifyAndSignQuote(
+	ctx context.Context, quote []byte, verify func([]byte) (attestation.Report, error),
+) (signature []byte, tcbStatus string, err error) {
 	// Verify the quote
 	var verifyErr error
-	report, err := enclave.VerifyRemoteReport(quote)
-	if err != nil {
+	report, err := verify(quote)
+	if err != nil && !errors.Is(err, attestation.ErrTCBLevelInvalid) {
 		return nil, "", &QuoteVerifyError{err}
 	}
 
