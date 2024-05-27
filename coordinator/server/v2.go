@@ -76,7 +76,7 @@ func (s *clientAPIServerV2) recoverPost(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
-// signQuotePost receives an SGX quote and returns a signed quote.
+// signQuotePost receives an SGX quote and returns a signature for it.
 // The Coordinator will verify the quote and sign it together with the TCB status of the quote using the root ECDSA key.
 func (s *clientAPIServerV2) signQuotePost(w http.ResponseWriter, r *http.Request) {
 	// Check if the current manifest allows signing quotes

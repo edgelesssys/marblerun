@@ -762,7 +762,7 @@ func (a *ClientAPI) WriteSecrets(ctx context.Context, rawSecretManifest []byte, 
 }
 
 // SignQuote verifies the quote and signs it with the Coordinator's root key.
-func (a *ClientAPI) SignQuote(ctx context.Context, quote []byte) (signedQuote []byte, tcbStatus string, err error) {
+func (a *ClientAPI) SignQuote(ctx context.Context, quote []byte) (signature []byte, tcbStatus string, err error) {
 	a.log.Info("SignQuote called")
 	defer func() {
 		if err != nil {
@@ -791,7 +791,7 @@ func (a *ClientAPI) SignQuote(ctx context.Context, quote []byte) (signedQuote []
 	}
 
 	hash := sha256.Sum256([]byte(base64.StdEncoding.EncodeToString(quote) + report.TCBStatus.String()))
-	signature, err := ecdsa.SignASN1(rand.Reader, rootKey, hash[:])
+	signature, err = ecdsa.SignASN1(rand.Reader, rootKey, hash[:])
 	if err != nil {
 		return nil, "", fmt.Errorf("signing quote: %w", err)
 	}

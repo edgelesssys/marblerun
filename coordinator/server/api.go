@@ -56,12 +56,12 @@ type QuoteSignReq struct {
 	SGXQuote []byte `json:"sgxQuote"`
 }
 
-// QuoteSignResp contains the SGX Quote signed by the Coordinator using its root ECDSA key,
+// QuoteSignResp contains the SGX Quote signature created by the Coordinator using its root ECDSA key,
 // as well as the TCB status of the Quote.
 type QuoteSignResp struct {
 	// TCBStatus is the TCB status of the SGX Quote.
 	TCBStatus string `json:"tcbStatus"`
-	// VerificationSignature is a signature over sha256(base64(SGXQuote)|TCBStatus|string(VerifySuccess)) signed by the root ECDSA key.
+	// VerificationSignature is a signature over sha256(base64(SGXQuote)|TCBStatus) signed by the root ECDSA key.
 	VerificationSignature []byte `json:"verificationSignature"`
 }
 
