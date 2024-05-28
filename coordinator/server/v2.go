@@ -82,6 +82,7 @@ func (s *clientAPIServerV2) signQuotePost(w http.ResponseWriter, r *http.Request
 	// Check if the current manifest allows signing quotes
 	if !s.api.FeatureEnabled(r.Context(), manifest.FeatureSignQuoteEndpoint) {
 		writeJSONError(w, "sign-quote endpoint is not enabled", http.StatusForbidden)
+		return
 	}
 
 	var req QuoteSignReq
