@@ -7,6 +7,7 @@
 package util
 
 import (
+	"bytes"
 	"encoding/binary"
 	"os"
 	"testing"
@@ -69,23 +70,72 @@ func TestXORBytes(t *testing.T) {
 	assert.Equal(expectedResult, result)
 }
 
-func TestAddOEQuoteHeader(t *testing.T) {
+func TestIsRawSGXQuote(t *testing.T) {
+	sgxQuoteHeader := make([]byte, 48)
+	binary.LittleEndian.PutUint16(sgxQuoteHeader[:2], 3)
+	binary.LittleEndian.PutUint16(sgxQuoteHeader[2:4], 2)
+	binary.LittleEndian.PutUint32(sgxQuoteHeader[4:8], 0)
+	binary.LittleEndian.PutUint16(sgxQuoteHeader[8:10], 1)
+	binary.LittleEndian.PutUint16(sgxQuoteHeader[10:12], 1)
+
 	testCases := map[string]struct {
-		quote []byte
+		quote        []byte
+		wantRawQuote bool
 	}{
 		"empty quote": {
-			quote: []byte{},
+			quote:        []byte{},
+			wantRawQuote: false,
 		},
-		"quote without header": {
-			quote: []byte("quote"),
+		"garbage data": {
+			quote:        bytes.Repeat([]byte{0x0}, 128),
+			wantRawQuote: false,
 		},
-		"quote with header": {
+		"quote with OE header": {
 			quote: func() []byte {
-				quote := []byte("quote")
-				quoteWithHeader := make([]byte, 16+len(quote))
-				binary.LittleEndian.PutUint32(quoteWithHeader[:4], 1)
-				binary.LittleEndian.PutUint32(quoteWithHeader[4:8], 2)
-				binary.LittleEndian.PutUint64(quoteWithHeader[8:16], uint64(len(quote)))
+				quote := append(bytes.Repeat([]byte{0}, 16), sgxQuoteHeader...)
+				binary.LittleEndian.PutUint32(quote[:4], 1)
+				binary.LittleEndian.PutUint32(quote[4:8], 2)
+				binary.LittleEndian.PutUint64(quote[8:16], uint64(len(quote)-16))
+				return quote
+			}(),
+			wantRawQuote: false,
+		},
+		"raw SGX quote": {
+			quote:        append(sgxQuoteHeader, bytes.Repeat([]byte{0x0}, 128)...),
+			wantRawQuote: true,
+		},
+		"version mismatch": {
+			quote: func() []byte {
+				quote := append(sgxQuoteHeader, bytes.Repeat([]byte{0x0}, 128)...)
+				binary.LittleEndian.PutUint16(quote[:2], 1)
+				return quote
+			}(),
+		},
+		"invalid attestation key type": {
+			quote: func() []byte {
+				quote := append(sgxQuoteHeader, bytes.Repeat([]byte{0x0}, 128)...)
+				binary.LittleEndian.PutUint16(quote[2:4], 5)
+				return quote
+			}(),
+		},
+		"invalid TEE type": {
+			quote: func() []byte {
+				quote := append(sgxQuoteHeader, bytes.Repeat([]byte{0x0}, 128)...)
+				binary.LittleEndian.PutUint32(quote[4:8], 0x81) // TDX quote type
+				return quote
+			}(),
+		},
+		"invalid QE SVN": {
+			quote: func() []byte {
+				quote := append(sgxQuoteHeader, bytes.Repeat([]byte{0x0}, 128)...)
+				binary.LittleEndian.PutUint16(quote[8:10], 0)
+				return quote
+			}(),
+		},
+		"invalid QE vendor ID": {
+			quote: func() []byte {
+				quote := append(sgxQuoteHeader, bytes.Repeat([]byte{0x0}, 128)...)
+				binary.LittleEndian.PutUint16(quote[10:12], 0)
 				return quote
 			}(),
 		},
@@ -94,17 +144,9 @@ func TestAddOEQuoteHeader(t *testing.T) {
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			assert := assert.New(t)
-			require := require.New(t)
 
-			quoteWithHeader := AddOEQuoteHeader(tc.quote)
-			require.GreaterOrEqual(len(quoteWithHeader), 16)
-			oeVersion := binary.LittleEndian.Uint32(quoteWithHeader[:4])
-			assert.Equal(uint32(1), oeVersion)
-			oeReportType := binary.LittleEndian.Uint32(quoteWithHeader[4:8])
-			assert.Equal(uint32(2), oeReportType)
-			oeQuoteSize := binary.LittleEndian.Uint64(quoteWithHeader[8:16])
-			assert.Equal(uint64(len(quoteWithHeader[16:])), oeQuoteSize)
-			assert.Equal(tc.quote, quoteWithHeader[16:])
+			isRawQuote := IsRawSGXQuote(tc.quote)
+			assert.Equal(tc.wantRawQuote, isRawQuote)
 		})
 	}
 }

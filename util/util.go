@@ -19,7 +19,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"slices"
 
 	"golang.org/x/crypto/hkdf"
 )
@@ -134,16 +133,51 @@ func CoordinatorCertChainFromPEM(pemChain []byte) (rootCert, intermediateCert *x
 }
 
 // AddOEQuoteHeader adds an OpenEnclave quote header to the given quote.
-// If the quote already has a header, this is a no-op.
 func AddOEQuoteHeader(quote []byte) []byte {
 	quoteHeader := make([]byte, 16)
 	binary.LittleEndian.PutUint32(quoteHeader, 1)     // version
 	binary.LittleEndian.PutUint32(quoteHeader[4:], 2) // OE_REPORT_TYPE_SGX_REMOTE
 	binary.LittleEndian.PutUint64(quoteHeader[8:], uint64(len(quote)))
-
-	// If the quote already has a header, return it as is.
-	if len(quote) > 8 && slices.Equal(quoteHeader[:8], quote[:8]) {
-		return quote
-	}
 	return append(quoteHeader, quote...)
+}
+
+// IsRawSGXQuote tries to parse the SGX Quote Header of the given quote
+// to try and check if its a valid SGX quote.
+// Reference: https://download.01.org/intel-sgx/sgx-dcap/1.21/linux/docs/Intel_SGX_ECDSA_QuoteLibReference_DCAP_API.pdf#%5B%7B%22num%22%3A76%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C69%2C369%2C0%5D
+func IsRawSGXQuote(quote []byte) bool {
+	// Quote Header is 48 bytes long
+	// If the quote is smaller, it can't be an SGX quote
+	if len(quote) < 48 {
+		return false
+	}
+
+	// Version must be 3
+	if binary.LittleEndian.Uint16(quote[:2]) != 3 {
+		return false
+	}
+
+	// Attestation Key Type of the Quote Header must be:
+	//  - 2: ECDSA-256 with P-256 curve
+	//  - 3: ECDSA-384 with P-384 curve
+	// 0 and 1 are reserved, anything higher is not valid
+	if binary.LittleEndian.Uint16(quote[2:4]) > 4 {
+		return false
+	}
+
+	// TEEType must be 0 for SGX
+	if binary.LittleEndian.Uint32(quote[4:8]) != 0 {
+		return false
+	}
+
+	// QE SVN must be higher than 0
+	if binary.LittleEndian.Uint16(quote[8:10]) == 0 {
+		return false
+	}
+
+	// QE Vendor ID must be higher than 0
+	if binary.LittleEndian.Uint16(quote[10:12]) == 0 {
+		return false
+	}
+
+	return true
 }
