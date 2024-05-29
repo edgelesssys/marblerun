@@ -42,6 +42,8 @@ type clientAPI interface {
 	VerifyUser(ctx context.Context, clientCerts []*x509.Certificate) (*user.User, error)
 	UpdateManifest(ctx context.Context, rawUpdateManifest []byte, updater *user.User) error
 	WriteSecrets(ctx context.Context, rawSecretManifest []byte, updater *user.User) error
+	SignQuote(ctx context.Context, quote []byte) (signedQuote []byte, tcbStatus string, err error)
+	FeatureEnabled(ctx context.Context, feature string) bool
 }
 
 // RunMarbleServer starts a gRPC with the given Coordinator core.
@@ -112,6 +114,7 @@ func CreateServeMux(api clientAPI, promFactory *promauto.Factory) serveMux {
 
 	router.HandleFunc("/api/v2/quote", handleGetPost(serverV2.quoteGet, methodNotAllowedHandler))
 	router.HandleFunc("/api/v2/recover", handleGetPost(methodNotAllowedHandler, serverV2.recoverPost))
+	router.HandleFunc("/api/v2/sign-quote", handleGetPost(methodNotAllowedHandler, serverV2.signQuotePost))
 	return router
 }
 

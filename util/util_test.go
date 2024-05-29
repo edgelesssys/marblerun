@@ -7,6 +7,8 @@
 package util
 
 import (
+	"bytes"
+	"encoding/binary"
 	"os"
 	"testing"
 
@@ -66,4 +68,85 @@ func TestXORBytes(t *testing.T) {
 	result, err := XORBytes(firstValue, secondValue)
 	require.NoError(err)
 	assert.Equal(expectedResult, result)
+}
+
+func TestIsRawSGXQuote(t *testing.T) {
+	sgxQuoteHeader := make([]byte, 48)
+	binary.LittleEndian.PutUint16(sgxQuoteHeader[:2], 3)
+	binary.LittleEndian.PutUint16(sgxQuoteHeader[2:4], 2)
+	binary.LittleEndian.PutUint32(sgxQuoteHeader[4:8], 0)
+	binary.LittleEndian.PutUint16(sgxQuoteHeader[8:10], 1)
+	binary.LittleEndian.PutUint16(sgxQuoteHeader[10:12], 1)
+
+	testCases := map[string]struct {
+		quote        []byte
+		wantRawQuote bool
+	}{
+		"empty quote": {
+			quote:        []byte{},
+			wantRawQuote: false,
+		},
+		"garbage data": {
+			quote:        bytes.Repeat([]byte{0x0}, 128),
+			wantRawQuote: false,
+		},
+		"quote with OE header": {
+			quote: func() []byte {
+				quote := append(bytes.Repeat([]byte{0}, 16), sgxQuoteHeader...)
+				binary.LittleEndian.PutUint32(quote[:4], 1)
+				binary.LittleEndian.PutUint32(quote[4:8], 2)
+				binary.LittleEndian.PutUint64(quote[8:16], uint64(len(quote)-16))
+				return quote
+			}(),
+			wantRawQuote: false,
+		},
+		"raw SGX quote": {
+			quote:        append(sgxQuoteHeader, bytes.Repeat([]byte{0x0}, 128)...),
+			wantRawQuote: true,
+		},
+		"version mismatch": {
+			quote: func() []byte {
+				quote := append(sgxQuoteHeader, bytes.Repeat([]byte{0x0}, 128)...)
+				binary.LittleEndian.PutUint16(quote[:2], 1)
+				return quote
+			}(),
+		},
+		"invalid attestation key type": {
+			quote: func() []byte {
+				quote := append(sgxQuoteHeader, bytes.Repeat([]byte{0x0}, 128)...)
+				binary.LittleEndian.PutUint16(quote[2:4], 5)
+				return quote
+			}(),
+		},
+		"invalid TEE type": {
+			quote: func() []byte {
+				quote := append(sgxQuoteHeader, bytes.Repeat([]byte{0x0}, 128)...)
+				binary.LittleEndian.PutUint32(quote[4:8], 0x81) // TDX quote type
+				return quote
+			}(),
+		},
+		"invalid QE SVN": {
+			quote: func() []byte {
+				quote := append(sgxQuoteHeader, bytes.Repeat([]byte{0x0}, 128)...)
+				binary.LittleEndian.PutUint16(quote[8:10], 0)
+				return quote
+			}(),
+		},
+		"invalid PCE SVN": {
+			quote: func() []byte {
+				quote := append(sgxQuoteHeader, bytes.Repeat([]byte{0x0}, 128)...)
+				binary.LittleEndian.PutUint16(quote[10:12], 0)
+				return quote
+			}(),
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
+
+			isRawQuote := IsRawSGXQuote(tc.quote)
+			assert.Equal(tc.wantRawQuote, isRawQuote)
+		})
+	}
 }

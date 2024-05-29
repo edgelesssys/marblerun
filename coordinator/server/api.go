@@ -50,6 +50,21 @@ type ManifestSignatureResp struct {
 	Manifest []byte
 }
 
+// QuoteSignReq contains an SGX Quote to be verified and signed by the Coordinator.
+type QuoteSignReq struct {
+	// SGXQuote is the raw SGX quote data.
+	SGXQuote []byte `json:"sgxQuote"`
+}
+
+// QuoteSignResp contains the SGX Quote signature created by the Coordinator using its root ECDSA key,
+// as well as the TCB status of the Quote.
+type QuoteSignResp struct {
+	// TCBStatus is the TCB status of the SGX Quote.
+	TCBStatus string `json:"tcbStatus"`
+	// VerificationSignature is a signature over sha256(base64(SGXQuote)|TCBStatus) signed by the root ECDSA key.
+	VerificationSignature []byte `json:"verificationSignature"`
+}
+
 // RecoveryDataResp contains RSA-encrypted AES state sealing key with public key specified by user in manifest.
 type RecoveryDataResp struct {
 	// An array containing key-value mappings for encrypted secrets to be used for recovering the Coordinator in case of disaster recovery.
@@ -77,6 +92,7 @@ type RecoveryStatusResp struct {
 	StatusMessage string
 }
 
+// writeJSON writes a JSend success response to the client.
 func writeJSON(w http.ResponseWriter, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	dataToReturn := GeneralResponse{Status: "success", Data: v}
@@ -85,6 +101,7 @@ func writeJSON(w http.ResponseWriter, v interface{}) {
 	}
 }
 
+// writeJSONError writes a JSend error response to the client.
 func writeJSONError(w http.ResponseWriter, errorString string, httpErrorCode int) {
 	marshalledJSON, err := json.Marshal(GeneralResponse{Status: "error", Message: errorString})
 	// Only fall back to non-JSON error when we cannot even marshal the error (which is pretty bad)

@@ -37,6 +37,12 @@ const (
 	SecretTypePlain = "plain"
 )
 
+const (
+	// FeatureSignQuoteEndpoint enables the /sign-quote endpoint.
+	// This endpoint allows to verify an SGX quote and sign the result with the Coordinator's private key.
+	FeatureSignQuoteEndpoint = "SignQuoteEndpoint"
+)
+
 // Manifest defines the rules of a MarbleRun deployment.
 type Manifest struct {
 	// Packages contains the allowed enclaves and their properties.
@@ -55,6 +61,8 @@ type Manifest struct {
 	Roles map[string]Role
 	// TLS contains tags which can be assigned to Marbles to specify which connections should be elevated to TLS
 	TLS map[string]TLStag
+	// FeatureGates is a list of additional features to enable on the Coordinator.
+	FeatureGates []string
 }
 
 // Marble describes a service in the mesh that should be handled and verified by the Coordinator.
@@ -482,6 +490,12 @@ func (m Manifest) Check(zaplogger *zap.Logger) error {
 			}
 		default:
 			return fmt.Errorf("unknown type: %s for secret: %s", s.Type, name)
+		}
+	}
+
+	for _, feature := range m.FeatureGates {
+		if feature != FeatureSignQuoteEndpoint {
+			return fmt.Errorf("unknown feature gate: %s", feature)
 		}
 	}
 

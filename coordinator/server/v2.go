@@ -9,11 +9,17 @@ package server
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/edgelesssys/marblerun/coordinator/clientapi"
+	"github.com/edgelesssys/marblerun/coordinator/manifest"
 )
 
+// clientAPIServerV2 serves the /api/v2 endpoints of the Coordinator.
+// This API follows the JSend specification.
 type clientAPIServerV2 struct {
 	api clientAPI
 }
@@ -27,7 +33,7 @@ func (s *clientAPIServerV2) quoteGet(w http.ResponseWriter, r *http.Request) {
 		var err error
 		nonce, err = base64.URLEncoding.DecodeString(nonceB64)
 		if err != nil {
-			writeJSONError(w, fmt.Sprintf("bad nonce format: %s", err), http.StatusBadRequest)
+			writeJSONFailure(w, nil, fmt.Sprintf("bad nonce format: %s", err), http.StatusBadRequest)
 			return
 		}
 	}
@@ -45,7 +51,7 @@ func (s *clientAPIServerV2) quoteGet(w http.ResponseWriter, r *http.Request) {
 func (s *clientAPIServerV2) recoverPost(w http.ResponseWriter, r *http.Request) {
 	var req RecoveryV2Request
 	if err := json.NewDecoder(io.LimitReader(r.Body, 2048)).Decode(&req); err != nil {
-		writeJSONFailure(w, err.Error(), http.StatusBadRequest)
+		writeJSONFailure(w, nil, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -70,10 +76,44 @@ func (s *clientAPIServerV2) recoverPost(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
-// writeJSONFailure wires a JSend failure response to the client.
-func writeJSONFailure(w http.ResponseWriter, v interface{}, httpErrorCode int) {
+// signQuotePost receives an SGX quote and returns a signature for it.
+// The Coordinator will verify the quote and sign it together with the TCB status of the quote using the root ECDSA key.
+func (s *clientAPIServerV2) signQuotePost(w http.ResponseWriter, r *http.Request) {
+	// Check if the current manifest allows signing quotes
+	if !s.api.FeatureEnabled(r.Context(), manifest.FeatureSignQuoteEndpoint) {
+		writeJSONError(w, "sign-quote endpoint is not enabled", http.StatusForbidden)
+		return
+	}
+
+	var req QuoteSignReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSONFailure(w, nil, fmt.Sprintf("bad request: %s", err), http.StatusBadRequest)
+		return
+	}
+
+	signature, tcbStatus, err := s.api.SignQuote(r.Context(), req.SGXQuote)
+	if err != nil {
+		var verifyErr *clientapi.QuoteVerifyError
+		if errors.As(err, &verifyErr) {
+			writeJSONFailure(w, nil, verifyErr.Error(), http.StatusBadRequest)
+			return
+		}
+
+		writeJSONError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, QuoteSignResp{
+		VerificationSignature: signature,
+		TCBStatus:             tcbStatus,
+	})
+}
+
+// writeJSONFailure writes a JSend failure response to the client.
+// nolint:unparam
+func writeJSONFailure(w http.ResponseWriter, v interface{}, message string, httpErrorCode int) {
 	w.Header().Set("Content-Type", "application/json")
-	dataToReturn := GeneralResponse{Status: "fail", Data: v}
+	dataToReturn := GeneralResponse{Status: "fail", Data: v, Message: message}
 	w.WriteHeader(httpErrorCode)
 	if err := json.NewEncoder(w).Encode(dataToReturn); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

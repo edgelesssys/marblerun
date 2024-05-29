@@ -31,31 +31,55 @@ const (
 	RecoverEndpoint      = "recover"
 	SecretEndpoint       = "secrets"
 	StatusEndpoint       = "status"
+	SignQuoteEndpoint    = "sign-quote"
 	V2API                = "/api/v2/"
 	ContentJSON          = "application/json"
 	ContentPlain         = "text/plain"
 )
 
 const (
-	eraDefaultConfig = "era-config.json"
-	messageField     = "message"
-	dataField        = "data"
+	statusField  = "status"
+	messageField = "message"
+	dataField    = "data"
 )
 
-// NotAllowedError is returned when a request receives a 405 Method Not Allowed response.
-type NotAllowedError struct {
-	method string
-	url    string
+// RequestFailedError is returned when an HTTP request to the Coordinator fails.
+// It contains the HTTP status code, as well as the JSend status, message and data fields.
+type RequestFailedError struct {
+	HTTPStatusCode int
+	Status         string
+	Message        string
+	Data           []byte
+	method         string
+	url            string
 }
 
-// NewNotAllowedError creates a new NotAllowedError.
-func NewNotAllowedError(method, url string) error {
-	return &NotAllowedError{method: method, url: url}
+// NewRequestFailedError creates a new RequestFailedError.
+func NewRequestFailedError(method, url string, httpStatusCode int, status, message string, data []byte) error {
+	return &RequestFailedError{
+		Status:         status,
+		HTTPStatusCode: httpStatusCode,
+		Message:        message,
+		Data:           data,
+		method:         method,
+		url:            url,
+	}
 }
 
 // Error returns the error message.
-func (e *NotAllowedError) Error() string {
-	return fmt.Sprintf("%s %s: method not allowed", e.method, e.url)
+func (e *RequestFailedError) Error() string {
+	return fmt.Sprintf(
+		"%s %s: %d %s: %s: %s",
+		e.method, e.url,
+		e.HTTPStatusCode, http.StatusText(e.HTTPStatusCode),
+		e.Status, e.Message,
+	)
+}
+
+// IsNotAllowedErr checks if the error is a [RequestFailedError] with HTTP status code 405 (Method Not Allowed).
+func IsNotAllowedErr(err error) bool {
+	var reqErr *RequestFailedError
+	return errors.As(err, &reqErr) && reqErr.HTTPStatusCode == http.StatusMethodNotAllowed
 }
 
 // Client is a REST client for the MarbleRun Coordinator.
@@ -138,18 +162,19 @@ func (c *Client) do(req *http.Request) ([]byte, error) {
 		return nil, err
 	}
 
+	status := gjson.GetBytes(respBody, statusField).String()
 	msg := gjson.GetBytes(respBody, messageField).String()
+	data := []byte(gjson.GetBytes(respBody, dataField).String())
 
 	switch resp.StatusCode {
 	case http.StatusOK:
 		// return data field of JSON response
-		data := gjson.GetBytes(respBody, dataField).String()
-		return []byte(data), nil
+		return data, nil
 	case http.StatusUnauthorized:
 		return nil, fmt.Errorf("%s %s: authorizing user: %s", req.Method, req.URL.String(), msg)
 	case http.StatusMethodNotAllowed:
-		return nil, NewNotAllowedError(req.Method, req.URL.String())
+		return nil, NewRequestFailedError(req.Method, req.URL.String(), resp.StatusCode, status, msg, data)
 	default:
-		return nil, fmt.Errorf("%s %s: %s %s", req.Method, req.URL.String(), resp.Status, msg)
+		return nil, NewRequestFailedError(req.Method, req.URL.String(), resp.StatusCode, status, msg, data)
 	}
 }

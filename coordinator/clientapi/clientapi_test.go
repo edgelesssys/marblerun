@@ -12,10 +12,14 @@ import (
 	"crypto/ecdsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/base64"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"testing"
 
+	"github.com/edgelesssys/ego/attestation"
+	"github.com/edgelesssys/ego/attestation/tcbstatus"
 	"github.com/edgelesssys/marblerun/coordinator/constants"
 	"github.com/edgelesssys/marblerun/coordinator/crypto"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
@@ -629,6 +633,140 @@ func TestSetManifest(t *testing.T) {
 			require.NoError(err)
 			assert.True(tc.core.unlockCalled)
 			assert.True(tc.store.commitCalled)
+		})
+	}
+}
+
+func TestSignQuote(t *testing.T) {
+	testCases := map[string]struct {
+		store              *fakeStoreTransaction
+		verifyFunc         func([]byte) (attestation.Report, error)
+		wantErr            bool
+		wantQuoteVerifyErr bool
+	}{
+		"success": {
+			store: &fakeStoreTransaction{},
+			verifyFunc: func([]byte) (attestation.Report, error) {
+				return attestation.Report{}, nil
+			},
+		},
+		"success with non standard TCB status": {
+			store: &fakeStoreTransaction{},
+			verifyFunc: func([]byte) (attestation.Report, error) {
+				return attestation.Report{TCBStatus: tcbstatus.OutOfDate}, attestation.ErrTCBLevelInvalid
+			},
+		},
+		"quote verification fails": {
+			store: &fakeStoreTransaction{},
+			verifyFunc: func([]byte) (attestation.Report, error) {
+				return attestation.Report{}, assert.AnError
+			},
+			wantErr:            true,
+			wantQuoteVerifyErr: true,
+		},
+		"retrieving root key fails": {
+			store: &fakeStoreTransaction{
+				getErr: assert.AnError,
+			},
+			verifyFunc: func([]byte) (attestation.Report, error) {
+				return attestation.Report{}, nil
+			},
+			wantErr: true,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
+			require := require.New(t)
+
+			log := zaptest.NewLogger(t)
+			tc.store.state = make(map[string][]byte)
+
+			api := &ClientAPI{
+				txHandle: tc.store,
+				core:     &fakeCore{},
+				log:      log,
+			}
+
+			wrapper := wrapper.New(tc.store)
+			_, rootKey, err := crypto.GenerateCert([]string{"localhost"}, "MarbleRun Unit Test Root", nil, nil, nil)
+			require.NoError(err)
+			require.NoError(wrapper.PutPrivateKey(constants.SKCoordinatorRootKey, rootKey))
+
+			quote := []byte("quote")
+			signature, tcbStatus, err := api.verifyAndSignQuote(context.Background(), quote, tc.verifyFunc)
+			if tc.wantErr {
+				assert.Error(err)
+
+				if tc.wantQuoteVerifyErr {
+					var verifyErr *QuoteVerifyError
+					assert.ErrorAs(err, &verifyErr)
+				}
+				return
+			}
+			assert.NoError(err)
+			hash := sha256.Sum256([]byte(base64.StdEncoding.EncodeToString(quote) + tcbStatus))
+			assert.True(ecdsa.VerifyASN1(&rootKey.PublicKey, hash[:], signature))
+		})
+	}
+}
+
+func TestFeatureEnabled(t *testing.T) {
+	testCases := map[string]struct {
+		store       *fakeStoreTransaction
+		feature     string
+		wantEnabled bool
+	}{
+		"sign-quote feature enabled": {
+			store: &fakeStoreTransaction{
+				state: map[string][]byte{
+					request.Manifest: []byte(test.ManifestJSON),
+				},
+			},
+			feature:     manifest.FeatureSignQuoteEndpoint,
+			wantEnabled: true,
+		},
+		"sign-quote feature disabled": {
+			store: &fakeStoreTransaction{
+				state: map[string][]byte{
+					request.Manifest: func() []byte {
+						var mnf manifest.Manifest
+						require.NoError(t, json.Unmarshal([]byte(test.ManifestJSON), &mnf))
+						mnf.FeatureGates = []string{}
+						mnfBytes, err := json.Marshal(mnf)
+						require.NoError(t, err)
+						return mnfBytes
+					}(),
+				},
+			},
+			feature:     manifest.FeatureSignQuoteEndpoint,
+			wantEnabled: false,
+		},
+		"unknown feature": {
+			store: &fakeStoreTransaction{
+				state: map[string][]byte{
+					request.Manifest: []byte(test.ManifestJSON),
+				},
+			},
+			feature:     "unknown",
+			wantEnabled: false,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
+
+			log := zaptest.NewLogger(t)
+
+			api := &ClientAPI{
+				txHandle: tc.store,
+				core:     &fakeCore{},
+				log:      log,
+			}
+
+			assert.Equal(tc.wantEnabled, api.FeatureEnabled(context.Background(), tc.feature))
 		})
 	}
 }
