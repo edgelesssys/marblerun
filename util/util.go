@@ -160,7 +160,7 @@ func IsRawSGXQuote(quote []byte) bool {
 	//  - 2: ECDSA-256 with P-256 curve
 	//  - 3: ECDSA-384 with P-384 curve
 	// 0 and 1 are reserved, anything higher is not valid
-	if binary.LittleEndian.Uint16(quote[2:4]) > 4 {
+	if binary.LittleEndian.Uint16(quote[2:4]) > 3 {
 		return false
 	}
 
@@ -174,7 +174,7 @@ func IsRawSGXQuote(quote []byte) bool {
 		return false
 	}
 
-	// QE Vendor ID must be higher than 0
+	// PCE SVN must be higher than 0
 	if binary.LittleEndian.Uint16(quote[10:12]) == 0 {
 		return false
 	}

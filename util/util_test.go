@@ -132,7 +132,7 @@ func TestIsRawSGXQuote(t *testing.T) {
 				return quote
 			}(),
 		},
-		"invalid QE vendor ID": {
+		"invalid PCE SVN": {
 			quote: func() []byte {
 				quote := append(sgxQuoteHeader, bytes.Repeat([]byte{0x0}, 128)...)
 				binary.LittleEndian.PutUint16(quote[10:12], 0)
