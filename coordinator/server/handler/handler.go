@@ -19,6 +19,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/user"
 )
 
+// ClientAPI is the interface implementing the backend logic of the REST API.
 type ClientAPI interface {
 	SetManifest(ctx context.Context, rawManifest []byte) (recoverySecretMap map[string][]byte, err error)
 	GetCertQuote(ctx context.Context, nonce []byte) (cert string, certQuote []byte, err error)
@@ -97,6 +98,7 @@ func WriteJSONFailure(w http.ResponseWriter, v interface{}, httpErrorCode int) {
 	}
 }
 
+// MethodNotAllowedHandler returns a 405 Method Not Allowed error.
 func MethodNotAllowedHandler(w http.ResponseWriter, _ *http.Request) {
 	WriteJSONError(w, "", http.StatusMethodNotAllowed)
 }

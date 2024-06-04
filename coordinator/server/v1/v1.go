@@ -29,18 +29,14 @@ func NewServer(api handler.ClientAPI) *ClientAPIServer {
 	return &ClientAPIServer{api: api}
 }
 
-// swagger:route GET /status status StatusGet
+// StatusGet retrieves the current status of the Coordinator.
 //
 // Get the current status of the Coordinator.
 //
 // The status indicates the current state of the coordinator, and can be one of the following:
 // 1. Coordinator is in recovery mode. Either upload a key to unseal the saved state, or set a new manifest. Waiting for user input on [/recover](../#/features/recovery.md).
-// 1. Coordinator is ready to accept a manifest on [/manifest](../#/workflows/set-manifest.md)
-// 1. Coordinator is running correctly and ready to accept marbles through the [Marble API](../#/workflows/add-service.md)
-//
-//	    Responses:
-//	      200: StatusResponse
-//			 500: ErrorResponse
+// 2. Coordinator is ready to accept a manifest on [/manifest](../#/workflows/set-manifest.md).
+// 3. Coordinator is running correctly and ready to accept marbles through the [Marble API](../#/workflows/add-service.md).
 func (s *ClientAPIServer) StatusGet(w http.ResponseWriter, r *http.Request) {
 	statusCode, status, err := s.api.GetStatus(r.Context())
 	if err != nil {
@@ -50,7 +46,7 @@ func (s *ClientAPIServer) StatusGet(w http.ResponseWriter, r *http.Request) {
 	handler.WriteJSON(w, StatusResp{int(statusCode), status})
 }
 
-// swagger:route GET /manifest manifest ManifestGet
+// ManifestGet retrieves the currently set manifest.
 //
 // Get the currently set manifest.
 //
@@ -64,27 +60,19 @@ func (s *ClientAPIServer) StatusGet(w http.ResponseWriter, r *http.Request) {
 //
 // Example for requesting the deployed manifest hash with curl:
 //
-// ```bash
-// curl --cacert marblerun.crt "https://$MARBLERUN/manifest" | jq '.data.ManifestSignature' --raw-output
-// ```
+//	curl --cacert marblerun.crt "https://$MARBLERUN/manifest" | jq '.data.ManifestSignature' --raw-output
 //
 // Example for verifying the deployed manifest via the intermediate key signature:
 //
-// ```bash
-// # get manifest signature (signed by coordinator root key)
-// curl --cacert marblerun.crt "https://$MARBLERUN/manifest" | jq '.data.ManifestSignatureRootECDSA' --raw-output | base64 -d > manifest.sig
-// # extract root public key from coordinator certificate root
-// marblerun certificate root $MARBLERUN
-// openssl x509 -in marblerunRootCA.crt -pubkey -noout > root.pubkey
-// # verify signature
-// openssl dgst -sha256 -verify root.pubkey -signature manifest.sig manifest.json
-// # verification fails? try to remove newlines from manifest
-// awk 'NF {sub(/\r/, ""); printf "%s",$0;}' original.manifest.json  > formated.manifest.json
-// ```
-//
-//	    Responses:
-//	      200: ManifestResponse
-//			 500: ErrorResponse
+//	# get manifest signature (signed by coordinator root key)
+//	curl --cacert marblerun.crt "https://$MARBLERUN/manifest" | jq '.data.ManifestSignatureRootECDSA' --raw-output | base64 -d > manifest.sig
+//	# extract root public key from coordinator certificate root
+//	marblerun certificate root $MARBLERUN
+//	openssl x509 -in marblerunRootCA.crt -pubkey -noout > root.pubkey
+//	# verify signature
+//	openssl dgst -sha256 -verify root.pubkey -signature manifest.sig manifest.json
+//	# verification fails? try to remove newlines from manifest
+//	awk 'NF {sub(/\r/, ""); printf "%s",$0;}' original.manifest.json  > formated.manifest.json
 func (s *ClientAPIServer) ManifestGet(w http.ResponseWriter, r *http.Request) {
 	signatureRootECDSA, manifest, err := s.api.GetManifestSignature(r.Context())
 	if err != nil {
@@ -105,7 +93,7 @@ func (s *ClientAPIServer) ManifestGet(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// swagger:route POST /manifest manifest ManifestPost
+// ManifestPost sets a manifest.
 //
 // Set a manifest.
 //
@@ -115,13 +103,7 @@ func (s *ClientAPIServer) ManifestGet(w http.ResponseWriter, r *http.Request) {
 //
 //	Example for setting the manifest with curl:
 //
-// ```bash
-// curl --cacert marblerun.crt --data-binary @manifest.json "https://$MARBLERUN/manifest"
-// ```
-//
-//	    Responses:
-//	      200: RecoveryDataResponse
-//			 500: ErrorResponse
+//	curl --cacert marblerun.crt --data-binary @manifest.json "https://$MARBLERUN/manifest"
 func (s *ClientAPIServer) ManifestPost(w http.ResponseWriter, r *http.Request) {
 	manifest, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -142,7 +124,7 @@ func (s *ClientAPIServer) ManifestPost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// swagger:route GET /quote quote QuoteGet
+// QuoteGet retrieves a remote attestation quote and certificates.
 //
 // Retrieve a remote attestation quote and certificates.
 //
@@ -152,33 +134,6 @@ func (s *ClientAPIServer) ManifestPost(w http.ResponseWriter, r *http.Request) {
 //
 // The returned certificate chain is PEM-encoded, contains the Coordinator's Root CA and Intermediate CA, and can be used for trust establishment between a client and the Coordinator.
 // The quote is base64-encoded and can be used for Remote Attestation, as described in [Verifying a deployment](../#/workflows/verification.md).
-//
-//	We provide a tool to automatically verify the quote and output the trusted certificate:
-//
-// ```bash
-// # Either install era for the current user
-// wget -P ~/.local/bin https://github.com/edgelesssys/era/releases/latest/download/era
-// chmod +x ~/.local/bin/era
-//
-// # Or install it globally on your machine (requires root permissions)
-// sudo wget -O /usr/local/bin/era https://github.com/edgelesssys/era/releases/latest/download/era
-// sudo chmod +x /usr/local/bin/era
-//
-// era -c coordinator-era.json -h $MARBLERUN -o marblerun.crt
-// ```
-//
-// > On Ubuntu, `~/.local/bin` is added to PATH only if the directory exists when the bash environment is initialized during login. You might need to re-login after creating the directory. Also, non-default shells such as `zsh` do not add this path by default. Therefore, if you receive `command not found: era` as an error message for a local user installation, either make sure `~/.local/bin` was added to your PATH successfully, or simply use the machine-wide installation method.
-//
-// The file `coordinator-era.json` contains the [Packages](../#/workflows/define-manifest.md#manifestpackages) information for the Coordinator.
-// The example `coordinator-era.json` for our provided testing image can be downloaded from GitHub:
-//
-// ```bash
-// wget https://github.com/edgelesssys/marblerun/releases/latest/download/coordinator-era.json
-// ```
-//
-//	    Responses:
-//	      200: CertQuoteResponse
-//			 500: ErrorResponse
 func (s *ClientAPIServer) QuoteGet(w http.ResponseWriter, r *http.Request) {
 	cert, quote, err := s.api.GetCertQuote(r.Context(), nil)
 	if err != nil {
@@ -188,7 +143,7 @@ func (s *ClientAPIServer) QuoteGet(w http.ResponseWriter, r *http.Request) {
 	handler.WriteJSON(w, CertQuoteResp{cert, quote})
 }
 
-// swagger:route POST /recover recover RecoverPost
+// RecoverPost recovers the Coordinator.
 //
 // Recover the Coordinator when unsealing of the existing state fails.
 //
@@ -198,13 +153,7 @@ func (s *ClientAPIServer) QuoteGet(w http.ResponseWriter, r *http.Request) {
 //
 // Example for recovering the Coordinator with curl:
 //
-// ```bash
-// curl -k -X POST --data-binary @recovery_key_decrypted "https://$MARBLERUN/recover"
-// ```
-//
-//	    Responses:
-//	      200: RecoveryStatusResponse
-//			 500: ErrorResponse
+//	curl -k -X POST --data-binary @recovery_key_decrypted "https://$MARBLERUN/recover"
 func (s *ClientAPIServer) RecoverPost(w http.ResponseWriter, r *http.Request) {
 	key, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -230,15 +179,11 @@ func (s *ClientAPIServer) RecoverPost(w http.ResponseWriter, r *http.Request) {
 	handler.WriteJSON(w, RecoveryStatusResp{statusMessage})
 }
 
-// swagger:route GET /update update UpdateGet
+// UpdateGet retrieves the update log.
 //
 // Get a log of all performed updates.
 //
 // Returns a structured log of all updates performed via the `/update` or `/secrets` endpoint, including timestamp, author, and affected resources.
-//
-//	    Responses:
-//	      200: UpdateLogResponse
-//			 500: ErrorResponse
 func (s *ClientAPIServer) UpdateGet(w http.ResponseWriter, r *http.Request) {
 	updateLog, err := s.api.GetUpdateLog(r.Context())
 	if err != nil {
@@ -248,7 +193,7 @@ func (s *ClientAPIServer) UpdateGet(w http.ResponseWriter, r *http.Request) {
 	handler.WriteJSON(w, strings.Join(updateLog, "\n")+"\n")
 }
 
-// swagger:route POST /update update UpdatePost
+// UpdatePost updates a specific package set in the manifest.
 //
 // Update a specific package set in the manifest.
 //
@@ -257,14 +202,7 @@ func (s *ClientAPIServer) UpdateGet(w http.ResponseWriter, r *http.Request) {
 //
 // Example for updating the manifest with curl:
 //
-// ```bash
-// curl --cacert marblerun.crt --cert user_certificate.crt --key user_private.key -w "%{http_code}" --data-binary @update_manifest.json https://$MARBLERUN/update
-// ```
-//
-//	    Responses:
-//	      200: SuccessResponse
-//			 400: ErrorResponse
-//			 500: ErrorResponse
+//	curl --cacert marblerun.crt --cert user_certificate.crt --key user_private.key -w "%{http_code}" --data-binary @update_manifest.json https://$MARBLERUN/update
 func (s *ClientAPIServer) UpdatePost(w http.ResponseWriter, r *http.Request) {
 	verifiedUser, err := handler.VerifyUser(s.api.VerifyUser, r)
 	if err != nil {
@@ -284,16 +222,14 @@ func (s *ClientAPIServer) UpdatePost(w http.ResponseWriter, r *http.Request) {
 	handler.WriteJSON(w, nil)
 }
 
-// swagger:route GET /secrets secrets SecretsGet
+// SecretsGet retrieves secrets.
 //
 // Retrieve secrets.
 //
 // Each requests allows specifying one or more secrets in the form of a query string, where each parameter `s` specifies one secret.
 // A query string for the secrets `symmetricKeyShared` and `certShared` may look like the following:
 //
-// ```
-// s=symmetricKeyShared&s=certShared
-// ```
+//	s=symmetricKeyShared&s=certShared
 //
 // This API endpoint only works when `Users` were defined in the manifest.
 // The user connects via mutual TLS using the user client certificate in the TLS Handshake.
@@ -301,14 +237,7 @@ func (s *ClientAPIServer) UpdatePost(w http.ResponseWriter, r *http.Request) {
 //
 // Example for retrieving the secrets `symmetricKeyShared` and `certShared`:
 //
-// ```bash
-// curl --cacert marblerun.crt --cert user_certificate.crt --key user_private.key https://$MARBLERUN/secrets?s=symmetricKeyShared&s=certShared
-// ```
-//
-//	    Responses:
-//	      200: SuccessResponse
-//			 401: ErrorResponse
-//			 500: ErrorResponse
+//	curl --cacert marblerun.crt --cert user_certificate.crt --key user_private.key https://$MARBLERUN/secrets?s=symmetricKeyShared&s=certShared
 func (s *ClientAPIServer) SecretsGet(w http.ResponseWriter, r *http.Request) {
 	verifiedUser, err := handler.VerifyUser(s.api.VerifyUser, r)
 	if err != nil {
@@ -336,7 +265,7 @@ func (s *ClientAPIServer) SecretsGet(w http.ResponseWriter, r *http.Request) {
 	handler.WriteJSON(w, response)
 }
 
-// swagger:route POST /secrets secrets SecretsPost
+// SecretsPost sets secrets.
 //
 // Set secrets.
 //
@@ -348,15 +277,7 @@ func (s *ClientAPIServer) SecretsGet(w http.ResponseWriter, r *http.Request) {
 //
 // Example for setting secrets from the file `secrets.json`:
 //
-// ```bash
-// curl --cacert marblerun.crt --cert user_certificate.crt --key user_private.key --data-binary @secrets.json https://$MARBLERUN/secrets
-// ```
-//
-//	    Responses:
-//	      200: SecretsMapResponse
-//			 400: ErrorResponse
-//			 401: ErrorResponse
-//			 500: ErrorResponse
+//	curl --cacert marblerun.crt --cert user_certificate.crt --key user_private.key --data-binary @secrets.json https://$MARBLERUN/secrets
 func (s *ClientAPIServer) SecretsPost(w http.ResponseWriter, r *http.Request) {
 	verifiedUser, err := handler.VerifyUser(s.api.VerifyUser, r)
 	if err != nil {
