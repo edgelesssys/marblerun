@@ -21,14 +21,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
-	"strings"
 
 	"github.com/edgelesssys/ego/attestation/tcbstatus"
 	"github.com/edgelesssys/marblerun/api/attestation"
 	"github.com/edgelesssys/marblerun/api/rest"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
-	apiv1 "github.com/edgelesssys/marblerun/coordinator/server/v1"
 	apiv2 "github.com/edgelesssys/marblerun/coordinator/server/v2"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/spf13/afero"
@@ -58,13 +55,20 @@ func VerifyCoordinator(ctx context.Context, endpoint string, opts VerifyOptions)
 	}
 
 	var args []string
-	path := rest.QuoteEndpoint
 	if len(opts.Nonce) > 0 {
 		nonce := base64.URLEncoding.EncodeToString(opts.Nonce)
 		args = []string{"nonce", nonce}
-		path = rest.V2API + rest.QuoteEndpoint // Nonce is only supported in v2 API
 	}
-	resp, err := client.Get(ctx, path, http.NoBody, args...)
+
+	resp, err := client.Get(ctx, rest.V2API+rest.QuoteEndpoint, http.NoBody, args...)
+	if rest.IsNotAllowedErr(err) {
+		// Nonce is only supported in v2 API
+		if len(opts.Nonce) > 0 {
+			return nil, nil, nil, errors.New("using custom nonce requires /api/v2, but the Coordinator does not support /api/v2")
+		}
+		// Fall back to v1 API
+		resp, err = client.Get(ctx, rest.QuoteEndpoint, http.NoBody)
+	}
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("retrieving Coordinator quote: %w", err)
 	}
@@ -168,14 +172,13 @@ func Recover(ctx context.Context, endpoint string, opts VerifyOptions, recoveryS
 
 	// Attempt recovery using the v2 API first
 	remaining, err = recoverV2(ctx, client, recoverySecret)
-	if err != nil {
-		// If the Coordinator does not support the v2 API, fall back to v1
-		if !rest.IsNotAllowedErr(err) {
-			return -1, nil, fmt.Errorf("sending recovery request: %w", err)
-		}
-
+	if rest.IsNotAllowedErr(err) {
 		remaining, err = recoverV1(ctx, client, recoverySecret)
 	}
+	if err != nil {
+		return -1, nil, fmt.Errorf("sending recovery request: %w", err)
+	}
+
 	return remaining, sgxQuote, err
 }
 
@@ -196,19 +199,16 @@ func GetStatus(ctx context.Context, endpoint string, trustedRoot *x509.Certifica
 	if err != nil {
 		return -1, "", fmt.Errorf("setting up client: %w", err)
 	}
-	resp, err := client.Get(ctx, rest.StatusEndpoint, http.NoBody)
+
+	code, msg, err = getStatusV2(ctx, client)
+	if rest.IsNotAllowedErr(err) {
+		code, msg, err = getStatusV1(ctx, client)
+	}
 	if err != nil {
 		return -1, "", fmt.Errorf("retrieving Coordinator status: %w", err)
 	}
 
-	var response struct {
-		Code int    `json:"StatusCode"`
-		Msg  string `json:"StatusMessage"`
-	}
-	if err := json.Unmarshal(resp, &response); err != nil {
-		return -1, "", fmt.Errorf("unmarshalling Coordinator response: %w", err)
-	}
-	return response.Code, response.Msg, nil
+	return code, msg, nil
 }
 
 // ManifestGet retrieves the manifest of a MarbleRun deployment.
@@ -217,17 +217,15 @@ func ManifestGet(ctx context.Context, endpoint string, trustedRoot *x509.Certifi
 	if err != nil {
 		return nil, "", nil, fmt.Errorf("setting up client: %w", err)
 	}
-	resp, err := client.Get(ctx, rest.ManifestEndpoint, http.NoBody)
+
+	manifest, manifestHash, manifestSignatureECDSA, err = manifestGetV2(ctx, client)
+	if rest.IsNotAllowedErr(err) {
+		manifest, manifestHash, manifestSignatureECDSA, err = manifestGetV1(ctx, client)
+	}
 	if err != nil {
 		return nil, "", nil, fmt.Errorf("retrieving Coordinator manifest: %w", err)
 	}
-
-	var response apiv1.ManifestSignatureResp
-	if err := json.Unmarshal(resp, &response); err != nil {
-		return nil, "", nil, fmt.Errorf("unmarshalling Coordinator response: %w", err)
-	}
-
-	return response.Manifest, response.ManifestSignature, response.ManifestSignatureRootECDSA, nil
+	return manifest, manifestHash, manifestSignatureECDSA, nil
 }
 
 // ManifestLog retrieves the update log of a MarbleRun deployment.
@@ -236,11 +234,15 @@ func ManifestLog(ctx context.Context, endpoint string, trustedRoot *x509.Certifi
 	if err != nil {
 		return nil, fmt.Errorf("setting up client: %w", err)
 	}
-	resp, err := client.Get(ctx, rest.UpdateEndpoint, http.NoBody)
+
+	log, err := manifestLogV2(ctx, client)
+	if rest.IsNotAllowedErr(err) {
+		log, err = manifestLogV1(ctx, client)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("retrieving Coordinator update log: %w", err)
 	}
-	return strings.Split(strings.TrimSpace(string(resp)), "\n"), nil
+	return log, nil
 }
 
 // ManifestSet sets the manifest for a MarbleRun deployment.
@@ -250,19 +252,14 @@ func ManifestSet(ctx context.Context, endpoint string, trustedRoot *x509.Certifi
 	if err != nil {
 		return nil, fmt.Errorf("setting up client: %w", err)
 	}
-	resp, err := client.Post(ctx, rest.ManifestEndpoint, rest.ContentJSON, bytes.NewReader(manifest))
+
+	recoveryData, err = manifestSetV2(ctx, client, manifest)
+	if rest.IsNotAllowedErr(err) {
+		recoveryData, err = manifestSetV1(ctx, client, manifest)
+	}
 	if err != nil {
-		return nil, fmt.Errorf("sending manifest to Coordinator: %w", err)
+		return nil, fmt.Errorf("setting manifest: %w", err)
 	}
-
-	if len(resp) > 0 {
-		var response apiv1.RecoveryDataResp
-		if err := json.Unmarshal(resp, &response); err != nil {
-			return nil, fmt.Errorf("unmarshalling Coordinator response: %w", err)
-		}
-		recoveryData = response.RecoverySecrets
-	}
-
 	return recoveryData, nil
 }
 
@@ -272,8 +269,15 @@ func ManifestUpdateApply(ctx context.Context, endpoint string, trustedRoot *x509
 	if err != nil {
 		return fmt.Errorf("setting up client: %w", err)
 	}
-	_, err = client.Post(ctx, rest.UpdateEndpoint, rest.ContentJSON, bytes.NewReader(updateManifest))
-	return err
+
+	err = manifestUpdateApplyV2(ctx, client, updateManifest)
+	if rest.IsNotAllowedErr(err) {
+		err = manifestUpdateApplyV1(ctx, client, updateManifest)
+	}
+	if err != nil {
+		return fmt.Errorf("applying manifest update: %w", err)
+	}
+	return nil
 }
 
 // ManifestUpdateGet retrieves a pending manifest update of a MarbleRun deployment.
@@ -282,7 +286,11 @@ func ManifestUpdateGet(ctx context.Context, endpoint string, trustedRoot *x509.C
 	if err != nil {
 		return nil, nil, fmt.Errorf("setting up client: %w", err)
 	}
-	resp, err := client.Get(ctx, rest.UpdateStatusEndpoint, http.NoBody)
+
+	resp, err := client.Get(ctx, rest.V2API+rest.UpdateStatusEndpoint, http.NoBody)
+	if rest.IsNotAllowedErr(err) {
+		resp, err = client.Get(ctx, rest.UpdateStatusEndpoint, http.NoBody)
+	}
 	if err != nil {
 		return nil, nil, fmt.Errorf("retrieving pending manifest update: %w", err)
 	}
@@ -308,13 +316,11 @@ func ManifestUpdateAcknowledge(ctx context.Context, endpoint string, trustedRoot
 
 	// Attempt to acknowledge the update using the v2 API first
 	missingUsers, err = manifestUpdateAcknowledgeV2(ctx, client, updateManifest)
-	if err != nil {
-		// If the Coordinator does not support the v2 API, fall back to v1
-		if !rest.IsNotAllowedErr(err) {
-			return nil, fmt.Errorf("sending manifest update acknowledgement: %w", err)
-		}
-
+	if rest.IsNotAllowedErr(err) {
 		missingUsers, err = manifestUpdateAcknowledgeV1(ctx, client, updateManifest)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("sending manifest update acknowledgement: %w", err)
 	}
 	return missingUsers, err
 }
@@ -328,15 +334,13 @@ func ManifestUpdateCancel(ctx context.Context, endpoint string, trustedRoot *x50
 
 	// Attempt to cancel the update using the v2 API first
 	_, err = client.Post(ctx, rest.V2API+rest.UpdateCancelEndpoint, "", http.NoBody)
-	if err != nil {
-		// If the Coordinator does not support the v2 API, fall back to v1
-		if !rest.IsNotAllowedErr(err) {
-			return fmt.Errorf("sending manifest update cancel: %w", err)
-		}
+	if rest.IsNotAllowedErr(err) {
 		_, err = client.Post(ctx, rest.UpdateCancelEndpoint, "", http.NoBody)
-
 	}
-	return err
+	if err != nil {
+		return fmt.Errorf("sending manifest update cancel: %w", err)
+	}
+	return nil
 }
 
 // SecretGet retrieves secrets from a MarbleRun deployment.
@@ -350,14 +354,13 @@ func SecretGet(ctx context.Context, endpoint string, trustedRoot *x509.Certifica
 	for _, secretID := range secrets {
 		query = append(query, "s", secretID)
 	}
-	resp, err := client.Get(ctx, rest.SecretEndpoint, http.NoBody, query...)
+
+	secretMap, err := secretGetV2(ctx, client, query)
+	if rest.IsNotAllowedErr(err) {
+		secretMap, err = secretGetV1(ctx, client, query)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("retrieving secrets: %w", err)
-	}
-
-	secretMap := make(map[string]manifest.Secret, len(secrets))
-	if err := json.Unmarshal(resp, &secretMap); err != nil {
-		return nil, fmt.Errorf("unmarshalling Coordinator response: %w", err)
 	}
 	return secretMap, nil
 }
@@ -369,12 +372,14 @@ func SecretSet(ctx context.Context, endpoint string, trustedRoot *x509.Certifica
 		return fmt.Errorf("setting up client: %w", err)
 	}
 
-	secretDataJSON, err := json.Marshal(secrets)
-	if err != nil {
-		return fmt.Errorf("marshalling secrets: %w", err)
+	err = secretSetV2(ctx, client, secrets)
+	if rest.IsNotAllowedErr(err) {
+		err = secretSetV1(ctx, client, secrets)
 	}
-	_, err = client.Post(ctx, rest.SecretEndpoint, rest.ContentJSON, bytes.NewReader(secretDataJSON))
-	return err
+	if err != nil {
+		return fmt.Errorf("setting secrets: %w", err)
+	}
+	return nil
 }
 
 // SignQuote sends an SGX quote to a Coordinator for signing.
@@ -486,97 +491,4 @@ func verifyOptionsFromConfig(fs afero.Afero, configPath string) (VerifyOptions, 
 	}
 	err = json.Unmarshal(optsRaw, &opts)
 	return opts, err
-}
-
-// recoverV2 performs recovery of the Coordinator using the v2 API.
-func recoverV2(ctx context.Context, client *rest.Client, recoverySecret []byte) (remaining int, err error) {
-	recoverySecretJSON, err := json.Marshal(apiv2.RecoveryRequest{RecoverySecret: recoverySecret})
-	if err != nil {
-		return -1, err
-	}
-
-	resp, err := client.Post(ctx, rest.V2API+rest.RecoverEndpoint, rest.ContentJSON, bytes.NewReader(recoverySecretJSON))
-	if err != nil {
-		return -1, err
-	}
-
-	var response apiv2.RecoveryResp
-	if err := json.Unmarshal(resp, &response); err != nil {
-		return -1, fmt.Errorf("unmarshalling Coordinator response: %w", err)
-	}
-	return response.Remaining, nil
-}
-
-// recoverV1 performs recovery of the Coordinator using the legacy v1 API.
-func recoverV1(ctx context.Context, client *rest.Client, recoverySecret []byte) (remaining int, err error) {
-	resp, err := client.Post(ctx, rest.RecoverEndpoint, rest.ContentPlain, bytes.NewReader(recoverySecret))
-	if err != nil {
-		return -1, err
-	}
-
-	var response struct {
-		Message string `json:"StatusMessage"`
-	}
-	if err := json.Unmarshal(resp, &response); err != nil {
-		return -1, fmt.Errorf("unmarshalling Coordinator response: %w", err)
-	}
-
-	if response.Message == "Recovery successful." {
-		return 0, nil
-	}
-
-	remainingStr, _, _ := strings.Cut(response.Message, ": ")
-	remaining, err = strconv.Atoi(remainingStr)
-	if err != nil {
-		return -1, fmt.Errorf("parsing remaining recovery secrets: %w", err)
-	}
-
-	return remaining, nil
-}
-
-func manifestUpdateAcknowledgeV2(ctx context.Context, client *rest.Client, updateManifest []byte) (missingUsers []string, err error) {
-	updateManifestJSON, err := json.Marshal(struct {
-		Manifest []byte `json:"manifest"`
-	}{
-		Manifest: updateManifest,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := client.Post(ctx, rest.V2API+rest.UpdateStatusEndpoint, rest.ContentJSON, bytes.NewReader(updateManifestJSON))
-	if err != nil {
-		return nil, err
-	}
-
-	var response struct {
-		MissingUsers []string `json:"missingUsers"`
-	}
-	if err := json.Unmarshal(resp, &response); err != nil {
-		return nil, fmt.Errorf("unmarshalling Coordinator response: %w", err)
-	}
-
-	return response.MissingUsers, nil
-}
-
-func manifestUpdateAcknowledgeV1(ctx context.Context, client *rest.Client, updateManifest []byte) (missingUsers []string, err error) {
-	resp, err := client.Post(ctx, rest.UpdateStatusEndpoint, rest.ContentJSON, bytes.NewReader(updateManifest))
-	if err != nil {
-		return nil, err
-	}
-
-	missing, _, _ := strings.Cut(string(resp), " ")
-	if missing == "All" {
-		return nil, nil
-	}
-	numMissing, err := strconv.Atoi(missing)
-	if err != nil {
-		return nil, fmt.Errorf("parsing number of missing users: %w", err)
-	}
-
-	for i := 0; i < numMissing; i++ {
-		missingUsers = append(missingUsers, fmt.Sprintf("User%d", i))
-	}
-
-	return missingUsers, nil
 }
