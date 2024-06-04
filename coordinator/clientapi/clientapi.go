@@ -176,7 +176,7 @@ func (a *ClientAPI) GetCertQuote(ctx context.Context, nonce []byte) (cert string
 
 // GetManifestSignature returns the hash of the manifest.
 //
-// Returns ECDSA signature, SHA256 hash and byte encoded representation of the active manifest.
+// Returns ECDSA signature and byte encoded representation of the active manifest.
 func (a *ClientAPI) GetManifestSignature(ctx context.Context) (manifestSignatureRootECDSA, manifest []byte, err error) {
 	a.log.Info("GetManifestSignature called")
 
