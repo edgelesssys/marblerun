@@ -100,7 +100,7 @@ func run(log *zap.Logger, validator quote.Validator, issuer quote.Issuer, sealDi
 
 	// start client server
 	log.Info("Starting the client server")
-	mux := server.CreateServeMux(clientServer, promFactoryPtr)
+	mux := server.CreateServeMux(clientServer, promFactoryPtr, log)
 	clientServerTLSConfig, err := co.GetTLSConfig()
 	if err != nil {
 		log.Fatal("Cannot create TLS credentials", zap.Error(err))

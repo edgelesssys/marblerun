@@ -67,7 +67,7 @@ func TestClientApiRequestMetrics(t *testing.T) {
 			fac := promauto.With(reg)
 
 			api := newTestClientAPI(t)
-			mux := CreateServeMux(api, &fac)
+			mux := CreateServeMux(api, &fac, zaptest.NewLogger(t))
 
 			metrics := mux.(*promServeMux).metrics[tc.target]
 			assert.Equal(0, promtest.CollectAndCount(metrics.request))

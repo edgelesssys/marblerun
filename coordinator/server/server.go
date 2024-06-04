@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 
 	"github.com/edgelesssys/marblerun/coordinator/core"
 	"github.com/edgelesssys/marblerun/coordinator/events"
@@ -75,7 +76,7 @@ func RunMarbleServer(core *core.Core, addr string, addrChan chan string, errChan
 }
 
 // CreateServeMux creates a mux that serves the client API.
-func CreateServeMux(api handler.ClientAPI, promFactory *promauto.Factory) serveMux {
+func CreateServeMux(api handler.ClientAPI, promFactory *promauto.Factory, log *zap.Logger) serveMux {
 	serverV1 := v1.NewServer(api)
 	serverV2 := v2.NewServer(api)
 	var router serveMux
@@ -89,12 +90,12 @@ func CreateServeMux(api handler.ClientAPI, promFactory *promauto.Factory) serveM
 		router = muxRouter
 	}
 
-	router.HandleFunc("/manifest", handler.GetPost(serverV1.ManifestGet, serverV1.ManifestPost))
-	router.HandleFunc("/update", handler.GetPost(serverV1.UpdateGet, serverV1.UpdatePost))
-	router.HandleFunc("/secrets", handler.GetPost(serverV1.SecretsGet, serverV1.SecretsPost))
-	router.HandleFunc("/status", handler.GetPost(serverV1.StatusGet, handler.MethodNotAllowedHandler))
-	router.HandleFunc("/quote", handler.GetPost(serverV1.QuoteGet, handler.MethodNotAllowedHandler))
-	router.HandleFunc("/recover", handler.GetPost(handler.MethodNotAllowedHandler, serverV1.RecoverPost))
+	router.HandleFunc("/manifest", logDeprecated(handler.GetPost(serverV1.ManifestGet, serverV1.ManifestPost), log))
+	router.HandleFunc("/update", logDeprecated(handler.GetPost(serverV1.UpdateGet, serverV1.UpdatePost), log))
+	router.HandleFunc("/secrets", logDeprecated(handler.GetPost(serverV1.SecretsGet, serverV1.SecretsPost), log))
+	router.HandleFunc("/status", logDeprecated(handler.GetPost(serverV1.StatusGet, handler.MethodNotAllowedHandler), log))
+	router.HandleFunc("/quote", logDeprecated(handler.GetPost(serverV1.QuoteGet, handler.MethodNotAllowedHandler), log))
+	router.HandleFunc("/recover", logDeprecated(handler.GetPost(handler.MethodNotAllowedHandler, serverV1.RecoverPost), log))
 
 	v2Endpoint := "/api/v2"
 	router.HandleFunc(v2Endpoint+"/manifest", handler.GetPost(serverV2.ManifestGet, serverV2.ManifestPost))
@@ -164,4 +165,14 @@ func middlewareLogger(log *zap.Logger) logging.Logger {
 			panic(fmt.Sprintf("unknown level %v", lvl))
 		}
 	})
+}
+
+func logDeprecated(handler func(http.ResponseWriter, *http.Request), log *zap.Logger) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Info(
+			fmt.Sprintf("Usage of deprecated API endpoint. Consider using /api/v2/%s instead", strings.TrimPrefix(r.URL.Path, "/")),
+			zap.String("path", r.URL.Path),
+		)
+		handler(w, r)
+	}
 }
