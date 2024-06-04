@@ -8,8 +8,8 @@ package v2
 
 import "github.com/edgelesssys/marblerun/coordinator/manifest"
 
-// CertQuoteResp wraps the certificate chain and quote for the client to use for remote attestation.
-type CertQuoteResp struct {
+// CertQuoteResponse wraps the certificate chain and quote for the client to use for remote attestation.
+type CertQuoteResponse struct {
 	// A PEM-encoded certificate chain containing the Coordinator's Root CA and Intermediate CA,
 	// which can be used for trust establishment between a client and the Coordinator.
 	Cert string `json:"cert"`
@@ -17,8 +17,8 @@ type CertQuoteResp struct {
 	Quote []byte `json:"quote"`
 }
 
-// ManifestGetResp contains the manifest signature, a SHA-256 hash of the manifest, and the manifest itself.
-type ManifestGetResp struct {
+// ManifestGetResponse contains the manifest signature, a SHA-256 hash of the manifest, and the manifest itself.
+type ManifestGetResponse struct {
 	// ManifestSignatureRootECDSA is an ASN.1 encoded ECDSA signature using the Coordinator's root ECDSA key
 	// over the sha256 hash of the manifest
 	ManifestSignatureRootECDSA []byte `json:"manifestSignatureRootECDSA"`
@@ -36,22 +36,22 @@ type ManifestSetRequest struct {
 	Manifest []byte `json:"manifest"`
 }
 
-// ManifestSetResp contains the response to setting the manifest.
-type ManifestSetResp struct {
+// ManifestSetResponse contains the response to setting the manifest.
+type ManifestSetResponse struct {
 	// RecoverySecrets is a map containing the encrypted secrets to be used for recovering the Coordinator.
 	// The map keys match the names of the supplied RecoveryKeys in the manifest.
 	RecoverySecrets map[string][]byte
 }
 
-// QuoteSignReq contains an SGX Quote to be verified and signed by the Coordinator.
-type QuoteSignReq struct {
+// QuoteSignRequest contains an SGX Quote to be verified and signed by the Coordinator.
+type QuoteSignRequest struct {
 	// SGXQuote is the raw SGX quote data.
 	SGXQuote []byte `json:"sgxQuote"`
 }
 
-// QuoteSignResp contains the SGX Quote signature created by the Coordinator using its root ECDSA key,
+// QuoteSignResponse contains the SGX Quote signature created by the Coordinator using its root ECDSA key,
 // as well as the TCB status of the Quote.
-type QuoteSignResp struct {
+type QuoteSignResponse struct {
 	// TCBStatus is the TCB status of the SGX Quote.
 	TCBStatus string `json:"tcbStatus"`
 	// VerificationSignature is a signature over sha256(base64(SGXQuote)|TCBStatus) signed by the root ECDSA key.
@@ -64,15 +64,15 @@ type RecoveryRequest struct {
 	RecoverySecret []byte `json:"recoverySecret"`
 }
 
-// RecoveryResp contains the response for the recovery process.
-type RecoveryResp struct {
+// RecoveryResponse contains the response for the recovery process.
+type RecoveryResponse struct {
 	// Remaining is the number of remaining secret shares to finish the recovery process.
 	Remaining int `json:"remaining"`
 	// Message is a human readable message about the recovery process.
 	Message string `json:"message"`
 }
 
-// SecretsGetRequest is the response when retrieving secrets from the Coordinator.
+// SecretsGetResponse is the response when retrieving secrets from the Coordinator.
 type SecretsGetResponse struct {
 	// Secrets is a map containing the requested secrets.
 	Secrets map[string]manifest.Secret `json:"secrets"`
@@ -85,8 +85,8 @@ type SecretsSetRequest struct {
 	Secrets map[string]manifest.UserSecret `json:"secrets"`
 }
 
-// StatusResp is the response to a status request.
-type StatusResp struct {
+// StatusResponse is the response to a status request.
+type StatusResponse struct {
 	// Code that matches the internal code of the Coordinator's current state.
 	// One of:
 	//  1: Recovery mode
@@ -98,8 +98,8 @@ type StatusResp struct {
 	Message string `json:"message"`
 }
 
-// UpdateLogResp is the response to an update log request.
-type UpdateLogResp struct {
+// UpdateLogResponse is the response to an update log request.
+type UpdateLogResponse struct {
 	// UpdateLog is a list of strings where each string is a log entry of the Coordinator's update log.
 	UpdateLog []string `json:"updateLog"`
 }

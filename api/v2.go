@@ -30,7 +30,7 @@ func recoverV2(ctx context.Context, client *rest.Client, recoverySecret []byte) 
 		return -1, err
 	}
 
-	var response apiv2.RecoveryResp
+	var response apiv2.RecoveryResponse
 	if err := json.Unmarshal(resp, &response); err != nil {
 		return -1, fmt.Errorf("unmarshalling Coordinator response: %w", err)
 	}
@@ -44,7 +44,7 @@ func getStatusV2(ctx context.Context, client *rest.Client) (int, string, error) 
 		return -1, "", err
 	}
 
-	var response apiv2.StatusResp
+	var response apiv2.StatusResponse
 	if err := json.Unmarshal(resp, &response); err != nil {
 		return -1, "", fmt.Errorf("unmarshalling Coordinator response: %w", err)
 	}
@@ -58,7 +58,7 @@ func manifestGetV2(ctx context.Context, client *rest.Client) (mnf []byte, finger
 		return nil, "", nil, err
 	}
 
-	var response apiv2.ManifestGetResp
+	var response apiv2.ManifestGetResponse
 	if err := json.Unmarshal(resp, &response); err != nil {
 		return nil, "", nil, fmt.Errorf("unmarshalling Coordinator response: %w", err)
 	}
@@ -73,7 +73,7 @@ func manifestLogV2(ctx context.Context, client *rest.Client) ([]string, error) {
 		return nil, err
 	}
 
-	var response apiv2.UpdateLogResp
+	var response apiv2.UpdateLogResponse
 	if err := json.Unmarshal(resp, &response); err != nil {
 		return nil, fmt.Errorf("unmarshalling Coordinator response: %w", err)
 	}
@@ -93,7 +93,7 @@ func manifestSetV2(ctx context.Context, client *rest.Client, manifest []byte) (r
 		return nil, err
 	}
 
-	var response apiv2.ManifestSetResp
+	var response apiv2.ManifestSetResponse
 	if err := json.Unmarshal(resp, &response); err != nil {
 		return nil, fmt.Errorf("unmarshalling Coordinator response: %w", err)
 	}

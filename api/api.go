@@ -396,7 +396,7 @@ func SignQuote(ctx context.Context, endpoint string, trustedRoot *x509.Certifica
 		return nil, tcbstatus.Unknown, fmt.Errorf("setting up client: %w", err)
 	}
 
-	signReq, err := json.Marshal(apiv2.QuoteSignReq{SGXQuote: sgxQuote})
+	signReq, err := json.Marshal(apiv2.QuoteSignRequest{SGXQuote: sgxQuote})
 	if err != nil {
 		return nil, tcbstatus.Unknown, fmt.Errorf("marshalling quote sign request: %w", err)
 	}
@@ -406,7 +406,7 @@ func SignQuote(ctx context.Context, endpoint string, trustedRoot *x509.Certifica
 		return nil, tcbstatus.Unknown, fmt.Errorf("sending quote sign request: %w", err)
 	}
 
-	var response apiv2.QuoteSignResp
+	var response apiv2.QuoteSignResponse
 	if err := json.Unmarshal(resp, &response); err != nil {
 		return nil, tcbstatus.Unknown, fmt.Errorf("unmarshalling Coordinator response: %w", err)
 	}

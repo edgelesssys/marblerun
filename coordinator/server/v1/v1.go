@@ -43,7 +43,7 @@ func (s *ClientAPIServer) StatusGet(w http.ResponseWriter, r *http.Request) {
 		handler.WriteJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	handler.WriteJSON(w, StatusResp{int(statusCode), status})
+	handler.WriteJSON(w, StatusResponse{int(statusCode), status})
 }
 
 // ManifestGet retrieves the currently set manifest.
@@ -77,7 +77,7 @@ func (s *ClientAPIServer) ManifestGet(w http.ResponseWriter, r *http.Request) {
 	signatureRootECDSA, manifest, err := s.api.GetManifestSignature(r.Context())
 	if err != nil {
 		// backwards compatibility, return empty response
-		handler.WriteJSON(w, ManifestSignatureResp{
+		handler.WriteJSON(w, ManifestSignatureResponse{
 			ManifestSignatureRootECDSA: nil,
 			ManifestSignature:          "",
 			Manifest:                   nil,
@@ -86,7 +86,7 @@ func (s *ClientAPIServer) ManifestGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fingerprint := sha256.Sum256(manifest)
-	handler.WriteJSON(w, ManifestSignatureResp{
+	handler.WriteJSON(w, ManifestSignatureResponse{
 		ManifestSignatureRootECDSA: signatureRootECDSA,
 		ManifestSignature:          hex.EncodeToString(fingerprint[:]),
 		Manifest:                   manifest,
@@ -118,7 +118,7 @@ func (s *ClientAPIServer) ManifestPost(w http.ResponseWriter, r *http.Request) {
 
 	// If recovery data is set, return it
 	if len(recoverySecretMap) > 0 {
-		handler.WriteJSON(w, RecoveryDataResp{recoverySecretMap})
+		handler.WriteJSON(w, RecoveryDataResponse{recoverySecretMap})
 	} else {
 		handler.WriteJSON(w, nil)
 	}
@@ -140,7 +140,7 @@ func (s *ClientAPIServer) QuoteGet(w http.ResponseWriter, r *http.Request) {
 		handler.WriteJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	handler.WriteJSON(w, CertQuoteResp{cert, quote})
+	handler.WriteJSON(w, CertQuoteResponse{cert, quote})
 }
 
 // RecoverPost recovers the Coordinator.
@@ -176,7 +176,7 @@ func (s *ClientAPIServer) RecoverPost(w http.ResponseWriter, r *http.Request) {
 		statusMessage = "Recovery successful."
 	}
 
-	handler.WriteJSON(w, RecoveryStatusResp{statusMessage})
+	handler.WriteJSON(w, RecoveryStatusResponse{statusMessage})
 }
 
 // UpdateGet retrieves the update log.

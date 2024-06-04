@@ -85,7 +85,7 @@ func TestManifestWithRecoveryKey(t *testing.T) {
 	require.Equal(http.StatusOK, resp.Code)
 
 	// Decode JSON response from server
-	var encryptedRecoveryData v1.RecoveryDataResp
+	var encryptedRecoveryData v1.RecoveryDataResponse
 	b64EncryptedRecoveryDataJSON := gjson.Get(resp.Body.String(), "data")
 	require.NoError(json.Unmarshal([]byte(b64EncryptedRecoveryDataJSON.String()), &encryptedRecoveryData))
 

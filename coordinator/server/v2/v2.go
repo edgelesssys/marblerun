@@ -42,7 +42,7 @@ func (s *ClientAPIServer) ManifestGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fingerprint := sha256.Sum256(manifest)
-	handler.WriteJSON(w, ManifestGetResp{
+	handler.WriteJSON(w, ManifestGetResponse{
 		ManifestSignatureRootECDSA: signatureRootECDSA,
 		ManifestFingerprint:        hex.EncodeToString(fingerprint[:]),
 		Manifest:                   manifest,
@@ -64,7 +64,7 @@ func (s *ClientAPIServer) ManifestPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// If recovery data is set, return it
-	handler.WriteJSON(w, ManifestSetResp{RecoverySecrets: recoverySecretMap})
+	handler.WriteJSON(w, ManifestSetResponse{RecoverySecrets: recoverySecretMap})
 }
 
 // QuoteGet retrieves a remote attestation quote and certificates.
@@ -86,7 +86,7 @@ func (s *ClientAPIServer) QuoteGet(w http.ResponseWriter, r *http.Request) {
 		handler.WriteJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	handler.WriteJSON(w, CertQuoteResp{cert, quote})
+	handler.WriteJSON(w, CertQuoteResponse{cert, quote})
 }
 
 // RecoverPost performs recovery of the Coordinator enclave when unsealing of the existing state fails.
@@ -113,7 +113,7 @@ func (s *ClientAPIServer) RecoverPost(w http.ResponseWriter, r *http.Request) {
 		statusMessage = "Recovery successful."
 	}
 
-	handler.WriteJSON(w, RecoveryResp{
+	handler.WriteJSON(w, RecoveryResponse{
 		Remaining: remaining,
 		Message:   statusMessage,
 	})
@@ -182,7 +182,7 @@ func (s *ClientAPIServer) StatusGet(w http.ResponseWriter, r *http.Request) {
 		handler.WriteJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	handler.WriteJSON(w, StatusResp{
+	handler.WriteJSON(w, StatusResponse{
 		Code:    int(statusCode),
 		Message: status,
 	})
@@ -197,7 +197,7 @@ func (s *ClientAPIServer) SignQuotePost(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	var req QuoteSignReq
+	var req QuoteSignRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		handler.WriteJSONFailure(w, fmt.Sprintf("bad request: %s", err), http.StatusBadRequest)
 		return
@@ -215,7 +215,7 @@ func (s *ClientAPIServer) SignQuotePost(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	handler.WriteJSON(w, QuoteSignResp{
+	handler.WriteJSON(w, QuoteSignResponse{
 		VerificationSignature: signature,
 		TCBStatus:             tcbStatus,
 	})
@@ -228,7 +228,7 @@ func (s *ClientAPIServer) UpdateGet(w http.ResponseWriter, r *http.Request) {
 		handler.WriteJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	handler.WriteJSON(w, UpdateLogResp{UpdateLog: updateLog})
+	handler.WriteJSON(w, UpdateLogResponse{UpdateLog: updateLog})
 }
 
 // UpdatePost applies an update to the Coordinator's manifest.
