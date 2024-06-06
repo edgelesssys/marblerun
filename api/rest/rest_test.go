@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/edgelesssys/marblerun/coordinator/server"
+	"github.com/edgelesssys/marblerun/coordinator/server/handler"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -36,7 +36,7 @@ func newTestClient(fn roundTripFunc) *http.Client {
 func TestGet(t *testing.T) {
 	require := require.New(t)
 	defaultResponseFunc := func(_ *http.Request) *http.Response {
-		response := server.GeneralResponse{
+		response := handler.GeneralResponse{
 			Message: "response message",
 			Data:    "response data",
 		}
@@ -112,7 +112,7 @@ func TestGet(t *testing.T) {
 func TestPost(t *testing.T) {
 	require := require.New(t)
 	defaultResponseFunc := func(_ *http.Request) *http.Response {
-		response := server.GeneralResponse{
+		response := handler.GeneralResponse{
 			Message: "response message",
 			Data:    "response data",
 		}

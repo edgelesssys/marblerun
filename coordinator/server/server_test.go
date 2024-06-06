@@ -8,6 +8,7 @@ package server
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
@@ -20,17 +21,19 @@ import (
 	"sync"
 	"testing"
 
+	v1 "github.com/edgelesssys/marblerun/coordinator/server/v1"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestQuote(t *testing.T) {
 	assert := assert.New(t)
 
-	mux := CreateServeMux(newTestClientAPI(t), nil)
+	mux := CreateServeMux(newTestClientAPI(t), nil, zaptest.NewLogger(t))
 
 	req := httptest.NewRequest(http.MethodGet, "/quote", nil)
 	resp := httptest.NewRecorder()
@@ -43,7 +46,7 @@ func TestManifest(t *testing.T) {
 	require := require.New(t)
 
 	c := newTestClientAPI(t)
-	mux := CreateServeMux(c, nil)
+	mux := CreateServeMux(c, nil, zaptest.NewLogger(t))
 
 	// set manifest
 	req := httptest.NewRequest(http.MethodPost, "/manifest", strings.NewReader(test.ManifestJSON))
@@ -57,8 +60,10 @@ func TestManifest(t *testing.T) {
 	mux.ServeHTTP(resp, req)
 	require.Equal(http.StatusOK, resp.Code)
 
-	sigRootECDSA, sig, manifest := c.GetManifestSignature(context.Background())
-	assert.JSONEq(`{"status":"success","data":{"ManifestSignatureRootECDSA":"`+base64.StdEncoding.EncodeToString(sigRootECDSA)+`","ManifestSignature":"`+hex.EncodeToString(sig)+`","Manifest":"`+base64.StdEncoding.EncodeToString(manifest)+`"}}`, resp.Body.String())
+	sigRootECDSA, manifest, err := c.GetManifestSignature(context.Background())
+	require.NoError(err)
+	fingerprint := sha256.Sum256(manifest)
+	assert.JSONEq(`{"status":"success","data":{"ManifestSignatureRootECDSA":"`+base64.StdEncoding.EncodeToString(sigRootECDSA)+`","ManifestSignature":"`+hex.EncodeToString(fingerprint[:])+`","Manifest":"`+base64.StdEncoding.EncodeToString(manifest)+`"}}`, resp.Body.String())
 
 	// try setting manifest again, should fail
 	req = httptest.NewRequest(http.MethodPost, "/manifest", strings.NewReader(test.ManifestJSON))
@@ -71,7 +76,7 @@ func TestManifestWithRecoveryKey(t *testing.T) {
 	require := require.New(t)
 
 	c := newTestClientAPI(t)
-	mux := CreateServeMux(c, nil)
+	mux := CreateServeMux(c, nil, zaptest.NewLogger(t))
 
 	// set manifest
 	req := httptest.NewRequest(http.MethodPost, "/manifest", strings.NewReader(test.ManifestJSONWithRecoveryKey))
@@ -80,7 +85,7 @@ func TestManifestWithRecoveryKey(t *testing.T) {
 	require.Equal(http.StatusOK, resp.Code)
 
 	// Decode JSON response from server
-	var encryptedRecoveryData RecoveryDataResp
+	var encryptedRecoveryData v1.RecoveryDataResponse
 	b64EncryptedRecoveryDataJSON := gjson.Get(resp.Body.String(), "data")
 	require.NoError(json.Unmarshal([]byte(b64EncryptedRecoveryDataJSON.String()), &encryptedRecoveryData))
 
@@ -100,7 +105,7 @@ func TestGetUpdateLog(t *testing.T) {
 	c := newTestClientAPI(t)
 	_, err := c.SetManifest(context.Background(), []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
-	mux := CreateServeMux(c, nil)
+	mux := CreateServeMux(c, nil, zaptest.NewLogger(t))
 
 	req := httptest.NewRequest(http.MethodGet, "/update", nil)
 	resp := httptest.NewRecorder()
@@ -117,7 +122,7 @@ func TestUpdate(t *testing.T) {
 	c := newTestClientAPI(t)
 	_, err := c.SetManifest(context.Background(), []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
-	mux := CreateServeMux(c, nil)
+	mux := CreateServeMux(c, nil, zaptest.NewLogger(t))
 
 	// Make HTTP update request with no TLS at all, should be unauthenticated
 	req := httptest.NewRequest(http.MethodPost, "/update", strings.NewReader(test.UpdateManifest))
@@ -134,7 +139,7 @@ func TestReadSecret(t *testing.T) {
 	c := newTestClientAPI(t)
 	_, err := c.SetManifest(context.Background(), []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
-	mux := CreateServeMux(c, nil)
+	mux := CreateServeMux(c, nil, zaptest.NewLogger(t))
 
 	// Make HTTP secret request with no TLS at all, should be unauthenticated
 	req := httptest.NewRequest(http.MethodGet, "/secrets?s=symmetricKeyShared", nil)
@@ -151,7 +156,7 @@ func TestSetSecret(t *testing.T) {
 	c := newTestClientAPI(t)
 	_, err := c.SetManifest(context.Background(), []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
-	mux := CreateServeMux(c, nil)
+	mux := CreateServeMux(c, nil, zaptest.NewLogger(t))
 
 	// Make HTTP secret request with no TLS at all, should be unauthenticated
 	req := httptest.NewRequest(http.MethodPost, "/secrets", strings.NewReader(test.UserSecrets))
@@ -195,7 +200,7 @@ func TestConcurrent(t *testing.T) {
 
 	assert := assert.New(t)
 
-	mux := CreateServeMux(newTestClientAPI(t), nil)
+	mux := CreateServeMux(newTestClientAPI(t), nil, zaptest.NewLogger(t))
 	var wg sync.WaitGroup
 
 	getQuote := func() {
