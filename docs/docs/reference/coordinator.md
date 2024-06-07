@@ -36,7 +36,7 @@ Example for retrieving the deployed manifest with curl:
 curl --cacert marblerun.crt "https://$MARBLERUN/api/v2/manifest" | jq '.data.ManifestSignature' --raw-output | base64 -d
 ```
 
-### Returns
+#### Returns
 
 * `manifestSignatureRootECDSA` string
 
@@ -98,7 +98,7 @@ openssl dgst -sha256 -verify root.pubkey -signature manifest.sig manifest.json
 awk 'NF {sub(/\r/, ""); printf "%s",$0;}' original.manifest.json  > formated.manifest.json
 ```
 
-### Returns
+#### Returns
 
 * `manifestSignatureRootECDSA` string
 
@@ -141,7 +141,7 @@ Before deploying applications to a MarbleRun deployment, a manifest needs to be 
 On success, a key-value mapping for encrypted secrets to be used for recovering the Coordinator in case of disaster recovery is returned.
 The key matches each supplied key from RecoveryKeys in the Manifest.
 
-### Request body
+#### Request body
 
 * `manifest` string
 
@@ -155,7 +155,7 @@ Example request body:
 }
 ```
 
-### Returns
+#### Returns
 
 * `recoveryKeys` object
 
@@ -194,7 +194,7 @@ Example for setting the manifest with curl:
 curl --cacert marblerun.crt --data-binary @manifest.json "https://$MARBLERUN/manifest"
 ```
 
-### Request body
+#### Request body
 
 Raw JSON encoded manifest.
 See [Defining a Manifest](../workflows/define-manifest.md) for more information.
@@ -222,7 +222,7 @@ Example request body:
 }
 ```
 
-### Returns
+#### Returns
 
 * `recoveryKeys` object
 
@@ -260,13 +260,13 @@ Retrieves and SGX-DCAP quote from the Coordinator.
 Learn more about DCAP in the [official Intel DCAP orientation](https://download.01.org/intel-sgx/sgx-dcap/1.21/linux/docs/DCAP_ECDSA_Orientation.pdf).
 This endpoint can be used to verify the integrity of the Coordinator and the cluster at any time.
 
-### Query parameters
+#### Query parameters
 
 * `nonce` string (optional)
 
     Base64 URL encoded nonce to be included in the quote.
 
-### Returns
+#### Returns
 
 * `cert` string
 
@@ -304,7 +304,7 @@ Retrieves and SGX-DCAP quote from the Coordinator.
 Learn more about DCAP in the [official Intel DCAP orientation](https://download.01.org/intel-sgx/sgx-dcap/1.21/linux/docs/DCAP_ECDSA_Orientation.pdf).
 This endpoint can be used to verify the integrity of the Coordinator and the cluster at any time.
 
-### Returns
+#### Returns
 
 * `cert` string
 
@@ -349,13 +349,13 @@ This API endpoint is only available when the coordinator is in recovery mode.
 Before you can use the endpoint, you need to decrypt the recovery secret which you may have received when setting the manifest initially.
 See [Recovering the Coordinator](../workflows/recover-coordinator.md) on how to retrieve the recovery key needed to use this API endpoint correctly.
 
-### Request body
+#### Request body
 
 * `recoverySecret` string
 
     Base64 encoded recovery secret.
 
-### Returns
+#### Returns
 
 * `remaining` int
 
@@ -396,11 +396,11 @@ Example for recovering the Coordinator with curl:
 curl -k -X POST --data-binary @recovery_key_decrypted "https://$MARBLERUN/recover"
 ```
 
-### Request body
+#### Request body
 
 Raw binary encoded recovery secret.
 
-### Returns
+#### Returns
 
 * `statusMessage` string
 
@@ -446,13 +446,13 @@ Example for retrieving the secrets `symmetricKeyShared` and `certShared`:
 curl --cacert marblerun.crt --cert user_certificate.crt --key user_private.key "https://$MARBLERUN/secrets?s=symmetricKeyShared&s=certShared"
 ```
 
-### Query parameters
+#### Query parameters
 
 * `s` string (required) one or more
 
     Secret name to retrieve.
 
-### Returns
+#### Returns
 
 * `secrets` [object](#secret-object)
 
@@ -509,13 +509,13 @@ Example for retrieving the secrets `symmetricKeyShared` and `certShared`:
 curl --cacert marblerun.crt --cert user_certificate.crt --key user_private.key "https://$MARBLERUN/secrets?s=symmetricKeyShared&s=certShared"
 ```
 
-### Query parameters
+#### Query parameters
 
 * `s` string (required) one or more
 
     Secret name to retrieve.
 
-### Returns
+#### Returns
 
 Key-value mapping of strings to [secret objects](#secret-object), where the key matches each supplied secret name in the query string.
 
@@ -562,7 +562,7 @@ Example response:
 
 * `shared` bool
 
-    Specifies whether this secret is shared across all marbles, or if it is unique to each marble.
+    Specifies whether this secret is shared across all marbles, or if it's unique to each marble.
 
 * `userDefined` bool
 
@@ -598,7 +598,7 @@ This API endpoint only works when `Users` were defined in the manifest.
 The user connects via mutual TLS using the user client certificate in the TLS Handshake.
 For more information, look up [Managing secrets](../workflows/managing-secrets.md).
 
-### Request body
+#### Request body
 
 * `secrets` object
 
@@ -639,7 +639,7 @@ Example for setting secrets from the file `secrets.json`:
 curl --cacert marblerun.crt --cert user_certificate.crt --key user_private.key --data-binary @secrets.json "https://$MARBLERUN/secrets"
 ```
 
-### Request body
+#### Request body
 
 Key-value mapping of strings to [user secret objects](#user-secret-object), where the key is the name of the secret.
 
@@ -687,7 +687,7 @@ POST /api/v2/sign-quote
 
 Send an SGX quote to the Coordinator for verification.
 If the quote is valid, the Coordinator will sign the quote using its root ECDSA key, and return the signature with the TCB status of the quote.
-The Coordinator does not verify if the quote matches any packages in the configured manifest.
+The Coordinator doesn't verify if the quote matches any packages in the configured manifest.
 The signature is created over the SHA-256 hash of the base64-encoded SGX quote and the TCB status:
 
 ```shell
@@ -703,7 +703,7 @@ If the quote is invalid, the Coordinator will return a JSend fail response:
 }
 ```
 
-### Request body
+#### Request body
 
 * `sgxQuote` string
 
@@ -717,7 +717,7 @@ Example request body:
 }
 ```
 
-### Returns
+#### Returns
 
 * `signature` string
 
@@ -764,7 +764,7 @@ The status indicates the current state of the coordinator, and can be one of the
 2. Coordinator is ready to accept a manifest on [/manifest](#set-the-coordinators-manifest).
 3. Coordinator is running correctly and ready to accept marbles through the [Marble API](../workflows/add-service.md).
 
-### Returns
+#### Returns
 
 * `status` int
 
@@ -789,7 +789,7 @@ The status indicates the current state of the coordinator, and can be one of the
 2. Coordinator is ready to accept a manifest on [/manifest](#set-the-coordinators-manifest).
 3. Coordinator is running correctly and ready to accept marbles through the [Marble API](../workflows/add-service.md).
 
-### Returns
+#### Returns
 
 * `statusCode` int
 
@@ -813,7 +813,7 @@ GET /api/v2/update
 
 Returns a structured log of all updates performed via the [`/update`](#update-the-manifest) or [`/secrets`](#set-secrets) endpoint, including timestamp, author, and affected resources.
 
-### Returns
+#### Returns
 
 * `updateLog` array of strings
 
@@ -842,7 +842,7 @@ GET /update
 
 Returns a structured log of all updates performed via the [`/update`](#update-the-manifest) or [`/secrets`](#set-secrets) endpoint, including timestamp, author, and affected resources.
 
-### Returns
+#### Returns
 
 A string comprising the log of all performed updates.
 The log is structured as a JSON array of objects, where each object is a log entry.
@@ -873,7 +873,7 @@ It requires uploading a manifest containing only the packages to be updated, or,
 The Coordinator will verify the manifest and return an error if the manifest is invalid.
 For more information, have a look at [updating a Manifest](../workflows/update-manifest.md).
 
-### Request body
+#### Request body
 
 For package updates:
 
@@ -907,7 +907,7 @@ Example for updating the manifest with curl:
 curl --cacert marblerun.crt --cert user_certificate.crt --key user_private.key --data-binary @update_manifest.json "https://$MARBLERUN/update"
 ```
 
-### Request body
+#### Request body
 
 For package updates:
 
@@ -933,7 +933,7 @@ Example request body for package updates:
 For full manifest updates the request body should contain the full manifest.
 See [Defining a Manifest](../workflows/define-manifest.md) for more information.
 
-### Packages object
+#### Packages object
 
 * `SecurityVersion` int
 
@@ -957,7 +957,7 @@ If multiple users are allowed to perform full manifest updates, acknowledgement 
 See [multi-party updates](../workflows/update-manifest.md#acknowledging-a-multi-party-update) for more information.
 Each user must upload the same manifest to acknowledge the update.
 
-### Request body
+#### Request body
 
 * `manifest` string
 
@@ -971,7 +971,7 @@ Example request body:
 }
 ```
 
-### Returns
+#### Returns
 
 * `message` string
 
@@ -979,7 +979,7 @@ Example request body:
 
 * `missingUsers` array of strings
 
-    An array of user IDs that have not yet acknowledged the update.
+    An array of user IDs that haven't yet acknowledged the update.
 
 Example response:
 
@@ -1004,7 +1004,7 @@ If multiple users are allowed to perform full manifest updates, acknowledgement 
 See [multi-party updates](../workflows/update-manifest.md#acknowledging-a-multi-party-update) for more information.
 Each user must upload the same manifest to acknowledge the update.
 
-### Request body
+#### Request body
 
 Raw JSON encoded manifest.
 
@@ -1031,7 +1031,7 @@ Example request body:
 }
 ```
 
-### Returns
+#### Returns
 
 * `message` string
 
@@ -1064,7 +1064,7 @@ GET /api/v2/update-manifest
 
 Once a multi-party update has been initiated, users can view the pending manifest update.
 
-### Returns
+#### Returns
 
 * `manifest` string
 
@@ -1072,7 +1072,7 @@ Once a multi-party update has been initiated, users can view the pending manifes
 
 * `missingUsers` array of strings
 
-    An array of user IDs that have not yet acknowledged the update.
+    An array of user IDs that haven't yet acknowledged the update.
 
 * `message` string
 
@@ -1100,7 +1100,7 @@ GET /update-manifest
 
 Once a multi-party update has been initiated, users can view the pending manifest update.
 
-### Returns
+#### Returns
 
 * `manifest` string
 
@@ -1108,7 +1108,7 @@ Once a multi-party update has been initiated, users can view the pending manifes
 
 * `missingUsers` array of strings
 
-    An array of user IDs that have not yet acknowledged the update.
+    An array of user IDs that haven't yet acknowledged the update.
 
 * `message` string
 
@@ -1143,7 +1143,7 @@ POST /api/v2/update-cancel
 
 If a multi-party update has been initiated, users can cancel the pending manifest update.
 
-### Returns
+#### Returns
 
 * `message` string
 
@@ -1169,7 +1169,7 @@ POST /update-cancel
 
 If a multi-party update has been initiated, users can cancel the pending manifest update.
 
-### Returns
+#### Returns
 
 A human readable message about the status of the update.
 
