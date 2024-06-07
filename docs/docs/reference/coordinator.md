@@ -742,7 +742,7 @@ Example response:
 </TabItem>
 <TabItem value="v1" label="v1">
 
-This API endpoint is not available in API version 1.
+This API endpoint isn't available in API version 1.
 
 </TabItem>
 </Tabs>
