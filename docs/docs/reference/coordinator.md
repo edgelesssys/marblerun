@@ -3,12 +3,12 @@
 The Coordinator exposes an HTTP-REST interface, referred to as the Client API.
 
 Responses of the API follow the [JSend specification](https://github.com/omniti-labs/jsend).
-This means all endpoints return a JSON object with a `status` field that's either "success", "fail", or "error":
+This means all endpoints return a JSON object with a `status` field that's either `success`, `fail`, or `error`:
 
-* In case of "success", the response will contain a `data` field with the actual response data.
-* In case of "error", the response will contain a `message` field with an error message.
-* In case of "fail", the response may contain a `message` field with a human readable message, as well as a `data` field with additional information.
-  * "fail" is only used in API version 2, and is returned on invalid requests by the client.
+* In case of `success`, the response will contain a `data` field with the actual response data.
+* In case of `error`, the response will contain a `message` field with an error message.
+* In case of `fail`, the response may contain a `message` field with a human readable message, as well as a `data` field with additional information.
+  * `fail` is only used in API version 2, and is returned on invalid requests by the client.
 
 The Client API is used by the MarbleRun CLI and by [the MarbleRun Go SDK](https://pkg.go.dev/github.com/edgelesssys/marblerun/api) to interact with the Coordinator.
 It may also be used directly by applications for programmatic access.
@@ -551,14 +551,14 @@ Example response:
 
 * `type` string
 
-    The type of the secret. One of "cert-ecdsa", "cert-ed25519", "cert-rsa", "symmetric-key", "plain".
+    The type of the secret. One of `cert-ecdsa`, `cert-ed25519`, `cert-rsa`, `symmetric-key`, `plain`.
 
 * `size` integer
 
     Size of the key in bits.
-    For Type "symmetric-key", this is a multiple of 8.
-    For Type "cert-ecdsa", this maps to a curve supported by Go's crypto library, currently: 224, 256, 384, or 521.
-    For "cert-ed25519", this is omitted.
+    For Type `symmetric-key`, this is a multiple of 8.
+    For Type `cert-ecdsa`, this maps to a curve supported by Go's crypto library, currently: 224, 256, 384, or 521.
+    For `cert-ed25519`, this is omitted.
 
 * `shared` bool
 
@@ -664,7 +664,7 @@ Example request body:
 
 * `key` string
 
-    Base64 encoded symmetric-key or arbitrary base64 encoded data for secrets of type "plain".
+    Base64 encoded symmetric-key or arbitrary base64 encoded data for secrets of type `plain`.
 
 * `cert` string
 
@@ -904,7 +904,7 @@ For more information, have a look at [updating a Manifest](../workflows/update-m
 Example for updating the manifest with curl:
 
 ```bash
-curl --cacert marblerun.crt --cert user_certificate.crt --key user_private.key -w "%{http_code}" --data-binary @update_manifest.json "https://$MARBLERUN/update"
+curl --cacert marblerun.crt --cert user_certificate.crt --key user_private.key --data-binary @update_manifest.json "https://$MARBLERUN/update"
 ```
 
 ### Request body
