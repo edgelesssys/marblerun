@@ -2,10 +2,12 @@ AESM
 Alibaba
 argv
 auto-injection
+bool
 cloud
 collateral
 config
 CPU
+crypto
 Dockerfile
 emojivoto
 Env
@@ -17,6 +19,7 @@ helloworld
 hostname
 IP
 Istio
+JSend
 kubectl
 Linkerd
 MarbleRun
