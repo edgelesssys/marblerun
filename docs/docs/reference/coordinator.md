@@ -141,6 +141,12 @@ Before deploying applications to a MarbleRun deployment, a manifest needs to be 
 On success, a key-value mapping for encrypted secrets to be used for recovering the Coordinator in case of disaster recovery is returned.
 The key matches each supplied key from RecoveryKeys in the Manifest.
 
+Example for setting the manifest with curl:
+
+```bash
+curl --cacert marblerun.crt --data-binary @manifest-request.json "https://$MARBLERUN/manifest"
+```
+
 #### Request body
 
 * `manifest` string
@@ -258,6 +264,7 @@ GET /api/v2/quote[?nonce=<base64_url_encoding(nonce)>]
 
 Retrieves and SGX-DCAP quote from the Coordinator.
 Learn more about DCAP in the [official Intel DCAP orientation](https://download.01.org/intel-sgx/sgx-dcap/1.21/linux/docs/DCAP_ECDSA_Orientation.pdf).
+
 This endpoint can be used to verify the integrity of the Coordinator and the cluster at any time.
 
 #### Query parameters
@@ -302,6 +309,7 @@ GET /quote
 
 Retrieves and SGX-DCAP quote from the Coordinator.
 Learn more about DCAP in the [official Intel DCAP orientation](https://download.01.org/intel-sgx/sgx-dcap/1.21/linux/docs/DCAP_ECDSA_Orientation.pdf).
+
 This endpoint can be used to verify the integrity of the Coordinator and the cluster at any time.
 
 #### Returns
@@ -349,11 +357,25 @@ This API endpoint is only available when the coordinator is in recovery mode.
 Before you can use the endpoint, you need to decrypt the recovery secret which you may have received when setting the manifest initially.
 See [Recovering the Coordinator](../workflows/recover-coordinator.md) on how to retrieve the recovery key needed to use this API endpoint correctly.
 
+Example for recovering the Coordinator with curl:
+
+```bash
+curl -k -X POST --data-binary @recovery_key.json "https://$MARBLERUN/recover"
+```
+
 #### Request body
 
 * `recoverySecret` string
 
     Base64 encoded recovery secret.
+
+Example request body:
+
+```JSON
+{
+    "recoverySecret": "AAECAwQFBgcICQoLDA0ODw=="
+}
+```
 
 #### Returns
 
@@ -430,6 +452,7 @@ GET /api/v2/secrets?s=<secretName1>[&s=<secretName2>...]
 ```
 
 Each requests allows specifying one or more secrets in the form of a query string, where each parameter `s` specifies one secret.
+
 A query string for the secrets `symmetricKeyShared` and `certShared` may look like the following:
 
 ```http
@@ -493,6 +516,7 @@ GET /secrets?s=<secretName1>[&s=<secretName2>...]
 ```
 
 Each requests allows specifying one or more secrets in the form of a query string, where each parameter `s` specifies one secret.
+
 A query string for the secrets `symmetricKeyShared` and `certShared` may look like the following:
 
 ```http
@@ -556,9 +580,10 @@ Example response:
 * `size` integer
 
     Size of the key in bits.
-    For Type `symmetric-key`, this is a multiple of 8.
-    For Type `cert-ecdsa`, this maps to a curve supported by Go's crypto library, currently: 224, 256, 384, or 521.
-    For `cert-ed25519`, this is omitted.
+
+  * For Type `symmetric-key`, this is a multiple of 8.
+  * For Type `cert-ecdsa`, this maps to a curve supported by Go's crypto library, currently: 224, 256, 384, or 521.
+  * For `cert-ed25519`, this is omitted.
 
 * `shared` bool
 
@@ -597,6 +622,12 @@ POST /api/v2/secrets
 This API endpoint only works when `Users` were defined in the manifest.
 The user connects via mutual TLS using the user client certificate in the TLS Handshake.
 For more information, look up [Managing secrets](../workflows/managing-secrets.md).
+
+Example for setting secrets from the file `secrets.json`:
+
+```bash
+curl --cacert marblerun.crt --cert user_certificate.crt --key user_private.key --data-binary @secrets.json "https://$MARBLERUN/secrets"
+```
 
 #### Request body
 
@@ -674,7 +705,7 @@ Example request body:
 
     Base64 encoded public key matching the certificate.
 
-Only `key` or `cert` and `public` may be set.
+Only `key`, or `cert` and `public` may be set for a given secret.
 
 ## Verify and sign an SGX quote
 
@@ -687,14 +718,16 @@ POST /api/v2/sign-quote
 
 Send an SGX quote to the Coordinator for verification.
 If the quote is valid, the Coordinator will sign the quote using its root ECDSA key, and return the signature with the TCB status of the quote.
+
 The Coordinator doesn't verify if the quote matches any packages in the configured manifest.
+
 The signature is created over the SHA-256 hash of the base64-encoded SGX quote and the TCB status:
 
 ```shell
 signature = ECDSA_sign(root_priv_key, SHA256(base64(SGX_quote) + string(TCB_status)))
 ```
 
-If the quote is invalid, the Coordinator will return a JSend fail response:
+If the quote is invalid, the Coordinator will return a JSend fail response, which may look like the following:
 
 ```JSON
 {
@@ -881,7 +914,7 @@ For package updates:
 
     Base64 encoded manifest, containing only the packages to be updated, or, if enabled, a completely new manifest.
 
-Example request body for package updates:
+Example request body:
 
 ```JSON
 {
@@ -954,8 +987,10 @@ POST /api/v2/update-manifest
 ```
 
 If multiple users are allowed to perform full manifest updates, acknowledgement is required from all users before the manifest is applied.
-See [multi-party updates](../workflows/update-manifest.md#acknowledging-a-multi-party-update) for more information.
+
 Each user must upload the same manifest to acknowledge the update.
+
+See [multi-party updates](../workflows/update-manifest.md#acknowledging-a-multi-party-update) for more information.
 
 #### Request body
 
@@ -1001,8 +1036,10 @@ POST /update-manifest
 ```
 
 If multiple users are allowed to perform full manifest updates, acknowledgement is required from all users before the manifest is applied.
-See [multi-party updates](../workflows/update-manifest.md#acknowledging-a-multi-party-update) for more information.
+
 Each user must upload the same manifest to acknowledge the update.
+
+See [multi-party updates](../workflows/update-manifest.md#acknowledging-a-multi-party-update) for more information.
 
 #### Request body
 
