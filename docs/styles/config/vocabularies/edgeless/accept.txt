@@ -19,6 +19,7 @@ helloworld
 hostname
 IP
 Istio
+JSend
 kubectl
 Linkerd
 MarbleRun
@@ -42,4 +43,3 @@ vSphere
 walkthrough
 Xeon
 XORed
-JSend

@@ -5,12 +5,12 @@ The Coordinator exposes an HTTP-REST interface, referred to as the Client API.
 Responses of the API follow the [JSend specification](https://github.com/omniti-labs/jsend).
 This means all endpoints return a JSON object with a `status` field that's either `success`, `fail`, or `error`:
 
-* In case of `success`, the response will contain a `data` field with the actual response data.
-* In case of `error`, the response will contain a `message` field with an error message.
+* In case of `success`, the response contains a `data` field with the actual response data.
+* In case of `error`, the response contains a `message` field with an error message.
 * In case of `fail`, the response may contain a `message` field with a human readable message, as well as a `data` field with additional information.
   * `fail` is only used in API version 2, and is returned on invalid requests by the client.
 
-The Client API is used by the MarbleRun CLI and by [the MarbleRun Go SDK](https://pkg.go.dev/github.com/edgelesssys/marblerun/api) to interact with the Coordinator.
+The MarbleRun CLI and [the MarbleRun Go SDK](https://pkg.go.dev/github.com/edgelesssys/marblerun/api) use the Client API to interact with the Coordinator.
 It may also be used directly by applications for programmatic access.
 
 ## Retrieve the Coordinator's manifest
