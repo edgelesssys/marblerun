@@ -15,8 +15,8 @@
   },
   "dependencies": {
     "@cmfcmf/docusaurus-search-local": "1.2.0",
-    "@docusaurus/core": "3.4.0",
-    "@docusaurus/preset-classic": "3.4.0",
+    "@docusaurus/core": "3.3.2",
+    "@docusaurus/preset-classic": "3.3.2",
     "redocusaurus": "2.0.2",
     "@mdx-js/react": "3.0.1",
     "clsx": "2.1.1",
@@ -38,7 +38,7 @@
   },
   "overrides": {
     "@cmfcmf/docusaurus-search-local": {
-      "@docusaurus/core": "3.4.0"
+      "@docusaurus/core": "3.3.2"
     }
   },
   "engines": {
