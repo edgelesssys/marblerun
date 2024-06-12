@@ -39,6 +39,10 @@
   "overrides": {
     "@cmfcmf/docusaurus-search-local": {
       "@docusaurus/core": "3.3.2"
+    },
+    "redocusaurus": {
+      "@docusaurus/theme-common": "3.3.2",
+      "@docusaurus/utils": "3.3.2"
     }
   },
   "engines": {
