@@ -45,7 +45,7 @@ spec:
           - name: EDG_COORDINATOR_CLIENT_ADDR
             value: "{{ .Values.coordinator.clientServerHost }}:{{ .Values.coordinator.clientServerPort }}"
           - name: EDG_COORDINATOR_DNS_NAMES
-            value: "{{ .Values.coordinator.hostname }},coordinator-mesh-api,coordinator-client-api,coordinator-mesh-api.{{ .Release.Namespace }},coordinator-client-api.{{ .Release.Namespace }},coordinator-mesh-api.{{ .Release.Namespace }}.svc.cluster.local,coordinator-client-api.{{ .Release.Namespace }}.svc.cluster.local"
+            value: "{{ if .Values.coordinator.hostname }}{{ .Values.coordinator.hostname }},{{ end }}localhost,coordinator-mesh-api,coordinator-client-api,coordinator-mesh-api.{{ .Release.Namespace }},coordinator-client-api.{{ .Release.Namespace }},coordinator-mesh-api.{{ .Release.Namespace }}.svc.cluster.local,coordinator-client-api.{{ .Release.Namespace }}.svc.cluster.local"
           - name: EDG_COORDINATOR_SEAL_DIR
             value: "{{ .Values.coordinator.sealDir }}"
           - name: OE_SIMULATION

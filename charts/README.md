@@ -35,7 +35,7 @@ their default values.
 |:---------------------------------------------|:---------------|:---------------|:-------------------------------------|
 | `coordinator.clientServerHost`               | string         | Hostname of the client-api server | `"0.0.0.0"` |
 | `coordinator.clientServerPort`               | int            | Port of the client-api server configuration | `4433` |
-| `coordinator.hostname`                       | string         | DNS-Names for the coordinator certificate | `"localhost"` |
+| `coordinator.hostname`                       | string         | Additional DNS-Names or IPs for the coordinator TLS certificate |  |
 | `coordinator.image`                          | string         | Name of the coordinator container image | `"coordinator"` |
 | `coordinator.meshServerHost`                 | string         | Hostname of the mesh-api server | `"0.0.0.0"` |
 | `coordinator.meshServerPort`                 | int            | Port of the mesh-api server configuration | `2001` |

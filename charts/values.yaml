@@ -70,8 +70,8 @@ coordinator:
   # clientServerPort needs to be configured to the same port as in your client tool stack
   clientServerHost: "0.0.0.0"
   clientServerPort: 4433
-  # hosName needs to match the host you expect the coordinator to run on
-  hostname: "localhost"
+  # hostname are additional DNS names or IPs to be added to the Coordinator's TLS certificate
+  hostname: ""
   # SEAL_DIR needs to be set according to persistent storage
   sealDir: "/coordinator/data/"
   # OE_SIMULATION needs be set to "1" when running on systems without SGX1+FLC capabilities
