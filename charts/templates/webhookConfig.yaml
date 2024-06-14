@@ -27,7 +27,7 @@ metadata:
 spec:
   dnsNames:
   - 'marble-injector.{{ .Release.Namespace }}.svc'
-  - 'marble-injector.{{ .Release.Namespace }}.svc.{{ .Values.coordinator.hostname }}'
+  - 'marble-injector.{{ .Release.Namespace }}.svc.cluster.local'
   issuerRef:
     kind: Issuer
     name: marble-injector-selfsigned-issuer
