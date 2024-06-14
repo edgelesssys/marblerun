@@ -31,7 +31,7 @@ import (
 
 // Options contains the values to set in the helm chart.
 type Options struct {
-	Hostname            string
+	Hostname            []string
 	PCCSURL             string
 	UseSecureCert       string
 	AccessToken         string
@@ -97,18 +97,23 @@ func UpdateValues(options Options, chartValues map[string]interface{}) (map[stri
 	stringValues = append(stringValues, fmt.Sprintf("coordinator.meshServerPort=%d", options.CoordinatorGRPCPort))
 	stringValues = append(stringValues, fmt.Sprintf("coordinator.clientServerPort=%d", options.CoordinatorRESTPort))
 
+	if coordinatorOpts, ok := chartValues["coordinator"].(map[string]interface{}); ok {
+		if existingHostname, ok := coordinatorOpts["hostname"].(string); ok && existingHostname != "" {
+			options.Hostname = append(options.Hostname, existingHostname)
+		}
+		coordinatorOpts["hostname"] = strings.Join(options.Hostname, ",")
+	}
+
 	if options.SimulationMode {
 		// simulation mode, disable tolerations and resources, set simulation to true
 		stringValues = append(stringValues,
 			fmt.Sprintf("tolerations=%s", "null"),
 			fmt.Sprintf("coordinator.simulation=%t", options.SimulationMode),
 			fmt.Sprintf("coordinator.resources.limits=%s", "null"),
-			fmt.Sprintf("coordinator.hostname=%s", options.Hostname),
 			fmt.Sprintf("dcap=%s", "null"),
 		)
 	} else {
 		stringValues = append(stringValues,
-			fmt.Sprintf("coordinator.hostname=%s", options.Hostname),
 			fmt.Sprintf("dcap.pccsUrl=%s", options.PCCSURL),
 			fmt.Sprintf("dcap.useSecureCert=%s", options.UseSecureCert),
 		)

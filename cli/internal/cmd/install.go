@@ -40,7 +40,7 @@ marblerun install --dcap-pccs-url https://pccs.example.com/sgx/certification/v4/
 		RunE: runInstall,
 	}
 
-	cmd.Flags().String("domain", "localhost", "Sets the CNAME for the Coordinator certificate")
+	cmd.Flags().StringSlice("domain", []string{}, "Sets additional DNS names and IPs for the Coordinator TLS certificate")
 	cmd.Flags().String("marblerun-chart-path", "", "Path to MarbleRun helm chart")
 	cmd.Flags().String("version", "", "Version of the Coordinator to install, latest by default")
 	cmd.Flags().String("resource-key", "", "Resource providing SGX, different depending on used device plugin. Use this to set tolerations/resources if your device plugin is not supported by MarbleRun")
@@ -272,7 +272,7 @@ func errorAndCleanup(ctx context.Context, err error, kubeClient kubernetes.Inter
 
 type installFlags struct {
 	chartPath        string
-	hostname         string
+	hostname         []string
 	version          string
 	resourceKey      string
 	pccsURL          string
@@ -290,7 +290,7 @@ func parseInstallFlags(cmd *cobra.Command) (installFlags, error) {
 	if err != nil {
 		return installFlags{}, err
 	}
-	hostname, err := cmd.Flags().GetString("domain")
+	hostname, err := cmd.Flags().GetStringSlice("domain")
 	if err != nil {
 		return installFlags{}, err
 	}
