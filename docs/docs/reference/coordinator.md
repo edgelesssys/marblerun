@@ -732,7 +732,10 @@ If the quote is invalid, the Coordinator will return a JSend fail response, whic
 ```JSON
 {
     "status": "fail",
-    "message": "quote verification failed: OE_QUOTE_VERIFICATION_ERROR",
+    "data": {
+        "sgxQuote": "quote verification failed: OE_QUOTE_VERIFICATION_ERROR"
+    },
+    "message": "quote verification failed",
 }
 ```
 

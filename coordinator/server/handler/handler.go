@@ -89,9 +89,9 @@ func WriteJSONError(w http.ResponseWriter, errorString string, httpErrorCode int
 }
 
 // WriteJSONFailure writes a JSend failure response to the given http.ResponseWriter.
-func WriteJSONFailure(w http.ResponseWriter, v interface{}, httpErrorCode int) {
+func WriteJSONFailure(w http.ResponseWriter, v interface{}, message string, httpErrorCode int) {
 	w.Header().Set("Content-Type", "application/json")
-	dataToReturn := GeneralResponse{Status: "fail", Data: v}
+	dataToReturn := GeneralResponse{Status: "fail", Data: v, Message: message}
 	w.WriteHeader(httpErrorCode)
 	if err := json.NewEncoder(w).Encode(dataToReturn); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
