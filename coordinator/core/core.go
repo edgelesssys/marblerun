@@ -601,7 +601,7 @@ func (e QuoteError) Error() string {
 
 type transactionHandle interface {
 	BeginTransaction(context.Context) (store.Transaction, error)
-	SetEncryptionKey([]byte) error
+	SetEncryptionKey([]byte, seal.Mode) error
 	SetRecoveryData([]byte)
 	LoadState() ([]byte, error)
 }

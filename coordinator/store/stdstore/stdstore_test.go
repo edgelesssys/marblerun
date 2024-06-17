@@ -14,6 +14,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/store"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestStdStore(t *testing.T) {
@@ -105,25 +106,46 @@ func TestStdIterator(t *testing.T) {
 }
 
 func TestStdStoreSealing(t *testing.T) {
-	assert := assert.New(t)
+	testCases := map[string]struct {
+		mode    seal.Mode
+		wantErr bool
+	}{
+		"product key": {mode: seal.ModeProductKey},
+		"unique key":  {mode: seal.ModeUniqueKey},
+		"disabled":    {mode: seal.ModeDisabled, wantErr: true},
+	}
 
-	fs := afero.NewMemMapFs()
-	sealer := &seal.MockSealer{}
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
+			require := require.New(t)
 
-	store := New(sealer, fs, "")
-	_, err := store.LoadState()
-	assert.NoError(err)
+			fs := afero.NewMemMapFs()
+			sealer := &seal.MockSealer{}
 
-	testData1 := []byte("test data")
-	assert.NoError(store.Put("test:input", testData1))
+			store := New(sealer, fs, "")
+			_, err := store.LoadState()
+			require.NoError(err)
 
-	// Check sealing with a new store initialized with the sealed state
-	store2 := New(sealer, fs, "")
-	_, err = store2.LoadState()
-	assert.NoError(err)
-	val, err := store2.Get("test:input")
-	assert.NoError(err)
-	assert.Equal(testData1, val)
+			require.NoError(store.SetEncryptionKey(nil, tc.mode))
+
+			testData1 := []byte("test data")
+			require.NoError(store.Put("test:input", testData1))
+
+			// Check sealing with a new store initialized with the sealed state
+			store2 := New(sealer, fs, "")
+			_, err = store2.LoadState()
+			require.NoError(err)
+			val, err := store2.Get("test:input")
+
+			if tc.wantErr {
+				assert.Error(err)
+				return
+			}
+			require.NoError(err)
+			assert.Equal(testData1, val)
+		})
+	}
 }
 
 func TestStdStoreRollback(t *testing.T) {

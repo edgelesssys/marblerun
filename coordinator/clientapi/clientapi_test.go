@@ -404,7 +404,9 @@ func TestRecover(t *testing.T) {
 	_, rootCert := test.MustSetupTestCerts(test.RecoveryPrivateKey)
 	defaultStore := func() store.Store {
 		s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "")
-		require.NoError(t, wrapper.New(s).PutCertificate(constants.SKCoordinatorRootCert, rootCert))
+		wr := wrapper.New(s)
+		require.NoError(t, wr.PutCertificate(constants.SKCoordinatorRootCert, rootCert))
+		require.NoError(t, wr.PutRawManifest([]byte(`{}`)))
 		return s
 	}
 
@@ -548,10 +550,11 @@ func TestRecover(t *testing.T) {
 
 func TestSetManifest(t *testing.T) {
 	testCases := map[string]struct {
-		store    *fakeStoreTransaction
-		core     *fakeCore
-		manifest []byte
-		wantErr  bool
+		store        *fakeStoreTransaction
+		core         *fakeCore
+		manifest     []byte
+		wantErr      bool
+		wantSealMode seal.Mode
 	}{
 		"success": {
 			store: &fakeStoreTransaction{
@@ -560,7 +563,76 @@ func TestSetManifest(t *testing.T) {
 			core: &fakeCore{
 				state: state.AcceptingManifest,
 			},
-			manifest: []byte(test.ManifestJSON),
+			manifest:     []byte(test.ManifestJSON),
+			wantSealMode: seal.ModeProductKey,
+		},
+		"seal mode set to product key": {
+			store: &fakeStoreTransaction{
+				state: make(map[string][]byte),
+			},
+			core: &fakeCore{
+				state: state.AcceptingManifest,
+			},
+			manifest: func() []byte {
+				var mnf manifest.Manifest
+				require.NoError(t, json.Unmarshal([]byte(test.ManifestJSON), &mnf))
+				mnf.Config.SealMode = "ProductKey"
+				mnfBytes, err := json.Marshal(mnf)
+				require.NoError(t, err)
+				return mnfBytes
+			}(),
+			wantSealMode: seal.ModeProductKey,
+		},
+		"seal mode set to unique key": {
+			store: &fakeStoreTransaction{
+				state: make(map[string][]byte),
+			},
+			core: &fakeCore{
+				state: state.AcceptingManifest,
+			},
+			manifest: func() []byte {
+				var mnf manifest.Manifest
+				require.NoError(t, json.Unmarshal([]byte(test.ManifestJSON), &mnf))
+				mnf.Config.SealMode = "UniqueKey"
+				mnfBytes, err := json.Marshal(mnf)
+				require.NoError(t, err)
+				return mnfBytes
+			}(),
+			wantSealMode: seal.ModeUniqueKey,
+		},
+		"seal mode set to disabled": {
+			store: &fakeStoreTransaction{
+				state: make(map[string][]byte),
+			},
+			core: &fakeCore{
+				state: state.AcceptingManifest,
+			},
+			manifest: func() []byte {
+				var mnf manifest.Manifest
+				require.NoError(t, json.Unmarshal([]byte(test.ManifestJSON), &mnf))
+				mnf.Config.SealMode = "Disabled"
+				mnfBytes, err := json.Marshal(mnf)
+				require.NoError(t, err)
+				return mnfBytes
+			}(),
+			wantSealMode: seal.ModeDisabled,
+		},
+		"invalid seal mode": {
+			store: &fakeStoreTransaction{
+				state: make(map[string][]byte),
+			},
+			core: &fakeCore{
+				state: state.AcceptingManifest,
+			},
+			manifest: func() []byte {
+				var mnf manifest.Manifest
+				require.NoError(t, json.Unmarshal([]byte(test.ManifestJSON), &mnf))
+				mnf.Config.SealMode = "foo"
+				mnfBytes, err := json.Marshal(mnf)
+				require.NoError(t, err)
+				return mnfBytes
+			}(),
+			wantErr: true,
 		},
 		"wrong state": {
 			store: &fakeStoreTransaction{
@@ -629,6 +701,7 @@ func TestSetManifest(t *testing.T) {
 			require.NoError(err)
 			assert.True(tc.core.unlockCalled)
 			assert.True(tc.store.commitCalled)
+			assert.Equal(tc.wantSealMode, tc.store.sealMode)
 		})
 	}
 }
@@ -729,7 +802,7 @@ func TestFeatureEnabled(t *testing.T) {
 					request.Manifest: func() []byte {
 						var mnf manifest.Manifest
 						require.NoError(t, json.Unmarshal([]byte(test.ManifestJSON), &mnf))
-						mnf.FeatureGates = []string{}
+						mnf.Config.FeatureGates = []string{}
 						mnfBytes, err := json.Marshal(mnf)
 						require.NoError(t, err)
 						return mnfBytes
@@ -899,7 +972,7 @@ func (s *fakeStore) BeginTransaction(ctx context.Context) (store.Transaction, er
 	return s.store.BeginTransaction(ctx)
 }
 
-func (s *fakeStore) SetEncryptionKey(key []byte) error {
+func (s *fakeStore) SetEncryptionKey(key []byte, _ seal.Mode) error {
 	if s.setEncryptionKeyErr != nil {
 		return s.setEncryptionKeyErr
 	}
@@ -965,6 +1038,7 @@ type fakeStoreTransaction struct {
 	beginTransactionErr    error
 	setEncryptionKeyCalled bool
 	setEncryptionKeyErr    error
+	sealMode               seal.Mode
 	loadStateCalled        bool
 	loadStateErr           error
 	setRecoveryDataCalled  bool
@@ -984,8 +1058,9 @@ func (s *fakeStoreTransaction) BeginTransaction(_ context.Context) (store.Transa
 	return s, s.beginTransactionErr
 }
 
-func (s *fakeStoreTransaction) SetEncryptionKey(_ []byte) error {
+func (s *fakeStoreTransaction) SetEncryptionKey(_ []byte, mode seal.Mode) error {
 	s.setEncryptionKeyCalled = true
+	s.sealMode = mode
 	return s.setEncryptionKeyErr
 }
 

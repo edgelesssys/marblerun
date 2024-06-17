@@ -61,6 +61,14 @@ type Manifest struct {
 	Roles map[string]Role
 	// TLS contains tags which can be assigned to Marbles to specify which connections should be elevated to TLS
 	TLS map[string]TLStag
+	// Config contains optional configuration for the Coordinator.
+	Config Config
+}
+
+// Config contains optional configuration for the Coordinator.
+type Config struct {
+	// SealMode specifies how the data should be sealed. Can be "ProductKey" (default if empty), "UniqueKey", or "Disabled".
+	SealMode string
 	// FeatureGates is a list of additional features to enable on the Coordinator.
 	FeatureGates []string
 }
@@ -493,7 +501,13 @@ func (m Manifest) Check(zaplogger *zap.Logger) error {
 		}
 	}
 
-	for _, feature := range m.FeatureGates {
+	switch m.Config.SealMode {
+	case "", "ProductKey", "UniqueKey", "Disabled":
+	default:
+		return fmt.Errorf("unknown seal mode: %s", m.Config.SealMode)
+	}
+
+	for _, feature := range m.Config.FeatureGates {
 		if feature != FeatureSignQuoteEndpoint {
 			return fmt.Errorf("unknown feature gate: %s", feature)
 		}
