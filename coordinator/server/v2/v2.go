@@ -54,7 +54,7 @@ func (s *ClientAPIServer) ManifestGet(w http.ResponseWriter, r *http.Request) {
 func (s *ClientAPIServer) ManifestPost(w http.ResponseWriter, r *http.Request) {
 	var req ManifestSetRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		handler.WriteJSONFailure(w, err.Error(), http.StatusBadRequest)
+		handler.WriteJSONFailure(w, nil, err.Error(), http.StatusBadRequest)
 		return
 	}
 	recoverySecretMap, err := s.api.SetManifest(r.Context(), req.Manifest)
@@ -94,7 +94,7 @@ func (s *ClientAPIServer) QuoteGet(w http.ResponseWriter, r *http.Request) {
 func (s *ClientAPIServer) RecoverPost(w http.ResponseWriter, r *http.Request) {
 	var req RecoveryRequest
 	if err := json.NewDecoder(io.LimitReader(r.Body, 2048)).Decode(&req); err != nil {
-		handler.WriteJSONFailure(w, err.Error(), http.StatusBadRequest)
+		handler.WriteJSONFailure(w, nil, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -126,7 +126,7 @@ func (s *ClientAPIServer) RecoverPost(w http.ResponseWriter, r *http.Request) {
 func (s *ClientAPIServer) SecretsGet(w http.ResponseWriter, r *http.Request) {
 	verifiedUser, err := handler.VerifyUser(s.api.VerifyUser, r)
 	if err != nil {
-		handler.WriteJSONFailure(w, err.Error(), http.StatusUnauthorized)
+		handler.WriteJSONFailure(w, nil, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
@@ -138,7 +138,7 @@ func (s *ClientAPIServer) SecretsGet(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, req := range requestedSecrets {
 		if len(req) <= 0 {
-			handler.WriteJSONFailure(w, "malformed query string", http.StatusBadRequest)
+			handler.WriteJSONFailure(w, nil, "malformed query string", http.StatusBadRequest)
 			return
 		}
 	}
@@ -157,13 +157,13 @@ func (s *ClientAPIServer) SecretsGet(w http.ResponseWriter, r *http.Request) {
 func (s *ClientAPIServer) SecretsPost(w http.ResponseWriter, r *http.Request) {
 	verifiedUser, err := handler.VerifyUser(s.api.VerifyUser, r)
 	if err != nil {
-		handler.WriteJSONFailure(w, err.Error(), http.StatusUnauthorized)
+		handler.WriteJSONFailure(w, nil, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
 	var req SecretsSetRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		handler.WriteJSONFailure(w, err.Error(), http.StatusBadRequest)
+		handler.WriteJSONFailure(w, nil, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -199,7 +199,10 @@ func (s *ClientAPIServer) SignQuotePost(w http.ResponseWriter, r *http.Request) 
 
 	var req QuoteSignRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		handler.WriteJSONFailure(w, fmt.Sprintf("bad request: %s", err), http.StatusBadRequest)
+		handler.WriteJSONFailure(
+			w, map[string]string{"sgxQuote": "failed to parse JSON data"},
+			fmt.Sprintf("bad request: %s", err), http.StatusBadRequest,
+		)
 		return
 	}
 
@@ -207,7 +210,10 @@ func (s *ClientAPIServer) SignQuotePost(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		var verifyErr *clientapi.QuoteVerifyError
 		if errors.As(err, &verifyErr) {
-			handler.WriteJSONFailure(w, verifyErr.Error(), http.StatusBadRequest)
+			handler.WriteJSONFailure(
+				w, map[string]string{"sgxQuote": verifyErr.Error()},
+				"quote verification failed", http.StatusBadRequest,
+			)
 			return
 		}
 
@@ -235,13 +241,13 @@ func (s *ClientAPIServer) UpdateGet(w http.ResponseWriter, r *http.Request) {
 func (s *ClientAPIServer) UpdatePost(w http.ResponseWriter, r *http.Request) {
 	verifiedUser, err := handler.VerifyUser(s.api.VerifyUser, r)
 	if err != nil {
-		handler.WriteJSONFailure(w, err.Error(), http.StatusUnauthorized)
+		handler.WriteJSONFailure(w, nil, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
 	var req UpdateApplyRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		handler.WriteJSONFailure(w, err.Error(), http.StatusBadRequest)
+		handler.WriteJSONFailure(w, nil, err.Error(), http.StatusBadRequest)
 		return
 	}
 
