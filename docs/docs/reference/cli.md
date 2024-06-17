@@ -67,7 +67,7 @@ marblerun install --dcap-pccs-url https://pccs.example.com/sgx/certification/v4/
       --dcap-pccs-url string             Provisioning Certificate Caching Service (PCCS) server address. Defaults to Azure PCCS. (default "https://global.acccache.azure.net/sgx/certification/v4/")
       --dcap-secure-cert string          To accept insecure HTTPS certificate from the PCCS, set this option to FALSE (default "TRUE")
       --disable-auto-injection           Install MarbleRun without auto-injection webhook
-      --domain string                    Sets the CNAME for the Coordinator certificate (default "localhost")
+      --domain strings                   Sets additional DNS names and IPs for the Coordinator TLS certificate
       --enterprise-access-token string   Access token for Enterprise Coordinator. Leave empty for default installation
   -h, --help                             help for install
       --marblerun-chart-path string      Path to MarbleRun helm chart
