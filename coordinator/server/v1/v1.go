@@ -248,12 +248,12 @@ func (s *ClientAPIServer) SecretsGet(w http.ResponseWriter, r *http.Request) {
 	// Secrets are requested via the query string in the form of ?s=<secretOne>&s=<secretTwo>&s=...
 	requestedSecrets := r.URL.Query()["s"]
 	if len(requestedSecrets) <= 0 {
-		handler.WriteJSONError(w, "invalid query", http.StatusBadRequest)
+		handler.WriteJSONError(w, "invalid query: endpoint requires at least one query parameter", http.StatusBadRequest)
 		return
 	}
 	for _, req := range requestedSecrets {
 		if len(req) <= 0 {
-			handler.WriteJSONError(w, "malformed query string", http.StatusBadRequest)
+			handler.WriteJSONError(w, "malformed query string: empty query parameter", http.StatusBadRequest)
 			return
 		}
 	}
