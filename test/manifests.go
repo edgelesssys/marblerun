@@ -173,9 +173,11 @@ const ManifestJSON = `{
 			]
 		}
 	},
-	"FeatureGates": [
-		"SignQuoteEndpoint"
-	]
+	"Config": {
+		"FeatureGates": [
+			"SignQuoteEndpoint"
+		]
+	}
 }`
 
 // ManifestJSONWithRecoveryKey is a test manifest with a dynamically generated RSA key.

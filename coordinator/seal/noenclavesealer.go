@@ -50,7 +50,7 @@ func (s *NoEnclaveSealer) Seal(unencryptedData []byte, toBeEncrypted []byte) ([]
 
 // SealEncryptionKey implements the Sealer interface.
 // Since the NoEnclaveSealer does not support sealing with an enclave key, it returns the key as is.
-func (s *NoEnclaveSealer) SealEncryptionKey(key []byte) ([]byte, error) {
+func (s *NoEnclaveSealer) SealEncryptionKey(key []byte, _ Mode) ([]byte, error) {
 	return key, nil
 }
 

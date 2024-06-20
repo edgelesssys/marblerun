@@ -77,16 +77,13 @@ The protocol can be used by clients to verify a server certificate, by a server 
 
 The Coordinator holds MarbleRun's state, which consists of the [manifest](../features/manifest.md), the [managed secrets](../features/secrets-management.md), and the [certificates for its CA](../features/attestation.md).
 The state is stored encrypted in persistent storage. For this, MarbleRun uses [AES128-GCM](https://www.rfc-editor.org/rfc/rfc5116#section-5.1) and a generated 16-byte data encryption key (DEK).
-The DEK is also sealed to persistent storage to recover the state in case of a restart autonomously.
-[SGX sealing](https://www.intel.com/content/www/us/en/developer/articles/technical/introduction-to-intel-sgx-sealing.html) is used for that purpose.
 The Coordinator encrypts the DEK with a key encryption key (KEK).
-MarbleRun uses the SGX sealing key called `Product key` as its KEK, which is bound to its `Product ID` and the enclave's author `MRSIGNER` identity.
-In other words, a fresh and benign enclave instance of the same identity can recover that key.
-Hence, if the Coordinator is restarted on the same CPU, it can obtain the same KEK from the CPU, decrypt the DEK, and recover its state.
+MarbleRun uses an [SGX seal key](#seal-key) as its KEK.
+Hence, if the Coordinator is restarted on the same CPU, it can obtain the same KEK from the CPU, decrypt the DEK, and recover its state autonomously.
 
 ![Encrypted state single instance](../_media/enc-state-single.svg)
 
-If the Coordinator is restarted on a different CPU, it won't be able to obtain the same SGX sealing key from the CPU.
+If the Coordinator is restarted on a different CPU, it won't be able to obtain the same SGX seal key from the CPU.
 To address this, MarbleRun provides a [recovery feature](../features/recovery.md#recovery).
 The manifest allows for specifying a designated Recovery Key. The Recovery Key is a RSA public key. Upon startup, the Coordinator encrypts the DEK with this public key and returns it to the user.
 In case of a recovery event, the user decrypts the DEK locally and [uploads it to the Coordinator](../workflows/recover-coordinator.md).
@@ -102,6 +99,17 @@ During a recovery event, every party will upload their share of the secret, whic
 The [distributed Coordinator](../features/recovery.md#distributed-coordinator) works similarly. However, all Coordinators share the same state stored encrypted in the Kubernetes [Secret](https://kubernetes.io/docs/concepts/configuration/secret/) called *marblerun-state*.
 In contrast to the single instance, the KEK is generated at start-up by the first instance.
 The existing Coordinators authenticate every new Coordinator instance via remote attestation, and the KEK is subsequently shared via the secure and attested TLS connection.
-Every Coordinator instance uses its own SGX Product (Sealing) Key to seal the KEK into a Kubernetes [ConfigMap](https://kubernetes.io/docs/concepts/configuration/configmap/) called *marblerun-sealed-kek*.
+Every Coordinator instance uses an SGX seal key to seal the KEK into a Kubernetes [ConfigMap](https://kubernetes.io/docs/concepts/configuration/configmap/) called *marblerun-sealed-kek*.
 
 ![Encrypted state distributed](../_media/enc-state-distributed.svg)
+
+### Seal key
+
+There are two types of [SGX seal keys](https://www.intel.com/content/www/us/en/developer/articles/technical/introduction-to-intel-sgx-sealing.html):
+
+* Unique key: This key is derived from the UniqueID (MRENCLAVE) of the enclave. This means that only instances of the same enclave can derive this key.
+* Product key: This key is derived from the SignerID (MRSIGNER), ProductID, and SecurityVersion of the enclave. If the signer of the enclave creates a new enclave with the same ProductID and the same or higher SecurityVersion, that enclave can derive the same key.
+
+By default, MarbleRun uses the product key as the KEK.
+This allows the Coordinator to be updated without manual recovery.
+If you don't want to trust the signing entity, you can [enable sealing with the unique key](../workflows/define-manifest.md#config).

@@ -34,6 +34,7 @@ type StdStore struct {
 	data       map[string][]byte
 	mux, txmux sync.Mutex
 	sealer     seal.Sealer
+	sealMode   seal.Mode
 
 	fs           afero.Afero
 	recoveryData []byte
@@ -158,21 +159,24 @@ func (s *StdStore) SetRecoveryData(recoveryData []byte) {
 }
 
 // SetEncryptionKey sets the encryption key for sealing and unsealing.
-func (s *StdStore) SetEncryptionKey(encryptionKey []byte) error {
-	// If there already is an existing key file stored on disk, save it
-	s.backupEncryptionKey()
+func (s *StdStore) SetEncryptionKey(encryptionKey []byte, mode seal.Mode) error {
+	if mode != seal.ModeDisabled {
+		// If there already is an existing key file stored on disk, save it
+		s.backupEncryptionKey()
 
-	encryptedKey, err := s.sealer.SealEncryptionKey(encryptionKey)
-	if err != nil {
-		return fmt.Errorf("encrypting data key: %w", err)
-	}
+		encryptedKey, err := s.sealer.SealEncryptionKey(encryptionKey, mode)
+		if err != nil {
+			return fmt.Errorf("encrypting data key: %w", err)
+		}
 
-	// Write the sealed encryption key to disk
-	if err = s.fs.WriteFile(filepath.Join(s.sealDir, SealedKeyFname), encryptedKey, 0o600); err != nil {
-		return fmt.Errorf("writing encrypted key to disk: %w", err)
+		// Write the sealed encryption key to disk
+		if err = s.fs.WriteFile(filepath.Join(s.sealDir, SealedKeyFname), encryptedKey, 0o600); err != nil {
+			return fmt.Errorf("writing encrypted key to disk: %w", err)
+		}
 	}
 
 	s.sealer.SetEncryptionKey(encryptionKey)
+	s.sealMode = mode
 
 	return nil
 }
@@ -199,35 +203,10 @@ func (s *StdStore) commit(data map[string][]byte) error {
 
 	s.mux.Lock()
 	defer s.mux.Unlock()
-	if !s.recoveryMode {
+	if !s.recoveryMode && s.sealMode != seal.ModeDisabled {
 		sealedData, err := s.sealer.Seal(s.recoveryData, dataRaw)
 		if err != nil {
-			if !errors.Is(err, seal.ErrMissingEncryptionKey) {
-				return err
-			}
-
-			// No encryption key set
-			// Load or generate new key, and retry sealing
-			if err := s.unsealEncryptionKey(); err != nil {
-				if !errors.Is(err, afero.ErrFileNotFound) {
-					return err
-				}
-
-				// No encryption key on disk
-				// Generate a new encryption key, and seal it with product key
-				encryptionKey, err := seal.GenerateEncryptionKey()
-				if err != nil {
-					return err
-				}
-				if err := s.SetEncryptionKey(encryptionKey); err != nil {
-					return err
-				}
-			}
-
-			sealedData, err = s.sealer.Seal(s.recoveryData, dataRaw)
-			if err != nil {
-				return err
-			}
+			return err
 		}
 
 		if err := s.fs.WriteFile(filepath.Join(s.sealDir, SealedDataFname), sealedData, 0o600); err != nil {

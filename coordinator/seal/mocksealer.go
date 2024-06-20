@@ -28,8 +28,11 @@ func (s *MockSealer) Seal(unencryptedData []byte, toBeEncrypted []byte) ([]byte,
 
 // SealEncryptionKey implements the Sealer interface.
 // Since the MockSealer does not support sealing with an enclave key, it returns the key as is.
-func (s *MockSealer) SealEncryptionKey(key []byte) ([]byte, error) {
-	return key, nil
+func (s *MockSealer) SealEncryptionKey(key []byte, mode Mode) ([]byte, error) {
+	if mode == ModeProductKey || mode == ModeUniqueKey {
+		return key, nil
+	}
+	panic("invariant not met: unexpected mode")
 }
 
 // SetEncryptionKey implements the Sealer interface.

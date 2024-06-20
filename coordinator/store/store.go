@@ -9,6 +9,8 @@ package store
 import (
 	"context"
 	"errors"
+
+	"github.com/edgelesssys/marblerun/coordinator/seal"
 )
 
 // Store is the interface for persistence.
@@ -16,7 +18,7 @@ type Store interface {
 	// BeginTransaction starts a new transaction.
 	BeginTransaction(context.Context) (Transaction, error)
 	// SetEncryptionKey sets the encryption key for the store.
-	SetEncryptionKey([]byte) error
+	SetEncryptionKey([]byte, seal.Mode) error
 	// SetRecoveryData sets recovery data for the store.
 	SetRecoveryData([]byte)
 	// LoadState loads the sealed state of a store.

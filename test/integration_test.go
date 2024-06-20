@@ -83,39 +83,44 @@ func TestTest(t *testing.T) {
 }
 
 func TestMarbleAPI(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-	f := newFramework(t)
+	for _, sealMode := range []string{"", "Disabled", "ProductKey", "UniqueKey"} {
+		t.Run("SealMode="+sealMode, func(t *testing.T) {
+			assert := assert.New(t)
+			require := require.New(t)
+			f := newFramework(t)
 
-	// start Coordinator
-	t.Log("Starting a coordinator enclave")
-	cfg := framework.NewCoordinatorConfig()
-	defer cfg.Cleanup()
-	f.StartCoordinator(f.Ctx, cfg)
+			// start Coordinator
+			t.Log("Starting a coordinator enclave")
+			cfg := framework.NewCoordinatorConfig()
+			defer cfg.Cleanup()
+			f.StartCoordinator(f.Ctx, cfg)
 
-	// set Manifest
-	t.Log("Setting the Manifest")
-	_, err := f.SetManifest(f.TestManifest)
-	require.NoError(err, "failed to set Manifest")
+			// set Manifest
+			t.Log("Setting the Manifest")
+			f.TestManifest.Config.SealMode = sealMode
+			_, err := f.SetManifest(f.TestManifest)
+			require.NoError(err, "failed to set Manifest")
 
-	// start server
-	t.Log("Starting a Server-Marble...")
-	serverCfg := framework.NewMarbleConfig(meshServerAddr, "testMarbleServer", "server,backend,localhost")
-	defer serverCfg.Cleanup()
-	f.StartMarbleServer(f.Ctx, serverCfg)
+			// start server
+			t.Log("Starting a Server-Marble...")
+			serverCfg := framework.NewMarbleConfig(meshServerAddr, "testMarbleServer", "server,backend,localhost")
+			defer serverCfg.Cleanup()
+			f.StartMarbleServer(f.Ctx, serverCfg)
 
-	// start clients
-	t.Log("Starting a bunch of Client-Marbles...")
-	clientCfg := framework.NewMarbleConfig(meshServerAddr, "testMarbleClient", "client,frontend,localhost")
-	defer clientCfg.Cleanup()
-	assert.True(f.StartMarbleClient(f.Ctx, clientCfg))
-	assert.True(f.StartMarbleClient(f.Ctx, clientCfg))
-	if !*simulationMode && !*noenclave {
-		// start bad marbles (would be accepted if we run in SimulationMode)
-		badCfg := framework.NewMarbleConfig(meshServerAddr, "badMarble", "bad,localhost")
-		defer badCfg.Cleanup()
-		assert.False(f.StartMarbleClient(f.Ctx, badCfg))
-		assert.False(f.StartMarbleClient(f.Ctx, badCfg))
+			// start clients
+			t.Log("Starting a bunch of Client-Marbles...")
+			clientCfg := framework.NewMarbleConfig(meshServerAddr, "testMarbleClient", "client,frontend,localhost")
+			defer clientCfg.Cleanup()
+			assert.True(f.StartMarbleClient(f.Ctx, clientCfg))
+			assert.True(f.StartMarbleClient(f.Ctx, clientCfg))
+			if !*simulationMode && !*noenclave {
+				// start bad marbles (would be accepted if we run in SimulationMode)
+				badCfg := framework.NewMarbleConfig(meshServerAddr, "badMarble", "bad,localhost")
+				defer badCfg.Cleanup()
+				assert.False(f.StartMarbleClient(f.Ctx, badCfg))
+				assert.False(f.StartMarbleClient(f.Ctx, badCfg))
+			}
+		})
 	}
 }
 
@@ -287,46 +292,51 @@ func TestSettingSecrets(t *testing.T) {
 }
 
 func TestRecoveryRestoreKey(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-	f := newFramework(t)
+	for _, sealMode := range []string{"", "ProductKey", "UniqueKey"} {
+		t.Run("SealMode="+sealMode, func(t *testing.T) {
+			assert := assert.New(t)
+			require := require.New(t)
+			f := newFramework(t)
 
-	t.Log("Testing recovery...")
-	t.Log("Starting a coordinator enclave")
-	cfg := framework.NewCoordinatorConfig()
-	defer cfg.Cleanup()
-	cancelCoordinator := f.StartCoordinator(f.Ctx, cfg)
+			t.Log("Testing recovery...")
+			t.Log("Starting a coordinator enclave")
+			cfg := framework.NewCoordinatorConfig()
+			defer cfg.Cleanup()
+			cancelCoordinator := f.StartCoordinator(f.Ctx, cfg)
 
-	// set Manifest
-	t.Log("Setting the Manifest")
-	recoveryResponse, err := f.SetManifest(f.TestManifest)
-	require.NoError(err, "failed to set Manifest")
+			// set Manifest
+			t.Log("Setting the Manifest")
+			f.TestManifest.Config.SealMode = sealMode
+			recoveryResponse, err := f.SetManifest(f.TestManifest)
+			require.NoError(err, "failed to set Manifest")
 
-	// start server
-	t.Log("Starting a Server-Marble")
-	serverCfg := framework.NewMarbleConfig(f.MeshServerAddr, "testMarbleServer", "server,backend,localhost")
-	defer serverCfg.Cleanup()
-	f.StartMarbleServer(f.Ctx, serverCfg)
+			// start server
+			t.Log("Starting a Server-Marble")
+			serverCfg := framework.NewMarbleConfig(f.MeshServerAddr, "testMarbleServer", "server,backend,localhost")
+			defer serverCfg.Cleanup()
+			f.StartMarbleServer(f.Ctx, serverCfg)
 
-	// Trigger recovery mode
-	cancelCoordinator, cert := f.TriggerRecovery(cfg, cancelCoordinator)
+			// Trigger recovery mode
+			cancelCoordinator, cert := f.TriggerRecovery(cfg, cancelCoordinator)
 
-	// Decode & Decrypt recovery data from when we set the manifest
-	key := gjson.GetBytes(recoveryResponse, "data.RecoverySecrets.testRecKey1").String()
-	recoveryDataEncrypted, err := base64.StdEncoding.DecodeString(key)
-	require.NoError(err, "Failed to base64 decode recovery data.")
-	recoveryKey, err := util.DecryptOAEP(RecoveryPrivateKey, recoveryDataEncrypted)
-	require.NoError(err, "Failed to RSA OAEP decrypt the recovery data.")
+			// Decode & Decrypt recovery data from when we set the manifest
+			key := gjson.GetBytes(recoveryResponse, "data.RecoverySecrets.testRecKey1").String()
+			recoveryDataEncrypted, err := base64.StdEncoding.DecodeString(key)
+			require.NoError(err, "Failed to base64 decode recovery data.")
+			recoveryKey, err := util.DecryptOAEP(RecoveryPrivateKey, recoveryDataEncrypted)
+			require.NoError(err, "Failed to RSA OAEP decrypt the recovery data.")
 
-	// Perform recovery
-	require.NoError(f.SetRecover(recoveryKey))
-	t.Log("Performed recovery, now checking status again...")
-	statusResponse, err := f.GetStatus()
-	require.NoError(err)
-	assert.EqualValues(3, gjson.Get(statusResponse, "data.StatusCode").Int(), "Server is in wrong status after recovery.")
+			// Perform recovery
+			require.NoError(f.SetRecover(recoveryKey))
+			t.Log("Performed recovery, now checking status again...")
+			statusResponse, err := f.GetStatus()
+			require.NoError(err)
+			assert.EqualValues(3, gjson.Get(statusResponse, "data.StatusCode").Int(), "Server is in wrong status after recovery.")
 
-	// Verify if old certificate is still valid
-	f.VerifyCertAfterRecovery(cert, cancelCoordinator, cfg)
+			// Verify if old certificate is still valid
+			f.VerifyCertAfterRecovery(cert, cancelCoordinator, cfg)
+		})
+	}
 }
 
 func TestRecoveryReset(t *testing.T) {

@@ -39,7 +39,7 @@ type Sealer interface {
 	// Unseal decrypts the given data and returns the plain text, as well as the unencrypted metadata.
 	Unseal(encryptedData []byte) (unencryptedData []byte, decryptedData []byte, err error)
 	// SealEncryptionKey seals an encryption key using the sealer.
-	SealEncryptionKey(key []byte) (encryptedKey []byte, err error)
+	SealEncryptionKey(key []byte, mode Mode) (encryptedKey []byte, err error)
 	// SetEncryptionKey sets the encryption key of the sealer.
 	SetEncryptionKey(key []byte)
 	// UnsealEncryptionKey decrypts an encrypted key.
@@ -82,15 +82,15 @@ func (s *AESGCMSealer) Seal(unencryptedData []byte, toBeEncrypted []byte) ([]byt
 	return sealData(unencryptedData, toBeEncrypted, s.encryptionKey)
 }
 
-// SealEncryptionKey seals an encryption key with the enclave's product key.
-func (s *AESGCMSealer) SealEncryptionKey(encryptionKey []byte) ([]byte, error) {
-	// Encrypt encryption key with seal key
-	encryptedKeyData, err := ecrypto.SealWithProductKey(encryptionKey, nil)
-	if err != nil {
-		return nil, err
+// SealEncryptionKey seals an encryption key with the selected enclave key.
+func (s *AESGCMSealer) SealEncryptionKey(encryptionKey []byte, mode Mode) ([]byte, error) {
+	switch mode {
+	case ModeProductKey:
+		return ecrypto.SealWithProductKey(encryptionKey, nil)
+	case ModeUniqueKey:
+		return ecrypto.SealWithUniqueKey(encryptionKey, nil)
 	}
-
-	return encryptedKeyData, nil
+	return nil, errors.New("sealing is disabled")
 }
 
 // SetEncryptionKey sets the encryption key of the Sealer.
@@ -98,7 +98,7 @@ func (s *AESGCMSealer) SetEncryptionKey(encryptionKey []byte) {
 	s.encryptionKey = encryptionKey
 }
 
-// UnsealEncryptionKey unseals the encryption key using the enclave's product key.
+// UnsealEncryptionKey unseals the encryption key.
 func (s *AESGCMSealer) UnsealEncryptionKey(encryptedKey []byte) ([]byte, error) {
 	// Decrypt stored encryption key with seal key
 	encryptionKey, err := ecrypto.Unseal(encryptedKey, nil)

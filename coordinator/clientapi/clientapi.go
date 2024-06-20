@@ -28,6 +28,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
+	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/coordinator/state"
 	"github.com/edgelesssys/marblerun/coordinator/store"
 	"github.com/edgelesssys/marblerun/coordinator/store/request"
@@ -57,7 +58,7 @@ type core interface {
 
 type transactionHandle interface {
 	BeginTransaction(context.Context) (store.Transaction, error)
-	SetEncryptionKey([]byte) error
+	SetEncryptionKey([]byte, seal.Mode) error
 	SetRecoveryData([]byte)
 	LoadState() ([]byte, error)
 }
@@ -298,7 +299,7 @@ func (a *ClientAPI) Recover(ctx context.Context, encryptionKey []byte) (keysLeft
 	}
 
 	// all keys are set, we can now load the state
-	if err := a.txHandle.SetEncryptionKey(secret); err != nil {
+	if err := a.txHandle.SetEncryptionKey(secret, seal.ModeDisabled); err != nil {
 		return -1, fmt.Errorf("setting recovery key: %w", err)
 	}
 
@@ -318,6 +319,15 @@ func (a *ClientAPI) Recover(ctx context.Context, encryptionKey []byte) (keysLeft
 		return -1, err
 	}
 	defer rollback()
+
+	// set seal mode defined in manifest
+	mnf, err := txdata.GetManifest()
+	if err != nil {
+		return -1, fmt.Errorf("loading manifest from store: %w", err)
+	}
+	if err := a.txHandle.SetEncryptionKey(secret, seal.ModeFromString(mnf.Config.SealMode)); err != nil {
+		return -1, fmt.Errorf("setting recovery key and seal mode: %w", err)
+	}
 
 	rootCert, err := txdata.GetCertificate(constants.SKCoordinatorRootCert)
 	if err != nil {
@@ -400,7 +410,7 @@ func (a *ClientAPI) SetManifest(ctx context.Context, rawManifest []byte) (recove
 		a.log.Error("could not generate recovery data", zap.Error(err))
 		return nil, fmt.Errorf("generating recovery data: %w", err)
 	}
-	if err := a.txHandle.SetEncryptionKey(encryptionKey); err != nil {
+	if err := a.txHandle.SetEncryptionKey(encryptionKey, seal.ModeFromString(mnf.Config.SealMode)); err != nil {
 		a.log.Error("could not set encryption key to seal state", zap.Error(err))
 		return nil, fmt.Errorf("setting encryption key: %w", err)
 	}
@@ -817,7 +827,7 @@ func (a *ClientAPI) FeatureEnabled(ctx context.Context, feature string) bool {
 		return false
 	}
 
-	return slices.ContainsFunc(mnf.FeatureGates, func(s string) bool {
+	return slices.ContainsFunc(mnf.Config.FeatureGates, func(s string) bool {
 		return strings.EqualFold(s, feature)
 	})
 }
