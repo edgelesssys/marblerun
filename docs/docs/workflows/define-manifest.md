@@ -1,6 +1,6 @@
 # Defining a manifest
 
-The manifest is a simple JSON file that determines the key properties of your cluster: [`Packages`](#packages), [`Marbles`](#marbles), [`Secrets`](#secrets), [`Users`](#users), [`Roles`](#roles), [`RecoveryKeys`](#recoverykeys), and [`TLS`](#tls).
+The manifest is a simple JSON file that determines the key properties of your cluster: [`Packages`](#packages), [`Marbles`](#marbles), [`Secrets`](#secrets), [`Users`](#users), [`Roles`](#roles), [`RecoveryKeys`](#recoverykeys), [`TLS`](#tls), and [`Config`](#config).
 This article describes how to define these in your `manifest.json`.
 
 For a working example see the manifest of the [emojivoto demo](https://github.com/edgelesssys/emojivoto/blob/main/tools/manifest.json). See also the [sample and template manifests](https://github.com/edgelesssys/marblerun/tree/master/samples).
@@ -505,3 +505,31 @@ On startup, a Marble logs its effective TTLS policy.
 This helps to verify that the manifest configuration is applied as intended.
 
 :::
+
+## Config
+
+The optional entry `Config` holds configuration settings for the Coordinator.
+
+```javascript
+{
+    //...
+    "Config":
+    {
+        "SealMode": "ProductKey",
+        "FeatureGates": []
+    }
+    //...
+}
+```
+
+`SealMode` lets you specify how the Coordinator should seal its state. The following options are available:
+
+* `ProductKey`: Sealing uses the product key. This is the default if not set.
+* `UniqueKey`: Sealing uses the unique key.
+* `Disabled`: In single instance mode, the Coordinator won't persist state. This can be useful for ephemeral deployments. For distributed Coordinator mode, this setting is the same as `UniqueKey`.
+
+See the section on [seal key types](../architecture/security.md#seal-key) for more information.
+
+`FeatureGates` allows you to opt-in to additional features that may be useful for certain use cases. The following features are available:
+
+* `SignQuoteEndpoint`: enables the [sign-quote endpoint](../reference/coordinator.md#verify-and-sign-an-sgx-quote)
