@@ -42,6 +42,7 @@ func SetLogSink(w io.Writer) {
 // On success, it returns the Coordinator's self signed root and intermediate certificates,
 // as well as the verified SGX quote.
 // The root certificate should be used by the client for future connections to the Coordinator.
+// The SGX quote is returned to allow further verification, but this is purely optional.
 //
 // If this function is called from inside an EGo enclave, the "marblerun_ego_enclave" build tag must be set when building the binary.
 func VerifyCoordinator(ctx context.Context, endpoint string, opts VerifyOptions) (rootCert *x509.Certificate, intermediateCert *x509.Certificate, sgxQuote []byte, err error) {
@@ -112,6 +113,7 @@ func VerifyCoordinator(ctx context.Context, endpoint string, opts VerifyOptions)
 // On success, it returns the Coordinator's self signed root and intermediate certificates,
 // as well as the verified SGX quote.
 // The root certificate should be used by the client for future connections to the Coordinator.
+// The SGX quote is returned to allow further verification, but this is purely optional.
 //
 // If this function is called from inside an EGo enclave, the "marblerun_ego_enclave" build tag must be set when building the binary.
 func VerifyMarbleRunDeployment(ctx context.Context, endpoint string, opts VerifyOptions, manifest []byte) (rootCert *x509.Certificate, intermediateCert *x509.Certificate, sgxQuote []byte, err error) {
@@ -468,6 +470,7 @@ type VerifyOptions struct {
 
 	// Nonce is an optional, user-defined nonce to be included in the Coordinator's attestation statement.
 	// If set, the Coordinator will generate an SGX quote over sha256(Coordinator_root_cert, Nonce).
+	// Set a nonce if you want to enforce freshness of the quote. The API functions will automatically verify that the returned quote includes this nonce.
 	Nonce []byte `json:"Nonce"`
 }
 
