@@ -22,33 +22,26 @@
   ],
   "packageRules": [
     {
+      "groupName": "Go dependencies",
       "matchManagers": [
         "gomod"
       ],
       "matchDepTypes": [
-        "indirect"
+        "require"
       ],
       "matchUpdateTypes": [
+        "bump",
+        "digest",
+        "lockFileMaintenance",
         "minor",
         "patch",
         "pin",
         "pinDigest",
-        "digest",
-        "lockFileMaintenance",
-        "rollback",
-        "bump"
-      ],
-      "enabled": true,
-      "prPriority": -30
+        "rollback"
+      ]
     },
     {
-      "matchPackagePatterns": [
-        "^k8s.io",
-        "^sigs.k8s.io"
-      ],
-      "groupName": "K8s dependencies"
-    },
-    {
+      "groupName": "Node dependencies",
       "matchLanguages": [
         "js",
         "node"
@@ -56,10 +49,10 @@
       "prPriority": -20
     },
     {
+      "groupName": "GitHub action dependencies",
       "matchManagers": [
         "github-actions"
       ],
-      "groupName": "GitHub action dependencies",
       "matchUpdateTypes": [
         "minor",
         "patch",
@@ -70,15 +63,6 @@
         "rollback",
         "bump"
       ]
-    },
-    {
-      "matchPackageNames": [
-        "^k8s.io/client-go"
-      ],
-      "matchUpdateTypes": [
-        "major"
-      ],
-      "enabled": false
     }
   ]
 }
