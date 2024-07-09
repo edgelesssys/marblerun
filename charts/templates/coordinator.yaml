@@ -55,7 +55,7 @@ spec:
           imagePullPolicy: {{ .Values.coordinator.pullPolicy }}
           livenessProbe:
             httpGet:
-              path: /status
+              path: /api/v2/status
               scheme: HTTPS
               port: {{ .Values.coordinator.clientServerPort }}
             failureThreshold: {{ .Values.coordinator.probes.liveness.failureThreshold }}
@@ -66,7 +66,7 @@ spec:
             periodSeconds: {{ .Values.coordinator.probes.readiness.periodSeconds }}
             timeoutSeconds: {{ .Values.coordinator.probes.readiness.timeoutSeconds }}
             httpGet:
-              path: /status
+              path: /api/v2/status
               scheme: HTTPS
               port: {{ .Values.coordinator.clientServerPort }}
           startupProbe:
@@ -75,7 +75,7 @@ spec:
             periodSeconds: {{ .Values.coordinator.probes.startup.periodSeconds }}
             timeoutSeconds: {{ .Values.coordinator.probes.startup.timeoutSeconds }}
             httpGet:
-              path: /status
+              path: /api/v2/status
               scheme: HTTPS
               port: {{ .Values.coordinator.clientServerPort }}
           ports:
