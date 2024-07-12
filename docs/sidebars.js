@@ -111,8 +111,15 @@ const sidebars = {
         {
           type: 'category',
           label: 'Platforms',
-          link: { type: 'doc', id: 'deployment/platforms/platforms' },
+          link: {
+            type: 'generated-index',
+          },
           items: [
+            {
+              type: 'doc',
+              label: 'Supported platforms',
+              id: 'deployment/platforms/platforms',
+            },
             {
               type: 'doc',
               label: 'Azure',
