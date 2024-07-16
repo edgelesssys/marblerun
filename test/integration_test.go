@@ -12,23 +12,20 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/base64"
+	"encoding/json"
 	"encoding/pem"
 	"flag"
-	"io"
 	"log"
 	"net"
-	"net/http"
-	"net/url"
 	"os"
-	"strings"
 	"testing"
 
+	"github.com/edgelesssys/marblerun/api"
+	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/test/framework"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tidwall/gjson"
 )
 
 var (
@@ -36,7 +33,6 @@ var (
 	simulationMode                                   = flag.Bool("s", false, "Execute test in simulation mode (without real quoting)")
 	noenclave                                        = flag.Bool("noenclave", false, "Do not run with erthost")
 	meshServerAddr, clientServerAddr, marbleTestAddr string
-	transportSkipVerify                              = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 	simFlag                                          string
 )
 
@@ -182,44 +178,19 @@ func TestClientAPI(t *testing.T) {
 	f.StartCoordinator(f.Ctx, cfg)
 
 	// get certificate
-	client := http.Client{Transport: transportSkipVerify}
-	clientAPIURL := url.URL{Scheme: "https", Host: clientServerAddr, Path: "quote"}
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, clientAPIURL.String(), http.NoBody)
-	require.NoError(err)
-	resp, err := client.Do(req)
+	cert, _, _, err := api.VerifyCoordinator(context.Background(), clientServerAddr, api.VerifyOptions{InsecureSkipVerify: true})
 	require.NoError(err)
 
-	require.Equal(http.StatusOK, resp.StatusCode)
-	quote, err := io.ReadAll(resp.Body)
-	resp.Body.Close()
-	require.NoError(err)
-	cert := gjson.Get(string(quote), "data.Cert").String()
-	require.NotEmpty(cert)
-
-	// create client with certificates
-	pool := x509.NewCertPool()
-	require.True(pool.AppendCertsFromPEM([]byte(cert)))
+	// create client certificate
 	privk, err := x509.MarshalPKCS8PrivateKey(RecoveryPrivateKey)
 	require.NoError(err)
 	clCert, err := tls.X509KeyPair(AdminCert, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privk}))
 	require.NoError(err)
-	client = http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{
-		Certificates: []tls.Certificate{clCert},
-		RootCAs:      pool,
-	}}}
 
 	// test with certificate
-	clientAPIURL.Path = "manifest"
-	req, err = http.NewRequestWithContext(context.Background(), http.MethodGet, clientAPIURL.String(), http.NoBody)
+	statusCode, _, err := api.GetStatus(context.Background(), clientServerAddr, cert)
 	require.NoError(err)
-	resp, err = client.Do(req)
-	require.NoError(err)
-
-	require.Equal(http.StatusOK, resp.StatusCode)
-	manifest, err := io.ReadAll(resp.Body)
-	resp.Body.Close()
-	require.NoError(err)
-	assert.JSONEq(`{"status":"success","data":{"ManifestSignatureRootECDSA":null,"ManifestSignature":"","Manifest":null}}`, string(manifest))
+	assert.Equal(2, statusCode)
 
 	t.Log("Setting the Manifest")
 	_, err = f.SetManifest(f.TestManifest)
@@ -227,18 +198,12 @@ func TestClientAPI(t *testing.T) {
 
 	// test reading of secrets
 	t.Log("Requesting a secret from the Coordinator")
-	clientAPIURL.Path = "secrets"
-	clientAPIURL.RawQuery = "s=symmetricKeyShared"
-	req, err = http.NewRequestWithContext(context.Background(), http.MethodGet, clientAPIURL.String(), http.NoBody)
+	const secretName = "symmetricKeyShared"
+	secrets, err := api.SecretGet(context.Background(), clientServerAddr, cert, &clCert, []string{secretName})
 	require.NoError(err)
-	resp, err = client.Do(req)
-	require.NoError(err)
-
-	require.Equal(http.StatusOK, resp.StatusCode)
-	secret, err := io.ReadAll(resp.Body)
-	defer resp.Body.Close()
-	require.NoError(err)
-	assert.Contains(string(secret), `{"status":"success","data":{"symmetricKeyShared":{"Type":"symmetric-key","Size":128,`)
+	secret := secrets[secretName]
+	assert.Equal("symmetric-key", secret.Type)
+	assert.EqualValues(128, secret.Size)
 }
 
 func TestSettingSecrets(t *testing.T) {
@@ -260,10 +225,6 @@ func TestSettingSecrets(t *testing.T) {
 	require.NoError(err)
 	clCert, err := tls.X509KeyPair(AdminCert, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privk}))
 	require.NoError(err)
-	client := http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{
-		Certificates:       []tls.Certificate{clCert},
-		InsecureSkipVerify: true,
-	}}}
 
 	// start server
 	t.Log("Starting a Server-Marble...")
@@ -279,12 +240,9 @@ func TestSettingSecrets(t *testing.T) {
 
 	// test setting a secret
 	t.Log("Setting a custom secret")
-	clientAPIURL := url.URL{Scheme: "https", Host: clientServerAddr, Path: "secrets"}
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, clientAPIURL.String(), strings.NewReader(UserSecrets))
-	require.NoError(err)
-	resp, err := client.Do(req)
-	require.NoError(err)
-	resp.Body.Close()
+	var userSecrets map[string]manifest.UserSecret
+	require.NoError(json.Unmarshal([]byte(UserSecrets), &userSecrets))
+	require.NoError(api.SecretSet(context.Background(), clientServerAddr, nil, &clCert, userSecrets))
 
 	// start the marble again
 	t.Log("Starting the Client-Marble again, with the secret now set...")
@@ -307,7 +265,7 @@ func TestRecoveryRestoreKey(t *testing.T) {
 			// set Manifest
 			t.Log("Setting the Manifest")
 			f.TestManifest.Config.SealMode = sealMode
-			recoveryResponse, err := f.SetManifest(f.TestManifest)
+			recoveryData, err := f.SetManifest(f.TestManifest)
 			require.NoError(err, "failed to set Manifest")
 
 			// start server
@@ -319,19 +277,16 @@ func TestRecoveryRestoreKey(t *testing.T) {
 			// Trigger recovery mode
 			cancelCoordinator, cert := f.TriggerRecovery(cfg, cancelCoordinator)
 
-			// Decode & Decrypt recovery data from when we set the manifest
-			key := gjson.GetBytes(recoveryResponse, "data.RecoverySecrets.testRecKey1").String()
-			recoveryDataEncrypted, err := base64.StdEncoding.DecodeString(key)
-			require.NoError(err, "Failed to base64 decode recovery data.")
-			recoveryKey, err := util.DecryptOAEP(RecoveryPrivateKey, recoveryDataEncrypted)
-			require.NoError(err, "Failed to RSA OAEP decrypt the recovery data.")
+			// Decrypt recovery data from when we set the manifest
+			recoveryKey, err := api.DecryptRecoveryData(recoveryData["testRecKey1"], RecoveryPrivateKey)
+			require.NoError(err, "Failed to decrypt the recovery data.")
 
 			// Perform recovery
 			require.NoError(f.SetRecover(recoveryKey))
 			t.Log("Performed recovery, now checking status again...")
-			statusResponse, err := f.GetStatus()
+			statusCode, err := f.GetStatus()
 			require.NoError(err)
-			assert.EqualValues(3, gjson.Get(statusResponse, "data.StatusCode").Int(), "Server is in wrong status after recovery.")
+			assert.EqualValues(3, statusCode, "Server is in wrong status after recovery.")
 
 			// Verify if old certificate is still valid
 			f.VerifyCertAfterRecovery(cert, cancelCoordinator, cfg)
@@ -414,7 +369,7 @@ func TestManifestUpdate(t *testing.T) {
 
 	// Set the update manifest
 	t.Log("Setting the Update Manifest")
-	_, err = f.SetUpdateManifest(f.UpdatedManifest, AdminCert, RecoveryPrivateKey)
+	err = f.SetUpdateManifest(f.UpdatedManifest, AdminCert, RecoveryPrivateKey)
 	require.NoError(err, "failed to set Update Manifest")
 
 	// Try to start marbles again, should fail now due to increased minimum SecurityVersion
