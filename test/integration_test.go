@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/edgelesssys/marblerun/api"
+	corecrypto "github.com/edgelesssys/marblerun/coordinator/crypto"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/test/framework"
 	"github.com/edgelesssys/marblerun/util"
@@ -376,6 +377,84 @@ func TestManifestUpdate(t *testing.T) {
 	t.Log("Starting the same bunch of outdated Client-Marbles again (should fail now)...")
 	assert.False(f.StartMarbleClient(f.Ctx, clientCfg), "Did start successfully, but must not run successfully. The increased minimum SecurityVersion was ignored.")
 	assert.False(f.StartMarbleClient(f.Ctx, clientCfg), "Did start successfully, but must not run successfully. The increased minimum SecurityVersion was ignored.")
+}
+
+func TestSignQuote(t *testing.T) {
+	if *simulationMode || *noenclave {
+		t.Skip("This test cannot be run in Simulation / No Enclave mode.")
+	}
+
+	f := newFramework(t)
+
+	cfg := framework.NewCoordinatorConfig()
+	defer cfg.Cleanup()
+	f.StartCoordinator(f.Ctx, cfg)
+
+	// We can use any valid SGX quote for this test, e.g., the one from the Coordinator.
+	validTrustedRoot, _, validQuote, err := api.VerifyCoordinator(context.Background(), clientServerAddr, api.VerifyOptions{InsecureSkipVerify: true})
+	require.NoError(t, err)
+
+	// enable the endpoint
+	f.TestManifest.Config.FeatureGates = []string{"SignQuoteEndpoint"}
+	_, err = f.SetManifest(f.TestManifest)
+	require.NoError(t, err)
+
+	testCases := map[string]struct {
+		quote         []byte
+		trustedRoot   *x509.Certificate
+		wantSignErr   bool
+		wantVerifyErr bool
+	}{
+		"valid": {
+			quote:       validQuote,
+			trustedRoot: validTrustedRoot,
+		},
+		"invalid quote": {
+			quote: func() []byte {
+				quote := append([]byte(nil), validQuote...)
+				quote[453] ^= 1 // corrupt the signature
+				return quote
+			}(),
+			trustedRoot: validTrustedRoot,
+			wantSignErr: true,
+		},
+		"invalid root": {
+			quote: validQuote,
+			trustedRoot: func() *x509.Certificate {
+				// use valid, but wrong root cert
+				root, _, err := corecrypto.GenerateCert(validTrustedRoot.DNSNames, validTrustedRoot.Subject.CommonName, nil, nil, nil)
+				require.NoError(t, err)
+				return root
+			}(),
+			wantVerifyErr: true,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
+			require := require.New(t)
+
+			sig, tcbStatus, err := api.SignQuote(context.Background(), clientServerAddr, validTrustedRoot, tc.quote)
+			if tc.wantSignErr {
+				assert.Error(err)
+				return
+			}
+			require.NoError(err)
+
+			isValid := api.VerifySignedQuote(tc.trustedRoot, tc.quote, sig, tcbStatus)
+			if tc.wantVerifyErr {
+				assert.False(isValid)
+				return
+			}
+			require.True(isValid)
+
+			// check that verification fails for wrong tcb status or invalid signature
+			assert.False(api.VerifySignedQuote(tc.trustedRoot, tc.quote, sig, tcbStatus+1))
+			sig[2] ^= 1
+			assert.False(api.VerifySignedQuote(tc.trustedRoot, tc.quote, sig, tcbStatus))
+		})
+	}
 }
 
 func newFramework(t *testing.T) *framework.IntegrationTest {
