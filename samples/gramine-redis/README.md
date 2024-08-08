@@ -38,7 +38,7 @@ First, we are installing MarbleRun on your cluster.
 * Check Coordinator's status, this should return status `2: ready to accept manifest`.
 
     ```bash
-    marblerun status $MARBLERUN
+    marblerun status $MARBLERUN --insecure
     ```
 
 * Set the [manifest](manifest.json)
