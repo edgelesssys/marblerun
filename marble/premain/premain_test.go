@@ -54,10 +54,10 @@ func TestPreMain(t *testing.T) {
 
 	issuer := quote.NewMockIssuer()
 
-	require.NoError(os.Setenv(config.CoordinatorAddr, "addr"))
-	require.NoError(os.Setenv(config.Type, "type"))
-	require.NoError(os.Setenv(config.UUIDFile, "uuidfile"))
-	require.NoError(os.Setenv(config.DNSNames, "dns1,dns2"))
+	t.Setenv(config.CoordinatorAddr, "addr")
+	t.Setenv(config.Type, "type")
+	t.Setenv(config.UUIDFile, "uuidfile")
+	t.Setenv(config.DNSNames, "dns1,dns2")
 
 	// Actual tests follow.
 
