@@ -55,7 +55,7 @@ func (s Wrapper) GetIterator(prefix string) (Iterator, error) {
 func (s Wrapper) GetActivations(marbleType string) (uint, error) {
 	request := strings.Join([]string{request.Activations, marbleType}, ":")
 	rawActivations, err := s.store.Get(request)
-	if errors.Is(store.ErrValueUnset, err) {
+	if errors.Is(err, store.ErrValueUnset) {
 		return 0, nil
 	} else if err != nil {
 		return 0, err
@@ -68,7 +68,7 @@ func (s Wrapper) GetActivations(marbleType string) (uint, error) {
 // IncrementActivations is a wrapper for get/put activations to increment the value for one marble.
 func (s Wrapper) IncrementActivations(marbleType string) error {
 	activations, err := s.GetActivations(marbleType)
-	if err != nil && !errors.Is(store.ErrValueUnset, err) {
+	if err != nil && !errors.Is(err, store.ErrValueUnset) {
 		return err
 	}
 	activations++

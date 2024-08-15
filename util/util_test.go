@@ -29,7 +29,7 @@ func TestMustGetenv(t *testing.T) {
 	const name = "EDG_TEST_MUST_GETENV"
 	const value = "foo"
 
-	assert.NoError(os.Setenv(name, value))
+	t.Setenv(name, value)
 	assert.Equal(value, MustGetenv(name))
 	assert.NoError(os.Unsetenv(name))
 }
@@ -50,7 +50,7 @@ func TestGetenv(t *testing.T) {
 	}
 	for _, test := range tests {
 		if test.set {
-			assert.NoError(os.Setenv(test.envname, test.value))
+			t.Setenv(test.envname, test.value)
 		}
 		assert.Equal(test.result, Getenv(test.envname, test.fallback))
 		assert.NoError(os.Unsetenv(test.envname))
