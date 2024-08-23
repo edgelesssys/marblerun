@@ -38,7 +38,8 @@
   },
   "overrides": {
     "@cmfcmf/docusaurus-search-local": {
-      "@docusaurus/core": "3.5.2"
+      "@docusaurus/core": "3.5.2",
+      "cheerio": "1.0.0-rc.12"
     },
     "redocusaurus": {
       "@docusaurus/theme-common": "3.5.2",
