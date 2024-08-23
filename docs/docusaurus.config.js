@@ -12,6 +12,7 @@ async function createConfig() {
     baseUrl: '/marblerun/',
     onBrokenLinks: 'throw',
     onBrokenMarkdownLinks: 'throw',
+    onBrokenAnchors: 'throw',
     favicon: 'img/favicon.png',
 
     // GitHub pages deployment config.
