@@ -709,6 +709,13 @@ Only `key`, or `cert` and `public` may be set for a given secret.
 
 ## Verify and sign an SGX quote
 
+:::note
+
+This endpoint is disabled by default.
+You can [enable it in the manifest](../workflows/define-manifest.md#config).
+
+:::
+
 <Tabs groupId="apiVersion">
 <TabItem value="v2" label="v2">
 
