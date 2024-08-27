@@ -26,9 +26,6 @@ const sidebars = {
     {
       type: 'category',
       label: 'Getting started',
-      link: {
-        type: 'generated-index',
-      },
       items: [
         {
           type: 'doc',
@@ -50,9 +47,6 @@ const sidebars = {
     {
       type: 'category',
       label: 'Features',
-      link: {
-        type: 'generated-index',
-      },
       items: [
         {
           type: 'doc',
@@ -94,9 +88,6 @@ const sidebars = {
     {
       type: 'category',
       label: 'Deployment',
-      link: {
-        type: 'generated-index',
-      },
       items: [
         {
           type: 'doc',
@@ -111,9 +102,6 @@ const sidebars = {
         {
           type: 'category',
           label: 'Platforms',
-          link: {
-            type: 'generated-index',
-          },
           items: [
             {
               type: 'doc',
@@ -141,9 +129,6 @@ const sidebars = {
     }, {
       type: 'category',
       label: 'Workflows',
-      link: {
-        type: 'generated-index',
-      },
       items: [
         {
           type: 'doc',
@@ -195,9 +180,6 @@ const sidebars = {
     {
       type: 'category',
       label: 'Architecture',
-      link: {
-        'type': 'generated-index',
-      },
       items: [
         {
           type: 'doc',
@@ -224,9 +206,6 @@ const sidebars = {
     {
       type: 'category',
       label: 'Building Marbles',
-      link: {
-        type: 'generated-index',
-      },
       items: [
         {
           type: 'doc',
@@ -248,9 +227,6 @@ const sidebars = {
     {
       type: 'category',
       label: 'Reference',
-      link: {
-        type: 'generated-index',
-      },
       items: [
         {
           type: 'doc',
