@@ -776,7 +776,7 @@ Example response:
 {
     "status": "success",
     "data": {
-        "signature": "RUNEU0Ffc2lnbihyb290X3ByaXZfa2V5LCBTSEEyNTYoYmFzZTY0KFNHWF9xdW90ZSkgKyBzdHJpbmcoVENCX3N0YXR1cykpKQo=",
+        "verificationSignature": "RUNEU0Ffc2lnbihyb290X3ByaXZfa2V5LCBTSEEyNTYoYmFzZTY0KFNHWF9xdW90ZSkgKyBzdHJpbmcoVENCX3N0YXR1cykpKQo=",
         "tcbStatus": "UpToDate"
     }
 }
