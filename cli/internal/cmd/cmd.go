@@ -59,7 +59,7 @@ func parseRestFlags(cmd *cobra.Command) (api.VerifyOptions, string, error) {
 		return api.VerifyOptions{}, "", err
 	}
 
-	if eraConfig == "" {
+	if eraConfig == "" && !insecure {
 		eraConfig = eraDefaultConfig
 
 		// reuse existing config from current working directory if none specified
@@ -71,17 +71,19 @@ func parseRestFlags(cmd *cobra.Command) (api.VerifyOptions, string, error) {
 		}
 	}
 
-	verifyOptions, err := api.VerifyOptionsFromConfig(eraConfig)
-	if err != nil {
-		return api.VerifyOptions{}, "", fmt.Errorf("reading era config file: %w", err)
-	}
-	verifyOptions.AcceptedTCBStatuses = acceptedTCBStatuses
-	verifyOptions.Nonce = []byte(nonce)
+	var verifyOptions api.VerifyOptions
 
 	if insecure {
 		fmt.Fprintln(cmd.OutOrStdout(), "Warning: skipping quote verification")
 		verifyOptions.InsecureSkipVerify = insecure
+	} else {
+		verifyOptions, err = api.VerifyOptionsFromConfig(eraConfig)
+		if err != nil {
+			return api.VerifyOptions{}, "", fmt.Errorf("reading era config file: %w", err)
+		}
 	}
+	verifyOptions.AcceptedTCBStatuses = acceptedTCBStatuses
+	verifyOptions.Nonce = []byte(nonce)
 
 	return verifyOptions, sgxQuotePath, nil
 }
