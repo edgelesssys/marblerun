@@ -13,6 +13,7 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -709,23 +710,42 @@ func TestSetManifest(t *testing.T) {
 func TestSignQuote(t *testing.T) {
 	testCases := map[string]struct {
 		store              *fakeStoreTransaction
+		quote              []byte
 		verifyFunc         func([]byte) (attestation.Report, error)
 		wantErr            bool
 		wantQuoteVerifyErr bool
 	}{
 		"success": {
+			quote: []byte("quote"),
 			store: &fakeStoreTransaction{},
 			verifyFunc: func([]byte) (attestation.Report, error) {
 				return attestation.Report{}, nil
 			},
 		},
 		"success with non standard TCB status": {
+			quote: []byte("quote"),
 			store: &fakeStoreTransaction{},
 			verifyFunc: func([]byte) (attestation.Report, error) {
 				return attestation.Report{TCBStatus: tcbstatus.OutOfDate}, attestation.ErrTCBLevelInvalid
 			},
 		},
+		"success with raw SGX quote": {
+			quote: func() []byte {
+				quote := make([]byte, 64)
+				binary.LittleEndian.PutUint16(quote[0:2], 3)
+				binary.LittleEndian.PutUint16(quote[2:4], 3)
+				binary.LittleEndian.PutUint32(quote[4:8], 0)
+				binary.LittleEndian.PutUint16(quote[8:10], 42)
+				binary.LittleEndian.PutUint16(quote[10:12], 42)
+				return quote
+			}(),
+			store: &fakeStoreTransaction{},
+			verifyFunc: func([]byte) (attestation.Report, error) {
+				return attestation.Report{}, nil
+			},
+		},
 		"quote verification fails": {
+			quote: []byte("quote"),
 			store: &fakeStoreTransaction{},
 			verifyFunc: func([]byte) (attestation.Report, error) {
 				return attestation.Report{}, assert.AnError
@@ -734,6 +754,7 @@ func TestSignQuote(t *testing.T) {
 			wantQuoteVerifyErr: true,
 		},
 		"retrieving root key fails": {
+			quote: []byte("quote"),
 			store: &fakeStoreTransaction{
 				getErr: assert.AnError,
 			},
@@ -763,8 +784,7 @@ func TestSignQuote(t *testing.T) {
 			require.NoError(err)
 			require.NoError(wrapper.PutPrivateKey(constants.SKCoordinatorRootKey, rootKey))
 
-			quote := []byte("quote")
-			signature, tcbStatus, err := api.verifyAndSignQuote(context.Background(), quote, tc.verifyFunc)
+			signature, tcbStatus, err := api.verifyAndSignQuote(context.Background(), tc.quote, tc.verifyFunc)
 			if tc.wantErr {
 				assert.Error(err)
 
@@ -775,7 +795,7 @@ func TestSignQuote(t *testing.T) {
 				return
 			}
 			assert.NoError(err)
-			hash := sha256.Sum256([]byte(base64.StdEncoding.EncodeToString(quote) + tcbStatus))
+			hash := sha256.Sum256([]byte(base64.StdEncoding.EncodeToString(tc.quote) + tcbStatus))
 			assert.True(ecdsa.VerifyASN1(&rootKey.PublicKey, hash[:], signature))
 		})
 	}
