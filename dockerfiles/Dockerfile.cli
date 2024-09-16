@@ -1,4 +1,4 @@
-FROM ghcr.io/edgelesssys/marblerun/build-base-focal:v1.5.1 AS build
+FROM ghcr.io/edgelesssys/marblerun/build-base-focal:v1.5.2 AS build
 
 # don't run `apt-get update` because required packages are cached in build-base for reproducibility
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
@@ -12,8 +12,8 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
   ninja-build \
   wget
 
-ARG erttag=v0.4.4
-ARG mrtag=v1.5.1
+ARG erttag=v0.4.6
+ARG mrtag=v1.5.2
 ARG goversion=1.21.11
 RUN wget -qO- https://go.dev/dl/go${goversion}.linux-amd64.tar.gz | tar -C /usr/local -xz \
   && git clone -b $erttag --depth=1 https://github.com/edgelesssys/edgelessrt \
