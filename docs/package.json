@@ -17,10 +17,10 @@
     "@cmfcmf/docusaurus-search-local": "1.2.0",
     "@docusaurus/core": "3.5.2",
     "@docusaurus/preset-classic": "3.5.2",
-    "redocusaurus": "2.1.1",
+    "redocusaurus": "2.1.2",
     "@mdx-js/react": "3.0.1",
     "clsx": "2.1.1",
-    "prism-react-renderer": "2.3.1",
+    "prism-react-renderer": "2.4.0",
     "react": "18.3.1",
     "react-dom": "18.3.1"
   },
@@ -39,7 +39,7 @@
   "overrides": {
     "@cmfcmf/docusaurus-search-local": {
       "@docusaurus/core": "3.5.2",
-      "cheerio": "1.0.0-rc.12"
+      "cheerio": "1.0.0"
     },
     "redocusaurus": {
       "@docusaurus/theme-common": "3.5.2",
