@@ -81,6 +81,12 @@ func verifyCertificate(
 		fmt.Fprintln(out, "Warning: TCB level invalid, but accepted by configuration:", report.TCBStatus)
 	}
 
+	if report.TCBAdvisoriesErr != nil {
+		fmt.Fprintln(out, "Error: TCB Advisories:", err)
+	} else {
+		fmt.Fprintln(out, "TCB Advisories:", report.TCBAdvisories)
+	}
+
 	return nil
 }
 
