@@ -42,12 +42,24 @@ func (v *ERTValidator) Validate(givenQuote []byte, cert []byte, pp quote.Package
 	if err != nil {
 		return err
 	}
+
+	if report.TCBAdvisoriesErr != nil {
+		v.log.Error("TCB Advisories", zap.Error(report.TCBAdvisoriesErr))
+	}
+	fmt.Println(report.TCBAdvisories)
+
 	switch validity {
 	case tcb.ValidityUnconditional:
 	case tcb.ValidityConditional:
-		v.log.Info("TCB level accepted by configuration", zap.String("packageProperties", pp.String()), zap.String("tcbStatus", report.TCBStatus.String()))
+		v.log.Info("TCB level accepted by configuration",
+			zap.String("packageProperties", pp.String()),
+			zap.String("tcbStatus", report.TCBStatus.String()),
+			zap.Strings("advisories", report.TCBAdvisories))
 	default:
-		v.log.Warn("TCB level invalid, but accepted by configuration", zap.String("packageProperties", pp.String()), zap.String("tcbStatus", report.TCBStatus.String()))
+		v.log.Warn("TCB level invalid, but accepted by configuration",
+			zap.String("packageProperties", pp.String()),
+			zap.String("tcbStatus", report.TCBStatus.String()),
+			zap.Strings("advisories", report.TCBAdvisories))
 	}
 
 	// Check that cert is equal
