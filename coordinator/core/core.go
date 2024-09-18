@@ -356,7 +356,7 @@ func (c *Core) GetState(ctx context.Context) (state.State, string, error) {
 
 // GenerateSecrets generates secrets for the given manifest and parent certificate.
 func (c *Core) GenerateSecrets(
-	secrets map[string]manifest.Secret, id uuid.UUID,
+	secrets map[string]manifest.Secret, id uuid.UUID, marbleName string,
 	parentCertificate *x509.Certificate, parentPrivKey *ecdsa.PrivateKey, rootPrivK *ecdsa.PrivateKey,
 ) (map[string]manifest.Secret, error) {
 	// Create a new map so we do not overwrite the entries in the manifest
@@ -395,7 +395,9 @@ func (c *Core) GenerateSecrets(
 				salt := id.String() + name
 				secretKeyDerive := rootPrivK.D.Bytes()
 				var err error
-				generatedValue, err = util.DeriveKey(secretKeyDerive, []byte(salt), secret.Size/8)
+
+				// Derive key using the uuid and secret name as salt, and the marble's name as info
+				generatedValue, err = util.DeriveKey(secretKeyDerive, []byte(salt), []byte(marbleName), secret.Size/8)
 				if err != nil {
 					return nil, err
 				}

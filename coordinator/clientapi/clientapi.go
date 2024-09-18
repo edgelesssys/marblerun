@@ -50,7 +50,7 @@ type core interface {
 	}) error
 	GetState(context.Context) (state.State, string, error)
 	GenerateSecrets(
-		map[string]manifest.Secret, uuid.UUID, *x509.Certificate, *ecdsa.PrivateKey, *ecdsa.PrivateKey,
+		map[string]manifest.Secret, uuid.UUID, string, *x509.Certificate, *ecdsa.PrivateKey, *ecdsa.PrivateKey,
 	) (map[string]manifest.Secret, error)
 	GetQuote(reportData []byte) ([]byte, error)
 	GenerateQuote([]byte) error
@@ -387,13 +387,13 @@ func (a *ClientAPI) SetManifest(ctx context.Context, rawManifest []byte) (recove
 	}
 
 	// Generate shared secrets specified in manifest
-	secrets, err := a.core.GenerateSecrets(mnf.Secrets, uuid.Nil, marbleRootCert, intermediatePrivK, rootPrivK)
+	secrets, err := a.core.GenerateSecrets(mnf.Secrets, uuid.Nil, "", marbleRootCert, intermediatePrivK, rootPrivK)
 	if err != nil {
 		a.log.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
 		return nil, fmt.Errorf("generating secrets from manifest: %w", err)
 	}
 	// generate placeholders for private secrets specified in manifest
-	privSecrets, err := a.core.GenerateSecrets(mnf.Secrets, uuid.New(), marbleRootCert, intermediatePrivK, rootPrivK)
+	privSecrets, err := a.core.GenerateSecrets(mnf.Secrets, uuid.New(), "", marbleRootCert, intermediatePrivK, rootPrivK)
 	if err != nil {
 		a.log.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
 		return nil, fmt.Errorf("generating placeholder secrets from manifest: %w", err)
@@ -604,7 +604,7 @@ func (a *ClientAPI) UpdateManifest(ctx context.Context, rawUpdateManifest []byte
 	}
 
 	// Regenerate shared secrets specified in manifest
-	regeneratedSecrets, err := a.core.GenerateSecrets(secretsToRegenerate, uuid.Nil, marbleRootCert, intermediatePrivK, rootPrivK)
+	regeneratedSecrets, err := a.core.GenerateSecrets(secretsToRegenerate, uuid.Nil, "", marbleRootCert, intermediatePrivK, rootPrivK)
 	if err != nil {
 		a.log.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
 		return fmt.Errorf("regenerating shared secrets for updated manifest: %w", err)

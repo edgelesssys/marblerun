@@ -86,7 +86,8 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (res *rpc.A
 	}
 	defer rollback()
 
-	if err := c.verifyManifestRequirement(txdata, tlsCert, req.GetQuote(), req.GetMarbleType()); err != nil {
+	marbleName, err := c.verifyManifestRequirement(txdata, tlsCert, req.GetQuote(), req.GetMarbleType())
+	if err != nil {
 		c.log.Error("Marble verification failed", zap.Error(err))
 		return nil, status.Errorf(codes.PermissionDenied, "marble verification failed: %s", err)
 	}
@@ -127,7 +128,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (res *rpc.A
 	}
 
 	// Generate unique (= per marble) secrets
-	privateSecrets, err := c.GenerateSecrets(secrets, marbleUUID, marbleRootCert, intermediatePrivK, rootPrivK)
+	privateSecrets, err := c.GenerateSecrets(secrets, marbleUUID, marbleName, marbleRootCert, intermediatePrivK, rootPrivK)
 	if err != nil {
 		c.log.Error("Couldn't generate specified secrets for the given manifest", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "generating secrets for marble: %s", err)
@@ -184,43 +185,43 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (res *rpc.A
 }
 
 // verifyManifestRequirement verifies marble attempting to register with respect to manifest.
-func (c *Core) verifyManifestRequirement(txdata storeGetter, tlsCert *x509.Certificate, certQuote []byte, marbleType string) error {
+func (c *Core) verifyManifestRequirement(txdata storeGetter, tlsCert *x509.Certificate, certQuote []byte, marbleType string) (string, error) {
 	marble, err := txdata.GetMarble(marbleType)
 	if err != nil {
 		if errors.Is(err, store.ErrValueUnset) {
-			return fmt.Errorf("unknown marble type requested")
+			return "", fmt.Errorf("unknown marble type requested")
 		}
-		return fmt.Errorf("loading marble data: %w", err)
+		return "", fmt.Errorf("loading marble data: %w", err)
 	}
 
 	pkg, err := txdata.GetPackage(marble.Package)
 	if err != nil {
 		if errors.Is(err, store.ErrValueUnset) {
-			return fmt.Errorf("undefined package %q", marble.Package)
+			return "", fmt.Errorf("undefined package %q", marble.Package)
 		}
-		return fmt.Errorf("loading package data: %w", err)
+		return "", fmt.Errorf("loading package data: %w", err)
 	}
 
 	infraIter, err := txdata.GetIterator(request.Infrastructure)
 	if err != nil {
-		return fmt.Errorf("getting infrastructure iterator: %w", err)
+		return "", fmt.Errorf("getting infrastructure iterator: %w", err)
 	}
 
 	if !c.inSimulationMode() {
 		if !infraIter.HasNext() {
 			if err := c.qv.Validate(certQuote, tlsCert.Raw, pkg, quote.InfrastructureProperties{}); err != nil {
-				return fmt.Errorf("invalid quote: %w", err)
+				return "", fmt.Errorf("invalid quote: %w", err)
 			}
 		} else {
 			infraMatch := false
 			for infraIter.HasNext() {
 				infraName, err := infraIter.GetNext()
 				if err != nil {
-					return err
+					return "", err
 				}
 				infra, err := txdata.GetInfrastructure(infraName)
 				if err != nil {
-					return fmt.Errorf("loading infrastructure: %w", err)
+					return "", fmt.Errorf("loading infrastructure: %w", err)
 				}
 				if c.qv.Validate(certQuote, tlsCert.Raw, pkg, infra) == nil {
 					infraMatch = true
@@ -228,7 +229,7 @@ func (c *Core) verifyManifestRequirement(txdata storeGetter, tlsCert *x509.Certi
 				}
 			}
 			if !infraMatch {
-				return fmt.Errorf("invalid infrastructure")
+				return "", fmt.Errorf("invalid infrastructure")
 			}
 		}
 	}
@@ -236,12 +237,17 @@ func (c *Core) verifyManifestRequirement(txdata storeGetter, tlsCert *x509.Certi
 	// check activation budget (MaxActivations == 0 means infinite budget)
 	activations, err := txdata.GetActivations(marbleType)
 	if err != nil {
-		return fmt.Errorf("could not retrieve activations for marble type %q: %w", marbleType, err)
+		return "", fmt.Errorf("could not retrieve activations for marble type %q: %w", marbleType, err)
 	}
 	if marble.MaxActivations > 0 && activations >= marble.MaxActivations {
-		return fmt.Errorf("reached max activations count (%d) for marble type %q", marble.MaxActivations, marbleType)
+		return "", fmt.Errorf("reached max activations count (%d) for marble type %q", marble.MaxActivations, marbleType)
 	}
-	return nil
+
+	marbleName := marbleType
+	if marble.DisableSecretBinding {
+		marbleName = ""
+	}
+	return marbleName, nil
 }
 
 // generateCertFromCSR signs the CSR from marble attempting to register.

@@ -73,7 +73,7 @@ func TestActivate(t *testing.T) {
 	}
 
 	// try to activate first backend marble prematurely before manifest is set
-	spawner.newMarble(t, "backendFirst", "Azure", false)
+	spawner.newMarble(t, "backendFirst", "Azure", uuid.New(), false)
 
 	// set manifest
 	clientAPI, err := clientapi.New(coreServer.txHandle, coreServer.recovery, coreServer, zapLogger)
@@ -82,10 +82,10 @@ func TestActivate(t *testing.T) {
 	require.NoError(err)
 
 	// activate first backend
-	spawner.newMarble(t, "backendFirst", "Azure", true)
+	spawner.newMarble(t, "backendFirst", "Azure", uuid.New(), true)
 
 	// try to activate another first backend
-	spawner.newMarble(t, "backendFirst", "Azure", false)
+	spawner.newMarble(t, "backendFirst", "Azure", uuid.New(), false)
 
 	// activate 10 other backend
 	pickInfra := func(i int) string {
@@ -110,6 +110,127 @@ func TestActivate(t *testing.T) {
 	assert.NotEqualValues(spawner.backendFirstUniqueCert, spawner.backendOtherUniqueCert, "Non-shared secrets were the same across different marbles, but were supposed to be unique.")
 }
 
+func TestMarbleSecretDerivation(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	fileMap := map[string]manifest.File{
+		"secret": {
+			Data:     "{{ hex .Secrets.symmetricKeyPrivate }}",
+			Encoding: "string",
+		},
+	}
+
+	// parse manifest
+	var manifest manifest.Manifest
+	require.NoError(json.Unmarshal([]byte(test.ManifestJSON), &manifest))
+
+	// Disable secret binding for backend Marbles
+	// This should cause the Coordinator to generate the same secrets as long as they provide the same UUID
+	backendMarble := manifest.Marbles["backendFirst"]
+	backendMarble.DisableSecretBinding = true
+	backendMarble.MaxActivations = 0
+	backendMarble.Parameters.Files = fileMap
+	manifest.Marbles["backendFirst"] = backendMarble
+
+	backendOther := manifest.Marbles["backendOther"]
+	backendOther.DisableSecretBinding = true
+	backendOther.Parameters.Files = fileMap
+	manifest.Marbles["backendOther"] = backendOther
+
+	frontendMarble := manifest.Marbles["frontend"]
+	frontendMarble.Parameters.Files = fileMap
+	manifest.Marbles["frontend"] = frontendMarble
+
+	mnf, err := json.Marshal(manifest)
+	require.NoError(err)
+
+	zapLogger := zaptest.NewLogger(t)
+
+	// create core
+	validator := quote.NewMockValidator()
+	issuer := quote.NewMockIssuer()
+	sealer := &seal.MockSealer{}
+	fs := afero.NewMemMapFs()
+	recovery := recovery.NewSinglePartyRecovery()
+	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, ""), recovery, zapLogger, nil, nil)
+	require.NoError(err)
+	require.NotNil(coreServer)
+
+	// set manifest
+	clientAPI, err := clientapi.New(coreServer.txHandle, coreServer.recovery, coreServer, zapLogger)
+	require.NoError(err)
+	_, err = clientAPI.SetManifest(context.Background(), mnf)
+	require.NoError(err)
+
+	activate := func(uuid uuid.UUID, marbleType string) []byte {
+		cert, csr, _ := util.MustGenerateTestMarbleCredentials()
+
+		// create mock quote using values from the manifest
+		quote, err := issuer.Issue(cert.Raw)
+		assert.NotNil(quote)
+		assert.Nil(err)
+		marble, ok := manifest.Marbles[marbleType]
+		assert.True(ok)
+		pkg, ok := manifest.Packages[marble.Package]
+		assert.True(ok)
+		infra, ok := manifest.Infrastructures["Azure"]
+		assert.True(ok)
+		validator.AddValidQuote(quote, cert.Raw, pkg, infra)
+
+		tlsInfo := credentials.TLSInfo{
+			State: tls.ConnectionState{
+				PeerCertificates: []*x509.Certificate{cert},
+			},
+		}
+
+		ctx := peer.NewContext(context.Background(), &peer.Peer{
+			AuthInfo: tlsInfo,
+		})
+
+		resp, err := coreServer.Activate(ctx, &rpc.ActivationReq{
+			CSR:        csr,
+			MarbleType: marbleType,
+			Quote:      quote,
+			UUID:       uuid.String(),
+		})
+		require.NoError(err)
+		secret, ok := resp.Parameters.Files["secret"]
+		require.True(ok)
+		return secret
+	}
+
+	// Activate marbles with different UUIDs
+	// They should all receive different secrets
+	backendFirstSecret := activate(uuid.New(), "backendFirst")
+	backendOtherSecret := activate(uuid.New(), "backendOther")
+	frontendSecret := activate(uuid.New(), "frontend")
+
+	assert.NotEqual(backendFirstSecret, backendOtherSecret)
+	assert.NotEqual(backendFirstSecret, frontendSecret)
+	assert.NotEqual(backendOtherSecret, frontendSecret)
+
+	// Activate marbles with the same UUID
+	// The backend marbles should receive the same secret,
+	// while the frontend marble should receive a different one
+	uuid1 := uuid.New()
+	backendFirstSecret = activate(uuid1, "backendFirst")
+	backendOtherSecret = activate(uuid1, "backendOther")
+	frontendSecret = activate(uuid1, "frontend")
+
+	assert.Equal(backendFirstSecret, backendOtherSecret)
+	assert.NotEqual(backendFirstSecret, frontendSecret)
+
+	// Activate the same marble with different UUIDs
+	// The secrets should be different
+	uuid2 := uuid.New()
+	backendFirstSecret2 := activate(uuid2, "backendFirst")
+	frontendSecret2 := activate(uuid2, "frontend")
+
+	assert.NotEqual(backendFirstSecret, backendFirstSecret2)
+	assert.NotEqual(frontendSecret, frontendSecret2)
+}
+
 type marbleSpawner struct {
 	manifest               manifest.Manifest
 	validator              *quote.MockValidator
@@ -125,7 +246,7 @@ type marbleSpawner struct {
 	backendOtherUniqueCert x509.Certificate
 }
 
-func (ms *marbleSpawner) newMarble(t *testing.T, marbleType string, infraName string, shouldSucceed bool) string {
+func (ms *marbleSpawner) newMarble(t *testing.T, marbleType string, infraName string, marbleUUID uuid.UUID, shouldSucceed bool) {
 	cert, csr, _ := util.MustGenerateTestMarbleCredentials()
 
 	// create mock quote using values from the manifest
@@ -150,18 +271,17 @@ func (ms *marbleSpawner) newMarble(t *testing.T, marbleType string, infraName st
 		AuthInfo: tlsInfo,
 	})
 
-	uuidStr := uuid.New().String()
 	resp, err := ms.coreServer.Activate(ctx, &rpc.ActivationReq{
 		CSR:        csr,
 		MarbleType: marbleType,
 		Quote:      quote,
-		UUID:       uuidStr,
+		UUID:       marbleUUID.String(),
 	})
 
 	if !shouldSucceed {
 		ms.assert.Error(err)
 		ms.assert.Nil(resp)
-		return uuidStr
+		return
 	}
 	ms.assert.NoError(err, "Activate failed: %v", err)
 	ms.assert.NotNil(resp)
@@ -290,13 +410,12 @@ func (ms *marbleSpawner) newMarble(t *testing.T, marbleType string, infraName st
 	} else {
 		ms.assert.Empty(configBytes)
 	}
-	return uuidStr
 }
 
 func (ms *marbleSpawner) newMarbleAsync(t *testing.T, marbleType string, infraName string, shouldSucceed bool) {
 	ms.wg.Add(1)
 	go func() {
-		ms.newMarble(t, marbleType, infraName, shouldSucceed)
+		ms.newMarble(t, marbleType, infraName, uuid.New(), shouldSucceed)
 		ms.wg.Done()
 	}()
 }
@@ -486,14 +605,14 @@ func TestSecurityLevelUpdate(t *testing.T) {
 	admin := testutil.GetUser(t, coreServer.txHandle, "admin")
 
 	// try to activate another first backend, should succeed as SecurityLevel matches the definition in the manifest
-	spawner.newMarble(t, "frontend", "Azure", true)
+	spawner.newMarble(t, "frontend", "Azure", uuid.New(), true)
 
 	// update manifest
 	err = clientAPI.UpdateManifest(ctx, []byte(test.UpdateManifest), admin)
 	require.NoError(err)
 
 	// try to activate another first backend, should fail as required SecurityLevel is now higher after manifest update
-	spawner.newMarble(t, "frontend", "Azure", false)
+	spawner.newMarble(t, "frontend", "Azure", uuid.New(), false)
 
 	// Use a new core and test if updated manifest persisted after restart
 	coreServer2, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, ""), recovery, zapLogger, nil, nil)
@@ -505,7 +624,7 @@ func TestSecurityLevelUpdate(t *testing.T) {
 
 	// This should still fail after a restart, as the update manifest should have been reloaded from the sealed state correctly
 	spawner.coreServer = coreServer2
-	spawner.newMarble(t, "frontend", "Azure", false)
+	spawner.newMarble(t, "frontend", "Azure", uuid.New(), false)
 }
 
 func (ms *marbleSpawner) shortMarbleActivation(t *testing.T, marbleType string, infraName string) {

@@ -202,7 +202,7 @@ func TestGenerateSecrets(t *testing.T) {
 	rootPrivK := testutil.GetPrivateKey(t, c.txHandle, constants.SKCoordinatorRootKey)
 
 	// This should return valid secrets
-	generatedSecrets, err := c.GenerateSecrets(secretsToGenerate, uuid.Nil, rootCert, rootPrivK, rootPrivK)
+	generatedSecrets, err := c.GenerateSecrets(secretsToGenerate, uuid.Nil, "", rootCert, rootPrivK, rootPrivK)
 	require.NoError(err)
 	// Check if rawTest1 has 128 Bits/16 Bytes and rawTest2 256 Bits/8 Bytes
 	assert.Len(generatedSecrets["rawTest1"].Public, 16)
@@ -222,7 +222,7 @@ func TestGenerateSecrets(t *testing.T) {
 
 	// Make sure a certificate gets a new serial number if its regenerated
 	firstSerial := generatedSecrets["cert-rsa-test"].Cert.SerialNumber
-	secondGeneration, err := c.GenerateSecrets(generatedSecrets, uuid.Nil, rootCert, rootPrivK, rootPrivK)
+	secondGeneration, err := c.GenerateSecrets(generatedSecrets, uuid.Nil, "", rootCert, rootPrivK, rootPrivK)
 	assert.NoError(err)
 	assert.NotEqualValues(*firstSerial, *secondGeneration["cert-rsa-test"].Cert.SerialNumber)
 
@@ -264,31 +264,31 @@ func TestGenerateSecrets(t *testing.T) {
 	assert.NoError(err)
 
 	// Check if we get an empty secret map as output for an empty map as input
-	generatedSecrets, err = c.GenerateSecrets(secretsEmptyMap, uuid.Nil, rootCert, rootPrivK, rootPrivK)
+	generatedSecrets, err = c.GenerateSecrets(secretsEmptyMap, uuid.Nil, "", rootCert, rootPrivK, rootPrivK)
 	require.NoError(err)
 	assert.IsType(map[string]manifest.Secret{}, generatedSecrets)
 	assert.Len(generatedSecrets, 0)
 
 	// Check if we get an empty secret map as output for nil
-	generatedSecrets, err = c.GenerateSecrets(nil, uuid.Nil, rootCert, rootPrivK, rootPrivK)
+	generatedSecrets, err = c.GenerateSecrets(nil, uuid.Nil, "", rootCert, rootPrivK, rootPrivK)
 	require.NoError(err)
 	assert.IsType(map[string]manifest.Secret{}, generatedSecrets)
 	assert.Len(generatedSecrets, 0)
 
 	// If no size is specified, the function should fail
-	_, err = c.GenerateSecrets(secretsNoSize, uuid.Nil, rootCert, rootPrivK, rootPrivK)
+	_, err = c.GenerateSecrets(secretsNoSize, uuid.Nil, "", rootCert, rootPrivK, rootPrivK)
 	assert.Error(err)
 
 	// Also, it should fail if we try to generate a secret with an unknown type
-	_, err = c.GenerateSecrets(secretsInvalidType, uuid.Nil, rootCert, rootPrivK, rootPrivK)
+	_, err = c.GenerateSecrets(secretsInvalidType, uuid.Nil, "", rootCert, rootPrivK, rootPrivK)
 	assert.Error(err)
 
 	// If Ed25519 key size is specified, we should fail
-	_, err = c.GenerateSecrets(secretsEd25519WrongKeySize, uuid.Nil, rootCert, rootPrivK, rootPrivK)
+	_, err = c.GenerateSecrets(secretsEd25519WrongKeySize, uuid.Nil, "", rootCert, rootPrivK, rootPrivK)
 	assert.Error(err)
 
 	// However, for ECDSA we fail as we can have multiple curves
-	_, err = c.GenerateSecrets(secretsECDSAWrongKeySize, uuid.Nil, rootCert, rootPrivK, rootPrivK)
+	_, err = c.GenerateSecrets(secretsECDSAWrongKeySize, uuid.Nil, "", rootCert, rootPrivK, rootPrivK)
 	assert.Error(err)
 }
 
