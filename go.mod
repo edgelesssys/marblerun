@@ -4,7 +4,7 @@ go 1.22.0
 
 require (
 	github.com/cert-manager/cert-manager v1.15.3
-	github.com/edgelesssys/ego v1.5.5-0.20240918131954-75c1acbe8df9
+	github.com/edgelesssys/ego v1.5.5-0.20240918142856-71abc7e095e1
 	github.com/gofrs/flock v0.12.1
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0

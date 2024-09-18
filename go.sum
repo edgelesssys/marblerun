@@ -90,8 +90,8 @@ github.com/docker/go-metrics v0.0.1 h1:AgB/0SvBxihN0X8OR4SjsblXkbMvalQ8cjmtKQ2rQ
 github.com/docker/go-metrics v0.0.1/go.mod h1:cG1hvH2utMXtqgqqYE9plW6lDxS3/5ayHzueweSI3Vw=
 github.com/docker/libtrust v0.0.0-20150114040149-fa567046d9b1 h1:ZClxb8laGDf5arXfYcAtECDFgAgHklGI8CxgjHnXKJ4=
 github.com/docker/libtrust v0.0.0-20150114040149-fa567046d9b1/go.mod h1:cyGadeNEkKy96OOhEzfZl+yxihPEzKnqJwvfuSUqbZE=
-github.com/edgelesssys/ego v1.5.5-0.20240918131954-75c1acbe8df9 h1:ItTFGMF343zccRyeE9KahVdX7Lpr4fmEBeX8JSN+F8g=
-github.com/edgelesssys/ego v1.5.5-0.20240918131954-75c1acbe8df9/go.mod h1:t10m29KSwG2hKwWFIq7/vuzfoKhPIdevOXx8nm636iU=
+github.com/edgelesssys/ego v1.5.5-0.20240918142856-71abc7e095e1 h1:dU4mOAkHJ0B+TylUsR4mc8U9YZjHC8VK+OVVJLVWTrM=
+github.com/edgelesssys/ego v1.5.5-0.20240918142856-71abc7e095e1/go.mod h1:t10m29KSwG2hKwWFIq7/vuzfoKhPIdevOXx8nm636iU=
 github.com/emicklei/go-restful/v3 v3.12.0 h1:y2DdzBAURM29NFF94q6RaY4vjIH1rtwDapwQtU84iWk=
 github.com/emicklei/go-restful/v3 v3.12.0/go.mod h1:6n3XBCmQQb25CM2LCACGz8ukIrRry+4bhvbpWn3mrbc=
 github.com/evanphx/json-patch v5.9.0+incompatible h1:fBXyNpNMuTTDdquAq/uisOr2lShz4oaXpDTX2bLe7ls=
