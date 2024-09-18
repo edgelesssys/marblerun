@@ -46,7 +46,6 @@ func (v *ERTValidator) Validate(givenQuote []byte, cert []byte, pp quote.Package
 	if report.TCBAdvisoriesErr != nil {
 		v.log.Error("TCB Advisories", zap.Error(report.TCBAdvisoriesErr))
 	}
-	fmt.Println(report.TCBAdvisories)
 
 	switch validity {
 	case tcb.ValidityUnconditional:
