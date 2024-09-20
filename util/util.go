@@ -27,8 +27,8 @@ import (
 var DefaultCertificateIPAddresses = []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback}
 
 // DeriveKey derives a key from a secret.
-func DeriveKey(secret, salt []byte, length uint) ([]byte, error) {
-	hkdf := hkdf.New(sha256.New, secret, salt, nil)
+func DeriveKey(secret, salt, info []byte, length uint) ([]byte, error) {
+	hkdf := hkdf.New(sha256.New, secret, salt, info)
 	key := make([]byte, length)
 	if _, err := io.ReadFull(hkdf, key); err != nil {
 		return nil, err

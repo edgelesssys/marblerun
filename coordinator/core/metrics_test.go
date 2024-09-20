@@ -20,6 +20,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
 	"github.com/edgelesssys/marblerun/coordinator/store/wrapper/testutil"
 	"github.com/edgelesssys/marblerun/test"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	promtest "github.com/prometheus/client_golang/prometheus/testutil"
@@ -115,11 +116,12 @@ func TestMarbleAPIMetrics(t *testing.T) {
 	}
 
 	// try to activate first backend marble prematurely before manifest is set
-	uuid := spawner.newMarble(t, "backendFirst", "Azure", false)
+	marbleUUID := uuid.New()
+	spawner.newMarble(t, "backendFirst", "Azure", marbleUUID, false)
 	promtest.CollectAndCount(metrics.activation)
 	promtest.CollectAndCount(metrics.activationSuccess)
-	assert.Equal(float64(1), promtest.ToFloat64(metrics.activation.WithLabelValues("backendFirst", uuid)))
-	assert.Equal(float64(0), promtest.ToFloat64(metrics.activationSuccess.WithLabelValues("backendFirst", uuid)))
+	assert.Equal(float64(1), promtest.ToFloat64(metrics.activation.WithLabelValues("backendFirst", marbleUUID.String())))
+	assert.Equal(float64(0), promtest.ToFloat64(metrics.activationSuccess.WithLabelValues("backendFirst", marbleUUID.String())))
 
 	// set manifest
 	clientAPI, err := clientapi.New(c.txHandle, c.recovery, c, zapLogger)
@@ -128,16 +130,18 @@ func TestMarbleAPIMetrics(t *testing.T) {
 	require.NoError(err)
 
 	// activate first backend
-	uuid = spawner.newMarble(t, "backendFirst", "Azure", true)
+	marbleUUID = uuid.New()
+	spawner.newMarble(t, "backendFirst", "Azure", marbleUUID, true)
 	promtest.CollectAndCount(metrics.activation)
 	promtest.CollectAndCount(metrics.activationSuccess)
-	assert.Equal(float64(1), promtest.ToFloat64(metrics.activation.WithLabelValues("backendFirst", uuid)))
-	assert.Equal(float64(1), promtest.ToFloat64(metrics.activationSuccess.WithLabelValues("backendFirst", uuid)))
+	assert.Equal(float64(1), promtest.ToFloat64(metrics.activation.WithLabelValues("backendFirst", marbleUUID.String())))
+	assert.Equal(float64(1), promtest.ToFloat64(metrics.activationSuccess.WithLabelValues("backendFirst", marbleUUID.String())))
 
 	// try to activate another first backend
-	uuid = spawner.newMarble(t, "backendFirst", "Azure", false)
+	marbleUUID = uuid.New()
+	spawner.newMarble(t, "backendFirst", "Azure", marbleUUID, false)
 	promtest.CollectAndCount(metrics.activation)
 	promtest.CollectAndCount(metrics.activationSuccess)
-	assert.Equal(float64(1), promtest.ToFloat64(metrics.activation.WithLabelValues("backendFirst", uuid)))
-	assert.Equal(float64(0), promtest.ToFloat64(metrics.activationSuccess.WithLabelValues("backendFirst", uuid)))
+	assert.Equal(float64(1), promtest.ToFloat64(metrics.activation.WithLabelValues("backendFirst", marbleUUID.String())))
+	assert.Equal(float64(0), promtest.ToFloat64(metrics.activationSuccess.WithLabelValues("backendFirst", marbleUUID.String())))
 }

@@ -84,6 +84,9 @@ type Marble struct {
 	Parameters Parameters
 	// TLS holds a list of tags which are specified in the manifest
 	TLS []string
+	// DisableSecretBinding causes the Coordinator to not include the Marble's name for secret derivation.
+	// Effectively, this enforces the same behavior of the Coordinator previous to version 1.6.0.
+	DisableSecretBinding bool
 }
 
 // Equal returns true if two Marble definitions are equal.
