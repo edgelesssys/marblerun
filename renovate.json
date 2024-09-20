@@ -20,6 +20,9 @@
   "assignees": [
     "daniel-weisse"
   ],
+  "ignoreDeps": [
+    "cheerio"
+  ],
   "packageRules": [
     {
       "groupName": "Go dependencies",
