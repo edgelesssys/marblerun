@@ -47,6 +47,10 @@ func (v *ERTValidator) Validate(givenQuote []byte, cert []byte, pp quote.Package
 		v.log.Error("TCB Advisories", zap.Error(report.TCBAdvisoriesErr))
 	}
 
+	if notAccepted := tcb.CheckAdvisories(report.TCBStatus, report.TCBAdvisories, pp.AcceptedAdvisories); len(notAccepted) > 0 {
+		return fmt.Errorf("TCB status %s contains advisories not accepted by configuration: %s", report.TCBStatus, notAccepted)
+	}
+
 	switch validity {
 	case tcb.ValidityUnconditional:
 	case tcb.ValidityConditional:

@@ -15,6 +15,7 @@ The `Packages` section of the manifest lists all the secure enclave software pac
 * `SecurityVersion`: an integer that reflects the security-patch level of the enclave software. Can only be used in conjunction with `SignerID`.
 * `Debug`: set to `true` if the enclave is to be run in debug mode. This allows you to experiment with deploying your application with MarbleRun without having to worry about setting correct values for the above properties, but note that enclaves in debug mode aren't secure.
 * `AcceptedTCBStatuses`: a list of acceptable [TCB statuses](https://docs.trustauthority.intel.com/main/articles/concept-platform-tcb.html#attester-tcb-claims) a Marble is allowed to start with. You can use this option to allow Marbles to run on machines whose TCB is out-of-date. If not set, it defaults to `["UpToDate", "SWHardeningNeeded"]`.
+* `AcceptedAdivsories`: a list of acceptable [Intel Security Advisories](https://www.intel.com/content/www/us/en/security-center/default.html) when a Marble is allowed to run with an `SWHardeningNeeded` TCB status. If not set, all advisories are allowed. Has no effect if the Marble has a different TCB status from `SWHardeningNeeded`.
 
 The following gives an example of a simple `Packages` section with made-up values.
 
@@ -30,6 +31,9 @@ The following gives an example of a simple `Packages` section with made-up value
                 "SWHardeningNeeded",
                 "ConfigurationNeeded",
                 "ConfigurationAndSWHardeningNeeded"
+            ],
+            "AcceptedAdvisories": [
+                "INTEL-SA-00001"
             ]
         },
         "frontend": {

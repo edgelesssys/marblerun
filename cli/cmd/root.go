@@ -68,6 +68,7 @@ To install and configure MarbleRun, run:
 	rootCmd.PersistentFlags().String("era-config", "", "Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository")
 	rootCmd.PersistentFlags().BoolP("insecure", "i", false, "Set to skip quote verification, needed when running in simulation mode")
 	rootCmd.PersistentFlags().StringSlice("accepted-tcb-statuses", []string{"UpToDate", "SWHardeningNeeded"}, "Comma-separated list of user accepted TCB statuses")
+	rootCmd.PersistentFlags().StringSlice("accepted-advisories", nil, "Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted")
 	rootCmd.PersistentFlags().StringP("namespace", "n", helm.Namespace, "Kubernetes namespace of the MarbleRun installation")
 	rootCmd.PersistentFlags().String("nonce", "", "(Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)")
 	rootCmd.PersistentFlags().String("save-sgx-quote", "", "If set, save the Coordinator's SGX quote to the specified file")

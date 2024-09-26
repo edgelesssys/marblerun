@@ -46,6 +46,10 @@ func parseRestFlags(cmd *cobra.Command) (api.VerifyOptions, string, error) {
 	if err != nil {
 		return api.VerifyOptions{}, "", err
 	}
+	acceptedAdvisories, err := cmd.Flags().GetStringSlice("accepted-advisories")
+	if err != nil {
+		return api.VerifyOptions{}, "", err
+	}
 	k8sNamespace, err := cmd.Flags().GetString("namespace")
 	if err != nil {
 		return api.VerifyOptions{}, "", err
@@ -83,6 +87,7 @@ func parseRestFlags(cmd *cobra.Command) (api.VerifyOptions, string, error) {
 		}
 	}
 	verifyOptions.AcceptedTCBStatuses = acceptedTCBStatuses
+	verifyOptions.AcceptedAdvisories = acceptedAdvisories
 	verifyOptions.Nonce = []byte(nonce)
 
 	return verifyOptions, sgxQuotePath, nil

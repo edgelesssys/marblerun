@@ -29,6 +29,10 @@ type PackageProperties struct {
 	SecurityVersion *uint
 	// AcceptedTCBStatuses is a list of TCB levels an enclave is allowed to have.
 	AcceptedTCBStatuses []string
+	// AcceptedAdvisories is a list of open Intel Security Advisories an enclave is allowed to run on,
+	// when it reports an SWHardeningNeeded TCB status.
+	// An empty list allows all advisories.
+	AcceptedAdvisories []string
 }
 
 // InfrastructureProperties contains the infrastructure-specific properties of a SGX DCAP quote.

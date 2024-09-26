@@ -101,6 +101,7 @@ func VerifyCoordinator(ctx context.Context, endpoint string, opts VerifyOptions)
 		Debug:               opts.Debug,
 		Nonce:               opts.Nonce,
 		AcceptedTCBStatuses: opts.AcceptedTCBStatuses,
+		AcceptedAdvisories:  opts.AcceptedAdvisories,
 	}); err != nil {
 		return nil, nil, nil, fmt.Errorf("verifying Coordinator quote: %w", err)
 	}
@@ -467,6 +468,10 @@ type VerifyOptions struct {
 	// If not set, defaults to ["UpToDate", "SWHardeningNeeded"].
 	// If the Coordinator returns a TCB status not listed, an [attestation.TCBStatusError] is returned.
 	AcceptedTCBStatuses []string `json:"AcceptedTCBStatuses"`
+	// AcceptedAdvisories is a list of Intel Security Advisories that are acceptable.
+	// If the Coordinator returns TCB status "SWHardeningNeeded", the list of advisories for that report must be a subset of this list.
+	// If not set, all advisories are accepted.
+	AcceptedAdvisories []string `json:"AcceptedAdvisories"`
 
 	// Nonce is an optional, user-defined nonce to be included in the Coordinator's attestation statement.
 	// If set, the Coordinator will generate an SGX quote over sha256(Coordinator_root_cert, Nonce).
