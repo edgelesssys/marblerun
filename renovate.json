@@ -41,7 +41,8 @@
         "pin",
         "pinDigest",
         "rollback"
-      ]
+      ],
+      "schedule": ["before 8am on monday"]
     },
     {
       "groupName": "Node dependencies",
@@ -49,7 +50,8 @@
         "js",
         "node"
       ],
-      "prPriority": -20
+      "prPriority": -20,
+      "schedule": ["before 8am on monday"]
     },
     {
       "groupName": "GitHub action dependencies",
@@ -65,7 +67,8 @@
         "lockFileMaintenance",
         "rollback",
         "bump"
-      ]
+      ],
+      "schedule": ["before 8am on monday"]
     }
   ]
 }
