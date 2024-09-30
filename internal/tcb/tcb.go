@@ -57,18 +57,22 @@ func CheckStatus(status tcbstatus.Status, tcbErr error, accepted []string) (Vali
 // CheckAdvisories checks a list of Intel Security Advisories against a list of accepted advisories.
 // It returns a list of not accepted advisories if the status is SWHardeningNeeded.
 // If acceptedAdvisories is empty, all advisories are accepted and this function returns nil.
-func CheckAdvisories(status tcbstatus.Status, advisories, acceptedAdvisories []string) []string {
-	if status != tcbstatus.SWHardeningNeeded || len(acceptedAdvisories) == 0 {
-		return nil
+func CheckAdvisories(report attestation.Report, acceptedAdvisories []string) ([]string, error) {
+	if report.TCBStatus != tcbstatus.SWHardeningNeeded || len(acceptedAdvisories) == 0 {
+		return nil, nil
+	}
+
+	if report.TCBAdvisoriesErr != nil {
+		return nil, fmt.Errorf("accepted advisory list not empty but report did not contain a valid advisory list: %w", report.TCBAdvisoriesErr)
 	}
 
 	var notAccepted []string
-	for _, advisory := range advisories {
+	for _, advisory := range report.TCBAdvisories {
 		if !slices.ContainsFunc(acceptedAdvisories, func(other string) bool {
 			return strings.EqualFold(advisory, other)
 		}) {
 			notAccepted = append(notAccepted, advisory)
 		}
 	}
-	return notAccepted
+	return notAccepted, nil
 }

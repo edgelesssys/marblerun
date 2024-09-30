@@ -86,7 +86,11 @@ func verifyCertificate(
 		return NewTCBStatusError(report.TCBStatus)
 	}
 
-	if notAccepted := tcb.CheckAdvisories(report.TCBStatus, report.TCBAdvisories, config.AcceptedAdvisories); len(notAccepted) > 0 {
+	notAccepted, err := tcb.CheckAdvisories(report, config.AcceptedAdvisories)
+	if err != nil {
+		return err
+	}
+	if len(notAccepted) > 0 {
 		return NewTCBStatusErrorWithAdvisories(report.TCBStatus, notAccepted)
 	}
 
