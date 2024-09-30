@@ -111,6 +111,9 @@ func (p PackageProperties) String() string {
 	if len(p.AcceptedTCBStatuses) > 0 {
 		values = append(values, fmt.Sprintf("AcceptedTCBStatuses: %v", p.AcceptedTCBStatuses))
 	}
+	if len(p.AcceptedAdvisories) > 0 {
+		values = append(values, fmt.Sprintf("AcceptedAdvisories: %v", p.AcceptedAdvisories))
+	}
 	return fmt.Sprintf("{%s}", strings.Join(values, ", "))
 }
 
