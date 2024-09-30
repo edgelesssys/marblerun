@@ -30,7 +30,12 @@ type TCBStatusError struct {
 }
 
 // NewTCBStatusError creates a new TCBStatusError.
-func NewTCBStatusError(tcbStatus tcbstatus.Status, advisories []string) error {
+func NewTCBStatusError(tcbStatus tcbstatus.Status) error {
+	return &TCBStatusError{TCBStatus: tcbStatus}
+}
+
+// NewTCBStatusErrorWithAdvisories creates a new TCBStatusError with a list of Intel Security Advisories.
+func NewTCBStatusErrorWithAdvisories(tcbStatus tcbstatus.Status, advisories []string) error {
 	return &TCBStatusError{TCBStatus: tcbStatus, Advisories: advisories}
 }
 
@@ -78,11 +83,11 @@ func verifyCertificate(
 
 	validity, err := tcb.CheckStatus(report.TCBStatus, quoteErr, config.AcceptedTCBStatuses)
 	if err != nil {
-		return NewTCBStatusError(report.TCBStatus, report.TCBAdvisories)
+		return NewTCBStatusError(report.TCBStatus)
 	}
 
 	if notAccepted := tcb.CheckAdvisories(report.TCBStatus, report.TCBAdvisories, config.AcceptedAdvisories); len(notAccepted) > 0 {
-		return NewTCBStatusError(report.TCBStatus, notAccepted)
+		return NewTCBStatusErrorWithAdvisories(report.TCBStatus, notAccepted)
 	}
 
 	switch validity {
