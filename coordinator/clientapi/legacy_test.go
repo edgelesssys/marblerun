@@ -591,6 +591,8 @@ func TestVerifyUser_Legacy(t *testing.T) {
 	// Put certificates in slice, as Go's TLS library passes them in an HTTP request
 	adminTestCertSlice := []*x509.Certificate{adminTestCert}
 	otherTestCertSlice := []*x509.Certificate{otherTestCert}
+	adminAndOtherTestCertsSlice := []*x509.Certificate{adminTestCert, otherTestCert}
+	otherAndAdminTestCertsSlice := []*x509.Certificate{otherTestCert, adminTestCert}
 
 	// Check if the adminTest certificate is deemed valid (stored in core), and the freshly generated one is deemed false
 	user, err := c.VerifyUser(ctx, adminTestCertSlice)
@@ -600,6 +602,14 @@ func TestVerifyUser_Legacy(t *testing.T) {
 	assert.Error(err)
 	_, err = c.VerifyUser(ctx, nil)
 	assert.Error(err)
+
+	// Check with multiple client certificates
+	user, err = c.VerifyUser(ctx, adminAndOtherTestCertsSlice)
+	assert.NoError(err)
+	assert.Equal(*user.Certificate(), *adminTestCert)
+	user, err = c.VerifyUser(ctx, otherAndAdminTestCertsSlice)
+	assert.NoError(err)
+	assert.Equal(*user.Certificate(), *adminTestCert)
 }
 
 func setupAPI(t *testing.T) (*ClientAPI, wrapper.Wrapper) {

@@ -658,13 +658,13 @@ func (a *ClientAPI) VerifyUser(ctx context.Context, clientCerts []*x509.Certific
 	}
 	defer rollback()
 
-	userIter, err := txdata.GetIterator(request.User)
-	if err != nil {
-		return nil, fmt.Errorf("getting user iterator: %w", err)
-	}
 	// Check if a supplied client cert matches the supplied ones from the manifest stored in the core
 	// NOTE: We do not use the "correct" X.509 verify here since we do not really care about expiration and chain verification here.
 	for _, suppliedCert := range clientCerts {
+		userIter, err := txdata.GetIterator(request.User)
+		if err != nil {
+			return nil, fmt.Errorf("getting user iterator: %w", err)
+		}
 		for userIter.HasNext() {
 			name, err := userIter.GetNext()
 			if err != nil {
