@@ -29,6 +29,10 @@ type PackageProperties struct {
 	SecurityVersion *uint
 	// AcceptedTCBStatuses is a list of TCB levels an enclave is allowed to have.
 	AcceptedTCBStatuses []string
+	// AcceptedAdvisories is a list of open Intel Security Advisories an enclave is allowed to run on,
+	// when it reports an SWHardeningNeeded TCB status.
+	// An empty list allows all advisories.
+	AcceptedAdvisories []string
 }
 
 // InfrastructureProperties contains the infrastructure-specific properties of a SGX DCAP quote.
@@ -106,6 +110,9 @@ func (p PackageProperties) String() string {
 	}
 	if len(p.AcceptedTCBStatuses) > 0 {
 		values = append(values, fmt.Sprintf("AcceptedTCBStatuses: %v", p.AcceptedTCBStatuses))
+	}
+	if len(p.AcceptedAdvisories) > 0 {
+		values = append(values, fmt.Sprintf("AcceptedAdvisories: %v", p.AcceptedAdvisories))
 	}
 	return fmt.Sprintf("{%s}", strings.Join(values, ", "))
 }

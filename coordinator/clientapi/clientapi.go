@@ -556,19 +556,9 @@ func (a *ClientAPI) UpdateManifest(ctx context.Context, rawUpdateManifest []byte
 
 	// update manifest was valid, increase svn and regenerate secrets
 	for pkgName, pkg := range updateManifest.Packages {
-		if currentPackages[pkgName].SecurityVersion == nil {
-			currentPkg := currentPackages[pkgName]
-			currentPackages[pkgName] = quote.PackageProperties{
-				Debug:               currentPkg.Debug,
-				UniqueID:            currentPkg.UniqueID,
-				SecurityVersion:     pkg.SecurityVersion,
-				ProductID:           currentPkg.ProductID,
-				SignerID:            currentPkg.SignerID,
-				AcceptedTCBStatuses: currentPkg.AcceptedTCBStatuses,
-			}
-		} else {
-			*currentPackages[pkgName].SecurityVersion = *pkg.SecurityVersion
-		}
+		currentPkg := currentPackages[pkgName]
+		currentPkg.SecurityVersion = pkg.SecurityVersion
+		currentPackages[pkgName] = currentPkg
 	}
 
 	rootCert, err := txdata.GetCertificate(constants.SKCoordinatorRootCert)

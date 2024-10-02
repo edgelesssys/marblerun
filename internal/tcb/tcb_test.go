@@ -7,7 +7,6 @@
 package tcb
 
 import (
-	"errors"
 	"fmt"
 	"testing"
 
@@ -18,8 +17,6 @@ import (
 )
 
 func TestCheckStatus(t *testing.T) {
-	otherErr := errors.New("failed")
-
 	testCases := []struct {
 		status       tcbstatus.Status
 		tcbErr       error
@@ -66,38 +63,38 @@ func TestCheckStatus(t *testing.T) {
 		},
 		{
 			status:   tcbstatus.UpToDate,
-			tcbErr:   otherErr,
+			tcbErr:   assert.AnError,
 			accepted: []string{},
 			wantErr:  true,
 		},
 		{
 			status:   tcbstatus.OutOfDate,
-			tcbErr:   otherErr,
+			tcbErr:   assert.AnError,
 			accepted: []string{},
 			wantErr:  true,
 		},
 		{
 			status:   tcbstatus.SWHardeningNeeded,
-			tcbErr:   otherErr,
+			tcbErr:   assert.AnError,
 			accepted: []string{},
 			wantErr:  true,
 		},
 		// unexpected error can't be accepted
 		{
 			status:   tcbstatus.UpToDate,
-			tcbErr:   otherErr,
+			tcbErr:   assert.AnError,
 			accepted: []string{"UpToDate", "OutOfDate", "SWHardeningNeeded"},
 			wantErr:  true,
 		},
 		{
 			status:   tcbstatus.OutOfDate,
-			tcbErr:   otherErr,
+			tcbErr:   assert.AnError,
 			accepted: []string{"UpToDate", "OutOfDate", "SWHardeningNeeded"},
 			wantErr:  true,
 		},
 		{
 			status:   tcbstatus.SWHardeningNeeded,
-			tcbErr:   otherErr,
+			tcbErr:   assert.AnError,
 			accepted: []string{"UpToDate", "OutOfDate", "SWHardeningNeeded"},
 			wantErr:  true,
 		},
@@ -173,6 +170,82 @@ func TestCheckStatus(t *testing.T) {
 			require.NoError(err)
 
 			assert.Equal(tc.wantValidity, validity)
+		})
+	}
+}
+
+func TestCheckAdvisories(t *testing.T) {
+	testCases := map[string]struct {
+		status             tcbstatus.Status
+		advisories         []string
+		acceptedAdvisories []string
+		advisoriesErr      error
+		wantNotAccepted    []string
+		wantErr            bool
+	}{
+		"empty accepted list accepts all advisories": {
+			status:             tcbstatus.SWHardeningNeeded,
+			advisories:         []string{"INTEL-SA-0001", "INTEL-SA-0002"},
+			acceptedAdvisories: []string{},
+			wantNotAccepted:    nil,
+		},
+		"missing accepted advisories": {
+			status:             tcbstatus.SWHardeningNeeded,
+			advisories:         []string{"INTEL-SA-0001", "INTEL-SA-0002"},
+			acceptedAdvisories: []string{"INTEL-SA-0003"},
+			wantNotAccepted:    []string{"INTEL-SA-0001", "INTEL-SA-0002"},
+		},
+		"all advisories accepted": {
+			status:             tcbstatus.SWHardeningNeeded,
+			advisories:         []string{"INTEL-SA-0001", "INTEL-SA-0002"},
+			acceptedAdvisories: []string{"INTEL-SA-0001", "INTEL-SA-0002"},
+			wantNotAccepted:    nil,
+		},
+		"some advisories accepted": {
+			status:             tcbstatus.SWHardeningNeeded,
+			advisories:         []string{"INTEL-SA-0001", "INTEL-SA-0002"},
+			acceptedAdvisories: []string{"INTEL-SA-0001"},
+			wantNotAccepted:    []string{"INTEL-SA-0002"},
+		},
+		"other status than SWHardeningNeeded": {
+			status:             tcbstatus.ConfigurationAndSWHardeningNeeded,
+			advisories:         []string{"INTEL-SA-0001", "INTEL-SA-0002"},
+			acceptedAdvisories: []string{"INTEL-SA-0001"},
+			wantNotAccepted:    nil,
+		},
+		"TCBAdvisoriesErr causes an error": {
+			status:             tcbstatus.SWHardeningNeeded,
+			acceptedAdvisories: []string{"INTEL-SA-0001"},
+			advisoriesErr:      assert.AnError,
+			wantErr:            true,
+		},
+		"TCBAdvisoriesErr is ignored if all advisories are accepted": {
+			status:        tcbstatus.SWHardeningNeeded,
+			advisoriesErr: assert.AnError,
+		},
+		"TCBAdvisoriesErr is ignored on other status": {
+			status:        tcbstatus.UpToDate,
+			advisoriesErr: assert.AnError,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
+
+			report := attestation.Report{
+				TCBStatus:        tc.status,
+				TCBAdvisories:    tc.advisories,
+				TCBAdvisoriesErr: tc.advisoriesErr,
+			}
+
+			notAccepted, err := CheckAdvisories(report, tc.acceptedAdvisories)
+			if tc.wantErr {
+				assert.Error(err)
+				return
+			}
+			assert.NoError(err)
+			assert.Equal(tc.wantNotAccepted, notAccepted)
 		})
 	}
 }

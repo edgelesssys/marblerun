@@ -81,6 +81,7 @@ marblerun install --dcap-pccs-url https://pccs.example.com/sgx/certification/v4/
 ### Options inherited from parent commands
 
 ```
+      --accepted-advisories strings     Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
@@ -112,6 +113,7 @@ marblerun uninstall [flags]
 ### Options inherited from parent commands
 
 ```
+      --accepted-advisories strings     Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
@@ -142,6 +144,7 @@ marblerun precheck [flags]
 ### Options inherited from parent commands
 
 ```
+      --accepted-advisories strings     Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
@@ -173,6 +176,7 @@ marblerun check [flags]
 ### Options inherited from parent commands
 
 ```
+      --accepted-advisories strings     Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
@@ -208,6 +212,7 @@ manifest set manifest.json example.com:4433 [--era-config=config.json] [--insecu
 ### Options inherited from parent commands
 
 ```
+      --accepted-advisories strings     Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
@@ -249,6 +254,7 @@ marblerun manifest get $MARBLERUN -s --era-config=era.json
 ### Options inherited from parent commands
 
 ```
+      --accepted-advisories strings     Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
@@ -288,6 +294,7 @@ marblerun manifest log $MARBLERUN
 ### Options inherited from parent commands
 
 ```
+      --accepted-advisories strings     Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
@@ -325,6 +332,7 @@ marblerun manifest set manifest.json $MARBLERUN --recovery-data=recovery-secret.
 ### Options inherited from parent commands
 
 ```
+      --accepted-advisories strings     Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
@@ -355,6 +363,7 @@ marblerun manifest signature <manifest.json> [flags]
 ### Options inherited from parent commands
 
 ```
+      --accepted-advisories strings     Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
@@ -381,6 +390,7 @@ Manage manifest updates for the MarbleRun Coordinator.
 ### Options inherited from parent commands
 
 ```
+      --accepted-advisories strings     Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
@@ -422,6 +432,7 @@ marblerun manifest update apply update-manifest.json $MARBLERUN --cert=admin-cer
 ### Options inherited from parent commands
 
 ```
+      --accepted-advisories strings     Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
@@ -464,6 +475,7 @@ marblerun manifest update acknowledge update-manifest.json $MARBLERUN --cert=adm
 ### Options inherited from parent commands
 
 ```
+      --accepted-advisories strings     Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
@@ -502,6 +514,7 @@ marblerun manifest update cancel $MARBLERUN --cert=admin-cert.pem --key=admin-ke
 ### Options inherited from parent commands
 
 ```
+      --accepted-advisories strings     Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
@@ -540,6 +553,7 @@ marblerun manifest update get $MARBLERUN --era-config=era.json
 ### Options inherited from parent commands
 
 ```
+      --accepted-advisories strings     Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
@@ -576,6 +590,7 @@ marblerun manifest verify manifest.json $MARBLERUN
 ### Options inherited from parent commands
 
 ```
+      --accepted-advisories strings     Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
@@ -602,6 +617,7 @@ Retrieves the certificate of the MarbleRun Coordinator
 ### Options inherited from parent commands
 
 ```
+      --accepted-advisories strings     Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
@@ -633,6 +649,7 @@ marblerun certificate root <IP:PORT> [flags]
 ### Options inherited from parent commands
 
 ```
+      --accepted-advisories strings     Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
@@ -664,6 +681,7 @@ marblerun certificate intermediate <IP:PORT> [flags]
 ### Options inherited from parent commands
 
 ```
+      --accepted-advisories strings     Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
@@ -695,6 +713,7 @@ marblerun certificate chain <IP:PORT> [flags]
 ### Options inherited from parent commands
 
 ```
+      --accepted-advisories strings     Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
@@ -725,6 +744,7 @@ Set or retrieve a secret defined in the manifest.
 ### Options inherited from parent commands
 
 ```
+      --accepted-advisories strings     Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
@@ -773,6 +793,7 @@ marblerun secret set certificate.pem $MARBLERUN -c admin.crt -k admin.key --from
 ### Options inherited from parent commands
 
 ```
+      --accepted-advisories strings     Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
   -c, --cert string                     PEM encoded MarbleRun user certificate file (required)
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
@@ -816,6 +837,7 @@ marblerun secret get genericSecret symmetricKeyShared $MARBLERUN -c admin.crt -k
 ### Options inherited from parent commands
 
 ```
+      --accepted-advisories strings     Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
   -c, --cert string                     PEM encoded MarbleRun user certificate file (required)
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
@@ -864,6 +886,7 @@ marblerun status <IP:PORT> [flags]
 ### Options inherited from parent commands
 
 ```
+      --accepted-advisories strings     Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
@@ -900,6 +923,7 @@ marblerun recover recovery_key_decrypted $MARBLERUN
 ### Options inherited from parent commands
 
 ```
+      --accepted-advisories strings     Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
@@ -930,6 +954,7 @@ marblerun package-info [flags]
 ### Options inherited from parent commands
 
 ```
+      --accepted-advisories strings     Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
@@ -960,6 +985,7 @@ marblerun version [flags]
 ### Options inherited from parent commands
 
 ```
+      --accepted-advisories strings     Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository

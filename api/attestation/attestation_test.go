@@ -226,6 +226,78 @@ func TestVerifyCertificate(t *testing.T) {
 				}, attestation.ErrTCBLevelInvalid
 			},
 		},
+		"tcb error with advisories": {
+			config: defaultConfig,
+			verify: func([]byte) (attestation.Report, error) {
+				return attestation.Report{
+					Data:            quoteData[:],
+					SecurityVersion: 2,
+					ProductID:       []byte{0x03, 0x00},
+					SignerID:        []byte{0xAB, 0xCD},
+					TCBStatus:       tcbstatus.SWHardeningNeeded,
+					TCBAdvisories:   []string{"INTEL-SA-0001"},
+				}, attestation.ErrTCBLevelInvalid
+			},
+			wantErr:    true,
+			wantTCBErr: true,
+		},
+		"tcb error with advisories rejected": {
+			config: func() Config {
+				config := defaultConfig
+				config.AcceptedTCBStatuses = []string{"SWHardeningNeeded"}
+				config.AcceptedAdvisories = []string{"INTEL-SA-0002"}
+				return config
+			}(),
+			verify: func([]byte) (attestation.Report, error) {
+				return attestation.Report{
+					Data:            quoteData[:],
+					SecurityVersion: 2,
+					ProductID:       []byte{0x03, 0x00},
+					SignerID:        []byte{0xAB, 0xCD},
+					TCBStatus:       tcbstatus.SWHardeningNeeded,
+					TCBAdvisories:   []string{"INTEL-SA-0001"},
+				}, attestation.ErrTCBLevelInvalid
+			},
+			wantErr:    true,
+			wantTCBErr: true,
+		},
+		"tcb error with advisories accepted": {
+			config: func() Config {
+				config := defaultConfig
+				config.AcceptedTCBStatuses = []string{"SWHardeningNeeded"}
+				config.AcceptedAdvisories = []string{"INTEL-SA-0001"}
+				return config
+			}(),
+			verify: func([]byte) (attestation.Report, error) {
+				return attestation.Report{
+					Data:            quoteData[:],
+					SecurityVersion: 2,
+					ProductID:       []byte{0x03, 0x00},
+					SignerID:        []byte{0xAB, 0xCD},
+					TCBStatus:       tcbstatus.SWHardeningNeeded,
+					TCBAdvisories:   []string{"INTEL-SA-0001"},
+				}, attestation.ErrTCBLevelInvalid
+			},
+		},
+		"report contains tcb advisory parsing error": {
+			config: func() Config {
+				config := defaultConfig
+				config.AcceptedTCBStatuses = []string{"SWHardeningNeeded"}
+				config.AcceptedAdvisories = []string{"INTEL-SA-0001"}
+				return config
+			}(),
+			verify: func([]byte) (attestation.Report, error) {
+				return attestation.Report{
+					Data:             quoteData[:],
+					SecurityVersion:  2,
+					ProductID:        []byte{0x03, 0x00},
+					SignerID:         []byte{0xAB, 0xCD},
+					TCBStatus:        tcbstatus.SWHardeningNeeded,
+					TCBAdvisoriesErr: assert.AnError,
+				}, attestation.ErrTCBLevelInvalid
+			},
+			wantErr: true,
+		},
 	}
 
 	for name, tc := range testCases {

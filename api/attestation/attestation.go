@@ -25,6 +25,8 @@ import (
 type TCBStatusError struct {
 	// TCBStatus is the TCB status of the Coordinator enclave.
 	TCBStatus tcbstatus.Status
+	// Advisories is a list of Intel Security Advisories if the TCB status is SWHardeningNeeded.
+	Advisories []string
 }
 
 // NewTCBStatusError creates a new TCBStatusError.
@@ -32,9 +34,18 @@ func NewTCBStatusError(tcbStatus tcbstatus.Status) error {
 	return &TCBStatusError{TCBStatus: tcbStatus}
 }
 
+// NewTCBStatusErrorWithAdvisories creates a new TCBStatusError with a list of Intel Security Advisories.
+func NewTCBStatusErrorWithAdvisories(tcbStatus tcbstatus.Status, advisories []string) error {
+	return &TCBStatusError{TCBStatus: tcbStatus, Advisories: advisories}
+}
+
 // Error returns the error message.
 func (e *TCBStatusError) Error() string {
-	return fmt.Sprintf("invalid TCB status: %s", e.TCBStatus)
+	var advisoryMsg string
+	if len(e.Advisories) > 0 {
+		advisoryMsg = fmt.Sprintf(": advisories not accepted by configuration: %s", e.Advisories)
+	}
+	return fmt.Sprintf("invalid TCB status: %s%s", e.TCBStatus, advisoryMsg)
 }
 
 // Config is the expected attestation metadata of a MarbleRun Coordinator enclave.
@@ -48,6 +59,7 @@ type Config struct {
 	Debug               bool
 	Nonce               []byte
 	AcceptedTCBStatuses []string
+	AcceptedAdvisories  []string
 }
 
 // VerifyCertificate verifies the Coordinator's TLS certificate against the Coordinator's SGX quote.
@@ -73,6 +85,15 @@ func verifyCertificate(
 	if err != nil {
 		return NewTCBStatusError(report.TCBStatus)
 	}
+
+	notAccepted, err := tcb.CheckAdvisories(report, config.AcceptedAdvisories)
+	if err != nil {
+		return err
+	}
+	if len(notAccepted) > 0 {
+		return NewTCBStatusErrorWithAdvisories(report.TCBStatus, notAccepted)
+	}
+
 	switch validity {
 	case tcb.ValidityUnconditional:
 	case tcb.ValidityConditional:
@@ -83,7 +104,7 @@ func verifyCertificate(
 
 	if validity != tcb.ValidityUnconditional {
 		if report.TCBAdvisoriesErr != nil {
-			fmt.Fprintln(out, "Error: TCB Advisories:", err)
+			fmt.Fprintln(out, "Error: TCB Advisories:", report.TCBAdvisoriesErr)
 		} else {
 			fmt.Fprintln(out, "TCB Advisories:", report.TCBAdvisories)
 		}
