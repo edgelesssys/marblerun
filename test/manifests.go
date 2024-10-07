@@ -373,6 +373,15 @@ var IntegrationManifestJSON = `{
 				}
 			}
 		},
+		"testMarbleMonotonicCounter": {
+			"Package": "backend",
+			"Parameters": {
+				"Argv": [
+					"./marble",
+					"monotonic-counter"
+				]
+			}
+		},
 		"badMarble": {
 			"Package": "frontend",
 			"Parameters": {

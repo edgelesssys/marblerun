@@ -23,18 +23,19 @@ import (
 
 // Endpoints of the MarbleRun Coordinator REST API.
 const (
-	ManifestEndpoint     = "manifest"
-	UpdateEndpoint       = "update"
-	UpdateCancelEndpoint = "update-cancel"
-	UpdateStatusEndpoint = "update-manifest"
-	QuoteEndpoint        = "quote"
-	RecoverEndpoint      = "recover"
-	SecretEndpoint       = "secrets"
-	StatusEndpoint       = "status"
-	SignQuoteEndpoint    = "sign-quote"
-	V2API                = "/api/v2/"
-	ContentJSON          = "application/json"
-	ContentPlain         = "text/plain"
+	ManifestEndpoint         = "manifest"
+	UpdateEndpoint           = "update"
+	UpdateCancelEndpoint     = "update-cancel"
+	UpdateStatusEndpoint     = "update-manifest"
+	QuoteEndpoint            = "quote"
+	RecoverEndpoint          = "recover"
+	SecretEndpoint           = "secrets"
+	StatusEndpoint           = "status"
+	SignQuoteEndpoint        = "sign-quote"
+	MonotonicCounterEndpoint = "monotonic-counter"
+	V2API                    = "/api/v2/"
+	ContentJSON              = "application/json"
+	ContentPlain             = "text/plain"
 )
 
 const (

@@ -41,8 +41,9 @@ import (
 )
 
 type reservedSecrets struct {
-	RootCA     manifest.Secret
-	MarbleCert manifest.Secret
+	RootCA          manifest.Secret
+	MarbleCert      manifest.Secret
+	CoordinatorRoot manifest.Secret
 }
 
 // Defines the "MarbleRun" prefix when mentioned in a manifest.
@@ -363,10 +364,15 @@ func customizeParameters(params manifest.Parameters, specialSecrets reservedSecr
 	if err != nil {
 		return nil, fmt.Errorf("encoding marble private key: %w", err)
 	}
+	coordinatorRootPem, err := manifest.EncodeSecretDataToPem(specialSecrets.CoordinatorRoot.Cert)
+	if err != nil {
+		return nil, fmt.Errorf("encoding Coordinator root CA: %w", err)
+	}
 
 	customParams.Env[marble.MarbleEnvironmentRootCA] = []byte(rootCaPem)
 	customParams.Env[marble.MarbleEnvironmentCertificateChain] = []byte(marbleCertPem + rootCaPem)
 	customParams.Env[marble.MarbleEnvironmentPrivateKey] = []byte(encodedPrivKey)
+	customParams.Env[globalconstants.MarbleEnvironmentCoordinatorRootCA] = []byte(coordinatorRootPem)
 
 	return &customParams, nil
 }
@@ -416,10 +422,16 @@ func (c *Core) generateMarbleAuthSecrets(txdata storeGetter, req *rpc.Activation
 	if err != nil {
 		return reservedSecrets{}, err
 	}
+	coordinatorRootCert, err := txdata.GetCertificate(constants.SKCoordinatorRootCert)
+	if err != nil {
+		return reservedSecrets{}, err
+	}
+
 	// customize marble's parameters
 	authSecrets := reservedSecrets{
-		RootCA:     manifest.Secret{Cert: manifest.Certificate(*marbleRootCert)},
-		MarbleCert: manifest.Secret{Cert: manifest.Certificate(*marbleCert), Public: encodedPubKey, Private: encodedPrivKey},
+		RootCA:          manifest.Secret{Cert: manifest.Certificate(*marbleRootCert)},
+		MarbleCert:      manifest.Secret{Cert: manifest.Certificate(*marbleCert), Public: encodedPubKey, Private: encodedPrivKey},
+		CoordinatorRoot: manifest.Secret{Cert: manifest.Certificate(*coordinatorRootCert)},
 	}
 
 	return authSecrets, nil
