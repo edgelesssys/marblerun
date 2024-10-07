@@ -15,15 +15,18 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
 
+	"github.com/edgelesssys/marblerun/coordinator/server/handler"
 	v1 "github.com/edgelesssys/marblerun/coordinator/server/v1"
 	"github.com/edgelesssys/marblerun/test"
 	"github.com/edgelesssys/marblerun/util"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
@@ -112,6 +115,65 @@ func TestGetUpdateLog(t *testing.T) {
 	mux.ServeHTTP(resp, req)
 	assert.Equal(http.StatusOK, resp.Code)
 	assert.EqualValues('{', resp.Body.String()[0])
+}
+
+func TestMonotonicCounter(t *testing.T) {
+	testCases := map[string]struct {
+		api          stubAPI
+		req          string
+		wantStatus   int
+		wantOldValue uint64
+		wantID       string
+		wantNewValue uint64
+	}{
+		"success": {
+			api:          stubAPI{featureEnabledResult: true},
+			req:          `{"name":"foo","value":3}`,
+			wantStatus:   http.StatusOK,
+			wantOldValue: 2,
+			wantID:       "type:02030400-0000-0000-0000-000000000000:foo",
+			wantNewValue: 3,
+		},
+		"bad request": {
+			api:        stubAPI{featureEnabledResult: true},
+			req:        "bad",
+			wantStatus: http.StatusBadRequest,
+		},
+		"feature not enabled": {
+			api:        stubAPI{featureEnabledResult: false},
+			req:        `{"name":"foo","value":3}`,
+			wantStatus: http.StatusForbidden,
+		},
+		"VerifyMarble error": {
+			api:        stubAPI{featureEnabledResult: true, verifyMarbleErr: assert.AnError},
+			req:        `{"name":"foo","value":3}`,
+			wantStatus: http.StatusUnauthorized,
+		},
+		"SetMonotonicCounter error": {
+			api:        stubAPI{featureEnabledResult: true, setMonotonicCounterErr: assert.AnError},
+			req:        `{"name":"foo","value":3}`,
+			wantStatus: http.StatusInternalServerError,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
+
+			mux := CreateServeMux(&tc.api, nil, nil)
+
+			req := httptest.NewRequest(http.MethodPost, "/api/v2/monotonic-counter", strings.NewReader(tc.req))
+			req.TLS = &tls.ConnectionState{}
+
+			resp := httptest.NewRecorder()
+			mux.ServeHTTP(resp, req)
+
+			assert.Equal(tc.wantStatus, resp.Code)
+			assert.Equal(tc.wantOldValue, gjson.Get(resp.Body.String(), "data.value").Uint())
+			assert.Equal(tc.wantID, tc.api.setMonotonicCounterID)
+			assert.Equal(tc.wantNewValue, tc.api.setMonotonicCounterValue)
+		})
+	}
 }
 
 func TestUpdate(t *testing.T) {
@@ -234,4 +296,34 @@ func TestConcurrent(t *testing.T) {
 	go postManifest()
 	go postManifest()
 	wg.Wait()
+}
+
+type stubAPI struct {
+	handler.ClientAPI
+
+	featureEnabledResult   bool
+	verifyMarbleErr        error
+	setMonotonicCounterErr error
+
+	featureEnabledFeature    string
+	setMonotonicCounterID    string
+	setMonotonicCounterValue uint64
+}
+
+func (a *stubAPI) FeatureEnabled(_ context.Context, feature string) bool {
+	a.featureEnabledFeature = feature
+	return a.featureEnabledResult
+}
+
+func (a *stubAPI) VerifyMarble(_ context.Context, _ []*x509.Certificate) (string, uuid.UUID, error) {
+	return "type", uuid.UUID{2, 3, 4}, a.verifyMarbleErr
+}
+
+func (a *stubAPI) SetMonotonicCounter(_ context.Context, marbleType string, marbleUUID uuid.UUID, name string, value uint64) (uint64, error) {
+	if a.setMonotonicCounterErr != nil {
+		return 0, a.setMonotonicCounterErr
+	}
+	a.setMonotonicCounterID = fmt.Sprintf("%v:%v:%v", marbleType, marbleUUID, name)
+	a.setMonotonicCounterValue = value
+	return 2, nil
 }

@@ -43,6 +43,17 @@ type ManifestSetResponse struct {
 	RecoverySecrets map[string][]byte
 }
 
+// MonotonicCounterRequest is the request structure for setting a monotonic counter.
+type MonotonicCounterRequest struct {
+	Name  string `json:"name"`
+	Value uint64 `json:"value"`
+}
+
+// MonotonicCounterResponse contains the response to setting a monotonic counter.
+type MonotonicCounterResponse struct {
+	Value uint64 `json:"value"`
+}
+
 // QuoteSignRequest contains an SGX Quote to be verified and signed by the Coordinator.
 type QuoteSignRequest struct {
 	// SGXQuote is the raw SGX quote data.

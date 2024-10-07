@@ -15,6 +15,7 @@ const (
 	Manifest          = "manifest"
 	ManifestSignature = "manifestSignature"
 	Marble            = "marble"
+	MonotonicCounter  = "monotonicCounter"
 	Package           = "package"
 	PrivateKey        = "privateKey"
 	Secret            = "secret"

@@ -26,6 +26,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/constants"
 	"github.com/edgelesssys/marblerun/coordinator/crypto"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
+	"github.com/edgelesssys/marblerun/coordinator/oid"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
 	"github.com/edgelesssys/marblerun/coordinator/seal"
@@ -506,6 +507,43 @@ func (a *ClientAPI) SetManifest(ctx context.Context, rawManifest []byte) (recove
 	return recoverySecretMap, nil
 }
 
+// SetMonotonicCounter sets the new value (if greater) of the counter identified by marbleType, marbleUUID, and name.
+func (a *ClientAPI) SetMonotonicCounter(ctx context.Context, marbleType string, marbleUUID uuid.UUID, name string, value uint64) (prevValue uint64, err error) {
+	friendlyID := zap.String("id", fmt.Sprintf("%s:%s:%s", marbleType, marbleUUID, name))
+
+	a.log.Info("SetMonotonicCounter called", friendlyID, zap.Uint64("value", value))
+	defer a.core.Unlock()
+	if err := a.core.RequireState(ctx, state.AcceptingMarbles); err != nil {
+		a.log.Error("SetMonotonicCounter: Coordinator not in correct state", zap.Error(err))
+		return 0, err
+	}
+	defer func() {
+		if err != nil {
+			a.log.Error("SetMonotonicCounter failed", zap.Error(err), friendlyID)
+		}
+	}()
+
+	counterID := encodeMonotonicCounterID(marbleType, marbleUUID, name)
+
+	txdata, rollback, commit, err := wrapper.WrapTransaction(ctx, a.txHandle)
+	if err != nil {
+		return 0, err
+	}
+	defer rollback()
+
+	prevValue, err = txdata.SetMonotonicCounter(counterID, value)
+	if err != nil {
+		return 0, err
+	}
+
+	if err := commit(ctx); err != nil {
+		return 0, fmt.Errorf("committing store transaction: %w", err)
+	}
+
+	a.log.Info("SetMonotonicCounter successful", friendlyID)
+	return prevValue, nil
+}
+
 // UpdateManifest allows to update certain package parameters of the original manifest, supplied via a JSON manifest.
 func (a *ClientAPI) UpdateManifest(ctx context.Context, rawUpdateManifest []byte, updater *user.User) (err error) {
 	a.log.Info("UpdateManifest called")
@@ -648,6 +686,55 @@ func (a *ClientAPI) UpdateManifest(ctx context.Context, rawUpdateManifest []byte
 
 	a.log.Info("UpdateManifest successful")
 	return nil
+}
+
+// VerifyMarble checks if a given client certificate is a Marble certificate signed by this Coordinator.
+func (a *ClientAPI) VerifyMarble(ctx context.Context, clientCerts []*x509.Certificate) (string, uuid.UUID, error) {
+	defer a.core.Unlock()
+	if err := a.core.RequireState(ctx, state.AcceptingMarbles); err != nil {
+		a.log.Error("VerifyMarble: Coordinator not in correct state", zap.Error(err))
+		return "", uuid.UUID{}, err
+	}
+
+	txdata, rollback, _, err := wrapper.WrapTransaction(ctx, a.txHandle)
+	if err != nil {
+		return "", uuid.UUID{}, err
+	}
+	defer rollback()
+
+	marbleRootCert, err := txdata.GetCertificate(constants.SKMarbleRootCert)
+	if err != nil {
+		return "", uuid.UUID{}, fmt.Errorf("getting Marble root certificate: %w", err)
+	}
+	verifyOpts := x509.VerifyOptions{Roots: x509.NewCertPool()}
+	verifyOpts.Roots.AddCert(marbleRootCert)
+
+	// Check if a supplied client cert was signed by the Marble root cert and get the type and UUID
+	var errs error
+	for _, suppliedCert := range clientCerts {
+		if _, err := suppliedCert.Verify(verifyOpts); err != nil {
+			errs = errors.Join(errs, err)
+			continue
+		}
+
+		marbleUUID, err := uuid.Parse(suppliedCert.Subject.CommonName)
+		if err != nil {
+			errs = errors.Join(errs, err)
+			continue
+		}
+
+		for _, ex := range suppliedCert.Extensions {
+			if ex.Id.Equal(oid.MarbleType) {
+				return string(ex.Value), marbleUUID, nil
+			}
+		}
+		errs = errors.Join(errs, errors.New("MarbleType extension not found in certificate"))
+	}
+
+	if errs == nil {
+		errs = errors.New("client certificate did not match any Marble")
+	}
+	return "", uuid.UUID{}, errs
 }
 
 // VerifyUser checks if a given client certificate matches the admin certificates specified in the manifest.
@@ -821,4 +908,10 @@ func (a *ClientAPI) FeatureEnabled(ctx context.Context, feature string) bool {
 	return slices.ContainsFunc(mnf.Config.FeatureGates, func(s string) bool {
 		return strings.EqualFold(s, feature)
 	})
+}
+
+func encodeMonotonicCounterID(marbleType string, marbleUUID uuid.UUID, name string) string {
+	// use unambiguous concatenation as counter ID
+	b64 := base64.StdEncoding.EncodeToString
+	return fmt.Sprintf("%s:%s:%s", b64([]byte(marbleType)), b64(marbleUUID[:]), b64([]byte(name)))
 }

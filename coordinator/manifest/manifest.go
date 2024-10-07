@@ -41,6 +41,9 @@ const (
 	// FeatureSignQuoteEndpoint enables the /sign-quote endpoint.
 	// This endpoint allows to verify an SGX quote and sign the result with the Coordinator's private key.
 	FeatureSignQuoteEndpoint = "SignQuoteEndpoint"
+
+	// FeatureMonotonicCounter enables the monotonic counter feature and the /monotonic-counter endpoint.
+	FeatureMonotonicCounter = "MonotonicCounter"
 )
 
 // Manifest defines the rules of a MarbleRun deployment.
@@ -511,7 +514,9 @@ func (m Manifest) Check(zaplogger *zap.Logger) error {
 	}
 
 	for _, feature := range m.Config.FeatureGates {
-		if feature != FeatureSignQuoteEndpoint {
+		switch feature {
+		case FeatureSignQuoteEndpoint, FeatureMonotonicCounter:
+		default:
 			return fmt.Errorf("unknown feature gate: %s", feature)
 		}
 	}
