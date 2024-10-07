@@ -17,6 +17,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/state"
 	"github.com/edgelesssys/marblerun/coordinator/user"
+	"github.com/google/uuid"
 )
 
 // ClientAPI is the interface implementing the backend logic of the REST API.
@@ -28,7 +29,9 @@ type ClientAPI interface {
 	GetStatus(context.Context) (statusCode state.State, status string, err error)
 	GetUpdateLog(context.Context) (updateLog []string, err error)
 	Recover(ctx context.Context, encryptionKey []byte) (int, error)
+	SetMonotonicCounter(ctx context.Context, marbleType string, marbleUUID uuid.UUID, name string, value uint64) (uint64, error)
 	SignQuote(ctx context.Context, quote []byte) (signature []byte, tcbStatus string, err error)
+	VerifyMarble(ctx context.Context, clientCerts []*x509.Certificate) (string, uuid.UUID, error)
 	VerifyUser(ctx context.Context, clientCerts []*x509.Certificate) (*user.User, error)
 	UpdateManifest(ctx context.Context, rawUpdateManifest []byte, updater *user.User) error
 	WriteSecrets(ctx context.Context, secrets map[string]manifest.UserSecret, updater *user.User) error
@@ -54,6 +57,19 @@ func GetPost(getHandler, postHandler func(http.ResponseWriter, *http.Request)) f
 			MethodNotAllowedHandler(w, r)
 		}
 	}
+}
+
+// VerifyMarble checks if the Marble is authorized to access the API.
+func VerifyMarble(verifyFunc func(context.Context, []*x509.Certificate) (string, uuid.UUID, error), r *http.Request) (string, uuid.UUID, error) {
+	// Abort if no client certificate was provided
+	if r.TLS == nil {
+		return "", uuid.UUID{}, errors.New("no client certificate provided")
+	}
+	marbleType, marbleUUID, err := verifyFunc(r.Context(), r.TLS.PeerCertificates)
+	if err != nil {
+		return "", uuid.UUID{}, fmt.Errorf("unauthorized marble: %w", err)
+	}
+	return marbleType, marbleUUID, nil
 }
 
 // VerifyUser checks if the user is authorized to access the API.

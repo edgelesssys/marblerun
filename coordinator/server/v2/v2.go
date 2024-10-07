@@ -67,6 +67,36 @@ func (s *ClientAPIServer) ManifestPost(w http.ResponseWriter, r *http.Request) {
 	handler.WriteJSON(w, ManifestSetResponse{RecoverySecrets: recoverySecretMap})
 }
 
+// MonotonicCounterPost increments a monotonic counter of the Coordinator.
+// The requesting Marble must be authorized to increment the counter.
+func (s *ClientAPIServer) MonotonicCounterPost(w http.ResponseWriter, r *http.Request) {
+	// Check if the current manifest allows this feature
+	if !s.api.FeatureEnabled(r.Context(), manifest.FeatureMonotonicCounter) {
+		handler.WriteJSONError(w, "MonotonicCounter feature is not enabled in the manifest", http.StatusForbidden)
+		return
+	}
+
+	marbleType, marbleUUID, err := handler.VerifyMarble(s.api.VerifyMarble, r)
+	if err != nil {
+		handler.WriteJSONFailure(w, nil, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	var req MonotonicCounterRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		handler.WriteJSONFailure(w, nil, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	value, err := s.api.SetMonotonicCounter(r.Context(), marbleType, marbleUUID, req.Name, req.Value)
+	if err != nil {
+		handler.WriteJSONError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	handler.WriteJSON(w, MonotonicCounterResponse{Value: value})
+}
+
 // QuoteGet retrieves a remote attestation quote and certificates.
 // By default, the Coordinator will return a pre-generated quote over the root certificate of the TLS connection.
 // If a nonce is supplied as a query parameter, a new quote will be generated over sha256(root_cert || nonce).

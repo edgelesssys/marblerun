@@ -537,3 +537,4 @@ See the section on [seal key types](../architecture/security.md#seal-key) for mo
 `FeatureGates` allows you to opt-in to additional features that may be useful for certain use cases. The following features are available:
 
 * `SignQuoteEndpoint`: enables the [sign-quote endpoint](../reference/coordinator.md#verify-and-sign-an-sgx-quote)
+* `MonotonicCounter`: enables the [monotonic counter feature](https://github.com/edgelesssys/marblerun/tree/master/samples/estore)

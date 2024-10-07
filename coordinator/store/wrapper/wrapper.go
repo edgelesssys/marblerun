@@ -10,6 +10,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/x509"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"strconv"
@@ -283,6 +284,26 @@ func (s Wrapper) GetUser(userName string) (*user.User, error) {
 // PutUser saves user information to store.
 func (s Wrapper) PutUser(newUser *user.User) error {
 	return s.put(request.User, newUser.Name(), newUser)
+}
+
+// SetMonotonicCounter increases the value of a monotonic counter in the store and returns the previous value.
+func (s Wrapper) SetMonotonicCounter(name string, value uint64) (uint64, error) {
+	request := request.MonotonicCounter + ":" + name
+
+	var currentValue uint64
+	if raw, err := s.store.Get(request); err == nil {
+		currentValue = binary.LittleEndian.Uint64(raw)
+	} else if !errors.Is(err, store.ErrValueUnset) {
+		return 0, err
+	}
+
+	if value > currentValue {
+		if err := s.store.Put(request, binary.LittleEndian.AppendUint64(nil, value)); err != nil {
+			return 0, err
+		}
+	}
+
+	return currentValue, nil
 }
 
 // put is the default method for marshaling and saving data to store.
