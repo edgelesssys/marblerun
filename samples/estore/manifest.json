@@ -1,0 +1,29 @@
+{
+    "Packages": {
+        "estore-package": {
+            "Debug": true,
+            "UniqueID": "<replace with mrenclave obtained by `ego uniqueid estore-sample`>"
+        }
+    },
+    "Marbles": {
+        "estore-marble": {
+            "Package": "estore-package",
+            "Parameters": {
+                "Env": {
+                    "ENCRYPTION_KEY": "{{ base64 .Secrets.encryptionKey }}"
+                }
+            }
+        }
+    },
+    "Secrets": {
+        "encryptionKey": {
+            "Type": "symmetric-key",
+            "Size": 128
+        }
+    },
+    "Config": {
+        "FeatureGates": [
+            "MonotonicCounter"
+        ]
+    }
+}

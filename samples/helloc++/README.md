@@ -2,7 +2,7 @@
 
 This example shows how to build a confidential C++ application and run it in MarbleRun. This can serve you as a blueprint for making existing applications MarbleRun-ready or creating new [Marbles](https://docs.edgeless.systems/marblerun/architecture/marbles). If you haven't already, [setup MarbleRun](../../BUILD.md#build) to get ready.
 
-**Note:** You can run this example on any hardware by simulating the enclave through setting `OE_SIMULATION=1` as environment variable. This might help you to get started with with the development of confidential apps. However, please notice that this bypasses any security. Detailed information on how to develop secure Marbles can be found in [MarbleRun's documentation](https://docs.edgeless.systems/marblerun/workflows/add-service).
+**Note:** You can run this example on any hardware by simulating the enclave through setting `OE_SIMULATION=1` as environment variable. This might help you to get started with the development of confidential apps. However, please notice that this bypasses any security. Detailed information on how to develop secure Marbles can be found in [MarbleRun's documentation](https://docs.edgeless.systems/marblerun/workflows/add-service).
 
 The directory `app` contains the application code:
 

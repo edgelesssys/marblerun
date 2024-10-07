@@ -2,7 +2,7 @@
 
 This example shows how to build a confidential Go application with [EGo](https://ego.dev) and run it in MarbleRun. This can serve you as a blueprint for making existing applications MarbleRun-ready or creating new [Marbles](https://docs.edgeless.systems/marblerun/architecture/marbles). If you haven't already, [setup MarbleRun](../../BUILD.md#build) and EGo to get ready.
 
-**Note:** You can run this example on any hardware by simulating the enclave through setting `OE_SIMULATION=1` as environment variable. This might help you to get started with with the development of confidential apps. However, please notice that this bypasses any security. Detailed information on how to develop secure Marbles can be found in [MarbleRun's documentation](https://docs.edgeless.systems/marblerun/workflows/add-service).
+**Note:** You can run this example on any hardware by simulating the enclave through setting `OE_SIMULATION=1` as environment variable. This might help you to get started with the development of confidential apps. However, please notice that this bypasses any security. Detailed information on how to develop secure Marbles can be found in [MarbleRun's documentation](https://docs.edgeless.systems/marblerun/workflows/add-service).
 
 You can build and sign the example (or your app) like this:
 
@@ -19,7 +19,7 @@ ego uniqueid hello
 
 and set it as `UniqueID` in `manifest.json`.
 
-Next, use the `erthost` command to start the Coordinator in a local simulated enclave:
+Next, use the `erthost` command to start the Coordinator in a local enclave:
 
 ```sh
 erthost ../../build/coordinator-enclave.signed
