@@ -278,6 +278,7 @@ func (i IntegrationTest) GetMarbleCmd(ctx context.Context, cfg MarbleConfig) *ex
 		MakeEnv(mconfig.DNSNames, cfg.dnsNames),
 		MakeEnv(mconfig.UUIDFile, uuidFile),
 		MakeEnv("EDG_TEST_ADDR", i.MarbleTestAddr),
+		MakeEnv(constants.ClientAddr, i.ClientServerAddr),
 		i.SimulationFlag,
 	}
 	return cmd

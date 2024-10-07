@@ -13,17 +13,27 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"time"
 
 	"github.com/edgelesssys/ego/marble"
+	"github.com/edgelesssys/marblerun/api"
 	"github.com/edgelesssys/marblerun/util"
 )
 
 func main() {
 	addr := util.MustGetenv("EDG_TEST_ADDR")
 
-	if len(os.Args) > 1 && os.Args[1] == "serve" {
-		runServer(addr)
-		return
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "serve":
+			runServer(addr)
+			return
+		case "monotonic-counter":
+			if err := testMonotonicCounter(); err != nil {
+				log.Fatal(err)
+			}
+			return
+		}
 	}
 
 	if err := runClient(addr); err != nil {
@@ -79,5 +89,31 @@ func runClient(addr string) error {
 		return fmt.Errorf("http.Get returned: %s", resp.Status)
 	}
 	log.Printf("Successful connection to Server: %v", resp.Status)
+	return nil
+}
+
+func testMonotonicCounter() error {
+	const counterName = "foo"
+	endpoint := os.Getenv("EDG_COORDINATOR_CLIENT_ADDR")
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	value, err := api.SetMonotonicCounter(ctx, endpoint, counterName, 2)
+	if err != nil {
+		return fmt.Errorf("first call to SetMonotonicCounter: %w", err)
+	}
+	if value != 0 {
+		return fmt.Errorf("expected initial value 0, got %v", value)
+	}
+
+	value, err = api.SetMonotonicCounter(ctx, endpoint, counterName, 3)
+	if err != nil {
+		return fmt.Errorf("second call to SetMonotonicCounter: %w", err)
+	}
+	if value != 2 {
+		return fmt.Errorf("expected previous value 2, got %v", value)
+	}
+
 	return nil
 }

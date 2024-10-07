@@ -17,16 +17,19 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 
 	"github.com/edgelesssys/ego/attestation/tcbstatus"
 	"github.com/edgelesssys/marblerun/api/attestation"
 	"github.com/edgelesssys/marblerun/api/rest"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	apiv2 "github.com/edgelesssys/marblerun/coordinator/server/v2"
+	"github.com/edgelesssys/marblerun/internal/constants"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/spf13/afero"
 )
@@ -385,6 +388,41 @@ func SecretSet(ctx context.Context, endpoint string, trustedRoot *x509.Certifica
 	return nil
 }
 
+// SetMonotonicCounter increases a monotonic counter managed by the Coordinator.
+//
+// This function can only be called by a Marble. The counter is bound to the Marble's type and UUID.
+//
+// If the passed value is greater than the counter's value, it is set as the new value and the old value is returned.
+// Otherwise, the value is not changed and the current value is returned.
+func SetMonotonicCounter(ctx context.Context, endpoint string, name string, value uint64) (uint64, error) {
+	marbleKeyPair, trustedRoot, err := getMarbleCredentialsFromEnv()
+	if err != nil {
+		return 0, fmt.Errorf("getting credentials from secure environment: %w", err)
+	}
+
+	client, err := rest.NewClient(endpoint, trustedRoot, &marbleKeyPair)
+	if err != nil {
+		return 0, fmt.Errorf("setting up client: %w", err)
+	}
+
+	reqBody, err := json.Marshal(apiv2.MonotonicCounterRequest{Name: name, Value: value})
+	if err != nil {
+		return 0, fmt.Errorf("marshalling request: %w", err)
+	}
+
+	resp, err := client.Post(ctx, rest.V2API+rest.MonotonicCounterEndpoint, rest.ContentJSON, bytes.NewReader(reqBody))
+	if err != nil {
+		return 0, fmt.Errorf("sending request: %w", err)
+	}
+
+	var response apiv2.MonotonicCounterResponse
+	if err := json.Unmarshal(resp, &response); err != nil {
+		return 0, fmt.Errorf("unmarshalling Coordinator response: %w", err)
+	}
+
+	return response.Value, nil
+}
+
 // SignQuote sends an SGX quote to a Coordinator for signing.
 // If the quote is valid, the Coordinator will sign the quote using its root ECDSA key, and return the signature with the TCB status of the quote.
 // The Coordinator does not verify if the quote matches any packages in the configured manifest.
@@ -499,4 +537,43 @@ func verifyOptionsFromConfig(fs afero.Afero, configPath string) (VerifyOptions, 
 	}
 	err = json.Unmarshal(optsRaw, &opts)
 	return opts, err
+}
+
+func getByteEnv(name string) ([]byte, error) {
+	value := os.Getenv(name)
+	if len(value) == 0 {
+		return nil, fmt.Errorf("environment variable not set: %s", name)
+	}
+	return []byte(value), nil
+}
+
+func getMarbleCredentialsFromEnv() (tls.Certificate, *x509.Certificate, error) {
+	certChain, err := getByteEnv(constants.MarbleEnvironmentCertificateChain)
+	if err != nil {
+		return tls.Certificate{}, nil, err
+	}
+	rootCA, err := getByteEnv(constants.MarbleEnvironmentCoordinatorRootCA)
+	if err != nil {
+		return tls.Certificate{}, nil, err
+	}
+	leafPrivk, err := getByteEnv(constants.MarbleEnvironmentPrivateKey)
+	if err != nil {
+		return tls.Certificate{}, nil, err
+	}
+
+	block, _ := pem.Decode(rootCA)
+	if block == nil {
+		return tls.Certificate{}, nil, errors.New("decoding Coordinator root certificate failed")
+	}
+	coordinatorRoot, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return tls.Certificate{}, nil, fmt.Errorf("parsing Coordinator root certificate: %w", err)
+	}
+
+	tlsCert, err := tls.X509KeyPair(certChain, leafPrivk)
+	if err != nil {
+		return tls.Certificate{}, nil, fmt.Errorf("creating TLS key pair: %w", err)
+	}
+
+	return tlsCert, coordinatorRoot, nil
 }

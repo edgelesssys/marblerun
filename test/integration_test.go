@@ -457,6 +457,24 @@ func TestSignQuote(t *testing.T) {
 	}
 }
 
+func TestMonotonicCounter(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	f := newFramework(t)
+
+	cfg := framework.NewCoordinatorConfig()
+	defer cfg.Cleanup()
+	f.StartCoordinator(f.Ctx, cfg)
+
+	f.TestManifest.Config.FeatureGates = []string{"MonotonicCounter"}
+	_, err := f.SetManifest(f.TestManifest)
+	require.NoError(err)
+
+	marbleCfg := framework.NewMarbleConfig(meshServerAddr, "testMarbleMonotonicCounter", "localhost")
+	defer marbleCfg.Cleanup()
+	assert.True(f.StartMarbleClient(f.Ctx, marbleCfg))
+}
+
 func newFramework(t *testing.T) *framework.IntegrationTest {
 	f := framework.New(t, *buildDir, simFlag, *noenclave, marbleTestAddr, meshServerAddr, clientServerAddr, IntegrationManifestJSON, UpdateManifest)
 	f.UpdateManifest()
