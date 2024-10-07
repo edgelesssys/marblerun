@@ -13,6 +13,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -24,6 +25,7 @@ import (
 	"github.com/edgelesssys/ego/marble"
 	"github.com/edgelesssys/marblerun/coordinator/constants"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
+	"github.com/edgelesssys/marblerun/coordinator/oid"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
 	"github.com/edgelesssys/marblerun/coordinator/state"
@@ -251,7 +253,7 @@ func (c *Core) verifyManifestRequirement(txdata storeGetter, tlsCert *x509.Certi
 }
 
 // generateCertFromCSR signs the CSR from marble attempting to register.
-func (c *Core) generateCertFromCSR(txdata storeGetter, csrReq []byte, pubk ecdsa.PublicKey, marbleUUID string) ([]byte, error) {
+func (c *Core) generateCertFromCSR(txdata storeGetter, csrReq []byte, pubk ecdsa.PublicKey, marbleType string, marbleUUID string) ([]byte, error) {
 	// parse and verify CSR
 	csr, err := x509.ParseCertificateRequest(csrReq)
 	if err != nil {
@@ -288,6 +290,7 @@ func (c *Core) generateCertFromCSR(txdata storeGetter, csrReq []byte, pubk ecdsa
 		NotAfter:     notAfter,
 
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyAgreement,
+		ExtraExtensions:       []pkix.Extension{{Id: oid.MarbleType, Value: []byte(marbleType)}},
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 		BasicConstraintsValid: true,
 		IsCA:                  false,
@@ -399,7 +402,7 @@ func (c *Core) generateMarbleAuthSecrets(txdata storeGetter, req *rpc.Activation
 	}
 
 	// Generate Marble certificate
-	certRaw, err := c.generateCertFromCSR(txdata, req.GetCSR(), privk.PublicKey, marbleUUID.String())
+	certRaw, err := c.generateCertFromCSR(txdata, req.GetCSR(), privk.PublicKey, req.GetMarbleType(), marbleUUID.String())
 	if err != nil {
 		return reservedSecrets{}, err
 	}
