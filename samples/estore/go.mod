@@ -3,8 +3,8 @@ module estore-sample
 go 1.22.0
 
 require (
-	github.com/edgelesssys/estore v1.1.1-0.20241001114403-e9f59787f226
-	github.com/edgelesssys/marblerun v1.5.3-0.20241007134742-69fe31b6e209
+	github.com/edgelesssys/estore v1.1.1-0.20241009110350-aabd068d655e
+	github.com/edgelesssys/marblerun v1.5.3-0.20241009085218-f829c778c6fc
 )
 
 require (
