@@ -17,10 +17,10 @@ github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/edgelesssys/ego v1.5.5-0.20240925073404-7bac2575a025 h1:DFxfU3oaqOl7tkLJ5qvS+eolJntuYABwOMx6DNO7GUQ=
 github.com/edgelesssys/ego v1.5.5-0.20240925073404-7bac2575a025/go.mod h1:t10m29KSwG2hKwWFIq7/vuzfoKhPIdevOXx8nm636iU=
-github.com/edgelesssys/estore v1.1.1-0.20241001114403-e9f59787f226 h1:oTBXNz2miFHwJaN3CMo8R7rQagBd7d2n4VxZ+N2RnGg=
-github.com/edgelesssys/estore v1.1.1-0.20241001114403-e9f59787f226/go.mod h1:6VwPBea8aA5NsHdNfe+6U7vqDgFHANVhsfk4WZq5kWI=
-github.com/edgelesssys/marblerun v1.5.3-0.20241007134742-69fe31b6e209 h1:GmAuUrLaVc0RKYKl6QKlQa3UnN7LBAeMtMfTAEq2V4k=
-github.com/edgelesssys/marblerun v1.5.3-0.20241007134742-69fe31b6e209/go.mod h1:br2K39rkfS3Trz4JBr6pYPjEGOLnhuQU9k19E5QKvzo=
+github.com/edgelesssys/estore v1.1.1-0.20241009110350-aabd068d655e h1:lj6EEyDsMjxvydV4RSIt8zaBXhtgCNIpA1q8mW/FhvY=
+github.com/edgelesssys/estore v1.1.1-0.20241009110350-aabd068d655e/go.mod h1:6VwPBea8aA5NsHdNfe+6U7vqDgFHANVhsfk4WZq5kWI=
+github.com/edgelesssys/marblerun v1.5.3-0.20241009085218-f829c778c6fc h1:CAVHxBer7jMzBSZ5YkOS3X/oRI91Y5UyWsosJypaPdE=
+github.com/edgelesssys/marblerun v1.5.3-0.20241009085218-f829c778c6fc/go.mod h1:br2K39rkfS3Trz4JBr6pYPjEGOLnhuQU9k19E5QKvzo=
 github.com/getsentry/sentry-go v0.29.0 h1:YtWluuCFg9OfcqnaujpY918N/AhCCwarIDWOYSBAjCA=
 github.com/getsentry/sentry-go v0.29.0/go.mod h1:jhPesDAL0Q0W2+2YEuVOvdWmVtdsr1+jtBrlDEVWwLY=
 github.com/go-errors/errors v1.5.1 h1:ZwEMSLRCapFLflTpT7NKaAc7ukJ8ZPEjzlxt8rPN8bk=
