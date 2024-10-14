@@ -14,10 +14,10 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
-        uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
+        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
 
       - name: Vale
-        uses: errata-ai/vale-action@91ac403e8d26f5aa1b3feaa86ca63065936a85b6 # reviewdog
+        uses: errata-ai/vale-action@3a4769d4af5f9498e586fb41abc72bbca594b400 # reviewdog
         with:
           files: docs/docs
           fail_on_error: true
