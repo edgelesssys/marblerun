@@ -15,7 +15,6 @@ import (
 	"github.com/cert-manager/cert-manager/pkg/util/cmapichecker"
 	"github.com/edgelesssys/marblerun/cli/internal/helm"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -64,7 +63,7 @@ func NewCertManagerChecker() (cmapichecker.Interface, error) {
 		return nil, err
 	}
 
-	return cmapichecker.New(kubeConfig, runtime.NewScheme(), "default")
+	return cmapichecker.New(kubeConfig, "default")
 }
 
 func getRestConfig() (*rest.Config, error) {
