@@ -4,7 +4,7 @@ go 1.22.0
 
 require (
 	github.com/edgelesssys/estore v1.1.1-0.20241009110350-aabd068d655e
-	github.com/edgelesssys/marblerun v1.5.3-0.20241009085218-f829c778c6fc
+	github.com/edgelesssys/marblerun v1.5.3-0.20241014063301-aea691a5f83e
 )
 
 require (

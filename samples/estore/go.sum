@@ -19,8 +19,8 @@ github.com/edgelesssys/ego v1.5.5-0.20240925073404-7bac2575a025 h1:DFxfU3oaqOl7t
 github.com/edgelesssys/ego v1.5.5-0.20240925073404-7bac2575a025/go.mod h1:t10m29KSwG2hKwWFIq7/vuzfoKhPIdevOXx8nm636iU=
 github.com/edgelesssys/estore v1.1.1-0.20241009110350-aabd068d655e h1:lj6EEyDsMjxvydV4RSIt8zaBXhtgCNIpA1q8mW/FhvY=
 github.com/edgelesssys/estore v1.1.1-0.20241009110350-aabd068d655e/go.mod h1:6VwPBea8aA5NsHdNfe+6U7vqDgFHANVhsfk4WZq5kWI=
-github.com/edgelesssys/marblerun v1.5.3-0.20241009085218-f829c778c6fc h1:CAVHxBer7jMzBSZ5YkOS3X/oRI91Y5UyWsosJypaPdE=
-github.com/edgelesssys/marblerun v1.5.3-0.20241009085218-f829c778c6fc/go.mod h1:br2K39rkfS3Trz4JBr6pYPjEGOLnhuQU9k19E5QKvzo=
+github.com/edgelesssys/marblerun v1.5.3-0.20241014063301-aea691a5f83e h1:ryYXENybWY/JNOh9BaEIW/NtgMFtWWpvG2dom4qi3T0=
+github.com/edgelesssys/marblerun v1.5.3-0.20241014063301-aea691a5f83e/go.mod h1:br2K39rkfS3Trz4JBr6pYPjEGOLnhuQU9k19E5QKvzo=
 github.com/getsentry/sentry-go v0.29.0 h1:YtWluuCFg9OfcqnaujpY918N/AhCCwarIDWOYSBAjCA=
 github.com/getsentry/sentry-go v0.29.0/go.mod h1:jhPesDAL0Q0W2+2YEuVOvdWmVtdsr1+jtBrlDEVWwLY=
 github.com/go-errors/errors v1.5.1 h1:ZwEMSLRCapFLflTpT7NKaAc7ukJ8ZPEjzlxt8rPN8bk=
