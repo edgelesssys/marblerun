@@ -12,7 +12,7 @@ clean:
 hello: hello.c
 	$(CC) -Os -o$@ $<
 
-hello.manifest: hello.manifest.template
+hello.manifest: hello.manifest.template premain-libos
 	gramine-manifest $< > $@
 
 premain-libos:
