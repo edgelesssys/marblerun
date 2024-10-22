@@ -45,7 +45,11 @@ $(NGINX_SRC).tar.gz:
 	wget -O $@ $(NGINX_URL)/$(NGINX_SRC).tar.gz
 	echo "$(NGINX_SHA256) $@" | sha256sum -c --status
 
-nginx.manifest: nginx.manifest.template premain-libos
+nginx.manifest: nginx.manifest.template $(INSTALL_DIR)/sbin/nginx \
+                $(INSTALL_DIR)/conf/nginx-gramine.conf \
+                $(TEST_DATA) \
+                $(INSTALL_DIR)/conf/server.crt \
+                premain-libos
 	gramine-manifest \
 		-Dlog_level=$(GRAMINE_LOG_LEVEL) \
 		-Darch_libdir=$(ARCH_LIBDIR) \
@@ -63,10 +67,7 @@ nginx.manifest.sgx nginx.sig: sgx_sign
 	@:
 
 .INTERMEDIATE: sgx_sign
-sgx_sign: nginx.manifest $(INSTALL_DIR)/sbin/nginx \
-		$(INSTALL_DIR)/conf/nginx-gramine.conf \
-		$(TEST_DATA) \
-		$(INSTALL_DIR)/conf/server.crt
+sgx_sign: nginx.manifest
 	gramine-sgx-sign \
 		--manifest $< \
 		--key $(SGX_SIGNER_KEY) \

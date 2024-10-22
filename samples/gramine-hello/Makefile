@@ -3,7 +3,7 @@ EDG_MARBLE_TYPE ?= hello
 all: sign
 .PHONY: clean all
 
-sign: hello.manifest hello premain-libos
+sign: hello.manifest
 	gramine-sgx-sign --output hello.manifest.sgx --manifest hello.manifest --key enclave-key.pem
 
 clean:
@@ -12,7 +12,7 @@ clean:
 hello: hello.c
 	$(CC) -Os -o$@ $<
 
-hello.manifest: hello.manifest.template premain-libos
+hello.manifest: hello.manifest.template hello premain-libos
 	gramine-manifest $< > $@
 
 premain-libos:
