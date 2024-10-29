@@ -3,7 +3,6 @@
 ![logo](assets/marblerun-logo.svg)
 
 [![GitHub Actions Status][github-actions-badge]][github-actions]
-[![GitHub license][license-badge]](LICENSE)
 [![Go Report Card][go-report-card-badge]][go-report-card]
 [![PkgGoDev][go-pkg-badge]][go-pkg]
 [![Discord Chat][discord-badge]][discord]
@@ -38,7 +37,6 @@ MarbleRun supports services built with one of the following frameworks:
 * [Gramine][gramine]
 * [Occlum][occlum]
 * [Edgeless RT][edgelessrt]
-
 
 ## Quickstart and documentation
 
@@ -95,7 +93,6 @@ The popular [Linkerd][linkerd] service mesh uses the simple and scalable *emojiv
 [go-report-card]: https://goreportcard.com/report/github.com/edgelesssys/marblerun
 [go-report-card-badge]: https://goreportcard.com/badge/github.com/edgelesssys/marblerun
 [gramine]: https://github.com/gramineproject/gramine
-[license-badge]: https://img.shields.io/github/license/edgelesssys/marblerun
 [linkerd]: https://linkerd.io
 [marblerunsh]: https://marblerun.sh
 [occlum]: https://github.com/occlum/occlum
