@@ -1,4 +1,4 @@
-FROM ghcr.io/edgelesssys/marblerun/build-base:v1.5.2 AS build
+FROM ghcr.io/edgelesssys/marblerun/build-base:v1.6.0 AS build
 
 # don't run `apt-get update` because required packages are cached in build-base for reproducibility
 RUN apt-get install -y --no-install-recommends \
@@ -11,8 +11,8 @@ RUN apt-get install -y --no-install-recommends \
   ninja-build \
   wget
 
-ARG erttag=v0.4.6
-ARG mrtag=v1.5.2
+ARG erttag=v0.4.7
+ARG mrtag=v1.6.0
 ARG goversion=1.21.11
 RUN wget -qO- https://go.dev/dl/go${goversion}.linux-amd64.tar.gz | tar -C /usr/local -xz \
   && git clone -b $erttag --depth=1 https://github.com/edgelesssys/edgelessrt \
@@ -43,9 +43,9 @@ COPY --from=build \
 COPY --from=build /mrbuild/marblerun /marblerun-ubuntu-22.04
 
 # the coordinator container image
-FROM ubuntu:jammy-20240808 AS release
-ARG PSW_VERSION=2.24.100.3-jammy1
-ARG DCAP_VERSION=1.21.100.3-jammy1
+FROM ubuntu:jammy-20240911.1 AS release
+ARG PSW_VERSION=2.25.100.3-jammy1
+ARG DCAP_VERSION=1.22.100.3-jammy1
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates libcurl4 wget \
   && wget -qO /etc/apt/keyrings/intel-sgx-keyring.asc https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key \
   && echo 'deb [signed-by=/etc/apt/keyrings/intel-sgx-keyring.asc arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu jammy main' > /etc/apt/sources.list.d/intel-sgx.list \
