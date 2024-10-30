@@ -3,8 +3,8 @@ module estore-sample
 go 1.22.0
 
 require (
-	github.com/edgelesssys/estore v1.1.1-0.20241009110350-aabd068d655e
-	github.com/edgelesssys/marblerun v1.5.3-0.20241029085243-e5797a875afc
+	github.com/edgelesssys/estore v1.2.0
+	github.com/edgelesssys/marblerun v1.6.0
 )
 
 require (
@@ -15,7 +15,7 @@ require (
 	github.com/cockroachdb/redact v1.1.5 // indirect
 	github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 // indirect
 	github.com/edgelesssys/ego v1.5.5-0.20240925073404-7bac2575a025 // indirect
-	github.com/getsentry/sentry-go v0.29.0 // indirect
+	github.com/getsentry/sentry-go v0.29.1 // indirect
 	github.com/go-jose/go-jose/v4 v4.0.4 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
