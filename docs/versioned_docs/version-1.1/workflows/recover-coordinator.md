@@ -28,7 +28,7 @@ You can upload the recovery secret through the `/recover` client API endpoint. T
 Assuming you saved the output from the manifest upload step in a file called `recovery_data` and the recovery private key in a file called `private_key.pem`, perform recovery like this:
 
 ```bash
-base64 -d recovery_data \
+openssl base64 -d -in recovery_data \
   | openssl pkeyutl -inkey private_key.pem -decrypt \
     -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256 \
     -out recovery_key_decrypted
@@ -41,6 +41,7 @@ marblerun recover recovery_key_decrypted $MARBLERUN
 ```
 
 Alternatively, you can use `curl`:
+
 ```bash
 era -c coordinator-era.json -h $MARBLERUN -output-root marblerun-temp.pem
 curl --cacert marblerun-temp.pem --data-binary @recovery_key_decrypted https://$MARBLERUN/recover
@@ -94,7 +95,7 @@ Assume the following `RecoveryKeys` were set in the manifest:
     $ marblerun status $MARBLERUN
     1: Coordinator is in recovery mode. Either upload a key to unseal the saved state, or set a new manifest. For more information on how to proceed, consult the documentation.
     $ echo "EbkX/skIPrJISf8PiXdzRIKnwQyJ+VejtGzHGfES5NIPuCeEFedqgCVDk=" > recovery_data
-    $ base64 -d recovery_data \
+    $ openssl base64 -d -in recovery_data \
       | openssl pkeyutl -inkey private_key.pem -decrypt \
         -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256 \
         -out recovery_key_decrypted
@@ -116,7 +117,7 @@ Assume the following `RecoveryKeys` were set in the manifest:
     $ marblerun status $MARBLERUN
     1: Coordinator is in recovery mode. Either upload a key to unseal the saved state, or set a new manifest. For more information on how to proceed, consult the documentation.
     $ echo "bvPzio4A4SvzeHajsb+dFDpDarErcU9wMR0V9hyHtG2lC4ZfyrYjDBE7wtis3eOPgDaMG/HCt=" > recovery_data
-    $ base64 -d recovery_data \
+    $ openssl base64 -d -in recovery_data \
       | openssl pkeyutl -inkey private_key.pem -decrypt \
         -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256 \
         -out recovery_key_decrypted
