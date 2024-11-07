@@ -59,7 +59,7 @@ The description below uses a VM running Ubuntu 18.04.
 
     :::note
 
-    Currently, the Alibaba Cloud SGX remote attestation service is only supported within [mainland China regions, Singapore, and Indonesia](https://www.alibabacloud.com/help/en/elastic-compute-service/latest/build-an-sgx-encrypted-computing-environment)
+    Currently, the Alibaba Cloud SGX remote attestation service is only supported within [mainland China regions, Singapore, and Indonesia](https://www.alibabacloud.com/help/en/ecs/user-guide/build-an-sgx-encrypted-computing-environment)
 
     :::
 
