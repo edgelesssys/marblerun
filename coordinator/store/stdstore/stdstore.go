@@ -209,8 +209,14 @@ func (s *StdStore) commit(data map[string][]byte) error {
 			return err
 		}
 
-		if err := s.fs.WriteFile(filepath.Join(s.sealDir, SealedDataFname), sealedData, 0o600); err != nil {
-			return err
+		// atomically replace the sealed data file
+		sealedDataPath := filepath.Join(s.sealDir, SealedDataFname)
+		sealedDataPathTmp := sealedDataPath + ".tmp"
+		if err := s.fs.WriteFile(sealedDataPathTmp, sealedData, 0o600); err != nil {
+			return fmt.Errorf("writing sealed data file: %w", err)
+		}
+		if err := s.fs.Rename(sealedDataPathTmp, sealedDataPath); err != nil {
+			return fmt.Errorf("renaming sealed data file: %w", err)
 		}
 	}
 
