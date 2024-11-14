@@ -157,6 +157,11 @@ const sidebars = {
         },
         {
           type: 'doc',
+          label: 'Backup and restore',
+          id: 'workflows/backup',
+        },
+        {
+          type: 'doc',
           label: 'Update a manifest',
           id: 'workflows/update-manifest',
         },
