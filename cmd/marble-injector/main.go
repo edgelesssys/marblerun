@@ -10,11 +10,19 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
+	"os"
 
 	"github.com/edgelesssys/marblerun/injector"
+	"github.com/edgelesssys/marblerun/internal/logging"
+	"go.uber.org/zap"
 )
+
+// Version of the injector.
+var Version = "0.0.0" // Don't touch! Automatically injected at build-time.
+
+// GitCommit is the git commit hash.
+var GitCommit = "0000000000000000000000000000000000000000" // Don't touch! Automatically injected at build-time.
 
 func main() {
 	var certFile string
@@ -30,12 +38,16 @@ func main() {
 
 	flag.Parse()
 
-	mux := http.NewServeMux()
-	w := &injector.Mutator{
-		CoordAddr:   addr,
-		DomainName:  clusterDomain,
-		SGXResource: sgxResource,
+	log, err := logging.New()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to create logger: %s\n", err)
+		os.Exit(1)
 	}
+	defer log.Sync() // flushes buffer, if any
+	log.Info("Starting marble-injector webhook", zap.String("version", Version), zap.String("commit", GitCommit))
+
+	mux := http.NewServeMux()
+	w := injector.New(addr, clusterDomain, sgxResource, log)
 
 	mux.HandleFunc("/mutate", w.HandleMutate)
 
@@ -46,10 +58,12 @@ func main() {
 		TLSConfig: &tls.Config{
 			GetCertificate: loadWebhookCert(certFile, keyFile),
 		},
+		ErrorLog: logging.NewWrapper(log),
 	}
 
-	log.Println("Starting Server")
-	log.Fatal(s.ListenAndServeTLS("", ""))
+	log.Info("Starting Server")
+	err = s.ListenAndServeTLS("", "")
+	log.Fatal("Failed running server", zap.Error(err))
 }
 
 // loadWebhookCert loads the certificate and key file for the webhook server.

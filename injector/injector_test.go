@@ -13,6 +13,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap/zaptest"
 	v1 "k8s.io/api/admission/v1"
 )
 
@@ -74,7 +75,8 @@ func TestMutatesValidRequest(t *testing.T) {
 	}`
 
 	// test if patch contains all desired values
-	response, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:2001", "cluster.local", "kubernetes.azure.com/sgx_epc_mem_in_MiB")
+	m := New("coordinator-mesh-api.marblerun:2001", "cluster.local", "kubernetes.azure.com/sgx_epc_mem_in_MiB", zaptest.NewLogger(t))
+	response, err := m.mutate([]byte(rawJSON))
 	require.NoError(err, "failed to mutate request")
 
 	r := v1.AdmissionReview{}
@@ -94,7 +96,7 @@ func TestMutatesValidRequest(t *testing.T) {
 	assert.Contains(string(r.Response.Patch), `"path":"/spec/containers/0/resources","value":{}}`, "injected resources into the wrong pod")
 
 	// test if patch works without sgx values
-	response, err = mutate([]byte(strings.Replace(rawJSON, `"marblerun/resource-injection": "enabled"`, `"marblerun/resource-injection": "disabled"`, -1)), "coordinator-mesh-api.marblerun:2001", "cluster.local", "kubernetes.azure.com/sgx_epc_mem_in_MiB")
+	response, err = m.mutate([]byte(strings.Replace(rawJSON, `"marblerun/resource-injection": "enabled"`, `"marblerun/resource-injection": "disabled"`, -1)))
 	require.NoError(err, "failed to mutate request")
 	require.NoError(json.Unmarshal(response, &r), "failed to unmarshal response with error %s", err)
 	assert.NotContains(string(r.Response.Patch), `"op":"add","path":"/spec/containers/1/resources","value":{"limits":{"kubernetes.azure.com/sgx_epc_mem_in_MiB":"10"}}`, "patch contained sgx resources, but resources were not supposed to be set")
@@ -172,7 +174,8 @@ func TestPreSetValues(t *testing.T) {
 		}
 	}`
 
-	response, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:2001", "cluster.local", "kubernetes.azure.com/sgx_epc_mem_in_MiB")
+	m := New("coordinator-mesh-api.marblerun:2001", "cluster.local", "kubernetes.azure.com/sgx_epc_mem_in_MiB", zaptest.NewLogger(t))
+	response, err := m.mutate([]byte(rawJSON))
 	require.NoError(err, "failed to mutate request")
 
 	r := v1.AdmissionReview{}
@@ -227,7 +230,8 @@ func TestRejectsUnsetMarbletype(t *testing.T) {
 		}
 	}`
 
-	response, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:2001", "cluster.local", "kubernetes.azure.com/sgx_epc_mem_in_MiB")
+	m := New("coordinator-mesh-api.marblerun:2001", "cluster.local", "kubernetes.azure.com/sgx_epc_mem_in_MiB", zaptest.NewLogger(t))
+	response, err := m.mutate([]byte(rawJSON))
 	require.NoError(err, "failed to mutate request")
 
 	r := v1.AdmissionReview{}
@@ -240,7 +244,8 @@ func TestErrorsOnInvalid(t *testing.T) {
 
 	rawJSON := `This should return Error`
 
-	_, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:2001", "cluster.local", "kubernetes.azure.com/sgx_epc_mem_in_MiB")
+	m := New("coordinator-mesh-api.marblerun:2001", "cluster.local", "kubernetes.azure.com/sgx_epc_mem_in_MiB", zaptest.NewLogger(t))
+	_, err := m.mutate([]byte(rawJSON))
 	require.Error(err, "did not fail on invalid request")
 }
 
@@ -254,7 +259,9 @@ func TestErrorsOnInvalidPod(t *testing.T) {
 			"object": "invalid"
 		}
 	}`
-	_, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:2001", "cluster.local", "kubernetes.azure.com/sgx_epc_mem_in_MiB")
+
+	m := New("coordinator-mesh-api.marblerun:2001", "cluster.local", "kubernetes.azure.com/sgx_epc_mem_in_MiB", zaptest.NewLogger(t))
+	_, err := m.mutate([]byte(rawJSON))
 	require.Error(err, "did not fail when sending invalid request")
 }
 
@@ -321,7 +328,8 @@ func TestDoesNotCreateDoubleVolumeMounts(t *testing.T) {
 		}
 	}`
 
-	response, err := mutate([]byte(rawJSON), "coordinator-mesh-api.marblerun:2001", "cluster.local", "kubernetes.azure.com/sgx_epc_mem_in_MiB")
+	m := New("coordinator-mesh-api.marblerun:2001", "cluster.local", "kubernetes.azure.com/sgx_epc_mem_in_MiB", zaptest.NewLogger(t))
+	response, err := m.mutate([]byte(rawJSON))
 	require.NoError(err)
 
 	r := v1.AdmissionReview{}
