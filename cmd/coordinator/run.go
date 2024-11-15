@@ -8,7 +8,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"strings"
 
@@ -127,20 +126,4 @@ func run(log *zap.Logger, validator quote.Validator, issuer quote.Issuer, sealDi
 
 func isDevMode() bool {
 	return util.Getenv(constants.DevMode, constants.DevModeDefault) == "1"
-}
-
-func newLogger() *zap.Logger {
-	var cfg zap.Config
-	if isDevMode() {
-		cfg = zap.NewDevelopmentConfig()
-	} else {
-		cfg = zap.NewProductionConfig()
-		cfg.DisableStacktrace = true // Disable stacktraces in production
-	}
-	log, err := cfg.Build()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to create logger: %s\n", err)
-		os.Exit(1)
-	}
-	return log
 }
