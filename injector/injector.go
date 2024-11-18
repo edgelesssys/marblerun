@@ -112,11 +112,15 @@ func (m *Mutator) mutate(body []byte) ([]byte, error) {
 	marbleType, exists := pod.Labels[labelMarbleType]
 	if !exists {
 		// admission request was sent for a pod without marblerun/marbletype label, this should not happen
-		return m.generateResponse(pod, admReviewReq, admReviewResponse, false, fmt.Sprintf("Missing [%s] label, request denied", labelMarbleType))
+		msg := fmt.Sprintf("Missing [%s] label, request denied", labelMarbleType)
+		m.log.Error(msg)
+		return m.generateResponse(pod, admReviewReq, admReviewResponse, false, msg)
 	}
 	if len(marbleType) <= 0 {
 		// deny request if the label exists, but is empty
-		return m.generateResponse(pod, admReviewReq, admReviewResponse, false, fmt.Sprintf("Empty [%s] label, request denied", labelMarbleType))
+		msg := fmt.Sprintf("Empty [%s] label, request denied", labelMarbleType)
+		m.log.Error(msg)
+		return m.generateResponse(pod, admReviewReq, admReviewResponse, false, msg)
 	}
 
 	injectSgx := false
@@ -244,7 +248,15 @@ func (m *Mutator) mutate(body []byte) ([]byte, error) {
 		})
 	}
 
-	return m.generateResponse(pod, admReviewReq, admReviewResponse, true, fmt.Sprintf("Mutation request for pod of marble type [%s] successful", marbleType))
+	msg := fmt.Sprintf("Mutation request for pod of marble type [%s] successful", marbleType)
+	resp, err := m.generateResponse(pod, admReviewReq, admReviewResponse, true, msg)
+	if err != nil {
+		m.log.Error("Unable to mutate request: response generation failed", zap.Error(err))
+		return nil, err
+	}
+
+	m.log.Info(msg)
+	return resp, nil
 }
 
 // checkRequest verifies the request used was POST and not empty.
@@ -320,8 +332,6 @@ func (m *Mutator) generateResponse(pod corev1.Pod, request, response v1.Admissio
 		m.log.Error("Unable to marshal admission response", zap.Error(err))
 		return nil, fmt.Errorf("unable to marshal admission response: %w", err)
 	}
-
-	m.log.Info(message)
 
 	return bytes, nil
 }
