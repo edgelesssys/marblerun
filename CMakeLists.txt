@@ -79,10 +79,12 @@ add_custom_target(sign-coordinator ALL DEPENDS coordinator-enclave.signed coordi
 #
 
 add_custom_target(marble-injector ALL
+  COMMAND
   CGO_ENABLED=0
-  go build ${TRIMPATH}
-  -o ${CMAKE_BINARY_DIR}
-  -buildvcs=false
+  ${CMAKE_COMMAND} -P ${CMAKE_SOURCE_DIR}/build_with_version.cmake
+  "go" "${PROJECT_VERSION}" "${CMAKE_BINARY_DIR}/marble-injector"
+  "main"
+  ${TRIMPATH}
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/cmd/marble-injector
 )
 

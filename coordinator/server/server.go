@@ -21,6 +21,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/server/handler"
 	v1 "github.com/edgelesssys/marblerun/coordinator/server/v1"
 	v2 "github.com/edgelesssys/marblerun/coordinator/server/v2"
+	mrlogging "github.com/edgelesssys/marblerun/internal/logging"
 	grpcprometheus "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/prometheus/client_golang/prometheus"
@@ -115,6 +116,7 @@ func RunClientServer(mux http.Handler, address string, tlsConfig *tls.Config, za
 		Addr:      address,
 		Handler:   mux,
 		TLSConfig: tlsConfig,
+		ErrorLog:  mrlogging.NewWrapper(zapLogger),
 	}
 	zapLogger.Info("Starting client https server", zap.String("address", address))
 	err := server.ListenAndServeTLS("", "")

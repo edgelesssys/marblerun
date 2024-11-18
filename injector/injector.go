@@ -11,11 +11,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 
 	"github.com/edgelesssys/marblerun/util/k8sutil"
+	"go.uber.org/zap"
 	v1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -35,15 +35,26 @@ const (
 
 // Mutator struct.
 type Mutator struct {
-	// CoordAddr contains the address of the MarbleRun coordinator
-	CoordAddr   string
-	DomainName  string
-	SGXResource string
+	// coordAddr contains the address of the MarbleRun coordinator
+	coordAddr   string
+	domainName  string
+	sgxResource string
+	log         *zap.Logger
+}
+
+// New creates a new Mutator.
+func New(coordAddr, domainName, sgxResource string, log *zap.Logger) *Mutator {
+	return &Mutator{
+		coordAddr:   coordAddr,
+		domainName:  domainName,
+		sgxResource: sgxResource,
+		log:         log,
+	}
 }
 
 // HandleMutate handles mutate requests and injects sgx tolerations into the request.
 func (m *Mutator) HandleMutate(w http.ResponseWriter, r *http.Request) {
-	log.Println("Handling mutate request, injecting sgx tolerations")
+	m.log.Info("Handling mutate request, injecting sgx tolerations")
 	body := checkRequest(w, r)
 	if body == nil {
 		// Error was already written to w
@@ -51,35 +62,35 @@ func (m *Mutator) HandleMutate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// mutate the request and add sgx tolerations to pod
-	mutatedBody, err := mutate(body, m.CoordAddr, m.DomainName, m.SGXResource)
+	mutatedBody, err := m.mutate(body)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("unable to mutate request: %v", err), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("unable to mutate request: %s", err), http.StatusInternalServerError)
 		return
 	}
 
 	if _, err := w.Write(mutatedBody); err != nil {
-		http.Error(w, fmt.Sprintf("unable to write response: %v", err), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("unable to write response: %s", err), http.StatusInternalServerError)
 		return
 	}
 }
 
 // mutate handles the creation of json patches for pods.
-func mutate(body []byte, coordAddr, domainName, resourceKey string) ([]byte, error) {
+func (m *Mutator) mutate(body []byte) ([]byte, error) {
 	admReviewReq := v1.AdmissionReview{}
 	if err := json.Unmarshal(body, &admReviewReq); err != nil {
-		log.Println("Unable to mutate request: invalid admission review")
-		return nil, fmt.Errorf("invalid admission review: %v", err)
+		m.log.Error("Unable to mutate request: invalid admission review", zap.Error(err))
+		return nil, fmt.Errorf("invalid admission review: %w", err)
 	}
 
 	if admReviewReq.Request == nil {
-		log.Println("Unable to mutate request: empty admission review request")
+		m.log.Error("Unable to mutate request: empty admission review request")
 		return nil, errors.New("empty admission request")
 	}
 
 	var pod corev1.Pod
 	if err := json.Unmarshal(admReviewReq.Request.Object.Raw, &pod); err != nil {
-		log.Println("Unable to mutate request: invalid pod")
-		return nil, fmt.Errorf("invalid pod: %v", err)
+		m.log.Error("Unable to mutate request: invalid pod", zap.Error(err))
+		return nil, fmt.Errorf("invalid pod: %w", err)
 	}
 
 	// admission response
@@ -101,11 +112,11 @@ func mutate(body []byte, coordAddr, domainName, resourceKey string) ([]byte, err
 	marbleType, exists := pod.Labels[labelMarbleType]
 	if !exists {
 		// admission request was sent for a pod without marblerun/marbletype label, this should not happen
-		return generateResponse(pod, admReviewReq, admReviewResponse, false, fmt.Sprintf("Error: missing [%s] label, request denied", labelMarbleType))
+		return m.generateResponse(pod, admReviewReq, admReviewResponse, false, fmt.Sprintf("Missing [%s] label, request denied", labelMarbleType))
 	}
 	if len(marbleType) <= 0 {
 		// deny request if the label exists, but is empty
-		return generateResponse(pod, admReviewReq, admReviewResponse, false, fmt.Sprintf("Error: empty [%s] label, request denied", labelMarbleType))
+		return m.generateResponse(pod, admReviewReq, admReviewResponse, false, fmt.Sprintf("Empty [%s] label, request denied", labelMarbleType))
 	}
 
 	injectSgx := false
@@ -122,7 +133,7 @@ func mutate(body []byte, coordAddr, domainName, resourceKey string) ([]byte, err
 	newEnvVars := []corev1.EnvVar{
 		{
 			Name:  envMarbleCoordinatorAddr,
-			Value: coordAddr,
+			Value: m.coordAddr,
 		},
 		{
 			Name:  envMarbleType,
@@ -130,7 +141,7 @@ func mutate(body []byte, coordAddr, domainName, resourceKey string) ([]byte, err
 		},
 		{
 			Name:  envMarbleDNSName,
-			Value: strings.ToLower(fmt.Sprintf("%s,%s.%s,%s.%s.svc.%s", marbleType, marbleType, namespace, marbleType, namespace, domainName)),
+			Value: strings.ToLower(fmt.Sprintf("%s,%s.%s,%s.%s.svc.%s", marbleType, marbleType, namespace, marbleType, namespace, m.domainName)),
 		},
 	}
 
@@ -185,19 +196,19 @@ func mutate(body []byte, coordAddr, domainName, resourceKey string) ([]byte, err
 			if container.Resources.Limits == nil {
 				container.Resources.Limits = make(map[corev1.ResourceName]resource.Quantity)
 			}
-			switch resourceKey {
+			switch m.sgxResource {
 			case k8sutil.IntelEpc.String():
 				// Intels device plugin offers 3 resources:
 				//  epc			: sets EPC for the container
 				//  enclave		: provides a handle to /dev/sgx_enclave
 				//  provision	: provides a handle to /dev/sgx_provision, this is not needed when the Marble utilises out-of-process quote-generation
-				setResourceLimit(container.Resources.Limits, k8sutil.IntelEpc, k8sutil.GetEPCResourceLimit(resourceKey))
+				setResourceLimit(container.Resources.Limits, k8sutil.IntelEpc, k8sutil.GetEPCResourceLimit(m.sgxResource))
 				setResourceLimit(container.Resources.Limits, k8sutil.IntelEnclave, "1")
 				setResourceLimit(container.Resources.Limits, k8sutil.IntelProvision, "1")
 			default:
 				// Azure and Alibaba Cloud plugins offer only 1 resource
 				// for custom plugins we can only inject the resource provided by the `resourceKey`
-				setResourceLimit(container.Resources.Limits, corev1.ResourceName(resourceKey), k8sutil.GetEPCResourceLimit(resourceKey))
+				setResourceLimit(container.Resources.Limits, corev1.ResourceName(m.sgxResource), k8sutil.GetEPCResourceLimit(m.sgxResource))
 			}
 		}
 
@@ -227,13 +238,13 @@ func mutate(body []byte, coordAddr, domainName, resourceKey string) ([]byte, err
 	// inject sgx tolerations if enabled
 	if injectSgx {
 		pod.Spec.Tolerations = append(pod.Spec.Tolerations, corev1.Toleration{
-			Key:      resourceKey,
+			Key:      m.sgxResource,
 			Operator: corev1.TolerationOpExists,
 			Effect:   corev1.TaintEffectNoSchedule,
 		})
 	}
 
-	return generateResponse(pod, admReviewReq, admReviewResponse, true, fmt.Sprintf("Mutation request for pod of marble type [%s] successful", marbleType))
+	return m.generateResponse(pod, admReviewReq, admReviewResponse, true, fmt.Sprintf("Mutation request for pod of marble type [%s] successful", marbleType))
 }
 
 // checkRequest verifies the request used was POST and not empty.
@@ -251,7 +262,7 @@ func checkRequest(w http.ResponseWriter, r *http.Request) []byte {
 	body, err := io.ReadAll(r.Body)
 	defer r.Body.Close()
 	if err != nil {
-		http.Error(w, fmt.Sprintf("unable to read request: %v", err), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("unable to read request: %s", err), http.StatusBadRequest)
 		return nil
 	}
 
@@ -279,16 +290,16 @@ func setResourceLimit(target map[corev1.ResourceName]resource.Quantity, key core
 }
 
 // generateResponse creates the admission response.
-func generateResponse(pod corev1.Pod, request, response v1.AdmissionReview, allowed bool, message string) ([]byte, error) {
+func (m *Mutator) generateResponse(pod corev1.Pod, request, response v1.AdmissionReview, allowed bool, message string) ([]byte, error) {
 	marshaledPod, err := json.Marshal(pod)
 	if err != nil {
-		log.Println("Error: unable to marshal patched pod")
-		return nil, fmt.Errorf("unable to marshal patched pod: %v", err)
+		m.log.Error("Unable to marshal patched pod", zap.Error(err))
+		return nil, fmt.Errorf("unable to marshal patched pod: %w", err)
 	}
 	resp := admission.PatchResponseFromRaw(request.Request.Object.Raw, marshaledPod)
 	if err := resp.Complete(admission.Request{AdmissionRequest: *request.Request}); err != nil {
-		log.Println("Error: patching failed")
-		return nil, fmt.Errorf("patching failed: %v", err)
+		m.log.Error("Patching failed", zap.Error(err))
+		return nil, fmt.Errorf("patching failed: %w", err)
 	}
 
 	response.Response = &resp.AdmissionResponse
@@ -306,11 +317,11 @@ func generateResponse(pod corev1.Pod, request, response v1.AdmissionReview, allo
 
 	bytes, err := json.Marshal(response)
 	if err != nil {
-		log.Println("Error: unable to marshal admission response")
-		return nil, fmt.Errorf("unable to marshal admission response: %v", err)
+		m.log.Error("Unable to marshal admission response", zap.Error(err))
+		return nil, fmt.Errorf("unable to marshal admission response: %w", err)
 	}
 
-	log.Println(message)
+	m.log.Info(message)
 
 	return bytes, nil
 }
