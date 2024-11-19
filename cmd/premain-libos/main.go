@@ -14,7 +14,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/edgelesssys/marblerun/internal/constants"
+	"github.com/edgelesssys/marblerun/marble/premain"
 	marblePremain "github.com/edgelesssys/marblerun/marble/premain"
+	"github.com/edgelesssys/marblerun/util"
 	"github.com/spf13/afero"
 	"golang.org/x/sys/unix"
 )
@@ -26,7 +29,9 @@ const (
 	occlum
 )
 
-func exit(format string, args ...interface{}) {
+var exit func(format string, args ...interface{})
+
+func exitStdLog(format string, args ...interface{}) {
 	// Print error message in red and append newline
 	// then exit with error code 1
 	msg := fmt.Sprintf("Error: %s\n", format)
@@ -35,6 +40,19 @@ func exit(format string, args ...interface{}) {
 }
 
 func main() {
+	exit = exitStdLog
+	if strings.EqualFold(util.Getenv(constants.EnvLogFormat, ""), constants.LogFormatJSON) {
+		zapLog, err := premain.LogJSON()
+		if err != nil {
+			exit("failed to initialize logger: %s", err)
+		}
+		defer zapLog.Sync()
+
+		exit = func(format string, args ...interface{}) {
+			zapLog.Fatal(fmt.Sprintf(format, args...))
+		}
+	}
+
 	log.SetPrefix("[PreMain] ")
 
 	// Automatically detect libOS based on uname

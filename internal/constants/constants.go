@@ -7,6 +7,12 @@ SPDX-License-Identifier: BUSL-1.1
 package constants
 
 const (
+	// EnvLogFormat is the name of the environment variable used to pass the log format to the PreMain.
+	// Should be "json" for JSON formatted logs, or any other value for human-readable logs.
+	EnvLogFormat = "EDG_LOG_FORMAT"
+	// LogFormatJSON indicates that logs should be formatted as JSON.
+	LogFormatJSON = "json"
+
 	// EnvMarbleTTLSConfig is the name of the environment variable used to pass the TTLS configuration to the Marble.
 	EnvMarbleTTLSConfig = "MARBLE_TTLS_CONFIG"
 
