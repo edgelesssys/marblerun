@@ -5,6 +5,7 @@ Adding a service to your application requires three steps, which are described i
 ## **Step 1:** Get your service ready for MarbleRun
 
 To get your service ready for MarbleRun, you need to rebuild it with one of the supported [runtimes](../features/runtimes.md):
+
 * [EGo](../building-marbles/ego.md)
 * [Edgeless RT](https://github.com/edgelesssys/marblerun/blob/master/samples/helloc%2B%2B)
 * [Gramine](../building-marbles/gramine.md)
@@ -29,6 +30,7 @@ Now that your service is ready, you need to make two types of entries in the man
 As is described in more detail in the [writing a manifest hands-on](../workflows/define-manifest.md#packages), the manifest contains a section `Packages`, in which allowed enclave software packages are defined.
 
 #### EGo / EdgelessRT
+
 To add an entry for your EGo / EdgelessRT service, run the `oesign` tool on the enclave file you built in the previous step as follows. (`oesign` is installed with [Edgeless RT](https://github.com/edgelesssys/edgelessrt).)
 
 ```bash
@@ -49,7 +51,6 @@ The tool's output is similar to the following.
 #### Gramine
 
 To add an entry for your Gramine service, run the `gramine-sgx-get-token` tool on the `.sig` file you built in the previous step as follows. (`gramine-sgx-get-token` is installed with [Gramine](https://github.com/gramineproject/gramine/).)
-
 
 ```bash
 gramine-sgx-get-token --sig hello.sig
@@ -91,7 +92,6 @@ ProductID (ISVPRODID)     : 1
 SecurityVersion (ISVSVN)  : 3
 ```
 
-
 Use `UniqueID` (i.e., `MRENCLAVE` in Intel SGX speak) or the triplet of `SignerID` (i.e., `MRSIGNER`), `SecurityVersion`, and `ProductID` to add an entry in the `Packages` section.
 
 ### **Step 2.2:** Define the parameters
@@ -124,6 +124,8 @@ The environment variables have the following purposes.
 * `EDG_MARBLE_UUID_FILE` is the local file path where the Marble stores its UUID. Every instance of a Marble has its unique and public UUID. The file is needed to allow a Marble to restart under its UUID.
 
 * `EDG_MARBLE_DNS_NAMES` is the list of DNS names and IPs the Coordinator will issue the Marble's certificate for.
+
+Optionally, you can set the `EDG_LOG_FORMAT` environment variable to `json` to enable JSON structured logs for the Marble's startup code.
 
 ## **Step 4:** Deploy your service with Kubernetes
 

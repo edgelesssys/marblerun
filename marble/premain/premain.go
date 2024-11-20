@@ -24,13 +24,25 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/quote/ertvalidator"
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
 	"github.com/edgelesssys/marblerun/internal/constants"
+	"github.com/edgelesssys/marblerun/internal/logging"
 	"github.com/edgelesssys/marblerun/marble/config"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
 	"github.com/spf13/afero"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
+
+// LogJSON replaces Go's standard logger with [*zap.Logger] to log in JSON format.
+func LogJSON() (*zap.Logger, error) {
+	zapLogger, err := logging.New()
+	if err != nil {
+		return nil, err
+	}
+	zap.RedirectStdLog(zapLogger)
+	return zapLogger, nil
+}
 
 // storeUUID stores the uuid to the fs.
 func storeUUID(appFs afero.Fs, marbleUUID uuid.UUID, filename string) error {
@@ -126,6 +138,14 @@ func PreMainMock() error {
 //
 //nolint:revive
 func PreMainEx(issuer quote.Issuer, activate ActivateFunc, hostfs, enclavefs afero.Fs) error {
+	if strings.EqualFold(util.Getenv(constants.EnvLogFormat, ""), constants.LogFormatJSON) {
+		zapLog, err := LogJSON()
+		if err != nil {
+			return err
+		}
+		defer zapLog.Sync()
+	}
+
 	prefixBackup := log.Prefix()
 	defer log.SetPrefix(prefixBackup)
 	log.SetPrefix("[PreMain] ")
