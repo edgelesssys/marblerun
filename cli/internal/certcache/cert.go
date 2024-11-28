@@ -13,6 +13,7 @@ import (
 	"errors"
 
 	"github.com/edgelesssys/marblerun/cli/internal/file"
+	"github.com/edgelesssys/marblerun/cli/internal/pkcs11"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/spf13/afero"
 	"github.com/spf13/pflag"
@@ -43,21 +44,50 @@ func LoadCoordinatorCachedCert(flags *pflag.FlagSet, fs afero.Fs) (root, interme
 }
 
 // LoadClientCert parses the command line flags to load a TLS client certificate.
-func LoadClientCert(flags *pflag.FlagSet) (*tls.Certificate, error) {
+// The returned cancel function must be called only after the certificate is no longer needed.
+func LoadClientCert(flags *pflag.FlagSet) (crt *tls.Certificate, cancel func() error, err error) {
 	certFile, err := flags.GetString("cert")
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	keyFile, err := flags.GetString("key")
 	if err != nil {
-		return nil, err
-	}
-	clientCert, err := tls.LoadX509KeyPair(certFile, keyFile)
-	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return &clientCert, nil
+	pkcs11ConfigFile, err := flags.GetString("pkcs11-config")
+	if err != nil {
+		return nil, nil, err
+	}
+	pkcs11KeyID, err := flags.GetString("pkcs11-key-id")
+	if err != nil {
+		return nil, nil, err
+	}
+	pkcs11KeyLabel, err := flags.GetString("pkcs11-key-label")
+	if err != nil {
+		return nil, nil, err
+	}
+	pkcs11CertID, err := flags.GetString("pkcs11-cert-id")
+	if err != nil {
+		return nil, nil, err
+	}
+	pkcs11CertLabel, err := flags.GetString("pkcs11-cert-label")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var clientCert tls.Certificate
+	switch {
+	case pkcs11ConfigFile != "":
+		clientCert, cancel, err = pkcs11.LoadX509KeyPair(pkcs11ConfigFile, pkcs11KeyID, pkcs11KeyLabel, pkcs11CertID, pkcs11CertLabel)
+	case certFile != "" && keyFile != "":
+		clientCert, err = tls.LoadX509KeyPair(certFile, keyFile)
+		cancel = func() error { return nil }
+	default:
+		err = errors.New("neither PKCS#11 nor file-based client certificate can be loaded with the provided flags")
+	}
+
+	return &clientCert, cancel, err
 }
 
 func saveCert(fh *file.Handler, root, intermediate *x509.Certificate) error {

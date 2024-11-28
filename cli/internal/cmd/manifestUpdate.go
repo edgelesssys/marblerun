@@ -8,6 +8,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 
@@ -45,10 +46,23 @@ An admin certificate specified in the original manifest is needed to verify the 
 		RunE:    runUpdateApply,
 	}
 
-	cmd.Flags().StringP("cert", "c", "", "PEM encoded admin certificate file (required)")
-	must(cmd.MarkFlagRequired("cert"))
-	cmd.Flags().StringP("key", "k", "", "PEM encoded admin key file (required)")
-	must(cmd.MarkFlagRequired("key"))
+	cmd.Flags().StringP("cert", "c", "", "PEM encoded admin certificate file")
+	cmd.Flags().StringP("key", "k", "", "PEM encoded admin key file")
+	cmd.MarkFlagsRequiredTogether("key", "cert")
+
+	cmd.Flags().String("pkcs11-config", "", "Path to a PKCS#11 configuration file to load the client certificate with")
+	cmd.Flags().String("pkcs11-key-id", "", "ID of the private key in the PKCS#11 token")
+	cmd.Flags().String("pkcs11-key-label", "", "Label of the private key in the PKCS#11 token")
+	cmd.Flags().String("pkcs11-cert-id", "", "ID of the certificate in the PKCS#11 token")
+	cmd.Flags().String("pkcs11-cert-label", "", "Label of the certificate in the PKCS#11 token")
+	must(cmd.MarkFlagFilename("pkcs11-config", "json"))
+	cmd.MarkFlagsOneRequired("pkcs11-key-id", "pkcs11-key-label", "cert")
+	cmd.MarkFlagsOneRequired("pkcs11-cert-id", "pkcs11-cert-label", "cert")
+
+	cmd.MarkFlagsMutuallyExclusive("pkcs11-config", "cert")
+	cmd.MarkFlagsMutuallyExclusive("pkcs11-config", "key")
+	cmd.MarkFlagsOneRequired("pkcs11-config", "cert")
+	cmd.MarkFlagsOneRequired("pkcs11-config", "key")
 
 	return cmd
 }
@@ -67,10 +81,24 @@ All participants must use the same manifest to acknowledge the pending update.
 		RunE:    runUpdateAcknowledge,
 	}
 
-	cmd.Flags().StringP("cert", "c", "", "PEM encoded admin certificate file (required)")
-	must(cmd.MarkFlagRequired("cert"))
-	cmd.Flags().StringP("key", "k", "", "PEM encoded admin key file (required)")
-	must(cmd.MarkFlagRequired("key"))
+	cmd.Flags().StringP("cert", "c", "", "PEM encoded admin certificate file")
+	cmd.Flags().StringP("key", "k", "", "PEM encoded admin key file")
+	cmd.MarkFlagsRequiredTogether("key", "cert")
+
+	cmd.Flags().String("pkcs11-config", "", "Path to a PKCS#11 configuration file to load the client certificate with")
+	cmd.Flags().String("pkcs11-key-id", "", "ID of the private key in the PKCS#11 token")
+	cmd.Flags().String("pkcs11-key-label", "", "Label of the private key in the PKCS#11 token")
+	cmd.Flags().String("pkcs11-cert-id", "", "ID of the certificate in the PKCS#11 token")
+	cmd.Flags().String("pkcs11-cert-label", "", "Label of the certificate in the PKCS#11 token")
+	must(cmd.MarkFlagFilename("pkcs11-config", "json"))
+	cmd.MarkFlagsOneRequired("pkcs11-key-id", "pkcs11-key-label", "cert")
+	cmd.MarkFlagsOneRequired("pkcs11-cert-id", "pkcs11-cert-label", "cert")
+
+	cmd.MarkFlagsMutuallyExclusive("pkcs11-config", "cert")
+	cmd.MarkFlagsMutuallyExclusive("pkcs11-config", "key")
+	cmd.MarkFlagsOneRequired("pkcs11-config", "cert")
+	cmd.MarkFlagsOneRequired("pkcs11-config", "key")
+
 	return cmd
 }
 
@@ -84,10 +112,24 @@ func newUpdateCancel() *cobra.Command {
 		RunE:    runUpdateCancel,
 	}
 
-	cmd.Flags().StringP("cert", "c", "", "PEM encoded admin certificate file (required)")
-	must(cmd.MarkFlagRequired("cert"))
-	cmd.Flags().StringP("key", "k", "", "PEM encoded admin key file (required)")
-	must(cmd.MarkFlagRequired("key"))
+	cmd.Flags().StringP("cert", "c", "", "PEM encoded admin certificate file")
+	cmd.Flags().StringP("key", "k", "", "PEM encoded admin key file")
+	cmd.MarkFlagsRequiredTogether("key", "cert")
+
+	cmd.Flags().String("pkcs11-config", "", "Path to a PKCS#11 configuration file to load the client certificate with")
+	cmd.Flags().String("pkcs11-key-id", "", "ID of the private key in the PKCS#11 token")
+	cmd.Flags().String("pkcs11-key-label", "", "Label of the private key in the PKCS#11 token")
+	cmd.Flags().String("pkcs11-cert-id", "", "ID of the certificate in the PKCS#11 token")
+	cmd.Flags().String("pkcs11-cert-label", "", "Label of the certificate in the PKCS#11 token")
+	must(cmd.MarkFlagFilename("pkcs11-config", "json"))
+	cmd.MarkFlagsOneRequired("pkcs11-key-id", "pkcs11-key-label", "cert")
+	cmd.MarkFlagsOneRequired("pkcs11-cert-id", "pkcs11-cert-label", "cert")
+
+	cmd.MarkFlagsMutuallyExclusive("pkcs11-config", "cert")
+	cmd.MarkFlagsMutuallyExclusive("pkcs11-config", "key")
+	cmd.MarkFlagsOneRequired("pkcs11-config", "cert")
+	cmd.MarkFlagsOneRequired("pkcs11-config", "key")
+
 	return cmd
 }
 
@@ -107,7 +149,7 @@ func newUpdateGet() *cobra.Command {
 	return cmd
 }
 
-func runUpdateApply(cmd *cobra.Command, args []string) error {
+func runUpdateApply(cmd *cobra.Command, args []string) (err error) {
 	manifestFile := args[0]
 	hostname := args[1]
 	fs := afero.NewOsFs()
@@ -116,10 +158,13 @@ func runUpdateApply(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	keyPair, err := certcache.LoadClientCert(cmd.Flags())
+	keyPair, cancel, err := certcache.LoadClientCert(cmd.Flags())
 	if err != nil {
 		return err
 	}
+	defer func() {
+		err = errors.Join(err, cancel())
+	}()
 
 	manifest, err := loadManifestFile(file.New(manifestFile, fs))
 	if err != nil {
@@ -133,7 +178,7 @@ func runUpdateApply(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func runUpdateAcknowledge(cmd *cobra.Command, args []string) error {
+func runUpdateAcknowledge(cmd *cobra.Command, args []string) (err error) {
 	manifestFile := args[0]
 	hostname := args[1]
 	fs := afero.NewOsFs()
@@ -142,10 +187,13 @@ func runUpdateAcknowledge(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	keyPair, err := certcache.LoadClientCert(cmd.Flags())
+	keyPair, cancel, err := certcache.LoadClientCert(cmd.Flags())
 	if err != nil {
 		return err
 	}
+	defer func() {
+		err = errors.Join(err, cancel())
+	}()
 
 	manifest, err := loadManifestFile(file.New(manifestFile, fs))
 	if err != nil {
@@ -169,7 +217,7 @@ func runUpdateAcknowledge(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func runUpdateCancel(cmd *cobra.Command, args []string) error {
+func runUpdateCancel(cmd *cobra.Command, args []string) (err error) {
 	hostname := args[0]
 	fs := afero.NewOsFs()
 
@@ -177,10 +225,13 @@ func runUpdateCancel(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	keyPair, err := certcache.LoadClientCert(cmd.Flags())
+	keyPair, cancel, err := certcache.LoadClientCert(cmd.Flags())
 	if err != nil {
 		return err
 	}
+	defer func() {
+		err = errors.Join(err, cancel())
+	}()
 
 	if err := api.ManifestUpdateCancel(cmd.Context(), hostname, root, keyPair); err != nil {
 		return fmt.Errorf("canceling update: %w", err)
