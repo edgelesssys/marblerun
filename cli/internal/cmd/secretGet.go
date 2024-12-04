@@ -9,6 +9,7 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 
@@ -39,7 +40,7 @@ and need permissions in the manifest to read the requested secrets.
 	return cmd
 }
 
-func runSecretGet(cmd *cobra.Command, args []string) error {
+func runSecretGet(cmd *cobra.Command, args []string) (err error) {
 	hostname := args[len(args)-1]
 	secretIDs := args[0 : len(args)-1]
 	fs := afero.NewOsFs()
@@ -53,10 +54,13 @@ func runSecretGet(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	keyPair, err := certcache.LoadClientCert(cmd.Flags())
+	keyPair, cancel, err := certcache.LoadClientCert(cmd.Flags())
 	if err != nil {
 		return err
 	}
+	defer func() {
+		err = errors.Join(err, cancel())
+	}()
 
 	getSecrets := func(ctx context.Context) (map[string]manifest.Secret, error) {
 		return api.SecretGet(ctx, hostname, root, keyPair, secretIDs)
