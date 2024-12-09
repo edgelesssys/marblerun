@@ -19,6 +19,7 @@ import (
 
 	"github.com/ThalesGroup/crypto11"
 	"github.com/edgelesssys/marblerun/util"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -39,7 +40,7 @@ func TestLoadX509KeyPair(t *testing.T) {
 			init: func(t *testing.T) (keyID, keyLabel, certID, certLabel string) {
 				t.Helper()
 				require := require.New(t)
-				prefix := t.TempDir()
+				prefix := uuid.New().String()
 				keyID, keyLabel, certID, certLabel = prefix+"keyID", prefix+"keyLabel", prefix+"certID", prefix+"certLabel"
 				pkcs11, err := crypto11.ConfigureFromFile(*configPath)
 				require.NoError(err)
@@ -56,7 +57,7 @@ func TestLoadX509KeyPair(t *testing.T) {
 			init: func(t *testing.T) (keyID, keyLabel, certID, certLabel string) {
 				t.Helper()
 				require := require.New(t)
-				prefix := t.TempDir()
+				prefix := uuid.New().String()
 				keyID, keyLabel, certID, certLabel = prefix+"keyID", prefix+"keyLabel", prefix+"certID", prefix+"certLabel"
 				pkcs11, err := crypto11.ConfigureFromFile(*configPath)
 				require.NoError(err)
@@ -73,7 +74,7 @@ func TestLoadX509KeyPair(t *testing.T) {
 			init: func(t *testing.T) (keyID, keyLabel, certID, certLabel string) {
 				t.Helper()
 				require := require.New(t)
-				prefix := t.TempDir()
+				prefix := uuid.New().String()
 				keyID, keyLabel, certID, certLabel = prefix+"keyID", prefix+"keyLabel", prefix+"certID", prefix+"certLabel"
 				pkcs11, err := crypto11.ConfigureFromFile(*configPath)
 				require.NoError(err)
@@ -90,7 +91,7 @@ func TestLoadX509KeyPair(t *testing.T) {
 			init: func(t *testing.T) (keyID, keyLabel, certID, certLabel string) {
 				t.Helper()
 				require := require.New(t)
-				prefix := t.TempDir()
+				prefix := uuid.New().String()
 				keyID, keyLabel, certID, certLabel = prefix+"keyID", prefix+"keyLabel", prefix+"certID", prefix+"certLabel"
 				pkcs11, err := crypto11.ConfigureFromFile(*configPath)
 				require.NoError(err)
@@ -108,7 +109,7 @@ func TestLoadX509KeyPair(t *testing.T) {
 			init: func(t *testing.T) (keyID, keyLabel, certID, certLabel string) {
 				t.Helper()
 				require := require.New(t)
-				prefix := t.TempDir()
+				prefix := uuid.New().String()
 				keyID, keyLabel, certID, certLabel = prefix+"keyID", prefix+"keyLabel", prefix+"certID", prefix+"certLabel"
 				pkcs11, err := crypto11.ConfigureFromFile(*configPath)
 				require.NoError(err)
@@ -133,7 +134,9 @@ func TestLoadX509KeyPair(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			defer cancel()
+			defer func() {
+				_ = cancel()
+			}()
 
 			assert.NotNil(crt.PrivateKey)
 			assert.NotNil(crt.Certificate)
