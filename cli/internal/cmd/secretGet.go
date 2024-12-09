@@ -9,7 +9,6 @@ package cmd
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 
@@ -40,7 +39,7 @@ and need permissions in the manifest to read the requested secrets.
 	return cmd
 }
 
-func runSecretGet(cmd *cobra.Command, args []string) (err error) {
+func runSecretGet(cmd *cobra.Command, args []string) error {
 	hostname := args[len(args)-1]
 	secretIDs := args[0 : len(args)-1]
 	fs := afero.NewOsFs()
@@ -59,7 +58,9 @@ func runSecretGet(cmd *cobra.Command, args []string) (err error) {
 		return err
 	}
 	defer func() {
-		err = errors.Join(err, cancel())
+		if err := cancel(); err != nil {
+			cmd.PrintErrf("Failed to close PKCS #11 session: %s\n", err)
+		}
 	}()
 
 	getSecrets := func(ctx context.Context) (map[string]manifest.Secret, error) {

@@ -8,7 +8,6 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 
@@ -98,7 +97,7 @@ func newUpdateGet() *cobra.Command {
 	return cmd
 }
 
-func runUpdateApply(cmd *cobra.Command, args []string) (err error) {
+func runUpdateApply(cmd *cobra.Command, args []string) error {
 	manifestFile := args[0]
 	hostname := args[1]
 	fs := afero.NewOsFs()
@@ -112,7 +111,9 @@ func runUpdateApply(cmd *cobra.Command, args []string) (err error) {
 		return err
 	}
 	defer func() {
-		err = errors.Join(err, cancel())
+		if err := cancel(); err != nil {
+			cmd.PrintErrf("Failed to close PKCS #11 session: %s\n", err)
+		}
 	}()
 
 	manifest, err := loadManifestFile(file.New(manifestFile, fs))
@@ -127,7 +128,7 @@ func runUpdateApply(cmd *cobra.Command, args []string) (err error) {
 	return nil
 }
 
-func runUpdateAcknowledge(cmd *cobra.Command, args []string) (err error) {
+func runUpdateAcknowledge(cmd *cobra.Command, args []string) error {
 	manifestFile := args[0]
 	hostname := args[1]
 	fs := afero.NewOsFs()
@@ -141,7 +142,9 @@ func runUpdateAcknowledge(cmd *cobra.Command, args []string) (err error) {
 		return err
 	}
 	defer func() {
-		err = errors.Join(err, cancel())
+		if err := cancel(); err != nil {
+			cmd.PrintErrf("Failed to close PKCS #11 session: %s\n", err)
+		}
 	}()
 
 	manifest, err := loadManifestFile(file.New(manifestFile, fs))
@@ -166,7 +169,7 @@ func runUpdateAcknowledge(cmd *cobra.Command, args []string) (err error) {
 	return nil
 }
 
-func runUpdateCancel(cmd *cobra.Command, args []string) (err error) {
+func runUpdateCancel(cmd *cobra.Command, args []string) error {
 	hostname := args[0]
 	fs := afero.NewOsFs()
 
@@ -179,7 +182,9 @@ func runUpdateCancel(cmd *cobra.Command, args []string) (err error) {
 		return err
 	}
 	defer func() {
-		err = errors.Join(err, cancel())
+		if err := cancel(); err != nil {
+			cmd.PrintErrf("Failed to close PKCS #11 session: %s\n", err)
+		}
 	}()
 
 	if err := api.ManifestUpdateCancel(cmd.Context(), hostname, root, keyPair); err != nil {

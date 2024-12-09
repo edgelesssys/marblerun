@@ -10,7 +10,6 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -48,7 +47,7 @@ marblerun secret set certificate.pem $MARBLERUN -c admin.crt -k admin.key --from
 	return cmd
 }
 
-func runSecretSet(cmd *cobra.Command, args []string) (err error) {
+func runSecretSet(cmd *cobra.Command, args []string) error {
 	secretFile := args[0]
 	hostname := args[1]
 	fs := afero.NewOsFs()
@@ -84,7 +83,9 @@ func runSecretSet(cmd *cobra.Command, args []string) (err error) {
 		return err
 	}
 	defer func() {
-		err = errors.Join(err, cancel())
+		if err := cancel(); err != nil {
+			cmd.PrintErrf("Failed to close PKCS #11 session: %s\n", err)
+		}
 	}()
 
 	if err := api.SecretSet(cmd.Context(), hostname, root, keyPair, newSecrets); err != nil {
