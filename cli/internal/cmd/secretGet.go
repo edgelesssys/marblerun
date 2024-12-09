@@ -53,10 +53,15 @@ func runSecretGet(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	keyPair, err := certcache.LoadClientCert(cmd.Flags())
+	keyPair, cancel, err := certcache.LoadClientCert(cmd.Flags())
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if err := cancel(); err != nil {
+			cmd.PrintErrf("Failed to close PKCS #11 session: %s\n", err)
+		}
+	}()
 
 	getSecrets := func(ctx context.Context) (map[string]manifest.Secret, error) {
 		return api.SecretGet(ctx, hostname, root, keyPair, secretIDs)

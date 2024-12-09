@@ -21,6 +21,7 @@ import (
 	"github.com/edgelesssys/marblerun/cli/internal/kube"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -30,6 +31,26 @@ const eraDefaultConfig = "era-config.json"
 
 func webhookDNSName(namespace string) string {
 	return "marble-injector." + namespace
+}
+
+func addClientAuthFlags(cmd *cobra.Command, flags *pflag.FlagSet) {
+	flags.StringP("cert", "c", "", "PEM encoded admin certificate file")
+	flags.StringP("key", "k", "", "PEM encoded admin key file")
+	cmd.MarkFlagsRequiredTogether("key", "cert")
+
+	flags.String("pkcs11-config", "", "Path to a PKCS#11 configuration file to load the client certificate with")
+	flags.String("pkcs11-key-id", "", "ID of the private key in the PKCS#11 token")
+	flags.String("pkcs11-key-label", "", "Label of the private key in the PKCS#11 token")
+	flags.String("pkcs11-cert-id", "", "ID of the certificate in the PKCS#11 token")
+	flags.String("pkcs11-cert-label", "", "Label of the certificate in the PKCS#11 token")
+	must(cobra.MarkFlagFilename(flags, "pkcs11-config", "json"))
+	cmd.MarkFlagsOneRequired("pkcs11-key-id", "pkcs11-key-label", "cert")
+	cmd.MarkFlagsOneRequired("pkcs11-cert-id", "pkcs11-cert-label", "cert")
+
+	cmd.MarkFlagsMutuallyExclusive("pkcs11-config", "cert")
+	cmd.MarkFlagsMutuallyExclusive("pkcs11-config", "key")
+	cmd.MarkFlagsOneRequired("pkcs11-config", "cert")
+	cmd.MarkFlagsOneRequired("pkcs11-config", "key")
 }
 
 // parseRestFlags parses the command line flags used to configure the REST client.
