@@ -43,7 +43,7 @@ The following shows an example for authenticating with a key and certificate sto
 }
 ```
 
-Assuming the key and certificate have the label `marblerun-key` and `marblerun-cert` respectively, invoked the CLI as follows:
+Assuming the key and certificate have the label `marblerun-key` and `marblerun-cert` respectively, invoke the CLI as follows:
 
 ```bash
 marblerun --pkcs11-config /path/to/pkcs11-config.json --pkcs11-key-label marblerun-key --pkcs11-cert-label marblerun-cert [COMMAND]
