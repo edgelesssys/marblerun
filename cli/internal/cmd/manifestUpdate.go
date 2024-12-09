@@ -45,24 +45,7 @@ An admin certificate specified in the original manifest is needed to verify the 
 		Args:    cobra.ExactArgs(2),
 		RunE:    runUpdateApply,
 	}
-
-	cmd.Flags().StringP("cert", "c", "", "PEM encoded admin certificate file")
-	cmd.Flags().StringP("key", "k", "", "PEM encoded admin key file")
-	cmd.MarkFlagsRequiredTogether("key", "cert")
-
-	cmd.Flags().String("pkcs11-config", "", "Path to a PKCS#11 configuration file to load the client certificate with")
-	cmd.Flags().String("pkcs11-key-id", "", "ID of the private key in the PKCS#11 token")
-	cmd.Flags().String("pkcs11-key-label", "", "Label of the private key in the PKCS#11 token")
-	cmd.Flags().String("pkcs11-cert-id", "", "ID of the certificate in the PKCS#11 token")
-	cmd.Flags().String("pkcs11-cert-label", "", "Label of the certificate in the PKCS#11 token")
-	must(cmd.MarkFlagFilename("pkcs11-config", "json"))
-	cmd.MarkFlagsOneRequired("pkcs11-key-id", "pkcs11-key-label", "cert")
-	cmd.MarkFlagsOneRequired("pkcs11-cert-id", "pkcs11-cert-label", "cert")
-
-	cmd.MarkFlagsMutuallyExclusive("pkcs11-config", "cert")
-	cmd.MarkFlagsMutuallyExclusive("pkcs11-config", "key")
-	cmd.MarkFlagsOneRequired("pkcs11-config", "cert")
-	cmd.MarkFlagsOneRequired("pkcs11-config", "key")
+	addClientAuthFlags(cmd, cmd.Flags())
 
 	return cmd
 }
@@ -80,24 +63,7 @@ All participants must use the same manifest to acknowledge the pending update.
 		Args:    cobra.ExactArgs(2),
 		RunE:    runUpdateAcknowledge,
 	}
-
-	cmd.Flags().StringP("cert", "c", "", "PEM encoded admin certificate file")
-	cmd.Flags().StringP("key", "k", "", "PEM encoded admin key file")
-	cmd.MarkFlagsRequiredTogether("key", "cert")
-
-	cmd.Flags().String("pkcs11-config", "", "Path to a PKCS#11 configuration file to load the client certificate with")
-	cmd.Flags().String("pkcs11-key-id", "", "ID of the private key in the PKCS#11 token")
-	cmd.Flags().String("pkcs11-key-label", "", "Label of the private key in the PKCS#11 token")
-	cmd.Flags().String("pkcs11-cert-id", "", "ID of the certificate in the PKCS#11 token")
-	cmd.Flags().String("pkcs11-cert-label", "", "Label of the certificate in the PKCS#11 token")
-	must(cmd.MarkFlagFilename("pkcs11-config", "json"))
-	cmd.MarkFlagsOneRequired("pkcs11-key-id", "pkcs11-key-label", "cert")
-	cmd.MarkFlagsOneRequired("pkcs11-cert-id", "pkcs11-cert-label", "cert")
-
-	cmd.MarkFlagsMutuallyExclusive("pkcs11-config", "cert")
-	cmd.MarkFlagsMutuallyExclusive("pkcs11-config", "key")
-	cmd.MarkFlagsOneRequired("pkcs11-config", "cert")
-	cmd.MarkFlagsOneRequired("pkcs11-config", "key")
+	addClientAuthFlags(cmd, cmd.Flags())
 
 	return cmd
 }
@@ -111,24 +77,7 @@ func newUpdateCancel() *cobra.Command {
 		Args:    cobra.ExactArgs(1),
 		RunE:    runUpdateCancel,
 	}
-
-	cmd.Flags().StringP("cert", "c", "", "PEM encoded admin certificate file")
-	cmd.Flags().StringP("key", "k", "", "PEM encoded admin key file")
-	cmd.MarkFlagsRequiredTogether("key", "cert")
-
-	cmd.Flags().String("pkcs11-config", "", "Path to a PKCS#11 configuration file to load the client certificate with")
-	cmd.Flags().String("pkcs11-key-id", "", "ID of the private key in the PKCS#11 token")
-	cmd.Flags().String("pkcs11-key-label", "", "Label of the private key in the PKCS#11 token")
-	cmd.Flags().String("pkcs11-cert-id", "", "ID of the certificate in the PKCS#11 token")
-	cmd.Flags().String("pkcs11-cert-label", "", "Label of the certificate in the PKCS#11 token")
-	must(cmd.MarkFlagFilename("pkcs11-config", "json"))
-	cmd.MarkFlagsOneRequired("pkcs11-key-id", "pkcs11-key-label", "cert")
-	cmd.MarkFlagsOneRequired("pkcs11-cert-id", "pkcs11-cert-label", "cert")
-
-	cmd.MarkFlagsMutuallyExclusive("pkcs11-config", "cert")
-	cmd.MarkFlagsMutuallyExclusive("pkcs11-config", "key")
-	cmd.MarkFlagsOneRequired("pkcs11-config", "cert")
-	cmd.MarkFlagsOneRequired("pkcs11-config", "key")
+	addClientAuthFlags(cmd, cmd.Flags())
 
 	return cmd
 }
