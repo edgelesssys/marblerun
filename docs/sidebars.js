@@ -162,6 +162,11 @@ const sidebars = {
         },
         {
           type: 'doc',
+          label: 'User authentication',
+          id: 'workflows/user-authentication',
+        },
+        {
+          type: 'doc',
           label: 'Update a manifest',
           id: 'workflows/update-manifest',
         },
