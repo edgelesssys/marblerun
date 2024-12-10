@@ -424,9 +424,9 @@ marblerun manifest update apply update-manifest.json $MARBLERUN --cert=admin-cer
 ### Options
 
 ```
-  -c, --cert string                PEM encoded admin certificate file
+  -c, --cert string                PEM encoded MarbleRun user certificate file
   -h, --help                       help for apply
-  -k, --key string                 PEM encoded admin key file
+  -k, --key string                 PEM encoded MarbleRun user key file
       --pkcs11-cert-id string      ID of the certificate in the PKCS#11 token
       --pkcs11-cert-label string   Label of the certificate in the PKCS#11 token
       --pkcs11-config string       Path to a PKCS#11 configuration file to load the client certificate with
@@ -472,9 +472,9 @@ marblerun manifest update acknowledge update-manifest.json $MARBLERUN --cert=adm
 ### Options
 
 ```
-  -c, --cert string                PEM encoded admin certificate file
+  -c, --cert string                PEM encoded MarbleRun user certificate file
   -h, --help                       help for acknowledge
-  -k, --key string                 PEM encoded admin key file
+  -k, --key string                 PEM encoded MarbleRun user key file
       --pkcs11-cert-id string      ID of the certificate in the PKCS#11 token
       --pkcs11-cert-label string   Label of the certificate in the PKCS#11 token
       --pkcs11-config string       Path to a PKCS#11 configuration file to load the client certificate with
@@ -516,9 +516,9 @@ marblerun manifest update cancel $MARBLERUN --cert=admin-cert.pem --key=admin-ke
 ### Options
 
 ```
-  -c, --cert string                PEM encoded admin certificate file
+  -c, --cert string                PEM encoded MarbleRun user certificate file
   -h, --help                       help for cancel
-  -k, --key string                 PEM encoded admin key file
+  -k, --key string                 PEM encoded MarbleRun user key file
       --pkcs11-cert-id string      ID of the certificate in the PKCS#11 token
       --pkcs11-cert-label string   Label of the certificate in the PKCS#11 token
       --pkcs11-config string       Path to a PKCS#11 configuration file to load the client certificate with

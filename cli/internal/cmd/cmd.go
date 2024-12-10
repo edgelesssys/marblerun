@@ -34,8 +34,8 @@ func webhookDNSName(namespace string) string {
 }
 
 func addClientAuthFlags(cmd *cobra.Command, flags *pflag.FlagSet) {
-	flags.StringP("cert", "c", "", "PEM encoded admin certificate file")
-	flags.StringP("key", "k", "", "PEM encoded admin key file")
+	flags.StringP("cert", "c", "", "PEM encoded MarbleRun user certificate file")
+	flags.StringP("key", "k", "", "PEM encoded MarbleRun user key file")
 	cmd.MarkFlagsRequiredTogether("key", "cert")
 
 	flags.String("pkcs11-config", "", "Path to a PKCS#11 configuration file to load the client certificate with")
