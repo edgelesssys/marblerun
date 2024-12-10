@@ -19,11 +19,7 @@ func NewSecretCmd() *cobra.Command {
 Manage secrets for the MarbleRun Coordinator.
 Set or retrieve a secret defined in the manifest.`,
 	}
-
-	cmd.PersistentFlags().StringP("cert", "c", "", "PEM encoded MarbleRun user certificate file (required)")
-	cmd.PersistentFlags().StringP("key", "k", "", "PEM encoded MarbleRun user key file (required)")
-	must(cmd.MarkPersistentFlagRequired("key"))
-	must(cmd.MarkPersistentFlagRequired("cert"))
+	addClientAuthFlags(cmd, cmd.PersistentFlags())
 
 	cmd.AddCommand(newSecretSet())
 	cmd.AddCommand(newSecretGet())

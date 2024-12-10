@@ -44,11 +44,7 @@ An admin certificate specified in the original manifest is needed to verify the 
 		Args:    cobra.ExactArgs(2),
 		RunE:    runUpdateApply,
 	}
-
-	cmd.Flags().StringP("cert", "c", "", "PEM encoded admin certificate file (required)")
-	must(cmd.MarkFlagRequired("cert"))
-	cmd.Flags().StringP("key", "k", "", "PEM encoded admin key file (required)")
-	must(cmd.MarkFlagRequired("key"))
+	addClientAuthFlags(cmd, cmd.Flags())
 
 	return cmd
 }
@@ -66,11 +62,8 @@ All participants must use the same manifest to acknowledge the pending update.
 		Args:    cobra.ExactArgs(2),
 		RunE:    runUpdateAcknowledge,
 	}
+	addClientAuthFlags(cmd, cmd.Flags())
 
-	cmd.Flags().StringP("cert", "c", "", "PEM encoded admin certificate file (required)")
-	must(cmd.MarkFlagRequired("cert"))
-	cmd.Flags().StringP("key", "k", "", "PEM encoded admin key file (required)")
-	must(cmd.MarkFlagRequired("key"))
 	return cmd
 }
 
@@ -83,11 +76,8 @@ func newUpdateCancel() *cobra.Command {
 		Args:    cobra.ExactArgs(1),
 		RunE:    runUpdateCancel,
 	}
+	addClientAuthFlags(cmd, cmd.Flags())
 
-	cmd.Flags().StringP("cert", "c", "", "PEM encoded admin certificate file (required)")
-	must(cmd.MarkFlagRequired("cert"))
-	cmd.Flags().StringP("key", "k", "", "PEM encoded admin key file (required)")
-	must(cmd.MarkFlagRequired("key"))
 	return cmd
 }
 
@@ -116,10 +106,15 @@ func runUpdateApply(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	keyPair, err := certcache.LoadClientCert(cmd.Flags())
+	keyPair, cancel, err := certcache.LoadClientCert(cmd.Flags())
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if err := cancel(); err != nil {
+			cmd.PrintErrf("Failed to close PKCS #11 session: %s\n", err)
+		}
+	}()
 
 	manifest, err := loadManifestFile(file.New(manifestFile, fs))
 	if err != nil {
@@ -142,10 +137,15 @@ func runUpdateAcknowledge(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	keyPair, err := certcache.LoadClientCert(cmd.Flags())
+	keyPair, cancel, err := certcache.LoadClientCert(cmd.Flags())
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if err := cancel(); err != nil {
+			cmd.PrintErrf("Failed to close PKCS #11 session: %s\n", err)
+		}
+	}()
 
 	manifest, err := loadManifestFile(file.New(manifestFile, fs))
 	if err != nil {
@@ -177,10 +177,15 @@ func runUpdateCancel(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	keyPair, err := certcache.LoadClientCert(cmd.Flags())
+	keyPair, cancel, err := certcache.LoadClientCert(cmd.Flags())
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if err := cancel(); err != nil {
+			cmd.PrintErrf("Failed to close PKCS #11 session: %s\n", err)
+		}
+	}()
 
 	if err := api.ManifestUpdateCancel(cmd.Context(), hostname, root, keyPair); err != nil {
 		return fmt.Errorf("canceling update: %w", err)

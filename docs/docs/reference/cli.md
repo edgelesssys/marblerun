@@ -424,9 +424,14 @@ marblerun manifest update apply update-manifest.json $MARBLERUN --cert=admin-cer
 ### Options
 
 ```
-  -c, --cert string   PEM encoded admin certificate file (required)
-  -h, --help          help for apply
-  -k, --key string    PEM encoded admin key file (required)
+  -c, --cert string                PEM encoded admin certificate file
+  -h, --help                       help for apply
+  -k, --key string                 PEM encoded admin key file
+      --pkcs11-cert-id string      ID of the certificate in the PKCS#11 token
+      --pkcs11-cert-label string   Label of the certificate in the PKCS#11 token
+      --pkcs11-config string       Path to a PKCS#11 configuration file to load the client certificate with
+      --pkcs11-key-id string       ID of the private key in the PKCS#11 token
+      --pkcs11-key-label string    Label of the private key in the PKCS#11 token
 ```
 
 ### Options inherited from parent commands
@@ -467,9 +472,14 @@ marblerun manifest update acknowledge update-manifest.json $MARBLERUN --cert=adm
 ### Options
 
 ```
-  -c, --cert string   PEM encoded admin certificate file (required)
-  -h, --help          help for acknowledge
-  -k, --key string    PEM encoded admin key file (required)
+  -c, --cert string                PEM encoded admin certificate file
+  -h, --help                       help for acknowledge
+  -k, --key string                 PEM encoded admin key file
+      --pkcs11-cert-id string      ID of the certificate in the PKCS#11 token
+      --pkcs11-cert-label string   Label of the certificate in the PKCS#11 token
+      --pkcs11-config string       Path to a PKCS#11 configuration file to load the client certificate with
+      --pkcs11-key-id string       ID of the private key in the PKCS#11 token
+      --pkcs11-key-label string    Label of the private key in the PKCS#11 token
 ```
 
 ### Options inherited from parent commands
@@ -506,9 +516,14 @@ marblerun manifest update cancel $MARBLERUN --cert=admin-cert.pem --key=admin-ke
 ### Options
 
 ```
-  -c, --cert string   PEM encoded admin certificate file (required)
-  -h, --help          help for cancel
-  -k, --key string    PEM encoded admin key file (required)
+  -c, --cert string                PEM encoded admin certificate file
+  -h, --help                       help for cancel
+  -k, --key string                 PEM encoded admin key file
+      --pkcs11-cert-id string      ID of the certificate in the PKCS#11 token
+      --pkcs11-cert-label string   Label of the certificate in the PKCS#11 token
+      --pkcs11-config string       Path to a PKCS#11 configuration file to load the client certificate with
+      --pkcs11-key-id string       ID of the private key in the PKCS#11 token
+      --pkcs11-key-label string    Label of the private key in the PKCS#11 token
 ```
 
 ### Options inherited from parent commands
@@ -736,9 +751,14 @@ Set or retrieve a secret defined in the manifest.
 ### Options
 
 ```
-  -c, --cert string   PEM encoded MarbleRun user certificate file (required)
-  -h, --help          help for secret
-  -k, --key string    PEM encoded MarbleRun user key file (required)
+  -c, --cert string                PEM encoded MarbleRun user certificate file
+  -h, --help                       help for secret
+  -k, --key string                 PEM encoded MarbleRun user key file
+      --pkcs11-cert-id string      ID of the certificate in the PKCS#11 token
+      --pkcs11-cert-label string   Label of the certificate in the PKCS#11 token
+      --pkcs11-config string       Path to a PKCS#11 configuration file to load the client certificate with
+      --pkcs11-key-id string       ID of the private key in the PKCS#11 token
+      --pkcs11-key-label string    Label of the private key in the PKCS#11 token
 ```
 
 ### Options inherited from parent commands
@@ -795,13 +815,18 @@ marblerun secret set certificate.pem $MARBLERUN -c admin.crt -k admin.key --from
 ```
       --accepted-advisories strings     Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
-  -c, --cert string                     PEM encoded MarbleRun user certificate file (required)
+  -c, --cert string                     PEM encoded MarbleRun user certificate file
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
-  -k, --key string                      PEM encoded MarbleRun user key file (required)
+  -k, --key string                      PEM encoded MarbleRun user key file
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
+      --pkcs11-cert-id string           ID of the certificate in the PKCS#11 token
+      --pkcs11-cert-label string        Label of the certificate in the PKCS#11 token
+      --pkcs11-config string            Path to a PKCS#11 configuration file to load the client certificate with
+      --pkcs11-key-id string            ID of the private key in the PKCS#11 token
+      --pkcs11-key-label string         Label of the private key in the PKCS#11 token
       --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
 ```
 
@@ -839,13 +864,18 @@ marblerun secret get genericSecret symmetricKeyShared $MARBLERUN -c admin.crt -k
 ```
       --accepted-advisories strings     Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
-  -c, --cert string                     PEM encoded MarbleRun user certificate file (required)
+  -c, --cert string                     PEM encoded MarbleRun user certificate file
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
   -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
-  -k, --key string                      PEM encoded MarbleRun user key file (required)
+  -k, --key string                      PEM encoded MarbleRun user key file
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
+      --pkcs11-cert-id string           ID of the certificate in the PKCS#11 token
+      --pkcs11-cert-label string        Label of the certificate in the PKCS#11 token
+      --pkcs11-config string            Path to a PKCS#11 configuration file to load the client certificate with
+      --pkcs11-key-id string            ID of the private key in the PKCS#11 token
+      --pkcs11-key-label string         Label of the private key in the PKCS#11 token
       --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
 ```
 
