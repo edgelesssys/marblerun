@@ -113,7 +113,8 @@ func (m Marble) Equal(other Marble) bool {
 
 	return m.Package == other.Package &&
 		m.MaxActivations == other.MaxActivations &&
-		m.Parameters.Equal(other.Parameters)
+		m.Parameters.Equal(other.Parameters) &&
+		m.DisableSecretBinding == other.DisableSecretBinding
 }
 
 // Parameters contains lists for files, environment variables and commandline arguments that should be passed to an application.
