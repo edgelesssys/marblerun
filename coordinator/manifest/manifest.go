@@ -21,6 +21,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/user"
+	"github.com/edgelesssys/marblerun/util"
 	"go.uber.org/zap"
 )
 
@@ -94,21 +95,8 @@ type Marble struct {
 
 // Equal returns true if two Marble definitions are equal.
 func (m Marble) Equal(other Marble) bool {
-	if len(m.TLS) != len(other.TLS) {
+	if !util.SliceEqualElements(m.TLS, other.TLS) {
 		return false
-	}
-
-	mTLS := make([]string, len(m.TLS))
-	copy(mTLS, m.TLS)
-	otherTLS := make([]string, len(other.TLS))
-	copy(otherTLS, other.TLS)
-
-	sort.Strings(mTLS)
-	sort.Strings(otherTLS)
-	for i := range mTLS {
-		if mTLS[i] != otherTLS[i] {
-			return false
-		}
 	}
 
 	return m.Package == other.Package &&

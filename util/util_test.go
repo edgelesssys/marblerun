@@ -150,3 +150,40 @@ func TestIsRawSGXQuote(t *testing.T) {
 		})
 	}
 }
+
+func TestSliceEqualElements(t *testing.T) {
+	testCases := map[string]struct {
+		sliceA, sliceB []string
+		want           bool
+	}{
+		"empty slices": {
+			sliceA: []string{},
+			sliceB: []string{},
+			want:   true,
+		},
+		"one empty slice": {
+			sliceA: []string{"foo"},
+			sliceB: []string{},
+			want:   false,
+		},
+		"equal slices": {
+			sliceA: []string{"foo", "bar"},
+			sliceB: []string{"foo", "bar"},
+			want:   true,
+		},
+		"element order doesn't matter": {
+			sliceA: []string{"foo", "bar"},
+			sliceB: []string{"bar", "foo"},
+			want:   true,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
+
+			assert.Equal(tc.want, SliceEqualElements(tc.sliceA, tc.sliceB))
+			assert.Equal(tc.want, SliceEqualElements(tc.sliceB, tc.sliceA))
+		})
+	}
+}

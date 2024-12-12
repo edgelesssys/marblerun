@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -65,6 +66,11 @@ func (p PackageProperties) Equal(other PackageProperties) bool {
 		return false
 	}
 	if p.SecurityVersion != nil && other.SecurityVersion != nil && *p.SecurityVersion != *other.SecurityVersion {
+		return false
+	}
+
+	if !util.SliceEqualElements(p.AcceptedAdvisories, other.AcceptedAdvisories) ||
+		!util.SliceEqualElements(p.AcceptedTCBStatuses, other.AcceptedTCBStatuses) {
 		return false
 	}
 
