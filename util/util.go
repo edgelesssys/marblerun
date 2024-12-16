@@ -7,6 +7,7 @@ SPDX-License-Identifier: BUSL-1.1
 package util
 
 import (
+	"cmp"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -19,6 +20,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"slices"
 
 	"golang.org/x/crypto/hkdf"
 )
@@ -180,4 +182,17 @@ func IsRawSGXQuote(quote []byte) bool {
 	}
 
 	return true
+}
+
+// SliceEqualElements checks if a slice contains the same elements as another slice.
+// Order of elements does not matter.
+// Elements must be of type [cmp.Ordered].
+func SliceEqualElements[T cmp.Ordered](a, b []T) bool {
+	aCopy := make([]T, len(a))
+	bCopy := make([]T, len(b))
+	copy(aCopy, a)
+	copy(bCopy, b)
+	slices.Sort(aCopy)
+	slices.Sort(bCopy)
+	return slices.Equal(aCopy, bCopy)
 }
