@@ -26,7 +26,10 @@ func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "serve":
-			runServer(addr)
+			runServer(addr, true)
+			return
+		case "serve-no-client-auth":
+			runServer(addr, false)
 			return
 		case "monotonic-counter":
 			if err := testMonotonicCounter(); err != nil {
@@ -41,9 +44,9 @@ func main() {
 	}
 }
 
-func runServer(addr string) {
+func runServer(addr string, verifyClientCerts bool) {
 	// Retrieve server TLS config from ertgolib
-	tlsConfig, err := marble.GetTLSConfig(true)
+	tlsConfig, err := marble.GetTLSConfig(verifyClientCerts)
 	if err != nil {
 		panic(err)
 	}

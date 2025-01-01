@@ -41,9 +41,10 @@ import (
 )
 
 type reservedSecrets struct {
-	RootCA          manifest.Secret
-	MarbleCert      manifest.Secret
-	CoordinatorRoot manifest.Secret
+	RootCA                  manifest.Secret
+	MarbleCert              manifest.Secret
+	CoordinatorRoot         manifest.Secret
+	CoordinatorIntermediate manifest.Secret
 }
 
 // Defines the "MarbleRun" prefix when mentioned in a manifest.
@@ -368,9 +369,13 @@ func customizeParameters(params manifest.Parameters, specialSecrets reservedSecr
 	if err != nil {
 		return nil, fmt.Errorf("encoding Coordinator root CA: %w", err)
 	}
+	coordinatorIntermediatePem, err := manifest.EncodeSecretDataToPem(specialSecrets.CoordinatorIntermediate.Cert)
+	if err != nil {
+		return nil, fmt.Errorf("encoding Coordinator intermediate certificate: %w", err)
+	}
 
 	customParams.Env[marble.MarbleEnvironmentRootCA] = []byte(rootCaPem)
-	customParams.Env[marble.MarbleEnvironmentCertificateChain] = []byte(marbleCertPem + rootCaPem)
+	customParams.Env[marble.MarbleEnvironmentCertificateChain] = []byte(marbleCertPem + coordinatorIntermediatePem)
 	customParams.Env[marble.MarbleEnvironmentPrivateKey] = []byte(encodedPrivKey)
 	customParams.Env[globalconstants.MarbleEnvironmentCoordinatorRootCA] = []byte(coordinatorRootPem)
 
@@ -426,12 +431,17 @@ func (c *Core) generateMarbleAuthSecrets(txdata storeGetter, req *rpc.Activation
 	if err != nil {
 		return reservedSecrets{}, err
 	}
+	coordinatorIntermediateCert, err := txdata.GetCertificate(constants.SKCoordinatorIntermediateCert)
+	if err != nil {
+		return reservedSecrets{}, err
+	}
 
 	// customize marble's parameters
 	authSecrets := reservedSecrets{
-		RootCA:          manifest.Secret{Cert: manifest.Certificate(*marbleRootCert)},
-		MarbleCert:      manifest.Secret{Cert: manifest.Certificate(*marbleCert), Public: encodedPubKey, Private: encodedPrivKey},
-		CoordinatorRoot: manifest.Secret{Cert: manifest.Certificate(*coordinatorRootCert)},
+		RootCA:                  manifest.Secret{Cert: manifest.Certificate(*marbleRootCert)},
+		MarbleCert:              manifest.Secret{Cert: manifest.Certificate(*marbleCert), Public: encodedPubKey, Private: encodedPrivKey},
+		CoordinatorRoot:         manifest.Secret{Cert: manifest.Certificate(*coordinatorRootCert)},
+		CoordinatorIntermediate: manifest.Secret{Cert: manifest.Certificate(*coordinatorIntermediateCert)},
 	}
 
 	return authSecrets, nil
