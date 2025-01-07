@@ -40,19 +40,6 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type reservedSecrets struct {
-	RootCA                  manifest.Secret
-	MarbleCert              manifest.Secret
-	CoordinatorRoot         manifest.Secret
-	CoordinatorIntermediate manifest.Secret
-}
-
-// Defines the "MarbleRun" prefix when mentioned in a manifest.
-type secretsWrapper struct {
-	MarbleRun reservedSecrets
-	Secrets   map[string]manifest.Secret
-}
-
 // Activate implements the MarbleAPI function to authenticate a marble (implements the MarbleServer interface).
 //
 // Verifies the marble's integrity and subsequently provides the marble with a certificate for authentication and application-specific parameters as defined in the Coordinator's manifest.
@@ -309,7 +296,7 @@ func (c *Core) generateCertFromCSR(txdata storeGetter, csrReq []byte, pubk ecdsa
 }
 
 // customizeParameters replaces the placeholders in the manifest's parameters with the actual values.
-func customizeParameters(params manifest.Parameters, specialSecrets reservedSecrets, userSecrets map[string]manifest.Secret) (*rpc.Parameters, error) {
+func customizeParameters(params manifest.Parameters, specialSecrets manifest.ReservedSecrets, userSecrets map[string]manifest.Secret) (*rpc.Parameters, error) {
 	customParams := rpc.Parameters{
 		Argv:  params.Argv,
 		Files: make(map[string][]byte),
@@ -317,7 +304,7 @@ func customizeParameters(params manifest.Parameters, specialSecrets reservedSecr
 	}
 
 	// Wrap the authentication secrets to have the "MarbleRun" prefix in front of them when mentioned in a manifest
-	secretsWrapped := secretsWrapper{
+	secretsWrapped := manifest.SecretsWrapper{
 		MarbleRun: specialSecrets,
 		Secrets:   userSecrets,
 	}
@@ -382,7 +369,7 @@ func customizeParameters(params manifest.Parameters, specialSecrets reservedSecr
 	return &customParams, nil
 }
 
-func parseSecrets(data string, tplFunc template.FuncMap, secretsWrapped secretsWrapper) (string, error) {
+func parseSecrets(data string, tplFunc template.FuncMap, secretsWrapped manifest.SecretsWrapper) (string, error) {
 	var templateResult bytes.Buffer
 
 	tpl, err := template.New("data").Funcs(tplFunc).Parse(data)
@@ -397,47 +384,47 @@ func parseSecrets(data string, tplFunc template.FuncMap, secretsWrapped secretsW
 	return templateResult.String(), nil
 }
 
-func (c *Core) generateMarbleAuthSecrets(txdata storeGetter, req *rpc.ActivationReq, marbleUUID uuid.UUID) (reservedSecrets, error) {
+func (c *Core) generateMarbleAuthSecrets(txdata storeGetter, req *rpc.ActivationReq, marbleUUID uuid.UUID) (manifest.ReservedSecrets, error) {
 	// generate key-pair for marble
 	privk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
-		return reservedSecrets{}, err
+		return manifest.ReservedSecrets{}, err
 	}
 	encodedPrivKey, err := x509.MarshalPKCS8PrivateKey(privk)
 	if err != nil {
-		return reservedSecrets{}, err
+		return manifest.ReservedSecrets{}, err
 	}
 	encodedPubKey, err := x509.MarshalPKIXPublicKey(&privk.PublicKey)
 	if err != nil {
-		return reservedSecrets{}, err
+		return manifest.ReservedSecrets{}, err
 	}
 
 	// Generate Marble certificate
 	certRaw, err := c.generateCertFromCSR(txdata, req.GetCSR(), privk.PublicKey, req.GetMarbleType(), marbleUUID.String())
 	if err != nil {
-		return reservedSecrets{}, err
+		return manifest.ReservedSecrets{}, err
 	}
 
 	marbleCert, err := x509.ParseCertificate(certRaw)
 	if err != nil {
-		return reservedSecrets{}, err
+		return manifest.ReservedSecrets{}, err
 	}
 
 	marbleRootCert, err := txdata.GetCertificate(constants.SKMarbleRootCert)
 	if err != nil {
-		return reservedSecrets{}, err
+		return manifest.ReservedSecrets{}, err
 	}
 	coordinatorRootCert, err := txdata.GetCertificate(constants.SKCoordinatorRootCert)
 	if err != nil {
-		return reservedSecrets{}, err
+		return manifest.ReservedSecrets{}, err
 	}
 	coordinatorIntermediateCert, err := txdata.GetCertificate(constants.SKCoordinatorIntermediateCert)
 	if err != nil {
-		return reservedSecrets{}, err
+		return manifest.ReservedSecrets{}, err
 	}
 
 	// customize marble's parameters
-	authSecrets := reservedSecrets{
+	authSecrets := manifest.ReservedSecrets{
 		RootCA:                  manifest.Secret{Cert: manifest.Certificate(*marbleRootCert)},
 		MarbleCert:              manifest.Secret{Cert: manifest.Certificate(*marbleCert), Public: encodedPubKey, Private: encodedPrivKey},
 		CoordinatorRoot:         manifest.Secret{Cert: manifest.Certificate(*coordinatorRootCert)},
@@ -447,7 +434,7 @@ func (c *Core) generateMarbleAuthSecrets(txdata storeGetter, req *rpc.Activation
 	return authSecrets, nil
 }
 
-func (c *Core) setTTLSConfig(txdata storeGetter, marble *manifest.Marble, specialSecrets reservedSecrets, userSecrets map[string]manifest.Secret) error {
+func (c *Core) setTTLSConfig(txdata storeGetter, marble *manifest.Marble, specialSecrets manifest.ReservedSecrets, userSecrets map[string]manifest.Secret) error {
 	if len(marble.TLS) == 0 {
 		return nil
 	}

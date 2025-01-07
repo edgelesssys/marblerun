@@ -177,6 +177,8 @@ The following named keys and certificates are always available.
 * `.MarbleRun.RootCA.Cert`: the root certificate of the cluster issued by the Coordinator; this can be used to verify the certificates of all Marbles in the cluster.
 * `.MarbleRun.MarbleCert.Cert`: the Marble's certificate; this is issued by the `.MarbleRun.RootCA.Cert` and is for Marble-to-Marble and Marble-to-client authentication.
 * `.MarbleRun.MarbleCert.Private`: the Marble's private key corresponding to `.MarbleRun.MarbleCert.Cert`
+* `.MarbleRun.CoordinatorRoot.Cert`: the root certificate of the Coordinator; this can be used to verify Marbles in the cluster across multiple manifest updates.
+* `.MarbleRun.CoordinatorIntermediate.Cert`: the intermediate certificate of the Coordinator; see [the public Key infrastructure and certificate authority section](../architecture/security.md#public-key-infrastructure-and-certificate-authority) for more information on how this certificate relates to `.MarbleRun.RootCA`.
 
 Finally, the optional field `MaxActivations` can be used to restrict the number of distinct instances that can be created of a Marble.
 
