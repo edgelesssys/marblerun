@@ -522,6 +522,7 @@ The optional entry `Config` holds configuration settings for the Coordinator.
     "Config":
     {
         "SealMode": "ProductKey",
+        "UpdateThreshold": 5,
         "FeatureGates": []
     }
     //...
@@ -535,6 +536,9 @@ The optional entry `Config` holds configuration settings for the Coordinator.
 * `Disabled`: In single instance mode, the Coordinator won't persist state. This can be useful for ephemeral deployments. For distributed Coordinator mode, this setting is the same as `UniqueKey`.
 
 See the section on [seal key types](../architecture/security.md#seal-key) for more information.
+
+`UpdateThreshold` specifies the number of acknowledgments required for a [multi-party manifest update](./update-manifest.md#full-update).
+If not set, all users with roles that have the `UpdateManifest` action need to acknowledge the update.
 
 `FeatureGates` allows you to opt-in to additional features that may be useful for certain use cases. The following features are available:
 

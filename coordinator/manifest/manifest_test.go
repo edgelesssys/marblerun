@@ -11,6 +11,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"strings"
 	"testing"
 
 	"github.com/edgelesssys/marblerun/coordinator/quote"
@@ -380,11 +381,39 @@ func TestManifestCheck(t *testing.T) {
 	err = manifest.Check(log)
 	assert.NoError(err)
 
+	manifest.Roles["updateManifest"] = Role{
+		ResourceType:  "Manifest",
+		ResourceNames: []string{},
+		Actions:       []string{user.PermissionUpdateManifest},
+	}
+	adminUser := manifest.Users["admin"]
+	adminUser.Roles = append(adminUser.Roles, "updateManifest")
+	manifest.Users["admin"] = adminUser
+
+	manifest.Config.UpdateThreshold = 0
+	err = manifest.Check(log)
+	assert.NoError(err, "update threshold 0 should be accepted")
+
+	manifest.Config.UpdateThreshold = 1
+	err = manifest.Check(log)
+	assert.NoError(err, "update threshold equal to allowed users should be accepted")
+
+	adminUser2 := adminUser
+	adminUser2.Certificate = strings.ReplaceAll(adminUser.Certificate, "q", "b")
+	manifest.Users["admin2"] = adminUser2
+	err = manifest.Check(log)
+	assert.NoError(err, "update threshold lower than allowed users should be accepted")
+
+	manifest.Config.UpdateThreshold = 3
+	err = manifest.Check(log)
+	assert.Error(err, "update threshold higher than allowed users should be rejected")
+	manifest.Config.UpdateThreshold = 0
+
 	manifest.Users["anotherUser"] = User{
 		Certificate: manifest.Users["admin"].Certificate,
 	}
 	err = manifest.Check(log)
-	assert.Error(err)
+	assert.Error(err, "users without unique certificates should be rejected")
 }
 
 func TestCertificate(t *testing.T) {
