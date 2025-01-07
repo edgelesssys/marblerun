@@ -75,6 +75,9 @@ type Config struct {
 	SealMode string
 	// FeatureGates is a list of additional features to enable on the Coordinator.
 	FeatureGates []string
+	// UpdateThreshold is the amount of acknowledgements required to perform a multi party manifest update.
+	// If set to 0, all users with the update permission are required to acknowledge an update before it is applied.
+	UpdateThreshold uint
 }
 
 // Marble describes a service in the mesh that should be handled and verified by the Coordinator.
@@ -494,6 +497,19 @@ func (m Manifest) Check(zaplogger *zap.Logger) error {
 		default:
 			return fmt.Errorf("unknown type: %s for secret: %s", s.Type, name)
 		}
+	}
+
+	var manifestUpdaters int
+	for _, mrUser := range m.Users {
+		for _, roleName := range mrUser.Roles {
+			if m.Roles[roleName].ResourceType == "Manifest" && strings.ToLower(m.Roles[roleName].Actions[0]) == user.PermissionUpdateManifest {
+				manifestUpdaters++
+				break // Avoid counting the same user multiple times if they are assigned more than one role with update permission
+			}
+		}
+	}
+	if manifestUpdaters < int(m.Config.UpdateThreshold) {
+		return fmt.Errorf("not enough users with manifest update permissions (%d) to meet the threshold of %d", manifestUpdaters, m.Config.UpdateThreshold)
 	}
 
 	switch m.Config.SealMode {
