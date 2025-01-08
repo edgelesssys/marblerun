@@ -59,6 +59,11 @@ const (
 	// DevModeDefault is the default logging mode.
 	DevModeDefault = "0"
 
+	// DebugLogging enables debug logs.
+	DebugLogging = "EDG_DEBUG_LOGGING"
+	// DebugLoggingDefault is the default value to use when the [DebugLogging] env variable is not set.
+	DebugLoggingDefault = "0"
+
 	// StartupManifest is a path to a manifest to start with instead of waiting for a manifest from the api.
 	StartupManifest = "EDG_STARTUP_MANIFEST"
 )
