@@ -373,6 +373,15 @@ var IntegrationManifestJSON = `{
 				}
 			}
 		},
+		"testMarbleServerNoClientAuth": {
+			"Package": "backend",
+			"Parameters": {
+				"Argv": [
+					"./marble",
+					"serve-no-client-auth"
+				]
+			}
+		},
 		"testMarbleMonotonicCounter": {
 			"Package": "backend",
 			"Parameters": {

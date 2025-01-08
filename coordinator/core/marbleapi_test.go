@@ -303,16 +303,16 @@ func (ms *marbleSpawner) newMarble(t *testing.T, marbleType string, infraName st
 	pLeaf, rest := pem.Decode(params.Env[libMarble.MarbleEnvironmentCertificateChain])
 	ms.assert.NotNil(pLeaf)
 	ms.assert.NotEmpty(rest)
-	pMarbleRoot, rest := pem.Decode(rest)
-	ms.assert.NotNil(pMarbleRoot)
+	pIntermediate, rest := pem.Decode(rest)
+	ms.assert.NotNil(pIntermediate)
 	ms.assert.Empty(rest)
 
-	newMarbleRootCert, err := x509.ParseCertificate(pMarbleRoot.Bytes)
+	newIntermediateCert, err := x509.ParseCertificate(pIntermediate.Bytes)
 	ms.assert.NoError(err)
 	newLeafCert, err := x509.ParseCertificate(pLeaf.Bytes)
 	ms.assert.NoError(err)
 
-	ms.assert.Equal(constants.CoordinatorIntermediateName, newMarbleRootCert.Issuer.CommonName)
+	ms.assert.Equal(constants.CoordinatorName, newIntermediateCert.Issuer.CommonName)
 	ms.assert.Equal(constants.CoordinatorIntermediateName, newLeafCert.Issuer.CommonName)
 
 	// Check CommonName for leaf certificate
@@ -331,7 +331,7 @@ func (ms *marbleSpawner) newMarble(t *testing.T, marbleType string, infraName st
 	marbleRootCert := testutil.GetCertificate(t, ms.coreServer.txHandle, constants.SKMarbleRootCert)
 	// Check Signature for both, intermediate certificate and leaf certificate
 	ms.assert.NoError(rootCert.CheckSignature(intermediateCert.SignatureAlgorithm, intermediateCert.RawTBSCertificate, intermediateCert.Signature))
-	ms.assert.NoError(newMarbleRootCert.CheckSignature(newMarbleRootCert.SignatureAlgorithm, newMarbleRootCert.RawTBSCertificate, newMarbleRootCert.Signature))
+	ms.assert.NoError(newIntermediateCert.CheckSignature(newLeafCert.SignatureAlgorithm, newLeafCert.RawTBSCertificate, newLeafCert.Signature))
 	ms.assert.NoError(marbleRootCert.CheckSignature(newLeafCert.SignatureAlgorithm, newLeafCert.RawTBSCertificate, newLeafCert.Signature))
 
 	// Validate generated secret (only specified in backendFirst)

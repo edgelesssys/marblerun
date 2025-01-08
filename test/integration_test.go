@@ -17,6 +17,7 @@ import (
 	"flag"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"testing"
 
@@ -377,6 +378,42 @@ func TestManifestUpdate(t *testing.T) {
 	t.Log("Starting the same bunch of outdated Client-Marbles again (should fail now)...")
 	assert.False(f.StartMarbleClient(f.Ctx, clientCfg), "Did start successfully, but must not run successfully. The increased minimum SecurityVersion was ignored.")
 	assert.False(f.StartMarbleClient(f.Ctx, clientCfg), "Did start successfully, but must not run successfully. The increased minimum SecurityVersion was ignored.")
+}
+
+func TestExternalConnectionToMarble(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	f := newFramework(t)
+
+	cfg := framework.NewCoordinatorConfig()
+	defer cfg.Cleanup()
+	f.StartCoordinator(f.Ctx, cfg)
+
+	_, err := f.SetManifest(f.TestManifest)
+	require.NoError(err)
+
+	serverCfg := framework.NewMarbleConfig(meshServerAddr, "testMarbleServerNoClientAuth", "localhost")
+	defer serverCfg.Cleanup()
+	f.StartMarbleServer(f.Ctx, serverCfg)
+
+	rootCert, intermediateCert, _, err := api.VerifyCoordinator(context.Background(), clientServerAddr, api.VerifyOptions{InsecureSkipVerify: true})
+	require.NoError(err)
+
+	req, err := http.NewRequestWithContext(f.Ctx, http.MethodGet, "https://"+marbleTestAddr, http.NoBody)
+	require.NoError(err)
+
+	// test that an external app can connect and verify with both the root and the intermediate certificate
+	for _, root := range []*x509.Certificate{rootCert, intermediateCert} {
+		roots := x509.NewCertPool()
+		roots.AddCert(root)
+		client := http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{RootCAs: roots}}}
+		resp, err := client.Do(req)
+		assert.NoError(err)
+		if err == nil {
+			resp.Body.Close()
+			assert.Equal(http.StatusOK, resp.StatusCode)
+		}
+	}
 }
 
 func TestSignQuote(t *testing.T) {
