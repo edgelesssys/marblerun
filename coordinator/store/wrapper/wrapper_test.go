@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestMain(m *testing.M) {
@@ -34,7 +35,7 @@ func TestStoreWrapper(t *testing.T) {
 	require := require.New(t)
 	ctx := context.Background()
 
-	store := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "")
+	store := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
 	rawManifest := []byte(test.ManifestJSON)
 	curState := state.AcceptingManifest
 	testSecret := manifest.Secret{
@@ -87,7 +88,7 @@ func TestStoreWrapperRollback(t *testing.T) {
 	require := require.New(t)
 	ctx := context.Background()
 
-	stor := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "")
+	stor := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
 	data := New(stor)
 
 	startingState := state.AcceptingManifest

@@ -66,7 +66,7 @@ func run(log *zap.Logger, validator quote.Validator, issuer quote.Issuer, sealDi
 		go server.RunPrometheusServer(promServerAddr, log, promRegistry, eventlog)
 	}
 
-	store := stdstore.New(sealer, afero.NewOsFs(), sealDir)
+	store := stdstore.New(sealer, afero.NewOsFs(), sealDir, log)
 
 	// creating core
 	log.Info("Creating the Core object")

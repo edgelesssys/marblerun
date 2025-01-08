@@ -71,7 +71,7 @@ func TestSeal(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	recovery := recovery.NewSinglePartyRecovery()
 
-	c, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, ""), recovery, zapLogger, nil, nil)
+	c, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, "", zapLogger), recovery, zapLogger, nil, nil)
 	require.NoError(err)
 
 	// Set manifest. This will seal the state.
@@ -89,7 +89,7 @@ func TestSeal(t *testing.T) {
 	cSecrets := testutil.GetSecretMap(t, c.txHandle)
 
 	// Check sealing with a new core initialized with the sealed state.
-	c2, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, ""), recovery, zapLogger, nil, nil)
+	c2, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, "", zapLogger), recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	clientAPI, err = clientapi.New(c2.txHandle, c2.recovery, c2, zapLogger)
 	require.NoError(err)
@@ -125,7 +125,7 @@ func TestRecover(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	recovery := recovery.NewSinglePartyRecovery()
 
-	c, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, ""), recovery, zapLogger, nil, nil)
+	c, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, "", zapLogger), recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	clientAPI, err := clientapi.New(c.txHandle, c.recovery, c, zapLogger)
 	require.NoError(err)
@@ -145,7 +145,7 @@ func TestRecover(t *testing.T) {
 
 	// Initialize new core and let unseal fail
 	sealer.UnsealError = &seal.EncryptionKeyError{}
-	c2, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, ""), recovery, zapLogger, nil, nil)
+	c2, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, "", zapLogger), recovery, zapLogger, nil, nil)
 	sealer.UnsealError = nil
 	require.NoError(err)
 	clientAPI, err = clientapi.New(c2.txHandle, c2.recovery, c2, zapLogger)
@@ -304,14 +304,14 @@ func TestUnsetRestart(t *testing.T) {
 	recovery := recovery.NewSinglePartyRecovery()
 
 	// create a new core, this seals the state with only certificate and keys
-	c1, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, ""), recovery, zapLogger, nil, nil)
+	c1, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, "", zapLogger), recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	c1State := testutil.GetState(t, c1.txHandle)
 	assert.Equal(state.AcceptingManifest, c1State)
 	cCert := testutil.GetCertificate(t, c1.txHandle, constants.SKCoordinatorRootCert)
 
 	// create a second core, this should overwrite the previously sealed certificate and keys since no manifest was set
-	c2, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, ""), recovery, zapLogger, nil, nil)
+	c2, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, "", zapLogger), recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	c2State := testutil.GetState(t, c2.txHandle)
 	assert.Equal(state.AcceptingManifest, c2State)
