@@ -11,7 +11,6 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
-	"fmt"
 	"testing"
 
 	"github.com/edgelesssys/marblerun/coordinator/quote"
@@ -71,7 +70,6 @@ func TestFile(t *testing.T) {
 func TestTemplateDryRun(t *testing.T) {
 	testCases := map[string]struct {
 		manifest []byte
-		secrets  map[string]Secret
 		wantErr  bool
 	}{
 		"valid": {
@@ -225,6 +223,121 @@ func TestTemplateDryRun(t *testing.T) {
 			}`),
 			wantErr: true,
 		},
+		"reserved secrets": {
+			manifest: []byte(`{
+			"Packages": { "backend": { "UniqueID": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" }},
+			"Marbles": {
+				"backend_first": {
+					"Package": "backend",
+					"Parameters": {
+						"Files": {
+							"root_ca": "{{ pem .MarbleRun.RootCA.Cert }}",
+							"marble_cert": "{{ pem .MarbleRun.MarbleCert.Cert }}",
+							"marble_key": "{{ pem .MarbleRun.MarbleCert.Private }}",
+							"coordinator_root": "{{ pem .MarbleRun.CoordinatorRoot.Cert }}",
+							"coordinator_intermediate": "{{ pem .MarbleRun.CoordinatorIntermediate.Cert }}"
+						}
+					}
+				}
+			}
+			}`),
+		},
+		"reserved root ca does not support private": {
+			manifest: []byte(`{
+			"Packages": { "backend": { "UniqueID": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" }},
+			"Marbles": {
+				"backend_first": {
+					"Package": "backend",
+					"Parameters": {
+						"Files": {
+							"root_ca": "{{ pem .MarbleRun.RootCA.Private }}"
+						}
+					}
+				}
+			}
+			}`),
+			wantErr: true,
+		},
+		"reserved root ca does not support public": {
+			manifest: []byte(`{
+			"Packages": { "backend": { "UniqueID": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" }},
+			"Marbles": {
+				"backend_first": {
+					"Package": "backend",
+					"Parameters": {
+						"Files": {
+							"root_ca": "{{ pem .MarbleRun.RootCA.Public }}"
+						}
+					}
+				}
+			}
+			}`),
+			wantErr: true,
+		},
+		"reserved coordinator root does not support private": {
+			manifest: []byte(`{
+			"Packages": { "backend": { "UniqueID": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" }},
+			"Marbles": {
+				"backend_first": {
+					"Package": "backend",
+					"Parameters": {
+						"Files": {
+							"root_ca": "{{ pem .MarbleRun.CoordinatorRoot.Private }}"
+						}
+					}
+				}
+			}
+			}`),
+			wantErr: true,
+		},
+		"reserved coordinator root does not support public": {
+			manifest: []byte(`{
+			"Packages": { "backend": { "UniqueID": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" }},
+			"Marbles": {
+				"backend_first": {
+					"Package": "backend",
+					"Parameters": {
+						"Files": {
+							"root_ca": "{{ pem .MarbleRun.CoordinatorRoot.Public }}"
+						}
+					}
+				}
+			}
+			}`),
+			wantErr: true,
+		},
+		"reserved coordinator intermediate does not support private": {
+			manifest: []byte(`{
+			"Packages": { "backend": { "UniqueID": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" }},
+			"Marbles": {
+				"backend_first": {
+					"Package": "backend",
+					"Parameters": {
+						"Files": {
+							"root_ca": "{{ pem .MarbleRun.CoordinatorIntermediate.Private }}"
+						}
+					}
+				}
+			}
+			}`),
+			wantErr: true,
+		},
+		"reserved coordinator intermediate does not support public": {
+			manifest: []byte(`{
+			"Packages": { "backend": { "UniqueID": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" }},
+			"Marbles": {
+				"backend_first": {
+					"Package": "backend",
+					"Parameters": {
+						"Files": {
+							"root_ca": "{{ pem .MarbleRun.CoordinatorIntermediate.Public }}"
+						}
+					}
+				}
+			}
+			}`),
+			wantErr: true,
+		},
 	}
 
 	for name, tc := range testCases {
@@ -248,7 +361,6 @@ func TestTemplateDryRun(t *testing.T) {
 			err := manifest.TemplateDryRun(manifest.Secrets)
 			if tc.wantErr {
 				assert.Error(err)
-				fmt.Println(err)
 			} else {
 				assert.NoError(err)
 			}

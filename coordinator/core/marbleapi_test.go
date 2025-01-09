@@ -474,12 +474,12 @@ func TestParseSecrets(t *testing.T) {
 		"emptysecret":       {},
 	}
 
-	testReservedSecrets := reservedSecrets{
+	testReservedSecrets := manifest.ReservedSecrets{
 		RootCA:     manifest.Secret{Public: []byte{0, 0, 42}, Private: []byte{0, 0, 7}},
 		MarbleCert: manifest.Secret{Public: []byte{42, 0, 0}, Private: []byte{7, 0, 0}},
 	}
 
-	testWrappedSecrets := secretsWrapper{
+	testWrappedSecrets := manifest.SecretsWrapper{
 		MarbleRun: testReservedSecrets,
 		Secrets:   testSecrets,
 	}

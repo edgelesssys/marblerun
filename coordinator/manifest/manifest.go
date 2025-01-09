@@ -526,6 +526,12 @@ func (m Manifest) TemplateDryRun(secrets map[string]Secret) error {
 				Public:  []byte{0x41},
 				Private: []byte{0x41},
 			},
+			CoordinatorRoot: Secret{
+				Cert: Certificate{Raw: []byte{0x41}},
+			},
+			CoordinatorIntermediate: Secret{
+				Cert: Certificate{Raw: []byte{0x41}},
+			},
 		},
 	}
 	// make sure templates in file/env declarations can actually be executed
@@ -620,8 +626,10 @@ func (m Manifest) CheckUpdate(originalPackages map[string]quote.PackagePropertie
 
 // ReservedSecrets is a tuple of secrets reserved for a single Marble.
 type ReservedSecrets struct {
-	RootCA     Secret
-	MarbleCert Secret
+	RootCA                  Secret
+	MarbleCert              Secret
+	CoordinatorRoot         Secret
+	CoordinatorIntermediate Secret
 }
 
 // SecretsWrapper is used to define the "MarbleRun" prefix when mentioned in a manifest.
