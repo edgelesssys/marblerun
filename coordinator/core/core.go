@@ -91,6 +91,7 @@ func (c *Core) AdvanceState(newState state.State, tx interface {
 	GetState() (state.State, error)
 },
 ) error {
+	c.log.Debug("Advancing state", zap.Int("from", int(newState)), zap.Int("to", int(newState)))
 	curState, err := tx.GetState()
 	if err != nil {
 		return err
@@ -123,6 +124,7 @@ func NewCore(
 
 	zapLogger.Info("Loading state")
 	recoveryData, loadErr := txHandle.LoadState()
+	c.log.Debug("Loaded state", zap.Error(loadErr), zap.ByteString("recoveryData", recoveryData))
 	if err := c.recovery.SetRecoveryData(recoveryData); err != nil {
 		c.log.Error("Could not retrieve recovery data from state. Recovery will be unavailable", zap.Error(err))
 	}
@@ -197,7 +199,7 @@ func NewCoreWithMocks() *Core {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	recovery := recovery.NewSinglePartyRecovery()
-	core, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, afero.Afero{Fs: afero.NewMemMapFs()}, ""), recovery, zapLogger, nil, nil)
+	core, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, afero.Afero{Fs: afero.NewMemMapFs()}, "", zapLogger), recovery, zapLogger, nil, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -281,8 +283,10 @@ func (c *Core) GetTLSMarbleRootCertificate(clientHello *tls.ClientHelloInfo) (*t
 // If reportData is not nil, a new quote is generated over the data and returned.
 func (c *Core) GetQuote(reportData []byte) ([]byte, error) {
 	if len(reportData) == 0 {
+		c.log.Debug("Returning cached quote")
 		return c.quote, nil
 	}
+	c.log.Debug("Generating new quote for report data")
 	quote, err := c.qi.Issue(reportData)
 	if err != nil && err.Error() != "OE_UNSUPPORTED" {
 		return nil, QuoteError{err}
@@ -308,6 +312,7 @@ func (c *Core) GenerateQuote(cert []byte) error {
 	}
 
 	c.quote = quote
+	c.log.Debug("Quote generated and stored")
 
 	return nil
 }
@@ -366,11 +371,13 @@ func (c *Core) GenerateSecrets(
 	for name, secret := range secrets {
 		// Skip user defined secrets, these will be uploaded by a user
 		if secret.UserDefined {
+			c.log.Debug("Skipping generation of user defined secret", zap.String("name", name))
 			continue
 		}
 
 		// Skip secrets from wrong context
 		if secret.Shared != (id == uuid.Nil) {
+			c.log.Debug("Skipping generation of secret", zap.String("name", name), zap.String("type", secret.Type), zap.Bool("shared", secret.Shared))
 			continue
 		}
 
@@ -425,7 +432,7 @@ func (c *Core) GenerateSecrets(
 
 		case manifest.SecretTypeCertED25519:
 			if secret.Size != 0 {
-				return nil, fmt.Errorf("invalid secret size for cert-ed25519, none is expected. given: %v", name)
+				return nil, fmt.Errorf("invalid secret size for cert-ed25519 secret %s: none is expected, got: %d", name, secret.Size)
 			}
 
 			// Generate keys
@@ -455,7 +462,7 @@ func (c *Core) GenerateSecrets(
 				curve = elliptic.P521()
 			default:
 				c.log.Error("ECDSA secrets only support P224, P256, P384 and P521 as curve. Check the supplied size.", zap.String("name", name), zap.String("type", secret.Type), zap.Uint("size", secret.Size))
-				return nil, fmt.Errorf("unsupported size %d: does not map to a supported curve", secret.Size)
+				return nil, fmt.Errorf("invalid secret size for cert-ecdsa secret %s: unsupported size %d: does not map to a supported curve", name, secret.Size)
 			}
 
 			// Generate keys
@@ -472,7 +479,7 @@ func (c *Core) GenerateSecrets(
 			}
 
 		default:
-			return nil, fmt.Errorf("unsupported secret of type %s", secret.Type)
+			return nil, fmt.Errorf("secret %s is invalid: unsupported secret of type %s", name, secret.Type)
 		}
 	}
 

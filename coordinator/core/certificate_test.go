@@ -47,7 +47,7 @@ func TestCertificateVerify(t *testing.T) {
 	// create core
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
-	stor := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "")
+	stor := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zapLogger)
 	recovery := recovery.NewSinglePartyRecovery()
 	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, stor, recovery, zapLogger, nil, nil)
 	require.NoError(err)

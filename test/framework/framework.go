@@ -144,6 +144,7 @@ func (i IntegrationTest) StartCoordinator(ctx context.Context, cfg CoordinatorCo
 		MakeEnv(constants.ClientAddr, i.ClientServerAddr),
 		MakeEnv(constants.DNSNames, cfg.dnsNames),
 		MakeEnv(constants.SealDir, cfg.sealDir),
+		MakeEnv(constants.DebugLogging, "1"),
 		i.SimulationFlag,
 	}
 	cmd.Env = append(cmd.Env, cfg.extraEnv...)

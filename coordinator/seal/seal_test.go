@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestPrepareCipherText(t *testing.T) {
@@ -66,7 +67,7 @@ func TestPrepareCipherText(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			assert := assert.New(t)
 
-			_, _, err := prepareCipherText(tc.sealedData)
+			_, _, err := prepareCipherText(tc.sealedData, zaptest.NewLogger(t))
 			if tc.wantErr {
 				assert.Error(err)
 			} else {
@@ -118,7 +119,7 @@ func TestSealUnseal(t *testing.T) {
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			assert := assert.New(t)
-			sealer := NewAESGCMSealer()
+			sealer := NewAESGCMSealer(zaptest.NewLogger(t))
 
 			sealer.encryptionKey = tc.encryptionKey
 			sealedData, err := sealer.Seal(tc.metadata, tc.data)

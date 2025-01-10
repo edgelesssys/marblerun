@@ -19,6 +19,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/coordinator/store"
 	"github.com/spf13/afero"
+	"go.uber.org/zap"
 )
 
 const (
@@ -40,15 +41,18 @@ type StdStore struct {
 	recoveryData []byte
 	recoveryMode bool
 	sealDir      string
+
+	log *zap.Logger
 }
 
 // New creates and initializes a new StdStore object.
-func New(sealer seal.Sealer, fs afero.Fs, sealDir string) *StdStore {
+func New(sealer seal.Sealer, fs afero.Fs, sealDir string, log *zap.Logger) *StdStore {
 	s := &StdStore{
 		data:    make(map[string][]byte),
 		sealer:  sealer,
 		fs:      afero.Afero{Fs: fs},
 		sealDir: sealDir,
+		log:     log,
 	}
 
 	return s
@@ -57,6 +61,7 @@ func New(sealer seal.Sealer, fs afero.Fs, sealDir string) *StdStore {
 // Get retrieves a value from StdStore by Type and Name.
 func (s *StdStore) Get(request string) ([]byte, error) {
 	s.mux.Lock()
+	s.log.Debug("Retrieving value from store", zap.String("request", request))
 	value, ok := s.data[request]
 	s.mux.Unlock()
 
@@ -68,6 +73,7 @@ func (s *StdStore) Get(request string) ([]byte, error) {
 
 // Put saves a value in StdStore by Type and Name.
 func (s *StdStore) Put(request string, requestData []byte) error {
+	s.log.Debug("Saving value to store", zap.String("request", request))
 	tx := s.beginTransaction()
 	defer tx.Rollback()
 	if err := tx.Put(request, requestData); err != nil {
@@ -78,6 +84,7 @@ func (s *StdStore) Put(request string, requestData []byte) error {
 
 // Delete removes a value from StdStore.
 func (s *StdStore) Delete(request string) error {
+	s.log.Debug("Deleting value from store", zap.String("request", request))
 	tx := s.beginTransaction()
 	defer tx.Rollback()
 	if err := tx.Delete(request); err != nil {
@@ -89,6 +96,7 @@ func (s *StdStore) Delete(request string) error {
 // Iterator returns an iterator for keys saved in StdStore with a given prefix.
 // For an empty prefix this is an iterator for all keys in StdStore.
 func (s *StdStore) Iterator(prefix string) (store.Iterator, error) {
+	s.log.Debug("Creating iterator for store", zap.String("prefix", prefix))
 	keys := make([]string, 0)
 	for k := range s.data {
 		if strings.HasPrefix(k, prefix) {
@@ -110,39 +118,51 @@ func (s *StdStore) LoadState() ([]byte, error) {
 	defer s.mux.Unlock()
 
 	// load from fs
+	s.log.Debug("Loading sealed state from file system", zap.String("filename", filepath.Join(s.sealDir, SealedDataFname)))
 	sealedData, err := s.fs.ReadFile(filepath.Join(s.sealDir, SealedDataFname))
 	if errors.Is(err, afero.ErrFileNotFound) {
 		// No sealed data found, back up any existing seal keys
+		s.log.Debug("No sealed data found, backing up existing seal keys")
 		s.backupEncryptionKey()
 		return nil, nil
 	} else if err != nil {
+		s.log.Debug("Error reading sealed data", zap.Error(err))
 		return nil, err
 	}
 
+	s.log.Debug("Unsealing loaded state")
 	encodedRecoveryData, stateRaw, err := s.sealer.Unseal(sealedData)
 	if err != nil {
+		s.log.Debug("Unsealing state failed", zap.Error(err))
 		if !errors.Is(err, seal.ErrMissingEncryptionKey) {
+			s.log.Debug("No encryption key found, entering recovery mode")
 			s.recoveryMode = true
 			return encodedRecoveryData, fmt.Errorf("unsealing state: %w", err)
 		}
 		// Try to unseal encryption key from disk using product key
 		// And retry unsealing the sealed data
+		s.log.Debug("Trying to unseal encryption key")
 		if err := s.unsealEncryptionKey(); err != nil {
+			s.log.Debug("Unsealing encryption key failed, entering recovery mode", zap.Error(err))
 			s.recoveryMode = true
 			return encodedRecoveryData, &seal.EncryptionKeyError{Err: err}
 		}
 
+		s.log.Debug("Retrying unsealing state")
 		encodedRecoveryData, stateRaw, err = s.sealer.Unseal(sealedData)
 		if err != nil {
+			s.log.Debug("Unsealing state failed, entering recovery mode", zap.Error(err))
 			s.recoveryMode = true
 			return encodedRecoveryData, fmt.Errorf("retry unsealing state with loaded key: %w", err)
 		}
 	}
 	if len(stateRaw) == 0 {
+		s.log.Debug("State is empty, nothing to do")
 		return encodedRecoveryData, nil
 	}
 
 	// load state
+	s.log.Debug("Loading state from unsealed JSON blob")
 	var loadedData map[string][]byte
 	if err := json.Unmarshal(stateRaw, &loadedData); err != nil {
 		return encodedRecoveryData, err
@@ -154,22 +174,26 @@ func (s *StdStore) LoadState() ([]byte, error) {
 
 // SetRecoveryData sets the recovery data that is added to the sealed data.
 func (s *StdStore) SetRecoveryData(recoveryData []byte) {
+	s.log.Debug("Setting recovery data and removing recovery mode", zap.ByteString("recoveryData", recoveryData))
 	s.recoveryData = recoveryData
 	s.recoveryMode = false
 }
 
 // SetEncryptionKey sets the encryption key for sealing and unsealing.
 func (s *StdStore) SetEncryptionKey(encryptionKey []byte, mode seal.Mode) error {
+	s.log.Debug("Setting encryption key", zap.Int("mode", int(mode)))
 	if mode != seal.ModeDisabled {
 		// If there already is an existing key file stored on disk, save it
 		s.backupEncryptionKey()
 
+		s.log.Debug("Sealing state encryption key")
 		encryptedKey, err := s.sealer.SealEncryptionKey(encryptionKey, mode)
 		if err != nil {
 			return fmt.Errorf("encrypting data key: %w", err)
 		}
 
 		// Write the sealed encryption key to disk
+		s.log.Debug("Writing sealed encryption key to disk", zap.String("filename", filepath.Join(s.sealDir, SealedKeyFname)))
 		if err = s.fs.WriteFile(filepath.Join(s.sealDir, SealedKeyFname), encryptedKey, 0o600); err != nil {
 			return fmt.Errorf("writing encrypted key to disk: %w", err)
 		}
@@ -182,7 +206,8 @@ func (s *StdStore) SetEncryptionKey(encryptionKey []byte, mode seal.Mode) error 
 }
 
 func (s *StdStore) beginTransaction() *StdTransaction {
-	tx := StdTransaction{store: s, data: map[string][]byte{}}
+	s.log.Debug("Starting new store transaction")
+	tx := StdTransaction{store: s, data: map[string][]byte{}, log: s.log}
 	s.txmux.Lock()
 
 	s.mux.Lock()
@@ -196,6 +221,7 @@ func (s *StdStore) beginTransaction() *StdTransaction {
 
 // commit saves the store's data to disk.
 func (s *StdStore) commit(data map[string][]byte) error {
+	s.log.Debug("Committing store transaction", zap.Bool("recoveryMode", s.recoveryMode), zap.Int("sealMode", int(s.sealMode)))
 	dataRaw, err := json.Marshal(data)
 	if err != nil {
 		return err
@@ -204,12 +230,14 @@ func (s *StdStore) commit(data map[string][]byte) error {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	if !s.recoveryMode && s.sealMode != seal.ModeDisabled {
+		s.log.Debug("Sealing transaction data")
 		sealedData, err := s.sealer.Seal(s.recoveryData, dataRaw)
 		if err != nil {
 			return err
 		}
 
 		// atomically replace the sealed data file
+		s.log.Debug("Writing sealed transaction data to disk", zap.String("filename", filepath.Join(s.sealDir, SealedDataFname)))
 		sealedDataPath := filepath.Join(s.sealDir, SealedDataFname)
 		sealedDataPathTmp := sealedDataPath + ".tmp"
 		if err := s.fs.WriteFile(sealedDataPathTmp, sealedData, 0o600); err != nil {
@@ -221,6 +249,7 @@ func (s *StdStore) commit(data map[string][]byte) error {
 	}
 
 	s.data = data
+	s.log.Debug("Transaction committed")
 	s.txmux.Unlock()
 
 	return nil
@@ -228,6 +257,7 @@ func (s *StdStore) commit(data map[string][]byte) error {
 
 // unsealEncryptionKey sets the seal key for the store's sealer by loading the encrypted key from disk.
 func (s *StdStore) unsealEncryptionKey() error {
+	s.log.Debug("Loading sealed encryption key from disk", zap.String("filename", filepath.Join(s.sealDir, SealedKeyFname)))
 	encryptedKey, err := s.fs.ReadFile(filepath.Join(s.sealDir, SealedKeyFname))
 	if err != nil {
 		return fmt.Errorf("reading encrypted key from disk: %w", err)
@@ -245,6 +275,7 @@ func (s *StdStore) backupEncryptionKey() {
 	if sealedKeyData, err := s.fs.ReadFile(filepath.Join(s.sealDir, SealedKeyFname)); err == nil {
 		t := time.Now()
 		newFileName := filepath.Join(s.sealDir, SealedKeyFname) + "_" + t.Format("20060102150405") + ".bak"
+		s.log.Debug("Creating backup of existing seal key", zap.String("filename", newFileName))
 		_ = s.fs.WriteFile(newFileName, sealedKeyData, 0o600)
 	}
 }
@@ -253,10 +284,12 @@ func (s *StdStore) backupEncryptionKey() {
 type StdTransaction struct {
 	store *StdStore
 	data  map[string][]byte
+	log   *zap.Logger
 }
 
 // Get retrieves a value.
 func (t *StdTransaction) Get(request string) ([]byte, error) {
+	t.log.Debug("Retrieving value from transaction", zap.String("request", request))
 	if value, ok := t.data[request]; ok {
 		return value, nil
 	}
@@ -265,18 +298,21 @@ func (t *StdTransaction) Get(request string) ([]byte, error) {
 
 // Put saves a value.
 func (t *StdTransaction) Put(request string, requestData []byte) error {
+	t.log.Debug("Saving value to transaction", zap.String("request", request))
 	t.data[request] = requestData
 	return nil
 }
 
 // Delete removes a value.
 func (t *StdTransaction) Delete(request string) error {
+	t.log.Debug("Deleting value from transaction", zap.String("request", request))
 	delete(t.data, request)
 	return nil
 }
 
 // Iterator returns an iterator for all keys in the transaction with a given prefix.
 func (t *StdTransaction) Iterator(prefix string) (store.Iterator, error) {
+	t.log.Debug("Creating iterator for transaction", zap.String("prefix", prefix))
 	keys := make([]string, 0)
 	for k := range t.data {
 		if strings.HasPrefix(k, prefix) {
@@ -289,6 +325,7 @@ func (t *StdTransaction) Iterator(prefix string) (store.Iterator, error) {
 
 // Commit ends a transaction and persists the changes.
 func (t *StdTransaction) Commit(_ context.Context) error {
+	t.log.Debug("Committing transaction")
 	if err := t.store.commit(t.data); err != nil {
 		return err
 	}
@@ -298,6 +335,7 @@ func (t *StdTransaction) Commit(_ context.Context) error {
 
 // Rollback aborts a transaction.
 func (t *StdTransaction) Rollback() {
+	t.log.Debug("Rolling back transaction")
 	if t.store != nil {
 		t.store.txmux.Unlock()
 	}
