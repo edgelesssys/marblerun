@@ -499,16 +499,17 @@ func (m Manifest) Check(zaplogger *zap.Logger) error {
 		}
 	}
 
-	var manifestUpdaters int
+	var manifestUpdaters uint
 	for _, mrUser := range m.Users {
 		for _, roleName := range mrUser.Roles {
-			if m.Roles[roleName].ResourceType == "Manifest" && strings.ToLower(m.Roles[roleName].Actions[0]) == user.PermissionUpdateManifest {
+			if m.Roles[roleName].ResourceType == "Manifest" && len(m.Roles[roleName].Actions) > 0 &&
+				strings.ToLower(m.Roles[roleName].Actions[0]) == user.PermissionUpdateManifest {
 				manifestUpdaters++
 				break // Avoid counting the same user multiple times if they are assigned more than one role with update permission
 			}
 		}
 	}
-	if manifestUpdaters < int(m.Config.UpdateThreshold) {
+	if manifestUpdaters < m.Config.UpdateThreshold {
 		return fmt.Errorf("not enough users with manifest update permissions (%d) to meet the threshold of %d", manifestUpdaters, m.Config.UpdateThreshold)
 	}
 
