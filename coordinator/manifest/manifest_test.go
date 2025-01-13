@@ -370,50 +370,173 @@ func TestTemplateDryRun(t *testing.T) {
 }
 
 func TestManifestCheck(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
+	testCases := map[string]struct {
+		manifest func(*require.Assertions) Manifest
+		wantErr  bool
+	}{
+		"valid default manifest": {
+			manifest: func(require *require.Assertions) Manifest {
+				var manifest Manifest
+				require.NoError(json.Unmarshal([]byte(test.ManifestJSON), &manifest))
+				return manifest
+			},
+		},
+		"valid manifest with recovery key": {
+			manifest: func(require *require.Assertions) Manifest {
+				var manifest Manifest
+				require.NoError(json.Unmarshal([]byte(test.ManifestJSONWithRecoveryKey), &manifest))
+				return manifest
+			},
+		},
+		"valid integration test manifest": {
+			manifest: func(require *require.Assertions) Manifest {
+				var manifest Manifest
+				require.NoError(json.Unmarshal([]byte(test.IntegrationManifestJSON), &manifest))
+				return manifest
+			},
+		},
+		"update threshold 0 with one update-manifest user": {
+			manifest: func(require *require.Assertions) Manifest {
+				var manifest Manifest
+				require.NoError(json.Unmarshal([]byte(test.ManifestJSONWithRecoveryKey), &manifest))
 
-	var manifest Manifest
-	err := json.Unmarshal([]byte(test.ManifestJSONWithRecoveryKey), &manifest)
-	require.NoError(err)
+				manifest.Roles["updateManifest"] = Role{
+					ResourceType:  "Manifest",
+					ResourceNames: []string{},
+					Actions:       []string{user.PermissionUpdateManifest},
+				}
+				adminUser := manifest.Users["admin"]
+				adminUser.Roles = append(adminUser.Roles, "updateManifest")
+				manifest.Users["admin"] = adminUser
 
-	log := zaptest.NewLogger(t)
-	err = manifest.Check(log)
-	assert.NoError(err)
+				manifest.Config.UpdateThreshold = 0
+				return manifest
+			},
+		},
+		"update threshold equal to allowed users": {
+			manifest: func(require *require.Assertions) Manifest {
+				var manifest Manifest
+				require.NoError(json.Unmarshal([]byte(test.ManifestJSONWithRecoveryKey), &manifest))
 
-	manifest.Roles["updateManifest"] = Role{
-		ResourceType:  "Manifest",
-		ResourceNames: []string{},
-		Actions:       []string{user.PermissionUpdateManifest},
+				manifest.Roles["updateManifest"] = Role{
+					ResourceType:  "Manifest",
+					ResourceNames: []string{},
+					Actions:       []string{user.PermissionUpdateManifest},
+				}
+				adminUser := manifest.Users["admin"]
+				adminUser.Roles = append(adminUser.Roles, "updateManifest")
+				manifest.Users["admin"] = adminUser
+
+				manifest.Config.UpdateThreshold = 1
+				return manifest
+			},
+		},
+		"update threshold lower than allowed users": {
+			manifest: func(require *require.Assertions) Manifest {
+				var manifest Manifest
+				require.NoError(json.Unmarshal([]byte(test.ManifestJSONWithRecoveryKey), &manifest))
+
+				manifest.Roles["updateManifest"] = Role{
+					ResourceType:  "Manifest",
+					ResourceNames: []string{},
+					Actions:       []string{user.PermissionUpdateManifest},
+				}
+				adminUser := manifest.Users["admin"]
+				adminUser.Roles = append(adminUser.Roles, "updateManifest")
+				manifest.Users["admin"] = adminUser
+
+				// Set up a second user from a copy of the first
+				// The certificate is not a valid x509 cert, but that is not checked for in this test
+				adminUser2 := adminUser
+				adminUser2.Certificate = strings.ReplaceAll(adminUser.Certificate, "q", "b")
+				manifest.Users["admin2"] = adminUser2
+
+				manifest.Config.UpdateThreshold = 1
+				return manifest
+			},
+		},
+		"update threshold higher than allowed users": {
+			manifest: func(require *require.Assertions) Manifest {
+				var manifest Manifest
+				require.NoError(json.Unmarshal([]byte(test.ManifestJSONWithRecoveryKey), &manifest))
+
+				manifest.Roles["updateManifest"] = Role{
+					ResourceType:  "Manifest",
+					ResourceNames: []string{},
+					Actions:       []string{user.PermissionUpdateManifest},
+				}
+				adminUser := manifest.Users["admin"]
+				adminUser.Roles = append(adminUser.Roles, "updateManifest")
+				manifest.Users["admin"] = adminUser
+
+				// Set up a second user from a copy of the first
+				// The certificate is not a valid x509 cert, but that is not checked for in this test
+				adminUser2 := adminUser
+				adminUser2.Certificate = strings.ReplaceAll(adminUser.Certificate, "q", "b")
+				manifest.Users["admin2"] = adminUser2
+
+				manifest.Config.UpdateThreshold = 3
+				return manifest
+			},
+			wantErr: true,
+		},
+		"user with multiple update manifest roles is only counted once for the threshold": {
+			manifest: func(require *require.Assertions) Manifest {
+				var manifest Manifest
+				require.NoError(json.Unmarshal([]byte(test.ManifestJSONWithRecoveryKey), &manifest))
+
+				manifest.Roles["updateManifest"] = Role{
+					ResourceType:  "Manifest",
+					ResourceNames: []string{},
+					Actions:       []string{user.PermissionUpdateManifest},
+				}
+				manifest.Roles["updateManifest2"] = Role{
+					ResourceType:  "Manifest",
+					ResourceNames: []string{},
+					Actions:       []string{user.PermissionUpdateManifest},
+				}
+				manifest.Roles["updateManifest3"] = Role{
+					ResourceType:  "Manifest",
+					ResourceNames: []string{},
+					Actions:       []string{user.PermissionUpdateManifest},
+				}
+
+				adminUser := manifest.Users["admin"]
+				adminUser.Roles = append(adminUser.Roles, "updateManifest", "updateManifest2", "updateManifest3")
+				manifest.Users["admin"] = adminUser
+
+				manifest.Config.UpdateThreshold = 3
+				return manifest
+			},
+			wantErr: true,
+		},
+		"users without unique certificates": {
+			manifest: func(require *require.Assertions) Manifest {
+				var manifest Manifest
+				require.NoError(json.Unmarshal([]byte(test.ManifestJSONWithRecoveryKey), &manifest))
+
+				manifest.Users["anotherUser"] = User{
+					Certificate: manifest.Users["admin"].Certificate,
+				}
+				return manifest
+			},
+			wantErr: true,
+		},
 	}
-	adminUser := manifest.Users["admin"]
-	adminUser.Roles = append(adminUser.Roles, "updateManifest")
-	manifest.Users["admin"] = adminUser
 
-	manifest.Config.UpdateThreshold = 0
-	err = manifest.Check(log)
-	assert.NoError(err, "update threshold 0 should be accepted")
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
+			require := require.New(t)
 
-	manifest.Config.UpdateThreshold = 1
-	err = manifest.Check(log)
-	assert.NoError(err, "update threshold equal to allowed users should be accepted")
-
-	adminUser2 := adminUser
-	adminUser2.Certificate = strings.ReplaceAll(adminUser.Certificate, "q", "b")
-	manifest.Users["admin2"] = adminUser2
-	err = manifest.Check(log)
-	assert.NoError(err, "update threshold lower than allowed users should be accepted")
-
-	manifest.Config.UpdateThreshold = 3
-	err = manifest.Check(log)
-	assert.Error(err, "update threshold higher than allowed users should be rejected")
-	manifest.Config.UpdateThreshold = 0
-
-	manifest.Users["anotherUser"] = User{
-		Certificate: manifest.Users["admin"].Certificate,
+			err := tc.manifest(require).Check(zaptest.NewLogger(t))
+			if tc.wantErr {
+				assert.Error(err)
+			} else {
+				assert.NoError(err)
+			}
+		})
 	}
-	err = manifest.Check(log)
-	assert.Error(err, "users without unique certificates should be rejected")
 }
 
 func TestCertificate(t *testing.T) {
