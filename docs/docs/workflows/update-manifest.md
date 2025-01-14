@@ -54,7 +54,8 @@ Don't define other values except the `SecurityVersion` value for a package, as M
 Some deployment scenarios require more flexibility regarding changes to the manifest. To this end, MarbleRun also allows uploading a full manifest. User-defined secrets and secrets of type `symmetric-key` are retained if their definition doesn't change.
 
 To deploy a new manifest, your user must have a [role assigned that contains the `UpdateManifest` action](define-manifest.md#roles).
-If multiple users have such a role assigned, each of them must [acknowledge](#acknowledging-a-multi-party-update) the new manifest.
+If more than one user have such a role assigned, the manifest field `.Config.UpdateThreshold` specifies how many of them must [acknowledge](#acknowledging-a-multi-party-update) the new manifest.
+If not set, all must acknowledge the new manifest.
 
 ## Deploying an update
 
@@ -68,7 +69,7 @@ On success, no message will be returned and your MarbleRun logs should highlight
 
 ## Acknowledging a multi-party update
 
-All users that have the `UpdateManifest` permission are required to acknowledge a full manifest update.
+Users that have the `UpdateManifest` permission are required to acknowledge a full manifest update.
 To this end, they need to upload the same manifest.
 This proves that they have knowledge of and agree on this manifest.
 
