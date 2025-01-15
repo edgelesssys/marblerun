@@ -19,7 +19,6 @@ type Recovery interface {
 	GenerateEncryptionKey(recoveryKeys map[string]string) ([]byte, error)
 	GenerateRecoveryData(recoveryKeys map[string]string) (map[string][]byte, []byte, error)
 	RecoverKey(secret []byte) (int, []byte, error)
-	GetRecoveryData() ([]byte, error)
 	SetRecoveryData(data []byte) error
 }
 

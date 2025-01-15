@@ -638,13 +638,6 @@ func (a *ClientAPI) UpdateManifest(ctx context.Context, rawUpdateManifest []byte
 		return fmt.Errorf("regenerating shared secrets for updated manifest: %w", err)
 	}
 
-	// Retrieve current recovery data before we seal the state again
-	currentRecoveryData, err := a.recovery.GetRecoveryData()
-	if err != nil {
-		a.log.Error("Could not retrieve the current recovery data from the recovery module. Cannot reseal the state, the update manifest will not be applied.")
-		return fmt.Errorf("retrieving current recovery data: %w", err)
-	}
-
 	a.updateLog.Reset()
 	for pkgName, pkg := range updateManifest.Packages {
 		a.updateLog.Info("SecurityVersion increased", zap.String("user", updater.Name()), zap.String("package", pkgName), zap.Uint("new version", *pkg.SecurityVersion))
@@ -679,7 +672,6 @@ func (a *ClientAPI) UpdateManifest(ctx context.Context, rawUpdateManifest []byte
 	a.log.Info("An update manifest overriding package settings from the original manifest was set.")
 	a.log.Info("Please restart your Marbles to enforce the update.")
 
-	a.txHandle.SetRecoveryData(currentRecoveryData)
 	if err := commit(ctx); err != nil {
 		return fmt.Errorf("updating manifest failed: committing store transaction: %w", err)
 	}
