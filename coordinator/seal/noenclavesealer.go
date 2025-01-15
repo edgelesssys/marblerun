@@ -10,22 +10,26 @@ import (
 	"fmt"
 
 	"github.com/edgelesssys/ego/ecrypto"
+	"go.uber.org/zap"
 )
 
 // NoEnclaveSealer is a sealer for a -noenclave instance and performs encryption with a fixed key.
 type NoEnclaveSealer struct {
 	encryptionKey []byte
+	log           *zap.Logger
 }
 
 // NewNoEnclaveSealer creates and initializes a new NoEnclaveSealer object.
-func NewNoEnclaveSealer() *NoEnclaveSealer {
-	return &NoEnclaveSealer{}
+func NewNoEnclaveSealer(log *zap.Logger) *NoEnclaveSealer {
+	return &NoEnclaveSealer{
+		log: log,
+	}
 }
 
 // Unseal decrypts sealedData and returns the decrypted data,
 // as well as the prefixed unencrypted metadata of the cipher text.
 func (s *NoEnclaveSealer) Unseal(sealedData []byte) ([]byte, []byte, error) {
-	unencryptedData, cipherText, err := prepareCipherText(sealedData)
+	unencryptedData, cipherText, err := prepareCipherText(sealedData, s.log)
 	if err != nil {
 		return unencryptedData, nil, err
 	}
@@ -45,7 +49,7 @@ func (s *NoEnclaveSealer) Unseal(sealedData []byte) ([]byte, []byte, error) {
 
 // Seal encrypts the given data using the sealer's key.
 func (s *NoEnclaveSealer) Seal(unencryptedData []byte, toBeEncrypted []byte) ([]byte, error) {
-	return sealData(unencryptedData, toBeEncrypted, s.encryptionKey)
+	return sealData(unencryptedData, toBeEncrypted, s.encryptionKey, s.log)
 }
 
 // SealEncryptionKey implements the Sealer interface.

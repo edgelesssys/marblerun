@@ -23,10 +23,16 @@ func New() (*zap.Logger, error) {
 		cfg = zap.NewProductionConfig()
 		cfg.DisableStacktrace = true // Disable stacktraces in production
 	}
+
+	if util.Getenv(constants.DebugLogging, constants.DebugLoggingDefault) == "1" {
+		cfg.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
+	}
+
 	log, err := cfg.Build()
 	if err != nil {
 		return nil, err
 	}
+	log.Debug("Debug logging enabled")
 	return log, nil
 }
 

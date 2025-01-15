@@ -59,7 +59,7 @@ func TestGetCertQuote(t *testing.T) {
 	rootCert, intermediateCert := test.MustSetupTestCerts(test.RecoveryPrivateKey)
 
 	prepareDefaultStore := func() store.Store {
-		s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "")
+		s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
 		require.NoError(t, wrapper.New(s).PutCertificate(constants.SKCoordinatorRootCert, rootCert))
 		require.NoError(t, wrapper.New(s).PutCertificate(constants.SKCoordinatorIntermediateCert, intermediateCert))
 		return s
@@ -114,7 +114,7 @@ func TestGetCertQuote(t *testing.T) {
 		},
 		"root certificate not set": {
 			store: func() store.Store {
-				s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "")
+				s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
 				require.NoError(t, wrapper.New(s).PutCertificate(constants.SKCoordinatorIntermediateCert, intermediateCert))
 				return s
 			}(),
@@ -126,7 +126,7 @@ func TestGetCertQuote(t *testing.T) {
 		},
 		"intermediate certificate not set": {
 			store: func() store.Store {
-				s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "")
+				s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
 				require.NoError(t, wrapper.New(s).PutCertificate(constants.SKCoordinatorRootCert, rootCert))
 				return s
 			}(),
@@ -186,7 +186,7 @@ func TestGetManifestSignature(t *testing.T) {
 	}{
 		"success": {
 			store: func() store.Store {
-				s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "")
+				s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
 				require.NoError(t, s.Put(request.Manifest, []byte("manifest")))
 				require.NoError(t, s.Put(request.ManifestSignature, []byte("signature")))
 				return s
@@ -194,7 +194,7 @@ func TestGetManifestSignature(t *testing.T) {
 		},
 		"GetRawManifest fails": {
 			store: func() store.Store {
-				s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "")
+				s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
 				require.NoError(t, s.Put(request.ManifestSignature, []byte("signature")))
 				return s
 			}(),
@@ -202,7 +202,7 @@ func TestGetManifestSignature(t *testing.T) {
 		},
 		"GetManifestSignature fails": {
 			store: func() store.Store {
-				s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "")
+				s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
 				require.NoError(t, s.Put(request.Manifest, []byte("manifest")))
 				return s
 			}(),
@@ -255,7 +255,7 @@ func TestGetSecrets(t *testing.T) {
 	}{
 		"success": {
 			store: func() store.Store {
-				s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "")
+				s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
 				require.NoError(t, wrapper.New(s).PutSecret("secret1", manifest.Secret{
 					Type:    manifest.SecretTypePlain,
 					Private: []byte("secret"),
@@ -275,7 +275,7 @@ func TestGetSecrets(t *testing.T) {
 		},
 		"wrong state": {
 			store: func() store.Store {
-				s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "")
+				s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
 				require.NoError(t, wrapper.New(s).PutSecret("secret1", manifest.Secret{
 					Type:    manifest.SecretTypePlain,
 					Private: []byte("secret"),
@@ -296,7 +296,7 @@ func TestGetSecrets(t *testing.T) {
 		},
 		"user is missing permissions": {
 			store: func() store.Store {
-				s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "")
+				s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
 				require.NoError(t, wrapper.New(s).PutSecret("secret1", manifest.Secret{
 					Type:    manifest.SecretTypePlain,
 					Private: []byte("secret"),
@@ -317,7 +317,7 @@ func TestGetSecrets(t *testing.T) {
 		},
 		"secret does not exist": {
 			store: func() store.Store {
-				s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "")
+				s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
 				require.NoError(t, wrapper.New(s).PutSecret("secret1", manifest.Secret{
 					Type:    manifest.SecretTypePlain,
 					Private: []byte("secret"),
@@ -410,7 +410,7 @@ func TestRecover(t *testing.T) {
 	someErr := errors.New("failed")
 	_, rootCert := test.MustSetupTestCerts(test.RecoveryPrivateKey)
 	defaultStore := func() store.Store {
-		s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "")
+		s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
 		wr := wrapper.New(s)
 		require.NoError(t, wr.PutCertificate(constants.SKCoordinatorRootCert, rootCert))
 		require.NoError(t, wr.PutRawManifest([]byte(`{}`)))
@@ -500,7 +500,7 @@ func TestRecover(t *testing.T) {
 		},
 		"GetCertificate fails": {
 			store: &fakeStore{
-				store: stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), ""),
+				store: stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t)),
 			},
 			recovery: &stubRecovery{},
 			core: &fakeCore{
