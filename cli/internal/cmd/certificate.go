@@ -58,7 +58,9 @@ func runCertificate(saveCert func(writer io.Writer, fh *file.Handler, root, inte
 			return err
 		}
 
-		if !remoteRootCert.Equal(rootCert) {
+		// Skip this check if we're accepting insecure connections
+		// because we don't load the certificate in that case.
+		if !remoteRootCert.Equal(rootCert) && !verifyOpts.InsecureSkipVerify {
 			return errors.New("root certificate of Coordinator changed. Run 'marblerun manifest verify' to verify the instance and update the local cache")
 		}
 
