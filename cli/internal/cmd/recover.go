@@ -50,7 +50,7 @@ func runRecover(cmd *cobra.Command, args []string) error {
 	if remaining == 0 {
 		cmd.Println("Recovery successful.")
 	} else {
-		cmd.Printf("Secret was processed successfully. Upload the next secret. Remaining secrets: %d", remaining)
+		cmd.Printf("Secret was processed successfully. Upload the next secret. Remaining secrets: %d\n", remaining)
 	}
 
 	if err := saveSgxQuote(fs, sgxQuote, sgxQuotePath); err != nil {
