@@ -121,7 +121,7 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 10Mi
+      storage: {{ .Values.coordinator.storageSize }}
 {{- end }}
 ---
 apiVersion: v1
