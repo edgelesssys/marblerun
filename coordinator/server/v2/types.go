@@ -73,6 +73,8 @@ type QuoteSignResponse struct {
 type RecoveryRequest struct {
 	// RecoverySecret is the decrypted secret (or secret share) to recover the Coordinator.
 	RecoverySecret []byte `json:"recoverySecret"`
+	// RecoverySecretSignature is the RSA PKCS #1 v1.5 signature over the sha256 hash of the RecoverySecret.
+	RecoverySecretSignature []byte `json:"recoverySecretSignature"`
 }
 
 // RecoveryResponse contains the response for the recovery process.

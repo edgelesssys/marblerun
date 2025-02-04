@@ -20,7 +20,9 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"math/big"
+	"strings"
 	"testing"
 	"time"
 
@@ -40,6 +42,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/updatelog"
 	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/edgelesssys/marblerun/test"
+	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
@@ -53,7 +56,6 @@ func TestMain(m *testing.M) {
 }
 
 func TestGetCertQuote(t *testing.T) {
-	someErr := errors.New("failed")
 	// these are not actually root and intermediate certs
 	// but we don't care for this test
 	rootCert, intermediateCert := test.MustSetupTestCerts(test.RecoveryPrivateKey)
@@ -107,7 +109,7 @@ func TestGetCertQuote(t *testing.T) {
 		"error getting state": {
 			store: prepareDefaultStore(),
 			core: &fakeCore{
-				requireStateErr: someErr,
+				requireStateErr: assert.AnError,
 				quote:           []byte("quote"),
 			},
 			wantErr: true,
@@ -407,21 +409,28 @@ func TestGetUpdateLog(t *testing.T) {
 }
 
 func TestRecover(t *testing.T) {
-	someErr := errors.New("failed")
 	_, rootCert := test.MustSetupTestCerts(test.RecoveryPrivateKey)
 	defaultStore := func() store.Store {
 		s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
+		s.SetEncryptionKey([]byte("key"), seal.ModeProductKey) // set encryption key to set seal mode
 		wr := wrapper.New(s)
 		require.NoError(t, wr.PutCertificate(constants.SKCoordinatorRootCert, rootCert))
-		require.NoError(t, wr.PutRawManifest([]byte(`{}`)))
+		require.NoError(t, wr.PutRawManifest([]byte(test.ManifestJSONWithRecoveryKey)))
 		return s
+	}
+	signData := func(d []byte, k *rsa.PrivateKey) []byte {
+		sig, err := util.SignPKCS1v15(k, d)
+		require.NoError(t, err)
+		return sig
 	}
 
 	testCases := map[string]struct {
-		store    *fakeStore
-		recovery *stubRecovery
-		core     *fakeCore
-		wantErr  bool
+		store          *fakeStore
+		recovery       *stubRecovery
+		core           *fakeCore
+		recoveryKey    []byte
+		recoveryKeySig []byte
+		wantErr        bool
 	}{
 		"success": {
 			store: &fakeStore{
@@ -431,6 +440,8 @@ func TestRecover(t *testing.T) {
 			core: &fakeCore{
 				state: state.Recovery,
 			},
+			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
+			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKey),
 		},
 		"more than one key required": {
 			store: &fakeStore{
@@ -442,17 +453,21 @@ func TestRecover(t *testing.T) {
 			core: &fakeCore{
 				state: state.Recovery,
 			},
+			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
+			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKey),
 		},
 		"SetRecoveryData fails does not result in error": {
 			store: &fakeStore{
 				store: defaultStore(),
 			},
 			recovery: &stubRecovery{
-				setRecoveryDataErr: someErr,
+				setRecoveryDataErr: assert.AnError,
 			},
 			core: &fakeCore{
 				state: state.Recovery,
 			},
+			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
+			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKey),
 		},
 		"Coordinator not in recovery state": {
 			store: &fakeStore{
@@ -462,51 +477,66 @@ func TestRecover(t *testing.T) {
 			core: &fakeCore{
 				state: state.AcceptingManifest,
 			},
-			wantErr: true,
+			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
+			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKey),
+			wantErr:        true,
 		},
 		"RecoverKey fails": {
 			store: &fakeStore{
 				store: defaultStore(),
 			},
 			recovery: &stubRecovery{
-				recoverKeyErr: someErr,
+				recoverKeyErr: assert.AnError,
 			},
 			core: &fakeCore{
 				state: state.Recovery,
 			},
-			wantErr: true,
+			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
+			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKey),
+			wantErr:        true,
 		},
 		"LoadState fails": {
 			store: &fakeStore{
 				store:        defaultStore(),
-				loadStateErr: someErr,
+				loadStateErr: assert.AnError,
 			},
 			recovery: &stubRecovery{},
 			core: &fakeCore{
 				state: state.Recovery,
 			},
-			wantErr: true,
+			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
+			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKey),
+			wantErr:        true,
 		},
-		"SetEncryptionKey fails": {
+		"SealEncryptionKey fails does return an error": {
 			store: &fakeStore{
-				store:               defaultStore(),
-				setEncryptionKeyErr: someErr,
+				store:                defaultStore(),
+				sealEncryptionKeyErr: assert.AnError,
 			},
 			recovery: &stubRecovery{},
 			core: &fakeCore{
 				state: state.Recovery,
 			},
-			wantErr: true,
+			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
+			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKey),
 		},
 		"GetCertificate fails": {
 			store: &fakeStore{
-				store: stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t)),
+				store: func() store.Store {
+					s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
+					s.SetEncryptionKey([]byte("key"), seal.ModeProductKey) // set encryption key to set seal mode
+					wr := wrapper.New(s)
+					require.NoError(t, wr.PutRawManifest([]byte(test.ManifestJSONWithRecoveryKey)))
+					return s
+				}(),
 			},
 			recovery: &stubRecovery{},
 			core: &fakeCore{
 				state: state.Recovery,
 			},
-			wantErr: true,
+			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
+			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKey),
+			wantErr:        true,
 		},
 		"GenerateQuote fails": {
 			store: &fakeStore{
@@ -515,9 +545,44 @@ func TestRecover(t *testing.T) {
 			recovery: &stubRecovery{},
 			core: &fakeCore{
 				state:            state.Recovery,
-				generateQuoteErr: someErr,
+				generateQuoteErr: assert.AnError,
 			},
-			wantErr: true,
+			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
+			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKey),
+			wantErr:        true,
+		},
+		"invalid recovery key signature": {
+			store: &fakeStore{
+				store: defaultStore(),
+			},
+			recovery: &stubRecovery{},
+			core: &fakeCore{
+				state: state.Recovery,
+			},
+			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
+			recoveryKeySig: signData(bytes.Repeat([]byte{0xFF}, 16), test.RecoveryPrivateKey),
+			wantErr:        true,
+		},
+		"manifest defines multiple recovery keys": {
+			store: &fakeStore{
+				store: func() store.Store {
+					s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
+					s.SetEncryptionKey([]byte("key"), seal.ModeProductKey) // set encryption key to set seal mode
+					wr := wrapper.New(s)
+					require.NoError(t, wr.PutCertificate(constants.SKCoordinatorRootCert, rootCert))
+					recoveryKey2Str := fmt.Sprintf("\"testRecKey2\": \"%s\",\"testRecKey1\":", strings.ReplaceAll(string(test.RecoveryPublicKey), "\n", "\\n"))
+					mnf := strings.Replace(test.ManifestJSONWithRecoveryKey, `"testRecKey1":`, recoveryKey2Str, 1)
+					require.NoError(t, wr.PutRawManifest([]byte(mnf)))
+					return s
+				}(),
+			},
+			recovery: &stubRecovery{},
+			core: &fakeCore{
+				state: state.Recovery,
+			},
+			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
+			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKey),
+			wantErr:        true,
 		},
 	}
 
@@ -535,7 +600,7 @@ func TestRecover(t *testing.T) {
 				log:      log,
 			}
 
-			keysLeft, err := api.Recover(context.Background(), []byte("recoveryKey"))
+			keysLeft, err := api.Recover(context.Background(), tc.recoveryKey, tc.recoveryKeySig)
 			if tc.wantErr {
 				assert.Error(err)
 				return
@@ -1231,10 +1296,10 @@ type fakeStore struct {
 	setRecoveryDataCalled bool
 	recoveryData          []byte
 	encryptionKey         []byte
-	setEncryptionKeyErr   error
 	loadStateRes          []byte
 	loadStateErr          error
 	loadCalled            bool
+	sealEncryptionKeyErr  error
 }
 
 func (s *fakeStore) BeginTransaction(ctx context.Context) (store.Transaction, error) {
@@ -1244,12 +1309,12 @@ func (s *fakeStore) BeginTransaction(ctx context.Context) (store.Transaction, er
 	return s.store.BeginTransaction(ctx)
 }
 
-func (s *fakeStore) SetEncryptionKey(key []byte, _ seal.Mode) error {
-	if s.setEncryptionKeyErr != nil {
-		return s.setEncryptionKeyErr
-	}
+func (s *fakeStore) SetEncryptionKey(key []byte, _ seal.Mode) {
 	s.encryptionKey = key
-	return nil
+}
+
+func (s *fakeStore) SealEncryptionKey(_ []byte) error {
+	return s.sealEncryptionKeyErr
 }
 
 func (s *fakeStore) SetRecoveryData(recoveryData []byte) {
@@ -1257,9 +1322,13 @@ func (s *fakeStore) SetRecoveryData(recoveryData []byte) {
 	s.recoveryData = recoveryData
 }
 
-func (s *fakeStore) LoadState() ([]byte, error) {
+func (s *fakeStore) LoadState() ([]byte, []byte, error) {
 	s.loadCalled = true
-	return s.loadStateRes, s.loadStateErr
+	return s.loadStateRes, nil, s.loadStateErr
+}
+
+func (s *fakeStore) BeginReadTransaction(ctx context.Context, recoveryKey []byte) (store.ReadTransaction, error) {
+	return s.store.BeginReadTransaction(ctx, recoveryKey)
 }
 
 type stubRecovery struct {
@@ -1309,11 +1378,11 @@ type fakeStoreTransaction struct {
 	beginTransactionCalled bool
 	beginTransactionErr    error
 	setEncryptionKeyCalled bool
-	setEncryptionKeyErr    error
 	sealMode               seal.Mode
 	loadStateCalled        bool
 	loadStateErr           error
 	setRecoveryDataCalled  bool
+	sealEncryptionKeyErr   error
 
 	state          map[string][]byte
 	getErr         error
@@ -1330,19 +1399,26 @@ func (s *fakeStoreTransaction) BeginTransaction(_ context.Context) (store.Transa
 	return s, s.beginTransactionErr
 }
 
-func (s *fakeStoreTransaction) SetEncryptionKey(_ []byte, mode seal.Mode) error {
+func (s *fakeStoreTransaction) SetEncryptionKey(_ []byte, mode seal.Mode) {
 	s.setEncryptionKeyCalled = true
 	s.sealMode = mode
-	return s.setEncryptionKeyErr
+}
+
+func (s *fakeStoreTransaction) SealEncryptionKey(_ []byte) error {
+	return s.sealEncryptionKeyErr
 }
 
 func (s *fakeStoreTransaction) SetRecoveryData(_ []byte) {
 	s.setRecoveryDataCalled = true
 }
 
-func (s *fakeStoreTransaction) LoadState() ([]byte, error) {
+func (s *fakeStoreTransaction) LoadState() ([]byte, []byte, error) {
 	s.loadStateCalled = true
-	return nil, s.loadStateErr
+	return nil, nil, s.loadStateErr
+}
+
+func (s *fakeStoreTransaction) BeginReadTransaction(_ context.Context, _ []byte) (store.ReadTransaction, error) {
+	return s, nil
 }
 
 func (s *fakeStoreTransaction) Get(key string) ([]byte, error) {

@@ -8,16 +8,19 @@ package stdstore
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
 	"sync"
-	"time"
 
+	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/coordinator/store"
+	"github.com/edgelesssys/marblerun/coordinator/store/request"
 	"github.com/spf13/afero"
 	"go.uber.org/zap"
 )
@@ -113,21 +116,18 @@ func (s *StdStore) BeginTransaction(_ context.Context) (store.Transaction, error
 }
 
 // LoadState loads sealed data into StdStore's data.
-func (s *StdStore) LoadState() ([]byte, error) {
+func (s *StdStore) LoadState() (recoveryData, sealedData []byte, err error) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
 	// load from fs
 	s.log.Debug("Loading sealed state from file system", zap.String("filename", filepath.Join(s.sealDir, SealedDataFname)))
-	sealedData, err := s.fs.ReadFile(filepath.Join(s.sealDir, SealedDataFname))
+	sealedData, err = s.fs.ReadFile(filepath.Join(s.sealDir, SealedDataFname))
 	if errors.Is(err, afero.ErrFileNotFound) {
-		// No sealed data found, back up any existing seal keys
-		s.log.Debug("No sealed data found, backing up existing seal keys")
-		s.backupEncryptionKey()
-		return nil, nil
+		return nil, nil, nil
 	} else if err != nil {
 		s.log.Debug("Error reading sealed data", zap.Error(err))
-		return nil, err
+		return nil, nil, err
 	}
 
 	s.log.Debug("Unsealing loaded state")
@@ -137,15 +137,15 @@ func (s *StdStore) LoadState() ([]byte, error) {
 		if !errors.Is(err, seal.ErrMissingEncryptionKey) {
 			s.log.Debug("No encryption key found, entering recovery mode")
 			s.recoveryMode = true
-			return encodedRecoveryData, fmt.Errorf("unsealing state: %w", err)
+			return encodedRecoveryData, sealedData, fmt.Errorf("unsealing state: %w", err)
 		}
 		// Try to unseal encryption key from disk using product key
 		// And retry unsealing the sealed data
 		s.log.Debug("Trying to unseal encryption key")
-		if err := s.unsealEncryptionKey(); err != nil {
+		if err := s.unsealEncryptionKey(sealedData); err != nil {
 			s.log.Debug("Unsealing encryption key failed, entering recovery mode", zap.Error(err))
 			s.recoveryMode = true
-			return encodedRecoveryData, &seal.EncryptionKeyError{Err: err}
+			return encodedRecoveryData, sealedData, &seal.EncryptionKeyError{Err: err}
 		}
 
 		s.log.Debug("Retrying unsealing state")
@@ -153,23 +153,26 @@ func (s *StdStore) LoadState() ([]byte, error) {
 		if err != nil {
 			s.log.Debug("Unsealing state failed, entering recovery mode", zap.Error(err))
 			s.recoveryMode = true
-			return encodedRecoveryData, fmt.Errorf("retry unsealing state with loaded key: %w", err)
+			return encodedRecoveryData, sealedData, fmt.Errorf("retry unsealing state with loaded key: %w", err)
 		}
 	}
 	if len(stateRaw) == 0 {
 		s.log.Debug("State is empty, nothing to do")
-		return encodedRecoveryData, nil
+		return encodedRecoveryData, sealedData, nil
 	}
 
 	// load state
 	s.log.Debug("Loading state from unsealed JSON blob")
 	var loadedData map[string][]byte
 	if err := json.Unmarshal(stateRaw, &loadedData); err != nil {
-		return encodedRecoveryData, err
+		return encodedRecoveryData, sealedData, err
+	}
+	if err := s.reloadSealMode(loadedData); err != nil {
+		return encodedRecoveryData, sealedData, err
 	}
 
 	s.data = loadedData
-	return encodedRecoveryData, nil
+	return encodedRecoveryData, sealedData, nil
 }
 
 // SetRecoveryData sets the recovery data that is added to the sealed data.
@@ -179,28 +182,62 @@ func (s *StdStore) SetRecoveryData(recoveryData []byte) {
 	s.recoveryMode = false
 }
 
-// SetEncryptionKey sets the encryption key for sealing and unsealing.
-func (s *StdStore) SetEncryptionKey(encryptionKey []byte, mode seal.Mode) error {
-	s.log.Debug("Setting encryption key", zap.Int("mode", int(mode)))
-	if mode != seal.ModeDisabled {
-		// If there already is an existing key file stored on disk, save it
-		s.backupEncryptionKey()
-
-		s.log.Debug("Sealing state encryption key")
-		encryptedKey, err := s.sealer.SealEncryptionKey(encryptionKey, mode)
-		if err != nil {
-			return fmt.Errorf("encrypting data key: %w", err)
-		}
-
-		// Write the sealed encryption key to disk
-		s.log.Debug("Writing sealed encryption key to disk", zap.String("filename", filepath.Join(s.sealDir, SealedKeyFname)))
-		if err = s.fs.WriteFile(filepath.Join(s.sealDir, SealedKeyFname), encryptedKey, 0o600); err != nil {
-			return fmt.Errorf("writing encrypted key to disk: %w", err)
-		}
+// BeginReadTransaction loads the sealed state and returns a read-only transaction.
+func (s *StdStore) BeginReadTransaction(_ context.Context, encryptionKey []byte) (store.ReadTransaction, error) {
+	s.log.Debug("Loading sealed state from file system", zap.String("filename", filepath.Join(s.sealDir, SealedDataFname)))
+	sealedData, err := s.fs.ReadFile(filepath.Join(s.sealDir, SealedDataFname))
+	if err != nil {
+		return nil, fmt.Errorf("reading sealed data from disk: %w", err)
 	}
 
+	s.log.Debug("Unsealing state")
+	_, data, err := s.sealer.UnsealWithKey(sealedData, encryptionKey)
+	if err != nil {
+		return nil, fmt.Errorf("unsealing state: %w", err)
+	}
+
+	s.log.Debug("Loading state from unsealed JSON blob")
+	var loadedData map[string][]byte
+	if err := json.Unmarshal(data, &loadedData); err != nil {
+		return nil, fmt.Errorf("unmarshalling state: %w", err)
+	}
+
+	return &StdTransaction{
+		// store is nil to prevent any writes or access to it
+		// callers of this function must not call Commit
+		store: nil,
+		data:  loadedData,
+		log:   s.log,
+	}, nil
+}
+
+// SetEncryptionKey sets the encryption key for sealing and unsealing.
+func (s *StdStore) SetEncryptionKey(encryptionKey []byte, mode seal.Mode) {
+	s.log.Debug("Setting encryption key", zap.Int("mode", int(mode)))
 	s.sealer.SetEncryptionKey(encryptionKey)
 	s.sealMode = mode
+}
+
+// SealEncryptionKey seals the encryption key and writes it to disk.
+func (s *StdStore) SealEncryptionKey(additionalData []byte) error {
+	s.log.Debug("Sealing state encryption key")
+	if s.sealMode == seal.ModeDisabled {
+		s.log.Debug("Sealing disabled, nothing to do")
+		return nil
+	}
+
+	additionalDataHash := sha256.Sum256(additionalData)
+	s.log.Debug("Sealing state encryption key with additional data", zap.String("additionalData", hex.EncodeToString(additionalDataHash[:])))
+	encryptedKey, err := s.sealer.SealEncryptionKey(additionalDataHash[:], s.sealMode)
+	if err != nil {
+		return fmt.Errorf("encrypting data key: %w", err)
+	}
+
+	// Write the sealed encryption key to disk
+	s.log.Debug("Writing sealed encryption key to disk", zap.String("filename", filepath.Join(s.sealDir, SealedKeyFname)))
+	if err = s.atomicWriteFile(SealedKeyFname, encryptedKey); err != nil {
+		return fmt.Errorf("writing encrypted key to disk: %w", err)
+	}
 
 	return nil
 }
@@ -236,15 +273,23 @@ func (s *StdStore) commit(data map[string][]byte) error {
 			return err
 		}
 
+		additionalData := sha256.Sum256(sealedData)
+		s.log.Debug("Sealing encryption key", zap.String("additionalData", hex.EncodeToString(additionalData[:])))
+		encryptedKey, err := s.sealer.SealEncryptionKey(additionalData[:], s.sealMode)
+		if err != nil {
+			return fmt.Errorf("sealing encryption key: %w", err)
+		}
+
 		// atomically replace the sealed data file
 		s.log.Debug("Writing sealed transaction data to disk", zap.String("filename", filepath.Join(s.sealDir, SealedDataFname)))
-		sealedDataPath := filepath.Join(s.sealDir, SealedDataFname)
-		sealedDataPathTmp := sealedDataPath + ".tmp"
-		if err := s.fs.WriteFile(sealedDataPathTmp, sealedData, 0o600); err != nil {
+		if err := s.atomicWriteFile(SealedDataFname, sealedData); err != nil {
 			return fmt.Errorf("writing sealed data file: %w", err)
 		}
-		if err := s.fs.Rename(sealedDataPathTmp, sealedDataPath); err != nil {
-			return fmt.Errorf("renaming sealed data file: %w", err)
+
+		// atomically replace the sealed key file
+		s.log.Debug("Writing sealed encryption key to disk", zap.String("filename", filepath.Join(s.sealDir, SealedKeyFname)))
+		if err := s.atomicWriteFile(SealedKeyFname, encryptedKey); err != nil {
+			return fmt.Errorf("writing encrypted key to disk: %w", err)
 		}
 	}
 
@@ -256,13 +301,16 @@ func (s *StdStore) commit(data map[string][]byte) error {
 }
 
 // unsealEncryptionKey sets the seal key for the store's sealer by loading the encrypted key from disk.
-func (s *StdStore) unsealEncryptionKey() error {
+func (s *StdStore) unsealEncryptionKey(sealedData []byte) error {
 	s.log.Debug("Loading sealed encryption key from disk", zap.String("filename", filepath.Join(s.sealDir, SealedKeyFname)))
 	encryptedKey, err := s.fs.ReadFile(filepath.Join(s.sealDir, SealedKeyFname))
 	if err != nil {
 		return fmt.Errorf("reading encrypted key from disk: %w", err)
 	}
-	key, err := s.sealer.UnsealEncryptionKey(encryptedKey)
+
+	additionalData := sha256.Sum256(sealedData)
+	s.log.Debug("Unsealing encryption key", zap.String("additionalData", hex.EncodeToString(additionalData[:])))
+	key, err := s.sealer.UnsealEncryptionKey(encryptedKey, additionalData[:])
 	if err != nil {
 		return fmt.Errorf("decrypting data key: %w", err)
 	}
@@ -270,14 +318,38 @@ func (s *StdStore) unsealEncryptionKey() error {
 	return nil
 }
 
-// backupEncryptionKey creates a backup of an existing seal key.
-func (s *StdStore) backupEncryptionKey() {
-	if sealedKeyData, err := s.fs.ReadFile(filepath.Join(s.sealDir, SealedKeyFname)); err == nil {
-		t := time.Now()
-		newFileName := filepath.Join(s.sealDir, SealedKeyFname) + "_" + t.Format("20060102150405") + ".bak"
-		s.log.Debug("Creating backup of existing seal key", zap.String("filename", newFileName))
-		_ = s.fs.WriteFile(newFileName, sealedKeyData, 0o600)
+// atomicWriteFile writes data to a temporary file and then atomically replaces the target file.
+func (s *StdStore) atomicWriteFile(fileName string, data []byte) error {
+	filePath := filepath.Join(s.sealDir, fileName)
+	filePathTmp := filePath + ".tmp"
+	filePathOld := filePath + ".old"
+	if err := s.fs.WriteFile(filePathTmp, data, 0o600); err != nil {
+		return fmt.Errorf("writing temporary file: %w", err)
 	}
+	if err := s.fs.Rename(filePath, filePathOld); err != nil && !errors.Is(err, afero.ErrFileNotFound) {
+		return fmt.Errorf("backing up old file: %w", err)
+	}
+	if err := s.fs.Rename(filePathTmp, filePath); err != nil {
+		return fmt.Errorf("replacing file: %w", err)
+	}
+	return nil
+}
+
+func (s *StdStore) reloadSealMode(rawState map[string][]byte) error {
+	s.log.Debug("Reloading seal mode")
+	rawMnf, ok := rawState[request.Manifest]
+	if !ok {
+		return nil // no manifest set
+	}
+
+	var mnf manifest.Manifest
+	if err := json.Unmarshal(rawMnf, &mnf); err != nil {
+		return fmt.Errorf("unmarshaling manifest: %w", err)
+	}
+
+	s.sealMode = seal.ModeFromString(mnf.Config.SealMode)
+	s.log.Debug("Seal mode set", zap.Int("sealMode", int(s.sealMode)))
+	return nil
 }
 
 // StdTransaction is a transaction for StdStore.

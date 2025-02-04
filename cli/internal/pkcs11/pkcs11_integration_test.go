@@ -12,6 +12,7 @@ import (
 	"crypto"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/x509"
 	"flag"
 	"testing"
@@ -152,6 +153,91 @@ func TestLoadX509KeyPair(t *testing.T) {
 			pubK, ok := privK.Public().(interface{ Equal(crypto.PublicKey) bool })
 			require.True(ok)
 			assert.True(pubK.Equal(crt.Leaf.PublicKey))
+		})
+	}
+}
+
+func TestLoadRSAPrivateKey(t *testing.T) {
+	// Ensure we can load the PKCS#11 configuration file
+	pkcs11, err := crypto11.ConfigureFromFile(*configPath)
+	require.NoError(t, err)
+	require.NoError(t, pkcs11.Close())
+
+	testCases := map[string]struct {
+		init    func(t *testing.T) (keyID, keyLabel string)
+		wantErr bool
+	}{
+		"identified by ID and label": {
+			init: func(t *testing.T) (keyID, keyLabel string) {
+				t.Helper()
+				require := require.New(t)
+				prefix := uuid.New().String()
+				keyID, keyLabel = prefix+"keyID", prefix+"keyLabel"
+				pkcs11, err := crypto11.ConfigureFromFile(*configPath)
+				require.NoError(err)
+				defer pkcs11.Close()
+				_, err = pkcs11.GenerateRSAKeyPairWithLabel([]byte(keyID), []byte(keyLabel), 2048)
+				require.NoError(err)
+
+				return keyID, keyLabel
+			},
+		},
+		"identified by ID only": {
+			init: func(t *testing.T) (keyID, keyLabel string) {
+				t.Helper()
+				require := require.New(t)
+				prefix := uuid.New().String()
+				keyID, keyLabel = prefix+"keyID", prefix+"keyLabel"
+				pkcs11, err := crypto11.ConfigureFromFile(*configPath)
+				require.NoError(err)
+				defer pkcs11.Close()
+				_, err = pkcs11.GenerateRSAKeyPair([]byte(keyID), 2048)
+				require.NoError(err)
+				return keyID, ""
+			},
+		},
+		"identified by label only": {
+			init: func(t *testing.T) (keyID, keyLabel string) {
+				t.Helper()
+				require := require.New(t)
+				prefix := uuid.New().String()
+				keyID, keyLabel = prefix+"keyID", prefix+"keyLabel"
+				pkcs11, err := crypto11.ConfigureFromFile(*configPath)
+				require.NoError(err)
+				defer pkcs11.Close()
+				_, err = pkcs11.GenerateRSAKeyPairWithLabel([]byte(keyID), []byte(keyLabel), 2048)
+				require.NoError(err)
+
+				return "", keyLabel
+			},
+		},
+		"key not found": {
+			init: func(_ *testing.T) (keyID, keyLabel string) {
+				return "not-found", "not-found"
+			},
+			wantErr: true,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
+			require := require.New(t)
+
+			keyID, keyLabel := tc.init(t)
+			signer, cancel, err := LoadRSAPrivateKey(*configPath, keyID, keyLabel)
+			if tc.wantErr {
+				assert.Error(err)
+				return
+			}
+			require.NoError(err)
+			defer func() {
+				_ = cancel()
+			}()
+
+			data := sha256.Sum256([]byte("data"))
+			_, err = signer.Sign(rand.Reader, data[:], crypto.SHA256)
+			assert.NoError(err)
 		})
 	}
 }

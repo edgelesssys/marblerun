@@ -10,6 +10,7 @@ package framework
 import (
 	"bufio"
 	"context"
+	"crypto"
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
@@ -105,7 +106,7 @@ func (i IntegrationTest) UpdateManifest() {
 // CoordinatorConfig contains the configuration for the Coordinator.
 type CoordinatorConfig struct {
 	dnsNames string
-	sealDir  string
+	SealDir  string
 	extraEnv []string
 }
 
@@ -117,14 +118,14 @@ func NewCoordinatorConfig(extraEnv ...string) CoordinatorConfig {
 	}
 	return CoordinatorConfig{
 		dnsNames: "localhost",
-		sealDir:  sealDir,
+		SealDir:  sealDir,
 		extraEnv: extraEnv,
 	}
 }
 
 // Cleanup removes the seal directory.
 func (c CoordinatorConfig) Cleanup() {
-	if err := os.RemoveAll(c.sealDir); err != nil {
+	if err := os.RemoveAll(c.SealDir); err != nil {
 		panic(err)
 	}
 }
@@ -143,7 +144,7 @@ func (i IntegrationTest) StartCoordinator(ctx context.Context, cfg CoordinatorCo
 		MakeEnv(constants.MeshAddr, i.MeshServerAddr),
 		MakeEnv(constants.ClientAddr, i.ClientServerAddr),
 		MakeEnv(constants.DNSNames, cfg.dnsNames),
-		MakeEnv(constants.SealDir, cfg.sealDir),
+		MakeEnv(constants.SealDir, cfg.SealDir),
 		MakeEnv(constants.DebugLogging, "1"),
 		i.SimulationFlag,
 	}
@@ -223,8 +224,8 @@ func (i IntegrationTest) SetUpdateManifest(manifest manifest.Manifest, certPEM [
 }
 
 // SetRecover sets the recovery key of the Coordinator.
-func (i IntegrationTest) SetRecover(recoveryKey []byte) error {
-	_, _, err := api.Recover(context.Background(), i.ClientServerAddr, api.VerifyOptions{InsecureSkipVerify: true}, recoveryKey)
+func (i IntegrationTest) SetRecover(recoveryKey []byte, signer crypto.Signer) error {
+	_, _, err := api.Recover(context.Background(), i.ClientServerAddr, api.VerifyOptions{InsecureSkipVerify: true}, recoveryKey, signer)
 	return err
 }
 
@@ -345,7 +346,7 @@ func (i IntegrationTest) TriggerRecovery(coordinatorCfg CoordinatorConfig, cance
 
 	// Remove sealed encryption key to trigger recovery state
 	i.t.Log("Deleting sealed key to trigger recovery state...")
-	os.Remove(filepath.Join(coordinatorCfg.sealDir, stdstore.SealedKeyFname))
+	os.Remove(filepath.Join(coordinatorCfg.SealDir, stdstore.SealedKeyFname))
 
 	// Restart server, we should be in recovery mode
 	i.t.Log("Restarting the old instance")

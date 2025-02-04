@@ -10,7 +10,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -143,40 +142,11 @@ func (s *ClientAPIServer) QuoteGet(w http.ResponseWriter, r *http.Request) {
 	handler.WriteJSON(w, CertQuoteResponse{cert, quote})
 }
 
-// RecoverPost recovers the Coordinator.
-//
-// Recover the Coordinator when unsealing of the existing state fails.
-//
-// This API endpoint is only available when the coordinator is in recovery mode.
-// Before you can use the endpoint, you need to decrypt the recovery secret which you may have received when setting the manifest initially.
-// See [Recovering the Coordinator](../#/workflows/recover-coordinator.md) to retrieve the recovery key needed to use this API endpoint correctly.
-//
-// Example for recovering the Coordinator with curl:
-//
-//	curl -k -X POST --data-binary @recovery_key_decrypted "https://$MARBLERUN/recover"
-func (s *ClientAPIServer) RecoverPost(w http.ResponseWriter, r *http.Request) {
-	key, err := io.ReadAll(r.Body)
-	if err != nil {
-		handler.WriteJSONError(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// Perform recover and receive amount of remaining secrets (for multi-party recovery)
-	remaining, err := s.api.Recover(r.Context(), key)
-	if err != nil {
-		handler.WriteJSONError(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// Construct status message based on remaining keys
-	var statusMessage string
-	if remaining != 0 {
-		statusMessage = fmt.Sprintf("Secret was processed successfully. Upload the next secret. Remaining secrets: %d", remaining)
-	} else {
-		statusMessage = "Recovery successful."
-	}
-
-	handler.WriteJSON(w, RecoveryStatusResponse{statusMessage})
+// RecoverPost is a handler for the removed /recover endpoint.
+// It only exists to inform users about using the new /api/v2/recover endpoint.
+func (s *ClientAPIServer) RecoverPost(w http.ResponseWriter, _ *http.Request) {
+	errorMsg := "Recovering the Coordinator using the /recover API endpoint has been disabled. Use the /api/v2/recover endpoint instead."
+	handler.WriteJSONError(w, errorMsg, http.StatusGone)
 }
 
 // UpdateGet retrieves the update log.

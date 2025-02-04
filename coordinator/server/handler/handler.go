@@ -28,7 +28,7 @@ type ClientAPI interface {
 	GetSecrets(ctx context.Context, requestedSecrets []string, requestUser *user.User) (map[string]manifest.Secret, error)
 	GetStatus(context.Context) (statusCode state.State, status string, err error)
 	GetUpdateLog(context.Context) (updateLog []string, err error)
-	Recover(ctx context.Context, encryptionKey []byte) (int, error)
+	Recover(ctx context.Context, encryptionKey, encryptionKeySignature []byte) (int, error)
 	SetMonotonicCounter(ctx context.Context, marbleType string, marbleUUID uuid.UUID, name string, value uint64) (uint64, error)
 	SignQuote(ctx context.Context, quote []byte) (signature []byte, tcbStatus string, err error)
 	VerifyMarble(ctx context.Context, clientCerts []*x509.Certificate) (string, uuid.UUID, error)

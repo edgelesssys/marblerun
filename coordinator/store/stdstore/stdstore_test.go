@@ -23,7 +23,7 @@ func TestStdStore(t *testing.T) {
 	ctx := context.Background()
 
 	str := New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
-	_, err := str.LoadState()
+	_, _, err := str.LoadState()
 	assert.NoError(err)
 
 	testData1 := []byte("test data")
@@ -125,17 +125,17 @@ func TestStdStoreSealing(t *testing.T) {
 			sealer := &seal.MockSealer{}
 
 			store := New(sealer, fs, "", zaptest.NewLogger(t))
-			_, err := store.LoadState()
+			_, _, err := store.LoadState()
 			require.NoError(err)
 
-			require.NoError(store.SetEncryptionKey(nil, tc.mode))
+			store.SetEncryptionKey(nil, tc.mode)
 
 			testData1 := []byte("test data")
 			require.NoError(store.Put("test:input", testData1))
 
 			// Check sealing with a new store initialized with the sealed state
 			store2 := New(sealer, fs, "", zaptest.NewLogger(t))
-			_, err = store2.LoadState()
+			_, _, err = store2.LoadState()
 			require.NoError(err)
 			val, err := store2.Get("test:input")
 
@@ -154,7 +154,7 @@ func TestStdStoreRollback(t *testing.T) {
 	ctx := context.Background()
 
 	store := New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
-	_, err := store.LoadState()
+	_, _, err := store.LoadState()
 	assert.NoError(err)
 
 	testData1 := []byte("test data")

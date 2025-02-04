@@ -123,7 +123,7 @@ func NewCore(
 	c.metrics = newCoreMetrics(promFactory, c, "coordinator")
 
 	zapLogger.Info("Loading state")
-	recoveryData, loadErr := txHandle.LoadState()
+	recoveryData, _, loadErr := txHandle.LoadState()
 	c.log.Debug("Loaded state", zap.Error(loadErr), zap.ByteString("recoveryData", recoveryData))
 	if err := c.recovery.SetRecoveryData(recoveryData); err != nil {
 		c.log.Error("Could not retrieve recovery data from state. Recovery will be unavailable", zap.Error(err))
@@ -610,7 +610,9 @@ func (e QuoteError) Error() string {
 
 type transactionHandle interface {
 	BeginTransaction(context.Context) (store.Transaction, error)
-	SetEncryptionKey([]byte, seal.Mode) error
+	BeginReadTransaction(context.Context, []byte) (store.ReadTransaction, error)
+	SetEncryptionKey([]byte, seal.Mode)
+	SealEncryptionKey([]byte) error
 	SetRecoveryData([]byte)
-	LoadState() ([]byte, error)
+	LoadState() ([]byte, []byte, error)
 }

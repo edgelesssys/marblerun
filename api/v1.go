@@ -20,31 +20,6 @@ import (
 	apiv1 "github.com/edgelesssys/marblerun/coordinator/server/v1"
 )
 
-// recoverV1 performs recovery of the Coordinator using the legacy v1 API.
-func recoverV1(ctx context.Context, client *rest.Client, recoverySecret []byte) (remaining int, err error) {
-	resp, err := client.Post(ctx, rest.RecoverEndpoint, rest.ContentPlain, bytes.NewReader(recoverySecret))
-	if err != nil {
-		return -1, err
-	}
-
-	var response apiv1.RecoveryStatusResponse
-	if err := json.Unmarshal(resp, &response); err != nil {
-		return -1, fmt.Errorf("unmarshalling Coordinator response: %w", err)
-	}
-
-	if response.StatusMessage == "Recovery successful." {
-		return 0, nil
-	}
-
-	remainingStr, _, _ := strings.Cut(response.StatusMessage, ": ")
-	remaining, err = strconv.Atoi(remainingStr)
-	if err != nil {
-		return -1, fmt.Errorf("parsing remaining recovery secrets: %w", err)
-	}
-
-	return remaining, nil
-}
-
 // getStatusV1 retrieves the status of the Coordinator using the legacy v1 API.
 func getStatusV1(ctx context.Context, client *rest.Client) (int, string, error) {
 	resp, err := client.Get(ctx, rest.StatusEndpoint, http.NoBody)

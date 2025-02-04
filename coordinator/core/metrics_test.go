@@ -53,7 +53,7 @@ func TestStoreWrapperMetrics(t *testing.T) {
 
 	clientAPI, err := clientapi.New(c.txHandle, c.recovery, c, zapLogger)
 	require.NoError(err)
-	_, err = clientAPI.SetManifest(ctx, []byte(test.ManifestJSON))
+	_, err = clientAPI.SetManifest(ctx, []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
 	assert.Equal(1, promtest.CollectAndCount(c.metrics.coordinatorState))
 	assert.Equal(float64(state.AcceptingMarbles), promtest.ToFloat64(c.metrics.coordinatorState))
@@ -73,8 +73,8 @@ func TestStoreWrapperMetrics(t *testing.T) {
 	clientAPI, err = clientapi.New(c.txHandle, c.recovery, c, zapLogger)
 	require.NoError(err)
 
-	key := make([]byte, 16)
-	_, err = clientAPI.Recover(ctx, key)
+	key, sig := recoveryKeyWithSignature(t, test.RecoveryPrivateKey)
+	_, err = clientAPI.Recover(ctx, key, sig)
 	require.NoError(err)
 	state := testutil.GetState(t, c.txHandle)
 	assert.Equal(1, promtest.CollectAndCount(c.metrics.coordinatorState))

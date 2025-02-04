@@ -19,8 +19,11 @@ import (
 )
 
 // recoverV2 performs recovery of the Coordinator using the v2 API.
-func recoverV2(ctx context.Context, client *rest.Client, recoverySecret []byte) (remaining int, err error) {
-	recoverySecretJSON, err := json.Marshal(apiv2.RecoveryRequest{RecoverySecret: recoverySecret})
+func recoverV2(ctx context.Context, client *rest.Client, recoverySecret, recoverySecretSignature []byte) (remaining int, err error) {
+	recoverySecretJSON, err := json.Marshal(apiv2.RecoveryRequest{
+		RecoverySecret:          recoverySecret,
+		RecoverySecretSignature: recoverySecretSignature,
+	})
 	if err != nil {
 		return -1, fmt.Errorf("marshalling request: %w", err)
 	}

@@ -932,10 +932,12 @@ Recover the MarbleRun Coordinator from a sealed state
 
 ### Synopsis
 
-Recover the MarbleRun Coordinator from a sealed state
+Recover the MarbleRun Coordinator from a sealed state.
+<recovery_key_file> may be either a decrypted recovery secret, or an encrypted recovery secret,
+in which case the private key is used to decrypt the secret.
 
 ```
-marblerun recover <recovery_key_decrypted> <IP:PORT> [flags]
+marblerun recover <recovery_key_file> <IP:PORT> [flags]
 ```
 
 ### Examples
@@ -947,7 +949,11 @@ marblerun recover recovery_key_decrypted $MARBLERUN
 ### Options
 
 ```
-  -h, --help   help for recover
+  -h, --help                      help for recover
+  -k, --key string                Path to a the recovery private key to decrypt and/or sign the recovery key
+      --pkcs11-config string      Path to a PKCS#11 configuration file to load the recovery private key with
+      --pkcs11-key-id string      ID of the private key in the PKCS#11 token
+      --pkcs11-key-label string   Label of the private key in the PKCS#11 token
 ```
 
 ### Options inherited from parent commands

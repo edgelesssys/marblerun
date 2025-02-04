@@ -10,6 +10,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -28,6 +29,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
 	"github.com/edgelesssys/marblerun/coordinator/store/wrapper/testutil"
 	"github.com/edgelesssys/marblerun/test"
+	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
@@ -131,16 +133,16 @@ func TestRecover(t *testing.T) {
 	require.NoError(err)
 
 	// new core does not allow recover
-	key := make([]byte, 16)
-	_, err = clientAPI.Recover(ctx, key)
+	key, sig := recoveryKeyWithSignature(t, test.RecoveryPrivateKey)
+	_, err = clientAPI.Recover(ctx, key, sig)
 	assert.Error(err)
 
 	// Set manifest. This will seal the state.
-	_, err = clientAPI.SetManifest(ctx, []byte(test.ManifestJSON))
+	_, err = clientAPI.SetManifest(ctx, []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
 
 	// core does not allow recover after manifest has been set
-	_, err = clientAPI.Recover(ctx, key)
+	_, err = clientAPI.Recover(ctx, key, sig)
 	assert.Error(err)
 
 	// Initialize new core and let unseal fail
@@ -154,7 +156,7 @@ func TestRecover(t *testing.T) {
 	require.Equal(state.Recovery, c2State)
 
 	// recover
-	_, err = clientAPI.Recover(ctx, key)
+	_, err = clientAPI.Recover(ctx, key, sig)
 	assert.NoError(err)
 	c2State = testutil.GetState(t, c2.txHandle)
 	assert.Equal(state.AcceptingMarbles, c2State)
@@ -379,4 +381,12 @@ type stubIssuer struct {
 
 func (s *stubIssuer) Issue(message []byte) ([]byte, error) {
 	return message, s.err
+}
+
+func recoveryKeyWithSignature(t *testing.T, priv *rsa.PrivateKey) ([]byte, []byte) {
+	t.Helper()
+	key := make([]byte, 16)
+	sig, err := util.SignPKCS1v15(priv, key)
+	require.NoError(t, err)
+	return key, sig
 }

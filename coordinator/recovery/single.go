@@ -43,7 +43,7 @@ func (r *SinglePartyRecovery) GenerateRecoveryData(recoveryKeys map[string]strin
 	secretMap := make(map[string][]byte, 1)
 	for index, value := range recoveryKeys {
 		// Parse RSA Public Key
-		recoveryk, err := parseRSAPublicKeyFromPEM(value)
+		recoveryk, err := ParseRSAPublicKeyFromPEM(value)
 		if err != nil {
 			return nil, nil, err
 		}

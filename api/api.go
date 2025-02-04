@@ -9,7 +9,9 @@ package api
 import (
 	"bytes"
 	"context"
+	"crypto"
 	"crypto/ecdsa"
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/tls"
@@ -159,38 +161,33 @@ func VerifyMarbleRunDeployment(ctx context.Context, endpoint string, opts Verify
 }
 
 // Recover performs recovery on a Coordinator instance by setting the decrypted recoverySecret.
+// The signer is used to generate a signature over the recoverySecret.
+// The Coordinator will verify this signature matches one of the recovery public keys set in the manifest.
 // On success, it returns the number of remaining recovery secrets to be set,
 // as well as the verified SGX quote.
 //
 // If this function is called from inside an EGo enclave, the "marblerun_ego_enclave" build tag must be set when building the binary.
-func Recover(ctx context.Context, endpoint string, opts VerifyOptions, recoverySecret []byte) (remaining int, sgxQuote []byte, err error) {
-	opts.setDefaults()
-
-	rootCert, _, sgxQuote, err := VerifyCoordinator(ctx, endpoint, opts)
+func Recover(ctx context.Context, endpoint string, opts VerifyOptions, recoverySecret []byte, signer crypto.Signer) (remaining int, sgxQuote []byte, err error) {
+	signature, err := util.SignPKCS1v15(signer, recoverySecret)
 	if err != nil {
 		return -1, nil, err
 	}
+	return recoverCoordinator(ctx, endpoint, opts, recoverySecret, signature)
+}
 
-	client, err := rest.NewClient(endpoint, rootCert, nil)
-	if err != nil {
-		return -1, nil, fmt.Errorf("setting up client: %w", err)
-	}
-
-	// Attempt recovery using the v2 API first
-	remaining, err = recoverV2(ctx, client, recoverySecret)
-	if rest.IsNotAllowedErr(err) {
-		remaining, err = recoverV1(ctx, client, recoverySecret)
-	}
-	if err != nil {
-		return -1, nil, fmt.Errorf("sending recovery request: %w", err)
-	}
-
-	return remaining, sgxQuote, err
+// RecoverWithSignature performs recovery on a Coordinator instance by setting the decrypted recoverySecret.
+// This is the same as [Recover], but allows passing in the recoverySecretSignature directly,
+// instead of generating it using a [crypto.Signer].
+// The recoveryKeySignature must be a PKCS#1 v1.5 signature over the SHA-256 hash of recoverySecret.
+//
+// If this function is called from inside an EGo enclave, the "marblerun_ego_enclave" build tag must be set when building the binary.
+func RecoverWithSignature(ctx context.Context, endpoint string, opts VerifyOptions, recoverySecret, recoverySecretSignature []byte) (remaining int, sgxQuote []byte, err error) {
+	return recoverCoordinator(ctx, endpoint, opts, recoverySecret, recoverySecretSignature)
 }
 
 // DecryptRecoveryData decrypts recovery data returned by a Coordinator during [ManifestSet] using a parties private recovery key.
-func DecryptRecoveryData(recoveryData []byte, recoveryPrivateKey *rsa.PrivateKey) ([]byte, error) {
-	return util.DecryptOAEP(recoveryPrivateKey, recoveryData)
+func DecryptRecoveryData(recoveryData []byte, recoveryPrivateKey crypto.Decrypter) ([]byte, error) {
+	return recoveryPrivateKey.Decrypt(rand.Reader, recoveryData, &rsa.OAEPOptions{Hash: crypto.SHA256})
 }
 
 // GetStatus retrieves the status of a MarbleRun Coordinator instance.
@@ -576,4 +573,31 @@ func getMarbleCredentialsFromEnv() (tls.Certificate, *x509.Certificate, error) {
 	}
 
 	return tlsCert, coordinatorRoot, nil
+}
+
+// recoverCoordinator performs recovery on a Coordinator instance by setting the decrypted recoverySecret.
+// The signer is used to generate a signature over the recoverySecret.
+// The Coordinator will verify this signature matches one of the recovery public keys set in the manifest.
+// On success, it returns the number of remaining recovery secrets to be set,
+// as well as the verified SGX quote.
+func recoverCoordinator(ctx context.Context, endpoint string, opts VerifyOptions, recoverySecret, recoverySecretSignature []byte) (remaining int, sgxQuote []byte, err error) {
+	opts.setDefaults()
+
+	rootCert, _, sgxQuote, err := VerifyCoordinator(ctx, endpoint, opts)
+	if err != nil {
+		return -1, nil, err
+	}
+
+	client, err := rest.NewClient(endpoint, rootCert, nil)
+	if err != nil {
+		return -1, nil, fmt.Errorf("setting up client: %w", err)
+	}
+
+	// The v1 API does not support recovery, therefore only attempt the v2 API
+	remaining, err = recoverV2(ctx, client, recoverySecret, recoverySecretSignature)
+	if err != nil {
+		return -1, nil, fmt.Errorf("sending recovery request: %w", err)
+	}
+
+	return remaining, sgxQuote, err
 }

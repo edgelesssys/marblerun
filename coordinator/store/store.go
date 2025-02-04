@@ -18,11 +18,16 @@ type Store interface {
 	// BeginTransaction starts a new transaction.
 	BeginTransaction(context.Context) (Transaction, error)
 	// SetEncryptionKey sets the encryption key for the store.
-	SetEncryptionKey([]byte, seal.Mode) error
+	SetEncryptionKey([]byte, seal.Mode)
+	// SealEncryptionKey seals the encryption key for the store.
+	SealEncryptionKey(additionalData []byte) error
 	// SetRecoveryData sets recovery data for the store.
 	SetRecoveryData([]byte)
 	// LoadState loads the sealed state of a store.
-	LoadState() ([]byte, error)
+	LoadState() (recoveryData, sealedData []byte, err error)
+	// BeginReadTransaction loads the store from a sealed state without committing any data to it,
+	// or modifying the underlying store in any way.
+	BeginReadTransaction(context.Context, []byte) (ReadTransaction, error)
 }
 
 // Transaction is a Store transaction.
@@ -39,6 +44,17 @@ type Transaction interface {
 	Commit(context.Context) error
 	// Rollback aborts a transaction. Noop if already committed.
 	Rollback()
+}
+
+// ReadTransaction is a read-only transaction on a [Store].
+// While data can be written to the transaction, it cannot be committed to the [Store].
+type ReadTransaction interface {
+	// Get returns a value from store by key
+	Get(string) ([]byte, error)
+	// Put saves a value to store by key
+	Put(string, []byte) error
+	// Iterator returns an Iterator for a given prefix
+	Iterator(string) (Iterator, error)
 }
 
 // Iterator is an iterator for the store.

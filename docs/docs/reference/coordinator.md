@@ -360,7 +360,7 @@ See [Recovering the Coordinator](../workflows/recover-coordinator.md) on how to 
 Example for recovering the Coordinator with curl:
 
 ```bash
-curl -k -X POST --data-binary @recovery_key.json "https://$MARBLERUN/recover"
+curl -k -X POST --data-binary @recovery_key.json "https://$MARBLERUN/api/v2/recover"
 ```
 
 #### Request body
@@ -369,11 +369,16 @@ curl -k -X POST --data-binary @recovery_key.json "https://$MARBLERUN/recover"
 
     Base64 encoded recovery secret.
 
+* `recoverySecretSignature` string
+
+    Base64 encoded RSA PKCS #1 v1.5 signature over the sha256 hash of the RecoverySecret using the private key used to decrypt the recovery secret.
+
 Example request body:
 
 ```JSON
 {
-    "recoverySecret": "AAECAwQFBgcICQoLDA0ODw=="
+    "recoverySecret": "AAECAwQFBgcICQoLDA0ODw==",
+    "recoverySecretSignature": "cmVjb3Zlcnkga2V5IHNpZ25hdHVyZQ=="
 }
 ```
 
@@ -395,46 +400,6 @@ Example response:
     "data": {
         "remaining": 2,
         "message": "Secret was processed successfully. Upload the next secret. Remaining secrets: 2"
-    }
-}
-```
-
-</TabItem>
-<TabItem value="v1" label="v1">
-
-```http
-POST /recover
-```
-
-Recover the Coordinator using decrypted recovery secrets.
-
-This API endpoint is only available when the coordinator is in recovery mode.
-Before you can use the endpoint, you need to decrypt the recovery secret which you may have received when setting the manifest initially.
-See [Recovering the Coordinator](../workflows/recover-coordinator.md) on how to retrieve the recovery key needed to use this API endpoint correctly.
-
-Example for recovering the Coordinator with curl:
-
-```bash
-curl -k -X POST --data-binary @recovery_key_decrypted "https://$MARBLERUN/recover"
-```
-
-#### Request body
-
-Raw binary encoded recovery secret.
-
-#### Returns
-
-* `statusMessage` string
-
-    A human readable message indicating the success or progress of the recovery process.
-
-Example response:
-
-```JSON
-{
-    "status": "success",
-    "data": {
-        "statusMessage": "Secret was processed successfully. Upload the next secret. Remaining secrets: 2"
     }
 }
 ```

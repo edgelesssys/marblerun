@@ -39,12 +39,15 @@ type Sealer interface {
 	Seal(unencryptedData []byte, toBeEncrypted []byte) (encryptedData []byte, err error)
 	// Unseal decrypts the given data and returns the plain text, as well as the unencrypted metadata.
 	Unseal(encryptedData []byte) (unencryptedData []byte, decryptedData []byte, err error)
+	// UnsealWithKey decrypts the given data with the provided encryption key and returns the plain text,
+	// as well as the unencrypted metadata.
+	UnsealWithKey(encryptedData, encryptionKey []byte) (unencryptedData []byte, decryptedData []byte, err error)
 	// SealEncryptionKey seals an encryption key using the sealer.
-	SealEncryptionKey(key []byte, mode Mode) (encryptedKey []byte, err error)
+	SealEncryptionKey(additionalData []byte, mode Mode) (encryptedKey []byte, err error)
 	// SetEncryptionKey sets the encryption key of the sealer.
 	SetEncryptionKey(key []byte)
 	// UnsealEncryptionKey decrypts an encrypted key.
-	UnsealEncryptionKey(encryptedKey []byte) ([]byte, error)
+	UnsealEncryptionKey(encryptedKey, additionalData []byte) ([]byte, error)
 }
 
 // AESGCMSealer implements the Sealer interface using AES-GCM for confidentiality and authentication.
@@ -63,22 +66,13 @@ func NewAESGCMSealer(log *zap.Logger) *AESGCMSealer {
 // Unseal decrypts sealedData and returns the decrypted data,
 // as well as the prefixed unencrypted metadata of the cipher text.
 func (s *AESGCMSealer) Unseal(sealedData []byte) ([]byte, []byte, error) {
-	unencryptedData, cipherText, err := prepareCipherText(sealedData, s.log)
-	if err != nil {
-		return unencryptedData, nil, err
-	}
+	return s.unseal(sealedData, s.encryptionKey)
+}
 
-	if s.encryptionKey == nil {
-		return unencryptedData, nil, fmt.Errorf("decrypting sealed data: %w", ErrMissingEncryptionKey)
-	}
-
-	// Decrypt data with the unsealed encryption key and return it
-	decryptedData, err := ecrypto.Decrypt(cipherText, s.encryptionKey, nil)
-	if err != nil {
-		return unencryptedData, nil, fmt.Errorf("decrypting sealed data: %w", err)
-	}
-
-	return unencryptedData, decryptedData, nil
+// UnsealWithKey decrypts sealedData with the given encryption key and returns the decrypted data,
+// as well as the prefixed unencrypted metadata of the cipher text.
+func (s *AESGCMSealer) UnsealWithKey(sealedData, encryptionKey []byte) ([]byte, []byte, error) {
+	return s.unseal(sealedData, encryptionKey)
 }
 
 // Seal encrypts and stores information to the fs.
@@ -86,15 +80,15 @@ func (s *AESGCMSealer) Seal(unencryptedData []byte, toBeEncrypted []byte) ([]byt
 	return sealData(unencryptedData, toBeEncrypted, s.encryptionKey, s.log)
 }
 
-// SealEncryptionKey seals an encryption key with the selected enclave key.
-func (s *AESGCMSealer) SealEncryptionKey(encryptionKey []byte, mode Mode) ([]byte, error) {
+// SealEncryptionKey seals the sealer's encryption key with the selected enclave key.
+func (s *AESGCMSealer) SealEncryptionKey(additionalData []byte, mode Mode) ([]byte, error) {
 	switch mode {
 	case ModeProductKey:
 		s.log.Debug("Sealing encryption key with product key")
-		return ecrypto.SealWithProductKey(encryptionKey, nil)
+		return ecrypto.SealWithProductKey(s.encryptionKey, additionalData)
 	case ModeUniqueKey:
 		s.log.Debug("Sealing encryption key with unique key")
-		return ecrypto.SealWithUniqueKey(encryptionKey, nil)
+		return ecrypto.SealWithUniqueKey(s.encryptionKey, additionalData)
 	}
 	return nil, errors.New("sealing is disabled")
 }
@@ -105,14 +99,33 @@ func (s *AESGCMSealer) SetEncryptionKey(encryptionKey []byte) {
 }
 
 // UnsealEncryptionKey unseals the encryption key.
-func (s *AESGCMSealer) UnsealEncryptionKey(encryptedKey []byte) ([]byte, error) {
+func (s *AESGCMSealer) UnsealEncryptionKey(encryptedKey, additionalData []byte) ([]byte, error) {
 	// Decrypt stored encryption key with seal key
-	encryptionKey, err := ecrypto.Unseal(encryptedKey, nil)
+	encryptionKey, err := ecrypto.Unseal(encryptedKey, additionalData)
 	if err != nil {
 		return nil, err
 	}
 
 	return encryptionKey, nil
+}
+
+func (s *AESGCMSealer) unseal(sealedData, encryptionKey []byte) ([]byte, []byte, error) {
+	unencryptedData, cipherText, err := prepareCipherText(sealedData, s.log)
+	if err != nil {
+		return unencryptedData, nil, err
+	}
+
+	if encryptionKey == nil {
+		return unencryptedData, nil, fmt.Errorf("decrypting sealed data: %w", ErrMissingEncryptionKey)
+	}
+
+	// Decrypt data with the unsealed encryption key and return it
+	decryptedData, err := ecrypto.Decrypt(cipherText, encryptionKey, nil)
+	if err != nil {
+		return unencryptedData, nil, fmt.Errorf("decrypting sealed data: %w", err)
+	}
+
+	return unencryptedData, decryptedData, nil
 }
 
 // GenerateEncryptionKey generates a new random 16 byte encryption key.

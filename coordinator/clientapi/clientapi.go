@@ -59,9 +59,11 @@ type core interface {
 
 type transactionHandle interface {
 	BeginTransaction(context.Context) (store.Transaction, error)
-	SetEncryptionKey([]byte, seal.Mode) error
+	BeginReadTransaction(context.Context, []byte) (store.ReadTransaction, error)
+	SetEncryptionKey([]byte, seal.Mode)
+	SealEncryptionKey(additionalData []byte) error
 	SetRecoveryData([]byte)
-	LoadState() ([]byte, error)
+	LoadState() (recoveryData, sealedState []byte, err error)
 }
 
 type updateLog interface {
@@ -87,9 +89,10 @@ func (e QuoteVerifyError) Unwrap() error {
 
 // ClientAPI implements the client API.
 type ClientAPI struct {
-	core     core
-	recovery recovery.Recovery
-	txHandle transactionHandle
+	core                   core
+	recovery               recovery.Recovery
+	txHandle               transactionHandle
+	recoverySignatureCache map[string][]byte
 
 	updateLog updateLog
 	log       *zap.Logger
@@ -275,7 +278,7 @@ func (a *ClientAPI) GetUpdateLog(ctx context.Context) ([]string, error) {
 }
 
 // Recover sets an encryption key (ideally decrypted from the recovery data) and tries to unseal and load a saved state of the Coordinator.
-func (a *ClientAPI) Recover(ctx context.Context, encryptionKey []byte) (keysLeft int, err error) {
+func (a *ClientAPI) Recover(ctx context.Context, encryptionKey, encryptionKeySignature []byte) (keysLeft int, retErr error) {
 	a.log.Info("Recover called")
 	defer a.core.Unlock()
 	if err := a.core.RequireState(ctx, state.Recovery); err != nil {
@@ -283,15 +286,19 @@ func (a *ClientAPI) Recover(ctx context.Context, encryptionKey []byte) (keysLeft
 		return -1, err
 	}
 	defer func() {
-		if err != nil {
-			a.log.Error("Recover failed", zap.Error(err))
+		if retErr != nil {
+			a.log.Error("Recover failed", zap.Error(retErr))
 		}
 	}()
+	if a.recoverySignatureCache == nil {
+		a.recoverySignatureCache = make(map[string][]byte)
+	}
 
 	remaining, secret, err := a.recovery.RecoverKey(encryptionKey)
 	if err != nil {
 		return -1, fmt.Errorf("setting recovery key: %w", err)
 	}
+	a.recoverySignatureCache[string(encryptionKey)] = encryptionKeySignature
 
 	// another key is needed to finish the recovery
 	if remaining != 0 {
@@ -299,44 +306,70 @@ func (a *ClientAPI) Recover(ctx context.Context, encryptionKey []byte) (keysLeft
 		return remaining, nil
 	}
 
-	// all keys are set, we can now load the state
-	if err := a.txHandle.SetEncryptionKey(secret, seal.ModeDisabled); err != nil {
-		return -1, fmt.Errorf("setting recovery key: %w", err)
+	// reset signature cache on return after this point
+	// the recovery module was already cleaned up if no more keys are missing
+	defer func() {
+		a.recoverySignatureCache = nil
+	}()
+
+	// verify the recovery keys before properly loading the state and releasing recovery mode
+	sealedStore, err := a.txHandle.BeginReadTransaction(ctx, secret)
+	if err != nil {
+		return -1, fmt.Errorf("loading sealed state: %w", err)
+	}
+	readTx := wrapper.New(sealedStore)
+	mnf, err := readTx.GetManifest()
+	if err != nil {
+		return -1, fmt.Errorf("loading manifest from store: %w", err)
+	}
+	if len(mnf.RecoveryKeys) != len(a.recoverySignatureCache) {
+		return -1, fmt.Errorf("recovery keys in manifest do not match the keys used for recovery: expected %d, got %d", len(mnf.RecoveryKeys), len(a.recoverySignatureCache))
+	}
+	for keyName, keyPEM := range mnf.RecoveryKeys {
+		pubKey, err := recovery.ParseRSAPublicKeyFromPEM(keyPEM)
+		if err != nil {
+			return -1, fmt.Errorf("parsing recovery public key %q: %w", keyName, err)
+		}
+
+		found := false
+		for key, signature := range a.recoverySignatureCache {
+			if err := util.VerifyPKCS1v15(pubKey, []byte(key), signature); err == nil {
+				found = true
+				delete(a.recoverySignatureCache, key)
+				break
+			}
+		}
+		if !found {
+			return -1, fmt.Errorf("no matching recovery key found for recovery public key %q", keyName)
+		}
 	}
 
-	// load state
-	recoveryData, err := a.txHandle.LoadState()
+	// cache SGX quote over the root certificate
+	rootCert, err := readTx.GetCertificate(constants.SKCoordinatorRootCert)
+	if err != nil {
+		return -1, fmt.Errorf("loading root certificate from store: %w", err)
+	}
+	if err := a.core.GenerateQuote(rootCert.Raw); err != nil {
+		return -1, fmt.Errorf("generating quote failed: %w", err)
+	}
+
+	// load state and set seal mode defined in manifest
+	a.txHandle.SetEncryptionKey(secret, seal.ModeFromString(mnf.Config.SealMode))
+	defer func() {
+		if retErr != nil {
+			a.txHandle.SetEncryptionKey(nil, seal.ModeDisabled) // reset encryption key in case of failure
+		}
+	}()
+	recoveryData, sealedState, err := a.txHandle.LoadState()
 	if err != nil {
 		return -1, fmt.Errorf("loading state: %w", err)
 	}
-
 	a.txHandle.SetRecoveryData(recoveryData)
 	if err := a.recovery.SetRecoveryData(recoveryData); err != nil {
 		a.log.Error("Could not retrieve recovery data from state. Recovery will be unavailable", zap.Error(err))
 	}
-
-	txdata, rollback, _, err := wrapper.WrapTransaction(ctx, a.txHandle)
-	if err != nil {
-		return -1, err
-	}
-	defer rollback()
-
-	// set seal mode defined in manifest
-	mnf, err := txdata.GetManifest()
-	if err != nil {
-		return -1, fmt.Errorf("loading manifest from store: %w", err)
-	}
-	if err := a.txHandle.SetEncryptionKey(secret, seal.ModeFromString(mnf.Config.SealMode)); err != nil {
-		return -1, fmt.Errorf("setting recovery key and seal mode: %w", err)
-	}
-
-	rootCert, err := txdata.GetCertificate(constants.SKCoordinatorRootCert)
-	if err != nil {
-		return -1, fmt.Errorf("loading root certificate from store: %w", err)
-	}
-
-	if err := a.core.GenerateQuote(rootCert.Raw); err != nil {
-		return -1, fmt.Errorf("generating quote failed: %w", err)
+	if err := a.txHandle.SealEncryptionKey(sealedState); err != nil {
+		a.log.Error("Could not seal encryption key after recovery. Restart will require another recovery", zap.Error(err))
 	}
 
 	a.log.Info("Recover successful")
@@ -403,18 +436,15 @@ func (a *ClientAPI) SetManifest(ctx context.Context, rawManifest []byte) (recove
 	// Set encryption key & generate recovery data
 	encryptionKey, err := a.recovery.GenerateEncryptionKey(mnf.RecoveryKeys)
 	if err != nil {
-		a.log.Error("could not set up encryption key for sealing the state", zap.Error(err))
+		a.log.Error("Could not set up encryption key for sealing the state", zap.Error(err))
 		return nil, fmt.Errorf("generating recovery encryption key: %w", err)
 	}
 	recoverySecretMap, recoveryData, err := a.recovery.GenerateRecoveryData(mnf.RecoveryKeys)
 	if err != nil {
-		a.log.Error("could not generate recovery data", zap.Error(err))
+		a.log.Error("Could not generate recovery data", zap.Error(err))
 		return nil, fmt.Errorf("generating recovery data: %w", err)
 	}
-	if err := a.txHandle.SetEncryptionKey(encryptionKey, seal.ModeFromString(mnf.Config.SealMode)); err != nil {
-		a.log.Error("could not set encryption key to seal state", zap.Error(err))
-		return nil, fmt.Errorf("setting encryption key: %w", err)
-	}
+	a.txHandle.SetEncryptionKey(encryptionKey, seal.ModeFromString(mnf.Config.SealMode))
 
 	// Parse X.509 user certificates and permissions from manifest
 	users, err := mnf.GenerateUsers()

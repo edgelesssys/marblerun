@@ -19,11 +19,14 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/edgelesssys/marblerun/api"
 	corecrypto "github.com/edgelesssys/marblerun/coordinator/crypto"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
+	"github.com/edgelesssys/marblerun/coordinator/state"
+	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
 	"github.com/edgelesssys/marblerun/test/framework"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/stretchr/testify/assert"
@@ -276,6 +279,14 @@ func TestRecoveryRestoreKey(t *testing.T) {
 			defer serverCfg.Cleanup()
 			f.StartMarbleServer(f.Ctx, serverCfg)
 
+			// Coordinator can restart automatically
+			cancelCoordinator()
+			cancelCoordinator = f.StartCoordinator(f.Ctx, cfg)
+			t.Log("Restarted Coordinator, checking status again...")
+			statusCode, err := f.GetStatus()
+			require.NoError(err)
+			assert.EqualValues(int(state.AcceptingMarbles), statusCode, "Server is in wrong status after restart.")
+
 			// Trigger recovery mode
 			cancelCoordinator, cert := f.TriggerRecovery(cfg, cancelCoordinator)
 
@@ -284,14 +295,98 @@ func TestRecoveryRestoreKey(t *testing.T) {
 			require.NoError(err, "Failed to decrypt the recovery data.")
 
 			// Perform recovery
-			require.NoError(f.SetRecover(recoveryKey))
+			require.NoError(f.SetRecover(recoveryKey, RecoveryPrivateKey))
 			t.Log("Performed recovery, now checking status again...")
-			statusCode, err := f.GetStatus()
+			statusCode, err = f.GetStatus()
 			require.NoError(err)
-			assert.EqualValues(3, statusCode, "Server is in wrong status after recovery.")
+			assert.EqualValues(int(state.AcceptingMarbles), statusCode, "Server is in wrong status after recovery.")
 
 			// Verify if old certificate is still valid
-			f.VerifyCertAfterRecovery(cert, cancelCoordinator, cfg)
+			cancelCoordinator = f.VerifyCertAfterRecovery(cert, cancelCoordinator, cfg)
+			cancelCoordinator()
+		})
+	}
+}
+
+func TestRecoverySealedKeyStateBinding(t *testing.T) {
+	if *noenclave {
+		t.Skip("This test cannot be run in No Enclave mode.")
+		return
+	}
+
+	for _, sealMode := range []string{"", "ProductKey", "UniqueKey"} {
+		t.Run("SealMode="+sealMode, func(t *testing.T) {
+			assert := assert.New(t)
+			require := require.New(t)
+			f := newFramework(t)
+
+			t.Log("Testing recovery...")
+			t.Log("Starting a coordinator enclave")
+			cfg := framework.NewCoordinatorConfig()
+			defer cfg.Cleanup()
+			cancelCoordinator := f.StartCoordinator(f.Ctx, cfg)
+
+			// set Manifest
+			t.Log("Setting the Manifest")
+			f.TestManifest.Config.SealMode = sealMode
+			f.TestManifest.Config.FeatureGates = []string{"MonotonicCounter"}
+			recoveryData, err := f.SetManifest(f.TestManifest)
+			require.NoError(err, "failed to set Manifest")
+
+			// start server
+			t.Log("Starting a Server-Marble")
+			serverCfg := framework.NewMarbleConfig(f.MeshServerAddr, "testMarbleServer", "server,backend,localhost")
+			defer serverCfg.Cleanup()
+			f.StartMarbleServer(f.Ctx, serverCfg)
+
+			// Coordinator can restart automatically
+			cancelCoordinator()
+			cancelCoordinator = f.StartCoordinator(f.Ctx, cfg)
+			t.Log("Restarted Coordinator, checking status again...")
+			statusCode, err := f.GetStatus()
+			require.NoError(err)
+			assert.EqualValues(int(state.AcceptingMarbles), statusCode, "Server is in wrong status after restart.")
+
+			// Get certificate before triggering recovery
+			cert, _, _, err := api.VerifyCoordinator(context.Background(), f.ClientServerAddr, api.VerifyOptions{InsecureSkipVerify: true})
+			require.NoError(err)
+
+			// Save backup of the encryption key
+			sealedEncryptionKey, err := os.ReadFile(filepath.Join(cfg.SealDir, stdstore.SealedKeyFname))
+			require.NoError(err)
+
+			// Start a marble which sets a monotonic counter
+			// This will update the state and re-seal the key
+			marbleCfg := framework.NewMarbleConfig(meshServerAddr, "testMarbleMonotonicCounter", "localhost")
+			defer marbleCfg.Cleanup()
+			assert.True(f.StartMarbleClient(f.Ctx, marbleCfg))
+
+			// Stop the Coordinator and replace the sealed key with the backup
+			cancelCoordinator()
+			require.NoError(os.WriteFile(filepath.Join(cfg.SealDir, stdstore.SealedKeyFname), sealedEncryptionKey, 0o600))
+
+			// Since the key backup is bound to a different state, the
+			// Coordinator should not be able to recovery automatically
+			cancelCoordinator = f.StartCoordinator(f.Ctx, cfg)
+			defer cancelCoordinator()
+			statusCode, err = f.GetStatus()
+			require.NoError(err)
+			assert.EqualValues(int(state.Recovery), statusCode, "Server is in wrong status after restart.")
+
+			// Decrypt recovery data from when we set the manifest
+			recoveryKey, err := api.DecryptRecoveryData(recoveryData["testRecKey1"], RecoveryPrivateKey)
+			require.NoError(err, "Failed to decrypt the recovery data.")
+
+			// Perform recovery
+			require.NoError(f.SetRecover(recoveryKey, RecoveryPrivateKey))
+			t.Log("Performed recovery, now checking status again...")
+			statusCode, err = f.GetStatus()
+			require.NoError(err)
+			assert.EqualValues(int(state.AcceptingMarbles), statusCode, "Server is in wrong status after recovery.")
+
+			// Verify if old certificate is still valid
+			cancelCoordinator = f.VerifyCertAfterRecovery(cert, cancelCoordinator, cfg)
+			cancelCoordinator()
 		})
 	}
 }

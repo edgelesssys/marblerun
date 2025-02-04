@@ -340,7 +340,7 @@ When verifying certificates in this context, MarbleRun ignores their `issuer`, `
 Use OpenSSL to generate a compatible certificate.
 
 ```bash
-openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes -keyout admin_private.key -out admin_certificate.crt
+openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes -keyout admin_private.key -out admin_certificate.pem
 ```
 
 Use the following command to preserve newlines correctly:

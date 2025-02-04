@@ -16,8 +16,15 @@ import (
 	"github.com/ThalesGroup/crypto11"
 )
 
-// LoadX509KeyPair loads a [tls.Certificate] using the provided PKCS#11 configuration file.
-// The returned cancel function must be called to release the PKCS#11 resources only after the certificate is no longer needed.
+// SignerDecrypter is a combined interface for [crypto.Signer] and [crypto.Decrypter].
+// An RSA private key in a PKCS #11 token implements this interface.
+type SignerDecrypter interface {
+	crypto.Signer
+	crypto.Decrypter
+}
+
+// LoadX509KeyPair loads a [tls.Certificate] using the provided PKCS #11 configuration file.
+// The returned cancel function must be called to release the PKCS #11 resources only after the certificate is no longer needed.
 func LoadX509KeyPair(pkcs11ConfigPath string, keyID, keyLabel, certID, certLabel string) (crt tls.Certificate, cancel func() error, err error) {
 	pkcs11, err := crypto11.ConfigureFromFile(pkcs11ConfigPath)
 	if err != nil {
@@ -57,6 +64,39 @@ func LoadX509KeyPair(pkcs11ConfigPath string, keyID, keyLabel, certID, certLabel
 		PrivateKey:  privateKey,
 		Leaf:        cert,
 	}, pkcs11.Close, nil
+}
+
+// LoadRSAPrivateKey loads a [SignerDecrypter] using the provided PKCS #11 configuration file.
+// The returned cancel function must be called to release the PKCS #11 resources only after the key is no longer needed.
+func LoadRSAPrivateKey(pkcs11ConfigPath string, keyID, keyLabel string) (signer SignerDecrypter, cancel func() error, err error) {
+	pkcs11, err := crypto11.ConfigureFromFile(pkcs11ConfigPath)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer func() {
+		if err != nil {
+			err = errors.Join(err, pkcs11.Close())
+		}
+	}()
+
+	var keyIDBytes, keyLabelBytes []byte
+	if keyID != "" {
+		keyIDBytes = []byte(keyID)
+	}
+	if keyLabel != "" {
+		keyLabelBytes = []byte(keyLabel)
+	}
+
+	privK, err := loadPrivateKey(pkcs11, keyIDBytes, keyLabelBytes)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	signer, ok := privK.(crypto11.SignerDecrypter)
+	if !ok {
+		return nil, nil, errors.New("loaded private key does not support decryption")
+	}
+	return signer, pkcs11.Close, err
 }
 
 func loadPrivateKey(pkcs11 *crypto11.Context, id, label []byte) (crypto.Signer, error) {

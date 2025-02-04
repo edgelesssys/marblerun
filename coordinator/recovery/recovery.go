@@ -22,7 +22,8 @@ type Recovery interface {
 	SetRecoveryData(data []byte) error
 }
 
-func parseRSAPublicKeyFromPEM(pemContent string) (*rsa.PublicKey, error) {
+// ParseRSAPublicKeyFromPEM parses a PEM encoded RSA public key to [*rsa.PublicKey].
+func ParseRSAPublicKeyFromPEM(pemContent string) (*rsa.PublicKey, error) {
 	// Retrieve RSA public key for potential key recovery
 	block, _ := pem.Decode([]byte(pemContent))
 

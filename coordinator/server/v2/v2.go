@@ -129,7 +129,7 @@ func (s *ClientAPIServer) RecoverPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Perform recover and receive amount of remaining secrets (for multi-party recovery)
-	remaining, err := s.api.Recover(r.Context(), req.RecoverySecret)
+	remaining, err := s.api.Recover(r.Context(), req.RecoverySecret, req.RecoverySecretSignature)
 	if err != nil {
 		handler.WriteJSONError(w, err.Error(), http.StatusInternalServerError)
 		return

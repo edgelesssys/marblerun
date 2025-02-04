@@ -14,40 +14,25 @@ You need the corresponding private key to the [`RecoveryKeys` defined in the man
 :::info
 
 If you don't want or can't recover the old state, you can also dismiss it by [uploading a new manifest](set-manifest.md).
-The old state will be overwritten on disk, and the `/recover` endpoint won't be available anymore.
+The old state will be overwritten on disk, and recovery won't be available anymore.
 
 :::
 
-You can upload the recovery secret through the `/recover` client API endpoint. To do so, you need to:
+To recover the Coordinator, you need to decode your recovery secret and upload it using the MarbleRun CLI.
 
-* Decode the Base64-encoded output returned to you during the initial upload of the manifest
-* Decrypt the decoded output with the corresponding RSA private key of the key defined in the manifest
-* Get the temporary root certificate (valid only during recovery mode)
-* Upload the decrypted key to the `/recover` endpoint
-
-Assuming you saved the output from the manifest upload step in a file called `recovery_data` and the recovery private key in a file called `private_key.pem`, perform recovery like this:
+Assuming you named your recovery key `recoverKey1` in the manifest, and you saved the output from the manifest upload step in a file called `recovery_data`, decode your secret with the following command:
 
 ```bash
-openssl base64 -d -in recovery_data \
-  | openssl pkeyutl -inkey private_key.pem -decrypt \
-    -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256 \
-    -out recovery_key_decrypted
+jq -r '.RecoverySecrets.recoverKey1' recovery_data | openssl base64 -d > recovery_key_encrypted
 ```
 
-You can then upload the extracted secret using the MarbleRun CLI:
+Then decrypt and upload the extracted secret using the MarbleRun CLI:
 
 ```bash
-marblerun recover recovery_key_decrypted $MARBLERUN
+marblerun recover recovery_key_encrypted $MARBLERUN --key private_key.pem
 ```
 
-Alternatively, you can use `curl`:
-
-```bash
-era -c coordinator-era.json -h $MARBLERUN -output-root marblerun-temp.pem
-curl --cacert marblerun-temp.pem --data-binary @recovery_key_decrypted https://$MARBLERUN/recover
-```
-
-On success, the Coordinator applies the sealed state again. If the Coordinator can't restore the state with the uploaded key, an error will be returned in the logs, and the `/recover` endpoint will stay open for further interaction.
+On success, the Coordinator applies the sealed state again. If the Coordinator can't restore the state with the uploaded key, an error will be returned in the logs, and the recovery endpoint will stay open for further interaction.
 
 ## Multi-party recovery
 
@@ -95,11 +80,8 @@ Assume the following `RecoveryKeys` were set in the manifest:
     $ marblerun status $MARBLERUN
     1: Coordinator is in recovery mode. Either upload a key to unseal the saved state, or set a new manifest. For more information on how to proceed, consult the documentation.
     $ echo "EbkX/skIPrJISf8PiXdzRIKnwQyJ+VejtGzHGfES5NIPuCeEFedqgCVDk=" > recovery_data
-    $ openssl base64 -d -in recovery_data \
-      | openssl pkeyutl -inkey private_key.pem -decrypt \
-        -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256 \
-        -out recovery_key_decrypted
-    $ marblerun recover recovery_key_decrypted $MARBLERUN
+    $ openssl base64 -d -in recovery_data > recovery_key_encrypted
+    $ marblerun recover recovery_key_encrypted $MARBLERUN --key private_key.pem
     Successfully verified Coordinator, now uploading key
     Secret was processed successfully. Upload the next secret. Remaining secrets: 1
     ```
@@ -117,11 +99,8 @@ Assume the following `RecoveryKeys` were set in the manifest:
     $ marblerun status $MARBLERUN
     1: Coordinator is in recovery mode. Either upload a key to unseal the saved state, or set a new manifest. For more information on how to proceed, consult the documentation.
     $ echo "bvPzio4A4SvzeHajsb+dFDpDarErcU9wMR0V9hyHtG2lC4ZfyrYjDBE7wtis3eOPgDaMG/HCt=" > recovery_data
-    $ openssl base64 -d -in recovery_data \
-      | openssl pkeyutl -inkey private_key.pem -decrypt \
-        -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256 \
-        -out recovery_key_decrypted
-    $ marblerun recover recovery_key_decrypted $MARBLERUN
+    $ openssl base64 -d -in recovery_data > recovery_key_encrypted
+    $ marblerun recover recovery_key_encrypted $MARBLERUN --key private_key.pem
     Successfully verified Coordinator, now uploading key
     Recovery successful.
     $ marblerun status $MARBLERUN
