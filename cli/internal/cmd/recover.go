@@ -29,9 +29,9 @@ func NewRecoverCmd() *cobra.Command {
 		Use:   "recover <recovery_key_file> <IP:PORT>",
 		Short: "Recover the MarbleRun Coordinator from a sealed state",
 		Long: "Recover the MarbleRun Coordinator from a sealed state.\n" +
-			"<recovery_key_file> may be either a decrypted recovery secret, or an encrypted recovery secret,\n" +
+			"`recovery_key_file` may be either a decrypted recovery secret, or an encrypted recovery secret,\n" +
 			"in which case the private key is used to decrypt the secret.",
-		Example: "marblerun recover recovery_key_decrypted $MARBLERUN",
+		Example: "marblerun recover recovery_key_file $MARBLERUN",
 		Args:    cobra.ExactArgs(2),
 		RunE:    runRecover,
 	}
