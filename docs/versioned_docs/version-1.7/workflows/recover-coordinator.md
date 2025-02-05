@@ -26,6 +26,19 @@ Assuming you named your recovery key `recoverKey1` in the manifest, and you save
 jq -r '.RecoverySecrets.recoverKey1' recovery_data | openssl base64 -d > recovery_key_encrypted
 ```
 
+:::caution
+
+If you generated the private recovery key using `openssl` version 1, the key will be in PKCS #1 format.
+MarbleRun requires the key to be in PKCS #8 format.
+
+Use the following command to convert the key:
+
+```bash
+openssl pkcs8 -topk8 -inform PEM -outform PEM -in private_key.pem -out private_key_pkcs8.pem -nocrypt
+```
+
+:::
+
 Then decrypt and upload the extracted secret using the MarbleRun CLI:
 
 ```bash
