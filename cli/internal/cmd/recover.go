@@ -14,7 +14,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/edgelesssys/marblerun/api"
 	"github.com/edgelesssys/marblerun/cli/internal/file"
@@ -62,7 +61,7 @@ func runRecover(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	keyHandle, cancel, err := getRecoveryKeySigner(cmd)
+	keyHandle, cancel, err := getRecoveryKeySigner(cmd, afero.Afero{Fs: fs})
 	if err != nil {
 		return err
 	}
@@ -94,7 +93,7 @@ func runRecover(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func getRecoveryKeySigner(cmd *cobra.Command) (pkcs11.SignerDecrypter, func() error, error) {
+func getRecoveryKeySigner(cmd *cobra.Command, fs afero.Afero) (pkcs11.SignerDecrypter, func() error, error) {
 	privKeyFile, err := cmd.Flags().GetString("key")
 	if err != nil {
 		return nil, nil, err
@@ -116,7 +115,7 @@ func getRecoveryKeySigner(cmd *cobra.Command) (pkcs11.SignerDecrypter, func() er
 		return pkcs11.LoadRSAPrivateKey(pkcs11ConfigFile, pkcs11KeyID, pkcs11KeyLabel)
 	}
 
-	privKeyPEM, err := os.ReadFile(privKeyFile)
+	privKeyPEM, err := fs.ReadFile(privKeyFile)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -126,7 +125,12 @@ func getRecoveryKeySigner(cmd *cobra.Command) (pkcs11.SignerDecrypter, func() er
 	}
 	privK, err := x509.ParsePKCS8PrivateKey(privateKeyBlock.Bytes)
 	if err != nil {
-		return nil, nil, err
+		// Try to parse as PKCS #1 private key as well
+		var pkcs1Err error
+		privK, pkcs1Err = x509.ParsePKCS1PrivateKey(privateKeyBlock.Bytes)
+		if pkcs1Err != nil {
+			return nil, nil, fmt.Errorf("failed to parse private key: tried PKCS #1 format: %w, tried PKCS #8 format: %w", pkcs1Err, err)
+		}
 	}
 	signer, ok := privK.(pkcs11.SignerDecrypter)
 	if !ok {
