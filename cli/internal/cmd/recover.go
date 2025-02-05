@@ -129,7 +129,7 @@ func getRecoveryKeySigner(cmd *cobra.Command, fs afero.Afero) (pkcs11.SignerDecr
 		var pkcs1Err error
 		privK, pkcs1Err = x509.ParsePKCS1PrivateKey(privateKeyBlock.Bytes)
 		if pkcs1Err != nil {
-			return nil, nil, fmt.Errorf("failed to parse private key: tried PKCS #1 format: %w, tried PKCS #8 format: %w", pkcs1Err, err)
+			return nil, nil, fmt.Errorf("parsing private key: tried PKCS #1 format: %w, tried PKCS #8 format: %w", pkcs1Err, err)
 		}
 	}
 	signer, ok := privK.(pkcs11.SignerDecrypter)

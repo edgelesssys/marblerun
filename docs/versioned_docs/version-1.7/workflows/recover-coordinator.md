@@ -34,7 +34,7 @@ MarbleRun requires the key to be in PKCS #8 format.
 Use the following command to convert the key:
 
 ```bash
-openssl pkcs8 -topk8 -inform PEM -outform PEM -in private_key.pem -out private_key_pkcs8.pem -nocrypt
+openssl pkcs8 -topk8 -in private_key.pem -out private_key_pkcs8.pem -nocrypt
 ```
 
 :::
