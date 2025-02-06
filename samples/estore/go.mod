@@ -2,8 +2,6 @@ module estore-sample
 
 go 1.23.3
 
-toolchain go1.23.6
-
 require (
 	github.com/edgelesssys/estore v1.2.0
 	github.com/edgelesssys/marblerun v1.7.0
