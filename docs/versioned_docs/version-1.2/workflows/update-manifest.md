@@ -9,6 +9,7 @@ Updates play an important role in ensuring your software stays secure. To avoid 
 To deploy an update, your user needs to have a [role assigned that contains the `UpdateSecurityVersion` action](define-manifest.md#roles).
 
 ### Defining an update manifest
+
 The update manifest format follows the original manifest's syntax, but it only contains packages with new `SecurityVersion` values.
 
 For example, the current `Packages` section of your original manifest looks like this:
@@ -173,4 +174,5 @@ Assume the following `Users` and `Roles` were defined in the manifest:
     ```
 
 ## Effects of an update
+
 When a manifest has been updated, the Coordinator will generate new certificates which your Marbles will receive upon the next startup. Also, if you are trying to launch Marbles based on packages containing the old `SecurityVersion`, they will refuse to run (unless you are running in SGX Simulation or non-Enclave mode). However, so far currently running Marbles will continue to run and will be able to authenticate each other, as long as they're still running. So if you need to enforce an update, make sure to kill the Marbles on your host and restart them.
