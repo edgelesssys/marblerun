@@ -334,7 +334,7 @@ When verifying certificates in this context, MarbleRun ignores their `issuer`, `
 Use OpenSSL to generate a compatible certificate.
 
 ```bash
-openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes -keyout admin_private.key -out admin_certificate.crt
+openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes -keyout admin_private.key -out admin_certificate.pem
 ```
 
 Use the following command to preserve newlines correctly:
@@ -416,6 +416,12 @@ The optional entry `RecoveryKeys` holds PEM-encoded RSA public keys that can be 
     //...
 }
 ```
+
+:::note
+
+Setting multiple recovery keys enables [multi-party recovery](../features/recovery.md#multi-party-recovery): all parties must [perform the recovery steps](recover-coordinator.md#multi-party-recovery) to recover the Coordinator.
+
+:::
 
 You can generate this key with OpenSSL:
 
