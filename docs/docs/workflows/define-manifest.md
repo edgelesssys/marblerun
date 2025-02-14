@@ -423,6 +423,12 @@ The optional entry `RecoveryKeys` holds PEM-encoded RSA public keys that can be 
 }
 ```
 
+:::note
+
+Setting multiple recovery keys enables [multi-party recovery](../features/recovery.md#multi-party-recovery): all parties must [perform the recovery steps](recover-coordinator.md#multi-party-recovery) to recover the Coordinator.
+
+:::
+
 You can generate this key with OpenSSL:
 
 ```bash
