@@ -22,14 +22,14 @@ linters:
     # Additional linters
     - bodyclose
     - errname
-    - exportloopref
+    - copyloopvar
     - godot
     - gofmt
     - gofumpt
     - misspell
     - noctx
     - revive
-    - tenv
+    - usetesting
     - unconvert
     - unparam
 
