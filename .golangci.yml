@@ -5,7 +5,8 @@ run:
   modules-download-mode: readonly
 
 output:
-  format: tab
+  formats:
+  - format: tab
   sort-results: true
 
 linters:
