@@ -3,15 +3,15 @@ module github.com/edgelesssys/marblerun
 go 1.23.3
 
 require (
-	github.com/ThalesGroup/crypto11 v1.2.6
+	github.com/ThalesGroup/crypto11 v1.3.0
 	github.com/cert-manager/cert-manager v1.17.1
 	github.com/edgelesssys/ego v1.7.0
 	github.com/gofrs/flock v0.12.1
-	github.com/google/go-cmp v0.6.0
+	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.0.1
-	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.2.0
-	github.com/prometheus/client_golang v1.20.5
+	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.0
+	github.com/prometheus/client_golang v1.21.0
 	github.com/prometheus/client_model v0.6.1
 	github.com/spf13/afero v1.12.0
 	github.com/spf13/cobra v1.9.1
@@ -20,7 +20,7 @@ require (
 	github.com/tidwall/gjson v1.18.0
 	go.uber.org/goleak v1.3.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/crypto v0.33.0
+	golang.org/x/crypto v0.34.0
 	golang.org/x/sys v0.30.0
 	google.golang.org/grpc v1.70.0
 	google.golang.org/protobuf v1.36.5
@@ -148,7 +148,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.34.0 // indirect
 	go.opentelemetry.io/otel/trace v1.34.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/net v0.34.0 // indirect
+	golang.org/x/net v0.35.0 // indirect
 	golang.org/x/oauth2 v0.25.0 // indirect
 	golang.org/x/sync v0.11.0 // indirect
 	golang.org/x/term v0.29.0 // indirect
