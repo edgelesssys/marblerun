@@ -115,29 +115,31 @@ func manifestUpdateApplyV2(ctx context.Context, client *rest.Client, manifest []
 }
 
 // manifestUpdateAcknowledgeV2 acknowledges an update manifest using the v2 API.
-func manifestUpdateAcknowledgeV2(ctx context.Context, client *rest.Client, updateManifest []byte) (missingUsers []string, err error) {
+func manifestUpdateAcknowledgeV2(ctx context.Context, client *rest.Client, updateManifest []byte) (missingUsers []string, missingAcknowledgments int, err error) {
 	updateManifestJSON, err := json.Marshal(struct {
 		Manifest []byte `json:"manifest"`
 	}{
 		Manifest: updateManifest,
 	})
 	if err != nil {
-		return nil, err
+		return nil, -1, err
 	}
 
 	resp, err := client.Post(ctx, rest.V2API+rest.UpdateStatusEndpoint, rest.ContentJSON, bytes.NewReader(updateManifestJSON))
 	if err != nil {
-		return nil, err
+		return nil, -1, err
 	}
 
 	var response struct {
-		MissingUsers []string `json:"missingUsers"`
+		Message                string   `json:"message"`
+		MissingUsers           []string `json:"missingUsers"`
+		MissingAcknowledgments int      `json:"missingAcknowledgments"`
 	}
 	if err := json.Unmarshal(resp, &response); err != nil {
-		return nil, fmt.Errorf("unmarshalling Coordinator response: %w", err)
+		return nil, -1, fmt.Errorf("unmarshalling Coordinator response: %w", err)
 	}
 
-	return response.MissingUsers, nil
+	return response.MissingUsers, response.MissingAcknowledgments, nil
 }
 
 // secretGetV2 requests secrets from the Coordinator using the v2 API.
