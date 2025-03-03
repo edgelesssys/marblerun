@@ -2,8 +2,6 @@ module github.com/edgelesssys/marblerun
 
 go 1.23.6
 
-toolchain go1.24.0
-
 require (
 	github.com/ThalesGroup/crypto11 v1.4.0
 	github.com/cert-manager/cert-manager v1.17.1
