@@ -1,9 +1,9 @@
 module github.com/edgelesssys/marblerun
 
-go 1.23.3
+go 1.23.6
 
 require (
-	github.com/ThalesGroup/crypto11 v1.3.0
+	github.com/ThalesGroup/crypto11 v1.4.0
 	github.com/cert-manager/cert-manager v1.17.1
 	github.com/edgelesssys/ego v1.7.0
 	github.com/gofrs/flock v0.12.1
@@ -20,7 +20,7 @@ require (
 	github.com/tidwall/gjson v1.18.0
 	go.uber.org/goleak v1.3.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/crypto v0.34.0
+	golang.org/x/crypto v0.35.0
 	golang.org/x/sys v0.30.0
 	google.golang.org/grpc v1.70.0
 	google.golang.org/protobuf v1.36.5
