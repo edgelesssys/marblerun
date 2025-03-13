@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/edgelesssys/marblerun/api"
 	"github.com/edgelesssys/marblerun/cli/internal/certcache"
@@ -152,20 +153,22 @@ func runUpdateAcknowledge(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	missing, err := api.ManifestUpdateAcknowledge(cmd.Context(), hostname, root, manifest, keyPair)
+	missingUsers, missingAcks, err := api.ManifestUpdateAcknowledge(cmd.Context(), hostname, root, manifest, keyPair)
 	if err != nil {
 		return fmt.Errorf("acknowledging update manifest: %w", err)
 	}
 
 	cmd.Println("Acknowledgement successful:")
-	switch len(missing) {
+	var msg string
+	switch missingAcks {
 	case 0:
-		cmd.Println("All users have acknowledged the update manifest. Update successfully applied")
+		msg = "All users have acknowledged the update manifest. Update successfully applied"
 	case 1:
-		cmd.Println("1 user still needs to acknowledge the update manifest")
+		msg = fmt.Sprintf("1 user still needs to acknowledge the update manifest.\nThe following users have not yet accepted: %s", strings.Join(missingUsers, ", "))
 	default:
-		cmd.Printf("%d users still need to acknowledge the update manifest", len(missing))
+		msg = fmt.Sprintf("%d users still need to acknowledge the update manifest.\nThe following users have not yet accepted: %s", missingAcks, strings.Join(missingUsers, ", "))
 	}
+	cmd.Println(msg)
 	return nil
 }
 
