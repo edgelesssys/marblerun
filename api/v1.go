@@ -83,26 +83,26 @@ func manifestUpdateApplyV1(ctx context.Context, client *rest.Client, manifest []
 }
 
 // manifestUpdateAcknowledgeV1 acknowledges an update manifest using the legacy v1 API.
-func manifestUpdateAcknowledgeV1(ctx context.Context, client *rest.Client, updateManifest []byte) (missingUsers []string, err error) {
+func manifestUpdateAcknowledgeV1(ctx context.Context, client *rest.Client, updateManifest []byte) (missingUsers []string, missingAcknowledgements int, err error) {
 	resp, err := client.Post(ctx, rest.UpdateStatusEndpoint, rest.ContentJSON, bytes.NewReader(updateManifest))
 	if err != nil {
-		return nil, err
+		return nil, -1, err
 	}
 
 	missing, _, _ := strings.Cut(string(resp), " ")
 	if missing == "All" {
-		return nil, nil
+		return nil, 0, nil
 	}
 	numMissing, err := strconv.Atoi(missing)
 	if err != nil {
-		return nil, fmt.Errorf("parsing number of missing users: %w", err)
+		return nil, -1, fmt.Errorf("parsing number of missing users: %w", err)
 	}
 
 	for i := 0; i < numMissing; i++ {
 		missingUsers = append(missingUsers, fmt.Sprintf("User%d", i))
 	}
 
-	return missingUsers, nil
+	return missingUsers, numMissing, nil
 }
 
 // secretGetV1 requests secrets from the Coordinator using the legacy v1 API.
