@@ -140,7 +140,7 @@ func TestCliCheckSGXSupport(t *testing.T) {
 	assert.Contains(out.String(), "1 node")
 	out.Reset()
 
-	testNodeSGX.ObjectMeta.Name = "sgx-node-2"
+	testNodeSGX.Name = "sgx-node-2"
 	_, err = testClient.CoreV1().Nodes().Create(ctx, testNodeSGX, metav1.CreateOptions{})
 	require.NoError(err)
 

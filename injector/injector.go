@@ -123,10 +123,7 @@ func (m *Mutator) mutate(body []byte) ([]byte, error) {
 		return m.generateResponse(pod, admReviewReq, admReviewResponse, false, msg)
 	}
 
-	injectSgx := false
-	if pod.Labels[labelResourceInjection] != "disabled" {
-		injectSgx = true
-	}
+	injectSgx := pod.Labels[labelResourceInjection] != "disabled"
 
 	// get namespace of pod
 	namespace := admReviewReq.Request.Namespace

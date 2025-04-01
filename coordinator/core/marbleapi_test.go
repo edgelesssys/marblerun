@@ -353,12 +353,13 @@ func (ms *marbleSpawner) newMarble(t *testing.T, marbleType string, infraName st
 	ms.assert.NoError(err, "failed to verify new certificate: %v", err)
 
 	// Shared & non-shared secret checks
-	if marbleType == "backendFirst" {
+	switch marbleType {
+	case "backendFirst":
 		// Validate generated shared secret certificate
 		// backendFirst only runs once, so need for a mutex & checks
 		ms.backendFirstSharedCert = ms.verifyCertificateFromEnvironment("TEST_SECRET_CERT", params, opts)
 		ms.backendFirstUniqueCert = ms.verifyCertificateFromEnvironment("TEST_SECRET_PRIVATE_CERT", params, opts)
-	} else if marbleType == "backendOther" {
+	case "backendOther":
 		// Validate generated shared secret certificate
 		// Since we're running async and multiple times, let's avoid a race condition here and only get the certificate from one instance
 		ms.mutex.Lock()
@@ -374,7 +375,8 @@ func (ms *marbleSpawner) newMarble(t *testing.T, marbleType string, infraName st
 	// Validate ttls conf
 	config := make(map[string]map[string]map[string]map[string]interface{})
 	configBytes := params.Env[globalconstants.EnvMarbleTTLSConfig]
-	if marbleType == "backendFirst" {
+	switch marbleType {
+	case "backendFirst":
 		ms.assert.NoError(json.Unmarshal(configBytes, &config))
 
 		ms.assert.NotEqual(nil, config["tls"]["Outgoing"]["localhost:8080"]["cacrt"])
@@ -389,7 +391,7 @@ func (ms *marbleSpawner) newMarble(t *testing.T, marbleType string, infraName st
 		ms.assert.NotEmpty(config["tls"]["Incoming"]["*:8080"]["clicrt"])
 		ms.assert.NotEmpty(config["tls"]["Incoming"]["*:8080"]["clikey"])
 		ms.assert.True(config["tls"]["Incoming"]["*:8080"]["clientAuth"].(bool))
-	} else if marbleType == "backendOther" {
+	case "backendOther":
 		ms.assert.NoError(json.Unmarshal(configBytes, &config))
 		ms.assert.NotEqual(nil, config["tls"]["Outgoing"]["localhost:8080"]["cacrt"])
 		ms.assert.NotEqual(nil, config["tls"]["Outgoing"]["localhost:8080"]["clicrt"])
@@ -407,7 +409,7 @@ func (ms *marbleSpawner) newMarble(t *testing.T, marbleType string, infraName st
 		ms.assert.NotEmpty(config["tls"]["Incoming"]["*:8080"]["clicrt"])
 		ms.assert.NotEmpty(config["tls"]["Incoming"]["*:8080"]["clikey"])
 		ms.assert.False(config["tls"]["Incoming"]["*:8080"]["clientAuth"].(bool))
-	} else {
+	default:
 		ms.assert.Empty(configBytes)
 	}
 }
