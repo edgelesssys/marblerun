@@ -72,14 +72,14 @@ func (c *Client) GetChart(chartPath, version string) (*chart.Chart, error) {
 	if chartPath == "" {
 		// No chart was specified -> add or update edgeless helm repo
 		installer := action.NewInstall(c.config)
-		installer.ChartPathOptions.Version = version
+		installer.Version = version
 
 		err := c.getRepo(repoName, repoURI)
 		if err != nil {
 			return nil, fmt.Errorf("adding edgeless helm repo: %w", err)
 		}
 
-		chartPath, err = installer.ChartPathOptions.LocateChart(chartName, c.settings)
+		chartPath, err = installer.LocateChart(chartName, c.settings)
 		if err != nil {
 			return nil, fmt.Errorf("locating chart: %w", err)
 		}
