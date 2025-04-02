@@ -122,10 +122,29 @@ func runUpdateApply(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := api.ManifestUpdateApply(cmd.Context(), hostname, root, manifest, keyPair); err != nil {
+	missingUsers, missingAcks, err := api.ManifestUpdateApply(cmd.Context(), hostname, root, manifest, keyPair)
+	if err != nil {
 		return fmt.Errorf("applying update: %w", err)
 	}
-	cmd.Println("Update manifest set successfully")
+
+	var msg string
+	switch missingAcks {
+	case 0:
+		msg = "Update manifest set successfully"
+	case 1:
+		msg = fmt.Sprintf(
+			"Update manifest submitted successfully.\nChanges are pending and have not been applied yet.\n"+
+				"1 user still needs to acknowledge the update manifest.\nThe following users may acknowledge the update: %s",
+			strings.Join(missingUsers, ", "),
+		)
+	default:
+		msg = fmt.Sprintf(
+			"Update manifest submitted successfully.\nChanges are pending and have not been applied yet.\n"+
+				"%d users still need to acknowledge the update manifest.\nThe following users may acknowledge the update: %s",
+			missingAcks, strings.Join(missingUsers, ", "),
+		)
+	}
+	cmd.Println(msg)
 	return nil
 }
 
