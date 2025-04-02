@@ -267,20 +267,24 @@ func ManifestSet(ctx context.Context, endpoint string, trustedRoot *x509.Certifi
 }
 
 // ManifestUpdateApply sets a manifest update for a MarbleRun deployment.
-func ManifestUpdateApply(ctx context.Context, endpoint string, trustedRoot *x509.Certificate, updateManifest []byte, clientKeyPair *tls.Certificate) error {
+// On a complete manifest update, returns a list of users that may acknowledge the update
+// and the number of remaining acknowledgements before the update is applied.
+func ManifestUpdateApply(ctx context.Context, endpoint string, trustedRoot *x509.Certificate, updateManifest []byte, clientKeyPair *tls.Certificate) ([]string, int, error) {
 	client, err := rest.NewClient(endpoint, trustedRoot, clientKeyPair)
 	if err != nil {
-		return fmt.Errorf("setting up client: %w", err)
+		return nil, 0, fmt.Errorf("setting up client: %w", err)
 	}
 
-	err = manifestUpdateApplyV2(ctx, client, updateManifest)
+	missingUsers, missingAcks, err := manifestUpdateApplyV2(ctx, client, updateManifest)
 	if rest.IsNotAllowedErr(err) {
+		missingAcks = 0
+		missingUsers = nil
 		err = manifestUpdateApplyV1(ctx, client, updateManifest)
 	}
 	if err != nil {
-		return fmt.Errorf("applying manifest update: %w", err)
+		return nil, 0, fmt.Errorf("applying manifest update: %w", err)
 	}
-	return nil
+	return missingUsers, missingAcks, nil
 }
 
 // ManifestUpdateGet retrieves a pending manifest update of a MarbleRun deployment.

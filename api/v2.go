@@ -104,14 +104,22 @@ func manifestSetV2(ctx context.Context, client *rest.Client, manifest []byte) (r
 }
 
 // manifestUpdateApplyV2 updates the Coordinator manifest using the v2 API.
-func manifestUpdateApplyV2(ctx context.Context, client *rest.Client, manifest []byte) error {
+func manifestUpdateApplyV2(ctx context.Context, client *rest.Client, manifest []byte) ([]string, int, error) {
 	request, err := json.Marshal(apiv2.UpdateApplyRequest{Manifest: manifest})
 	if err != nil {
-		return fmt.Errorf("marshalling request: %w", err)
+		return nil, 0, fmt.Errorf("marshalling request: %w", err)
 	}
 
-	_, err = client.Post(ctx, rest.V2API+rest.UpdateEndpoint, rest.ContentJSON, bytes.NewReader(request))
-	return err
+	resp, err := client.Post(ctx, rest.V2API+rest.UpdateEndpoint, rest.ContentJSON, bytes.NewReader(request))
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var response apiv2.UpdateApplyResponse
+	if err := json.Unmarshal(resp, &response); err != nil {
+		return nil, 0, fmt.Errorf("unmarshalling Coordinator response: %w", err)
+	}
+	return response.MissingUsers, response.MissingAcknowledgments, nil
 }
 
 // manifestUpdateAcknowledgeV2 acknowledges an update manifest using the v2 API.

@@ -122,3 +122,11 @@ type UpdateApplyRequest struct {
 	// Manifest is the new manifest to apply.
 	Manifest []byte `json:"manifest"`
 }
+
+// UpdateApplyResponse is the response to an update apply request.
+type UpdateApplyResponse struct {
+	// MissingAcknowledgements is the number of acknowledgements required to apply the update.
+	MissingAcknowledgments int `json:"missingAcknowledgments"`
+	// MissingUsers is a list of users that have not acknowledged the update.
+	MissingUsers []string `json:"missingUsers"`
+}

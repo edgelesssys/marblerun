@@ -575,13 +575,13 @@ func (a *ClientAPI) SetMonotonicCounter(ctx context.Context, marbleType string, 
 }
 
 // UpdateManifest allows to update certain package parameters of the original manifest, supplied via a JSON manifest.
-func (a *ClientAPI) UpdateManifest(ctx context.Context, rawUpdateManifest []byte, updater *user.User) (err error) {
+func (a *ClientAPI) UpdateManifest(ctx context.Context, rawUpdateManifest []byte, updater *user.User) (_ []string, _ int, err error) {
 	a.log.Info("UpdateManifest called")
 	defer a.core.Unlock()
 	// Only accept update manifest if we already have a manifest
 	if err := a.core.RequireState(ctx, state.AcceptingMarbles); err != nil {
 		a.log.Error("UpdateManifest: Coordinator not in correct state", zap.Error(err))
-		return err
+		return nil, 0, err
 	}
 	defer func() {
 		if err != nil {
@@ -592,7 +592,7 @@ func (a *ClientAPI) UpdateManifest(ctx context.Context, rawUpdateManifest []byte
 	// Unmarshal & check update manifest
 	var updateManifest manifest.Manifest
 	if err := json.Unmarshal(rawUpdateManifest, &updateManifest); err != nil {
-		return fmt.Errorf("unmarshaling update manifest: %w", err)
+		return nil, 0, fmt.Errorf("unmarshaling update manifest: %w", err)
 	}
 
 	// verify updater is allowed to commit the update
@@ -601,12 +601,12 @@ func (a *ClientAPI) UpdateManifest(ctx context.Context, rawUpdateManifest []byte
 		wantedPackages = append(wantedPackages, pkg)
 	}
 	if !updater.IsGranted(user.NewPermission(user.PermissionUpdatePackage, wantedPackages)) {
-		return fmt.Errorf("user %s is not allowed to update one or more packages of %v", updater.Name(), wantedPackages)
+		return nil, 0, fmt.Errorf("user %s is not allowed to update one or more packages of %v", updater.Name(), wantedPackages)
 	}
 
 	txdata, rollback, commit, err := wrapper.WrapTransaction(ctx, a.txHandle)
 	if err != nil {
-		return err
+		return nil, 0, err
 	}
 	defer rollback()
 
@@ -614,12 +614,12 @@ func (a *ClientAPI) UpdateManifest(ctx context.Context, rawUpdateManifest []byte
 	for pkgName := range updateManifest.Packages {
 		pkg, err := txdata.GetPackage(pkgName)
 		if err != nil {
-			return fmt.Errorf("loading current package %q from store: %w", pkgName, err)
+			return nil, 0, fmt.Errorf("loading current package %q from store: %w", pkgName, err)
 		}
 		currentPackages[pkgName] = pkg
 	}
 	if err := updateManifest.CheckUpdate(currentPackages); err != nil {
-		return fmt.Errorf("checking update manifest: %w", err)
+		return nil, 0, fmt.Errorf("checking update manifest: %w", err)
 	}
 
 	// update manifest was valid, increase svn and regenerate secrets
@@ -631,29 +631,29 @@ func (a *ClientAPI) UpdateManifest(ctx context.Context, rawUpdateManifest []byte
 
 	rootCert, err := txdata.GetCertificate(constants.SKCoordinatorRootCert)
 	if err != nil {
-		return fmt.Errorf("loading root certificate from store: %w", err)
+		return nil, 0, fmt.Errorf("loading root certificate from store: %w", err)
 	}
 	rootPrivK, err := txdata.GetPrivateKey(constants.SKCoordinatorRootKey)
 	if err != nil {
-		return fmt.Errorf("loading root private key from store: %w", err)
+		return nil, 0, fmt.Errorf("loading root private key from store: %w", err)
 	}
 
 	// Generate new cross-signed intermediate CA for Marble gRPC authentication
 	intermediateCert, intermediatePrivK, err := crypto.GenerateCert(rootCert.DNSNames, constants.CoordinatorIntermediateName, nil, rootCert, rootPrivK)
 	if err != nil {
 		a.log.Error("Could not generate a new intermediate CA for Marble authentication.", zap.Error(err))
-		return fmt.Errorf("generating new intermediate CA for Marble authentication: %w", err)
+		return nil, 0, fmt.Errorf("generating new intermediate CA for Marble authentication: %w", err)
 	}
 	marbleRootCert, _, err := crypto.GenerateCert(rootCert.DNSNames, constants.CoordinatorIntermediateName, intermediatePrivK, nil, nil)
 	if err != nil {
-		return fmt.Errorf("generating new Marble root certificate: %w", err)
+		return nil, 0, fmt.Errorf("generating new Marble root certificate: %w", err)
 	}
 
 	// Gather all shared certificate secrets we need to regenerate
 	secretsToRegenerate := make(map[string]manifest.Secret)
 	secrets, err := txdata.GetSecretMap()
 	if err != nil {
-		return fmt.Errorf("loading existing shared secrets from store: %w", err)
+		return nil, 0, fmt.Errorf("loading existing shared secrets from store: %w", err)
 	}
 	for name, secret := range secrets {
 		if secret.Shared && secret.Type != manifest.SecretTypeSymmetricKey {
@@ -665,7 +665,7 @@ func (a *ClientAPI) UpdateManifest(ctx context.Context, rawUpdateManifest []byte
 	regeneratedSecrets, err := a.core.GenerateSecrets(secretsToRegenerate, uuid.Nil, "", marbleRootCert, intermediatePrivK, rootPrivK)
 	if err != nil {
 		a.log.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
-		return fmt.Errorf("regenerating shared secrets for updated manifest: %w", err)
+		return nil, 0, fmt.Errorf("regenerating shared secrets for updated manifest: %w", err)
 	}
 
 	a.updateLog.Reset()
@@ -674,28 +674,28 @@ func (a *ClientAPI) UpdateManifest(ctx context.Context, rawUpdateManifest []byte
 	}
 
 	if err := txdata.PutCertificate(constants.SKCoordinatorIntermediateCert, intermediateCert); err != nil {
-		return fmt.Errorf("saving new intermediate certificate to store: %w", err)
+		return nil, 0, fmt.Errorf("saving new intermediate certificate to store: %w", err)
 	}
 	if err := txdata.PutPrivateKey(constants.SKCoordinatorIntermediateKey, intermediatePrivK); err != nil {
-		return fmt.Errorf("saving new intermediate private key to store: %w", err)
+		return nil, 0, fmt.Errorf("saving new intermediate private key to store: %w", err)
 	}
 	if err := txdata.PutCertificate(constants.SKMarbleRootCert, marbleRootCert); err != nil {
-		return fmt.Errorf("saving new Marble root certificate to store: %w", err)
+		return nil, 0, fmt.Errorf("saving new Marble root certificate to store: %w", err)
 	}
 	if err := txdata.AppendUpdateLog(a.updateLog.String()); err != nil {
-		return fmt.Errorf("saving update log to store: %w", err)
+		return nil, 0, fmt.Errorf("saving update log to store: %w", err)
 	}
 
 	// Overwrite updated packages in core
 	for name, pkg := range currentPackages {
 		if err := txdata.PutPackage(name, pkg); err != nil {
-			return fmt.Errorf("saving updated package to store: %w", err)
+			return nil, 0, fmt.Errorf("saving updated package to store: %w", err)
 		}
 	}
 	// Overwrite regenerated secrets in core
 	for name, secret := range regeneratedSecrets {
 		if err := txdata.PutSecret(name, secret); err != nil {
-			return fmt.Errorf("saving regenerated secret to store: %w", err)
+			return nil, 0, fmt.Errorf("saving regenerated secret to store: %w", err)
 		}
 	}
 
@@ -703,11 +703,11 @@ func (a *ClientAPI) UpdateManifest(ctx context.Context, rawUpdateManifest []byte
 	a.log.Info("Please restart your Marbles to enforce the update.")
 
 	if err := commit(ctx); err != nil {
-		return fmt.Errorf("updating manifest failed: committing store transaction: %w", err)
+		return nil, 0, fmt.Errorf("updating manifest failed: committing store transaction: %w", err)
 	}
 
 	a.log.Info("UpdateManifest successful")
-	return nil
+	return nil, 0, nil
 }
 
 // VerifyMarble checks if a given client certificate is a Marble certificate signed by this Coordinator.

@@ -608,7 +608,7 @@ func TestSecurityLevelUpdate(t *testing.T) {
 	spawner.newMarble(t, "frontend", "Azure", uuid.New(), true)
 
 	// update manifest
-	err = clientAPI.UpdateManifest(ctx, []byte(test.UpdateManifest), admin)
+	_, _, err = clientAPI.UpdateManifest(ctx, []byte(test.UpdateManifest), admin)
 	require.NoError(err)
 
 	// try to activate another first backend, should fail as required SecurityLevel is now higher after manifest update
