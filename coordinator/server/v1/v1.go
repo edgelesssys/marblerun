@@ -184,8 +184,7 @@ func (s *ClientAPIServer) UpdatePost(w http.ResponseWriter, r *http.Request) {
 		handler.WriteJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	err = s.api.UpdateManifest(r.Context(), updateManifest, verifiedUser)
-	if err != nil {
+	if _, _, err = s.api.UpdateManifest(r.Context(), updateManifest, verifiedUser); err != nil {
 		handler.WriteJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
