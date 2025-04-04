@@ -9,7 +9,7 @@ Make sure to mount your `/etc/sgx_default_qcnl.conf` so your application has acc
 Note that we also chose `--network host` here, as we assume you do not run the coordinator in the same Docker instance. **This option is potentially insecure in production use**, as it disables the isolation of the container network. For a production setup, we recommend that you choose a setup that exposes the coordinator to the container.
 
 ```sh
-docker run -it --network host --device /dev/sgx_enclave --device /dev/sgx_provision -v /dev/sgx:/dev/sgx -v /etc/sgx_default_qcnl.conf:/etc/sgx_default_qcnl.conf occlum/occlum:0.30.1-ubuntu20.04
+docker run -it --network host --device /dev/sgx_enclave --device /dev/sgx_provision -v /dev/sgx:/dev/sgx -v /etc/sgx_default_qcnl.conf:/etc/sgx_default_qcnl.conf occlum/occlum:0.31.0-ubuntu22.04
 ```
 
 ## Build
