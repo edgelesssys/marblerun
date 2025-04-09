@@ -466,8 +466,9 @@ func TestManifestUpdate(t *testing.T) {
 
 	// Set the update manifest
 	t.Log("Setting the Update Manifest")
-	err = f.SetUpdateManifest(f.UpdatedManifest, AdminCert, RecoveryPrivateKey)
+	_, missingAcks, err := f.SetUpdateManifest(f.UpdatedManifest, AdminCert, RecoveryPrivateKey)
 	require.NoError(err, "failed to set Update Manifest")
+	assert.Equal(0, missingAcks, "failed to set Update Manifest")
 
 	// Try to start marbles again, should fail now due to increased minimum SecurityVersion
 	t.Log("Starting the same bunch of outdated Client-Marbles again (should fail now)...")

@@ -95,7 +95,7 @@ openssl x509 -in marblerunRootCA.crt -pubkey -noout > root.pubkey
 # verify signature
 openssl dgst -sha256 -verify root.pubkey -signature manifest.sig manifest.json
 # verification fails? try to remove newlines from manifest
-awk 'NF {sub(/\r/, ""); printf "%s",$0;}' original.manifest.json  > formated.manifest.json
+awk 'NF {sub(/\r/, ""); printf "%s",$0;}' original.manifest.json  > formatted.manifest.json
 ```
 
 #### Returns
@@ -897,6 +897,28 @@ Example request body:
 }
 ```
 
+#### Returns
+
+* `missingAcknowledgments` int
+
+    The number of users that need to acknowledge the update before it's applied.
+
+* `missingUsers` array of strings
+
+    An array of user IDs that haven't yet acknowledged the update.
+
+Example response:
+
+```json
+{
+    "status": "success",
+    "data": {
+        "missingAcknowledgments": 2,
+        "missingUsers": ["user1", "user2", "user3"]
+    }
+}
+```
+
 </TabItem>
 <TabItem value="v1" label="v1">
 
@@ -987,6 +1009,10 @@ Example request body:
 
     A human readable message indicating the success or progress of the update process.
 
+* `missingAcknowledgments` int
+
+    The number of users that need to acknowledge the update before it's applied.
+
 * `missingUsers` array of strings
 
     An array of user IDs that haven't yet acknowledged the update.
@@ -998,7 +1024,8 @@ Example response:
     "status": "success",
     "data": {
         "message": "2 users still needs to acknowledge the update manifest.",
-        "missingUsers": ["user1", "user2"]
+        "missingAcknowledgments": 2,
+        "missingUsers": ["user1", "user2", "user3"]
     }
 }
 ```

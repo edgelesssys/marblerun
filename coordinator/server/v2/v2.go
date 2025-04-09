@@ -281,10 +281,14 @@ func (s *ClientAPIServer) UpdatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.api.UpdateManifest(r.Context(), req.Manifest, verifiedUser); err != nil {
+	missingUsers, missingAcks, err := s.api.UpdateManifest(r.Context(), req.Manifest, verifiedUser)
+	if err != nil {
 		handler.WriteJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	handler.WriteJSON(w, nil)
+	handler.WriteJSON(w, UpdateApplyResponse{
+		MissingAcknowledgments: missingAcks,
+		MissingUsers:           missingUsers,
+	})
 }
