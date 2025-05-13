@@ -14,7 +14,7 @@ The `Packages` section of the manifest lists all the secure enclave software pac
 * `ProductID`: an integer that uniquely identifies the enclave software for a given `SignerID`. Can only be used in conjunction with `SignerID`.
 * `SecurityVersion`: an integer that reflects the security-patch level of the enclave software. Can only be used in conjunction with `SignerID`.
 * `Debug`: set to `true` if the enclave is to be run in debug mode. This allows you to experiment with deploying your application with MarbleRun without having to worry about setting correct values for the above properties, but note that enclaves in debug mode aren't secure.
-* `AcceptedTCBStatuses`: a list of acceptable [TCB statuses](https://docs.trustauthority.intel.com/main/articles/concept-platform-tcb.html#attester-tcb-claims) a Marble is allowed to start with. You can use this option to allow Marbles to run on machines whose TCB is out-of-date. If not set, it defaults to `["UpToDate", "SWHardeningNeeded"]`.
+* `AcceptedTCBStatuses`: a list of acceptable [TCB statuses](https://docs.trustauthority.intel.com/main/articles/articles/ita/concept-platform-tcb.html#attester-tcb-claims#attester-tcb-claims) a Marble is allowed to start with. You can use this option to allow Marbles to run on machines whose TCB is out-of-date. If not set, it defaults to `["UpToDate", "SWHardeningNeeded"]`.
 
 The following gives an example of a simple `Packages` section with made-up values.
 
