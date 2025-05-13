@@ -25,6 +25,6 @@ jobs:
         uses: lycheeverse/lychee-action@82202e5e9c2f4ef1a55a3d02563e1cb6041e5332 # v2.4.1
         with:
           fail: true
-          args: --verbose --no-progress './**/*.md' './**/*.html' './**/*.rst' --cache --cache-exclude-status 400..599 --max-concurrency 8 --retry-wait-time 30
+          args: --verbose --no-progress './**/*.md' './**/*.html' './**/*.rst' --cache --cache-exclude-status 400..599 --max-concurrency 4 --retry-wait-time 60
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
