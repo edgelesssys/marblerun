@@ -67,14 +67,14 @@ You currently have two options regarding PCCS for your on-premises machines and 
     You can inspect the Intel Root CA CRL of your PCCS:
 
     ```bash
-    curl --insecure --request GET --url https://<YOUR_PCCS_DOMAIN>:<YOUR_PCCS_PORT>/sgx/certification/v3/rootcacrl > rootca.crl
+    curl --insecure --request GET --url https://<YOUR_PCCS_DOMAIN>:<YOUR_PCCS_PORT>/sgx/certification/v4/rootcacrl > rootca.crl
     openssl crl -inform DER -text -noout -in rootca.crl
     ```
 
     You can refresh all SGX collaterals for your PCCS:
 
     ```bash
-    curl --insecure --request GET -H "admin-token: <my password>" --url https://<YOUR_PCCS_DOMAIN>:<YOUR_PCCS_PORT>/sgx/certification/v3/refresh
+    curl --insecure --request GET -H "admin-token: <my password>" --url https://<YOUR_PCCS_DOMAIN>:<YOUR_PCCS_PORT>/sgx/certification/v4/refresh
     ```
 
     If refreshing CRL fails, you can manually delete the `pckcache.db` database (default location `/opt/intel/sgx-dcap-pccs/pckcache.db`) and restart your PCCS.
