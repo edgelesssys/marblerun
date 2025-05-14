@@ -62,8 +62,7 @@ their default values.
 | `marbleInjector.namespaceSelector`           | object         | NamespaceSelector to trigger marble-injector mutation, See the [K8S documentation](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-namespaceselector) for more information | `{}` |
 | `nodeSelector`                               | object         | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information | `{"beta.kubernetes.io/os": "linux"}` |
 | `tolerations`                                | object         | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information | `{key:"sgx.intel.com/epc",operator:"Exists",effect:"NoSchedule"}` |
-| `dcap.qpl`                                   | string         | SGX quote provider library (QPL) to use. Needs to be "intel" if the libsgx-dcap-default-qpl is to be used, otherwise az-dcap-client is used by default | `"azure"` |
-| `dcap.pccsUrl`                               | string         | URL of the PCCS. Only applicable if `dcap.qpl=intel` | `"https://localhost:8081/sgx/certification/v3/"` |
+| `dcap.pccsUrl`                               | string         | URL of the PCCS | `"https://global.acccache.azure.net/sgx/certification/v4/"` |
 | `dcap.useSecureCert`                         | string         | Whether or not the TLS certificate of the PCCS should be verified | `"TRUE"` |
 
 ## Add new version (maintainers)

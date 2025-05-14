@@ -46,14 +46,14 @@ The description below uses a VM running Ubuntu 18.04.
     * If your instance is assigned a public IP address, change the configuration to the following, where `[Region-ID]` is the ID of your instance's region:
 
         ```
-        PCCS_URL=https://sgx-dcap-server.[Region-ID].aliyuncs.com/sgx/certification/v3/
+        PCCS_URL=https://sgx-dcap-server.[Region-ID].aliyuncs.com/sgx/certification/v4/
         USE_SECURE_CERT=TRUE
         ```
 
     * If your instance is in a virtual private cloud and has only internal IP addresses, change the configuration to the following, where `[Region-ID]` is the ID of your instance's region:
 
         ```
-        PCCS_URL=https://sgx-dcap-server-vpc.[Region-ID].aliyuncs.com/sgx/certification/v3/
+        PCCS_URL=https://sgx-dcap-server-vpc.[Region-ID].aliyuncs.com/sgx/certification/v4/
         USE_SECURE_CERT=TRUE
         ```
 
