@@ -9,7 +9,7 @@ metadata:
     app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
     app.kubernetes.io/name: coordinator-dcap-config
     app.kubernetes.io/part-of: marblerun
-    app.kubernetes.io/version: {{ .Values.coordinator.version }}
+    app.kubernetes.io/version: "{{ .Values.coordinator.version }}"
     {{ .Values.global.coordinatorComponentLabel }}: dcap-config
     {{ .Values.global.coordinatorNamespaceLabel }}: {{ .Release.Namespace }}
 data:

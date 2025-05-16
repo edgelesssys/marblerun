@@ -9,7 +9,7 @@ metadata:
     app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
     app.kubernetes.io/name: marble-injector
     app.kubernetes.io/part-of: marblerun
-    app.kubernetes.io/version: {{ .Values.marbleInjector.version }}
+    app.kubernetes.io/version: "{{ .Values.marbleInjector.version }}"
 spec:
   selfSigned: {}
 ---
@@ -23,7 +23,7 @@ metadata:
     app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
     app.kubernetes.io/name: marble-injector
     app.kubernetes.io/part-of: marblerun
-    app.kubernetes.io/version: {{ .Values.marbleInjector.version }}
+    app.kubernetes.io/version: "{{ .Values.marbleInjector.version }}"
 spec:
   dnsNames:
   - 'marble-injector.{{ .Release.Namespace }}.svc'
