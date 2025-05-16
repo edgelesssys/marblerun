@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
     app.kubernetes.io/name: coordinator
     app.kubernetes.io/part-of: marblerun
-    app.kubernetes.io/version: {{ .Values.coordinator.version }}
+    app.kubernetes.io/version: "{{ .Values.coordinator.version }}"
     {{ .Values.global.coordinatorComponentLabel }}: coordinator
     {{ .Values.global.coordinatorNamespaceLabel }}: {{ .Release.Namespace }}
 spec:
@@ -24,7 +24,7 @@ spec:
         app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
         app.kubernetes.io/name: coordinator
         app.kubernetes.io/part-of: marblerun
-        app.kubernetes.io/version: {{ .Values.coordinator.version }}
+        app.kubernetes.io/version: "{{ .Values.coordinator.version }}"
         {{ .Values.global.coordinatorComponentLabel }}: coordinator
         {{ .Values.global.coordinatorNamespaceLabel }}: {{ .Release.Namespace }}
         {{- with .Values.global.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
@@ -114,7 +114,7 @@ metadata:
     app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
     app.kubernetes.io/name: coordinator-pv-claim
     app.kubernetes.io/part-of: marblerun
-    app.kubernetes.io/version: {{ .Values.coordinator.version }}
+    app.kubernetes.io/version: "{{ .Values.coordinator.version }}"
 spec:
   storageClassName: {{ .Values.coordinator.storageClass }}
   accessModes:
@@ -134,7 +134,7 @@ metadata:
     app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
     app.kubernetes.io/name: coordinator-client-api
     app.kubernetes.io/part-of: marblerun
-    app.kubernetes.io/version: {{ .Values.coordinator.version }}
+    app.kubernetes.io/version: "{{ .Values.coordinator.version }}"
 spec:
   type: ClusterIP
   selector:
@@ -155,7 +155,7 @@ metadata:
     app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
     app.kubernetes.io/name: coordinator-mesh-api
     app.kubernetes.io/part-of: marblerun
-    app.kubernetes.io/version: {{ .Values.coordinator.version }}
+    app.kubernetes.io/version: "{{ .Values.coordinator.version }}"
 spec:
   type: ClusterIP
   selector:

@@ -3,12 +3,12 @@ appVersion: v1.7.0
 description: The control plane for confidential computing.
 home: https://edgeless.systems
 keywords:
-- service-mesh
-- confidential-computing
+  - service-mesh
+  - confidential-computing
 kubeVersion: ">=1.13.0-0"
 name: marblerun
 sources:
-- https://github.com/edgelesssys/marblerun
+  - https://github.com/edgelesssys/marblerun
 version: 1.7.0
 maintainers:
   - name: Edgeless Systems

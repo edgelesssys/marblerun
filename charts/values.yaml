@@ -78,16 +78,16 @@ coordinator:
     readiness:
       failureThreshold: 7
       periodSeconds: 60
-      timeoutSeconds: 15
+      timeoutSeconds: 30
     liveness:
       failureThreshold: 3
       periodSeconds: 60
-      timeoutSeconds: 15
+      timeoutSeconds: 30
     startup:
       initialDelaySeconds: 15
       failureThreshold: 3
       periodSeconds: 2
-      timeoutSeconds: 15
+      timeoutSeconds: 30
 
   # Resource limits for the Coordinator
   resources:
@@ -114,9 +114,9 @@ coordinator:
 # Tolerations constraints for control-plane components
 # https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
 tolerations:
-- key: sgx.intel.com/epc
-  operator: Exists
-  effect: NoSchedule
+  - key: sgx.intel.com/epc
+    operator: Exists
+    effect: NoSchedule
 
 # Node selection constraints for control-plane components
 # https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector.
