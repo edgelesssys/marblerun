@@ -1,6 +1,5 @@
 # Nginx manifest example
 
-loader.entrypoint = "file:{{ gramine.libos }}"
 # MARBLERUN: entrypoint must be premain-libos
 libos.entrypoint = "premain-libos"
 
