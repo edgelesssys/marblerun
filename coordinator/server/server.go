@@ -64,7 +64,7 @@ func RunMarbleServer(core *core.Core, addr string, addrChan chan string, errChan
 		grpcMetrics.InitializeMetrics(grpcServer)
 		promRegistry.MustRegister(grpcMetrics)
 	}
-	socket, err := net.Listen("tcp", addr)
+	socket, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", addr)
 	if err != nil {
 		errChan <- err
 		return

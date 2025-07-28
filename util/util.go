@@ -4,10 +4,11 @@ Copyright (c) Edgeless Systems GmbH
 SPDX-License-Identifier: BUSL-1.1
 */
 
-package util
+package util //nolint:revive
 
 import (
 	"cmp"
+	"context"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
@@ -61,7 +62,7 @@ func Getenv(name string, fallback string) string {
 func MustGetLocalListenerAndAddr() (net.Listener, string) {
 	const localhost = "localhost:"
 
-	listener, err := net.Listen("tcp", localhost)
+	listener, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", localhost)
 	if err != nil {
 		panic(err)
 	}

@@ -301,7 +301,7 @@ func (i IntegrationTest) StartMarbleServer(ctx context.Context, cfg MarbleConfig
 			i.t.Fatal(err)
 		default:
 		}
-		conn, err := net.DialTimeout("tcp", i.MarbleTestAddr, timeout)
+		conn, err := (&net.Dialer{Timeout: timeout}).DialContext(ctx, "tcp", i.MarbleTestAddr)
 		if err == nil {
 			conn.Close()
 			i.t.Log("Server started")
