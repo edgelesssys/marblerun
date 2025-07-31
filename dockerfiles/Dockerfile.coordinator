@@ -11,7 +11,7 @@ RUN apt-get install -y --no-install-recommends \
   ninja-build \
   wget
 
-ARG erttag=v0.4.9
+ARG erttag=v0.4.12
 ARG mrtag=v1.7.0
 ARG goversion=1.23.5
 RUN wget -qO- https://go.dev/dl/go${goversion}.linux-amd64.tar.gz | tar -C /usr/local -xz \
