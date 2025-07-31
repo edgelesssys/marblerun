@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.11)
 
-project(marblerun VERSION 1.7.0)
+project(marblerun VERSION 1.8.0)
 find_package(OpenEnclave CONFIG REQUIRED)
 
 if (NOT CMAKE_BUILD_TYPE)
