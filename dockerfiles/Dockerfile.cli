@@ -1,4 +1,4 @@
-FROM ghcr.io/edgelesssys/marblerun/build-base-focal:v1.7.0 AS build
+FROM ghcr.io/edgelesssys/marblerun/build-base-focal:v1.8.0 AS build
 
 # don't run `apt-get update` because required packages are cached in build-base for reproducibility
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
@@ -12,8 +12,8 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
   ninja-build \
   wget
 
-ARG erttag=v0.4.9
-ARG mrtag=v1.7.0
+ARG erttag=v0.4.12
+ARG mrtag=v1.8.0
 ARG goversion=1.23.5
 RUN wget -qO- https://go.dev/dl/go${goversion}.linux-amd64.tar.gz | tar -C /usr/local -xz \
   && git clone -b $erttag --depth=1 https://github.com/edgelesssys/edgelessrt \
@@ -56,9 +56,9 @@ RUN chmod +x linuxdeploy-x86_64.AppImage && touch marblerun.svg \
   && cd / \
   && echo \
   '#!/bin/sh\n\
-DIR=$(dirname "$(readlink -f "$0")")\n\
-[ ! -e /etc/ssl/certs/ca-certificates.crt ] && [ -e /etc/pki/tls/certs/ca-bundle.crt ] && export LD_LIBRARY_PATH="${DIR}/usr/lib-fedora:${DIR}/usr/lib"\n\
-exec "${DIR}/usr/bin/marblerun" "$@"\n' \
+  DIR=$(dirname "$(readlink -f "$0")")\n\
+  [ ! -e /etc/ssl/certs/ca-certificates.crt ] && [ -e /etc/pki/tls/certs/ca-bundle.crt ] && export LD_LIBRARY_PATH="${DIR}/usr/lib-fedora:${DIR}/usr/lib"\n\
+  exec "${DIR}/usr/bin/marblerun" "$@"\n' \
   > AppRun \
   # build AppImage
   && SOURCE_DATE_EPOCH=$(git -C /marblerun log -1 --pretty=%ct) ARCH=x86_64 LDAI_RUNTIME_FILE=runtime-x86_64 squashfs-root/AppRun \
