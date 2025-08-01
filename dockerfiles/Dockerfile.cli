@@ -33,13 +33,7 @@ RUN cd marblerun && export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct) && cd /m
 
 # create AppImage
 RUN chmod +x linuxdeploy-x86_64.AppImage && touch marblerun.svg \
-  # workaround for reproducibility based on https://github.com/AppImage/AppImageKit/issues/929#issuecomment-926001098
   && /linuxdeploy-x86_64.AppImage --appimage-extract \
-  && cd squashfs-root/plugins/linuxdeploy-plugin-appimage/appimagetool-prefix/usr/lib/appimagekit \
-  && mv mksquashfs mksquashfs_orig \
-  && echo '$0_orig $(echo $* | sed -e "s/-mkfs-time 0//")' > mksquashfs \
-  && chmod +x mksquashfs \
-  && cd / \
   # create AppDir
   && squashfs-root/AppRun \
   --appdir=marblerun.AppDir \
