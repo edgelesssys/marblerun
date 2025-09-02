@@ -11,25 +11,25 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.2
-	github.com/prometheus/client_golang v1.22.0
+	github.com/prometheus/client_golang v1.23.0
 	github.com/prometheus/client_model v0.6.2
 	github.com/spf13/afero v1.14.0
-	github.com/spf13/cobra v1.9.1
-	github.com/spf13/pflag v1.0.7
-	github.com/stretchr/testify v1.10.0
+	github.com/spf13/cobra v1.10.1
+	github.com/spf13/pflag v1.0.10
+	github.com/stretchr/testify v1.11.1
 	github.com/tidwall/gjson v1.18.0
 	go.uber.org/goleak v1.3.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/crypto v0.40.0
-	golang.org/x/sys v0.34.0
-	google.golang.org/grpc v1.74.2
-	google.golang.org/protobuf v1.36.6
+	golang.org/x/crypto v0.41.0
+	golang.org/x/sys v0.35.0
+	google.golang.org/grpc v1.75.0
+	google.golang.org/protobuf v1.36.8
 	gopkg.in/yaml.v3 v3.0.1
-	helm.sh/helm/v3 v3.17.4
-	k8s.io/api v0.32.7
-	k8s.io/apimachinery v0.32.7
-	k8s.io/client-go v0.32.7
-	sigs.k8s.io/controller-runtime v0.20.4
+	helm.sh/helm/v3 v3.18.6
+	k8s.io/api v0.34.0
+	k8s.io/apimachinery v0.34.0
+	k8s.io/client-go v0.34.0
+	sigs.k8s.io/controller-runtime v0.22.0
 	sigs.k8s.io/yaml v1.6.0
 )
 
