@@ -4,3 +4,4 @@ build/
 *.test
 marblerun-coordinator-data/
 debug/
+go.work.sum
