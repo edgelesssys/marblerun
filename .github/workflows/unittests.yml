@@ -13,6 +13,23 @@ on:
       - "**/go.mod"
 
 jobs:
+  buildtest:
+    runs-on: ubuntu-24.04
+    container:
+      image: ghcr.io/edgelesssys/ego-dev:latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Setup
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Build estore sample
+        working-directory: samples/estore
+        run: |
+          ego-go build -tags marblerun_ego_enclave
+          ego sign estore-sample
+
   test:
     runs-on: ubuntu-24.04
     container:
