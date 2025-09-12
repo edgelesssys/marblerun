@@ -15,8 +15,8 @@ github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06/go.mod h1:
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/edgelesssys/ego v1.7.2 h1:m1rPkrQBlVycE7ofzbijaZlZFUIUVwhGIYKks5FdLxU=
-github.com/edgelesssys/ego v1.7.2/go.mod h1:MkciSCrXddC6YYsmUTXeoQwFsbs17ncR3KKB+Ul3uRM=
+github.com/edgelesssys/ego v1.8.0 h1:g/02JeTC/vajbAfFqxckwSC+siKno/R4H/Em2YsHheU=
+github.com/edgelesssys/ego v1.8.0/go.mod h1:fg0M/xfLWnrkoD2OZpY9xmltGlAPFsIiUmyHTuCS7zo=
 github.com/edgelesssys/estore v1.2.0 h1:QIpEme6/ZG/aq1C51kUDKVC5VARAr2bg34aa75WLVF0=
 github.com/edgelesssys/estore v1.2.0/go.mod h1:X6YRliq5kd5j6fvhR9F3SQJthIXzw5xgZSVU+lHx8TM=
 github.com/getsentry/sentry-go v0.29.1 h1:DyZuChN8Hz3ARxGVV8ePaNXh1dQ7d76AiB117xcREwA=
