@@ -85,10 +85,10 @@ func (s *AESGCMSealer) SealEncryptionKey(additionalData []byte, mode Mode) ([]by
 	switch mode {
 	case ModeProductKey:
 		s.log.Debug("Sealing encryption key with product key")
-		return ecrypto.SealWithProductKey(s.encryptionKey, additionalData)
+		return ecrypto.SealWithProductKey256(s.encryptionKey, additionalData)
 	case ModeUniqueKey:
 		s.log.Debug("Sealing encryption key with unique key")
-		return ecrypto.SealWithUniqueKey(s.encryptionKey, additionalData)
+		return ecrypto.SealWithUniqueKey256(s.encryptionKey, additionalData)
 	}
 	return nil, errors.New("sealing is disabled")
 }
@@ -101,9 +101,13 @@ func (s *AESGCMSealer) SetEncryptionKey(encryptionKey []byte) {
 // UnsealEncryptionKey unseals the encryption key.
 func (s *AESGCMSealer) UnsealEncryptionKey(encryptedKey, additionalData []byte) ([]byte, error) {
 	// Decrypt stored encryption key with seal key
-	encryptionKey, err := ecrypto.Unseal(encryptedKey, additionalData)
+	encryptionKey, err := ecrypto.Unseal256(encryptedKey, additionalData)
 	if err != nil {
-		return nil, err
+		s.log.Debug("Failed to unseal encryption key, trying to unseal with 128 bit key", zap.Error(err))
+		encryptionKey, err = ecrypto.Unseal(encryptedKey, additionalData)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return encryptionKey, nil
@@ -128,9 +132,9 @@ func (s *AESGCMSealer) unseal(sealedData, encryptionKey []byte) ([]byte, []byte,
 	return unencryptedData, decryptedData, nil
 }
 
-// GenerateEncryptionKey generates a new random 16 byte encryption key.
+// GenerateEncryptionKey generates a new random 32 byte encryption key.
 func GenerateEncryptionKey() ([]byte, error) {
-	encryptionKey := make([]byte, 16)
+	encryptionKey := make([]byte, 32)
 
 	_, err := rand.Read(encryptionKey)
 	if err != nil {
