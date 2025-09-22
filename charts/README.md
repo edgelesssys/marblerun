@@ -62,8 +62,9 @@ their default values.
 | `marbleInjector.namespaceSelector`           | object         | NamespaceSelector to trigger marble-injector mutation, See the [K8S documentation](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-namespaceselector) for more information | `{}` |
 | `nodeSelector`                               | object         | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information | `{"beta.kubernetes.io/os": "linux"}` |
 | `tolerations`                                | object         | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information | `{key:"sgx.intel.com/epc",operator:"Exists",effect:"NoSchedule"}` |
-| `dcap.pccsUrl`                               | string         | URL of the PCCS | `"https://global.acccache.azure.net/sgx/certification/v4/"` |
-| `dcap.useSecureCert`                         | string         | Whether or not the TLS certificate of the PCCS should be verified | `"TRUE"` |
+| `dcap.qcnlConfig`                            | string         | Inline defined QCNL configuration. If set, this configuration is used instead of the default one or the one provided via `dcap.qcnlConfigFile` | `""` |
+| `dcap.pccsUrl`                               | string         | URL of the PCCS. Only used if `dcap.qcnlConfig` is not set  | `"https://global.acccache.azure.net/sgx/certification/v4/"` |
+| `dcap.useSecureCert`                         | string         | Whether or not the TLS certificate of the PCCS should be verified. Only used if `dcap.qcnlConfig` is not set  | `"TRUE"` |
 
 ## Add new version (maintainers)
 

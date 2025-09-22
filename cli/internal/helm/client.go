@@ -32,6 +32,7 @@ import (
 // Options contains the values to set in the helm chart.
 type Options struct {
 	Hostname            []string
+	QCNLConfigFile      string
 	PCCSURL             string
 	UseSecureCert       string
 	AccessToken         string
@@ -92,12 +93,13 @@ func (c *Client) GetChart(chartPath, version string) (*chart.Chart, error) {
 }
 
 // UpdateValues merges the provided options with the default values of the chart.
-func UpdateValues(options Options, chartValues map[string]interface{}) (map[string]interface{}, error) {
+func UpdateValues(options Options, chartValues map[string]any) (map[string]any, error) {
+	fileValues := []string{}
 	stringValues := []string{}
 	stringValues = append(stringValues, fmt.Sprintf("coordinator.meshServerPort=%d", options.CoordinatorGRPCPort))
 	stringValues = append(stringValues, fmt.Sprintf("coordinator.clientServerPort=%d", options.CoordinatorRESTPort))
 
-	if coordinatorOpts, ok := chartValues["coordinator"].(map[string]interface{}); ok {
+	if coordinatorOpts, ok := chartValues["coordinator"].(map[string]any); ok {
 		if existingHostname, ok := coordinatorOpts["hostname"].(string); ok && existingHostname != "" {
 			options.Hostname = append(options.Hostname, existingHostname)
 		}
@@ -113,32 +115,36 @@ func UpdateValues(options Options, chartValues map[string]interface{}) (map[stri
 			fmt.Sprintf("dcap=%s", "null"),
 		)
 	} else {
-		stringValues = append(stringValues,
-			fmt.Sprintf("dcap.pccsUrl=%s", options.PCCSURL),
-			fmt.Sprintf("dcap.useSecureCert=%s", options.UseSecureCert),
-		)
+		if options.QCNLConfigFile != "" {
+			fileValues = append(fileValues, fmt.Sprintf("dcap.qcnlConfig=%s", options.QCNLConfigFile))
+		} else {
+			stringValues = append(stringValues,
+				fmt.Sprintf("dcap.pccsUrl=%s", options.PCCSURL),
+				fmt.Sprintf("dcap.useSecureCert=%s", options.UseSecureCert),
+			)
+		}
 
 		// Helms value merge function will overwrite any preset values for "tolerations" if we set new ones here
 		// To avoid this we set the new toleration for "resourceKey" and copy all preset tolerations
 		needToleration := true
 		idx := 0
-		for _, toleration := range chartValues["tolerations"].([]interface{}) {
-			if key, ok := toleration.(map[string]interface{})["key"]; ok {
+		for _, toleration := range chartValues["tolerations"].([]any) {
+			if key, ok := toleration.(map[string]any)["key"]; ok {
 				if key == options.SGXResourceKey {
 					needToleration = false
 				}
 				stringValues = append(stringValues, fmt.Sprintf("tolerations[%d].key=%v", idx, key))
 			}
-			if operator, ok := toleration.(map[string]interface{})["operator"]; ok {
+			if operator, ok := toleration.(map[string]any)["operator"]; ok {
 				stringValues = append(stringValues, fmt.Sprintf("tolerations[%d].operator=%v", idx, operator))
 			}
-			if effect, ok := toleration.(map[string]interface{})["effect"]; ok {
+			if effect, ok := toleration.(map[string]any)["effect"]; ok {
 				stringValues = append(stringValues, fmt.Sprintf("tolerations[%d].effect=%v", idx, effect))
 			}
-			if value, ok := toleration.(map[string]interface{})["value"]; ok {
+			if value, ok := toleration.(map[string]any)["value"]; ok {
 				stringValues = append(stringValues, fmt.Sprintf("tolerations[%d].value=%v", idx, value))
 			}
-			if tolerationSeconds, ok := toleration.(map[string]interface{})["tolerationSeconds"]; ok {
+			if tolerationSeconds, ok := toleration.(map[string]any)["tolerationSeconds"]; ok {
 				stringValues = append(stringValues, fmt.Sprintf("tolerations[%d].tolerationSeconds=%v", idx, tolerationSeconds))
 			}
 			idx++
@@ -154,7 +160,7 @@ func UpdateValues(options Options, chartValues map[string]interface{}) (map[stri
 
 	// Configure enterprise access token
 	if options.AccessToken != "" {
-		coordinatorCfg, ok := chartValues["coordinator"].(map[string]interface{})
+		coordinatorCfg, ok := chartValues["coordinator"].(map[string]any)
 		if !ok {
 			return nil, errors.New("coordinator not found in chart values")
 		}
@@ -179,10 +185,22 @@ func UpdateValues(options Options, chartValues map[string]interface{}) (map[stri
 		stringValues = append(stringValues, fmt.Sprintf("marbleInjector.resourceKey=%s", options.SGXResourceKey))
 	}
 
-	finalValues := map[string]interface{}{}
+	finalValues := map[string]any{}
 	for _, val := range stringValues {
 		if err := strvals.ParseInto(val, finalValues); err != nil {
 			return nil, fmt.Errorf("parsing value %q into final values: %w", val, err)
+		}
+	}
+	for _, val := range fileValues {
+		runeReader := func(rs []rune) (any, error) {
+			file, err := os.ReadFile(string(rs))
+			if err != nil {
+				return nil, fmt.Errorf("reading file %q: %w", string(rs), err)
+			}
+			return string(file), nil
+		}
+		if err := strvals.ParseIntoFile(val, finalValues, runeReader); err != nil {
+			return nil, fmt.Errorf("parsing file value %q into final values: %w", val, err)
 		}
 	}
 
@@ -194,7 +212,7 @@ func UpdateValues(options Options, chartValues map[string]interface{}) (map[stri
 }
 
 // Install installs MarbleRun using the provided chart and values.
-func (c *Client) Install(ctx context.Context, wait bool, chart *chart.Chart, values map[string]interface{}) error {
+func (c *Client) Install(ctx context.Context, wait bool, chart *chart.Chart, values map[string]any) error {
 	installer := action.NewInstall(c.config)
 	installer.Namespace = c.namespace
 	installer.ReleaseName = release
@@ -277,31 +295,31 @@ func (c *Client) getRepo(name string, url string) error {
 
 // setSGXValues sets the needed values for the coordinator as a map[string]interface.
 // strvals can't parse keys which include dots, e.g. setting as a resource limit key "sgx.intel.com/epc" will lead to errors.
-func setSGXValues(resourceKey string, values, chartValues map[string]interface{}) {
-	values["coordinator"].(map[string]interface{})["resources"] = map[string]interface{}{
-		"limits":   map[string]interface{}{},
-		"requests": map[string]interface{}{},
+func setSGXValues(resourceKey string, values, chartValues map[string]any) {
+	values["coordinator"].(map[string]any)["resources"] = map[string]any{
+		"limits":   map[string]any{},
+		"requests": map[string]any{},
 	}
 
 	var needNewLimit bool
 	limit := k8sutil.GetEPCResourceLimit(resourceKey)
 
 	// remove all previously set sgx resource limits
-	if presetLimits, ok := chartValues["coordinator"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{}); ok {
+	if presetLimits, ok := chartValues["coordinator"].(map[string]any)["resources"].(map[string]any)["limits"].(map[string]any); ok {
 		for oldResourceKey := range presetLimits {
 			// Make sure the key we delete is an unwanted sgx resource and not a custom resource or common resource (cpu, memory, etc.)
 			if needsDeletion(oldResourceKey, resourceKey) {
-				values["coordinator"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})[oldResourceKey] = nil
+				values["coordinator"].(map[string]any)["resources"].(map[string]any)["limits"].(map[string]any)[oldResourceKey] = nil
 				needNewLimit = true
 			}
 		}
 	}
 
 	// remove all previously set sgx resource requests
-	if presetLimits, ok := chartValues["coordinator"].(map[string]interface{})["resources"].(map[string]interface{})["requests"].(map[string]interface{}); ok {
+	if presetLimits, ok := chartValues["coordinator"].(map[string]any)["resources"].(map[string]any)["requests"].(map[string]any); ok {
 		for oldResourceKey := range presetLimits {
 			if needsDeletion(oldResourceKey, resourceKey) {
-				values["coordinator"].(map[string]interface{})["resources"].(map[string]interface{})["requests"].(map[string]interface{})[oldResourceKey] = nil
+				values["coordinator"].(map[string]any)["resources"].(map[string]any)["requests"].(map[string]any)[oldResourceKey] = nil
 				needNewLimit = true
 			}
 		}
@@ -309,13 +327,13 @@ func setSGXValues(resourceKey string, values, chartValues map[string]interface{}
 
 	// Set the new sgx resource limit, kubernetes will automatically set a resource request equal to the limit
 	if needNewLimit {
-		values["coordinator"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})[resourceKey] = limit
+		values["coordinator"].(map[string]any)["resources"].(map[string]any)["limits"].(map[string]any)[resourceKey] = limit
 	}
 
 	// Make sure provision and enclave bit is set if the Intel plugin is used
 	if resourceKey == k8sutil.IntelEpc.String() {
-		values["coordinator"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})[k8sutil.IntelProvision.String()] = 1
-		values["coordinator"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})[k8sutil.IntelEnclave.String()] = 1
+		values["coordinator"].(map[string]any)["resources"].(map[string]any)["limits"].(map[string]any)[k8sutil.IntelProvision.String()] = 1
+		values["coordinator"].(map[string]any)["resources"].(map[string]any)["limits"].(map[string]any)[k8sutil.IntelEnclave.String()] = 1
 	}
 }
 
@@ -351,4 +369,4 @@ func keyInList(key string, list []string) bool {
 	return false
 }
 
-func nopLog(_ string, _ ...interface{}) {}
+func nopLog(_ string, _ ...any) {}

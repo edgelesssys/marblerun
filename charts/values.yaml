@@ -125,5 +125,8 @@ nodeSelector:
 
 # DCAP configuration settings
 dcap:
+  # Set to use an inline defined QCNL configuration
+  qcnlConfig: ""
+  # If qcnlConfig is not set, the default values below are used to create a config file
   pccsUrl: "https://global.acccache.azure.net/sgx/certification/v4/"
   useSecureCert: "TRUE"
