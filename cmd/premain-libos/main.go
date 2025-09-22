@@ -16,7 +16,6 @@ import (
 
 	"github.com/edgelesssys/marblerun/internal/constants"
 	"github.com/edgelesssys/marblerun/marble/premain"
-	marblePremain "github.com/edgelesssys/marblerun/marble/premain"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/spf13/afero"
 	"golang.org/x/sys/unix"
@@ -125,7 +124,7 @@ func prepareGramine(hostfs afero.Fs) (string, error) {
 	service := os.Args[0]
 
 	// Run MarbleRun premain
-	if err := marblePremain.PreMainEx(marblePremain.GramineQuoteIssuer{}, marblePremain.GramineActivate, hostfs, hostfs); err != nil {
+	if err := premain.PreMainEx(premain.GramineQuoteIssuer{}, premain.GramineActivate, hostfs, hostfs); err != nil {
 		return "", err
 	}
 
@@ -134,7 +133,7 @@ func prepareGramine(hostfs afero.Fs) (string, error) {
 
 func prepareOcclum(hostfs afero.Fs) (string, error) {
 	// Run MarbleRun premain
-	if err := marblePremain.PreMainEx(marblePremain.OcclumQuoteIssuer{}, marblePremain.ActivateRPCNoTTLS, hostfs, hostfs); err != nil {
+	if err := premain.PreMainEx(premain.OcclumQuoteIssuer{}, premain.ActivateRPCNoTTLS, hostfs, hostfs); err != nil {
 		return "", err
 	}
 
