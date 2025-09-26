@@ -20,7 +20,11 @@ data:
   sgx_default_qcnl.conf: |
     {
       "pccs_url": "{{ .Values.dcap.pccsUrl }}",
-      "use_secure_cert": "{{ .Values.dcap.useSecureCert }}"
+      {{- if kindIs "bool" .Values.dcap.useSecureCert }}
+      "use_secure_cert": {{ .Values.dcap.useSecureCert }}
+      {{- else }}
+      "use_secure_cert": {{ eq (lower (toString .Values.dcap.useSecureCert)) "true" }}
+      {{- end }}
     }
   {{- end}}
 {{ end }}

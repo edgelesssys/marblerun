@@ -129,4 +129,4 @@ dcap:
   qcnlConfig: ""
   # If qcnlConfig is not set, the default values below are used to create a config file
   pccsUrl: "https://global.acccache.azure.net/sgx/certification/v4/"
-  useSecureCert: "TRUE"
+  useSecureCert: true
