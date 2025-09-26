@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/ThalesGroup/crypto11 v1.4.1
 	github.com/cert-manager/cert-manager v1.18.2
-	github.com/edgelesssys/ego v1.8.0
+	github.com/edgelesssys/ego v1.8.1-0.20250922064858-4ad8686643db
 	github.com/gofrs/flock v0.12.1
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0

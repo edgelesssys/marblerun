@@ -26,7 +26,6 @@ linters:
     errcheck:
       exclude-functions:
         - (*go.uber.org/zap.Logger).Sync
-        - (*google.golang.org/grpc.Server).Serve
   exclusions:
     generated: lax
     rules:
@@ -42,8 +41,6 @@ linters:
       text: "package-comments: package comment should be of the form"
     - linters: ["revive"]
       text: "package-comments: should have a package comment"
-    - linters: ["staticcheck"]
-      text: "ST1019"
     presets:
       # Disabled since this rule enforces error checks on fmt.FprintX and Close methods
       - std-error-handling

@@ -43,7 +43,7 @@ func ParseRSAPublicKeyFromPEM(pemContent string) (*rsa.PublicKey, error) {
 }
 
 func generateRandomKey() ([]byte, error) {
-	generatedValue := make([]byte, 16)
+	generatedValue := make([]byte, 32)
 	_, err := rand.Read(generatedValue)
 	if err != nil {
 		return nil, err

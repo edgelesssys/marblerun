@@ -140,9 +140,9 @@ func getRecoveryKeySigner(cmd *cobra.Command, fs afero.Afero) (pkcs11.SignerDecr
 }
 
 // maybeDecryptRecoveryKey tries to decrypt the given recoveryKey using OAEP.
-// If the recoveryKey is already 16 bytes long, it is returned as is.
+// If the recoveryKey is already 16 or 32 bytes long, it is returned as is.
 func maybeDecryptRecoveryKey(recoveryKey []byte, decrypter crypto.Decrypter) ([]byte, error) {
-	if len(recoveryKey) != 16 {
+	if len(recoveryKey) != 16 && len(recoveryKey) != 32 {
 		return decrypter.Decrypt(rand.Reader, recoveryKey, &rsa.OAEPOptions{Hash: crypto.SHA256})
 	}
 	return recoveryKey, nil

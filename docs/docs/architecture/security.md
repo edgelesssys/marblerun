@@ -76,7 +76,7 @@ The protocol can be used by clients to verify a server certificate, by a server 
 ## Encryption of state
 
 The Coordinator holds MarbleRun's state, which consists of the [manifest](../features/manifest.md), the [managed secrets](../features/secrets-management.md), and the [certificates for its CA](../features/attestation.md).
-The state is stored encrypted in persistent storage. For this, MarbleRun uses [AES128-GCM](https://www.rfc-editor.org/rfc/rfc5116#section-5.1) and a generated 16-byte data encryption key (DEK).
+The state is stored encrypted in persistent storage. For this, MarbleRun uses [AES256-GCM](https://www.rfc-editor.org/rfc/rfc5116#section-5.2) and a generated 32-byte data encryption key (DEK).
 The Coordinator encrypts the DEK with a key encryption key (KEK).
 MarbleRun uses an [SGX seal key](#seal-key) as its KEK.
 Hence, if the Coordinator is restarted on the same CPU, it can obtain the same KEK from the CPU, decrypt the DEK, and recover its state autonomously.
