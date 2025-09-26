@@ -13,7 +13,18 @@ metadata:
     {{ .Values.global.coordinatorComponentLabel }}: dcap-config
     {{ .Values.global.coordinatorNamespaceLabel }}: {{ .Release.Namespace }}
 data:
+  {{- if .Values.dcap.qcnlConfig }}
+  sgx_default_qcnl.conf: |-
+{{ .Values.dcap.qcnlConfig | indent 4 }}
+  {{- else }}
   sgx_default_qcnl.conf: |
-    PCCS_URL={{ .Values.dcap.pccsUrl }}
-    USE_SECURE_CERT={{ .Values.dcap.useSecureCert }}
+    {
+      "pccs_url": "{{ .Values.dcap.pccsUrl }}",
+      {{- if kindIs "bool" .Values.dcap.useSecureCert }}
+      "use_secure_cert": {{ .Values.dcap.useSecureCert }}
+      {{- else }}
+      "use_secure_cert": {{ eq (lower (toString .Values.dcap.useSecureCert)) "true" }}
+      {{- end }}
+    }
+  {{- end}}
 {{ end }}

@@ -45,14 +45,18 @@ marblerun install --dcap-pccs-url https://pccs.example.com/sgx/certification/v4/
 	cmd.Flags().String("version", "", "Version of the Coordinator to install, latest by default")
 	cmd.Flags().String("resource-key", "", "Resource providing SGX, different depending on used device plugin. Use this to set tolerations/resources if your device plugin is not supported by MarbleRun")
 	cmd.Flags().String("dcap-qpl", "azure", `Quote provider library to use by the Coordinator. One of {"azure", "intel"}`)
-	cmd.Flags().String("dcap-pccs-url", "https://global.acccache.azure.net/sgx/certification/v4/", "Provisioning Certificate Caching Service (PCCS) server address. Defaults to Azure PCCS.")
-	cmd.Flags().String("dcap-secure-cert", "TRUE", "To accept insecure HTTPS certificate from the PCCS, set this option to FALSE")
+	cmd.Flags().String("dcap-qcnl-config-file", "", "Path to a custom QCNL configuration file. Mutually exclusive with \"--dcap-pccs-url\" and \"--dcap-secure-cert\".")
+	cmd.Flags().String("dcap-pccs-url", "https://global.acccache.azure.net/sgx/certification/v4/", "Provisioning Certificate Caching Service (PCCS) server address. Defaults to Azure PCCS. Mutually exclusive with \"--dcap-qcnl-config-file\"")
+	cmd.Flags().String("dcap-secure-cert", "TRUE", "To accept insecure HTTPS certificate from the PCCS, set this option to FALSE. Mutually exclusive with \"--dcap-qcnl-config-file\"")
 	cmd.Flags().String("enterprise-access-token", "", "Access token for Enterprise Coordinator. Leave empty for default installation")
 	cmd.Flags().Bool("simulation", false, "Set MarbleRun to start in simulation mode")
 	cmd.Flags().Bool("disable-auto-injection", false, "Install MarbleRun without auto-injection webhook")
 	cmd.Flags().Bool("wait", false, "Wait for MarbleRun installation to complete before returning")
 	cmd.Flags().Int("mesh-server-port", 2001, "Set the mesh server port. Needs to be configured to the same port as in the data-plane marbles")
 	cmd.Flags().Int("client-server-port", 4433, "Set the client server port. Needs to be configured to the same port as in your client tool stack")
+
+	cmd.MarkFlagsMutuallyExclusive("dcap-qcnl-config-file", "dcap-pccs-url")
+	cmd.MarkFlagsMutuallyExclusive("dcap-qcnl-config-file", "dcap-secure-cert")
 
 	must(cmd.Flags().MarkDeprecated("dcap-qpl", "All platforms use the same QPL now. Use --dcap-pccs-url to configure the PCCS server address."))
 
@@ -116,6 +120,7 @@ func cliInstall(cmd *cobra.Command, helmClient *helm.Client, kubeClient kubernet
 	values, err := helm.UpdateValues(
 		helm.Options{
 			Hostname:            flags.hostname,
+			QCNLConfigFile:      flags.qcnlConfigFile,
 			PCCSURL:             flags.pccsURL,
 			UseSecureCert:       flags.useSecureCert,
 			AccessToken:         flags.accessToken,
@@ -275,6 +280,7 @@ type installFlags struct {
 	hostname         []string
 	version          string
 	resourceKey      string
+	qcnlConfigFile   string
 	pccsURL          string
 	useSecureCert    string
 	accessToken      string
@@ -299,6 +305,10 @@ func parseInstallFlags(cmd *cobra.Command) (installFlags, error) {
 		return installFlags{}, err
 	}
 	resourceKey, err := cmd.Flags().GetString("resource-key")
+	if err != nil {
+		return installFlags{}, err
+	}
+	qcnlConfigFile, err := cmd.Flags().GetString("dcap-qcnl-config-file")
 	if err != nil {
 		return installFlags{}, err
 	}
@@ -344,6 +354,7 @@ func parseInstallFlags(cmd *cobra.Command) (installFlags, error) {
 		hostname:         hostname,
 		version:          version,
 		resourceKey:      resourceKey,
+		qcnlConfigFile:   qcnlConfigFile,
 		pccsURL:          pccsURL,
 		useSecureCert:    useSecureCert,
 		accessToken:      accessToken,
