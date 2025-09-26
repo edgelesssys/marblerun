@@ -38,7 +38,7 @@ func MustGenerateTestMarbleCredentials() (cert *x509.Certificate, csrRaw []byte,
 		panic(err)
 	}
 	csrRaw = csr.Raw
-	return
+	return cert, csrRaw, privk
 }
 
 // GenerateCert generates a new self-signed certificate associated key-pair.
