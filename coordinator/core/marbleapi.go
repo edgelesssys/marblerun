@@ -386,7 +386,7 @@ func parseSecrets(data string, tplFunc template.FuncMap, secretsWrapped manifest
 
 func (c *Core) generateMarbleAuthSecrets(txdata storeGetter, req *rpc.ActivationReq, marbleUUID uuid.UUID) (manifest.ReservedSecrets, error) {
 	// generate key-pair for marble
-	privk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	privk, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 	if err != nil {
 		return manifest.ReservedSecrets{}, err
 	}
