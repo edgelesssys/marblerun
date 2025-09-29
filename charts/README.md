@@ -64,7 +64,7 @@ their default values.
 | `tolerations`                                | object         | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information | `{key:"sgx.intel.com/epc",operator:"Exists",effect:"NoSchedule"}` |
 | `dcap.qcnlConfig`                            | string         | Inline defined QCNL configuration. If set, this configuration is used instead of the one created from `dcap.pccsUrl` and `dcap.useSecureCert` | `""` |
 | `dcap.pccsUrl`                               | string         | URL of the PCCS. Only used if `dcap.qcnlConfig` is not set  | `"https://global.acccache.azure.net/sgx/certification/v4/"` |
-| `dcap.useSecureCert`                         | string         | Whether or not the TLS certificate of the PCCS should be verified. Only used if `dcap.qcnlConfig` is not set  | `true` |
+| `dcap.useSecureCert`                         | bool           | Whether or not the TLS certificate of the PCCS should be verified. Only used if `dcap.qcnlConfig` is not set  | `true` |
 
 ## Add new version (maintainers)
 
