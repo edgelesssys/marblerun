@@ -29,7 +29,7 @@ func GenerateCert(
 	// Generate private key
 	var err error
 	if privk == nil {
-		privk, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		privk, err = ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 		if err != nil {
 			return nil, nil, fmt.Errorf("generating private key: %w", err)
 		}

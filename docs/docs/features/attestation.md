@@ -22,7 +22,7 @@ The [manifest](../workflows/define-manifest.md) describes which Marbles (service
 The Coordinator enforces the manifest and only admits the desired Marbles to the cluster.
 Each Marble registers itself with a quote via gRPC to the Coordinator. This quote is tied to the TLS session of the gRPC call. It contains the Marble's measurements. The Coordinator compares them to the manifest to ensure the Marble's identity and integrity.
 
-More specifically, the Marble generates an [ECDSA](https://www.secg.org/sec1-v2.pdf#page=49) private key using curve [P256](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-4.pdf#page=111), and a self-signed TLS certificate.
+More specifically, the Marble generates an [ECDSA](https://www.secg.org/sec1-v2.pdf#page=49) private key using curve [P384](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-4.pdf#page=113), and a self-signed TLS certificate.
 It then hashes the certificate using SHA-256 and creates an SGX quote over the hash.
 The Marble uses this certificate to establish a TLS connection with the Coordinator and send the quote.
 The Coordinator verifies the Marble's measurements contained in the quote against the manifest and makes sure the Marble's TLS certificate matches the quote.

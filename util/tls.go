@@ -43,7 +43,7 @@ func MustGenerateTestMarbleCredentials() (cert *x509.Certificate, csrRaw []byte,
 
 // GenerateCert generates a new self-signed certificate associated key-pair.
 func GenerateCert(subjAltNames []string, ipAddrs []net.IP, isCA bool) (*x509.Certificate, *ecdsa.PrivateKey, error) {
-	privk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	privk, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 	if err != nil {
 		return nil, nil, err
 	}
