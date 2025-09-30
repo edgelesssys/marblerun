@@ -37,10 +37,10 @@ See the [attested TLS](#attested-tls-atls) section for details behind that conce
 All MarbleRun clients and Marbles can then use the attested *Root CA Certificate* for authenticating TLS connections.
 This is further illustrated conceptually in the [attestation](../features/attestation.md) section. The following focuses on the cryptographic primitives.
 The Coordinator generates a root X.509 certificate and corresponding asymmetric key pair during initialization.
-The [Elliptic Curve Digital Signature Algorithm (ECDSA)](https://www.secg.org/sec1-v2.pdf#page=49) is used with curve [P256](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-4.pdf#page=111).
+The [Elliptic Curve Digital Signature Algorithm (ECDSA)](https://www.secg.org/sec1-v2.pdf#page=49) is used with curve [P384](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-4.pdf#page=113).
 The *Root CA Certificate* has no expiry date and lives as long as the MarbleRun deployment.
 
-Alongside the *Root CA Certificate*, the Coordinator generates an X.509 *Intermediate Certificate* and corresponding asymmetric key pair, again using ECDSA with P256.
+Alongside the *Root CA Certificate*, the Coordinator generates an X.509 *Intermediate Certificate* and corresponding asymmetric key pair, again using ECDSA with P384.
 The *Intermediate Certificate* is signed by the Coordinator's *Root CA Certificate* and rotated with every manifest update.
 When you push an update to the manifest (for example, bump up the *SecurityVersion* of a Marble), the *Intermediate Certificate* will change.
 Marble instances of the new version won't authenticate with instances of the old version and vice versa.
@@ -58,7 +58,7 @@ However, while the *Intermediate Certificate* is signed by the *Root Certificate
 The goal here is to implement a  [cross-signed certificate chain](https://www.ssltrust.com.au/blog/understanding-certificate-cross-signing).
 In that way, the Marbles see the *Marble Root Certificate* as a self-signed root certificate. Hence, they're dealing with a terminating certificate chain without knowing about the Coordinator's *Root CA Certificate*.
 The "outside world" sees an intermediate certificate signed by the Coordinator's *Root CA Certificate*.
-The Coordinator generates a unique leaf *Marble Certificate* and corresponding key pair using ECDSA with P256 for every Marble.
+The Coordinator generates a unique leaf *Marble Certificate* and corresponding key pair using ECDSA with P384 for every Marble.
 The *Marble Root Certificate* signs the *Marble Certificate*.
 The *Marble Certificate* is provisioned to the Marble's enclave via the secure channel established during the [attestation procedure](../features/attestation.md).
 Depending on the Marble's runtime, the certificate can be used [manually](../workflows/add-service.md#make-your-service-use-the-provided-tls-credentials) or [automatically](../features/transparent-TLS.md) to establish mutually authenticated TLS connections.
