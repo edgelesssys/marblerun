@@ -1,6 +1,6 @@
 module github.com/edgelesssys/marblerun
 
-go 1.25.0
+go 1.25.1
 
 require (
 	github.com/ThalesGroup/crypto11 v1.6.0
