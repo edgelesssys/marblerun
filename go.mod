@@ -3,7 +3,7 @@ module github.com/edgelesssys/marblerun
 go 1.25.0
 
 require (
-	github.com/ThalesGroup/crypto11 v1.4.1
+	github.com/ThalesGroup/crypto11 v1.6.0
 	github.com/cert-manager/cert-manager v1.18.2
 	github.com/edgelesssys/ego v1.8.1-0.20250922064858-4ad8686643db
 	github.com/gofrs/flock v0.12.1
@@ -23,7 +23,7 @@ require (
 	golang.org/x/crypto v0.42.0
 	golang.org/x/sys v0.36.0
 	google.golang.org/grpc v1.75.1
-	google.golang.org/protobuf v1.36.9
+	google.golang.org/protobuf v1.36.10
 	gopkg.in/yaml.v3 v3.0.1
 	helm.sh/helm/v3 v3.19.0
 	k8s.io/api v0.34.1
