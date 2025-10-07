@@ -30,7 +30,8 @@
         "gomod"
       ],
       "matchDepTypes": [
-        "require"
+        "require",
+        "replace"
       ],
       "matchUpdateTypes": [
         "bump",
