@@ -115,6 +115,11 @@ func manifestUpdateApplyV2(ctx context.Context, client *rest.Client, manifest []
 		return nil, 0, err
 	}
 
+	// Coordinators before v1.8.0 did not return a body on update apply
+	if len(resp) == 0 {
+		return []string{}, 0, nil
+	}
+
 	var response apiv2.UpdateApplyResponse
 	if err := json.Unmarshal(resp, &response); err != nil {
 		return nil, 0, fmt.Errorf("unmarshalling Coordinator response: %w", err)
