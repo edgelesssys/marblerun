@@ -4,7 +4,7 @@ go 1.25.1
 
 replace github.com/edgelesssys/marblerun => ../../
 
-replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20251007200510-49b9836ed3ff
+replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20251014184007-4626949a642f
 
 require (
 	github.com/edgelesssys/estore v1.2.0
