@@ -168,7 +168,6 @@ Congratulations, you’re now a MarbleRun user! Here are some suggested next ste
 * Explore how [MarbleRun takes care of your secrets](../features/secrets-management.md)
 * [Add your own service](../workflows/add-service.md) to MarbleRun
 * Learn more about [MarbleRun’s architecture](../architecture/concepts.md)
-* Chat with us on [Discord](https://discord.gg/rH8QTH56JN)
 * Try out the full demo on [GitHub](https://github.com/edgelesssys/emojivoto)
 
 Welcome to the MarbleRun community!
