@@ -8,7 +8,6 @@ If you want to support our development:
 
 * Add a GitHub Star to the project
 * Share our projects on social media
-* Join the [Confidential Computing Discord](https://discord.gg/rH8QTH56JN)
 
 MarbleRun is licensed under the [Business Source License 1.1](LICENSE). When contributing, you also need to agree to our [Contributor License Agreement](https://cla-assistant.io/edgelesssys/marblerun).
 
