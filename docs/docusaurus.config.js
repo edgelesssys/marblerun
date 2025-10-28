@@ -8,7 +8,7 @@ async function createConfig() {
 
   return {
     title: 'MarbleRun',
-    url: 'https://marblerun-docs.netlify.app',
+    url: 'https://docs.edgeless.systems',
     baseUrl: '/marblerun/',
     onBrokenLinks: 'throw',
     onBrokenMarkdownLinks: 'throw',
