@@ -5,7 +5,7 @@ go 1.25.1
 require (
 	github.com/ThalesGroup/crypto11 v1.6.0
 	github.com/cert-manager/cert-manager v1.19.1
-	github.com/edgelesssys/ego v1.8.1-0.20250922064858-4ad8686643db
+	github.com/edgelesssys/ego v1.8.1-0.20251028161400-b3909d162d02
 	github.com/gofrs/flock v0.13.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
@@ -29,7 +29,7 @@ require (
 	k8s.io/api v0.34.1
 	k8s.io/apimachinery v0.34.1
 	k8s.io/client-go v0.34.1
-	sigs.k8s.io/controller-runtime v0.22.3
+	sigs.k8s.io/controller-runtime v0.22.4
 	sigs.k8s.io/yaml v1.6.0
 )
 

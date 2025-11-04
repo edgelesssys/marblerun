@@ -4,7 +4,7 @@ go 1.25.1
 
 replace github.com/edgelesssys/marblerun => ../../
 
-replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20251014184007-4626949a642f
+replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20251103181224-f26f9409b101
 
 require (
 	github.com/edgelesssys/estore v1.2.0
@@ -18,7 +18,7 @@ require (
 	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b // indirect
 	github.com/cockroachdb/redact v1.1.5 // indirect
 	github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 // indirect
-	github.com/edgelesssys/ego v1.8.1-0.20250922064858-4ad8686643db // indirect
+	github.com/edgelesssys/ego v1.8.1-0.20251028161400-b3909d162d02 // indirect
 	github.com/getsentry/sentry-go v0.29.1 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
