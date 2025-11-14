@@ -62,8 +62,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
   libsgx-dcap-default-qpl=$DCAP_VERSION \
   && apt-get purge -y wget && apt-get autoremove -y && apt-get clean -y
 
-COPY --from=build /mrbuild/coordinator-enclave.signed /mrbuild/coordinator-config.json /
+COPY --from=build /mrbuild/coordinator-enclave.signed /mrbuild/coordinator-config.json /marblerun/dockerfiles/start.sh /
 COPY --from=build /opt/edgelessrt/bin/erthost /opt/edgelessrt/bin/
 RUN chgrp -R 0 /usr/lib/ && chmod -R g=u /usr/lib/
 ENV PATH=${PATH}:/opt/edgelessrt/bin
-ENTRYPOINT ["erthost", "/coordinator-enclave.signed"]
+ENTRYPOINT ["/start.sh"]

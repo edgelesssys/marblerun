@@ -25,7 +25,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/store/wrapper"
 	"github.com/edgelesssys/marblerun/coordinator/updatelog"
 	"github.com/edgelesssys/marblerun/coordinator/user"
-	"github.com/edgelesssys/marblerun/test"
+	test "github.com/edgelesssys/marblerun/test"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -582,7 +582,7 @@ func TestVerifyUser_Legacy(t *testing.T) {
 	c, _ := setupAPI(t)
 	ctx := context.Background()
 
-	adminTestCert, otherTestCert := test.MustSetupTestCerts(test.RecoveryPrivateKey)
+	adminTestCert, otherTestCert := test.MustSetupTestCerts(test.RecoveryPrivateKeyOne)
 
 	// Set a manifest containing an admin certificate
 	_, err := c.SetManifest(ctx, []byte(test.ManifestJSONWithRecoveryKey))

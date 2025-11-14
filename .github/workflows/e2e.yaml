@@ -1,0 +1,296 @@
+name: e2e Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      vmType:
+        description: 'VM type of the AKS cluster'
+        required: true
+        default: 'Standard_DC4s_v3'
+      nodes:
+        description: 'Number of nodes in the AKS cluster'
+        required: true
+        default: '3'
+      testFilter:
+        description: 'Filter for the tests to run'
+        required: false
+        default: ''
+      replicas:
+        description: 'Number of replicas of the MarbleRun Coordinator deployment'
+        required: true
+        default: '3'
+      parallel:
+        description: 'Number of tests to run in parallel'
+        required: false
+        default: '2'
+  workflow_call:
+    inputs:
+      vmType:
+        description: 'VM type of the AKS cluster'
+        required: true
+        default: 'Standard_DC4s_v3'
+        type: string
+      nodes:
+        description: 'Number of nodes in the AKS cluster'
+        required: true
+        default: 3
+        type: number
+      replicas:
+        description: 'Number of replicas of the MarbleRun Coordinator deployment'
+        required: true
+        default: 3
+        type: number
+      parallel:
+        description: 'Number of tests to run in parallel'
+        required: false
+        default: 2
+        type: number
+    secrets:
+      AZURE_CLIENT_ID:
+        required: true
+      AZURE_CLIENT_SECRET:
+        required: true
+      AZURE_SUBSCRIPTION_ID:
+        required: true
+      AZURE_TENANT_ID:
+        required: true
+
+jobs:
+  build-test-containers:
+    name: Build and push test containers
+    outputs:
+      run-uid: ${{ steps.generate-uid.outputs.run-uid }}
+      coordinator-digest: ${{ steps.build-coordinator.outputs.digest }}
+      update-digest: ${{ steps.build-coordinator-update.outputs.digest }}
+      marble-digest: ${{ steps.build-marble.outputs.digest }}
+      era-config: ${{ steps.build-binaries.outputs.era-config }}
+      marble-config: ${{ steps.build-binaries.outputs.marble-config }}
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Install dependencies
+        env:
+          ERT_VERSION: "0.4.13"
+        run: |
+          ERT_DEB=${ERT_VERSION}_amd64_ubuntu-24.04
+          wget -qO- https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo apt-key add
+          sudo add-apt-repository "deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu `lsb_release -cs` main"
+          wget -q https://github.com/edgelesssys/edgelessrt/releases/download/v${ERT_VERSION}/edgelessrt_${ERT_DEB}.deb
+
+          sudo apt-get update
+          sudo apt-get install -y ./edgelessrt_${ERT_DEB}.deb build-essential libssl-dev cmake uuid-runtime
+
+      - name: Set up Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+        with:
+          go-version: '1.25'
+
+      - name: Set up Docker buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate UID
+        id: generate-uid
+        run: |
+          IFS='-' read -ra UUID <<< "$(uuidgen --random)"
+          uuid=${UUID[0]}
+          echo "run-uid=${uuid}" >> $GITHUB_OUTPUT
+
+      - name: Build binaries
+        id: build-binaries
+        env:
+          CR: ghcr.io/edgelesssys/marblerun-e2e
+          CONTAINER: coordinator
+        run: |
+          set -e 
+          export PATH=${PATH}:/opt/edgelessrt/bin
+          openssl genrsa -out private.pem -3 3072
+
+          # Build binaries
+          mkdir build && cd build
+          cmake ..
+          make -j $(nproc) sign-coordinator sign-marble-test
+          cp ./coordinator-enclave.signed ../
+          # Save era config to output
+          echo "era-config=$(awk '!/UniqueID/' ./coordinator-config.json | base64 -w0)" >> $GITHUB_OUTPUT
+          echo "marble-config=$(cat ./marble-test-config.json | base64 -w0)" >> $GITHUB_OUTPUT
+
+          # Build updated binary for coordinator with higher security version number
+          sed -i "s/SecurityVersion=[0-9]*/SecurityVersion=9999/g" ../enclave/coordinator.conf
+          make -j $(nproc) sign-coordinator
+          cd ..
+
+      - name: Build and push Coordinator container
+        id: build-coordinator
+        env:
+          DOCKER_BUILDKIT: 1
+          CR: ghcr.io/edgelesssys/marblerun-e2e
+          CONTAINER: coordinator
+          UUID: ${{ steps.generate-uid.outputs.run-uid }}
+        run: |
+          docker build --tag ${CR}/${CONTAINER}:${UUID} -f .github/scripts/coordinator.Dockerfile .
+          docker push ${CR}/${CONTAINER}:${UUID}
+
+          # Split image ref into registry/repo/tag and sha256 digest and set in output
+          image_ref=$(docker inspect --format='{{index .RepoDigests 0}}' ${CR}/${CONTAINER}:${UUID})
+          IFS='@' read -ra ADDR <<< "${image_ref}"
+          digest=${ADDR[1]}
+
+          echo "digest=${digest}" >> $GITHUB_OUTPUT
+
+      - name: Build and push Coordinator update container
+        id: build-coordinator-update
+        env:
+          DOCKER_BUILDKIT: 1
+          CR: ghcr.io/edgelesssys/marblerun-e2e
+          CONTAINER: coordinator
+          UUID: ${{ steps.generate-uid.outputs.run-uid }}
+        run: |
+          cp ./build/coordinator-enclave.signed ./coordinator-enclave.signed
+          docker build --tag ${CR}/${CONTAINER}:${UUID}-update -f .github/scripts/coordinator.Dockerfile .
+          docker push ${CR}/${CONTAINER}:${UUID}-update
+
+          image_ref=$(docker inspect --format='{{index .RepoDigests 0}}' ${CR}/${CONTAINER}:${UUID}-update)
+          IFS='@' read -ra ADDR <<< "${image_ref}"
+          digest=${ADDR[1]}
+
+          echo "digest=${digest}" >> $GITHUB_OUTPUT
+
+      - name: Build and push Marble container
+        id: build-marble
+        env:
+          DOCKER_BUILDKIT: 1
+          CR: ghcr.io/edgelesssys/marblerun-e2e
+          CONTAINER: test-marble
+          UUID: ${{ steps.generate-uid.outputs.run-uid }}
+        run: |
+          cp ./build/marble-test-enclave.signed ./marble-test-enclave.signed
+          docker build --tag ${CR}/${CONTAINER}:${UUID} -f .github/scripts/marble.Dockerfile .
+          docker push ${CR}/${CONTAINER}:${UUID}
+
+          # Split image ref into registry/repo/tag and sha256 digest and set in output
+          image_ref=$(docker inspect --format='{{index .RepoDigests 0}}' ${CR}/${CONTAINER}:${UUID})
+          IFS='@' read -ra ADDR <<< "${image_ref}"
+          digest=${ADDR[1]}
+
+          echo "digest=${digest}" >> $GITHUB_OUTPUT
+
+  e2e-test:
+    name: Run e2e test
+    needs: build-test-containers
+    env:
+      CR: ghcr.io/edgelesssys/marblerun-e2e
+      CONTAINER: coordinator
+      RESOURCE_GROUP: marblerun-e2e
+      CLUSTER_NAME: marblerun-e2e-${{ needs.build-test-containers.outputs.run-uid }}
+    runs-on: ubuntu-24.04
+    container:
+      image: ghcr.io/edgelesssys/edgelessrt-dev:ci
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Install dependencies
+        run: |
+          wget -q "https://github.com/mikefarah/yq/releases/download/v4.47.2/yq_linux_amd64.tar.gz" -O - |\
+          tar xz && mv yq_linux_amd64 /usr/bin/yq
+
+          mkdir build && cd build
+          cmake .. && make cli
+          chmod +x ./marblerun
+          mv ./marblerun /usr/bin/marblerun
+
+          curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+
+          curl -fsSL -o cmctl.tar.gz https://github.com/cert-manager/cert-manager/releases/download/v1.12.9/cmctl-linux-amd64.tar.gz
+          tar xzf cmctl.tar.gz
+          mv cmctl /usr/local/bin
+
+      - name: Azure login
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
+        with:
+          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
+
+      - name: Create AKS cluster
+        env:
+          VM_TYPE: ${{ inputs.vmType || 'Standard_DC4s_v3' }}
+          NODES: ${{ inputs.nodes || '3' }}
+        run: |
+          az aks create \
+            --resource-group $RESOURCE_GROUP \
+            --name $CLUSTER_NAME \
+            --node-vm-size "${VM_TYPE}" \
+            --node-count "${NODES}" \
+            --enable-addon confcom \
+            --enable-sgxquotehelper \
+            --vm-set-type VirtualMachineScaleSets \
+            --aks-custom-headers usegen2vm=true \
+            --generate-ssh-keys \
+            --location northeurope
+
+          az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME
+
+          kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.12.0/cert-manager.yaml
+          kubectl wait --for=condition=available --timeout=600s -n cert-manager --all deployments
+
+      - name: Update MarbleRun chart
+        run: |
+          yq -i eval "(.coordinator.repository=\"$CR\") |
+            (.coordinator.version=\"${{ needs.build-test-containers.outputs.run-uid }}\") |
+            (.coordinator.hash=\"${{ needs.build-test-containers.outputs.coordinator-digest }}\")" \
+            ./charts/values.yaml
+
+      - name: Run e2e test
+        env:
+          ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ERA_CONFIG: ${{ needs.build-test-containers.outputs.era-config }}
+          MARBLE_CONFIG: ${{ needs.build-test-containers.outputs.marble-config }}
+          PARALLEL_RUNS: ${{ inputs.parallel || '2' }}
+          TEST_FILTER: ${{ inputs.testFilter || '' }}
+          REPLICAS: ${{ inputs.replicas || '3' }}
+          RUN_UID: ${{ needs.build-test-containers.outputs.run-uid }}
+          MARBLE_DIGEST: ${{ needs.build-test-containers.outputs.marble-digest }}
+        run: |
+          PCCS_URL=https://global.acccache.azure.net/sgx/certification/v4/ PCCS_USE_SECURE_CERT=true configure-qpl
+          echo "${ERA_CONFIG}" | base64 -d > era.json
+          echo "${MARBLE_CONFIG}" | base64 -d > marble-config.json
+          go test ./test/e2e/ -tags e2e --timeout 0 --parallel ${PARALLEL_RUNS} \
+            --run "${TEST_FILTER}" \
+            --cli /usr/bin/marblerun \
+            --chart $PWD/charts/ \
+            --kubeconfig $HOME/.kube/config \
+            --access-token $ACCESS_TOKEN \
+            --replicas ${REPLICAS} \
+            --era-config $PWD/era.json \
+            --marble-config $PWD/marble-config.json \
+            --marble-image-version "${RUN_UID}@${MARBLE_DIGEST}" \
+            --coordinator-update-image-suffix "-update"
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          path: e2e/*.log
+          name: e2e-logs
+          if-no-files-found: ignore
+
+      - name: Teardown cluster
+        if: always()
+        run: |
+          az aks delete \
+            --resource-group $RESOURCE_GROUP \
+            --name $CLUSTER_NAME \
+            --yes

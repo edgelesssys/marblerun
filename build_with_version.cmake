@@ -20,7 +20,7 @@ if("${COMPILER}" STREQUAL "go")
 else()
     execute_process(
         COMMAND
-        ertgo build ${TRIMPATH} -buildmode=c-archive -tags enclave
+        ertgo build ${TRIMPATH} -buildmode=c-archive -tags enclave,$ENV{COORDINATOR_BUILD_TAGS}
         -o ${OUTPUT_NAME}
         -buildvcs=false
         -ldflags "-X '${INJECT_PATH}.Version=${PROJECT_VERSION}' -X '${INJECT_PATH}.GitCommit=${GIT_COMMIT}'"

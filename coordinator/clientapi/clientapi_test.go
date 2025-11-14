@@ -41,7 +41,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/store/wrapper/testutil"
 	"github.com/edgelesssys/marblerun/coordinator/updatelog"
 	"github.com/edgelesssys/marblerun/coordinator/user"
-	"github.com/edgelesssys/marblerun/test"
+	test "github.com/edgelesssys/marblerun/test"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
 	"github.com/spf13/afero"
@@ -58,7 +58,7 @@ func TestMain(m *testing.M) {
 func TestGetCertQuote(t *testing.T) {
 	// these are not actually root and intermediate certs
 	// but we don't care for this test
-	rootCert, intermediateCert := test.MustSetupTestCerts(test.RecoveryPrivateKey)
+	rootCert, intermediateCert := test.MustSetupTestCerts(test.RecoveryPrivateKeyOne)
 
 	prepareDefaultStore := func() store.Store {
 		s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
@@ -409,7 +409,7 @@ func TestGetUpdateLog(t *testing.T) {
 }
 
 func TestRecover(t *testing.T) {
-	_, rootCert := test.MustSetupTestCerts(test.RecoveryPrivateKey)
+	_, rootCert := test.MustSetupTestCerts(test.RecoveryPrivateKeyOne)
 	defaultStore := func() store.Store {
 		s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
 		s.SetEncryptionKey([]byte("key"), seal.ModeProductKey) // set encryption key to set seal mode
@@ -441,7 +441,7 @@ func TestRecover(t *testing.T) {
 				state: state.Recovery,
 			},
 			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
-			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKey),
+			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKeyOne),
 		},
 		"more than one key required": {
 			store: &fakeStore{
@@ -454,7 +454,7 @@ func TestRecover(t *testing.T) {
 				state: state.Recovery,
 			},
 			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
-			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKey),
+			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKeyOne),
 		},
 		"SetRecoveryData fails does not result in error": {
 			store: &fakeStore{
@@ -467,7 +467,7 @@ func TestRecover(t *testing.T) {
 				state: state.Recovery,
 			},
 			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
-			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKey),
+			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKeyOne),
 		},
 		"Coordinator not in recovery state": {
 			store: &fakeStore{
@@ -478,7 +478,7 @@ func TestRecover(t *testing.T) {
 				state: state.AcceptingManifest,
 			},
 			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
-			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKey),
+			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKeyOne),
 			wantErr:        true,
 		},
 		"RecoverKey fails": {
@@ -492,7 +492,7 @@ func TestRecover(t *testing.T) {
 				state: state.Recovery,
 			},
 			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
-			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKey),
+			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKeyOne),
 			wantErr:        true,
 		},
 		"LoadState fails": {
@@ -505,7 +505,7 @@ func TestRecover(t *testing.T) {
 				state: state.Recovery,
 			},
 			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
-			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKey),
+			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKeyOne),
 			wantErr:        true,
 		},
 		"SealEncryptionKey fails does return an error": {
@@ -518,7 +518,7 @@ func TestRecover(t *testing.T) {
 				state: state.Recovery,
 			},
 			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
-			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKey),
+			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKeyOne),
 		},
 		"GetCertificate fails": {
 			store: &fakeStore{
@@ -535,7 +535,7 @@ func TestRecover(t *testing.T) {
 				state: state.Recovery,
 			},
 			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
-			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKey),
+			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKeyOne),
 			wantErr:        true,
 		},
 		"GenerateQuote fails": {
@@ -548,7 +548,7 @@ func TestRecover(t *testing.T) {
 				generateQuoteErr: assert.AnError,
 			},
 			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
-			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKey),
+			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKeyOne),
 			wantErr:        true,
 		},
 		"invalid recovery key signature": {
@@ -560,7 +560,7 @@ func TestRecover(t *testing.T) {
 				state: state.Recovery,
 			},
 			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
-			recoveryKeySig: signData(bytes.Repeat([]byte{0xFF}, 16), test.RecoveryPrivateKey),
+			recoveryKeySig: signData(bytes.Repeat([]byte{0xFF}, 16), test.RecoveryPrivateKeyOne),
 			wantErr:        true,
 		},
 		"manifest defines multiple recovery keys": {
@@ -570,7 +570,7 @@ func TestRecover(t *testing.T) {
 					s.SetEncryptionKey([]byte("key"), seal.ModeProductKey) // set encryption key to set seal mode
 					wr := wrapper.New(s)
 					require.NoError(t, wr.PutCertificate(constants.SKCoordinatorRootCert, rootCert))
-					recoveryKey2Str := fmt.Sprintf("\"testRecKey2\": \"%s\",\"testRecKey1\":", strings.ReplaceAll(string(test.RecoveryPublicKey), "\n", "\\n"))
+					recoveryKey2Str := fmt.Sprintf("\"testRecKey2\": \"%s\",\"testRecKey1\":", strings.ReplaceAll(string(test.RecoveryPublicKeyOne), "\n", "\\n"))
 					mnf := strings.Replace(test.ManifestJSONWithRecoveryKey, `"testRecKey1":`, recoveryKey2Str, 1)
 					require.NoError(t, wr.PutRawManifest([]byte(mnf)))
 					return s
@@ -581,7 +581,7 @@ func TestRecover(t *testing.T) {
 				state: state.Recovery,
 			},
 			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
-			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKey),
+			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKeyOne),
 			wantErr:        true,
 		},
 	}

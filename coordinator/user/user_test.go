@@ -11,14 +11,14 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/edgelesssys/marblerun/test"
+	test "github.com/edgelesssys/marblerun/test"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestUserPermissions(t *testing.T) {
 	assert := assert.New(t)
 
-	adminTestCert, _ := test.MustSetupTestCerts(test.RecoveryPrivateKey)
+	adminTestCert, _ := test.MustSetupTestCerts(test.RecoveryPrivateKeyOne)
 	userName := "test-user"
 	testID := "testPermission"
 	testPermission := NewPermission(testID, []string{"res-1", "res-2"})
@@ -44,7 +44,7 @@ func TestUserPermissions(t *testing.T) {
 
 func TestMarshal(t *testing.T) {
 	assert := assert.New(t)
-	adminTestCert, _ := test.MustSetupTestCerts(test.RecoveryPrivateKey)
+	adminTestCert, _ := test.MustSetupTestCerts(test.RecoveryPrivateKeyOne)
 	userName := "test-user"
 	testID := "testPermission"
 	testPermission := NewPermission(testID, []string{"perm-1", "perm-2"})

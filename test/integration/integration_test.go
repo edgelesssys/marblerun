@@ -27,7 +27,8 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/state"
 	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
-	"github.com/edgelesssys/marblerun/test/framework"
+	"github.com/edgelesssys/marblerun/test"
+	"github.com/edgelesssys/marblerun/test/integration/framework"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -187,9 +188,9 @@ func TestClientAPI(t *testing.T) {
 	require.NoError(err)
 
 	// create client certificate
-	privk, err := x509.MarshalPKCS8PrivateKey(RecoveryPrivateKey)
+	privk, err := x509.MarshalPKCS8PrivateKey(test.RecoveryPrivateKeyOne)
 	require.NoError(err)
-	clCert, err := tls.X509KeyPair(AdminCert, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privk}))
+	clCert, err := tls.X509KeyPair(test.AdminCert, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privk}))
 	require.NoError(err)
 
 	// test with certificate
@@ -226,9 +227,9 @@ func TestSettingSecrets(t *testing.T) {
 	require.NoError(err, "failed to set Manifest")
 
 	// create client with certificates
-	privk, err := x509.MarshalPKCS8PrivateKey(RecoveryPrivateKey)
+	privk, err := x509.MarshalPKCS8PrivateKey(test.RecoveryPrivateKeyOne)
 	require.NoError(err)
-	clCert, err := tls.X509KeyPair(AdminCert, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privk}))
+	clCert, err := tls.X509KeyPair(test.AdminCert, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privk}))
 	require.NoError(err)
 
 	// start server
@@ -246,7 +247,7 @@ func TestSettingSecrets(t *testing.T) {
 	// test setting a secret
 	t.Log("Setting a custom secret")
 	var userSecrets map[string]manifest.UserSecret
-	require.NoError(json.Unmarshal([]byte(UserSecrets), &userSecrets))
+	require.NoError(json.Unmarshal([]byte(test.UserSecrets), &userSecrets))
 	require.NoError(api.SecretSet(context.Background(), clientServerAddr, nil, &clCert, userSecrets))
 
 	// start the marble again
@@ -291,11 +292,11 @@ func TestRecoveryRestoreKey(t *testing.T) {
 			cancelCoordinator, cert := f.TriggerRecovery(cfg, cancelCoordinator)
 
 			// Decrypt recovery data from when we set the manifest
-			recoveryKey, err := api.DecryptRecoveryData(recoveryData["testRecKey1"], RecoveryPrivateKey)
+			recoveryKey, err := api.DecryptRecoveryData(recoveryData["testRecKey1"], test.RecoveryPrivateKeyOne)
 			require.NoError(err, "Failed to decrypt the recovery data.")
 
 			// Perform recovery
-			require.NoError(f.SetRecover(recoveryKey, RecoveryPrivateKey))
+			require.NoError(f.SetRecover(recoveryKey, test.RecoveryPrivateKeyOne))
 			t.Log("Performed recovery, now checking status again...")
 			statusCode, err = f.GetStatus()
 			require.NoError(err)
@@ -374,11 +375,11 @@ func TestRecoverySealedKeyStateBinding(t *testing.T) {
 			assert.EqualValues(int(state.Recovery), statusCode, "Server is in wrong status after restart.")
 
 			// Decrypt recovery data from when we set the manifest
-			recoveryKey, err := api.DecryptRecoveryData(recoveryData["testRecKey1"], RecoveryPrivateKey)
+			recoveryKey, err := api.DecryptRecoveryData(recoveryData["testRecKey1"], test.RecoveryPrivateKeyOne)
 			require.NoError(err, "Failed to decrypt the recovery data.")
 
 			// Perform recovery
-			require.NoError(f.SetRecover(recoveryKey, RecoveryPrivateKey))
+			require.NoError(f.SetRecover(recoveryKey, test.RecoveryPrivateKeyOne))
 			t.Log("Performed recovery, now checking status again...")
 			statusCode, err = f.GetStatus()
 			require.NoError(err)
@@ -466,7 +467,7 @@ func TestManifestUpdate(t *testing.T) {
 
 	// Set the update manifest
 	t.Log("Setting the Update Manifest")
-	_, missingAcks, err := f.SetUpdateManifest(f.UpdatedManifest, AdminCert, RecoveryPrivateKey)
+	_, missingAcks, err := f.SetUpdateManifest(f.UpdatedManifest, test.AdminCert, test.RecoveryPrivateKeyOne)
 	require.NoError(err, "failed to set Update Manifest")
 	assert.Equal(0, missingAcks, "failed to set Update Manifest")
 
@@ -609,7 +610,7 @@ func TestMonotonicCounter(t *testing.T) {
 }
 
 func newFramework(t *testing.T) *framework.IntegrationTest {
-	f := framework.New(t, *buildDir, simFlag, *noenclave, marbleTestAddr, meshServerAddr, clientServerAddr, IntegrationManifestJSON, UpdateManifest)
+	f := framework.New(t, *buildDir, simFlag, *noenclave, marbleTestAddr, meshServerAddr, clientServerAddr, test.IntegrationManifestJSON, test.UpdateManifest)
 	f.UpdateManifest()
 	return f
 }

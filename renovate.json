@@ -70,6 +70,21 @@
         "bump"
       ],
       "schedule": ["before 8am on monday"]
+    },
+    {
+      "groupName": "EdgelessRT",
+      "matchManagers": [ "custom.regex" ],
+      "assignees": [ "daniel-weisse" ],
+      "additionalReviewers": [ "daniel-weisse" ]
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [ "/^\\.github/workflows/[^/]+\\.ya?ml$/" ],
+      "matchStrings": [ "ERT_VERSION: \"(?<currentValue>.*?)\"" ],
+      "packageNameTemplate": "edgelesssys/edgelessrt",
+      "datasourceTemplate": "github-tags"
     }
   ]
 }
