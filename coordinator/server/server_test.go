@@ -24,7 +24,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/coordinator/server/handler"
 	v1 "github.com/edgelesssys/marblerun/coordinator/server/v1"
-	"github.com/edgelesssys/marblerun/test"
+	test "github.com/edgelesssys/marblerun/test"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -94,7 +94,7 @@ func TestManifestWithRecoveryKey(t *testing.T) {
 
 	for _, encryptedRecoveryData := range encryptedRecoveryData.RecoverySecrets {
 		// Decrypt recovery data and see if it matches the key used by the mock sealer
-		recoveryData, err := util.DecryptOAEP(test.RecoveryPrivateKey, encryptedRecoveryData)
+		recoveryData, err := util.DecryptOAEP(test.RecoveryPrivateKeyOne, encryptedRecoveryData)
 		require.NoError(err)
 		require.NotNil(recoveryData)
 	}
@@ -234,7 +234,7 @@ func testRequestWithCert(req *http.Request, resp *httptest.ResponseRecorder, mux
 	}
 
 	// Get certificates to test
-	adminTestCert, otherTestCert := test.MustSetupTestCerts(test.RecoveryPrivateKey)
+	adminTestCert, otherTestCert := test.MustSetupTestCerts(test.RecoveryPrivateKeyOne)
 	adminTestCertSlice := []*x509.Certificate{adminTestCert}
 	otherTestCertSlice := []*x509.Certificate{otherTestCert}
 

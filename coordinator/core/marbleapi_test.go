@@ -32,7 +32,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
 	"github.com/edgelesssys/marblerun/coordinator/store/wrapper/testutil"
 	globalconstants "github.com/edgelesssys/marblerun/internal/constants"
-	"github.com/edgelesssys/marblerun/test"
+	test "github.com/edgelesssys/marblerun/test"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
 	"github.com/spf13/afero"

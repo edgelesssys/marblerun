@@ -133,7 +133,7 @@ func TestRecover(t *testing.T) {
 	require.NoError(err)
 
 	// new core does not allow recover
-	key, sig := recoveryKeyWithSignature(t, test.RecoveryPrivateKey)
+	key, sig := recoveryKeyWithSignature(t, test.RecoveryPrivateKeyOne)
 	_, err = clientAPI.Recover(ctx, key, sig)
 	assert.Error(err)
 

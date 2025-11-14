@@ -73,7 +73,7 @@ func TestStoreWrapperMetrics(t *testing.T) {
 	clientAPI, err = clientapi.New(c.txHandle, c.recovery, c, zapLogger)
 	require.NoError(err)
 
-	key, sig := recoveryKeyWithSignature(t, test.RecoveryPrivateKey)
+	key, sig := recoveryKeyWithSignature(t, test.RecoveryPrivateKeyOne)
 	_, err = clientAPI.Recover(ctx, key, sig)
 	require.NoError(err)
 	state := testutil.GetState(t, c.txHandle)
