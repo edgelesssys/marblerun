@@ -25,7 +25,11 @@ jobs:
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Generate reference docs
-        run: XDG_CONFIG_HOME=\$HOME/.config go run . | cat header.md - > ../../cli.md
+        run: |
+          # Go doesn't allow relative paths in XDG_CONFIG_HOME
+          # Work around it by first setting it to '/$HOME/.config' and then removing the leading slash
+          XDG_CONFIG_HOME=/\$HOME/.config go run . | cat header.md - > ../../cli.md
+          sed -i 's|/$HOME/.config|$HOME/.config|g' ../../cli.md
         working-directory: hack/clidocgen
 
       - name: Get commit sha
