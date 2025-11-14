@@ -19,14 +19,15 @@ import (
 	"github.com/edgelesssys/marblerun/util/k8sutil"
 	"github.com/gofrs/flock"
 	"gopkg.in/yaml.v3"
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/repo"
-	"helm.sh/helm/v3/pkg/strvals"
+	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/chart/common/util"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	"helm.sh/helm/v4/pkg/cli"
+	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/kube"
+	"helm.sh/helm/v4/pkg/repo/v1"
+	"helm.sh/helm/v4/pkg/strvals"
 )
 
 // Options contains the values to set in the helm chart.
@@ -56,7 +57,7 @@ func New(namespace string) (*Client, error) {
 	// settings.KubeConfig = kubeConfigPath
 
 	actionConfig := &action.Configuration{}
-	if err := actionConfig.Init(settings.RESTClientGetter(), namespace, os.Getenv("HELM_DRIVER"), nopLog); err != nil {
+	if err := actionConfig.Init(settings.RESTClientGetter(), namespace, os.Getenv("HELM_DRIVER")); err != nil {
 		return nil, err
 	}
 
@@ -217,10 +218,13 @@ func (c *Client) Install(ctx context.Context, wait bool, chart *chart.Chart, val
 	installer.Namespace = c.namespace
 	installer.ReleaseName = release
 	installer.CreateNamespace = true
-	installer.Wait = wait
+	if wait {
+		installer.WaitStrategy = kube.StatusWatcherStrategy
+		installer.WaitForJobs = true
+	}
 	installer.Timeout = time.Minute * 5
 
-	if err := chartutil.ValidateAgainstSchema(chart, values); err != nil {
+	if err := util.ValidateAgainstSchema(chart, values); err != nil {
 		return err
 	}
 
@@ -231,7 +235,9 @@ func (c *Client) Install(ctx context.Context, wait bool, chart *chart.Chart, val
 // Uninstall removes the MarbleRun deployment from the cluster.
 func (c *Client) Uninstall(wait bool) error {
 	uninstaller := action.NewUninstall(c.config)
-	uninstaller.Wait = wait
+	if wait {
+		uninstaller.WaitStrategy = kube.StatusWatcherStrategy
+	}
 	uninstaller.Timeout = time.Minute * 5
 
 	_, err := uninstaller.Run(release)
@@ -368,5 +374,3 @@ func keyInList(key string, list []string) bool {
 	}
 	return false
 }
-
-func nopLog(_ string, _ ...any) {}
