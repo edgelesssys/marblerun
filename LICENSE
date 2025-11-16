@@ -3,13 +3,13 @@ Business Source License 1.1
 Parameters
 
 Licensor:             Edgeless Systems GmbH
-Licensed Work:        MarbleRun version 1.6 or later
+Licensed Work:        MarbleRun
                       The Licensed Work is (c) Edgeless Systems GmbH
 Additional Use Grant: None
 
-Change Date:          Two years from the date a MINOR version (SemVer) is published.
+Change Date:          Four years from the date a MINOR version (SemVer) is published.
 
-Change License:       Mozilla Public License Version 2.0
+Change License:       GNU Affero General Public License Version 3 (AGPL-3.0-only)
 
 For information about alternative licensing arrangements for the Software,
 please visit: https://www.edgeless.systems/enterprise-support
