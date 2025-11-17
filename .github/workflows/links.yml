@@ -1,4 +1,4 @@
-name: Links
+name: 'Test: links'
 
 on:
   push:

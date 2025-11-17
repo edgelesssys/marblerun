@@ -1,4 +1,4 @@
-name: e2e weekly Test
+name: 'Test: e2e weekly'
 
 on:
   schedule:

@@ -15,7 +15,7 @@ import (
 	"testing"
 
 	"github.com/edgelesssys/marblerun/cli/internal/file"
-	test "github.com/edgelesssys/marblerun/test"
+	"github.com/edgelesssys/marblerun/test"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"

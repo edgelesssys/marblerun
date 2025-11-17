@@ -1,4 +1,4 @@
-name: Golang-ci lint
+name: 'Test: lint'
 
 on:
   workflow_dispatch:

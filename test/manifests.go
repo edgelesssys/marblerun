@@ -23,6 +23,14 @@ var (
 	adminOneCert, adminOnePrivKey = MustGenerateAdminTestCert()
 	adminTwoCert, adminTwoPrivKey = MustGenerateAdminTestCert()
 
+	// AdminOneCert is the client cert of admin one for testing multi-party manifest updates.
+	AdminOneCert = adminOneCert
+	// AdminOnePrivKey is the private key of admin one for testing multi-party manifest updates matching [AdminOneCert].
+	AdminOnePrivKey = adminOnePrivKey
+	// AdminTwoCert is the client cert of admin two for testing multi-party manifest updates.
+	AdminTwoCert = adminTwoCert
+	// AdminTwoPrivKey is the private key of admin two for testing multi-party manifest updates matching [AdminTwoCert].
+	AdminTwoPrivKey = adminTwoPrivKey
 	// RecoveryPublicKeyOne is an automatically generated public key for testing recovery.
 	RecoveryPublicKeyOne = recoveryPublicKey
 	// RecoveryPrivateKeyOne is an automatically generated private key for testing recovery.
@@ -410,11 +418,11 @@ var IntegrationMultiPartyUpdateJSON = `{
 	"Users": {
 		"admin-1": {
 			"Roles": ["UpdateManifest", "UpdateFrontend"],
-			"Certificate": "` + pemToJSONString(adminOneCert) + `"
+			"Certificate": "` + pemToJSONString(AdminOneCert) + `"
 		},
 		"admin-2": {
 			"Roles": ["UpdateManifest"],
-			"Certificate": "` + pemToJSONString(adminTwoCert) + `"
+			"Certificate": "` + pemToJSONString(AdminTwoCert) + `"
 		},
 		"admin-3": {
 			"Roles": ["UpdateManifest"],
@@ -657,11 +665,11 @@ var IntegrationMultiPartyManifestJSON = `{
 	"Users": {
 		"admin-1": {
 			"Roles": ["UpdateManifest"],
-			"Certificate": "` + pemToJSONString(adminOneCert) + `"
+			"Certificate": "` + pemToJSONString(AdminOneCert) + `"
 		},
 		"admin-2": {
 			"Roles": ["UpdateManifest"],
-			"Certificate": "` + pemToJSONString(adminTwoCert) + `"
+			"Certificate": "` + pemToJSONString(AdminTwoCert) + `"
 		}
 	},
 	"Roles": {

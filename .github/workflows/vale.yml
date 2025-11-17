@@ -1,4 +1,4 @@
-name: Vale
+name: 'Test: vale spelling'
 on:
   push:
     branches:
