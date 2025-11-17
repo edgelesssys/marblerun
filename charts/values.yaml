@@ -28,6 +28,7 @@ marbleInjector:
   image: marble-injector
   pullPolicy: IfNotPresent
   version: v1.8.0
+  hash: sha256:776721c831ea8425e654e2359a3688c452b25d8198d77bffa2fed23ea42deffc
 
   # Set to true to install the injection webhook
   start: false
@@ -59,6 +60,7 @@ coordinator:
   image: coordinator
   pullPolicy: IfNotPresent
   version: v1.8.0
+  hash: sha256:18e9792017c1546e326e47ac4cb21aa0210697cf9b7e81a7ed4284ca14b911d7
 
   # Environment configuration for the coordinator control-plane
   # meshServerPort needs to be configured to the same port as in the data-plane marbles
@@ -88,6 +90,13 @@ coordinator:
       failureThreshold: 3
       periodSeconds: 2
       timeoutSeconds: 30
+
+  distributedDeployment: false
+  storeBackend: "k8s-secret"
+  stateSecretName: "marblerun-state"
+  kekConfigMap: "marblerun-sealed-kek"
+
+  keyAPIName: "coordinator-key-api"
 
   # Resource limits for the Coordinator
   resources:

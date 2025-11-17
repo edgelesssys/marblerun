@@ -45,13 +45,36 @@ spec:
           - name: EDG_COORDINATOR_CLIENT_ADDR
             value: "{{ .Values.coordinator.clientServerHost }}:{{ .Values.coordinator.clientServerPort }}"
           - name: EDG_COORDINATOR_DNS_NAMES
-            value: "{{ if .Values.coordinator.hostname }}{{ .Values.coordinator.hostname }},{{ end }}localhost,coordinator-mesh-api,coordinator-client-api,coordinator-mesh-api.{{ .Release.Namespace }},coordinator-client-api.{{ .Release.Namespace }},coordinator-mesh-api.{{ .Release.Namespace }}.svc.cluster.local,coordinator-client-api.{{ .Release.Namespace }}.svc.cluster.local"
+            value: >-
+              {{- $baseDnsNames := list "localhost" "coordinator-mesh-api" "coordinator-client-api" }}
+              {{- $namespacedDnsNames := list (printf "coordinator-mesh-api.%s" .Release.Namespace) (printf "coordinator-client-api.%s" .Release.Namespace) }}
+              {{- $fqdnDnsNames := list (printf "coordinator-mesh-api.%s.svc.cluster.local" .Release.Namespace) (printf "coordinator-client-api.%s.svc.cluster.local" .Release.Namespace) }}
+              {{- $keyApiNames := list }}
+              {{- if .Values.coordinator.distributedDeployment }}
+              {{- $keyApiNames = list .Values.coordinator.keyAPIName (printf "%s.%s" .Values.coordinator.keyAPIName .Release.Namespace) (printf "%s.%s.svc.cluster.local" .Values.coordinator.keyAPIName .Release.Namespace) }}
+              {{- end }}
+              {{- $allDnsNames := concat $baseDnsNames $namespacedDnsNames $fqdnDnsNames $keyApiNames }}
+              {{ if .Values.coordinator.hostname }}{{ .Values.coordinator.hostname }},{{ end }}{{ join "," $allDnsNames }}
           - name: EDG_COORDINATOR_SEAL_DIR
             value: "{{ .Values.coordinator.sealDir }}"
           - name: OE_SIMULATION
             value: {{ if .Values.coordinator.simulation }}"1"{{ else }}"0"{{ end }}
+          {{- if .Values.coordinator.distributedDeployment }}
+          - name: EDG_STORE_BACKEND
+            value: {{ .Values.coordinator.storeBackend }}
+          - name: EDG_K8S_STATE_NAME
+            value: {{ .Values.coordinator.stateSecretName }}
+          - name: EDG_K8S_SERVICE_NAME
+            value: {{ .Values.coordinator.keyAPIName }}
+          - name: EDG_K8S_KEK_MAP
+            value: {{ .Values.coordinator.kekConfigMap }}
+          - name: EDG_K8S_NAMESPACE
+            value: {{ .Release.Namespace }}
+          - name: EDG_DISTRIBUTED_COORDINATOR
+            value: "1"
+          {{- end }}
           name: coordinator
-          image: "{{ .Values.coordinator.repository }}/{{ .Values.coordinator.image }}:{{ .Values.coordinator.version }}"
+          image: "{{ .Values.coordinator.repository }}/{{ .Values.coordinator.image }}:{{ .Values.coordinator.version }}@{{ .Values.coordinator.hash }}"
           imagePullPolicy: {{ .Values.coordinator.pullPolicy }}
           livenessProbe:
             httpGet:
@@ -86,24 +109,28 @@ spec:
           resources:
           {{- toYaml .Values.coordinator.resources | nindent 12 }}
           volumeMounts:
+          {{- if or (not .Values.coordinator.distributedDeployment) (ne .Values.coordinator.storeBackend "k8s-secret") }}
           - name: coordinator-pv-storage
             mountPath: /coordinator/data
+          {{- end }}
           {{ if .Values.dcap }}
           - name: dcap-conf
             mountPath: /etc/sgx_default_qcnl.conf
             subPath: sgx_default_qcnl.conf
           {{ end }}
       volumes:
+        {{- if or (not .Values.coordinator.distributedDeployment) (ne .Values.coordinator.storeBackend "k8s-secret") }}
         - name: coordinator-pv-storage
           persistentVolumeClaim:
             claimName: {{ .Values.coordinator.pvcName | default "coordinator-pv-claim" }}
+        {{- end }}
         {{ if .Values.dcap }}
         - name: dcap-conf
           configMap:
             name: coordinator-dcap-config
         {{ end }}
 ---
-{{- if not .Values.coordinator.pvcName }}
+{{- if and (or (not .Values.coordinator.distributedDeployment) (ne .Values.coordinator.storeBackend "k8s-secret")) (not .Values.coordinator.pvcName) }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -166,3 +193,27 @@ spec:
     port: {{ .Values.coordinator.meshServerPort }}
     targetPort: {{ .Values.coordinator.meshServerPort }}
     appProtocol: tcp
+---
+{{- if .Values.coordinator.distributedDeployment }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.coordinator.keyAPIName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/component: key-api
+    app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
+    app.kubernetes.io/name: coordinator-key-api
+    app.kubernetes.io/part-of: marblerun
+    app.kubernetes.io/version: "{{ .Values.coordinator.version }}"
+spec:
+  type: ClusterIP
+  selector:
+    {{ .Values.global.coordinatorComponentLabel }}: coordinator
+    {{ .Values.global.coordinatorNamespaceLabel }}: {{ .Release.Namespace }}
+  ports:
+  - name: grpc
+    port: 5433
+    targetPort: 5433
+    appProtocol: tcp
+{{- end }}

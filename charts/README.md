@@ -46,6 +46,11 @@ their default values.
 | `coordinator.sealDir`                        | string         | Path to the directory used for sealing data. Needs to be consistent with the persisten storage setup | `"/coordinator/data/"` |
 | `coordinator.simulation`                     | bool           | SGX simulation settings, set to `true` if your not running on an SGX capable cluster | `false` |
 | `coordinator.storageClass`                   | string         | Kubernetes [StorageClass](https://kubernetes.io/docs/concepts/storage/storage-classes/) to use for creating the Coordinator PVC. Leave empty to use the default StorageClass | |
+| `coordinator.distributedDeployment`          | bool           | Enable distributed deployment for the coordinator | `false` |
+| `coordinator.storeBackend`                   | string         | Store backend to use for distributed deployment. Only used if `coordinator.distributedDeployment` is set to `true` | `"k8s-secret"` |
+| `coordinator.stateSecretName`               | string         | Name of the secret to use for storing the coordinator state. Only used if `coordinator.distributedDeployment` is set to `true` | `"marblerun-state"` |
+| `coordinator.kekConfigMap`                   | string         | Name of the ConfigMap containing the Key Encryption Keys for the k8s-secret store backend. Only used if `coordinator.distributedDeployment` is set to `true` | `"marblerun-sealed-kek"` |
+| `coordinator.keyAPIName`                     | string         | Name of the Kubernetes service connecting to the Coordinator key exchange API. Only used if `coordinator.distributedDeployment` is set to `true` | `"marblerun-keyapi"` |
 | `coordinator.version`                        | string         | Version of the coordinator container image to pull | `"v1.8.0"` |
 | `global.coordinatorComponentLabel`           | string         | Control plane label. Do not edit | `"edgeless.systems/control-plane-component"` |
 | `global.coordinatorNamespaceLabel`           | string         | Control plane label. Do not edit | `"edgeless.systems/control-plane-ns"` |

@@ -42,13 +42,12 @@ marblerun install --dcap-pccs-url https://pccs.example.com/sgx/certification/v4/
 
 	cmd.Flags().StringSlice("domain", []string{}, "Sets additional DNS names and IPs for the Coordinator TLS certificate")
 	cmd.Flags().String("marblerun-chart-path", "", "Path to MarbleRun helm chart")
+	cmd.Flags().Bool("distributed-deployment", false, "Install MarbleRun in distributed deployment mode.")
 	cmd.Flags().String("version", "", "Version of the Coordinator to install, latest by default")
 	cmd.Flags().String("resource-key", "", "Resource providing SGX, different depending on used device plugin. Use this to set tolerations/resources if your device plugin is not supported by MarbleRun")
-	cmd.Flags().String("dcap-qpl", "azure", `Quote provider library to use by the Coordinator. One of {"azure", "intel"}`)
 	cmd.Flags().String("dcap-qcnl-config-file", "", "Path to a custom QCNL configuration file. Mutually exclusive with \"--dcap-pccs-url\" and \"--dcap-secure-cert\".")
 	cmd.Flags().String("dcap-pccs-url", "https://global.acccache.azure.net/sgx/certification/v4/", "Provisioning Certificate Caching Service (PCCS) server address. Defaults to Azure PCCS. Mutually exclusive with \"--dcap-qcnl-config-file\"")
 	cmd.Flags().String("dcap-secure-cert", "TRUE", "To accept insecure HTTPS certificate from the PCCS, set this option to FALSE. Mutually exclusive with \"--dcap-qcnl-config-file\"")
-	cmd.Flags().String("enterprise-access-token", "", "Access token for Enterprise Coordinator. Leave empty for default installation")
 	cmd.Flags().Bool("simulation", false, "Set MarbleRun to start in simulation mode")
 	cmd.Flags().Bool("disable-auto-injection", false, "Install MarbleRun without auto-injection webhook")
 	cmd.Flags().Bool("wait", false, "Wait for MarbleRun installation to complete before returning")
@@ -58,6 +57,9 @@ marblerun install --dcap-pccs-url https://pccs.example.com/sgx/certification/v4/
 	cmd.MarkFlagsMutuallyExclusive("dcap-qcnl-config-file", "dcap-pccs-url")
 	cmd.MarkFlagsMutuallyExclusive("dcap-qcnl-config-file", "dcap-secure-cert")
 
+	cmd.Flags().String("enterprise-access-token", "", "Access token for Enterprise Coordinator. Leave empty for default installation")
+	must(cmd.Flags().MarkDeprecated("enterprise-access-token", "--enterprise-access-token is no longer needed."))
+	cmd.Flags().String("dcap-qpl", "azure", `Quote provider library to use by the Coordinator. One of {"azure", "intel"}`)
 	must(cmd.Flags().MarkDeprecated("dcap-qpl", "All platforms use the same QPL now. Use --dcap-pccs-url to configure the PCCS server address."))
 
 	return cmd
@@ -119,16 +121,16 @@ func cliInstall(cmd *cobra.Command, helmClient *helm.Client, kubeClient kubernet
 
 	values, err := helm.UpdateValues(
 		helm.Options{
-			Hostname:            flags.hostname,
-			QCNLConfigFile:      flags.qcnlConfigFile,
-			PCCSURL:             flags.pccsURL,
-			UseSecureCert:       flags.useSecureCert,
-			AccessToken:         flags.accessToken,
-			SGXResourceKey:      flags.resourceKey,
-			WebhookSettings:     webhookSettings,
-			SimulationMode:      flags.simulation,
-			CoordinatorRESTPort: flags.clientPort,
-			CoordinatorGRPCPort: flags.meshPort,
+			Hostname:              flags.hostname,
+			QCNLConfigFile:        flags.qcnlConfigFile,
+			PCCSURL:               flags.pccsURL,
+			UseSecureCert:         flags.useSecureCert,
+			SGXResourceKey:        flags.resourceKey,
+			WebhookSettings:       webhookSettings,
+			SimulationMode:        flags.simulation,
+			DistributedDeployment: flags.distributedDeployment,
+			CoordinatorRESTPort:   flags.clientPort,
+			CoordinatorGRPCPort:   flags.meshPort,
 		},
 		chart.Values,
 	)
@@ -276,19 +278,19 @@ func errorAndCleanup(ctx context.Context, err error, kubeClient kubernetes.Inter
 }
 
 type installFlags struct {
-	chartPath        string
-	hostname         []string
-	version          string
-	resourceKey      string
-	qcnlConfigFile   string
-	pccsURL          string
-	useSecureCert    string
-	accessToken      string
-	simulation       bool
-	disableInjection bool
-	wait             bool
-	clientPort       int
-	meshPort         int
+	chartPath             string
+	hostname              []string
+	version               string
+	resourceKey           string
+	qcnlConfigFile        string
+	pccsURL               string
+	useSecureCert         string
+	distributedDeployment bool
+	simulation            bool
+	disableInjection      bool
+	wait                  bool
+	clientPort            int
+	meshPort              int
 }
 
 func parseInstallFlags(cmd *cobra.Command) (installFlags, error) {
@@ -320,7 +322,7 @@ func parseInstallFlags(cmd *cobra.Command) (installFlags, error) {
 	if err != nil {
 		return installFlags{}, err
 	}
-	accessToken, err := cmd.Flags().GetString("enterprise-access-token")
+	distributedDeployment, err := cmd.Flags().GetBool("distributed-deployment")
 	if err != nil {
 		return installFlags{}, err
 	}
@@ -345,23 +347,19 @@ func parseInstallFlags(cmd *cobra.Command) (installFlags, error) {
 		return installFlags{}, err
 	}
 
-	if accessToken != "" && chartPath == "" {
-		return installFlags{}, fmt.Errorf("--marblerun-chart-path is required when using an enterprise access token")
-	}
-
 	return installFlags{
-		chartPath:        chartPath,
-		hostname:         hostname,
-		version:          version,
-		resourceKey:      resourceKey,
-		qcnlConfigFile:   qcnlConfigFile,
-		pccsURL:          pccsURL,
-		useSecureCert:    useSecureCert,
-		accessToken:      accessToken,
-		simulation:       simulation,
-		disableInjection: disableInjection,
-		wait:             wait,
-		clientPort:       clientPort,
-		meshPort:         meshPort,
+		chartPath:             chartPath,
+		hostname:              hostname,
+		version:               version,
+		resourceKey:           resourceKey,
+		qcnlConfigFile:        qcnlConfigFile,
+		pccsURL:               pccsURL,
+		useSecureCert:         useSecureCert,
+		distributedDeployment: distributedDeployment,
+		simulation:            simulation,
+		disableInjection:      disableInjection,
+		wait:                  wait,
+		clientPort:            clientPort,
+		meshPort:              meshPort,
 	}, nil
 }
