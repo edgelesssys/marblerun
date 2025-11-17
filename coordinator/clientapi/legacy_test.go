@@ -16,6 +16,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/coordinator/constants"
 	"github.com/edgelesssys/marblerun/coordinator/crypto"
+	"github.com/edgelesssys/marblerun/coordinator/distributor"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
@@ -41,7 +42,7 @@ func TestSetManifest_Legacy(t *testing.T) {
 	var manifest manifest.Manifest
 	require.NoError(json.Unmarshal(rawManifest, &manifest))
 
-	c, getter := setupAPI(t)
+	c, getter := setupAPI(t, nil)
 	_, err := c.SetManifest(ctx, rawManifest)
 	assert.NoError(err, "SetManifest should succeed on first try")
 	cManifest, err := getter.GetManifest()
@@ -61,11 +62,11 @@ func TestSetManifest_Legacy(t *testing.T) {
 	assert.Equal(manifest, cManifest, "Manifest should still be set correctly")
 
 	// use new core
-	c, _ = setupAPI(t)
+	c, _ = setupAPI(t, nil)
 	_, err = c.SetManifest(ctx, rawManifest[:len(rawManifest)-1])
 	assert.Error(err, "SetManifest should fail on broken json")
 
-	c, getter = setupAPI(t)
+	c, getter = setupAPI(t, nil)
 	_, err = c.SetManifest(ctx, []byte(""))
 	assert.Error(err, "empty string should not be accepted")
 
@@ -101,7 +102,7 @@ func TestSetManifestInvalid_Legacy(t *testing.T) {
 	}
 
 	// try setting manifest with unallowed marble package, but proper json
-	a, _ := setupAPI(t)
+	a, _ := setupAPI(t, nil)
 	manifest := newTestManifest()
 
 	// get any element of the map
@@ -116,7 +117,7 @@ func TestSetManifestInvalid_Legacy(t *testing.T) {
 	assert.ErrorContains(err, "manifest does not contain marble package foo")
 
 	// Try setting manifest with all values unset, no debug mode (this should fail)
-	a, _ = setupAPI(t)
+	a, _ = setupAPI(t, nil)
 	manifest = newTestManifest()
 
 	backendPackage := manifest.Packages["backend"]
@@ -136,7 +137,7 @@ func TestSetManifestInvalid_Legacy(t *testing.T) {
 	testManifestInvalidDebugCase(a, manifest, backendPackage)
 
 	// Set SignerID, now should complain about missing ProductID
-	a, _ = setupAPI(t)
+	a, _ = setupAPI(t, nil)
 	backendPackage.SignerID = "some signer"
 	manifest.Packages["backend"] = backendPackage
 
@@ -149,7 +150,7 @@ func TestSetManifestInvalid_Legacy(t *testing.T) {
 	testManifestInvalidDebugCase(a, manifest, backendPackage)
 
 	// Set ProductID, now should complain about missing SecurityVersion
-	a, _ = setupAPI(t)
+	a, _ = setupAPI(t, nil)
 	productIDValue := uint64(42)
 	backendPackage.ProductID = &productIDValue
 	manifest.Packages["backend"] = backendPackage
@@ -163,7 +164,7 @@ func TestSetManifestInvalid_Legacy(t *testing.T) {
 	testManifestInvalidDebugCase(a, manifest, backendPackage)
 
 	// Set SecurityVersion, now we should pass
-	a, _ = setupAPI(t)
+	a, _ = setupAPI(t, nil)
 	securityVersion := uint(1)
 	backendPackage.SecurityVersion = &securityVersion
 	manifest.Packages["backend"] = backendPackage
@@ -174,11 +175,11 @@ func TestSetManifestInvalid_Legacy(t *testing.T) {
 	assert.NoError(err)
 
 	// Reset & enable debug mode, should also work now
-	a, _ = setupAPI(t)
+	a, _ = setupAPI(t, nil)
 	testManifestInvalidDebugCase(a, manifest, backendPackage)
 
 	// Try setting manifest with UniqueID + other value set, this should fail again
-	a, _ = setupAPI(t)
+	a, _ = setupAPI(t, nil)
 	backendPackage.UniqueID = "something unique"
 	manifest.Packages["backend"] = backendPackage
 
@@ -196,7 +197,7 @@ func TestGetManifestSignature_Legacy(t *testing.T) {
 	require := require.New(t)
 	ctx := context.Background()
 
-	api, data := setupAPI(t)
+	api, data := setupAPI(t, nil)
 
 	_, err := api.SetManifest(ctx, []byte(test.ManifestJSON))
 	assert.NoError(err)
@@ -215,7 +216,7 @@ func TestGetManifestSignature_Legacy(t *testing.T) {
 func TestGetSecret_Legacy(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	c, data := setupAPI(t)
+	c, data := setupAPI(t, nil)
 	ctx := context.Background()
 
 	symmetricSecret := "symmetricKeyShared"
@@ -251,7 +252,7 @@ func TestGetSecret_Legacy(t *testing.T) {
 func TestGetStatus_Legacy(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	c, _ := setupAPI(t)
+	c, _ := setupAPI(t, nil)
 	ctx := context.Background()
 
 	// Server should be ready to accept a manifest after initializing a mock core
@@ -277,7 +278,7 @@ func TestWriteSecrets_Legacy(t *testing.T) {
 	symmetricSecret := "symmetricKeyUnset"
 	certSecret := "certUnset"
 
-	c, data := setupAPI(t)
+	c, data := setupAPI(t, nil)
 
 	_, err := c.SetManifest(ctx, []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
@@ -342,7 +343,7 @@ func TestWriteSecrets_Legacy(t *testing.T) {
 func TestUpdateManifest_Legacy(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	c, data := setupAPI(t)
+	c, data := setupAPI(t, nil)
 	ctx := context.Background()
 
 	// Set manifest
@@ -425,7 +426,7 @@ func TestUpdateManifest_Legacy(t *testing.T) {
 func TestUpdateManifestInvalid_Legacy(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	c, data := setupAPI(t)
+	c, data := setupAPI(t, nil)
 	ctx := context.Background()
 
 	// Good update manifests
@@ -555,7 +556,7 @@ func TestUpdateDebugMarble_Legacy(t *testing.T) {
 	require := require.New(t)
 	ctx := context.Background()
 
-	c, data := setupAPI(t)
+	c, data := setupAPI(t, nil)
 	// Set manifest
 	_, err := c.SetManifest(ctx, manifest)
 	require.NoError(err)
@@ -579,7 +580,7 @@ func TestUpdateDebugMarble_Legacy(t *testing.T) {
 func TestVerifyUser_Legacy(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	c, _ := setupAPI(t)
+	c, _ := setupAPI(t, nil)
 	ctx := context.Background()
 
 	adminTestCert, otherTestCert := test.MustSetupTestCerts(test.RecoveryPrivateKeyOne)
@@ -612,7 +613,7 @@ func TestVerifyUser_Legacy(t *testing.T) {
 	assert.Equal(*user.Certificate(), *adminTestCert)
 }
 
-func setupAPI(t *testing.T) (*ClientAPI, wrapper.Wrapper) {
+func setupAPI(t *testing.T, core *fakeCore) (*ClientAPI, wrapper.Wrapper) {
 	t.Helper()
 	require := require.New(t)
 
@@ -637,14 +638,19 @@ func setupAPI(t *testing.T) (*ClientAPI, wrapper.Wrapper) {
 	updateLog, err := updatelog.New()
 	require.NoError(err)
 
-	return &ClientAPI{
-		core: &fakeCore{
+	if core == nil {
+		core = &fakeCore{
 			state:       state.AcceptingManifest,
 			getStateMsg: "status message",
-		},
+		}
+	}
+
+	return &ClientAPI{
+		core:      core,
 		recovery:  recovery.NewSinglePartyRecovery(),
 		txHandle:  store,
 		log:       log,
 		updateLog: updateLog,
+		keyServer: &distributor.Stub{},
 	}, wrapper
 }

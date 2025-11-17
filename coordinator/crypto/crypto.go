@@ -11,8 +11,11 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/pem"
+	"errors"
 	"fmt"
 	"math"
 	"time"
@@ -76,4 +79,24 @@ func GenerateCert(
 	}
 
 	return cert, privk, nil
+}
+
+// ParseRSAPublicKeyFromPEM parses a PEM encoded RSA public key to [*rsa.PublicKey].
+func ParseRSAPublicKeyFromPEM(pemContent string) (*rsa.PublicKey, error) {
+	// Retrieve RSA public key for potential key recovery
+	block, _ := pem.Decode([]byte(pemContent))
+
+	if block == nil || block.Type != "PUBLIC KEY" {
+		return nil, errors.New("given PEM data is not a public key")
+	}
+	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	recoveryk, ok := pub.(*rsa.PublicKey)
+	if !ok {
+		return nil, errors.New("unsupported type of public key")
+	}
+
+	return recoveryk, nil
 }

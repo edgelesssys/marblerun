@@ -15,6 +15,7 @@ import (
 	"net/http"
 
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
+	"github.com/edgelesssys/marblerun/coordinator/multiupdate"
 	"github.com/edgelesssys/marblerun/coordinator/state"
 	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/google/uuid"
@@ -36,6 +37,10 @@ type ClientAPI interface {
 	UpdateManifest(ctx context.Context, rawUpdateManifest []byte, updater *user.User) ([]string, int, error)
 	WriteSecrets(ctx context.Context, secrets map[string]manifest.UserSecret, updater *user.User) error
 	FeatureEnabled(ctx context.Context, feature string) bool
+
+	GetPendingUpdate(ctx context.Context) (*multiupdate.MultiPartyUpdate, error)
+	AcknowledgePendingUpdate(ctx context.Context, rawUpdateManifest []byte, user *user.User) ([]string, int, error)
+	CancelPendingUpdate(ctx context.Context, updater *user.User) (err error)
 }
 
 // GeneralResponse is a wrapper for all our REST API responses to follow the JSend style: https://github.com/omniti-labs/jsend

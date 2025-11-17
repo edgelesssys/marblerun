@@ -30,11 +30,15 @@ import (
 	"github.com/edgelesssys/ego/attestation/tcbstatus"
 	"github.com/edgelesssys/marblerun/coordinator/constants"
 	"github.com/edgelesssys/marblerun/coordinator/crypto"
+	"github.com/edgelesssys/marblerun/coordinator/distributor"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
+	"github.com/edgelesssys/marblerun/coordinator/multiupdate"
 	"github.com/edgelesssys/marblerun/coordinator/oid"
+	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/coordinator/state"
 	"github.com/edgelesssys/marblerun/coordinator/store"
+	dwrapper "github.com/edgelesssys/marblerun/coordinator/store/distributed/wrapper"
 	"github.com/edgelesssys/marblerun/coordinator/store/request"
 	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
 	"github.com/edgelesssys/marblerun/coordinator/store/wrapper"
@@ -594,10 +598,11 @@ func TestRecover(t *testing.T) {
 			log := zaptest.NewLogger(t)
 
 			api := &ClientAPI{
-				txHandle: tc.store,
-				recovery: tc.recovery,
-				core:     tc.core,
-				log:      log,
+				txHandle:  tc.store,
+				recovery:  tc.recovery,
+				core:      tc.core,
+				keyServer: &distributor.Stub{},
+				log:       log,
 			}
 
 			keysLeft, err := api.Recover(context.Background(), tc.recoveryKey, tc.recoveryKeySig)
@@ -744,6 +749,7 @@ func TestSetManifest(t *testing.T) {
 				core:      tc.core,
 				recovery:  &stubRecovery{},
 				updateLog: updateLog,
+				keyServer: &distributor.Stub{},
 				log:       log,
 			}
 
@@ -1047,10 +1053,6 @@ func TestFeatureEnabled(t *testing.T) {
 	}
 }
 
-func TestUpdateManifest(t *testing.T) {
-	t.Log("WARNING: Missing unit Test for UpdateManifest")
-}
-
 func TestVerifyMarble(t *testing.T) {
 	marbleRootCert, marbleRootKey, err := crypto.GenerateCert(nil, "MarbleRun Unit Test Marble", nil, nil, nil)
 	require.NoError(t, err)
@@ -1189,6 +1191,387 @@ func TestWriteSecrets(t *testing.T) {
 	t.Log("WARNING: Missing unit Test for WriteSecrets")
 }
 
+func TestUpdateManifest(t *testing.T) {
+	ctx := context.Background()
+	testCases := map[string]struct {
+		updateManifest manifest.Manifest
+		prepareAPI     func(*require.Assertions, *ClientAPI)
+		iterGetter     *stubIteratorGetter
+		core           *fakeCore
+		updater        *user.User
+		wantErr        bool
+	}{
+		"successful update": {
+			updateManifest: testUpdateManifest(),
+			prepareAPI: func(require *require.Assertions, api *ClientAPI) {
+				manifest, err := json.Marshal(testManifest())
+				require.NoError(err)
+				_, err = api.SetManifest(ctx, manifest)
+				require.NoError(err)
+			},
+			core: &fakeCore{
+				state: state.AcceptingManifest,
+			},
+			updater: func() *user.User {
+				u := user.NewUser("admin", mustParseCert(t, test.AdminCert))
+				u.Assign(user.NewPermission(user.PermissionUpdateManifest, []string{}))
+				return u
+			}(),
+		},
+		"successful multi-party update initialization": {
+			updateManifest: testUpdateManifest(),
+			prepareAPI: func(require *require.Assertions, api *ClientAPI) {
+				mnf := testManifest()
+				adminCert2, _ := test.MustGenerateAdminTestCert()
+				mnf.Users["admin-2"] = manifest.User{
+					Certificate: string(adminCert2),
+					Roles:       []string{"manifest-update"},
+				}
+				manifest, err := json.Marshal(mnf)
+				require.NoError(err)
+				_, err = api.SetManifest(ctx, manifest)
+				require.NoError(err)
+			},
+			core: &fakeCore{
+				state: state.AcceptingManifest,
+			},
+			updater: func() *user.User {
+				u := user.NewUser("admin", mustParseCert(t, test.AdminCert))
+				u.Assign(user.NewPermission(user.PermissionUpdateManifest, []string{}))
+				return u
+			}(),
+		},
+		"uninitialized core": {
+			updateManifest: testUpdateManifest(),
+			prepareAPI:     func(_ *require.Assertions, _ *ClientAPI) {},
+			core: &fakeCore{
+				state: state.Uninitialized,
+			},
+			updater: user.NewUser("admin", mustParseCert(t, test.AdminCert)),
+			wantErr: true,
+		},
+		"user not permitted": {
+			updateManifest: testUpdateManifest(),
+			prepareAPI: func(require *require.Assertions, api *ClientAPI) {
+				_, err := api.SetManifest(ctx, []byte(test.ManifestJSONWithRecoveryKey))
+				require.NoError(err)
+			},
+			core: &fakeCore{
+				state: state.AcceptingManifest,
+			},
+			updater: user.NewUser("admin", mustParseCert(t, test.AdminCert)),
+			wantErr: true,
+		},
+		"invalid manifest: missing recovery keys": {
+			updateManifest: func() manifest.Manifest {
+				manifest := testUpdateManifest()
+				manifest.RecoveryKeys = nil
+				return manifest
+			}(),
+			prepareAPI: func(require *require.Assertions, api *ClientAPI) {
+				manifest, err := json.Marshal(testManifest())
+				require.NoError(err)
+				_, err = api.SetManifest(ctx, manifest)
+				require.NoError(err)
+			},
+			core: &fakeCore{
+				state: state.AcceptingManifest,
+			},
+			updater: func() *user.User {
+				u := user.NewUser("admin", mustParseCert(t, test.AdminCert))
+				u.Assign(user.NewPermission(user.PermissionUpdateManifest, []string{}))
+				return u
+			}(),
+			wantErr: true,
+		},
+		"invalid manifest: changed recovery keys": {
+			updateManifest: func() manifest.Manifest {
+				manifest := testUpdateManifest()
+				manifest.RecoveryKeys = map[string]string{
+					"newKey": string(test.RecoveryPublicKeyOne),
+				}
+				return manifest
+			}(),
+			prepareAPI: func(require *require.Assertions, api *ClientAPI) {
+				manifest, err := json.Marshal(testManifest())
+				require.NoError(err)
+				_, err = api.SetManifest(ctx, manifest)
+				require.NoError(err)
+			},
+			core: &fakeCore{
+				state: state.AcceptingManifest,
+			},
+			updater: func() *user.User {
+				u := user.NewUser("admin", mustParseCert(t, test.AdminCert))
+				u.Assign(user.NewPermission(user.PermissionUpdateManifest, []string{}))
+				return u
+			}(),
+			wantErr: true,
+		},
+		"symmetric secret file": {
+			updateManifest: func() manifest.Manifest {
+				mnf := testManifest()
+				mnf.Secrets["symmetric"] = manifest.Secret{
+					Type: manifest.SecretTypeSymmetricKey,
+					Size: 128,
+				}
+				marble := mnf.Marbles["marble-a"]
+				marble.Parameters.Files = map[string]manifest.File{
+					"symmetric": {
+						Data:     "{{ hex .Secrets.symmetric }}",
+						Encoding: "string",
+					},
+				}
+				mnf.Marbles["marble-a"] = marble
+
+				mnf.Roles["newRole"] = manifest.Role{
+					ResourceType:  "Packages",
+					ResourceNames: []string{"package-a"},
+					Actions:       []string{"UpdateSecurityVersion"},
+				}
+
+				return mnf
+			}(),
+			prepareAPI: func(require *require.Assertions, api *ClientAPI) {
+				mnf := testManifest()
+				mnf.Secrets["symmetric"] = manifest.Secret{
+					Type: manifest.SecretTypeSymmetricKey,
+					Size: 128,
+				}
+				marble := mnf.Marbles["marble-a"]
+				marble.Parameters.Files = map[string]manifest.File{
+					"symmetric": {
+						Data:     "{{ hex .Secrets.symmetric }}",
+						Encoding: "string",
+					},
+				}
+				mnf.Marbles["marble-a"] = marble
+
+				manifest, err := json.Marshal(mnf)
+				require.NoError(err)
+				_, err = api.SetManifest(ctx, manifest)
+				require.NoError(err)
+			},
+			core: &fakeCore{
+				state: state.AcceptingManifest,
+			},
+			updater: func() *user.User {
+				u := user.NewUser("admin", mustParseCert(t, test.AdminCert))
+				u.Assign(user.NewPermission(user.PermissionUpdateManifest, []string{}))
+				return u
+			}(),
+			wantErr: false,
+		},
+		"invalid template in manifest": {
+			updateManifest: func() manifest.Manifest {
+				mnf := testUpdateManifest()
+				marble := mnf.Marbles["marble-a"]
+				marble.Parameters.Files = map[string]manifest.File{
+					"file": {
+						Data:     "{{ hex .Secrets.doesNotExist }}",
+						Encoding: "string",
+					},
+				}
+				mnf.Marbles["marble-a"] = marble
+
+				return mnf
+			}(),
+			prepareAPI: func(require *require.Assertions, api *ClientAPI) {
+				manifest, err := json.Marshal(testManifest())
+				require.NoError(err)
+				_, err = api.SetManifest(ctx, manifest)
+				require.NoError(err)
+			},
+			core: &fakeCore{
+				state: state.AcceptingManifest,
+			},
+			updater: func() *user.User {
+				u := user.NewUser("admin", mustParseCert(t, test.AdminCert))
+				u.Assign(user.NewPermission(user.PermissionUpdateManifest, []string{}))
+				return u
+			}(),
+			wantErr: true,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
+			require := require.New(t)
+
+			api, _ := setupAPI(t, tc.core)
+			getPending := func() (*multiupdate.MultiPartyUpdate, error) {
+				t.Helper()
+				tx, rollback, _, err := dwrapper.WrapTransaction(ctx, api.txHandle)
+				require.NoError(err)
+				defer rollback()
+				return tx.GetPendingUpdate()
+			}
+			testSecret := func(name string) {
+				t.Helper()
+				tx, rollback, _, err := wrapper.WrapTransaction(ctx, api.txHandle)
+				require.NoError(err)
+				defer rollback()
+				_, err = tx.GetSecret(name)
+				assert.NoError(err)
+			}
+
+			tc.prepareAPI(require, api)
+
+			updateManifest, err := json.Marshal(tc.updateManifest)
+			require.NoError(err)
+
+			_, _, err = api.UpdateManifest(ctx, updateManifest, tc.updater)
+			if tc.wantErr {
+				assert.Error(err)
+				time.Sleep(50 * time.Millisecond) // Short wait since the clean up is async.
+				_, err := getPending()
+				assert.ErrorIs(err, store.ErrValueUnset)
+				return
+			}
+
+			assert.NoError(err)
+
+			pendingUpdate, err := getPending()
+			if err == nil {
+				assert.Greater(pendingUpdate.MissingAcknowledgments(), 0)
+				assert.Equal(updateManifest, pendingUpdate.Manifest())
+				return
+			}
+
+			require.ErrorIs(err, store.ErrValueUnset)
+			newManifest := testutil.GetRawManifest(t, api.txHandle)
+			assert.Equal(updateManifest, newManifest)
+
+			// Check that all secrets set in the update manifest have been
+			// generated and stored.
+			for name := range tc.updateManifest.Secrets {
+				testSecret(name)
+			}
+			_, err = getPending()
+			assert.ErrorIs(err, store.ErrValueUnset)
+		})
+	}
+}
+
+func TestMultiPartyUpdate(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	ctx := context.Background()
+
+	mnf := testManifest()
+	adminCert2, _ := test.MustGenerateAdminTestCert()
+	adminCert3, _ := test.MustGenerateAdminTestCert()
+	mnf.Users["admin-2"] = manifest.User{
+		Certificate: string(adminCert2),
+		Roles:       []string{"manifest-update"},
+	}
+	mnf.Users["admin-3"] = manifest.User{
+		Certificate: string(adminCert3),
+		Roles:       []string{"manifest-update"},
+	}
+	updateMnf := testUpdateManifest()
+
+	mnfJSON, err := json.Marshal(mnf)
+	require.NoError(err)
+	updateMnfJSON, err := json.Marshal(updateMnf)
+	require.NoError(err)
+
+	api, _ := setupAPI(t, &fakeCore{state: state.AcceptingManifest})
+
+	// No pending update before we set a manifest
+	_, err = api.GetPendingUpdate(ctx)
+	assert.Error(err)
+
+	_, err = api.SetManifest(ctx, mnfJSON)
+	require.NoError(err)
+
+	admin1 := testutil.GetUser(t, api.txHandle, "admin")
+	admin2 := testutil.GetUser(t, api.txHandle, "admin-2")
+	admin3 := testutil.GetUser(t, api.txHandle, "admin-3")
+
+	// No pending update
+	_, err = api.GetPendingUpdate(ctx)
+	assert.Error(err)
+
+	// try to cancel update, should fail
+	err = api.CancelPendingUpdate(ctx, admin1)
+	assert.Error(err)
+
+	// try to acknowledge update, should fail
+	_, _, err = api.AcknowledgePendingUpdate(ctx, updateMnfJSON, admin1)
+	assert.Error(err)
+
+	// Initialize update with first admin
+	missingUsers, missingAcks, err := api.UpdateManifest(ctx, updateMnfJSON, admin1)
+	require.NoError(err)
+
+	pendingUpdate := getPendingUpdate(t, api.txHandle)
+	assert.Equal(updateMnfJSON, pendingUpdate.Manifest())
+	assert.Equal(2, pendingUpdate.MissingAcknowledgments())
+	assert.Equal(2, missingAcks)
+	assert.ElementsMatch(pendingUpdate.MissingUsers(), missingUsers)
+
+	// Check the pending update
+	pending, err := api.GetPendingUpdate(ctx)
+	require.NoError(err)
+	assert.Equal(updateMnfJSON, pending.Manifest())
+	assert.Equal(2, pending.MissingAcknowledgments())
+
+	// Try to acknowledge with first admin, should do nothing
+	missing, missingAcks, err := api.AcknowledgePendingUpdate(ctx, updateMnfJSON, admin1)
+	assert.NoError(err)
+	assert.ElementsMatch([]string{admin2.Name(), admin3.Name()}, missing)
+	assert.Equal(2, missingAcks)
+
+	// Try to overwrite the pending update by starting a new update, should fail
+	_, _, err = api.UpdateManifest(ctx, updateMnfJSON, admin1)
+	assert.Error(err)
+	_, _, err = api.UpdateManifest(ctx, []byte(test.UpdateManifest), admin1)
+	assert.Error(err)
+
+	// Acknowledge with different manifest, should fail
+	_, _, err = api.AcknowledgePendingUpdate(ctx, mnfJSON, admin2)
+	assert.Error(err)
+
+	// Acknowledge with second admin
+	missing, missingAcks, err = api.AcknowledgePendingUpdate(ctx, updateMnfJSON, admin2)
+	require.NoError(err)
+	assert.ElementsMatch([]string{admin3.Name()}, missing)
+	assert.Equal(1, missingAcks)
+
+	// Acknowledge with third admin
+	missing, missingAcks, err = api.AcknowledgePendingUpdate(ctx, updateMnfJSON, admin3)
+	require.NoError(err)
+	assert.Len(missing, 0)
+	assert.Equal(0, missingAcks)
+
+	// Check that the update is applied
+	newManifest := testutil.GetRawManifest(t, api.txHandle)
+	assert.Equal(updateMnfJSON, newManifest)
+
+	// Check that the pending update is cleared
+	_, err = api.GetPendingUpdate(ctx)
+	assert.Error(err)
+
+	// Start a new update and try to cancel it
+	missingUsers, missingAcks, err = api.UpdateManifest(ctx, updateMnfJSON, admin1)
+	require.NoError(err)
+
+	pendingUpdate = getPendingUpdate(t, api.txHandle)
+	assert.Equal(updateMnfJSON, pendingUpdate.Manifest())
+	assert.Equal(2, pendingUpdate.MissingAcknowledgments())
+	assert.Equal(2, missingAcks)
+	assert.ElementsMatch(pendingUpdate.MissingUsers(), missingUsers)
+
+	err = api.CancelPendingUpdate(ctx, admin1)
+	require.NoError(err)
+
+	// Check that the pending update is cleared
+	_, err = api.GetPendingUpdate(ctx)
+	assert.Error(err)
+}
+
 type fakeCore struct {
 	unlockCalled    bool
 	state           state.State
@@ -1199,7 +1582,6 @@ type fakeCore struct {
 	quote              []byte
 	generateQuoteErr   error
 	getStateErr        error
-	generatedSecrets   map[string]manifest.Secret
 	generateSecretsErr error
 }
 
@@ -1240,19 +1622,26 @@ func (c *fakeCore) GetState(_ context.Context) (state.State, string, error) {
 	return c.state, c.getStateMsg, c.getStateErr
 }
 
-func (c *fakeCore) GenerateSecrets(
-	newSecrets map[string]manifest.Secret, _ uuid.UUID, _ string, rootCert *x509.Certificate, privK *ecdsa.PrivateKey, _ *ecdsa.PrivateKey,
+func (c *fakeCore) GenerateSecrets(newSecrets map[string]manifest.Secret, id uuid.UUID, _ string, rootCert *x509.Certificate, privK *ecdsa.PrivateKey, _ *ecdsa.PrivateKey,
 ) (map[string]manifest.Secret, error) {
-	if c.generateSecretsErr != nil || c.generatedSecrets != nil {
-		return c.generatedSecrets, c.generateSecretsErr
+	if c.generateSecretsErr != nil {
+		return nil, c.generateSecretsErr
 	}
 
 	secrets := make(map[string]manifest.Secret, len(newSecrets))
 	for name, secret := range newSecrets {
+		if secret.UserDefined {
+			continue
+		}
+
+		if secret.Shared != (id == uuid.Nil) {
+			continue
+		}
+
 		switch secret.Type {
 		case manifest.SecretTypeSymmetricKey:
-			secret.Public = bytes.Repeat([]byte{0x00}, 32)
-			secret.Private = bytes.Repeat([]byte{0x01}, 32)
+			secret.Public = bytes.Repeat([]byte{0x12, 0x34}, 16)
+			secret.Private = bytes.Repeat([]byte{0x56, 0x78}, 16)
 		case manifest.SecretTypeCertECDSA, manifest.SecretTypeCertED25519, manifest.SecretTypeCertRSA:
 			cert, key, err := crypto.GenerateCert([]string{"localhost"}, name, nil, rootCert, privK)
 			if err != nil {
@@ -1458,4 +1847,161 @@ func (s *fakeStoreTransaction) Commit(_ context.Context) error {
 
 func (s *fakeStoreTransaction) Rollback() {
 	s.rollbackCalled = true
+}
+
+type stubIteratorGetter struct {
+	*stdstore.StdStore
+
+	iterator       *stubIterator
+	getIteratorErr error
+}
+
+func (s *stubIteratorGetter) Iterator(string) (store.Iterator, error) {
+	return s.iterator, s.getIteratorErr
+}
+
+type stubIterator struct {
+	idx        int
+	keys       []string
+	getNextErr error
+}
+
+// GetNext implements the Iterator interface.
+func (i *stubIterator) GetNext() (string, error) {
+	if i.getNextErr != nil {
+		return "", i.getNextErr
+	}
+	if i.idx >= len(i.keys) {
+		return "", errors.New("index out of range")
+	}
+	val := i.keys[i.idx]
+	i.idx++
+	return val, nil
+}
+
+// HasNext implements the Iterator interface.
+func (i *stubIterator) HasNext() bool {
+	return i.idx < len(i.keys)
+}
+
+// mustParseCert parses a PEM-encoded certificate.
+func mustParseCert(t *testing.T, certPEM []byte) *x509.Certificate {
+	t.Helper()
+
+	block, _ := pem.Decode(certPEM)
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return cert
+}
+
+func testManifest() manifest.Manifest {
+	return manifest.Manifest{
+		Packages: map[string]quote.PackageProperties{
+			"package-a": {
+				UniqueID: "1f1e1d1c1b1a191817161514131211100f0e0d0c0b0a09080706050403020100",
+			},
+		},
+		Marbles: map[string]manifest.Marble{
+			"marble-a": {
+				Package: "package-a",
+				Parameters: manifest.Parameters{
+					Argv: []string{"test"},
+				},
+			},
+		},
+		Secrets: map[string]manifest.Secret{
+			"secret-b": {
+				Type:   manifest.SecretTypeSymmetricKey,
+				Size:   32,
+				Shared: true,
+			},
+			"secret-c": {
+				Type:        manifest.SecretTypePlain,
+				UserDefined: true,
+			},
+		},
+		Users: map[string]manifest.User{
+			"admin": {
+				Certificate: string(test.AdminCert),
+				Roles:       []string{"manifest-update"},
+			},
+		},
+		Roles: map[string]manifest.Role{
+			"manifest-update": {
+				ResourceType: "Manifest",
+				Actions:      []string{user.PermissionUpdateManifest},
+			},
+		},
+		RecoveryKeys: map[string]string{
+			"key": string(test.RecoveryPublicKeyOne),
+		},
+		TLS: map[string]manifest.TLStag{
+			"tls-tag": {
+				Outgoing: []manifest.TLSTagEntry{
+					{
+						Addr: "192.0.2.2",
+						Port: "443",
+					},
+				},
+				Incoming: []manifest.TLSTagEntry{
+					{
+						Addr: "192.0.2.3",
+						Port: "443",
+					},
+				},
+			},
+		},
+	}
+}
+
+func testUpdateManifest() manifest.Manifest {
+	mnf := testManifest()
+	mnf.Packages["package-a"] = quote.PackageProperties{
+		UniqueID: "2f1e1d1c1b1a191817161514131211100f0e0d0c0b0a09080706050403020100",
+	}
+	mnf.Packages["package-b"] = quote.PackageProperties{
+		UniqueID: "3f1e1d1c1b1a191817161514131211100f0e0d0c0b0a09080706050403020100",
+	}
+	managerCert, _ := test.MustGenerateAdminTestCert()
+	adminCert2, _ := test.MustGenerateAdminTestCert()
+	adminCert3, _ := test.MustGenerateAdminTestCert()
+	mnf.Users["manager"] = manifest.User{
+		Certificate: string(managerCert),
+		Roles: []string{
+			"packageUpdate",
+			"secretRead",
+		},
+	}
+	mnf.Users["admin-2"] = manifest.User{
+		Certificate: string(adminCert2),
+		Roles:       []string{"manifest-update"},
+	}
+	mnf.Users["admin-3"] = manifest.User{
+		Certificate: string(adminCert3),
+		Roles:       []string{"manifest-update"},
+	}
+	mnf.Roles["packageUpdate"] = manifest.Role{
+		ResourceType:  "Packages",
+		ResourceNames: []string{"package-a", "package-b"},
+		Actions:       []string{user.PermissionUpdatePackage},
+	}
+	mnf.Roles["secretRead"] = manifest.Role{
+		ResourceType:  "Secrets",
+		ResourceNames: []string{"secret-b"},
+		Actions:       []string{user.PermissionReadSecret},
+	}
+	return mnf
+}
+
+// getPendingUpdate returns the pending update from store.
+func getPendingUpdate(t *testing.T, txHandle transactionHandle) *multiupdate.MultiPartyUpdate {
+	t.Helper()
+	tx, rollback, _, err := dwrapper.WrapTransaction(context.Background(), txHandle)
+	require.NoError(t, err)
+	defer rollback()
+	update, err := tx.GetPendingUpdate()
+	require.NoError(t, err)
+	return update
 }

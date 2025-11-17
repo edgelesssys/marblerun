@@ -9,6 +9,7 @@ package recovery
 import (
 	"errors"
 
+	"github.com/edgelesssys/marblerun/coordinator/crypto"
 	"github.com/edgelesssys/marblerun/util"
 )
 
@@ -43,7 +44,7 @@ func (r *SinglePartyRecovery) GenerateRecoveryData(recoveryKeys map[string]strin
 	secretMap := make(map[string][]byte, 1)
 	for index, value := range recoveryKeys {
 		// Parse RSA Public Key
-		recoveryk, err := ParseRSAPublicKeyFromPEM(value)
+		recoveryk, err := crypto.ParseRSAPublicKeyFromPEM(value)
 		if err != nil {
 			return nil, nil, err
 		}
