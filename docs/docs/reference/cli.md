@@ -22,9 +22,9 @@ Commands:
   * [signature](#marblerun-manifest-signature): Prints the signature of a MarbleRun manifest
   * [update](#marblerun-manifest-update): Manage manifest updates for the MarbleRun Coordinator
     * [apply](#marblerun-manifest-update-apply): Update the MarbleRun Coordinator with the specified manifest
-    * [acknowledge](#marblerun-manifest-update-acknowledge): Acknowledge a pending update for the MarbleRun Coordinator (Enterprise feature)
-    * [cancel](#marblerun-manifest-update-cancel): Cancel a pending manifest update for the MarbleRun Coordinator (Enterprise feature)
-    * [get](#marblerun-manifest-update-get): View a pending manifest update (Enterprise feature)
+    * [acknowledge](#marblerun-manifest-update-acknowledge): Acknowledge a pending update for the MarbleRun Coordinator
+    * [cancel](#marblerun-manifest-update-cancel): Cancel a pending manifest update for the MarbleRun Coordinator
+    * [get](#marblerun-manifest-update-get): View a pending manifest update
   * [verify](#marblerun-manifest-verify): Verify the signature of a MarbleRun manifest
 * [certificate](#marblerun-certificate): Retrieves the certificate of the MarbleRun Coordinator
   * [root](#marblerun-certificate-root): Returns the root certificate of the MarbleRun Coordinator
@@ -450,11 +450,11 @@ marblerun manifest update apply update-manifest.json $MARBLERUN --cert=admin-cer
 
 ## marblerun manifest update acknowledge
 
-Acknowledge a pending update for the MarbleRun Coordinator (Enterprise feature)
+Acknowledge a pending update for the MarbleRun Coordinator
 
 ### Synopsis
 
-Acknowledge a pending update for the MarbleRun Coordinator (Enterprise feature).
+Acknowledge a pending update for the MarbleRun Coordinator.
 
 In case of multi-party updates, the Coordinator will wait for all participants to acknowledge the update before applying it.
 All participants must use the same manifest to acknowledge the pending update.
@@ -498,11 +498,11 @@ marblerun manifest update acknowledge update-manifest.json $MARBLERUN --cert=adm
 
 ## marblerun manifest update cancel
 
-Cancel a pending manifest update for the MarbleRun Coordinator (Enterprise feature)
+Cancel a pending manifest update for the MarbleRun Coordinator
 
 ### Synopsis
 
-Cancel a pending manifest update for the MarbleRun Coordinator (Enterprise feature).
+Cancel a pending manifest update for the MarbleRun Coordinator.
 
 ```
 marblerun manifest update cancel <IP:PORT> [flags]
@@ -542,11 +542,11 @@ marblerun manifest update cancel $MARBLERUN --cert=admin-cert.pem --key=admin-ke
 
 ## marblerun manifest update get
 
-View a pending manifest update (Enterprise feature)
+View a pending manifest update
 
 ### Synopsis
 
-View a pending manifest update (Enterprise feature).
+View a pending manifest update.
 
 ```
 marblerun manifest update get <IP:PORT> [flags]

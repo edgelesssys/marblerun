@@ -974,8 +974,6 @@ See [Defining a Manifest](../workflows/define-manifest.md) for more information.
 
 ## Acknowledge a pending manifest update
 
-<EnterpriseBanner/>
-
 <Tabs groupId="apiVersion">
 <TabItem value="v2" label="v2">
 
@@ -1092,8 +1090,6 @@ Example response:
 
 ## View a pending manifest update
 
-<EnterpriseBanner/>
-
 <Tabs groupId="apiVersion">
 <TabItem value="v2" label="v2">
 
@@ -1170,8 +1166,6 @@ Example response:
 </Tabs>
 
 ## Cancel a pending manifest update
-
-<EnterpriseBanner/>
 
 <Tabs groupId="apiVersion">
 <TabItem value="v2" label="v2">

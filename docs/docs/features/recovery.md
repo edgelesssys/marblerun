@@ -21,8 +21,6 @@ However, a [manual step](#recovery) is required to recover the Coordinator's sta
 
 ### Distributed Coordinator
 
-<EnterpriseBanner/>
-
 When you use MarbleRun [with Kubernetes](../deployment/kubernetes.md), you can scale the Coordinator to multiple instances.
 The instances share a common state, encrypted and stored as a Kubernetes secret.
 The encryption key is securely distributed among the Coordinator instances via attested TLS.
@@ -45,8 +43,6 @@ The Recovery Key's owner can access the Coordinator's raw state.
 :::
 
 ### Multi-party recovery
-
-<EnterpriseBanner/>
 
 Depending on the use case, it may not be acceptable that the owner has full control over the cluster.
 MarbleRun supports splitting the Recovery Key between parties.

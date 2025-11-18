@@ -49,8 +49,6 @@ Don't define other values except the `SecurityVersion` value for a package, as M
 
 ## Full update
 
-<EnterpriseBanner/>
-
 Some deployment scenarios require more flexibility regarding changes to the manifest. To this end, MarbleRun also allows uploading a full manifest. User-defined secrets and secrets of type `symmetric-key` are retained if their definition doesn't change.
 
 To deploy a new manifest, your user must have a [role assigned that contains the `UpdateManifest` action](define-manifest.md#roles).
