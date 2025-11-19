@@ -86,7 +86,7 @@ func run(log *zap.Logger, validator quote.Validator, issuer quote.Issuer, sealDi
 	store, keyDistributor := setUpStore(backend, sealer, sealDir, validator, issuer, log)
 	distributedStore, _ := store.(*dstore.Store)
 
-	rec := recovery.NewMultiPartyRecovery(distributedStore, log)
+	rec := recovery.New(distributedStore, log)
 
 	// creating core
 	log.Info("Creating the Core object")

@@ -43,7 +43,7 @@ func TestMultiPartyRecoveryMultiWithoutRecoveryData(t *testing.T) {
 	sealer := &seal.MockSealer{}
 	fs := afero.NewMemMapFs()
 	rStore := &fakeStore{}
-	rec := recovery.NewMultiPartyRecovery(rStore, zapLogger)
+	rec := recovery.New(rStore, zapLogger)
 	cStore := stdstore.New(sealer, fs, "", zapLogger)
 
 	c, err := core.NewCore([]string{"localhost"}, validator, issuer, cStore, rec, zapLogger, nil, nil)

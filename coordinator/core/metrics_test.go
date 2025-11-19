@@ -41,7 +41,7 @@ func TestStoreWrapperMetrics(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	fs := afero.NewMemMapFs()
-	recovery := recovery.NewSinglePartyRecovery()
+	recovery := recovery.New(nil, zapLogger)
 
 	//
 	// Test unset restart and set manifest.
@@ -96,7 +96,7 @@ func TestMarbleAPIMetrics(t *testing.T) {
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
-	recovery := recovery.NewSinglePartyRecovery()
+	recovery := recovery.New(nil, zapLogger)
 	promRegistry := prometheus.NewRegistry()
 	promFactory := promauto.With(promRegistry)
 	c, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, afero.NewMemMapFs(), "", zapLogger), recovery, zapLogger, &promFactory, nil)

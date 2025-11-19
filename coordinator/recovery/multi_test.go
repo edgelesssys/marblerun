@@ -124,7 +124,7 @@ func TestMultiPartyRecover(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			assert := assert.New(t)
 
-			r := NewMultiPartyRecovery(nil, zaptest.NewLogger(t))
+			r := New(nil, zaptest.NewLogger(t))
 
 			r.SecretHashMap = make(map[string]bool, len(tc.testStructs))
 			for _, testStruct := range tc.testStructs {

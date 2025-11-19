@@ -94,7 +94,7 @@ func newTestClientAPI(t *testing.T) *clientapi.ClientAPI {
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
 	store := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", log)
-	recovery := recovery.NewSinglePartyRecovery()
+	recovery := recovery.New(nil, log)
 	core, err := core.NewCore([]string{"localhost"}, validator, issuer, store, recovery, log, nil, nil)
 	require.NoError(err)
 

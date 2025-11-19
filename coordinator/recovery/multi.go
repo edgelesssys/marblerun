@@ -32,8 +32,8 @@ type MultiPartyRecovery struct {
 	log *zap.Logger
 }
 
-// NewMultiPartyRecovery generates a multi-party recoverer which the core can use to call recovery functions.
-func NewMultiPartyRecovery(store store, log *zap.Logger) *MultiPartyRecovery {
+// New generates a multi-party recoverer which the core can use to call recovery functions.
+func New(store store, log *zap.Logger) *MultiPartyRecovery {
 	return &MultiPartyRecovery{store: store, log: log}
 }
 

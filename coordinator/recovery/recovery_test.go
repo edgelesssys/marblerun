@@ -31,7 +31,7 @@ func TestMultiPartyRecoveryMultiWithoutRecoveryData(t *testing.T) {
 	zapLogger := zaptest.NewLogger(t)
 
 	rStore := &fakeStore{}
-	rec := NewMultiPartyRecovery(rStore, zapLogger)
+	rec := New(rStore, zapLogger)
 
 	recoveryKeys := map[string]string{
 		"testRecKey1": string(test.RecoveryPublicKeyOne),
