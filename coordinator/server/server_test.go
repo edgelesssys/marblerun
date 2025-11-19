@@ -24,7 +24,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/coordinator/server/handler"
 	v1 "github.com/edgelesssys/marblerun/coordinator/server/v1"
-	test "github.com/edgelesssys/marblerun/test"
+	"github.com/edgelesssys/marblerun/test"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

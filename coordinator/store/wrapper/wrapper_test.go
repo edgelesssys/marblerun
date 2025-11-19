@@ -18,7 +18,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/store"
 	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
 	"github.com/edgelesssys/marblerun/coordinator/user"
-	test "github.com/edgelesssys/marblerun/test"
+	"github.com/edgelesssys/marblerun/test"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

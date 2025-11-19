@@ -45,7 +45,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/store/wrapper/testutil"
 	"github.com/edgelesssys/marblerun/coordinator/updatelog"
 	"github.com/edgelesssys/marblerun/coordinator/user"
-	test "github.com/edgelesssys/marblerun/test"
+	"github.com/edgelesssys/marblerun/test"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
 	"github.com/spf13/afero"

@@ -11,7 +11,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	test "github.com/edgelesssys/marblerun/test"
+	"github.com/edgelesssys/marblerun/test"
 	"github.com/stretchr/testify/assert"
 )
 

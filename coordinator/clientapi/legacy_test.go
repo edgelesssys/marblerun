@@ -26,7 +26,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/store/wrapper"
 	"github.com/edgelesssys/marblerun/coordinator/updatelog"
 	"github.com/edgelesssys/marblerun/coordinator/user"
-	test "github.com/edgelesssys/marblerun/test"
+	"github.com/edgelesssys/marblerun/test"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
