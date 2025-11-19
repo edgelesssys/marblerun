@@ -110,8 +110,8 @@ func CreateServeMux(api handler.ClientAPI, promFactory *promauto.Factory, log *z
 	router.HandleFunc(v2Endpoint+"/recover", handler.GetPost(handler.MethodNotAllowedHandler, serverV2.RecoverPost))
 	router.HandleFunc(v2Endpoint+"/sign-quote", handler.GetPost(handler.MethodNotAllowedHandler, serverV2.SignQuotePost))
 	router.HandleFunc(v2Endpoint+"/monotonic-counter", handler.GetPost(handler.MethodNotAllowedHandler, serverV2.MonotonicCounterPost))
-	router.HandleFunc("/api/v2/update-manifest", handler.GetPost(serverV2.UpdateManifestGet, serverV2.UpdateManifestPost))
-	router.HandleFunc("/api/v2/update-cancel", handler.GetPost(handler.MethodNotAllowedHandler, serverV2.UpdateCancelPost))
+	router.HandleFunc(v2Endpoint+"/update-manifest", handler.GetPost(serverV2.UpdateManifestGet, serverV2.UpdateManifestPost))
+	router.HandleFunc(v2Endpoint+"/update-cancel", handler.GetPost(handler.MethodNotAllowedHandler, serverV2.UpdateCancelPost))
 	return router
 }
 
