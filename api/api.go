@@ -179,10 +179,61 @@ func Recover(ctx context.Context, endpoint string, opts VerifyOptions, recoveryS
 // This is the same as [Recover], but allows passing in the recoverySecretSignature directly,
 // instead of generating it using a [crypto.Signer].
 // The recoveryKeySignature must be a PKCS#1 v1.5 signature over the SHA-256 hash of recoverySecret.
+// recoverySecret may be encrypted using the Coordinator's ephemeral recovery key retrieved using [RecoveryPublicKey] and [EncryptRecoverySecretWithEphemeralKey],
+// but the signature must always be generated over the plain recoverySecret.
 //
 // If this function is called from inside an EGo enclave, the "marblerun_ego_enclave" build tag must be set when building the binary.
 func RecoverWithSignature(ctx context.Context, endpoint string, opts VerifyOptions, recoverySecret, recoverySecretSignature []byte) (remaining int, sgxQuote []byte, err error) {
 	return recoverCoordinator(ctx, endpoint, opts, recoverySecret, recoverySecretSignature)
+}
+
+// RecoveryPublicKey retrieves the Coordinator's ephemeral recovery public key.
+// The key can be used to encrypt recovery secrets before passing them to [RecoverWithSignature].
+//
+// If this function is called from inside an EGo enclave, the "marblerun_ego_enclave" build tag must be set when building the binary.
+func RecoveryPublicKey(ctx context.Context, endpoint string, opts VerifyOptions) (pub crypto.PublicKey, sgxQuote []byte, err error) {
+	opts.setDefaults()
+
+	rootCert, _, sgxQuote, err := VerifyCoordinator(ctx, endpoint, opts)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	client, err := rest.NewClient(endpoint, rootCert, nil)
+	if err != nil {
+		return nil, nil, fmt.Errorf("setting up client: %w", err)
+	}
+
+	body, err := client.Get(ctx, "/api/v2/recover/public-key", http.NoBody)
+	if err != nil {
+		return nil, nil, fmt.Errorf("retrieving recovery public key: %w", err)
+	}
+
+	var response apiv2.RecoveryPublicKeyResponse
+	if err := json.Unmarshal(body, &response); err != nil {
+		return nil, nil, fmt.Errorf("unmarshalling Coordinator response: %w", err)
+	}
+
+	pubBlock, _ := pem.Decode(response.EphemeralPublicKey)
+	if pubBlock == nil {
+		return nil, nil, fmt.Errorf("decoding PEM block: %w", err)
+	}
+	pub, err = x509.ParsePKIXPublicKey(pubBlock.Bytes)
+	if err != nil {
+		return nil, nil, fmt.Errorf("parsing public key: %w", err)
+	}
+	return pub, sgxQuote, nil
+}
+
+// EncryptRecoverySecretWithEphemeralKey encrypts a recovery secret using the ephemeral public key retrieved from [RecoveryPublicKey].
+// The encrypted secret can be passed to [RecoverWithSignature].
+func EncryptRecoverySecretWithEphemeralKey(recoverySecret []byte, recoveryPublicKey crypto.PublicKey) ([]byte, error) {
+	switch pub := recoveryPublicKey.(type) {
+	case *rsa.PublicKey:
+		return rsa.EncryptOAEP(sha256.New(), rand.Reader, pub, recoverySecret, nil)
+	default:
+		return nil, fmt.Errorf("unsupported public key type: %T", pub)
+	}
 }
 
 // DecryptRecoveryData decrypts recovery data returned by a Coordinator during [ManifestSet] using a parties private recovery key.

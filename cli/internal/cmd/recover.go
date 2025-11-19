@@ -14,6 +14,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
 
 	"github.com/edgelesssys/marblerun/api"
 	"github.com/edgelesssys/marblerun/cli/internal/file"
@@ -35,7 +36,7 @@ func NewRecoverCmd() *cobra.Command {
 		RunE:    runRecover,
 	}
 
-	cmd.Flags().StringP("key", "k", "", "Path to a the recovery private key to decrypt and/or sign the recovery key")
+	cmd.Flags().StringP("key", "k", "", "Path to a recovery private key to decrypt and/or sign the recovery key")
 	cmd.Flags().String("pkcs11-config", "", "Path to a PKCS#11 configuration file to load the recovery private key with")
 	cmd.Flags().String("pkcs11-key-id", "", "ID of the private key in the PKCS#11 token")
 	cmd.Flags().String("pkcs11-key-label", "", "Label of the private key in the PKCS#11 token")
@@ -61,7 +62,7 @@ func runRecover(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	keyHandle, cancel, err := getRecoveryKeySigner(cmd, afero.Afero{Fs: fs})
+	keyHandle, cancel, err := getRecoveryKeyHandle(cmd, afero.Afero{Fs: fs})
 	if err != nil {
 		return err
 	}
@@ -93,17 +94,22 @@ func runRecover(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func getRecoveryKeySigner(cmd *cobra.Command, fs afero.Afero) (pkcs11.SignerDecrypter, func() error, error) {
+func getRecoveryKeyHandle(cmd *cobra.Command, fs afero.Afero) (pkcs11.SignerDecrypter, func() error, error) {
 	privKeyFile, err := cmd.Flags().GetString("key")
 	if err != nil {
 		return nil, nil, err
 	}
 
-	if privKeyFile == "" {
-		pkcs11ConfigFile, err := cmd.Flags().GetString("pkcs11-config")
-		if err != nil {
-			return nil, nil, err
-		}
+	pkcs11ConfigFile, err := cmd.Flags().GetString("pkcs11-config")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if pkcs11ConfigFile == "" && privKeyFile == "" {
+		return stubRecoveryKeyHandle{}, func() error { return nil }, nil
+	}
+
+	if pkcs11ConfigFile != "" {
 		pkcs11KeyID, err := cmd.Flags().GetString("pkcs11-key-id")
 		if err != nil {
 			return nil, nil, err
@@ -146,4 +152,18 @@ func maybeDecryptRecoveryKey(recoveryKey []byte, decrypter crypto.Decrypter) ([]
 		return decrypter.Decrypt(rand.Reader, recoveryKey, &rsa.OAEPOptions{Hash: crypto.SHA256})
 	}
 	return recoveryKey, nil
+}
+
+type stubRecoveryKeyHandle struct{}
+
+func (s stubRecoveryKeyHandle) Public() crypto.PublicKey {
+	return s
+}
+
+func (s stubRecoveryKeyHandle) Decrypt(_ io.Reader, _ []byte, _ crypto.DecrypterOpts) ([]byte, error) {
+	return nil, errors.New(`recovery key appears to be encrypted, but no "--key" or "--pkcs11-config" flag was set to load a private key for decryption`)
+}
+
+func (s stubRecoveryKeyHandle) Sign(_ io.Reader, _ []byte, _ crypto.SignerOpts) ([]byte, error) {
+	return nil, errors.New(`signing requires setting either "--key" or "--pkcs11-config"`)
 }
