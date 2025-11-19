@@ -1,0 +1,24 @@
+name: notify failure
+description: "Post a failure message to teams"
+
+inputs:
+  teamsWebhookUri:
+    description: "URI to send a message to the teams channel"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Notify teams channel
+      continue-on-error: true
+      shell: bash
+      run: |
+        cp .github/teams_payload_template.json teams_payload.json
+        yq -iP '.attachments[0].content.body[0].columns[1].items[1].text = "${{ github.workflow }}"' teams_payload.json
+
+        yq -iP '.attachments[0].content.actions[0].url = "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"' teams_payload.json
+        cat teams_payload.json
+        curl \
+          -H "Content-Type: application/json" \
+          -d @teams_payload.json \
+          "${{ inputs.teamsWebhookUri }}"
