@@ -71,7 +71,8 @@ type QuoteSignResponse struct {
 
 // RecoveryRequest is the request structure for the recovery process.
 type RecoveryRequest struct {
-	// RecoverySecret is the decrypted secret (or secret share) to recover the Coordinator.
+	// RecoverySecret is the decrypted secret (or secret share) to recover the Coordinator,
+	// optionally encrypted with the Coordinator's ephemeral recovery key retrieved from "/api/v2/recover/public-key".
 	RecoverySecret []byte `json:"recoverySecret"`
 	// RecoverySecretSignature is the RSA PKCS #1 v1.5 signature over the sha256 hash of the RecoverySecret.
 	RecoverySecretSignature []byte `json:"recoverySecretSignature"`
@@ -83,6 +84,14 @@ type RecoveryResponse struct {
 	Remaining int `json:"remaining"`
 	// Message is a human readable message about the recovery process.
 	Message string `json:"message"`
+}
+
+// RecoveryPublicKeyResponse contains the Coordinator's ephemeral public key used for encrypting recovery secrets.
+type RecoveryPublicKeyResponse struct {
+	// Algorithm of the key, e.g., "RSA".
+	Algorithm string `json:"algorithm,omitempty"`
+	// EphemeralPublicKey is the PEM encoded Coordinator's ephemeral public key used to encrypt recovery secrets.
+	EphemeralPublicKey []byte `json:"ephemeralPublicKey"`
 }
 
 // SecretsGetResponse is the response when retrieving secrets from the Coordinator.

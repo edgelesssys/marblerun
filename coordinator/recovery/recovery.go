@@ -7,6 +7,7 @@ SPDX-License-Identifier: BUSL-1.1
 package recovery
 
 import (
+	"crypto"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -18,6 +19,8 @@ type Recovery interface {
 	GenerateRecoveryData(recoveryKeys map[string]string) (map[string][]byte, []byte, error)
 	RecoverKey(secret []byte) (int, []byte, error)
 	SetRecoveryData(data []byte) error
+	EphemeralPublicKey() (crypto.PublicKey, error)
+	DecryptRecoverySecret(encryptedSecret []byte) ([]byte, error)
 }
 
 func generateRandomKey() ([]byte, error) {
