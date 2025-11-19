@@ -43,6 +43,8 @@ func NewRecoverCmd() *cobra.Command {
 	cmd.MarkFlagsOneRequired("pkcs11-key-id", "pkcs11-key-label", "key")
 	cmd.MarkFlagsMutuallyExclusive("pkcs11-config", "key")
 
+	cmd.AddCommand(newRecoverPublicKeyCmd())
+
 	return cmd
 }
 
