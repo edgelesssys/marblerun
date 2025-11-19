@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package keypb;
+
+option go_package = "github.com/edgelesssys/marblerun/coordinator/distributor/keyserver/keypb";
+
+service API {
+    // GetKeyEncryptionKey returns the key encryption key.
+    rpc GetKeyEncryptionKey(GetKeyEncryptionKeyRequest) returns (GetKeyEncryptionKeyResponse);
+}
+
+message GetKeyEncryptionKeyRequest {
+    // quote is an SGX quote over the TLS certificate of the requesting enclave.
+    bytes quote = 1;
+}
+
+message GetKeyEncryptionKeyResponse {
+    // key is the key encryption key.
+    bytes key = 1;
+}

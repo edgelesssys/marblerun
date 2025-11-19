@@ -198,7 +198,7 @@ func NewCoreWithMocks() *Core {
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
-	recovery := recovery.NewSinglePartyRecovery()
+	recovery := recovery.New(nil, zapLogger)
 	core, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, afero.Afero{Fs: afero.NewMemMapFs()}, "", zapLogger), recovery, zapLogger, nil, nil)
 	if err != nil {
 		panic(err)

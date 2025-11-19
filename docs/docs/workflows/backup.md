@@ -13,8 +13,6 @@ The Coordinator supports live backup, so you can back up its state without stopp
 <Tabs groupId="deployment">
 <TabItem value="distributed" label="Kubernetes, distributed Coordinator">
 
-<EnterpriseBanner/>
-
 Make a copy of the `marblerun-state` Secret in the `marblerun` namespace:
 
 ```bash

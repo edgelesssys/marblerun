@@ -36,8 +36,6 @@ On success, the Coordinator applies the sealed state again. If the Coordinator c
 
 ## Multi-party recovery
 
-<EnterpriseBanner/>
-
 If you've [configured your MarbleRun deployment for multi-party recovery](define-manifest.md#multi-party-recovery), send each party the corresponding [recovery secret](set-manifest.md). Ask them to perform the steps above. Once all parties have uploaded their secrets, the Coordinator recovers the sealed state and continues its operations.
 
 :::note

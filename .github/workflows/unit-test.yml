@@ -1,0 +1,26 @@
+name: 'Test: unit'
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - "**.go"
+      - "**/go.mod"
+  pull_request:
+    paths:
+      - "**.go"
+      - "**/go.mod"
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    container:
+      image: ghcr.io/edgelesssys/edgelessrt-dev:ci
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Test
+        run: go test -race -count=3 ./...

@@ -22,9 +22,9 @@ Commands:
   * [signature](#marblerun-manifest-signature): Prints the signature of a MarbleRun manifest
   * [update](#marblerun-manifest-update): Manage manifest updates for the MarbleRun Coordinator
     * [apply](#marblerun-manifest-update-apply): Update the MarbleRun Coordinator with the specified manifest
-    * [acknowledge](#marblerun-manifest-update-acknowledge): Acknowledge a pending update for the MarbleRun Coordinator (Enterprise feature)
-    * [cancel](#marblerun-manifest-update-cancel): Cancel a pending manifest update for the MarbleRun Coordinator (Enterprise feature)
-    * [get](#marblerun-manifest-update-get): View a pending manifest update (Enterprise feature)
+    * [acknowledge](#marblerun-manifest-update-acknowledge): Acknowledge a pending update for the MarbleRun Coordinator
+    * [cancel](#marblerun-manifest-update-cancel): Cancel a pending manifest update for the MarbleRun Coordinator
+    * [get](#marblerun-manifest-update-get): View a pending manifest update
   * [verify](#marblerun-manifest-verify): Verify the signature of a MarbleRun manifest
 * [certificate](#marblerun-certificate): Retrieves the certificate of the MarbleRun Coordinator
   * [root](#marblerun-certificate-root): Returns the root certificate of the MarbleRun Coordinator
@@ -63,20 +63,20 @@ marblerun install --dcap-pccs-url https://pccs.example.com/sgx/certification/v4/
 ### Options
 
 ```
-      --client-server-port int           Set the client server port. Needs to be configured to the same port as in your client tool stack (default 4433)
-      --dcap-pccs-url string             Provisioning Certificate Caching Service (PCCS) server address. Defaults to Azure PCCS. Mutually exclusive with "--dcap-qcnl-config-file" (default "https://global.acccache.azure.net/sgx/certification/v4/")
-      --dcap-qcnl-config-file string     Path to a custom QCNL configuration file. Mutually exclusive with "--dcap-pccs-url" and "--dcap-secure-cert".
-      --dcap-secure-cert string          To accept insecure HTTPS certificate from the PCCS, set this option to FALSE. Mutually exclusive with "--dcap-qcnl-config-file" (default "TRUE")
-      --disable-auto-injection           Install MarbleRun without auto-injection webhook
-      --domain strings                   Sets additional DNS names and IPs for the Coordinator TLS certificate
-      --enterprise-access-token string   Access token for Enterprise Coordinator. Leave empty for default installation
-  -h, --help                             help for install
-      --marblerun-chart-path string      Path to MarbleRun helm chart
-      --mesh-server-port int             Set the mesh server port. Needs to be configured to the same port as in the data-plane marbles (default 2001)
-      --resource-key string              Resource providing SGX, different depending on used device plugin. Use this to set tolerations/resources if your device plugin is not supported by MarbleRun
-      --simulation                       Set MarbleRun to start in simulation mode
-      --version string                   Version of the Coordinator to install, latest by default
-      --wait                             Wait for MarbleRun installation to complete before returning
+      --client-server-port int         Set the client server port. Needs to be configured to the same port as in your client tool stack (default 4433)
+      --dcap-pccs-url string           Provisioning Certificate Caching Service (PCCS) server address. Defaults to Azure PCCS. Mutually exclusive with "--dcap-qcnl-config-file" (default "https://global.acccache.azure.net/sgx/certification/v4/")
+      --dcap-qcnl-config-file string   Path to a custom QCNL configuration file. Mutually exclusive with "--dcap-pccs-url" and "--dcap-secure-cert".
+      --dcap-secure-cert string        To accept insecure HTTPS certificate from the PCCS, set this option to FALSE. Mutually exclusive with "--dcap-qcnl-config-file" (default "TRUE")
+      --disable-auto-injection         Install MarbleRun without auto-injection webhook
+      --distributed-deployment         Install MarbleRun in distributed deployment mode.
+      --domain strings                 Sets additional DNS names and IPs for the Coordinator TLS certificate
+  -h, --help                           help for install
+      --marblerun-chart-path string    Path to MarbleRun helm chart
+      --mesh-server-port int           Set the mesh server port. Needs to be configured to the same port as in the data-plane marbles (default 2001)
+      --resource-key string            Resource providing SGX, different depending on used device plugin. Use this to set tolerations/resources if your device plugin is not supported by MarbleRun
+      --simulation                     Set MarbleRun to start in simulation mode
+      --version string                 Version of the Coordinator to install, latest by default
+      --wait                           Wait for MarbleRun installation to complete before returning
 ```
 
 ### Options inherited from parent commands
@@ -450,11 +450,11 @@ marblerun manifest update apply update-manifest.json $MARBLERUN --cert=admin-cer
 
 ## marblerun manifest update acknowledge
 
-Acknowledge a pending update for the MarbleRun Coordinator (Enterprise feature)
+Acknowledge a pending update for the MarbleRun Coordinator
 
 ### Synopsis
 
-Acknowledge a pending update for the MarbleRun Coordinator (Enterprise feature).
+Acknowledge a pending update for the MarbleRun Coordinator.
 
 In case of multi-party updates, the Coordinator will wait for all participants to acknowledge the update before applying it.
 All participants must use the same manifest to acknowledge the pending update.
@@ -498,11 +498,11 @@ marblerun manifest update acknowledge update-manifest.json $MARBLERUN --cert=adm
 
 ## marblerun manifest update cancel
 
-Cancel a pending manifest update for the MarbleRun Coordinator (Enterprise feature)
+Cancel a pending manifest update for the MarbleRun Coordinator
 
 ### Synopsis
 
-Cancel a pending manifest update for the MarbleRun Coordinator (Enterprise feature).
+Cancel a pending manifest update for the MarbleRun Coordinator.
 
 ```
 marblerun manifest update cancel <IP:PORT> [flags]
@@ -542,11 +542,11 @@ marblerun manifest update cancel $MARBLERUN --cert=admin-cert.pem --key=admin-ke
 
 ## marblerun manifest update get
 
-View a pending manifest update (Enterprise feature)
+View a pending manifest update
 
 ### Synopsis
 
-View a pending manifest update (Enterprise feature).
+View a pending manifest update.
 
 ```
 marblerun manifest update get <IP:PORT> [flags]

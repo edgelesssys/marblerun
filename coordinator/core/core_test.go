@@ -21,6 +21,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/coordinator/clientapi"
 	"github.com/edgelesssys/marblerun/coordinator/constants"
+	"github.com/edgelesssys/marblerun/coordinator/distributor"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
@@ -71,13 +72,13 @@ func TestSeal(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	fs := afero.NewMemMapFs()
-	recovery := recovery.NewSinglePartyRecovery()
+	recovery := recovery.New(nil, zapLogger)
 
 	c, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, "", zapLogger), recovery, zapLogger, nil, nil)
 	require.NoError(err)
 
 	// Set manifest. This will seal the state.
-	clientAPI, err := clientapi.New(c.txHandle, c.recovery, c, zapLogger)
+	clientAPI, err := clientapi.New(c.txHandle, c.recovery, c, &distributor.Stub{}, zapLogger)
 	require.NoError(err)
 	_, err = clientAPI.SetManifest(ctx, []byte(test.ManifestJSON))
 	require.NoError(err)
@@ -93,7 +94,7 @@ func TestSeal(t *testing.T) {
 	// Check sealing with a new core initialized with the sealed state.
 	c2, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, "", zapLogger), recovery, zapLogger, nil, nil)
 	require.NoError(err)
-	clientAPI, err = clientapi.New(c2.txHandle, c2.recovery, c2, zapLogger)
+	clientAPI, err = clientapi.New(c2.txHandle, c2.recovery, c2, &distributor.Stub{}, zapLogger)
 	require.NoError(err)
 	c2State := testutil.GetState(t, c2.txHandle)
 	assert.Equal(state.AcceptingMarbles, c2State)
@@ -125,15 +126,15 @@ func TestRecover(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	fs := afero.NewMemMapFs()
-	recovery := recovery.NewSinglePartyRecovery()
+	recovery := recovery.New(nil, zapLogger)
 
 	c, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, "", zapLogger), recovery, zapLogger, nil, nil)
 	require.NoError(err)
-	clientAPI, err := clientapi.New(c.txHandle, c.recovery, c, zapLogger)
+	clientAPI, err := clientapi.New(c.txHandle, c.recovery, c, &distributor.Stub{}, zapLogger)
 	require.NoError(err)
 
 	// new core does not allow recover
-	key, sig := recoveryKeyWithSignature(t, test.RecoveryPrivateKey)
+	key, sig := recoveryKeyWithSignature(t, test.RecoveryPrivateKeyOne)
 	_, err = clientAPI.Recover(ctx, key, sig)
 	assert.Error(err)
 
@@ -150,7 +151,7 @@ func TestRecover(t *testing.T) {
 	c2, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, "", zapLogger), recovery, zapLogger, nil, nil)
 	sealer.UnsealError = nil
 	require.NoError(err)
-	clientAPI, err = clientapi.New(c2.txHandle, c2.recovery, c2, zapLogger)
+	clientAPI, err = clientapi.New(c2.txHandle, c2.recovery, c2, &distributor.Stub{}, zapLogger)
 	require.NoError(err)
 	c2State := testutil.GetState(t, c2.txHandle)
 	require.Equal(state.Recovery, c2State)
@@ -303,7 +304,7 @@ func TestUnsetRestart(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	fs := afero.NewMemMapFs()
-	recovery := recovery.NewSinglePartyRecovery()
+	recovery := recovery.New(nil, zapLogger)
 
 	// create a new core, this seals the state with only certificate and keys
 	c1, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, "", zapLogger), recovery, zapLogger, nil, nil)

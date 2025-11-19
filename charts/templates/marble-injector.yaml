@@ -57,7 +57,7 @@ spec:
         - -tlsKeyFile=/etc/webhook/certs/tls.key
         - -sgxResource={{ .Values.marbleInjector.resourceKey }}
         name: marble-injector
-        image: "{{ .Values.marbleInjector.repository }}/{{ .Values.marbleInjector.image }}:{{ .Values.marbleInjector.version }}"
+        image: "{{ .Values.marbleInjector.repository }}/{{ .Values.marbleInjector.image }}:{{ .Values.marbleInjector.version }}@{{ .Values.marbleInjector.hash }}"
         imagePullPolicy: {{ .Values.marbleInjector.pullPolicy }}
         volumeMounts:
           - name: webhook-certs

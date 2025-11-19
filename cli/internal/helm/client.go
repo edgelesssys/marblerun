@@ -8,8 +8,6 @@ package helm
 
 import (
 	"context"
-	"encoding/base64"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -32,16 +30,16 @@ import (
 
 // Options contains the values to set in the helm chart.
 type Options struct {
-	Hostname            []string
-	QCNLConfigFile      string
-	PCCSURL             string
-	UseSecureCert       string
-	AccessToken         string
-	SGXResourceKey      string
-	WebhookSettings     []string
-	SimulationMode      bool
-	CoordinatorRESTPort int
-	CoordinatorGRPCPort int
+	Hostname              []string
+	QCNLConfigFile        string
+	PCCSURL               string
+	UseSecureCert         string
+	DistributedDeployment bool
+	SGXResourceKey        string
+	WebhookSettings       []string
+	SimulationMode        bool
+	CoordinatorRESTPort   int
+	CoordinatorGRPCPort   int
 }
 
 // Client provides functionality to install and uninstall Helm charts.
@@ -158,28 +156,7 @@ func UpdateValues(options Options, chartValues map[string]any) (map[string]any, 
 			)
 		}
 	}
-
-	// Configure enterprise access token
-	if options.AccessToken != "" {
-		coordinatorCfg, ok := chartValues["coordinator"].(map[string]any)
-		if !ok {
-			return nil, errors.New("coordinator not found in chart values")
-		}
-		repository, ok := coordinatorCfg["repository"].(string)
-		if !ok {
-			return nil, errors.New("coordinator.registry not found in chart values")
-		}
-
-		token := options.AccessToken
-
-		// If the token is a PAT, we need to encode it as base64(user:password)
-		if strings.HasPrefix(token, "ghp_") {
-			token = base64.StdEncoding.EncodeToString([]byte(token + ":" + token))
-		}
-
-		pullSecret := fmt.Sprintf(`{"auths":{"%s":{"auth":"%s"}}}`, repository, token)
-		stringValues = append(stringValues, fmt.Sprintf("pullSecret.token=%s", base64.StdEncoding.EncodeToString([]byte(pullSecret))))
-	}
+	stringValues = append(stringValues, fmt.Sprintf("coordinator.distributedDeployment=%t", options.DistributedDeployment))
 
 	if len(options.WebhookSettings) > 0 {
 		stringValues = append(stringValues, options.WebhookSettings...)

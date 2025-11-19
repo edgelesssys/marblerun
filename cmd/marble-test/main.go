@@ -8,6 +8,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -35,6 +36,9 @@ func main() {
 			if err := testMonotonicCounter(); err != nil {
 				log.Fatal(err)
 			}
+			return
+		case "secrets":
+			testSecrets(addr)
 			return
 		}
 	}
@@ -119,4 +123,40 @@ func testMonotonicCounter() error {
 	}
 
 	return nil
+}
+
+func testSecrets(addr string) {
+	if len(os.Args) < 3 {
+		log.Fatalf("usage: %s secrets <secret1> <secret2> ...", os.Args[0])
+	}
+	secretNames := os.Args[2:]
+
+	secrets := make(map[string][]byte)
+
+	for _, secretName := range secretNames {
+		secret, err := os.ReadFile(secretName)
+		if err != nil {
+			log.Fatalf("failed to read secret %s: %s", secretName, err)
+		}
+		secrets[secretName] = secret
+	}
+
+	tlsConfig, err := marble.GetTLSConfig(false)
+	if err != nil {
+		log.Fatalf("failed to get TLS config: %s", err)
+	}
+	srv := &http.Server{
+		Addr:      addr,
+		TLSConfig: tlsConfig,
+	}
+
+	http.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
+		if err := json.NewEncoder(w).Encode(secrets); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	})
+
+	// run sever
+	log.Println("starting server")
+	log.Fatal(srv.ListenAndServeTLS("", ""))
 }

@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/edgelesssys/marblerun/coordinator/clientapi"
+	"github.com/edgelesssys/marblerun/coordinator/distributor"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
@@ -40,7 +41,7 @@ func TestStoreWrapperMetrics(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	fs := afero.NewMemMapFs()
-	recovery := recovery.NewSinglePartyRecovery()
+	recovery := recovery.New(nil, zapLogger)
 
 	//
 	// Test unset restart and set manifest.
@@ -51,7 +52,7 @@ func TestStoreWrapperMetrics(t *testing.T) {
 	assert.Equal(1, promtest.CollectAndCount(c.metrics.coordinatorState))
 	assert.Equal(float64(state.AcceptingManifest), promtest.ToFloat64(c.metrics.coordinatorState))
 
-	clientAPI, err := clientapi.New(c.txHandle, c.recovery, c, zapLogger)
+	clientAPI, err := clientapi.New(c.txHandle, c.recovery, c, &distributor.Stub{}, zapLogger)
 	require.NoError(err)
 	_, err = clientAPI.SetManifest(ctx, []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
@@ -70,10 +71,10 @@ func TestStoreWrapperMetrics(t *testing.T) {
 	assert.Equal(1, promtest.CollectAndCount(c.metrics.coordinatorState))
 	assert.Equal(float64(state.Recovery), promtest.ToFloat64(c.metrics.coordinatorState))
 
-	clientAPI, err = clientapi.New(c.txHandle, c.recovery, c, zapLogger)
+	clientAPI, err = clientapi.New(c.txHandle, c.recovery, c, &distributor.Stub{}, zapLogger)
 	require.NoError(err)
 
-	key, sig := recoveryKeyWithSignature(t, test.RecoveryPrivateKey)
+	key, sig := recoveryKeyWithSignature(t, test.RecoveryPrivateKeyOne)
 	_, err = clientAPI.Recover(ctx, key, sig)
 	require.NoError(err)
 	state := testutil.GetState(t, c.txHandle)
@@ -95,7 +96,7 @@ func TestMarbleAPIMetrics(t *testing.T) {
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
-	recovery := recovery.NewSinglePartyRecovery()
+	recovery := recovery.New(nil, zapLogger)
 	promRegistry := prometheus.NewRegistry()
 	promFactory := promauto.With(promRegistry)
 	c, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, afero.NewMemMapFs(), "", zapLogger), recovery, zapLogger, &promFactory, nil)
@@ -124,7 +125,7 @@ func TestMarbleAPIMetrics(t *testing.T) {
 	assert.Equal(float64(0), promtest.ToFloat64(metrics.activationSuccess.WithLabelValues("backendFirst", marbleUUID.String())))
 
 	// set manifest
-	clientAPI, err := clientapi.New(c.txHandle, c.recovery, c, zapLogger)
+	clientAPI, err := clientapi.New(c.txHandle, c.recovery, c, &distributor.Stub{}, zapLogger)
 	require.NoError(err)
 	_, err = clientAPI.SetManifest(context.Background(), []byte(test.ManifestJSON))
 	require.NoError(err)

@@ -359,7 +359,7 @@ Valid `Actions` are:
 
 * For `"ResourceType": "Secrets"`: `ReadSecret` and `WriteSecret`, allowing reading and writing a secret respectively
 * For `"ResourceType": "Packages"`: `UpdateSecurityVersion`, allowing to update the `SecurityVersion` of a given package
-* For `"ResourceType": "Manifest"`: `UpdateManifest`, allowing to update the full manifest (MarbleRun Enterprise only)
+* For `"ResourceType": "Manifest"`: `UpdateManifest`, allowing to update the full manifest
 
 :::note
 
@@ -443,8 +443,6 @@ awk 1 ORS='\\n' public_key.pem
 ```
 
 ### Multi-party recovery
-
-<EnterpriseBanner/>
 
 To enable [multi-party recovery](../features/recovery.md#multi-party-recovery), first ask the other parties to generate key pairs as described above and receive their public keys via an authenticated channel.
 

@@ -23,6 +23,7 @@ import (
 	libMarble "github.com/edgelesssys/ego/marble"
 	"github.com/edgelesssys/marblerun/coordinator/clientapi"
 	"github.com/edgelesssys/marblerun/coordinator/constants"
+	"github.com/edgelesssys/marblerun/coordinator/distributor"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
@@ -58,7 +59,7 @@ func TestActivate(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	fs := afero.NewMemMapFs()
-	recovery := recovery.NewSinglePartyRecovery()
+	recovery := recovery.New(nil, zapLogger)
 	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, "", zapLogger), recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	require.NotNil(coreServer)
@@ -76,7 +77,7 @@ func TestActivate(t *testing.T) {
 	spawner.newMarble(t, "backendFirst", "Azure", uuid.New(), false)
 
 	// set manifest
-	clientAPI, err := clientapi.New(coreServer.txHandle, coreServer.recovery, coreServer, zapLogger)
+	clientAPI, err := clientapi.New(coreServer.txHandle, coreServer.recovery, coreServer, &distributor.Stub{}, zapLogger)
 	require.NoError(err)
 	_, err = clientAPI.SetManifest(context.Background(), []byte(test.ManifestJSON))
 	require.NoError(err)
@@ -152,13 +153,13 @@ func TestMarbleSecretDerivation(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	fs := afero.NewMemMapFs()
-	recovery := recovery.NewSinglePartyRecovery()
+	recovery := recovery.New(nil, zapLogger)
 	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, "", zapLogger), recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	require.NotNil(coreServer)
 
 	// set manifest
-	clientAPI, err := clientapi.New(coreServer.txHandle, coreServer.recovery, coreServer, zapLogger)
+	clientAPI, err := clientapi.New(coreServer.txHandle, coreServer.recovery, coreServer, &distributor.Stub{}, zapLogger)
 	require.NoError(err)
 	_, err = clientAPI.SetManifest(context.Background(), mnf)
 	require.NoError(err)
@@ -585,7 +586,7 @@ func TestSecurityLevelUpdate(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	fs := afero.NewMemMapFs()
-	recovery := recovery.NewSinglePartyRecovery()
+	recovery := recovery.New(nil, zapLogger)
 	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, "", zapLogger), recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	require.NotNil(coreServer)
@@ -599,7 +600,7 @@ func TestSecurityLevelUpdate(t *testing.T) {
 		coreServer: coreServer,
 	}
 	// set manifest
-	clientAPI, err := clientapi.New(coreServer.txHandle, coreServer.recovery, coreServer, zapLogger)
+	clientAPI, err := clientapi.New(coreServer.txHandle, coreServer.recovery, coreServer, &distributor.Stub{}, zapLogger)
 	require.NoError(err)
 	_, err = clientAPI.SetManifest(ctx, []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
@@ -692,7 +693,7 @@ func TestActivateWithMissingParameters(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	fs := afero.NewMemMapFs()
-	recovery := recovery.NewSinglePartyRecovery()
+	recovery := recovery.New(nil, zapLogger)
 	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, "", zapLogger), recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	require.NotNil(coreServer)
@@ -706,7 +707,7 @@ func TestActivateWithMissingParameters(t *testing.T) {
 		coreServer: coreServer,
 	}
 	// set manifest
-	clientAPI, err := clientapi.New(coreServer.txHandle, coreServer.recovery, coreServer, zapLogger)
+	clientAPI, err := clientapi.New(coreServer.txHandle, coreServer.recovery, coreServer, &distributor.Stub{}, zapLogger)
 	require.NoError(err)
 	_, err = clientAPI.SetManifest(context.Background(), []byte(test.ManifestJSONMissingParameters))
 	require.NoError(err)
@@ -724,10 +725,10 @@ func TestActivateWithTTLSforMarbleWithoutEnvVars(t *testing.T) {
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
 	store := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", log)
-	coreServer, err := NewCore(nil, validator, issuer, store, recovery.NewSinglePartyRecovery(), log, nil, nil)
+	coreServer, err := NewCore(nil, validator, issuer, store, recovery.New(nil, log), log, nil, nil)
 	require.NoError(err)
 
-	clientAPI, err := clientapi.New(coreServer.txHandle, coreServer.recovery, coreServer, coreServer.log)
+	clientAPI, err := clientapi.New(coreServer.txHandle, coreServer.recovery, coreServer, &distributor.Stub{}, coreServer.log)
 	require.NoError(err)
 
 	_, err = clientAPI.SetManifest(context.Background(), []byte(`

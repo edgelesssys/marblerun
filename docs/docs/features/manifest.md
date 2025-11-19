@@ -20,8 +20,6 @@ Choose this approach for deployments with a well-defined scope, but a possibly l
 
 ## Fully updatable deployment
 
-<EnterpriseBanner/>
-
 The manifest allows to [permit a user to update the full manifest](../workflows/define-manifest.md#roles).
 With such a deployment, this user usually needs to be a trusted party.
 Choose this approach for deployments that require full flexibility.

@@ -1,0 +1,71 @@
+name: 'Test: integration'
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - "**.go"
+      - "**/go.mod"
+  pull_request:
+    paths:
+      - "**.go"
+      - "**/go.mod"
+
+jobs:
+  build-test:
+    runs-on: ubuntu-24.04
+    container:
+      image: ghcr.io/edgelesssys/ego-dev:latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Setup
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Build estore sample
+        working-directory: samples/estore
+        run: |
+          ego-go build -tags marblerun_ego_enclave
+          ego sign estore-sample
+
+  integration-test:
+    runs-on: ubuntu-24.04
+    container:
+      image: ghcr.io/edgelesssys/edgelessrt-dev:ci
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Setup
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          mkdir build
+          mkdir build_fakestore
+
+      - name: Build
+        run: |
+          cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
+          make
+        working-directory: build
+
+      - name: Build with fakestore
+        run: |
+          cmake ..
+          COORDINATOR_BUILD_TAGS=fakestore make sign-coordinator sign-marble-test
+          grep 'fake k8s store' coordinator-enclave.signed  # verify that fakestore is enabled
+        working-directory: build_fakestore
+
+      - name: Integration test
+        run: go test -tags integration -b ../build -s
+        working-directory: test
+
+      - name: Integration test (-noenclave)
+        run: go test -tags integration -b ../build -noenclave
+        working-directory: test
+
+      - name: Integration test (fakestore)
+        run: go test -v -tags integration -skip TestRecoverySealedKeyStateBinding -b ../build_fakestore -s
+        working-directory: test

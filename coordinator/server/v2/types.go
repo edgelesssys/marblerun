@@ -130,3 +130,35 @@ type UpdateApplyResponse struct {
 	// MissingUsers is a list of users that have not acknowledged the update.
 	MissingUsers []string `json:"missingUsers"`
 }
+
+// UpdateManifestGetResponse is the response to a GET request to /update-manifest.
+type UpdateManifestGetResponse struct {
+	// Manifest is the pending update manifest.
+	Manifest []byte `json:"manifest"`
+	// Message is a human readable message about the status of the update.
+	Message string `json:"message"`
+	// MissingUsers is a list of users who have not yet acknowledged the update.
+	MissingUsers []string `json:"missingUsers"`
+}
+
+// UpdateManifestPostRequest is the request to a POST request to /update-manifest.
+type UpdateManifestPostRequest struct {
+	// Manifest is the user's acknowledgment of the pending update manifest.
+	Manifest []byte `json:"manifest"`
+}
+
+// UpdateManifestPostResponse is the response to a POST request to /update-manifest.
+type UpdateManifestPostResponse struct {
+	// Message is a human readable message about the status of the update.
+	Message string `json:"message"`
+	// MissingUsers is a list of users who have not yet acknowledged the update.
+	MissingUsers []string `json:"missingUsers"`
+	// MissingAcknowledgements is the number of missing acknowledgments before the update is accepted.
+	MissingAcknowledgments int `json:"missingAcknowledgments"`
+}
+
+// UpdateCancelPostResponse is the response to a POST request to /update-cancel.
+type UpdateCancelPostResponse struct {
+	// Message is a human readable message about the status of the operation.
+	Message string `json:"message"`
+}

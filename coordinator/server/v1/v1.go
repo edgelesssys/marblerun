@@ -10,22 +10,27 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
 
+	"github.com/edgelesssys/marblerun/coordinator/clientapi"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/server/handler"
+	"go.uber.org/zap"
 )
 
 // ClientAPIServer serves the Coordinator's v1 REST API.
 type ClientAPIServer struct {
 	api handler.ClientAPI
+	log *zap.Logger
 }
 
 // NewServer creates a new ClientAPIServer.
-func NewServer(api handler.ClientAPI) *ClientAPIServer {
-	return &ClientAPIServer{api: api}
+func NewServer(api handler.ClientAPI, log *zap.Logger) *ClientAPIServer {
+	return &ClientAPIServer{api: api, log: log}
 }
 
 // StatusGet retrieves the current status of the Coordinator.
@@ -270,4 +275,67 @@ func (s *ClientAPIServer) SecretsPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	handler.WriteJSON(w, nil)
+}
+
+// UpdateManifestPost allows a user to acknowledge the in-progress update manifest.
+// Once all users have acknowledged the manifest, the update is applied.
+func (s *ClientAPIServer) UpdateManifestPost(w http.ResponseWriter, r *http.Request) {
+	s.log.Info("UpdateAcknowledge called")
+	verifiedUser, err := handler.VerifyUser(s.api.VerifyUser, r)
+	if err != nil {
+		s.log.Error("Failed to verify user", zap.Error(err))
+		handler.WriteJSONError(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	rawUpdateManifest, err := io.ReadAll(r.Body)
+	if err != nil {
+		s.log.Error("Failed to read request body", zap.Error(err))
+		handler.WriteJSONError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	_, missing, err := s.api.AcknowledgePendingUpdate(r.Context(), rawUpdateManifest, verifiedUser)
+	if err != nil {
+		if errors.Is(err, clientapi.ErrNoPendingUpdate) {
+			handler.WriteJSONError(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		handler.WriteJSONError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var msg string
+	switch missing {
+	case 0:
+		msg = "All users have acknowledged the update manifest. Update successfully applied"
+	case 1:
+		msg = "1 user still needs to acknowledge the update manifest"
+	default:
+		msg = fmt.Sprintf("%d users still need to acknowledge the update manifest", missing)
+	}
+
+	handler.WriteJSON(w, msg)
+}
+
+// UpdateCancelPost allows a user to cancel the in-progress manifest update.
+func (s *ClientAPIServer) UpdateCancelPost(w http.ResponseWriter, r *http.Request) {
+	s.log.Info("UpdateCancel called")
+	verifiedUser, err := handler.VerifyUser(s.api.VerifyUser, r)
+	if err != nil {
+		s.log.Error("Failed to verify user", zap.Error(err))
+		handler.WriteJSONError(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	if err := s.api.CancelPendingUpdate(r.Context(), verifiedUser); err != nil {
+		if errors.Is(err, clientapi.ErrNoPendingUpdate) {
+			handler.WriteJSONError(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		handler.WriteJSONError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	handler.WriteJSON(w, "Update successfully cancelled")
 }

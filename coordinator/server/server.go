@@ -78,8 +78,8 @@ func RunMarbleServer(core *core.Core, addr string, addrChan chan string, errChan
 
 // CreateServeMux creates a mux that serves the client API.
 func CreateServeMux(api handler.ClientAPI, promFactory *promauto.Factory, log *zap.Logger) serveMux {
-	serverV1 := v1.NewServer(api)
-	serverV2 := v2.NewServer(api)
+	serverV1 := v1.NewServer(api, log)
+	serverV2 := v2.NewServer(api, log)
 	var router serveMux
 	if promFactory != nil {
 		muxRouter := newPromServeMux(promFactory, "server", "client_api")
@@ -97,6 +97,9 @@ func CreateServeMux(api handler.ClientAPI, promFactory *promauto.Factory, log *z
 	router.HandleFunc("/status", logDeprecated(handler.GetPost(serverV1.StatusGet, handler.MethodNotAllowedHandler), log))
 	router.HandleFunc("/quote", logDeprecated(handler.GetPost(serverV1.QuoteGet, handler.MethodNotAllowedHandler), log))
 	router.HandleFunc("/recover", logDeprecated(handler.GetPost(handler.MethodNotAllowedHandler, serverV1.RecoverPost), log))
+	// GET update-manifest is the same in v1 and v2, so we use serverV2 to handle both
+	router.HandleFunc("/update-manifest", handler.GetPost(serverV2.UpdateManifestGet, serverV1.UpdateManifestPost))
+	router.HandleFunc("/update-cancel", handler.GetPost(handler.MethodNotAllowedHandler, serverV1.UpdateCancelPost))
 
 	v2Endpoint := "/api/v2"
 	router.HandleFunc(v2Endpoint+"/manifest", handler.GetPost(serverV2.ManifestGet, serverV2.ManifestPost))
@@ -107,6 +110,8 @@ func CreateServeMux(api handler.ClientAPI, promFactory *promauto.Factory, log *z
 	router.HandleFunc(v2Endpoint+"/recover", handler.GetPost(handler.MethodNotAllowedHandler, serverV2.RecoverPost))
 	router.HandleFunc(v2Endpoint+"/sign-quote", handler.GetPost(handler.MethodNotAllowedHandler, serverV2.SignQuotePost))
 	router.HandleFunc(v2Endpoint+"/monotonic-counter", handler.GetPost(handler.MethodNotAllowedHandler, serverV2.MonotonicCounterPost))
+	router.HandleFunc(v2Endpoint+"/update-manifest", handler.GetPost(serverV2.UpdateManifestGet, serverV2.UpdateManifestPost))
+	router.HandleFunc(v2Endpoint+"/update-cancel", handler.GetPost(handler.MethodNotAllowedHandler, serverV2.UpdateCancelPost))
 	return router
 }
 

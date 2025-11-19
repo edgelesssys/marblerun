@@ -17,6 +17,7 @@ import (
 
 	libMarble "github.com/edgelesssys/ego/marble"
 	"github.com/edgelesssys/marblerun/coordinator/clientapi"
+	"github.com/edgelesssys/marblerun/coordinator/distributor"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
@@ -48,13 +49,13 @@ func TestCertificateVerify(t *testing.T) {
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
 	stor := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zapLogger)
-	recovery := recovery.NewSinglePartyRecovery()
+	recovery := recovery.New(nil, zapLogger)
 	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, stor, recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	require.NotNil(coreServer)
 
 	// set manifest
-	clientAPI, err := clientapi.New(coreServer.txHandle, coreServer.recovery, coreServer, zapLogger)
+	clientAPI, err := clientapi.New(coreServer.txHandle, coreServer.recovery, coreServer, &distributor.Stub{}, zapLogger)
 	require.NoError(err)
 	_, err = clientAPI.SetManifest(context.Background(), []byte(test.ManifestJSON))
 	require.NoError(err)

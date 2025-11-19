@@ -8,38 +8,16 @@ package recovery
 
 import (
 	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
-	"encoding/pem"
-	"errors"
+	"crypto/sha256"
+	"encoding/hex"
 )
 
-// Recovery describes an interface which the core can use to choose a recoverer (e.g. only single-party recoverer, multi-party recoverer) depending on the version of MarbleRun.
+// Recovery describes an interface which the core uses for recovery operations.
 type Recovery interface {
 	GenerateEncryptionKey(recoveryKeys map[string]string) ([]byte, error)
 	GenerateRecoveryData(recoveryKeys map[string]string) (map[string][]byte, []byte, error)
 	RecoverKey(secret []byte) (int, []byte, error)
 	SetRecoveryData(data []byte) error
-}
-
-// ParseRSAPublicKeyFromPEM parses a PEM encoded RSA public key to [*rsa.PublicKey].
-func ParseRSAPublicKeyFromPEM(pemContent string) (*rsa.PublicKey, error) {
-	// Retrieve RSA public key for potential key recovery
-	block, _ := pem.Decode([]byte(pemContent))
-
-	if block == nil || block.Type != "PUBLIC KEY" {
-		return nil, errors.New("invalid public key in manifest")
-	}
-	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
-	if err != nil {
-		return nil, err
-	}
-	recoveryk, ok := pub.(*rsa.PublicKey)
-	if !ok {
-		return nil, errors.New("unsupported type of public key")
-	}
-
-	return recoveryk, nil
 }
 
 func generateRandomKey() ([]byte, error) {
@@ -50,4 +28,12 @@ func generateRandomKey() ([]byte, error) {
 	}
 
 	return generatedValue, nil
+}
+
+// Hash computes the SHA256 hash of the input and returns it as a hex-encoded string.
+func Hash(input []byte) string {
+	hashSum := sha256.Sum256(input)
+	hashSumString := hex.EncodeToString(hashSum[:])
+
+	return hashSumString
 }

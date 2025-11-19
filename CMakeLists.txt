@@ -107,14 +107,14 @@ add_custom_target(cli ALL
 
 add_custom_target(marbletestlib
   ertgo build ${TRIMPATH} -buildmode=c-archive
-  -tags enclave -o ${CMAKE_BINARY_DIR}/libmarbletest.a
+  -tags enclave,marblerun_ego_enclave -o ${CMAKE_BINARY_DIR}/libmarbletest.a
   -buildvcs=false
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/cmd/marble-test
 )
 
 add_custom_target(marble-test-noenclave ALL
   go build ${TRIMPATH}
-  -o ${CMAKE_BINARY_DIR}/marble-test-noenclave
+  -tags marblerun_ego_enclave -o ${CMAKE_BINARY_DIR}/marble-test-noenclave
   -buildvcs=false
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/cmd/marble-test)
 

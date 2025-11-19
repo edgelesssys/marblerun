@@ -66,6 +66,34 @@ const (
 
 	// StartupManifest is a path to a manifest to start with instead of waiting for a manifest from the api.
 	StartupManifest = "EDG_STARTUP_MANIFEST"
+
+	// EnvStoreBackend is the environment variable defining the store backend to use.
+	EnvStoreBackend = "EDG_STORE_BACKEND"
+	// EnvK8sStateName is the environment variable defining the name of the secret
+	// holding the Coordinator's state.
+	EnvK8sStateName = "EDG_K8S_STATE_NAME"
+	// EnvK8sKeyServiceName is the environment variable defining the name of the MarblerRun key distribution service.
+	EnvK8sKeyServiceName = "EDG_K8S_SERVICE_NAME"
+	// EnvK8sKEKMapName is the environment variable defining the name of the ConfigMap holding the sealed KEKs.
+	EnvK8sKEKMapName = "EDG_K8S_KEK_MAP"
+	// EnvK8sDeploymentNamespace is the environment variable defining the namespace of the MarblerRun deployment.
+	EnvK8sDeploymentNamespace = "EDG_K8S_NAMESPACE"
+	// EnvFeatureGates is the environment variable defining the feature gates to enable.
+	EnvFeatureGates = "EDG_ENTERPRISE_LICENSED_FEATURES"
+	// EnvDistributedDeployment indicates whether the Coordinator is deployed in distributed mode.
+	EnvDistributedDeployment = "EDG_DISTRIBUTED_COORDINATOR"
+
+	// EnvKubernetesServiceHost is the environment variable defining the address of the API server.
+	EnvKubernetesServiceHost = "KUBERNETES_SERVICE_HOST"
+	// EnvKubernetesServicePort is the environment variable defining the port of the API server.
+	EnvKubernetesServicePort = "KUBERNETES_SERVICE_PORT"
+
+	// StoreBackendKubernetes indicates that Kubernetes secrets should be used to hold
+	// the Coordinator's state.
+	StoreBackendKubernetes = "k8s-secret"
+
+	// KeyDistributorPort is the port on which the key distributor listens.
+	KeyDistributorPort = "5433"
 )
 
 // SealDirDefault returns the coordinator's default file location to store the sealed state.

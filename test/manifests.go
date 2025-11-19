@@ -17,16 +17,53 @@ import (
 )
 
 var (
-	recoveryPublicKey, recoveryPrivateKey = generateTestRecoveryKey()
+	recoveryPublicKey, recoveryPrivateKey       = generateTestRecoveryKey()
+	recoveryPublicKeyTwo, recoveryPrivateKeyTwo = generateTestRecoveryKey()
 
-	// RecoveryPublicKey is an automatically generated public key for testing recovery.
-	RecoveryPublicKey = recoveryPublicKey
-	// RecoveryPrivateKey is an automatically generated private key for testing recovery.
-	RecoveryPrivateKey = recoveryPrivateKey
+	adminOneCert, adminOnePrivKey = MustGenerateAdminTestCert()
+	adminTwoCert, adminTwoPrivKey = MustGenerateAdminTestCert()
+
+	// AdminOneCert is the client cert of admin one for testing multi-party manifest updates.
+	AdminOneCert = adminOneCert
+	// AdminOnePrivKey is the private key of admin one for testing multi-party manifest updates matching [AdminOneCert].
+	AdminOnePrivKey = adminOnePrivKey
+	// AdminTwoCert is the client cert of admin two for testing multi-party manifest updates.
+	AdminTwoCert = adminTwoCert
+	// AdminTwoPrivKey is the private key of admin two for testing multi-party manifest updates matching [AdminTwoCert].
+	AdminTwoPrivKey = adminTwoPrivKey
+	// RecoveryPublicKeyOne is an automatically generated public key for testing recovery.
+	RecoveryPublicKeyOne = recoveryPublicKey
+	// RecoveryPrivateKeyOne is an automatically generated private key for testing recovery.
+	RecoveryPrivateKeyOne = recoveryPrivateKey
+	// RecoveryPublicKeyTwo is a test recovery public key.
+	RecoveryPublicKeyTwo = recoveryPublicKeyTwo
+	// RecoveryPrivateKeyTwo is a test recovery private key.
+	RecoveryPrivateKeyTwo = recoveryPrivateKeyTwo
 	// AdminCert is an automatically generated test certificate used in unit tests for API features needing additional authentication.
 	// The certificate's private key is [RecoveryPrivateKey].
-	AdminCert = mustGenerateAdminTestCert(RecoveryPrivateKey)
+	AdminCert = mustGenerateAdminTestCert(RecoveryPrivateKeyOne)
 )
+
+// MustGenerateAdminTestCert creates a certificate and private key for testing.
+func MustGenerateAdminTestCert() (cert []byte, privKey *rsa.PrivateKey) {
+	_, key := generateTestRecoveryKey()
+
+	// Create some demo certificate
+	template := x509.Certificate{
+		SerialNumber: big.NewInt(42),
+		IsCA:         false,
+		NotBefore:    time.Now(),
+		NotAfter:     time.Now().Add(time.Hour * 24 * 365),
+	}
+
+	testCertRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
+	if err != nil {
+		panic(err)
+	}
+
+	pemData := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: testCertRaw})
+	return pemData, key
+}
 
 // ManifestJSON is a test manifest.
 const ManifestJSON = `{
@@ -271,7 +308,7 @@ var ManifestJSONWithRecoveryKey = `{
 		}
 	},
 	"RecoveryKeys": {
-		"testRecKey1": "` + pemToJSONString(RecoveryPublicKey) + `"
+		"testRecKey1": "` + pemToJSONString(RecoveryPublicKeyOne) + `"
 	},
 	"Roles": {
 		"secretManager": {
@@ -305,6 +342,107 @@ var ManifestJSONWithRecoveryKey = `{
 				"UpdateSecurityVersion"
 			]
 		}
+	}
+}`
+
+// ManifestJSONWithRecoveryKeys is a test manifest with a dynamically generated RSA keys.
+var ManifestJSONWithRecoveryKeys = `{
+	"Packages": {
+		"frontend": {
+			"SignerID": "1f1e1d1c1b1a191817161514131211100f0e0d0c0b0a09080706050403020100",
+			"ProductID": 44,
+			"SecurityVersion": 3,
+			"Debug": true
+		}
+	},
+	"Infrastructures": {
+		"Azure": {
+			"QESVN": 2,
+			"PCESVN": 3,
+			"CPUSVN": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
+			"RootCA": [3,3,3]
+		}
+	},
+	"Marbles": {
+		"frontend": {
+			"Package": "frontend",
+			"Parameters": {}
+		}
+	},
+	"RecoveryKeys": {
+		"testRecKey1": "` + pemToJSONString(RecoveryPublicKeyOne) + `",
+		"testRecKey2": "` + pemToJSONString(RecoveryPublicKeyTwo) + `"
+	}
+}`
+
+// IntegrationMultiPartyUpdateJSON is a test update manifest with multi-party recovery keys.
+var IntegrationMultiPartyUpdateJSON = `{
+	"Packages": {
+		"frontend": {
+			"SignerID": "1f1e1d1c1b1a191817161514131211100f0e0d0c0b0a09080706050403020100",
+			"ProductID": 999,
+			"SecurityVersion": 3,
+			"Debug": true
+		}
+	},
+	"Infrastructures": {
+		"Azure": {
+			"QESVN": 2,
+			"PCESVN": 3,
+			"CPUSVN": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
+			"RootCA": [3,3,3]
+		}
+	},
+	"Marbles": {
+		"testMarbleApplication": {
+			"Package": "frontend",
+			"Parameters": {
+				"Files": {
+					"/tmp/coordinator_test/defg.txt": "foo",
+					"/tmp/coordinator_test/jkl.mno": "bar"
+				}
+			}
+		}
+	},
+	"Secrets": {
+		"test_cert": {
+			"Type": "cert-rsa",
+			"Size": 2048
+		},
+		"test_cert_ecdsa": {
+			"Type": "cert-ecdsa",
+			"Size": 256,
+			"Shared": true
+		}
+	},
+	"Users": {
+		"admin-1": {
+			"Roles": ["UpdateManifest", "UpdateFrontend"],
+			"Certificate": "` + pemToJSONString(AdminOneCert) + `"
+		},
+		"admin-2": {
+			"Roles": ["UpdateManifest"],
+			"Certificate": "` + pemToJSONString(AdminTwoCert) + `"
+		},
+		"admin-3": {
+			"Roles": ["UpdateManifest"],
+			"Certificate": "` + pemToJSONString(AdminCert) + `"
+		}
+	},
+	"Roles": {
+		"UpdateManifest": {
+			"ResourceType": "Manifest",
+			"Actions": ["UpdateManifest"]
+		},
+		"UpdateFrontend": {
+			"ResourceType": "Packages",
+			"ResourceNames": ["frontend"],
+			"Actions": ["UpdateSecurityVersion"]
+		}
+	},
+	"RecoveryKeys": {
+		"testRecKey1": "` + pemToJSONString(RecoveryPublicKeyOne) + `",
+		"testRecKey2": "` + pemToJSONString(RecoveryPublicKeyTwo) + `"
 	}
 }`
 
@@ -430,7 +568,7 @@ var IntegrationManifestJSON = `{
 		}
 	},
 	"RecoveryKeys": {
-		"testRecKey1": "` + pemToJSONString(RecoveryPublicKey) + `"
+		"testRecKey1": "` + pemToJSONString(RecoveryPublicKeyOne) + `"
 	},
 	"Roles": {
 		"writeRole": {
@@ -462,6 +600,87 @@ var IntegrationManifestJSON = `{
 				"UpdateSecurityVersion"
 			]
 		}
+	}
+}`
+
+// IntegrationMultiPartyManifestJSON is a test manifest with multi-party recovery keys.
+var IntegrationMultiPartyManifestJSON = `{
+	"Packages": {
+		"backend": {
+			"SignerID": "1f1e1d1c1b1a191817161514131211100f0e0d0c0b0a09080706050403020100",
+			"ProductID": 44,
+			"SecurityVersion": 3,
+			"Debug": true
+		}
+	},
+	"Infrastructures": {
+		"Azure": {
+			"QESVN": 2,
+			"PCESVN": 3,
+			"CPUSVN": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
+			"RootCA": [3,3,3]
+		}
+	},
+	"Marbles": {
+		"testMarbleServer": {
+			"Package": "backend",
+			"Parameters": {
+				"Files": {
+					"/tmp/coordinator_test/defg.txt": "foo",
+					"/tmp/coordinator_test/jkl.mno": "bar"
+				},
+				"Argv": [
+					"./marble",
+					"serve"
+				],
+				"Env": {
+					"IS_FIRST": "true"
+				}
+			}
+		},
+		"testMarbleClient": {
+			"Package": "backend",
+			"Parameters": {
+				"Files": {
+					"/tmp/coordinator_test/defg.txt": "foo",
+					"/tmp/coordinator_test/jkl.mno": "bar"
+				},
+				"Env": {
+					"IS_FIRST": "true"
+				}
+			}
+		}
+	},
+	"Secrets": {
+		"test_cert": {
+			"Type": "cert-rsa",
+			"Size": 2048
+		},
+		"test_key": {
+			"Type": "symmetric-key",
+			"Size": 32,
+			"Shared": true
+		}
+	},
+	"Users": {
+		"admin-1": {
+			"Roles": ["UpdateManifest"],
+			"Certificate": "` + pemToJSONString(AdminOneCert) + `"
+		},
+		"admin-2": {
+			"Roles": ["UpdateManifest"],
+			"Certificate": "` + pemToJSONString(AdminTwoCert) + `"
+		}
+	},
+	"Roles": {
+		"UpdateManifest": {
+			"ResourceType": "Manifest",
+			"Actions": ["UpdateManifest"]
+		}
+	},
+	"RecoveryKeys": {
+		"testRecKey1": "` + pemToJSONString(RecoveryPublicKeyOne) + `",
+		"testRecKey2": "` + pemToJSONString(RecoveryPublicKeyTwo) + `"
 	}
 }`
 

@@ -53,8 +53,8 @@ An admin certificate specified in the original manifest is needed to verify the 
 func newUpdateAcknowledge() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "acknowledge <manifest.json> <IP:PORT>",
-		Short: "Acknowledge a pending update for the MarbleRun Coordinator (Enterprise feature)",
-		Long: `Acknowledge a pending update for the MarbleRun Coordinator (Enterprise feature).
+		Short: "Acknowledge a pending update for the MarbleRun Coordinator",
+		Long: `Acknowledge a pending update for the MarbleRun Coordinator.
 
 In case of multi-party updates, the Coordinator will wait for all participants to acknowledge the update before applying it.
 All participants must use the same manifest to acknowledge the pending update.
@@ -71,8 +71,8 @@ All participants must use the same manifest to acknowledge the pending update.
 func newUpdateCancel() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "cancel <IP:PORT>",
-		Short:   "Cancel a pending manifest update for the MarbleRun Coordinator (Enterprise feature)",
-		Long:    "Cancel a pending manifest update for the MarbleRun Coordinator (Enterprise feature).",
+		Short:   "Cancel a pending manifest update for the MarbleRun Coordinator",
+		Long:    "Cancel a pending manifest update for the MarbleRun Coordinator.",
 		Example: `marblerun manifest update cancel $MARBLERUN --cert=admin-cert.pem --key=admin-key.pem --era-config=era.json`,
 		Args:    cobra.ExactArgs(1),
 		RunE:    runUpdateCancel,
@@ -85,8 +85,8 @@ func newUpdateCancel() *cobra.Command {
 func newUpdateGet() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "get <IP:PORT>",
-		Short:   "View a pending manifest update (Enterprise feature)",
-		Long:    "View a pending manifest update (Enterprise feature).",
+		Short:   "View a pending manifest update",
+		Long:    "View a pending manifest update.",
 		Example: `marblerun manifest update get $MARBLERUN --era-config=era.json`,
 		Args:    cobra.ExactArgs(1),
 		RunE:    runUpdateGet,
