@@ -126,13 +126,25 @@ func (s *ClientAPIServer) QuoteGet(w http.ResponseWriter, r *http.Request) {
 // This API endpoint is only available when the coordinator is in recovery mode.
 func (s *ClientAPIServer) RecoverPost(w http.ResponseWriter, r *http.Request) {
 	var req RecoveryRequest
-	if err := json.NewDecoder(io.LimitReader(r.Body, 2048)).Decode(&req); err != nil {
+	if err := json.NewDecoder(io.LimitReader(r.Body, 20480)).Decode(&req); err != nil {
 		handler.WriteJSONFailure(w, nil, err.Error(), http.StatusBadRequest)
 		return
 	}
 
+	// If provided, decrypt the recovery secret
+	recoverySecret := req.RecoverySecret
+	if len(req.RecoverySecret) > 32 { // Recovery secrets are either 16 or 32 bytes long
+		s.log.Debug("Recovery secret is longer than 32 bytes, attempting decryption with ephemeral recovery key")
+		var err error
+		recoverySecret, err = s.api.DecryptRecoverySecret(r.Context(), req.RecoverySecret)
+		if err != nil {
+			handler.WriteJSONFailure(w, nil, fmt.Sprintf("failed to decrypt recovery secret: %s", err), http.StatusBadRequest)
+			return
+		}
+	}
+
 	// Perform recover and receive amount of remaining secrets (for multi-party recovery)
-	remaining, err := s.api.Recover(r.Context(), req.RecoverySecret, req.RecoverySecretSignature)
+	remaining, err := s.api.Recover(r.Context(), recoverySecret, req.RecoverySecretSignature)
 	if err != nil {
 		handler.WriteJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -149,6 +161,20 @@ func (s *ClientAPIServer) RecoverPost(w http.ResponseWriter, r *http.Request) {
 	handler.WriteJSON(w, RecoveryResponse{
 		Remaining: remaining,
 		Message:   statusMessage,
+	})
+}
+
+// RecoveryPublicKeyGet retrieves the Coordinator's ephemeral public key used for encrypting recovery secrets.
+func (s *ClientAPIServer) RecoveryPublicKeyGet(w http.ResponseWriter, r *http.Request) {
+	pubKey, err := s.api.RecoveryPublicKey(r.Context())
+	if err != nil {
+		handler.WriteJSONError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	handler.WriteJSON(w, RecoveryPublicKeyResponse{
+		Algorithm:          "RSA",
+		EphemeralPublicKey: pubKey,
 	})
 }
 

@@ -9,6 +9,7 @@ package clientapi
 import (
 	"bytes"
 	"context"
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/rsa"
@@ -20,16 +21,14 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
-	"fmt"
 	"math/big"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/edgelesssys/ego/attestation"
 	"github.com/edgelesssys/ego/attestation/tcbstatus"
 	"github.com/edgelesssys/marblerun/coordinator/constants"
-	"github.com/edgelesssys/marblerun/coordinator/crypto"
+	ccrypto "github.com/edgelesssys/marblerun/coordinator/crypto"
 	"github.com/edgelesssys/marblerun/coordinator/distributor"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/multiupdate"
@@ -46,7 +45,6 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/updatelog"
 	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/edgelesssys/marblerun/test"
-	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
@@ -412,219 +410,6 @@ func TestGetUpdateLog(t *testing.T) {
 	t.Log("WARNING: Missing unit Test for GetUpdateLog")
 }
 
-func TestRecover(t *testing.T) {
-	_, rootCert := test.MustSetupTestCerts(test.RecoveryPrivateKeyOne)
-	defaultStore := func() store.Store {
-		s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
-		s.SetEncryptionKey([]byte("key"), seal.ModeProductKey) // set encryption key to set seal mode
-		wr := wrapper.New(s)
-		require.NoError(t, wr.PutCertificate(constants.SKCoordinatorRootCert, rootCert))
-		require.NoError(t, wr.PutRawManifest([]byte(test.ManifestJSONWithRecoveryKey)))
-		return s
-	}
-	signData := func(d []byte, k *rsa.PrivateKey) []byte {
-		sig, err := util.SignPKCS1v15(k, d)
-		require.NoError(t, err)
-		return sig
-	}
-
-	testCases := map[string]struct {
-		store          *fakeStore
-		recovery       *stubRecovery
-		core           *fakeCore
-		recoveryKey    []byte
-		recoveryKeySig []byte
-		wantErr        bool
-	}{
-		"success": {
-			store: &fakeStore{
-				store: defaultStore(),
-			},
-			recovery: &stubRecovery{},
-			core: &fakeCore{
-				state: state.Recovery,
-			},
-			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
-			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKeyOne),
-		},
-		"more than one key required": {
-			store: &fakeStore{
-				store: defaultStore(),
-			},
-			recovery: &stubRecovery{
-				recoverKeysLeft: 1,
-			},
-			core: &fakeCore{
-				state: state.Recovery,
-			},
-			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
-			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKeyOne),
-		},
-		"SetRecoveryData fails does not result in error": {
-			store: &fakeStore{
-				store: defaultStore(),
-			},
-			recovery: &stubRecovery{
-				setRecoveryDataErr: assert.AnError,
-			},
-			core: &fakeCore{
-				state: state.Recovery,
-			},
-			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
-			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKeyOne),
-		},
-		"Coordinator not in recovery state": {
-			store: &fakeStore{
-				store: defaultStore(),
-			},
-			recovery: &stubRecovery{},
-			core: &fakeCore{
-				state: state.AcceptingManifest,
-			},
-			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
-			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKeyOne),
-			wantErr:        true,
-		},
-		"RecoverKey fails": {
-			store: &fakeStore{
-				store: defaultStore(),
-			},
-			recovery: &stubRecovery{
-				recoverKeyErr: assert.AnError,
-			},
-			core: &fakeCore{
-				state: state.Recovery,
-			},
-			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
-			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKeyOne),
-			wantErr:        true,
-		},
-		"LoadState fails": {
-			store: &fakeStore{
-				store:        defaultStore(),
-				loadStateErr: assert.AnError,
-			},
-			recovery: &stubRecovery{},
-			core: &fakeCore{
-				state: state.Recovery,
-			},
-			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
-			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKeyOne),
-			wantErr:        true,
-		},
-		"SealEncryptionKey fails does return an error": {
-			store: &fakeStore{
-				store:                defaultStore(),
-				sealEncryptionKeyErr: assert.AnError,
-			},
-			recovery: &stubRecovery{},
-			core: &fakeCore{
-				state: state.Recovery,
-			},
-			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
-			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKeyOne),
-		},
-		"GetCertificate fails": {
-			store: &fakeStore{
-				store: func() store.Store {
-					s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
-					s.SetEncryptionKey([]byte("key"), seal.ModeProductKey) // set encryption key to set seal mode
-					wr := wrapper.New(s)
-					require.NoError(t, wr.PutRawManifest([]byte(test.ManifestJSONWithRecoveryKey)))
-					return s
-				}(),
-			},
-			recovery: &stubRecovery{},
-			core: &fakeCore{
-				state: state.Recovery,
-			},
-			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
-			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKeyOne),
-			wantErr:        true,
-		},
-		"GenerateQuote fails": {
-			store: &fakeStore{
-				store: defaultStore(),
-			},
-			recovery: &stubRecovery{},
-			core: &fakeCore{
-				state:            state.Recovery,
-				generateQuoteErr: assert.AnError,
-			},
-			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
-			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKeyOne),
-			wantErr:        true,
-		},
-		"invalid recovery key signature": {
-			store: &fakeStore{
-				store: defaultStore(),
-			},
-			recovery: &stubRecovery{},
-			core: &fakeCore{
-				state: state.Recovery,
-			},
-			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
-			recoveryKeySig: signData(bytes.Repeat([]byte{0xFF}, 16), test.RecoveryPrivateKeyOne),
-			wantErr:        true,
-		},
-		"manifest defines multiple recovery keys": {
-			store: &fakeStore{
-				store: func() store.Store {
-					s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
-					s.SetEncryptionKey([]byte("key"), seal.ModeProductKey) // set encryption key to set seal mode
-					wr := wrapper.New(s)
-					require.NoError(t, wr.PutCertificate(constants.SKCoordinatorRootCert, rootCert))
-					recoveryKey2Str := fmt.Sprintf("\"testRecKey2\": \"%s\",\"testRecKey1\":", strings.ReplaceAll(string(test.RecoveryPublicKeyOne), "\n", "\\n"))
-					mnf := strings.Replace(test.ManifestJSONWithRecoveryKey, `"testRecKey1":`, recoveryKey2Str, 1)
-					require.NoError(t, wr.PutRawManifest([]byte(mnf)))
-					return s
-				}(),
-			},
-			recovery: &stubRecovery{},
-			core: &fakeCore{
-				state: state.Recovery,
-			},
-			recoveryKey:    bytes.Repeat([]byte{0x01}, 16),
-			recoveryKeySig: signData(bytes.Repeat([]byte{0x01}, 16), test.RecoveryPrivateKeyOne),
-			wantErr:        true,
-		},
-	}
-
-	for name, tc := range testCases {
-		t.Run(name, func(t *testing.T) {
-			assert := assert.New(t)
-			require := require.New(t)
-
-			log := zaptest.NewLogger(t)
-
-			api := &ClientAPI{
-				txHandle:  tc.store,
-				recovery:  tc.recovery,
-				core:      tc.core,
-				keyServer: &distributor.Stub{},
-				log:       log,
-			}
-
-			keysLeft, err := api.Recover(context.Background(), tc.recoveryKey, tc.recoveryKeySig)
-			if tc.wantErr {
-				assert.Error(err)
-				return
-			}
-
-			require.NoError(err)
-			assert.True(tc.core.unlockCalled)
-			assert.Equal(tc.recovery.recoverKeysLeft, keysLeft)
-			if keysLeft > 0 {
-				assert.False(tc.store.loadCalled)
-				return
-			}
-			assert.True(tc.store.setRecoveryDataCalled)
-			assert.True(tc.store.loadCalled)
-			assert.NotNil(tc.core.quote)
-		})
-	}
-}
-
 func TestSetManifest(t *testing.T) {
 	testCases := map[string]struct {
 		store        *fakeStoreTransaction
@@ -754,11 +539,11 @@ func TestSetManifest(t *testing.T) {
 			}
 
 			wrapper := wrapper.New(tc.store)
-			rootCert, rootKey, err := crypto.GenerateCert([]string{"localhost"}, "MarbleRun Unit Test Root", nil, nil, nil)
+			rootCert, rootKey, err := ccrypto.GenerateCert([]string{"localhost"}, "MarbleRun Unit Test Root", nil, nil, nil)
 			require.NoError(err)
-			intermediateCert, intermediateKey, err := crypto.GenerateCert([]string{"localhost"}, "MarbleRun Unit Test Intermediate", nil, rootCert, rootKey)
+			intermediateCert, intermediateKey, err := ccrypto.GenerateCert([]string{"localhost"}, "MarbleRun Unit Test Intermediate", nil, rootCert, rootKey)
 			require.NoError(err)
-			marbleCert, _, err := crypto.GenerateCert([]string{"localhost"}, "MarbleRun Unit Test Marble", intermediateKey, nil, nil)
+			marbleCert, _, err := ccrypto.GenerateCert([]string{"localhost"}, "MarbleRun Unit Test Marble", intermediateKey, nil, nil)
 			require.NoError(err)
 
 			require.NoError(wrapper.PutCertificate(constants.SKCoordinatorRootCert, rootCert))
@@ -973,7 +758,7 @@ func TestSignQuote(t *testing.T) {
 			}
 
 			wrapper := wrapper.New(tc.store)
-			_, rootKey, err := crypto.GenerateCert([]string{"localhost"}, "MarbleRun Unit Test Root", nil, nil, nil)
+			_, rootKey, err := ccrypto.GenerateCert([]string{"localhost"}, "MarbleRun Unit Test Root", nil, nil, nil)
 			require.NoError(err)
 			require.NoError(wrapper.PutPrivateKey(constants.SKCoordinatorRootKey, rootKey))
 
@@ -1054,9 +839,9 @@ func TestFeatureEnabled(t *testing.T) {
 }
 
 func TestVerifyMarble(t *testing.T) {
-	marbleRootCert, marbleRootKey, err := crypto.GenerateCert(nil, "MarbleRun Unit Test Marble", nil, nil, nil)
+	marbleRootCert, marbleRootKey, err := ccrypto.GenerateCert(nil, "MarbleRun Unit Test Marble", nil, nil, nil)
 	require.NoError(t, err)
-	otherRootCert, otherRootKey, err := crypto.GenerateCert(nil, "MarbleRun Unit Test Marble", nil, nil, nil)
+	otherRootCert, otherRootKey, err := ccrypto.GenerateCert(nil, "MarbleRun Unit Test Marble", nil, nil, nil)
 	require.NoError(t, err)
 
 	createCert := func(template *x509.Certificate, rootCert *x509.Certificate, rootKey *ecdsa.PrivateKey) *x509.Certificate {
@@ -1643,7 +1428,7 @@ func (c *fakeCore) GenerateSecrets(newSecrets map[string]manifest.Secret, id uui
 			secret.Public = bytes.Repeat([]byte{0x12, 0x34}, 16)
 			secret.Private = bytes.Repeat([]byte{0x56, 0x78}, 16)
 		case manifest.SecretTypeCertECDSA, manifest.SecretTypeCertED25519, manifest.SecretTypeCertRSA:
-			cert, key, err := crypto.GenerateCert([]string{"localhost"}, name, nil, rootCert, privK)
+			cert, key, err := ccrypto.GenerateCert([]string{"localhost"}, name, nil, rootCert, privK)
 			if err != nil {
 				return nil, err
 			}
@@ -1731,6 +1516,10 @@ type stubRecovery struct {
 	getRecoveryDataRes       []byte
 	getRecoveryDataErr       error
 	setRecoveryDataErr       error
+	ephemeralPublicKey       crypto.PublicKey
+	ephemeralPublicKeyErr    error
+	decryptedRecoverySecret  []byte
+	decryptRecoverySecretErr error
 }
 
 func (s *stubRecovery) GenerateEncryptionKey(_ map[string]string) ([]byte, error) {
@@ -1751,6 +1540,14 @@ func (s *stubRecovery) GetRecoveryData() ([]byte, error) {
 
 func (s *stubRecovery) SetRecoveryData(_ []byte) error {
 	return s.setRecoveryDataErr
+}
+
+func (s *stubRecovery) EphemeralPublicKey() (crypto.PublicKey, error) {
+	return s.ephemeralPublicKey, s.ephemeralPublicKeyErr
+}
+
+func (s *stubRecovery) DecryptRecoverySecret(_ []byte) ([]byte, error) {
+	return s.decryptedRecoverySecret, s.decryptRecoverySecretErr
 }
 
 func mustEncodeToPem(t *testing.T, cert *x509.Certificate) string {
