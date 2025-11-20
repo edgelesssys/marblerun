@@ -9,13 +9,22 @@ package server
 import (
 	"fmt"
 
+	"github.com/edgelesssys/marblerun/coordinator/constants"
+	"github.com/edgelesssys/marblerun/util"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/grpclog"
 )
 
 func replaceGRPCLogger(l *zap.Logger) {
+	options := []zap.Option{
+		zap.AddCallerSkip(2),
+	}
+	if util.Getenv(constants.DebugLogging, constants.DebugLoggingDefault) != "1" {
+		options = append(options, zap.IncreaseLevel(zap.WarnLevel))
+	}
+
 	gl := &grpcLogger{
-		logger:    l.With(zap.String("system", "grpc"), zap.Bool("grpc_log", true)).WithOptions(zap.AddCallerSkip(2)),
+		logger:    l.With(zap.String("system", "grpc"), zap.Bool("grpc_log", true)).WithOptions(options...),
 		verbosity: 0,
 	}
 	grpclog.SetLoggerV2(gl)
