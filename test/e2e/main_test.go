@@ -1027,6 +1027,53 @@ func TestE2EActions(t *testing.T) {
 				return actions
 			}(),
 		},
+		"recover state shamir": {
+			getStartingManifest: func(crt, key []byte, defaultPackage manifest.PackageProperties) manifest.Manifest {
+				mnf := manifest.DefaultManifest(crt, key, defaultPackage)
+				mnf.RecoveryKeys[manifest.DefaultUser2] = mnf.RecoveryKeys[manifest.DefaultUser]
+				mnf.RecoveryKeys["shamir"] = mnf.RecoveryKeys[manifest.DefaultUser]
+				mnf.Config.RecoveryThreshold = 2
+				return mnf
+			},
+			actions: func() []testAction {
+				var actions []testAction
+
+				verifyMarbleHasStarted := func(_ *testing.T, res *http.Response, err error) error {
+					if err != nil {
+						return err
+					}
+					if http.StatusOK != res.StatusCode {
+						return fmt.Errorf("http.Get returned: %s", res.Status)
+					}
+					return nil
+				}
+
+				// Before recovery, a Marble should start without Problems
+				actions = append(actions, verifyMarblePodAction(manifest.DefaultMarble, verifyMarbleHasStarted))
+
+				actions = append(actions, triggerRecoveryActions...)
+
+				// While in recovery mode, the Coordinator should reject new Marbles
+				actions = append(actions, verifyMarblePodAction(manifest.DefaultMarble, func(t *testing.T, _ *http.Response, err error) error {
+					assert.Error(t, err)
+					return nil
+				}))
+
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace string, tmpDir string) {
+					recoverCoordinator(ctx, t, kubectl, cmd, manifest.DefaultUser2, keyFileDefault, namespace, tmpDir)
+				})
+				actions = append(actions, recoverCoordinatorActions...)
+				actions = append(actions, verifyManifestHasntChangedAction)
+
+				// After recovery, Marbles should start again
+				actions = append(actions, verifyMarblePodAction(manifest.DefaultMarble, verifyMarbleHasStarted))
+
+				// Run all test actions again to verify the recovered Coordinator behaves the same
+				actions = append(actions, actions...)
+
+				return actions
+			}(),
+		},
 		"recover state multiparty without recovery data": {
 			getStartingManifest: func(crt, key []byte, defaultPackage manifest.PackageProperties) manifest.Manifest {
 				mnf := manifest.DefaultManifest(crt, key, defaultPackage)

@@ -40,7 +40,7 @@ type Manifest struct {
 	RecoveryKeys map[string]string            `json:"RecoveryKeys,omitempty"`
 	Roles        map[string]manifest.Role     `json:"Roles,omitempty"`
 	TLS          map[string]manifest.TLStag   `json:"TLS,omitempty"`
-	Config       manifest.Config              `json:"Config,omitempty"`
+	Config       manifest.Config              `json:"Config,omitzero"`
 }
 
 // PackageProperties is an alternative to the manifest.PackageProperties struct,

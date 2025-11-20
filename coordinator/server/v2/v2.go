@@ -19,6 +19,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/coordinator/clientapi"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
+	"github.com/edgelesssys/marblerun/coordinator/recovery"
 	"github.com/edgelesssys/marblerun/coordinator/server/handler"
 	"go.uber.org/zap"
 )
@@ -133,8 +134,13 @@ func (s *ClientAPIServer) RecoverPost(w http.ResponseWriter, r *http.Request) {
 
 	// If provided, decrypt the recovery secret
 	recoverySecret := req.RecoverySecret
-	if len(req.RecoverySecret) > 32 { // Recovery secrets are either 16 or 32 bytes long
-		s.log.Debug("Recovery secret is longer than 32 bytes, attempting decryption with ephemeral recovery key")
+	recoverySecretLen := len(req.RecoverySecret)
+	// Recovery secrets are either 32 bytes long (regular recovery), 33 bytes long (shamir's secret sharing)
+	// or 16 bytes long (legacy recover key format). If the length does not match any of these,
+	// we assume the secret is encrypted with the Coordinator's ephemeral recovery key and attempt decryption.
+	if recoverySecretLen != recovery.RecoveryKeySize && recoverySecretLen != recovery.RecoveryKeySize+1 &&
+		recoverySecretLen != recovery.RecoveryKeySizeLegacy {
+		s.log.Debug("Recovery secret appears to be encrypted, attempting decryption with ephemeral recovery key")
 		var err error
 		recoverySecret, err = s.api.DecryptRecoverySecret(r.Context(), req.RecoverySecret)
 		if err != nil {

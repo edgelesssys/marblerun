@@ -1522,7 +1522,7 @@ type stubRecovery struct {
 	decryptRecoverySecretErr error
 }
 
-func (s *stubRecovery) GenerateEncryptionKey(_ map[string]string) ([]byte, error) {
+func (s *stubRecovery) GenerateEncryptionKey(_ map[string]string, _ uint) ([]byte, error) {
 	return s.generateEncryptionKeyRes, s.generateEncryptionKeyErr
 }
 

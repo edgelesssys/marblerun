@@ -10,6 +10,7 @@ package test
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
@@ -754,6 +755,60 @@ func TestRecoveryEncryptedRecoverySecret(t *testing.T) {
 	require.NoError(err)
 	assert.EqualValues(3, statusCode, "Server is in wrong status after recovery.")
 
+	// Verify if a new manifest has been set correctly and we are off to a fresh start
+	f.VerifyCertAfterRecovery(cert, cancelCoordinator, cfg)
+}
+
+func TestShamirRecovery(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+	t.Log("Testing Shamir Secret Sharing recovery...")
+	var multiPartyRecoveryManifest manifest.Manifest
+	require.NoError(json.Unmarshal([]byte(test.IntegrationMultiPartyManifestJSON), &multiPartyRecoveryManifest))
+	multiPartyRecoveryManifest.Config.RecoveryThreshold = 2
+	key, err := rsa.GenerateKey(rand.Reader, 3096)
+	require.NoError(err)
+	pkixPublicKey, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
+	require.NoError(err)
+	publicKeyBlock := &pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: pkixPublicKey,
+	}
+	pubPEM := pem.EncodeToMemory(publicKeyBlock)
+	multiPartyRecoveryManifest.RecoveryKeys["recKey3"] = string(pubPEM)
+	recoveryMnf, err := json.Marshal(multiPartyRecoveryManifest)
+	require.NoError(err)
+	f := framework.New(t, *buildDir, simFlag, *noenclave, marbleTestAddr, meshServerAddr, clientServerAddr, string(recoveryMnf), string(recoveryMnf))
+	cfg := framework.NewCoordinatorConfig()
+	defer cfg.Cleanup()
+	cancelCoordinator := f.StartCoordinator(f.Ctx, cfg)
+	// set Manifest
+	log.Println("Setting the Manifest")
+	recoveryData, err := f.SetManifest(f.TestManifest)
+	require.NoError(err, "failed to set Manifest")
+	// Trigger recovery mode
+	cancelCoordinator, cert := f.TriggerRecovery(cfg, cancelCoordinator)
+	// Decode & Decrypt recovery data from when we set the manifest
+	log.Println("Decoding and decrypting recovery data...")
+	secretOne, err := api.DecryptRecoveryData(recoveryData["testRecKey1"], test.RecoveryPrivateKeyOne)
+	require.NoError(err, "Failed to decrypt the recovery data for testRecKey1.")
+	secretTwo, err := api.DecryptRecoveryData(recoveryData["testRecKey2"], test.RecoveryPrivateKeyTwo)
+	require.NoError(err, "Failed to decrypt the recovery data for testRecKey2.")
+	// Upload first secret to server, server should stay in recovery mode
+	log.Println("Uploading first decrypted secret...")
+	require.NoError(f.SetRecover(secretOne, test.RecoveryPrivateKeyOne))
+	log.Println("Coordinator successfully accepted first decrypted secret.")
+	statusCode, err := f.GetStatus()
+	require.NoError(err)
+	assert.EqualValues(1, statusCode, "Server is not in recovery state, but should be.")
+	// Upload second secret to server, server should be recovered
+	log.Println("Uploading second decrypted secret...")
+	require.NoError(f.SetRecover(secretTwo, test.RecoveryPrivateKeyTwo))
+	log.Println("Coordinator successfully accepted second decrypted secret.")
+	log.Println("Successfully performed recovery, now checking status again...")
+	statusCode, err = f.GetStatus()
+	require.NoError(err)
+	assert.EqualValues(3, statusCode, "Server is in wrong status after recovery.")
 	// Verify if a new manifest has been set correctly and we are off to a fresh start
 	f.VerifyCertAfterRecovery(cert, cancelCoordinator, cfg)
 }

@@ -37,7 +37,7 @@ func TestMultiPartyRecoveryMultiWithoutRecoveryData(t *testing.T) {
 		"testRecKey1": string(test.RecoveryPublicKeyOne),
 		"testRecKey2": string(test.RecoveryPublicKeyTwo),
 	}
-	_, err := rec.GenerateEncryptionKey(recoveryKeys)
+	_, err := rec.GenerateEncryptionKey(recoveryKeys, uint(len(recoveryKeys)))
 	require.NoError(err)
 
 	recoverySecretMap, _, err := rec.GenerateRecoveryData(recoveryKeys)
