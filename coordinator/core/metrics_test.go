@@ -41,14 +41,15 @@ func TestStoreWrapperMetrics(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	fs := afero.NewMemMapFs()
-	recovery := recovery.New(nil, zapLogger)
+	store := stdstore.New(sealer, fs, "", zapLogger)
+	recovery := recovery.New(store, zapLogger)
 
 	//
 	// Test unset restart and set manifest.
 	//
 	reg := prometheus.NewRegistry()
 	fac := promauto.With(reg)
-	c, _ := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, "", zapLogger), recovery, zapLogger, &fac, nil)
+	c, _ := NewCore([]string{"localhost"}, validator, issuer, store, recovery, zapLogger, &fac, nil)
 	assert.Equal(1, promtest.CollectAndCount(c.metrics.coordinatorState))
 	assert.Equal(float64(state.AcceptingManifest), promtest.ToFloat64(c.metrics.coordinatorState))
 
@@ -96,10 +97,11 @@ func TestMarbleAPIMetrics(t *testing.T) {
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
-	recovery := recovery.New(nil, zapLogger)
+	store := stdstore.New(sealer, afero.NewMemMapFs(), "", zapLogger)
+	recovery := recovery.New(store, zapLogger)
 	promRegistry := prometheus.NewRegistry()
 	promFactory := promauto.With(promRegistry)
-	c, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, afero.NewMemMapFs(), "", zapLogger), recovery, zapLogger, &promFactory, nil)
+	c, err := NewCore([]string{"localhost"}, validator, issuer, store, recovery, zapLogger, &promFactory, nil)
 	require.NoError(err)
 	require.NotNil(c)
 

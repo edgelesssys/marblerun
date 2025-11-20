@@ -8,6 +8,11 @@ package recovery
 
 import (
 	"bytes"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
+	"fmt"
 	"testing"
 
 	"github.com/edgelesssys/marblerun/util"
@@ -137,4 +142,111 @@ func TestMultiPartyRecover(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestShamirRecovery(t *testing.T) {
+	log := zaptest.NewLogger(t)
+
+	rStore := &fakeStore{}
+	rec := New(rStore, log)
+
+	recoveryKeysPub := map[string]string{}
+	recoveryKeysPriv := []struct {
+		name    string
+		privKey *rsa.PrivateKey
+	}{}
+	for i := range 10 {
+		recPEM, recPriv := generateRecoveryKey(t)
+		keyName := fmt.Sprintf("testRecKey%d", i+1)
+		recoveryKeysPub[keyName] = string(recPEM)
+		recoveryKeysPriv = append(recoveryKeysPriv, struct {
+			name    string
+			privKey *rsa.PrivateKey
+		}{keyName, recPriv})
+	}
+
+	encryptionKey, err := rec.GenerateEncryptionKey(recoveryKeysPub, 3)
+	require.NoError(t, err)
+	rStore.wantKey = encryptionKey
+
+	recoverySecretMap, _, err := rec.GenerateRecoveryData(recoveryKeysPub)
+	require.NoError(t, err)
+
+	// Try out all combinations
+	for i := range recoveryKeysPriv {
+		t.Run(fmt.Sprintf("combination_%d", i), func(t *testing.T) {
+			assert := assert.New(t)
+			require := require.New(t)
+
+			idx1 := i % len(recoveryKeysPriv)
+			idx2 := (i + 1) % len(recoveryKeysPriv)
+			idx3 := (i + 2) % len(recoveryKeysPriv)
+
+			// Decrypt secrets
+			firstRecoverySecret, err := util.DecryptOAEP(recoveryKeysPriv[idx1].privKey, recoverySecretMap[recoveryKeysPriv[idx1].name])
+			require.NoError(err)
+			secondRecoverySecret, err := util.DecryptOAEP(recoveryKeysPriv[idx2].privKey, recoverySecretMap[recoveryKeysPriv[idx2].name])
+			require.NoError(err)
+			thirdRecoverySecret, err := util.DecryptOAEP(recoveryKeysPriv[idx3].privKey, recoverySecretMap[recoveryKeysPriv[idx3].name])
+			require.NoError(err)
+
+			remaining, _, err := rec.RecoverKey(firstRecoverySecret)
+			assert.NoError(err)
+			assert.Equal(len(recoveryKeysPriv)-1, remaining) // With shamir recovery, we only know the maximum number of required secrets
+
+			remaining, _, err = rec.RecoverKey(secondRecoverySecret)
+			assert.NoError(err)
+			assert.Equal(len(recoveryKeysPriv)-2, remaining)
+
+			remaining, recoveredKey, err := rec.RecoverKey(thirdRecoverySecret)
+			assert.NoError(err)
+			assert.Equal(0, remaining)
+			assert.Equal(encryptionKey, recoveredKey)
+		})
+	}
+
+	t.Run("duplicate secret", func(t *testing.T) {
+		assert := assert.New(t)
+
+		// Decrypt secret
+		firstRecoverySecret, err := util.DecryptOAEP(recoveryKeysPriv[0].privKey, recoverySecretMap[recoveryKeysPriv[0].name])
+		require.NoError(t, err)
+
+		remaining, _, err := rec.RecoverKey(firstRecoverySecret)
+		assert.NoError(err)
+		assert.Equal(len(recoveryKeysPriv)-1, remaining)
+
+		// Provide same secret again
+		remaining, _, err = rec.RecoverKey(firstRecoverySecret)
+		assert.Error(err)
+		assert.Equal(len(recoveryKeysPriv)-1, remaining) // should not have changed
+
+		rec.cleanup()
+	})
+
+	t.Run("invalid secret", func(t *testing.T) {
+		assert := assert.New(t)
+
+		invalidSecret := bytes.Repeat([]byte{0xFF}, 33)
+		remaining, _, err := rec.RecoverKey(invalidSecret)
+		assert.Error(err)
+		assert.Equal(len(recoveryKeysPriv), remaining)
+	})
+}
+
+func generateRecoveryKey(t *testing.T) (publicKeyPem []byte, privateKey *rsa.PrivateKey) {
+	t.Helper()
+	require := require.New(t)
+	key, err := rsa.GenerateKey(rand.Reader, 3096)
+	require.NoError(err)
+
+	pkixPublicKey, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
+	require.NoError(err)
+
+	publicKeyBlock := &pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: pkixPublicKey,
+	}
+
+	return pem.EncodeToMemory(publicKeyBlock), key
 }

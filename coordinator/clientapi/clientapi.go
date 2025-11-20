@@ -18,6 +18,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -352,26 +353,10 @@ func (a *ClientAPI) recover(ctx context.Context, encryptionKey, encryptionKeySig
 	if err != nil {
 		return -1, fmt.Errorf("loading manifest from store: %w", err)
 	}
-	if len(mnf.RecoveryKeys) != len(a.recoverySignatureCache) {
-		return -1, fmt.Errorf("recovery keys in manifest do not match the keys used for recovery: expected %d, got %d", len(mnf.RecoveryKeys), len(a.recoverySignatureCache))
-	}
-	for keyName, keyPEM := range mnf.RecoveryKeys {
-		pubKey, err := crypto.ParseRSAPublicKeyFromPEM(keyPEM)
-		if err != nil {
-			return -1, fmt.Errorf("parsing recovery public key %q: %w", keyName, err)
-		}
 
-		found := false
-		for key, signature := range a.recoverySignatureCache {
-			if err := util.VerifyPKCS1v15(pubKey, []byte(key), signature); err == nil {
-				found = true
-				delete(a.recoverySignatureCache, key)
-				break
-			}
-		}
-		if !found {
-			return -1, fmt.Errorf("no matching recovery key found for recovery public key %q", keyName)
-		}
+	// Make sure the provided recovery keys match the configuration given in the manifest
+	if err := validateRecoveryKeys(mnf, a.recoverySignatureCache); err != nil {
+		return -1, err
 	}
 
 	// cache SGX quote over the root certificate
@@ -464,7 +449,7 @@ func (a *ClientAPI) SetManifest(ctx context.Context, rawManifest []byte) (recove
 	}
 
 	// Set encryption key & generate recovery data
-	encryptionKey, err := a.recovery.GenerateEncryptionKey(mnf.RecoveryKeys)
+	encryptionKey, err := a.recovery.GenerateEncryptionKey(mnf.RecoveryKeys, mnf.Config.RecoveryThreshold)
 	if err != nil {
 		a.log.Error("Could not set up encryption key for sealing the state", zap.Error(err))
 		return nil, fmt.Errorf("generating recovery encryption key: %w", err)
@@ -677,6 +662,10 @@ func (a *ClientAPI) UpdateManifest(ctx context.Context, rawUpdateManifest []byte
 			a.log.Error("UpdateManifest: Invalid manifest: Recovery keys cannot be updated")
 			return nil, 0, errors.New("recovery keys cannot be updated")
 		}
+	}
+	if currentManifest.Config.RecoveryThreshold != updateManifest.Config.RecoveryThreshold {
+		a.log.Error("UpdateManifest: Invalid manifest: Recovery threshold cannot be updated")
+		return nil, 0, errors.New("recovery threshold cannot be updated")
 	}
 
 	// Get all users that are allowed to update the manifest
@@ -1118,4 +1107,58 @@ func encodeMonotonicCounterID(marbleType string, marbleUUID uuid.UUID, name stri
 	// use unambiguous concatenation as counter ID
 	b64 := base64.StdEncoding.EncodeToString
 	return fmt.Sprintf("%s:%s:%s", b64([]byte(marbleType)), b64(marbleUUID[:]), b64([]byte(name)))
+}
+
+func validateRecoveryKeys(mnf manifest.Manifest, recoverySignatureCache map[string][]byte) error {
+	if mnf.Config.RecoveryThreshold == 0 || mnf.Config.RecoveryThreshold == uint(len(mnf.RecoveryKeys)) {
+		if len(mnf.RecoveryKeys) != len(recoverySignatureCache) {
+			return fmt.Errorf("recovery keys in manifest do not match the keys used for recovery: expected %d, got %d", len(mnf.RecoveryKeys), len(recoverySignatureCache))
+		}
+		for keyName, keyPEM := range mnf.RecoveryKeys {
+			pubKey, err := crypto.ParseRSAPublicKeyFromPEM(keyPEM)
+			if err != nil {
+				return fmt.Errorf("parsing recovery public key %q: %w", keyName, err)
+			}
+
+			found := false
+			for key, signature := range recoverySignatureCache {
+				if err := util.VerifyPKCS1v15(pubKey, []byte(key), signature); err == nil {
+					found = true
+					delete(recoverySignatureCache, key)
+					break
+				}
+			}
+			if !found {
+				return fmt.Errorf("no matching recovery key found for recovery public key %q", keyName)
+			}
+		}
+
+		return nil
+	}
+
+	if mnf.Config.RecoveryThreshold != uint(len(recoverySignatureCache)) {
+		return fmt.Errorf("recovery keys in manifest do not match the keys used for recovery: expected %d, got %d", mnf.Config.RecoveryThreshold, len(recoverySignatureCache))
+	}
+	validKeys := make(map[string]string)
+	maps.Copy(validKeys, mnf.RecoveryKeys)
+
+	for key, signature := range recoverySignatureCache {
+		found := false
+		for keyName, keyPEM := range validKeys {
+			pubKey, err := crypto.ParseRSAPublicKeyFromPEM(keyPEM)
+			if err != nil {
+				return fmt.Errorf("parsing recovery public key %q: %w", keyName, err)
+			}
+			if err := util.VerifyPKCS1v15(pubKey, []byte(key), signature); err == nil {
+				found = true
+				delete(validKeys, keyName)
+				break
+			}
+		}
+		if !found {
+			return errors.New("no matching recovery public key found for recovery key")
+		}
+	}
+
+	return nil
 }

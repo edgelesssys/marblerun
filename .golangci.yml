@@ -28,6 +28,8 @@ linters:
         - (*go.uber.org/zap.Logger).Sync
   exclusions:
     generated: lax
+    paths:
+      - "3rdparty/"
     rules:
     # Simplified does not necessarily mean more readable
     - linters: ["staticcheck"]

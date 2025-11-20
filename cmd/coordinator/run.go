@@ -84,9 +84,7 @@ func run(log *zap.Logger, validator quote.Validator, issuer quote.Issuer, sealDi
 		backend = "default"
 	}
 	store, keyDistributor := setUpStore(backend, sealer, sealDir, validator, issuer, log)
-	distributedStore, _ := store.(*dstore.Store)
-
-	rec := recovery.New(distributedStore, log)
+	rec := recovery.New(store, log)
 
 	// creating core
 	log.Info("Creating the Core object")
@@ -98,7 +96,7 @@ func run(log *zap.Logger, validator quote.Validator, issuer quote.Issuer, sealDi
 	}
 
 	// Add quote generator to store so instances regenerate their quotes depending on loaded state
-	if distributedStore != nil {
+	if distributedStore, ok := store.(*dstore.Store); ok {
 		distributedStore.SetQuoteGenerator(co)
 	}
 	clientAPI, err := clientapi.New(store, rec, co, keyDistributor, log)
