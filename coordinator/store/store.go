@@ -28,6 +28,12 @@ type Store interface {
 	// BeginReadTransaction loads the store from a sealed state without committing any data to it,
 	// or modifying the underlying store in any way.
 	BeginReadTransaction(context.Context, []byte) (ReadTransaction, error)
+	// GetCiphertext gets the sealed data from the backend.
+	GetCiphertext() ([]byte, error)
+	// TestKey tests if the given key can be used to decrypt the given ciphertext.
+	TestKey(key, ciphertext []byte) bool
+	// PersistRecoveryData persists the given recovery data if it got lost.
+	PersistRecoveryData(recoveryData []byte) error
 }
 
 // Transaction is a Store transaction.

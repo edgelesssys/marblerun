@@ -72,9 +72,10 @@ func TestSeal(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	fs := afero.NewMemMapFs()
-	recovery := recovery.New(nil, zapLogger)
+	store := stdstore.New(sealer, fs, "", zapLogger)
+	recovery := recovery.New(store, zapLogger)
 
-	c, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, "", zapLogger), recovery, zapLogger, nil, nil)
+	c, err := NewCore([]string{"localhost"}, validator, issuer, store, recovery, zapLogger, nil, nil)
 	require.NoError(err)
 
 	// Set manifest. This will seal the state.
@@ -126,9 +127,10 @@ func TestRecover(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	fs := afero.NewMemMapFs()
-	recovery := recovery.New(nil, zapLogger)
+	store := stdstore.New(sealer, fs, "", zapLogger)
+	recovery := recovery.New(store, zapLogger)
 
-	c, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, "", zapLogger), recovery, zapLogger, nil, nil)
+	c, err := NewCore([]string{"localhost"}, validator, issuer, store, recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	clientAPI, err := clientapi.New(c.txHandle, c.recovery, c, &distributor.Stub{}, zapLogger)
 	require.NoError(err)
@@ -304,10 +306,11 @@ func TestUnsetRestart(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	fs := afero.NewMemMapFs()
-	recovery := recovery.New(nil, zapLogger)
+	store := stdstore.New(sealer, fs, "", zapLogger)
+	recovery := recovery.New(store, zapLogger)
 
 	// create a new core, this seals the state with only certificate and keys
-	c1, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, "", zapLogger), recovery, zapLogger, nil, nil)
+	c1, err := NewCore([]string{"localhost"}, validator, issuer, store, recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	c1State := testutil.GetState(t, c1.txHandle)
 	assert.Equal(state.AcceptingManifest, c1State)
