@@ -21,4 +21,4 @@ jobs:
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
 
       - name: Check for files without license header
-        run: "! grep -rL --include='*.go' -e'Copyright (c) Edgeless Systems GmbH' -e'DO NOT EDIT' | grep ''"
+        run: "! grep -rL --include='*.go' --exclude-dir='3rdparty' -e'Copyright (c) Edgeless Systems GmbH' -e'DO NOT EDIT' | grep ''"
