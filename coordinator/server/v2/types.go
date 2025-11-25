@@ -90,7 +90,7 @@ type RecoveryResponse struct {
 type RecoveryPublicKeyResponse struct {
 	// Algorithm of the key, e.g., "RSA".
 	Algorithm string `json:"algorithm,omitempty"`
-	// EphemeralPublicKey is the PEM encoded Coordinator's ephemeral public key used to encrypt recovery secrets.
+	// EphemeralPublicKey is the DER encoded Coordinator's ephemeral public key used to encrypt recovery secrets.
 	EphemeralPublicKey []byte `json:"ephemeralPublicKey"`
 }
 

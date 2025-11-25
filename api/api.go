@@ -214,11 +214,7 @@ func RecoveryPublicKey(ctx context.Context, endpoint string, opts VerifyOptions)
 		return nil, nil, fmt.Errorf("unmarshalling Coordinator response: %w", err)
 	}
 
-	pubBlock, _ := pem.Decode(response.EphemeralPublicKey)
-	if pubBlock == nil {
-		return nil, nil, fmt.Errorf("decoding PEM block: %w", err)
-	}
-	pub, err = x509.ParsePKIXPublicKey(pubBlock.Bytes)
+	pub, err = x509.ParsePKIXPublicKey(response.EphemeralPublicKey)
 	if err != nil {
 		return nil, nil, fmt.Errorf("parsing public key: %w", err)
 	}

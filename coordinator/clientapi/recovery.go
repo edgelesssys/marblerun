@@ -9,7 +9,6 @@ package clientapi
 import (
 	"context"
 	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 
 	"github.com/edgelesssys/marblerun/coordinator/constants"
@@ -22,7 +21,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// RecoveryPublicKey returns the PEM encoded ephemeral public key to be used for encrypting recovery secrets.
+// RecoveryPublicKey returns the DER encoded ephemeral public key to be used for encrypting recovery secrets.
 func (a *ClientAPI) RecoveryPublicKey(ctx context.Context) ([]byte, error) {
 	a.log.Info("RecoveryPublicKey called")
 	defer a.core.Unlock()
@@ -39,11 +38,7 @@ func (a *ClientAPI) RecoveryPublicKey(ctx context.Context) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("marshalling ephemeral public key: %w", err)
 	}
-	keyPEM := pem.EncodeToMemory(&pem.Block{
-		Type:  "PUBLIC KEY",
-		Bytes: pubKeyDER,
-	})
-	return keyPEM, nil
+	return pubKeyDER, nil
 }
 
 // DecryptRecoverySecret decrypts a recovery which was previously encrypted with the key from [*ClientAPI.RecoveryPublicKey].
