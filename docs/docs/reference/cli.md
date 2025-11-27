@@ -35,6 +35,10 @@ Commands:
   * [get](#marblerun-secret-get): Retrieve secrets from the MarbleRun Coordinator
 * [status](#marblerun-status): Retrieve information about the status of the MarbleRun Coordinator
 * [recover](#marblerun-recover): Recover the MarbleRun Coordinator from a sealed state
+* [recover-with-signature](#marblerun-recover-with-signature): Recover the MarbleRun Coordinator from a sealed state
+  * [public-key](#marblerun-recover-with-signature-public-key): Retrieve the Coordinator's ephemeral public key for encrypting recovery secrets
+  * [encrypt-secret](#marblerun-recover-with-signature-encrypt-secret): Encrypt a recovery secret with the Coordinator's ephemeral public key
+  * [sign-secret](#marblerun-recover-with-signature-sign-secret): Sign a recovery secret using the recovery private key
 * [package-info](#marblerun-package-info): Print the package signature properties of an enclave
 * [version](#marblerun-version): Display version of this CLI and (if running) the MarbleRun Coordinator
 
@@ -951,7 +955,156 @@ marblerun recover recovery_key_file $MARBLERUN
 
 ```
   -h, --help                      help for recover
-  -k, --key string                Path to a the recovery private key to decrypt and/or sign the recovery key
+  -k, --key string                Path to a recovery private key to decrypt and/or sign the recovery key
+      --pkcs11-config string      Path to a PKCS#11 configuration file to load the recovery private key with
+      --pkcs11-key-id string      ID of the private key in the PKCS#11 token
+      --pkcs11-key-label string   Label of the private key in the PKCS#11 token
+```
+
+### Options inherited from parent commands
+
+```
+      --accepted-advisories strings     Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
+      --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
+      --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
+  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
+      --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
+      --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
+```
+
+## marblerun recover-with-signature
+
+Recover the MarbleRun Coordinator from a sealed state
+
+### Synopsis
+
+Recover the MarbleRun Coordinator from a sealed state.
+`recovery_key_file` may be either a decrypted recovery secret,
+or a recovery secret encrypted with the Coordinator's ephemeral public key.
+
+```
+marblerun recover-with-signature <recovery_key_file> <IP:PORT> [flags]
+```
+
+### Examples
+
+```
+marblerun recover-with-signature recovery_key_file $MARBLERUN --signature recovery.sig
+```
+
+### Options
+
+```
+  -h, --help               help for recover-with-signature
+  -s, --signature string   Path to a signature of the recovery secret
+```
+
+### Options inherited from parent commands
+
+```
+      --accepted-advisories strings     Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
+      --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
+      --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
+  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
+      --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
+      --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
+```
+
+## marblerun recover-with-signature public-key
+
+Retrieve the Coordinator's ephemeral public key for encrypting recovery secrets
+
+### Synopsis
+
+Retrieve the Coordinator's ephemeral public key for encrypting recovery secrets.
+
+```
+marblerun recover-with-signature public-key <IP:PORT> [flags]
+```
+
+### Options
+
+```
+  -h, --help            help for public-key
+  -o, --output string   File to save the public key to
+```
+
+### Options inherited from parent commands
+
+```
+      --accepted-advisories strings     Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
+      --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
+      --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
+  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
+      --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
+      --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
+```
+
+## marblerun recover-with-signature encrypt-secret
+
+Encrypt a recovery secret with the Coordinator's ephemeral public key
+
+### Synopsis
+
+Encrypt a recovery secret with the Coordinator's ephemeral public key.
+`recovery_key_file` may be either a decrypted recovery secret, or an encrypted recovery secret,
+in which case a private key is required to decrypt the secret.
+
+```
+marblerun recover-with-signature encrypt-secret <recovery_key_file> [flags]
+```
+
+### Options
+
+```
+      --coordinator-pub-key string   Path to the Coordinator's PEM encoded ephemeral public key to encrypt the recovery secret with
+  -h, --help                         help for encrypt-secret
+  -k, --key string                   Path to a recovery private key to decrypt and/or sign the recovery key
+  -o, --output string                File to save the encrypted secret to
+      --pkcs11-config string         Path to a PKCS#11 configuration file to load the recovery private key with
+      --pkcs11-key-id string         ID of the private key in the PKCS#11 token
+      --pkcs11-key-label string      Label of the private key in the PKCS#11 token
+```
+
+### Options inherited from parent commands
+
+```
+      --accepted-advisories strings     Comma-separated list of user accepted Intel Security Advisories for SWHardeningNeeded TCB status. If empty, all advisories are accepted
+      --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
+      --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
+      --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
+  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
+      --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
+      --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
+```
+
+## marblerun recover-with-signature sign-secret
+
+Sign a recovery secret using the recovery private key
+
+### Synopsis
+
+Sign a recovery secret using the recovery private key.
+`recovery_key_file` may be either a decrypted recovery secret, or an encrypted recovery secret,
+in which case the private key is used to decrypt the secret.
+
+```
+marblerun recover-with-signature sign-secret <recovery_key_file> [flags]
+```
+
+### Options
+
+```
+  -h, --help                      help for sign-secret
+  -k, --key string                Path to a recovery private key to decrypt and/or sign the recovery key
+  -o, --output string             File to save the signature to
       --pkcs11-config string      Path to a PKCS#11 configuration file to load the recovery private key with
       --pkcs11-key-id string      ID of the private key in the PKCS#11 token
       --pkcs11-key-label string   Label of the private key in the PKCS#11 token
