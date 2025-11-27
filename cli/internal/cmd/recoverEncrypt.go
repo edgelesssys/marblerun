@@ -39,6 +39,7 @@ func newRecoverEncryptSecretCmd() *cobra.Command {
 	must(cobra.MarkFlagFilename(cmd.Flags(), "coordinator-pub-key", "pem"))
 	cmd.MarkFlagsMutuallyExclusive("pkcs11-config", "key")
 	must(cmd.MarkFlagRequired("coordinator-pub-key"))
+	must(cmd.MarkFlagRequired("output"))
 
 	return cmd
 }
@@ -95,13 +96,8 @@ func runRecoverEncryptSecret(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if output != "" {
-		if err := file.New(output, fs).Write(encryptedSecret); err != nil {
-			return fmt.Errorf("writing encrypted secret to file: %w", err)
-		}
-	} else {
-		cmd.Printf("%s\n", encryptedSecret)
+	if err := file.New(output, fs).Write(encryptedSecret); err != nil {
+		return fmt.Errorf("writing encrypted secret to file: %w", err)
 	}
-
 	return nil
 }

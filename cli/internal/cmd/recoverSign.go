@@ -18,10 +18,12 @@ import (
 func newRecoverSignSecretCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "sign-secret <recovery_key_file>",
-		Short: "Retrieve the Coordinator's ephemeral public key for encrypting recovery secrets",
-		Long:  "Retrieve the Coordinator's ephemeral public key for encrypting recovery secrets.",
-		RunE:  runRecoverSign,
-		Args:  cobra.ExactArgs(1),
+		Short: "Sign a recovery secret using the recovery private key",
+		Long: "Sign a recovery secret using the recovery private key.\n" +
+			"`recovery_key_file` may be either a decrypted recovery secret, or an encrypted recovery secret,\n" +
+			"in which case the private key is used to decrypt the secret.",
+		RunE: runRecoverSign,
+		Args: cobra.ExactArgs(1),
 	}
 
 	cmd.Flags().StringP("output", "o", "", "File to save the signature to")
@@ -32,6 +34,7 @@ func newRecoverSignSecretCmd() *cobra.Command {
 	must(cobra.MarkFlagFilename(cmd.Flags(), "pkcs11-config", "json"))
 	cmd.MarkFlagsOneRequired("pkcs11-key-id", "pkcs11-key-label", "key")
 	cmd.MarkFlagsMutuallyExclusive("pkcs11-config", "key")
+	must(cmd.MarkFlagRequired("output"))
 
 	return cmd
 }
@@ -71,13 +74,8 @@ func runRecoverSign(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if output != "" {
-		if err := sigFile.Write(signature); err != nil {
-			return fmt.Errorf("writing signature to file: %w", err)
-		}
-	} else {
-		cmd.Printf("%s\n", signature)
+	if err := sigFile.Write(signature); err != nil {
+		return fmt.Errorf("writing signature to file: %w", err)
 	}
-
 	return nil
 }
