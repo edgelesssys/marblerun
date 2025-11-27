@@ -37,6 +37,8 @@ type ClientAPI interface {
 	UpdateManifest(ctx context.Context, rawUpdateManifest []byte, updater *user.User) ([]string, int, error)
 	WriteSecrets(ctx context.Context, secrets map[string]manifest.UserSecret, updater *user.User) error
 	FeatureEnabled(ctx context.Context, feature string) bool
+	RecoveryPublicKey(ctx context.Context) ([]byte, error)
+	DecryptRecoverySecret(ctx context.Context, encryptedSecret []byte) ([]byte, error)
 
 	GetPendingUpdate(ctx context.Context) (*multiupdate.MultiPartyUpdate, error)
 	AcknowledgePendingUpdate(ctx context.Context, rawUpdateManifest []byte, user *user.User) ([]string, int, error)

@@ -78,7 +78,7 @@ func TestGetRecoveryKeySigner(t *testing.T) {
 			cmd := NewRecoverCmd()
 			require.NoError(t, cmd.Flags().Set("key", tc.keyFlag))
 
-			signer, cancel, err := getRecoveryKeySigner(cmd, afero.Afero{Fs: tc.fs})
+			signer, cancel, err := getRecoveryKeyHandle(cmd, afero.Afero{Fs: tc.fs})
 			if tc.wantErr {
 				assert.Error(err)
 				return

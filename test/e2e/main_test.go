@@ -885,6 +885,103 @@ func TestE2EActions(t *testing.T) {
 				return actions
 			}(),
 		},
+		"recover state ephemeral encryption": {
+			getStartingManifest: manifest.DefaultManifest,
+			actions: func() []testAction {
+				var actions []testAction
+
+				actions = append(actions, triggerRecoveryActions...)
+
+				recoveryDir := "recovery"
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
+					require.NoError(t, os.RemoveAll(filepath.Join(tmpDir, recoveryDir)))
+					require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, recoveryDir), 0o755))
+				})
+
+				// Extract recovery secret
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
+					require := require.New(t)
+					recoveryJSON, err := os.ReadFile(filepath.Join(tmpDir, recoveryDataFile))
+					require.NoError(err)
+
+					t.Logf("Parsing recovery data from %s", recoveryJSON)
+					encryptedRecoveryKeyFile := filepath.Join(tmpDir, "encrypted_recovery_key")
+					encryptedRecoveryData := map[string]map[string][]byte{}
+					require.NoError(json.Unmarshal(recoveryJSON, &encryptedRecoveryData))
+					keyMap := encryptedRecoveryData["RecoverySecrets"]
+					require.NoError(os.WriteFile(encryptedRecoveryKeyFile, keyMap[manifest.DefaultUser], 0o644))
+				})
+
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
+					t.Logf("Retrieving ephemeral encryption key from the Coordinator")
+					withPortForwardAny(ctx, t, kubectl, namespace, func(port string) error {
+						_, err := cmd.Run(ctx,
+							"recover-with-signature", "public-key", net.JoinHostPort(localhost, port),
+							"--output", filepath.Join(tmpDir, recoveryDir, "coordinator_public_key.pem"),
+							eraConfig,
+						)
+						return err
+					})
+				})
+
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
+					t.Logf("Signing recovery secret with private key")
+					_, err := cmd.Run(ctx,
+						"recover-with-signature", "sign-secret",
+						filepath.Join(tmpDir, "encrypted_recovery_key"),
+						"--output", filepath.Join(tmpDir, recoveryDir, "recovery_secret.sig"),
+						"--key", filepath.Join(tmpDir, keyFileDefault),
+					)
+					require.NoError(t, err)
+				})
+
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
+					t.Logf("Encrypting recovery secret with Coordinator public key")
+					_, err := cmd.Run(ctx,
+						"recover-with-signature", "encrypt-secret",
+						filepath.Join(tmpDir, "encrypted_recovery_key"),
+						"--key", filepath.Join(tmpDir, keyFileDefault),
+						"--coordinator-pub-key", filepath.Join(tmpDir, recoveryDir, "coordinator_public_key.pem"),
+						"--output", filepath.Join(tmpDir, recoveryDir, "recovery_secret.enc"),
+					)
+					require.NoError(t, err)
+				})
+
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
+					t.Logf("Recovering Coordinator")
+					withPortForwardAny(ctx, t, kubectl, namespace, func(port string) error {
+						_, err := cmd.Run(ctx,
+							"recover-with-signature",
+							filepath.Join(tmpDir, recoveryDir, "recovery_secret.enc"), net.JoinHostPort(localhost, port),
+							"--signature", filepath.Join(tmpDir, recoveryDir, "recovery_secret.sig"),
+							eraConfig,
+						)
+						return err
+					})
+				})
+
+				// Verify recovered Coordinator has manifest set
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace string, _ string) {
+					getStatus(ctx, t, kubectl, cmd, namespace, state.AcceptingMarbles)
+				})
+
+				// Scale instances back up
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, _ *cmd.Cmd, namespace string, _ string) {
+					t.Logf("Scaling up Coordinator deployment to %d", *replicas)
+					require.NoError(t, kubectl.ScaleDeployment(ctx, namespace, coordinatorDeployment, *replicas))
+				})
+
+				// Verify all instances are accepting marbles
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace string, _ string) {
+					getStatus(ctx, t, kubectl, cmd, namespace, state.AcceptingMarbles)
+				})
+
+				// Run all test actions again to verify the recovered Coordinator behaves the same
+				actions = append(actions, actions...)
+
+				return actions
+			}(),
+		},
 		"recover state multiparty": {
 			getStartingManifest: func(crt, key []byte, defaultPackage manifest.PackageProperties) manifest.Manifest {
 				mnf := manifest.DefaultManifest(crt, key, defaultPackage)

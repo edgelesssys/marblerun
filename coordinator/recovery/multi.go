@@ -7,12 +7,16 @@ SPDX-License-Identifier: BUSL-1.1
 package recovery
 
 import (
+	"crypto"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
 
-	"github.com/edgelesssys/marblerun/coordinator/crypto"
+	ccrypto "github.com/edgelesssys/marblerun/coordinator/crypto"
 	"github.com/edgelesssys/marblerun/util"
 	"go.uber.org/zap"
 )
@@ -24,6 +28,8 @@ type MultiPartyRecovery struct {
 	SecretHashMap  map[string]bool
 	correctSecrets int
 	combinedKey    []byte
+	// ephemeralSecretKey can be used by clients to encrypt their recovery secrets before sending them to the Coordinator.
+	ephemeralSecretKey *rsa.PrivateKey
 
 	// These are used if the recovery data got lost
 	store           store
@@ -65,7 +71,7 @@ func (r *MultiPartyRecovery) GenerateRecoveryData(recoveryKeys map[string]string
 		r.secretMap = make(map[string][]byte, 1)
 		for index, value := range recoveryKeys {
 			// Parse RSA Public Key
-			recoveryk, err := crypto.ParseRSAPublicKeyFromPEM(value)
+			recoveryk, err := ccrypto.ParseRSAPublicKeyFromPEM(value)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -108,6 +114,28 @@ func (r *MultiPartyRecovery) SetRecoveryData(data []byte) error {
 
 	r.SecretHashMap = secretHashMap
 	return nil
+}
+
+// EphemeralPublicKey returns the ephemeral public key to encrypt recovery secrets.
+func (r *MultiPartyRecovery) EphemeralPublicKey() (crypto.PublicKey, error) {
+	if r.ephemeralSecretKey == nil {
+		ephemeralKey, err := rsa.GenerateKey(rand.Reader, 4096)
+		if err != nil {
+			return nil, err
+		}
+		r.ephemeralSecretKey = ephemeralKey
+	}
+
+	return &r.ephemeralSecretKey.PublicKey, nil
+}
+
+// DecryptRecoverySecret decrypts an encrypted recovery secret using the ephemeral secret key.
+func (r *MultiPartyRecovery) DecryptRecoverySecret(encryptedSecret []byte) ([]byte, error) {
+	if r.ephemeralSecretKey == nil {
+		return nil, errors.New("ephemeral secret key not set")
+	}
+
+	return rsa.DecryptOAEP(sha256.New(), nil, r.ephemeralSecretKey, encryptedSecret, nil)
 }
 
 func (r *MultiPartyRecovery) multiPartyRecover(secret []byte) (int, []byte, error) {
@@ -160,6 +188,7 @@ func (r *MultiPartyRecovery) multiPartyRecover(secret []byte) (int, []byte, erro
 func (r *MultiPartyRecovery) cleanup() {
 	r.correctSecrets = 0
 	r.combinedKey = nil
+	r.ephemeralSecretKey = nil
 
 	for index := range r.SecretHashMap {
 		r.SecretHashMap[index] = true
@@ -259,7 +288,7 @@ func generateMultiPartyRecoveryKey(recoveryKeys map[string]string, log *zap.Logg
 	for index, singleRecoveryKey := range recoveryKeys {
 		log.Debug("Generating key share for encryption key", zap.String("recoveryKey", index))
 		// Retrieve RSA public key for potential key recovery
-		recoveryk, err := crypto.ParseRSAPublicKeyFromPEM(singleRecoveryKey)
+		recoveryk, err := ccrypto.ParseRSAPublicKeyFromPEM(singleRecoveryKey)
 		if err != nil {
 			return nil, nil, nil, err
 		}
