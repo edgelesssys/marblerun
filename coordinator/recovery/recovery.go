@@ -14,7 +14,9 @@ import (
 )
 
 const (
-	RecoveryKeySize       = 32
+	// RecoveryKeySize is the size of recovery keys in bytes.
+	RecoveryKeySize = 32
+	// RecoveryKeySizeLegacy is the size of legacy recovery keys in bytes.
 	RecoveryKeySizeLegacy = 16
 )
 
