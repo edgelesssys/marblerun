@@ -78,7 +78,7 @@ func TestActivate(t *testing.T) {
 	spawner.newMarble(t, "backendFirst", "Azure", uuid.New(), false)
 
 	// set manifest
-	clientAPI, err := clientapi.New(coreServer.txHandle, coreServer.recovery, coreServer, &distributor.Stub{}, zapLogger)
+	clientAPI, err := clientapi.New(coreServer.txHandle, coreServer.recovery, coreServer, &distributor.Stub{}, stubEnabler{}, zapLogger)
 	require.NoError(err)
 	_, err = clientAPI.SetManifest(context.Background(), []byte(test.ManifestJSON))
 	require.NoError(err)
@@ -161,7 +161,7 @@ func TestMarbleSecretDerivation(t *testing.T) {
 	require.NotNil(coreServer)
 
 	// set manifest
-	clientAPI, err := clientapi.New(coreServer.txHandle, coreServer.recovery, coreServer, &distributor.Stub{}, zapLogger)
+	clientAPI, err := clientapi.New(coreServer.txHandle, coreServer.recovery, coreServer, &distributor.Stub{}, stubEnabler{}, zapLogger)
 	require.NoError(err)
 	_, err = clientAPI.SetManifest(context.Background(), mnf)
 	require.NoError(err)
@@ -603,7 +603,7 @@ func TestSecurityLevelUpdate(t *testing.T) {
 		coreServer: coreServer,
 	}
 	// set manifest
-	clientAPI, err := clientapi.New(coreServer.txHandle, coreServer.recovery, coreServer, &distributor.Stub{}, zapLogger)
+	clientAPI, err := clientapi.New(coreServer.txHandle, coreServer.recovery, coreServer, &distributor.Stub{}, stubEnabler{}, zapLogger)
 	require.NoError(err)
 	_, err = clientAPI.SetManifest(ctx, []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
@@ -711,7 +711,7 @@ func TestActivateWithMissingParameters(t *testing.T) {
 		coreServer: coreServer,
 	}
 	// set manifest
-	clientAPI, err := clientapi.New(coreServer.txHandle, coreServer.recovery, coreServer, &distributor.Stub{}, zapLogger)
+	clientAPI, err := clientapi.New(coreServer.txHandle, coreServer.recovery, coreServer, &distributor.Stub{}, stubEnabler{}, zapLogger)
 	require.NoError(err)
 	_, err = clientAPI.SetManifest(context.Background(), []byte(test.ManifestJSONMissingParameters))
 	require.NoError(err)
@@ -732,7 +732,7 @@ func TestActivateWithTTLSforMarbleWithoutEnvVars(t *testing.T) {
 	coreServer, err := NewCore(nil, validator, issuer, store, recovery.New(store, log), log, nil, nil)
 	require.NoError(err)
 
-	clientAPI, err := clientapi.New(coreServer.txHandle, coreServer.recovery, coreServer, &distributor.Stub{}, coreServer.log)
+	clientAPI, err := clientapi.New(coreServer.txHandle, coreServer.recovery, coreServer, &distributor.Stub{}, stubEnabler{}, coreServer.log)
 	require.NoError(err)
 
 	_, err = clientAPI.SetManifest(context.Background(), []byte(`

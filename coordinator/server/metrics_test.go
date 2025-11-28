@@ -98,8 +98,12 @@ func newTestClientAPI(t *testing.T) *clientapi.ClientAPI {
 	core, err := core.NewCore([]string{"localhost"}, validator, issuer, store, recovery, log, nil, nil)
 	require.NoError(err)
 
-	api, err := clientapi.New(store, recovery, core, &distributor.Stub{}, log)
+	api, err := clientapi.New(store, recovery, core, &distributor.Stub{}, stubEnabler{}, log)
 	require.NoError(err)
 
 	return api
 }
+
+type stubEnabler struct{}
+
+func (stubEnabler) Enable() {}

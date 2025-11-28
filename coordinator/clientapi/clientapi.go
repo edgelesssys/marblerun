@@ -78,6 +78,10 @@ type keyDistributionServer interface {
 	StartSharing(context.Context) error
 }
 
+type hsmSealer interface {
+	Enable()
+}
+
 // QuoteVerifyError is returned if a given quote could not be verified.
 type QuoteVerifyError struct {
 	err error
@@ -100,6 +104,7 @@ type ClientAPI struct {
 	txHandle               transactionHandle
 	recoverySignatureCache map[string][]byte
 	keyServer              keyDistributionServer
+	hsmSealer              hsmSealer
 
 	updateLog updateLog
 	log       *zap.Logger
@@ -107,7 +112,7 @@ type ClientAPI struct {
 
 // New returns an initialized instance of the ClientAPI.
 func New(txHandle transactionHandle, recovery recovery.Recovery, core core,
-	keyServer keyDistributionServer, log *zap.Logger,
+	keyServer keyDistributionServer, hsmSealer hsmSealer, log *zap.Logger,
 ) (*ClientAPI, error) {
 	updateLog, err := updatelog.New()
 	if err != nil {
@@ -119,6 +124,7 @@ func New(txHandle transactionHandle, recovery recovery.Recovery, core core,
 		recovery:  recovery,
 		txHandle:  txHandle,
 		keyServer: keyServer,
+		hsmSealer: hsmSealer,
 		updateLog: updateLog,
 		log:       log,
 	}, nil
@@ -309,6 +315,10 @@ func (a *ClientAPI) SetManifest(ctx context.Context, rawManifest []byte) (recove
 	}
 	if err := mnf.Check(a.log); err != nil {
 		return nil, fmt.Errorf("checking manifest: %w", err)
+	}
+
+	if manifestFeatureEnabled(mnf, manifest.FeatureAzureHSMSealing) {
+		a.hsmSealer.Enable()
 	}
 
 	txdata, rollback, commit, err := wrapper.WrapTransaction(ctx, a.txHandle)
@@ -561,6 +571,10 @@ func (a *ClientAPI) UpdateManifest(ctx context.Context, rawUpdateManifest []byte
 	if currentManifest.Config.RecoveryThreshold != updateManifest.Config.RecoveryThreshold {
 		a.log.Error("UpdateManifest: Invalid manifest: Recovery threshold cannot be updated")
 		return nil, 0, errors.New("recovery threshold cannot be updated")
+	}
+	if manifestFeatureEnabled(currentManifest, manifest.FeatureAzureHSMSealing) != manifestFeatureEnabled(updateManifest, manifest.FeatureAzureHSMSealing) {
+		a.log.Error("UpdateManifest: Invalid manifest: Azure HSM sealing feature cannot be updated")
+		return nil, 0, errors.New("azure HSM sealing feature cannot be updated")
 	}
 
 	// Get all users that are allowed to update the manifest
@@ -993,6 +1007,10 @@ func (a *ClientAPI) FeatureEnabled(ctx context.Context, feature string) bool {
 		return false
 	}
 
+	return manifestFeatureEnabled(mnf, feature)
+}
+
+func manifestFeatureEnabled(mnf manifest.Manifest, feature string) bool {
 	return slices.ContainsFunc(mnf.Config.FeatureGates, func(s string) bool {
 		return strings.EqualFold(s, feature)
 	})

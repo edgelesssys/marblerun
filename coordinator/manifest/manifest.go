@@ -15,10 +15,12 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"text/template"
 
+	"github.com/edgelesssys/marblerun/coordinator/constants"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/edgelesssys/marblerun/util"
@@ -45,6 +47,9 @@ const (
 
 	// FeatureMonotonicCounter enables the monotonic counter feature and the /monotonic-counter endpoint.
 	FeatureMonotonicCounter = "MonotonicCounter"
+
+	// FeatureAzureHSMSealing enables the additional sealing of the data encryption key using Azure HSM.
+	FeatureAzureHSMSealing = "AzureHSMSealing"
 )
 
 // Manifest defines the rules of a MarbleRun deployment.
@@ -522,8 +527,22 @@ func (m Manifest) Check(zaplogger *zap.Logger) error {
 	}
 
 	for _, feature := range m.Config.FeatureGates {
-		switch feature {
-		case FeatureSignQuoteEndpoint, FeatureMonotonicCounter:
+		switch strings.ToLower(feature) {
+		case strings.ToLower(FeatureSignQuoteEndpoint), strings.ToLower(FeatureMonotonicCounter):
+		case strings.ToLower(FeatureAzureHSMSealing):
+			var missingEnvs []string
+			if os.Getenv(constants.EnvMAAURL) == "" {
+				missingEnvs = append(missingEnvs, constants.EnvMAAURL)
+			}
+			if os.Getenv(constants.EnvHSMVaultURL) == "" {
+				missingEnvs = append(missingEnvs, constants.EnvHSMVaultURL)
+			}
+			if os.Getenv(constants.EnvHSMKeyName) == "" {
+				missingEnvs = append(missingEnvs, constants.EnvHSMKeyName)
+			}
+			if len(missingEnvs) > 0 {
+				return fmt.Errorf("manifest enables sealing with Azure HSM key, but required environment variables are not set: %v", missingEnvs)
+			}
 		default:
 			return fmt.Errorf("unknown feature gate: %s", feature)
 		}
