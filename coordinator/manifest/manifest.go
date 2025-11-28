@@ -45,6 +45,9 @@ const (
 
 	// FeatureMonotonicCounter enables the monotonic counter feature and the /monotonic-counter endpoint.
 	FeatureMonotonicCounter = "MonotonicCounter"
+
+	// FeatureAzureHSMSealing enables the additional sealing of the data encryption key using Azure HSM.
+	FeatureAzureHSMSealing = "AzureHSMSealing"
 )
 
 // Manifest defines the rules of a MarbleRun deployment.

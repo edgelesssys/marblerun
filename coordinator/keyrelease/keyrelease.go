@@ -22,6 +22,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/keyvault/azkeys"
 	"github.com/edgelesssys/ego/enclave"
+	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/lestrrat-go/jwx/v3/jws"
@@ -34,14 +35,19 @@ const (
 
 // KeyReleaser releases keys from an Azure Key Vault using Secure Key Release.
 type KeyReleaser struct {
-	keyName    string
-	keyVersion string
-	maaURL     string
-	client     *azkeys.Client
+	seal.Sealer
+
+	enabled bool
+
+	hsmSealingKey []byte
+	keyName       string
+	keyVersion    string
+	maaURL        string
+	client        *azkeys.Client
 }
 
 // New creates a new [KeyReleaser] with credentials from environment variables.
-func New() (*KeyReleaser, error) {
+func New(sealer seal.Sealer) (*KeyReleaser, error) {
 	vaultURL := os.Getenv("EDG_SKR_VAULT_URL")
 	if err := os.Setenv("AZURE_CLIENT_ID", os.Getenv("EDG_AZURE_CLIENT_ID")); err != nil {
 		return nil, err
@@ -75,17 +81,19 @@ func New() (*KeyReleaser, error) {
 	}
 
 	return &KeyReleaser{
+		Sealer:     sealer,
 		keyName:    keyName,
 		keyVersion: keyVersion,
 		maaURL:     maaURL,
 		client:     client,
+		enabled:    vaultURL != "" && keyName != "" && maaURL != "",
 	}, nil
 }
 
-// GetKey requests the release of a key from Azure Key Vault by providing
+// getKey requests the release of a key from Azure Key Vault by providing
 // an Azure attestation token. The policy on the key must allow release based
 // on the claims in the provided token.
-func (k *KeyReleaser) GetKey(ctx context.Context) ([]byte, error) {
+func (k *KeyReleaser) getKey(ctx context.Context) ([]byte, error) {
 	wrappingKey, jwk, err := createWrappingKey()
 	if err != nil {
 		return nil, err

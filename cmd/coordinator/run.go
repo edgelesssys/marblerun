@@ -24,6 +24,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/distributor/keyclient"
 	"github.com/edgelesssys/marblerun/coordinator/distributor/keyserver"
 	"github.com/edgelesssys/marblerun/coordinator/events"
+	"github.com/edgelesssys/marblerun/coordinator/keyrelease"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
 	"github.com/edgelesssys/marblerun/coordinator/seal"
@@ -58,6 +59,11 @@ func run(log *zap.Logger, validator quote.Validator, issuer quote.Issuer, sealDi
 	meshServerAddr := util.Getenv(constants.MeshAddr, constants.MeshAddrDefault)
 	promServerAddr := os.Getenv(constants.PromAddr)
 	startupManifest := os.Getenv(constants.StartupManifest)
+
+	sealer, err := keyrelease.New(sealer)
+	if err != nil {
+		log.Fatal("Failed to create KeyReleaser", zap.Error(err))
+	}
 
 	// Create Prometheus resources and start the Prometheus server.
 	eventlog := events.NewLog()
