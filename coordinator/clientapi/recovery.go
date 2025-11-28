@@ -187,7 +187,7 @@ func validateRecoveryKeys(mnf manifest.Manifest, recoverySignatureCache map[stri
 	}
 
 	if mnf.Config.RecoveryThreshold != uint(len(recoverySignatureCache)) {
-		return fmt.Errorf("recovery keys in manifest do not match the keys used for recovery: expected %d, got %d", mnf.Config.RecoveryThreshold, len(recoverySignatureCache))
+		return fmt.Errorf("recovery threshold in manifest does not match the number of keys used for recovery: expected %d, got %d", mnf.Config.RecoveryThreshold, len(recoverySignatureCache))
 	}
 	validKeys := make(map[string]string)
 	maps.Copy(validKeys, mnf.RecoveryKeys)

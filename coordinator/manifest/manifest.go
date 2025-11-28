@@ -529,8 +529,11 @@ func (m Manifest) Check(zaplogger *zap.Logger) error {
 		}
 	}
 
-	if len(m.RecoveryKeys) < int(m.Config.RecoveryThreshold) {
+	if uint(len(m.RecoveryKeys)) < m.Config.RecoveryThreshold {
 		return fmt.Errorf("not enough recovery keys (%d) defined to meet the recovery threshold of %d", len(m.RecoveryKeys), m.Config.RecoveryThreshold)
+	}
+	if m.Config.RecoveryThreshold == 1 {
+		return fmt.Errorf("invalid recovery threshold: if set, threshold must be at least 2")
 	}
 
 	return nil

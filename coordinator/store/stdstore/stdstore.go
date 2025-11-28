@@ -262,18 +262,16 @@ func (s *StdStore) TestKey(key, ciphertext []byte) bool {
 
 // PersistRecoveryData persists the given recovery data to disk if it got lost.
 func (s *StdStore) PersistRecoveryData(recoveryData []byte) error {
-	sealedData, err := s.fs.ReadFile(filepath.Join(s.sealDir, SealedDataFname))
+	currentData, err := s.fs.ReadFile(filepath.Join(s.sealDir, SealedDataFname))
 	if err != nil {
 		return fmt.Errorf("reading sealed data from disk: %w", err)
 	}
 
-	currentData := make([]byte, len(sealedData))
-	copy(currentData, sealedData)
 	if len(currentData) < 4 || binary.LittleEndian.Uint32(currentData) != 0 {
 		return errors.New("expected empty recovery data, refusing to overwrite")
 	}
 
-	sealedData = binary.LittleEndian.AppendUint32(nil, uint32(len(recoveryData)))
+	sealedData := binary.LittleEndian.AppendUint32(nil, uint32(len(recoveryData)))
 	sealedData = append(sealedData, recoveryData...)
 	sealedData = append(sealedData, currentData[4:]...)
 

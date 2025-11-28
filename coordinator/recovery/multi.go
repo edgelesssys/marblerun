@@ -47,10 +47,9 @@ func New(store store, log *zap.Logger) *MultiPartyRecovery {
 func (r *MultiPartyRecovery) GenerateEncryptionKey(recoveryKeys map[string]string, recoveryThreshold uint) ([]byte, error) {
 	var err error
 
-	// Generate a single random key for single-party recovery, or generate multiple keys and XOR them together for multi-party recovery
 	switch {
 	// If only one recovery keys is provided, generate a single random key for single-party recovery
-	case len(recoveryKeys) == 1:
+	case len(recoveryKeys) <= 1:
 		r.log.Debug("Single recovery key received, generating single-party encryption key")
 		r.encryptionKey, err = generateRandomKey()
 	// If multiple keys are provided, and the recovery threshold equals the amount of provided keys (or is 0, i.e. the default),
