@@ -24,6 +24,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/distributor/keyclient"
 	"github.com/edgelesssys/marblerun/coordinator/distributor/keyserver"
 	"github.com/edgelesssys/marblerun/coordinator/events"
+	"github.com/edgelesssys/marblerun/coordinator/keyrelease"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
 	"github.com/edgelesssys/marblerun/coordinator/seal"
@@ -59,6 +60,11 @@ func run(log *zap.Logger, validator quote.Validator, issuer quote.Issuer, sealDi
 	promServerAddr := os.Getenv(constants.PromAddr)
 	startupManifest := os.Getenv(constants.StartupManifest)
 
+	hsmSealer, err := keyrelease.New(sealer, log)
+	if err != nil {
+		log.Fatal("Failed to create KeyReleaser", zap.Error(err))
+	}
+
 	// Create Prometheus resources and start the Prometheus server.
 	eventlog := events.NewLog()
 	var promRegistry *prometheus.Registry
@@ -83,7 +89,7 @@ func run(log *zap.Logger, validator quote.Validator, issuer quote.Issuer, sealDi
 	if !distributedDeployment {
 		backend = "default"
 	}
-	store, keyDistributor := setUpStore(backend, sealer, sealDir, validator, issuer, log)
+	store, keyDistributor := setUpStore(backend, hsmSealer, sealDir, validator, issuer, log)
 	rec := recovery.New(store, log)
 
 	// creating core
@@ -99,7 +105,7 @@ func run(log *zap.Logger, validator quote.Validator, issuer quote.Issuer, sealDi
 	if distributedStore, ok := store.(*dstore.Store); ok {
 		distributedStore.SetQuoteGenerator(co)
 	}
-	clientAPI, err := clientapi.New(store, rec, co, keyDistributor, log)
+	clientAPI, err := clientapi.New(store, rec, co, keyDistributor, hsmSealer, log)
 	if err != nil {
 		log.Fatal("Creating client server failed", zap.Error(err))
 	}

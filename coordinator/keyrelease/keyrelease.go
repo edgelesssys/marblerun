@@ -22,10 +22,13 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/keyvault/azkeys"
 	"github.com/edgelesssys/ego/enclave"
+	"github.com/edgelesssys/marblerun/coordinator/constants"
+	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/lestrrat-go/jwx/v3/jws"
 	"github.com/tink-crypto/tink-go/v2/kwp/subtle"
+	"go.uber.org/zap"
 )
 
 const (
@@ -34,27 +37,34 @@ const (
 
 // KeyReleaser releases keys from an Azure Key Vault using Secure Key Release.
 type KeyReleaser struct {
-	keyName    string
-	keyVersion string
-	maaURL     string
-	client     *azkeys.Client
+	seal.Sealer
+
+	enabled       bool
+	hsmSealingKey []byte
+	keyName       string
+	keyVersion    string
+	maaURL        string
+	client        *azkeys.Client
+
+	log *zap.Logger
 }
 
 // New creates a new [KeyReleaser] with credentials from environment variables.
-func New() (*KeyReleaser, error) {
-	vaultURL := os.Getenv("EDG_SKR_VAULT_URL")
-	if err := os.Setenv("AZURE_CLIENT_ID", os.Getenv("EDG_AZURE_CLIENT_ID")); err != nil {
+func New(sealer seal.Sealer, log *zap.Logger) (*KeyReleaser, error) {
+	if err := os.Setenv(constants.EnvAzureClientID, os.Getenv("EDG_"+constants.EnvAzureClientID)); err != nil {
 		return nil, err
 	}
-	if err := os.Setenv("AZURE_TENANT_ID", os.Getenv("EDG_AZURE_TENANT_ID")); err != nil {
+	if err := os.Setenv(constants.EnvAzureTenantID, os.Getenv("EDG_"+constants.EnvAzureTenantID)); err != nil {
 		return nil, err
 	}
-	if err := os.Setenv("AZURE_CLIENT_SECRET", os.Getenv("EDG_AZURE_CLIENT_SECRET")); err != nil {
+	if err := os.Setenv(constants.EnvAzureClientSecret, os.Getenv("EDG_"+constants.EnvAzureClientSecret)); err != nil {
 		return nil, err
 	}
-	keyName := os.Getenv("EDG_SKR_KEY_NAME")
-	keyVersion := os.Getenv("EDG_SKR_KEY_VERSION")
-	maaURL := util.Getenv("EDG_MAA_URL", "https://shareduks.uks.attest.azure.net") // fallback to uk-south attestation provider
+
+	vaultURL := os.Getenv(constants.EnvHSMVaultURL)
+	keyName := os.Getenv(constants.EnvHSMKeyName)
+	keyVersion := os.Getenv(constants.EnvHSMKeyVersion)
+	maaURL := util.Getenv(constants.EnvMAAURL, "https://shareduks.uks.attest.azure.net") // fallback to uk-south attestation provider
 
 	cred, err := azidentity.NewDefaultAzureCredential(&azidentity.DefaultAzureCredentialOptions{
 		ClientOptions: azcore.ClientOptions{
@@ -75,47 +85,59 @@ func New() (*KeyReleaser, error) {
 	}
 
 	return &KeyReleaser{
+		Sealer:     sealer,
 		keyName:    keyName,
 		keyVersion: keyVersion,
 		maaURL:     maaURL,
 		client:     client,
+		enabled:    false,
+		log:        log,
 	}, nil
 }
 
-// GetKey requests the release of a key from Azure Key Vault by providing
+// Enable the wrapping and unwrapping of keys using an HSM key from Azure Key Vault.
+func (k *KeyReleaser) Enable() {
+	k.enabled = true
+}
+
+// requestKey requests the release of a key from Azure Key Vault by providing
 // an Azure attestation token. The policy on the key must allow release based
 // on the claims in the provided token.
-func (k *KeyReleaser) GetKey(ctx context.Context) ([]byte, error) {
+func (k *KeyReleaser) requestKey(ctx context.Context) error {
+	k.log.Debug("Creating wrapping key")
 	wrappingKey, jwk, err := createWrappingKey()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// The key vault expects the token to be created over a JWK Set containing an RSA key.
 	// The key will be used by the vault to encrypt the released key before sending it to the caller.
+	k.log.Debug("Requesting Azure attestation token")
 	attestationToken, err := enclave.CreateAzureAttestationToken(jwk, k.maaURL)
 	if err != nil {
-		return nil, fmt.Errorf("creating Azure attestation token: %w", err)
+		return fmt.Errorf("creating Azure attestation token: %w", err)
 	}
 
 	nonce := make([]byte, 16)
 	if _, err = rand.Read(nonce); err != nil {
-		return nil, fmt.Errorf("generating nonce: %w", err)
+		return fmt.Errorf("generating nonce: %w", err)
 	}
 
 	// Request key release
+	k.log.Debug("Requesting key release from Azure Key Vault")
 	res, err := k.client.Release(ctx, k.keyName, k.keyVersion, azkeys.ReleaseParameters{
 		TargetAttestationToken: &attestationToken,
 		Enc:                    toPtr(azkeys.KeyEncryptionAlgorithmRSAAESKEYWRAP384),
 		Nonce:                  toPtr(string(nonce)),
 	}, nil)
 	if err != nil {
-		return nil, fmt.Errorf("requesting key release: %w", err)
+		return fmt.Errorf("requesting key release: %w", err)
 	}
 
+	k.log.Debug("Parsing released key")
 	ciphertext, err := parseCiphertextFromResponse(*res.Value)
 	if err != nil {
-		return nil, fmt.Errorf("parsing released key: %w", err)
+		return fmt.Errorf("parsing released key: %w", err)
 	}
 
 	// Extract the key encryption key (KEK) and the encrypted key (the _actual_ key) from the ciphertext
@@ -125,23 +147,26 @@ func (k *KeyReleaser) GetKey(ctx context.Context) ([]byte, error) {
 	copy(encryptedKey, ciphertext[wrappingKeySize/8:])
 
 	// The KEK was encrypted using the wrapping key we provided earlier.
+	k.log.Debug("Decrypting KEK with wrapping key")
 	kek, err := rsa.DecryptOAEP(sha512.New384(), nil, wrappingKey, encryptedKEK, nil)
 	if err != nil {
-		return nil, fmt.Errorf("decrypting KEK: %w", err)
+		return fmt.Errorf("decrypting KEK: %w", err)
 	}
 
 	// The actual key is encrypted using AES key wrapping as defined in https://www.rfc-editor.org/rfc/rfc5649.html
 	// using the KEK
+	k.log.Debug("Decrypting released key")
 	kwp, err := subtle.NewKWP(kek)
 	if err != nil {
-		return nil, fmt.Errorf("creating KWP: %w", err)
+		return fmt.Errorf("creating KWP: %w", err)
 	}
 	releasedKey, err := kwp.Unwrap(encryptedKey)
 	if err != nil {
-		return nil, fmt.Errorf("unwrapping encrypted key: %w", err)
+		return fmt.Errorf("unwrapping encrypted key: %w", err)
 	}
 
-	return releasedKey, nil
+	k.hsmSealingKey = releasedKey
+	return nil
 }
 
 // createWrappingKey generates a wrapping key and its JWK representation.
