@@ -344,7 +344,7 @@ func (a *ClientAPI) SetManifest(ctx context.Context, rawManifest []byte) (recove
 	}
 
 	// Set encryption key & generate recovery data
-	encryptionKey, err := a.recovery.GenerateEncryptionKey(mnf.RecoveryKeys)
+	encryptionKey, err := a.recovery.GenerateEncryptionKey(mnf.RecoveryKeys, mnf.Config.RecoveryThreshold)
 	if err != nil {
 		a.log.Error("Could not set up encryption key for sealing the state", zap.Error(err))
 		return nil, fmt.Errorf("generating recovery encryption key: %w", err)
@@ -557,6 +557,10 @@ func (a *ClientAPI) UpdateManifest(ctx context.Context, rawUpdateManifest []byte
 			a.log.Error("UpdateManifest: Invalid manifest: Recovery keys cannot be updated")
 			return nil, 0, errors.New("recovery keys cannot be updated")
 		}
+	}
+	if currentManifest.Config.RecoveryThreshold != updateManifest.Config.RecoveryThreshold {
+		a.log.Error("UpdateManifest: Invalid manifest: Recovery threshold cannot be updated")
+		return nil, 0, errors.New("recovery threshold cannot be updated")
 	}
 
 	// Get all users that are allowed to update the manifest

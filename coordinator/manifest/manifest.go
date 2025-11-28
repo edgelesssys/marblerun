@@ -78,6 +78,8 @@ type Config struct {
 	// UpdateThreshold is the amount of acknowledgements required to perform a multi party manifest update.
 	// If set to 0, all users with the update permission are required to acknowledge an update before it is applied.
 	UpdateThreshold uint
+	// RecoveryThreshold is the amount of recovery secrets required to recover the sealed state.
+	RecoveryThreshold uint
 }
 
 // Marble describes a service in the mesh that should be handled and verified by the Coordinator.
@@ -525,6 +527,13 @@ func (m Manifest) Check(zaplogger *zap.Logger) error {
 		default:
 			return fmt.Errorf("unknown feature gate: %s", feature)
 		}
+	}
+
+	if uint(len(m.RecoveryKeys)) < m.Config.RecoveryThreshold {
+		return fmt.Errorf("not enough recovery keys (%d) defined to meet the recovery threshold of %d", len(m.RecoveryKeys), m.Config.RecoveryThreshold)
+	}
+	if m.Config.RecoveryThreshold == 1 {
+		return fmt.Errorf("invalid recovery threshold: if set, threshold must be at least 2")
 	}
 
 	return nil

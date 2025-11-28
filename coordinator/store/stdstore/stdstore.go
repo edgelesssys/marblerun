@@ -9,6 +9,7 @@ package stdstore
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -240,6 +241,41 @@ func (s *StdStore) SealEncryptionKey(additionalData []byte) error {
 	}
 
 	return nil
+}
+
+// GetCiphertext gets the sealed data from the backend.
+func (s *StdStore) GetCiphertext() ([]byte, error) {
+	sealedData, err := s.fs.ReadFile(filepath.Join(s.sealDir, SealedDataFname))
+	if err != nil {
+		return nil, fmt.Errorf("reading sealed data from disk: %w", err)
+	}
+	return sealedData, nil
+}
+
+// TestKey tests if the given key can be used to decrypt the given ciphertext.
+func (s *StdStore) TestKey(key, ciphertext []byte) bool {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+	_, _, err := s.sealer.UnsealWithKey(ciphertext, key)
+	return err == nil
+}
+
+// PersistRecoveryData persists the given recovery data to disk if it got lost.
+func (s *StdStore) PersistRecoveryData(recoveryData []byte) error {
+	currentData, err := s.fs.ReadFile(filepath.Join(s.sealDir, SealedDataFname))
+	if err != nil {
+		return fmt.Errorf("reading sealed data from disk: %w", err)
+	}
+
+	if len(currentData) < 4 || binary.LittleEndian.Uint32(currentData) != 0 {
+		return errors.New("expected empty recovery data, refusing to overwrite")
+	}
+
+	sealedData := binary.LittleEndian.AppendUint32(nil, uint32(len(recoveryData)))
+	sealedData = append(sealedData, recoveryData...)
+	sealedData = append(sealedData, currentData[4:]...)
+
+	return s.atomicWriteFile(filepath.Join(s.sealDir, SealedDataFname), sealedData)
 }
 
 func (s *StdStore) beginTransaction() *StdTransaction {

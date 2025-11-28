@@ -1093,6 +1093,33 @@ func TestUpdateManifest(t *testing.T) {
 			}(),
 			wantErr: true,
 		},
+		"invalid manifest: changed recovery threshold": {
+			updateManifest: func() manifest.Manifest {
+				manifest := testUpdateManifest()
+				manifest.Config.RecoveryThreshold = 2
+				return manifest
+			}(),
+			prepareAPI: func(require *require.Assertions, api *ClientAPI) {
+				// set up manifest with 3 recovery keys
+				manifest := testManifest()
+				manifest.RecoveryKeys["key2"] = manifest.RecoveryKeys["key"]
+				manifest.RecoveryKeys["key3"] = manifest.RecoveryKeys["key"]
+				manifest.Config.RecoveryThreshold = 3
+				manifestJSON, err := json.Marshal(manifest)
+				require.NoError(err)
+				_, err = api.SetManifest(ctx, manifestJSON)
+				require.NoError(err)
+			},
+			core: &fakeCore{
+				state: state.AcceptingManifest,
+			},
+			updater: func() *user.User {
+				u := user.NewUser("admin", mustParseCert(t, test.AdminCert))
+				u.Assign(user.NewPermission(user.PermissionUpdateManifest, []string{}))
+				return u
+			}(),
+			wantErr: true,
+		},
 		"symmetric secret file": {
 			updateManifest: func() manifest.Manifest {
 				mnf := testManifest()
@@ -1522,7 +1549,7 @@ type stubRecovery struct {
 	decryptRecoverySecretErr error
 }
 
-func (s *stubRecovery) GenerateEncryptionKey(_ map[string]string) ([]byte, error) {
+func (s *stubRecovery) GenerateEncryptionKey(_ map[string]string, _ uint) ([]byte, error) {
 	return s.generateEncryptionKeyRes, s.generateEncryptionKeyErr
 }
 

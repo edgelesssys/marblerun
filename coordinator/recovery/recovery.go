@@ -13,9 +13,16 @@ import (
 	"encoding/hex"
 )
 
+const (
+	// RecoveryKeySize is the size of recovery keys in bytes.
+	RecoveryKeySize = 32
+	// RecoveryKeySizeLegacy is the size of legacy recovery keys in bytes.
+	RecoveryKeySizeLegacy = 16
+)
+
 // Recovery describes an interface which the core uses for recovery operations.
 type Recovery interface {
-	GenerateEncryptionKey(recoveryKeys map[string]string) ([]byte, error)
+	GenerateEncryptionKey(recoveryKeys map[string]string, recoveryThreshold uint) ([]byte, error)
 	GenerateRecoveryData(recoveryKeys map[string]string) (map[string][]byte, []byte, error)
 	RecoverKey(secret []byte) (int, []byte, error)
 	SetRecoveryData(data []byte) error
@@ -24,9 +31,8 @@ type Recovery interface {
 }
 
 func generateRandomKey() ([]byte, error) {
-	generatedValue := make([]byte, 32)
-	_, err := rand.Read(generatedValue)
-	if err != nil {
+	generatedValue := make([]byte, RecoveryKeySize)
+	if _, err := rand.Read(generatedValue); err != nil {
 		return nil, err
 	}
 

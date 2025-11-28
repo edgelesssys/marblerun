@@ -647,7 +647,7 @@ func setupAPI(t *testing.T, core *fakeCore) (*ClientAPI, wrapper.Wrapper) {
 
 	return &ClientAPI{
 		core:      core,
-		recovery:  recovery.New(nil, log),
+		recovery:  recovery.New(store, log),
 		txHandle:  store,
 		log:       log,
 		updateLog: updateLog,
