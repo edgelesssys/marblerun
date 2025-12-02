@@ -14,6 +14,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -23,7 +24,9 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/keyvault/azkeys"
 	"github.com/edgelesssys/ego/enclave"
 	"github.com/edgelesssys/marblerun/coordinator/constants"
+	"github.com/edgelesssys/marblerun/coordinator/distributor"
 	"github.com/edgelesssys/marblerun/coordinator/seal"
+	dstore "github.com/edgelesssys/marblerun/coordinator/store/distributed"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/lestrrat-go/jwx/v3/jws"
@@ -35,9 +38,14 @@ const (
 	wrappingKeySize = 4096
 )
 
+type distributedSealer interface {
+	dstore.Sealer
+	distributor.KeyGenerator
+}
+
 // KeyReleaser releases keys from an Azure Key Vault using Secure Key Release.
 type KeyReleaser struct {
-	seal.Sealer
+	distributedSealer
 
 	enabled       bool
 	hsmSealingKey []byte
@@ -84,14 +92,22 @@ func New(sealer seal.Sealer, log *zap.Logger) (*KeyReleaser, error) {
 		return nil, err
 	}
 
+	castSealer, ok := sealer.(distributedSealer)
+	if !ok {
+		castSealer = &stubDistributedSealer{
+			Sealer: sealer,
+			log:    log,
+		}
+	}
+
 	return &KeyReleaser{
-		Sealer:     sealer,
-		keyName:    keyName,
-		keyVersion: keyVersion,
-		maaURL:     maaURL,
-		client:     client,
-		enabled:    false,
-		log:        log,
+		distributedSealer: castSealer,
+		keyName:           keyName,
+		keyVersion:        keyVersion,
+		maaURL:            maaURL,
+		client:            client,
+		enabled:           false,
+		log:               log,
 	}, nil
 }
 
@@ -255,4 +271,28 @@ func insecureClient() *http.Client {
 
 func toPtr[T any](v T) *T {
 	return &v
+}
+
+type stubDistributedSealer struct {
+	seal.Sealer
+	log *zap.Logger
+}
+
+func (s *stubDistributedSealer) SealKEK(context.Context, seal.Mode) error {
+	s.log.Error("Stub distributed sealer: SealKEK called")
+	return errors.New("unsupported function called")
+}
+
+func (s *stubDistributedSealer) SetSealMode(seal.Mode) {
+	s.log.Error("Stub distributed sealer: SetSealMode called")
+}
+
+func (s *stubDistributedSealer) ExportKeyEncryptionKey(context.Context) ([]byte, error) {
+	s.log.Error("Stub distributed sealer: ExportKeyEncryptionKey called")
+	return nil, errors.New("unsupported function called")
+}
+
+func (s *stubDistributedSealer) SetKeyEncryptionKey(context.Context, []byte) error {
+	s.log.Error("Stub distributed sealer: SetKeyEncryptionKey called")
+	return errors.New("unsupported function called")
 }
