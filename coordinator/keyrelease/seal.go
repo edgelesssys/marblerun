@@ -18,7 +18,7 @@ var hsmSealedPrefix = []byte("HSM_SEALED")
 
 // SealEncryptionKey seals the encryption key, and, if enabled, wraps it using an HSM key from Azure Key Vault.
 func (k *KeyReleaser) SealEncryptionKey(additionalData []byte, mode seal.Mode) ([]byte, error) {
-	encryptedKey, err := k.Sealer.SealEncryptionKey(additionalData, mode)
+	encryptedKey, err := k.distributedSealer.SealEncryptionKey(additionalData, mode)
 	if err != nil {
 		return nil, err
 	}
@@ -58,5 +58,5 @@ func (k *KeyReleaser) UnsealEncryptionKey(encryptedKey, additionalData []byte) (
 		}
 	}
 
-	return k.Sealer.UnsealEncryptionKey(encryptedKey, additionalData)
+	return k.distributedSealer.UnsealEncryptionKey(encryptedKey, additionalData)
 }
