@@ -59,7 +59,7 @@ func TestActivate(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	fs := afero.NewMemMapFs()
-	store := stdstore.New(sealer, fs, "", zapLogger)
+	store := stdstore.New(sealer, stubEnabler{}, fs, "", zapLogger)
 	recovery := recovery.New(store, zapLogger)
 	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, store, recovery, zapLogger, nil, nil)
 	require.NoError(err)
@@ -154,7 +154,7 @@ func TestMarbleSecretDerivation(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	fs := afero.NewMemMapFs()
-	store := stdstore.New(sealer, fs, "", zapLogger)
+	store := stdstore.New(sealer, stubEnabler{}, fs, "", zapLogger)
 	recovery := recovery.New(store, zapLogger)
 	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, store, recovery, zapLogger, nil, nil)
 	require.NoError(err)
@@ -588,7 +588,7 @@ func TestSecurityLevelUpdate(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	fs := afero.NewMemMapFs()
-	store := stdstore.New(sealer, fs, "", zapLogger)
+	store := stdstore.New(sealer, stubEnabler{}, fs, "", zapLogger)
 	recovery := recovery.New(store, zapLogger)
 	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, store, recovery, zapLogger, nil, nil)
 	require.NoError(err)
@@ -621,7 +621,7 @@ func TestSecurityLevelUpdate(t *testing.T) {
 	spawner.newMarble(t, "frontend", "Azure", uuid.New(), false)
 
 	// Use a new core and test if updated manifest persisted after restart
-	coreServer2, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, "", zapLogger), recovery, zapLogger, nil, nil)
+	coreServer2, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, stubEnabler{}, fs, "", zapLogger), recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	coreServer2State := testutil.GetState(t, coreServer2.txHandle)
 	coreServer2UpdatedPkg := testutil.GetPackage(t, coreServer2.txHandle, "frontend")
@@ -696,7 +696,7 @@ func TestActivateWithMissingParameters(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	fs := afero.NewMemMapFs()
-	store := stdstore.New(sealer, fs, "", zapLogger)
+	store := stdstore.New(sealer, stubEnabler{}, fs, "", zapLogger)
 	recovery := recovery.New(store, zapLogger)
 	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, store, recovery, zapLogger, nil, nil)
 	require.NoError(err)
@@ -728,7 +728,7 @@ func TestActivateWithTTLSforMarbleWithoutEnvVars(t *testing.T) {
 	log := zaptest.NewLogger(t)
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
-	store := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", log)
+	store := stdstore.New(&seal.MockSealer{}, stubEnabler{}, afero.NewMemMapFs(), "", log)
 	coreServer, err := NewCore(nil, validator, issuer, store, recovery.New(store, log), log, nil, nil)
 	require.NoError(err)
 

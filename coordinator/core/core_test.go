@@ -36,6 +36,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 )
 
@@ -46,7 +47,7 @@ func TestMain(m *testing.M) {
 func TestCore(t *testing.T) {
 	assert := assert.New(t)
 
-	c := NewCoreWithMocks()
+	c := newCoreWithMocks()
 	curState := testutil.GetState(t, c.txHandle)
 	assert.Equal(state.AcceptingManifest, curState)
 	rootCert := testutil.GetCertificate(t, c.txHandle, constants.SKCoordinatorRootCert)
@@ -72,7 +73,7 @@ func TestSeal(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	fs := afero.NewMemMapFs()
-	store := stdstore.New(sealer, fs, "", zapLogger)
+	store := stdstore.New(sealer, stubEnabler{}, fs, "", zapLogger)
 	recovery := recovery.New(store, zapLogger)
 
 	c, err := NewCore([]string{"localhost"}, validator, issuer, store, recovery, zapLogger, nil, nil)
@@ -93,7 +94,7 @@ func TestSeal(t *testing.T) {
 	cSecrets := testutil.GetSecretMap(t, c.txHandle)
 
 	// Check sealing with a new core initialized with the sealed state.
-	c2, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, "", zapLogger), recovery, zapLogger, nil, nil)
+	c2, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, stubEnabler{}, fs, "", zapLogger), recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	clientAPI, err = clientapi.New(c2.txHandle, c2.recovery, c2, &distributor.Stub{}, stubEnabler{}, zapLogger)
 	require.NoError(err)
@@ -127,7 +128,7 @@ func TestRecover(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	fs := afero.NewMemMapFs()
-	store := stdstore.New(sealer, fs, "", zapLogger)
+	store := stdstore.New(sealer, stubEnabler{}, fs, "", zapLogger)
 	recovery := recovery.New(store, zapLogger)
 
 	c, err := NewCore([]string{"localhost"}, validator, issuer, store, recovery, zapLogger, nil, nil)
@@ -150,7 +151,7 @@ func TestRecover(t *testing.T) {
 
 	// Initialize new core and let unseal fail
 	sealer.UnsealError = &seal.EncryptionKeyError{}
-	c2, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, "", zapLogger), recovery, zapLogger, nil, nil)
+	c2, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, stubEnabler{}, fs, "", zapLogger), recovery, zapLogger, nil, nil)
 	sealer.UnsealError = nil
 	require.NoError(err)
 	clientAPI, err = clientapi.New(c2.txHandle, c2.recovery, c2, &distributor.Stub{}, stubEnabler{}, zapLogger)
@@ -201,7 +202,7 @@ func TestGenerateSecrets(t *testing.T) {
 
 	secretsEmptyMap := map[string]manifest.Secret{}
 
-	c := NewCoreWithMocks()
+	c := newCoreWithMocks()
 
 	rootCert := testutil.GetCertificate(t, c.txHandle, constants.SKCoordinatorRootCert)
 	rootPrivK := testutil.GetPrivateKey(t, c.txHandle, constants.SKCoordinatorRootKey)
@@ -306,7 +307,7 @@ func TestUnsetRestart(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	fs := afero.NewMemMapFs()
-	store := stdstore.New(sealer, fs, "", zapLogger)
+	store := stdstore.New(sealer, stubEnabler{}, fs, "", zapLogger)
 	recovery := recovery.New(store, zapLogger)
 
 	// create a new core, this seals the state with only certificate and keys
@@ -317,7 +318,7 @@ func TestUnsetRestart(t *testing.T) {
 	cCert := testutil.GetCertificate(t, c1.txHandle, constants.SKCoordinatorRootCert)
 
 	// create a second core, this should overwrite the previously sealed certificate and keys since no manifest was set
-	c2, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, "", zapLogger), recovery, zapLogger, nil, nil)
+	c2, err := NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, stubEnabler{}, fs, "", zapLogger), recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	c2State := testutil.GetState(t, c2.txHandle)
 	assert.Equal(state.AcceptingManifest, c2State)
@@ -377,6 +378,25 @@ func TestGetQuote(t *testing.T) {
 			}
 		})
 	}
+}
+
+// newCoreWithMocks creates a new core object with quote and seal mocks for testing.
+func newCoreWithMocks() *Core {
+	zapLogger, err := zap.NewDevelopment()
+	if err != nil {
+		panic(err)
+	}
+
+	validator := quote.NewMockValidator()
+	issuer := quote.NewMockIssuer()
+	sealer := &seal.MockSealer{}
+	store := stdstore.New(sealer, stubEnabler{}, afero.Afero{Fs: afero.NewMemMapFs()}, "", zapLogger)
+	recovery := recovery.New(store, zapLogger)
+	core, err := NewCore([]string{"localhost"}, validator, issuer, store, recovery, zapLogger, nil, nil)
+	if err != nil {
+		panic(err)
+	}
+	return core
 }
 
 type stubIssuer struct {

@@ -16,6 +16,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 	"text/template"
@@ -667,6 +668,13 @@ func (m Manifest) CheckUpdate(originalPackages map[string]quote.PackagePropertie
 	}
 
 	return nil
+}
+
+// HasFeatureEnabled checks if a specific feature is enabled in the manifest.
+func (m Manifest) HasFeatureEnabled(feature string) bool {
+	return slices.ContainsFunc(m.Config.FeatureGates, func(s string) bool {
+		return strings.EqualFold(s, feature)
+	})
 }
 
 // ReservedSecrets is a tuple of secrets reserved for a single Marble.

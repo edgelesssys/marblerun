@@ -35,7 +35,7 @@ func TestStoreWrapper(t *testing.T) {
 	require := require.New(t)
 	ctx := context.Background()
 
-	store := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
+	store := stdstore.New(&seal.MockSealer{}, stubEnabler{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
 	rawManifest := []byte(test.ManifestJSON)
 	curState := state.AcceptingManifest
 	testSecret := manifest.Secret{
@@ -88,7 +88,7 @@ func TestStoreWrapperRollback(t *testing.T) {
 	require := require.New(t)
 	ctx := context.Background()
 
-	stor := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
+	stor := stdstore.New(&seal.MockSealer{}, stubEnabler{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
 	data := New(stor)
 
 	startingState := state.AcceptingManifest
@@ -109,3 +109,7 @@ func TestStoreWrapperRollback(t *testing.T) {
 	_, err = data.GetRawManifest()
 	assert.ErrorIs(err, store.ErrValueUnset)
 }
+
+type stubEnabler struct{}
+
+func (stubEnabler) Enable() {}
