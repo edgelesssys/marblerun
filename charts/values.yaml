@@ -98,6 +98,19 @@ coordinator:
 
   keyAPIName: "coordinator-key-api"
 
+  azureCredentials:
+    # Set to use a predefined secret for Azure credentials
+    secretName: ""
+    clientID: ""
+    tenantID: ""
+    clientSecret: ""
+
+  hsm:
+    keyName: ""
+    keyVersion: ""
+    vaultURL: ""
+    maaURL: ""
+
   # Resource limits for the Coordinator
   resources:
     limits:
