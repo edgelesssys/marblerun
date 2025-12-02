@@ -34,6 +34,7 @@ type Store struct {
 	stateHandle    stateHandle
 	quoteGenerator regenerator
 	sealer         Sealer
+	hsmSealer      hsmSealer
 	recoveryData   []byte
 
 	recoveryMode bool
@@ -51,7 +52,7 @@ type Store struct {
 }
 
 // New creates and initializes a new store for distributed Coordinators.
-func New(sealer Sealer, name, namespace string, log *zap.Logger) (*Store, error) {
+func New(sealer Sealer, hsmSealer hsmSealer, name, namespace string, log *zap.Logger) (*Store, error) {
 	clientset, err := kube.GetClient()
 	if err != nil {
 		return nil, err
@@ -61,6 +62,7 @@ func New(sealer Sealer, name, namespace string, log *zap.Logger) (*Store, error)
 		quoteGenerator: &quoteRegenerator{},
 		stateHandle:    k8sstore.New(clientset, namespace, name, log),
 		sealer:         sealer,
+		hsmSealer:      hsmSealer,
 		log:            log,
 	}, nil
 }
@@ -120,7 +122,7 @@ func (s *Store) LoadState() ([]byte, []byte, error) {
 		// clear temporary recovery state if we successfully loaded the state
 		s.tmpRecoveryState = nil
 
-		if err := s.reloadSealMode(rawState); err != nil {
+		if err := s.reloadOptions(rawState); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -392,8 +394,8 @@ func (s *Store) unsealEncryptionKey(state *transaction.State) error {
 	return nil
 }
 
-func (s *Store) reloadSealMode(rawState map[string][]byte) error {
-	s.log.Debug("Reloading seal mode")
+func (s *Store) reloadOptions(rawState map[string][]byte) error {
+	s.log.Debug("Reloading manifest options")
 	rawMnf, ok := rawState[request.Manifest]
 	if !ok {
 		return nil // no manifest set
@@ -407,6 +409,11 @@ func (s *Store) reloadSealMode(rawState map[string][]byte) error {
 	s.sealMode = seal.ModeFromString(mnf.Config.SealMode)
 	s.sealer.SetSealMode(seal.ModeFromString(mnf.Config.SealMode))
 	s.log.Debug("Seal mode set", zap.Int("sealMode", int(s.sealMode)))
+
+	if mnf.HasFeatureEnabled(manifest.FeatureAzureHSMSealing) {
+		s.log.Debug("Enabling HSM sealing")
+		s.hsmSealer.Enable()
+	}
 	return nil
 }
 
@@ -478,4 +485,8 @@ type quoteGenerator interface {
 type regenerator interface {
 	Regenerate(tx store.Transaction) error
 	SetGenerator(quoteGenerator)
+}
+
+type hsmSealer interface {
+	Enable()
 }

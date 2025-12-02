@@ -44,7 +44,7 @@ func TestMultiPartyRecoveryMultiWithoutRecoveryData(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	rStore := &fakeStore{}
 	rec := recovery.New(rStore, zapLogger)
-	cStore := stdstore.New(sealer, fs, "", zapLogger)
+	cStore := stdstore.New(sealer, stubEnabler{}, fs, "", zapLogger)
 
 	c, err := core.NewCore([]string{"localhost"}, validator, issuer, cStore, rec, zapLogger, nil, nil)
 	require.NoError(err)
@@ -66,7 +66,7 @@ func TestMultiPartyRecoveryMultiWithoutRecoveryData(t *testing.T) {
 
 	// Initialize new core and let unseal fail
 	sealer.UnsealError = &seal.EncryptionKeyError{}
-	c2Store := stdstore.New(sealer, fs, "", zapLogger)
+	c2Store := stdstore.New(sealer, stubEnabler{}, fs, "", zapLogger)
 	c2, err := core.NewCore([]string{"localhost"}, validator, issuer, c2Store, rec, zapLogger, nil, nil)
 	sealer.UnsealError = nil
 	require.NoError(err)

@@ -156,7 +156,7 @@ func isDevMode() bool {
 	return util.Getenv(constants.DevMode, constants.DevModeDefault) == "1"
 }
 
-func setUpStore(backend string, sealer seal.Sealer, sealDir string, qv quote.Validator, qi quote.Issuer, log *zap.Logger) (store.Store, keyDistributor) {
+func setUpStore(backend string, sealer *keyrelease.KeyReleaser, sealDir string, qv quote.Validator, qi quote.Issuer, log *zap.Logger) (store.Store, keyDistributor) {
 	var store store.Store
 	var keyDistributor keyDistributor
 
@@ -176,14 +176,14 @@ func setUpStore(backend string, sealer seal.Sealer, sealDir string, qv quote.Val
 			zap.String("namespace", namespace),
 		)
 
-		// Wrap sealer for distributed store
-		sealer, err := dseal.New(sealer, kekMapName, namespace, log)
+		// Wrap dSealer for distributed store
+		dSealer, err := dseal.New(sealer, kekMapName, namespace, log)
 		if err != nil {
 			log.Fatal("Failed setting up sealer", zap.Error(err))
 		}
 
 		// Create distributed store
-		distributedStore, err := dstore.New(sealer, stateName, namespace, log)
+		distributedStore, err := dstore.New(dSealer, sealer, stateName, namespace, log)
 		if err != nil {
 			log.Fatal("Failed setting up store backend", zap.Error(err))
 		}
@@ -231,7 +231,7 @@ func setUpStore(backend string, sealer seal.Sealer, sealDir string, qv quote.Val
 
 		keyServer := keyserver.New(instanceProperties, qv, distributedStore, log)
 
-		keyDistributor = distributor.New(keyServiceName, namespace, sealer, keyClient, keyServer, store, log)
+		keyDistributor = distributor.New(keyServiceName, namespace, dSealer, keyClient, keyServer, store, log)
 	default:
 		if err := os.MkdirAll(sealDir, 0o700); err != nil {
 			log.Fatal("Cannot create or access sealdir. Please check the permissions for the specified path.", zap.Error(err))

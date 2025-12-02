@@ -41,7 +41,7 @@ func TestStoreWrapperMetrics(t *testing.T) {
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
 	fs := afero.NewMemMapFs()
-	store := stdstore.New(sealer, fs, "", zapLogger)
+	store := stdstore.New(sealer, stubEnabler{}, fs, "", zapLogger)
 	recovery := recovery.New(store, zapLogger)
 
 	//
@@ -66,7 +66,7 @@ func TestStoreWrapperMetrics(t *testing.T) {
 	reg = prometheus.NewRegistry()
 	fac = promauto.With(reg)
 	sealer.UnsealError = &seal.EncryptionKeyError{}
-	c, err = NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, fs, "", zapLogger), recovery, zapLogger, &fac, nil)
+	c, err = NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, stubEnabler{}, fs, "", zapLogger), recovery, zapLogger, &fac, nil)
 	sealer.UnsealError = nil
 	require.NoError(err)
 	assert.Equal(1, promtest.CollectAndCount(c.metrics.coordinatorState))
@@ -97,7 +97,7 @@ func TestMarbleAPIMetrics(t *testing.T) {
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
 	sealer := &seal.MockSealer{}
-	store := stdstore.New(sealer, afero.NewMemMapFs(), "", zapLogger)
+	store := stdstore.New(sealer, stubEnabler{}, afero.NewMemMapFs(), "", zapLogger)
 	recovery := recovery.New(store, zapLogger)
 	promRegistry := prometheus.NewRegistry()
 	promFactory := promauto.With(promRegistry)

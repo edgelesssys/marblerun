@@ -18,7 +18,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/edgelesssys/ego/attestation"
@@ -317,7 +316,7 @@ func (a *ClientAPI) SetManifest(ctx context.Context, rawManifest []byte) (recove
 		return nil, fmt.Errorf("checking manifest: %w", err)
 	}
 
-	if manifestFeatureEnabled(mnf, manifest.FeatureAzureHSMSealing) {
+	if mnf.HasFeatureEnabled(manifest.FeatureAzureHSMSealing) {
 		a.hsmSealer.Enable()
 	}
 
@@ -572,7 +571,7 @@ func (a *ClientAPI) UpdateManifest(ctx context.Context, rawUpdateManifest []byte
 		a.log.Error("UpdateManifest: Invalid manifest: Recovery threshold cannot be updated")
 		return nil, 0, errors.New("recovery threshold cannot be updated")
 	}
-	if manifestFeatureEnabled(currentManifest, manifest.FeatureAzureHSMSealing) != manifestFeatureEnabled(updateManifest, manifest.FeatureAzureHSMSealing) {
+	if currentManifest.HasFeatureEnabled(manifest.FeatureAzureHSMSealing) != updateManifest.HasFeatureEnabled(manifest.FeatureAzureHSMSealing) {
 		a.log.Error("UpdateManifest: Invalid manifest: Azure HSM sealing feature cannot be updated")
 		return nil, 0, errors.New("azure HSM sealing feature cannot be updated")
 	}
@@ -1007,13 +1006,7 @@ func (a *ClientAPI) FeatureEnabled(ctx context.Context, feature string) bool {
 		return false
 	}
 
-	return manifestFeatureEnabled(mnf, feature)
-}
-
-func manifestFeatureEnabled(mnf manifest.Manifest, feature string) bool {
-	return slices.ContainsFunc(mnf.Config.FeatureGates, func(s string) bool {
-		return strings.EqualFold(s, feature)
-	})
+	return mnf.HasFeatureEnabled(feature)
 }
 
 func encodeMonotonicCounterID(marbleType string, marbleUUID uuid.UUID, name string) string {

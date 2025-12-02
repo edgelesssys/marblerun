@@ -618,7 +618,7 @@ func setupAPI(t *testing.T, core *fakeCore) (*ClientAPI, wrapper.Wrapper) {
 	require := require.New(t)
 
 	log := zaptest.NewLogger(t)
-	store := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", log)
+	store := stdstore.New(&seal.MockSealer{}, stubEnabler{}, afero.NewMemMapFs(), "", log)
 
 	wrapper := wrapper.New(store)
 
