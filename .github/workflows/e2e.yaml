@@ -23,6 +23,11 @@ on:
         description: 'Number of tests to run in parallel'
         required: false
         default: '2'
+      enableHSMTest:
+        description: 'Enable tests requiring an HSM'
+        required: false
+        default: false
+        type: boolean
   workflow_call:
     inputs:
       vmType:
@@ -45,6 +50,11 @@ on:
         required: false
         default: 2
         type: number
+      enableHSMTest:
+        description: 'Enable HSM sealing tests'
+        required: false
+        default: false
+        type: boolean
     secrets:
       AZURE_CLIENT_ID:
         required: true
@@ -54,6 +64,16 @@ on:
         required: true
       AZURE_TENANT_ID:
         required: true
+      AZURE_OBJECT_ID:
+        required: true
+      HSM_RELEASE_CLIENT_ID:
+        required: true
+      HSM_RELEASE_TENANT_ID:
+        required: true
+      HSM_RELEASE_CLIENT_SECRET:
+        required: true
+      HSM_RELEASE_OBJECT_ID:
+          required: true
 
 jobs:
   build-test-containers:
@@ -111,7 +131,7 @@ jobs:
           CR: ghcr.io/edgelesssys/marblerun-e2e
           CONTAINER: coordinator
         run: |
-          set -e 
+          set -e
           export PATH=${PATH}:/opt/edgelessrt/bin
           openssl genrsa -out private.pem -3 3072
 
@@ -184,9 +204,75 @@ jobs:
 
           echo "digest=${digest}" >> $GITHUB_OUTPUT
 
+  provision-hsm:
+    name: Provision HSM for e2e tests
+    needs: build-test-containers
+    if: ${{ inputs.enableHSMTest }}
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+
+      - name: Azure login
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
+        with:
+          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
+
+      - name: Create and activate HSM
+        env:
+          UID: ${{ needs.build-test-containers.outputs.run-uid }}
+          AZURE_OBJECT_ID: ${{ secrets.AZURE_OBJECT_ID }}
+        run: |
+          az keyvault create --hsm-name "marblerun-e2e-hsm-${UID}" --resource-group "marblerun-e2e" --location "uksouth" --administrators $AZURE_OBJECT_ID --retention-days 7
+
+          openssl req -newkey rsa:2048 -nodes -keyout cert_0.key -x509 -days 365 -out cert_0.cer
+          openssl req -newkey rsa:2048 -nodes -keyout cert_1.key -x509 -days 365 -out cert_1.cer
+          openssl req -newkey rsa:2048 -nodes -keyout cert_2.key -x509 -days 365 -out cert_2.cer
+
+          az keyvault security-domain download --hsm-name "marblerun-e2e-hsm-${UID}" --sd-wrapping-keys ./cert_0.cer ./cert_1.cer ./cert_2.cer --sd-quorum 2 --security-domain-file MarbleRunHSM.json
+
+          az keyvault role assignment create --assignee ${AZURE_OBJECT_ID} --role "Managed HSM Crypto User" --hsm-name "marblerun-e2e-hsm-${UID}" --scope /
+
+      - name: Create key
+        env:
+          UID: ${{ needs.build-test-containers.outputs.run-uid }}
+          COORDINATOR_CONFIG: ${{ needs.build-test-containers.outputs.era-config }}
+        run: |
+          echo "${COORDINATOR_CONFIG}" | base64 -d > coordinator-config.json
+          mr_signer=$(jq -r '.SignerID' coordinator-config.json)
+
+          cat > policy.json << EOF
+          {
+            "version": "1.0.0",
+            "allOf": [
+              {
+                "authority": "https://shareduks.uks.attest.azure.net",
+                "allOf": [
+                  {
+                    "claim": "x-ms-sgx-mrsigner",
+                    "equals": "${mr_signer}"
+                  }
+                ]
+              }
+            ]
+          }
+          EOF
+
+          az keyvault key create --exportable true --hsm-name "marblerun-e2e-hsm-${UID}" --kty OCT-HSM --name "marblerun-skr-key" --policy ./policy.json
+
+      - name: Assign release permissions to SP
+        id: create-sp
+        env:
+          UID: ${{ needs.build-test-containers.outputs.run-uid }}
+          APP_OID: ${{ secrets.HSM_RELEASE_SP_OBJECT_ID }}
+        run: |
+          hsm_id=$(az keyvault show --hsm-name "marblerun-e2e-hsm-${UID}" --query id -o tsv)
+          az keyvault role assignment create --assignee-object-id ${APP_OID} --assignee-principal-type ServicePrincipal --role "Managed HSM Crypto Service Release User" --hsm-name "marblerun-e2e-hsm-${UID}" --scope /keys/marblerun-skr-key
+
   e2e-test:
     name: Run e2e test
-    needs: build-test-containers
+    needs: [build-test-containers, provision-hsm]
     env:
       CR: ghcr.io/edgelesssys/marblerun-e2e
       CONTAINER: coordinator
@@ -263,6 +349,12 @@ jobs:
           REPLICAS: ${{ inputs.replicas || '3' }}
           RUN_UID: ${{ needs.build-test-containers.outputs.run-uid }}
           MARBLE_DIGEST: ${{ needs.build-test-containers.outputs.marble-digest }}
+          EDG_AZURE_CLIENT_ID: ${{ secrets.HSM_RELEASE_CLIENT_ID }}
+          EDG_AZURE_TENANT_ID: ${{ secrets.HSM_RELEASE_TENANT_ID }}
+          EDG_AZURE_CLIENT_SECRET: ${{ secrets.HSM_RELEASE_CLIENT_SECRET }}
+          EDG_HSM_KEY_NAME: marblerun-skr-key
+          EDG_HSM_VAULT_URL: https://marblerun-e2e-hsm-${{ needs.build-test-containers.outputs.run-uid }}.managedhsm.azure.net/
+          EDG_MAA_URL: "https://shareduks.uks.attest.azure.net"
         run: |
           PCCS_URL=https://global.acccache.azure.net/sgx/certification/v4/ PCCS_USE_SECURE_CERT=true configure-qpl
           echo "${ERA_CONFIG}" | base64 -d > era.json
@@ -294,3 +386,22 @@ jobs:
             --resource-group $RESOURCE_GROUP \
             --name $CLUSTER_NAME \
             --yes
+
+  teardown-hsm:
+    name: Teardown HSM
+    needs: [build-test-containers, provision-hsm, e2e-test]
+    if: always() && inputs.enableHSMTest
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Azure login
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
+        with:
+          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
+
+      - name: Teardown HSM
+        env:
+          UID: ${{ needs.build-test-containers.outputs.run-uid }}
+        run: |
+          az keyvault delete --hsm-name "marblerun-e2e-hsm-${UID}" --resource-group "marblerun-e2e"
+          az keyvault purge --hsm-name "marblerun-e2e-hsm-${UID}" --location uksouth

@@ -12,6 +12,7 @@ import (
 	"errors"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
@@ -49,16 +50,15 @@ type KeyReleaser struct {
 
 // New creates a new [KeyReleaser] with credentials from environment variables.
 func New(sealer seal.Sealer, log *zap.Logger) (*KeyReleaser, error) {
-	if err := os.Setenv(constants.EnvAzureClientID, os.Getenv("EDG_"+constants.EnvAzureClientID)); err != nil {
+	if err := os.Setenv(strings.TrimPrefix(constants.EnvAzureClientID, "EDG_"), os.Getenv(constants.EnvAzureClientID)); err != nil {
 		return nil, err
 	}
-	if err := os.Setenv(constants.EnvAzureTenantID, os.Getenv("EDG_"+constants.EnvAzureTenantID)); err != nil {
+	if err := os.Setenv(strings.TrimPrefix(constants.EnvAzureTenantID, "EDG_"), os.Getenv(constants.EnvAzureTenantID)); err != nil {
 		return nil, err
 	}
-	if err := os.Setenv(constants.EnvAzureClientSecret, os.Getenv("EDG_"+constants.EnvAzureClientSecret)); err != nil {
+	if err := os.Setenv(strings.TrimPrefix(constants.EnvAzureClientSecret, "EDG_"), os.Getenv(constants.EnvAzureClientSecret)); err != nil {
 		return nil, err
 	}
-
 	vaultURL := os.Getenv(constants.EnvHSMVaultURL)
 	keyName := os.Getenv(constants.EnvHSMKeyName)
 	keyVersion := os.Getenv(constants.EnvHSMKeyVersion)

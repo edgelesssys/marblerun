@@ -385,7 +385,7 @@ func (i IntegrationTest) VerifyCertAfterRecovery(cert *x509.Certificate, cancelC
 
 	// test with certificate
 	i.t.Log("Verifying certificate after restart.")
-	_, _, err = api.GetStatus(context.Background(), i.ClientServerAddr, cert)
+	_, _, err = api.GetStatus(i.Ctx, i.ClientServerAddr, cert)
 	i.require.NoError(err)
 
 	return cancelCoordinator
