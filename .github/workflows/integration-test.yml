@@ -44,6 +44,7 @@ jobs:
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           mkdir build
           mkdir build_fakestore
+          mkdir build_fakehsm
 
       - name: Build
         run: |
@@ -58,14 +59,25 @@ jobs:
           grep 'fake k8s store' coordinator-enclave.signed  # verify that fakestore is enabled
         working-directory: build_fakestore
 
+      - name: Build with fakehsm
+        run: |
+          cmake ..
+          COORDINATOR_BUILD_TAGS=fakehsm make sign-coordinator sign-marble-test
+          grep 'built with fake hsm' coordinator-enclave.signed  # verify that fakehsm is enabled
+        working-directory: build_fakehsm
+
       - name: Integration test
-        run: go test -tags integration -b ../build -s
-        working-directory: test
+        run: go test -tags integration -b ../../build -s
+        working-directory: test/integration
 
       - name: Integration test (-noenclave)
-        run: go test -tags integration -b ../build -noenclave
-        working-directory: test
+        run: go test -tags integration -b ../../build -noenclave
+        working-directory: test/integration
 
       - name: Integration test (fakestore)
-        run: go test -v -tags integration -skip TestRecoverySealedKeyStateBinding -b ../build_fakestore -s
-        working-directory: test
+        run: go test -v -tags integration -skip TestRecoverySealedKeyStateBinding -b ../../build_fakestore -s
+        working-directory: test/integration
+
+      - name: Integration test (fakehsm)
+        run: go test -v -tags integration,fakehsm -b ../../build_fakehsm -s
+        working-directory: test/integration
