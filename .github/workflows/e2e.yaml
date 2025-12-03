@@ -355,11 +355,17 @@ jobs:
           EDG_HSM_KEY_NAME: marblerun-skr-key
           EDG_HSM_VAULT_URL: https://marblerun-e2e-hsm-${{ needs.build-test-containers.outputs.run-uid }}.managedhsm.azure.net/
           EDG_MAA_URL: "https://shareduks.uks.attest.azure.net"
+          HSM_ENABLED: ${{ inputs.enableHSMTest }}
         run: |
           PCCS_URL=https://global.acccache.azure.net/sgx/certification/v4/ PCCS_USE_SECURE_CERT=true configure-qpl
           echo "${ERA_CONFIG}" | base64 -d > era.json
           echo "${MARBLE_CONFIG}" | base64 -d > marble-config.json
-          go test ./test/e2e/ -tags e2e --timeout 0 --parallel ${PARALLEL_RUNS} \
+          tags="e2e"
+          if [ "${HSM_ENABLED}" = "true" ]; then
+            tags="${tags},hsmsealing"
+          fi
+
+          go test ./test/e2e/ -tags ${tags} --timeout 0 --parallel ${PARALLEL_RUNS} \
             --run "${TEST_FILTER}" \
             --cli /usr/bin/marblerun \
             --chart $PWD/charts/ \
