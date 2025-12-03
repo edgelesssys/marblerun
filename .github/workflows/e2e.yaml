@@ -226,9 +226,9 @@ jobs:
         run: |
           az keyvault create --hsm-name "mr-e2e-${UID}" --resource-group "marblerun-e2e" --location "uksouth" --administrators $AZURE_OBJECT_ID --retention-days 7
 
-          openssl req -newkey rsa:2048 -nodes -keyout cert_0.key -x509 -days 365 -out cert_0.cer
-          openssl req -newkey rsa:2048 -nodes -keyout cert_1.key -x509 -days 365 -out cert_1.cer
-          openssl req -newkey rsa:2048 -nodes -keyout cert_2.key -x509 -days 365 -out cert_2.cer
+          openssl req -newkey rsa:2048 -subj "/C=DE" -nodes -keyout cert_0.key -x509 -days 365 -out cert_0.cer
+          openssl req -newkey rsa:2048 -subj "/C=DE" -nodes -keyout cert_1.key -x509 -days 365 -out cert_1.cer
+          openssl req -newkey rsa:2048 -subj "/C=DE" -nodes -keyout cert_2.key -x509 -days 365 -out cert_2.cer
 
           az keyvault security-domain download --hsm-name "mr-e2e-${UID}" --sd-wrapping-keys ./cert_0.cer ./cert_1.cer ./cert_2.cer --sd-quorum 2 --security-domain-file MarbleRunHSM.json
 
