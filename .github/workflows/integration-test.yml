@@ -79,5 +79,5 @@ jobs:
         working-directory: test/integration
 
       - name: Integration test (fakehsm)
-        run: go test -v -tags integration,fakehsm -b ../../build_fakehsm -s
+        run: go test -v -tags integration,hsmsealing -b ../../build_fakehsm -s
         working-directory: test/integration

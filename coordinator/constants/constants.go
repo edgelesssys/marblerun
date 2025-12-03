@@ -99,11 +99,11 @@ const (
 	// attestation token to authenticate against the keyvault for Secure Key Release.
 	EnvMAAURL = "EDG_MAA_URL"
 	// EnvAzureClientID holds the Azure Client ID for authentication with the Azure SDK.
-	EnvAzureClientID = "AZURE_CLIENT_ID"
+	EnvAzureClientID = "EDG_AZURE_CLIENT_ID"
 	// EnvAzureTenantID holds the Azure Tenant ID for authentication with the Azure SDK.
-	EnvAzureTenantID = "AZURE_TENANT_ID"
+	EnvAzureTenantID = "EDG_AZURE_TENANT_ID"
 	// EnvAzureClientSecret holds the Azure Client Secret for authentication with the Azure SDK.
-	EnvAzureClientSecret = "AZURE_CLIENT_SECRET"
+	EnvAzureClientSecret = "EDG_AZURE_CLIENT_SECRET"
 
 	// StoreBackendKubernetes indicates that Kubernetes secrets should be used to hold
 	// the Coordinator's state.

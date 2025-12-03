@@ -14,9 +14,10 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/seal"
 )
 
-var hsmSealedPrefix = []byte("HSM_SEALED")
+// HSMSealedPrefix is the prefix added to keys sealed with an HSM key.
+var HSMSealedPrefix = []byte("HSM_SEALED")
 
-// SealEncryptionKey seals the encryption key, and, if enabled, wraps it using an HSM key from Azure Key Vault.
+// SealEncryptionKey seals the encryption key, and, if enabled, seals it again using an HSM key from Azure Key Vault.
 func (k *KeyReleaser) SealEncryptionKey(additionalData []byte, mode seal.Mode) ([]byte, error) {
 	encryptedKey, err := k.distributedSealer.SealEncryptionKey(additionalData, mode)
 	if err != nil {
@@ -38,12 +39,12 @@ func (k *KeyReleaser) SealEncryptionKey(additionalData []byte, mode seal.Mode) (
 	if err != nil {
 		return nil, err
 	}
-	return append(hsmSealedPrefix, hsmWrappedKey...), nil
+	return append(HSMSealedPrefix, hsmWrappedKey...), nil
 }
 
-// UnsealEncryptionKey unseals the encryption key, and, if needed, unwraps it using an HSM key from Azure Key Vault.
+// UnsealEncryptionKey unseals an encryption key using an HSM key from Azure Key Vault, and then unseals the encryption key.
 func (k *KeyReleaser) UnsealEncryptionKey(encryptedKey, additionalData []byte) ([]byte, error) {
-	if hsmWrappedKey, ok := bytes.CutPrefix(encryptedKey, hsmSealedPrefix); ok {
+	if hsmWrappedKey, ok := bytes.CutPrefix(encryptedKey, HSMSealedPrefix); ok {
 		k.log.Debug("Unwrapping encrypted key with HSM key")
 		if k.hsmSealingKey == nil {
 			if err := k.requestKey(context.Background()); err != nil {
