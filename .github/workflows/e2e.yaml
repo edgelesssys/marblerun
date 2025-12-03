@@ -265,7 +265,7 @@ jobs:
         id: create-sp
         env:
           UID: ${{ needs.build-test-containers.outputs.run-uid }}
-          APP_OID: ${{ secrets.HSM_RELEASE_SP_OBJECT_ID }}
+          APP_OID: ${{ secrets.HSM_RELEASE_OBJECT_ID }}
         run: |
           hsm_id=$(az keyvault show --hsm-name "mr-e2e-${UID}" --query id -o tsv)
           az keyvault role assignment create --assignee-object-id ${APP_OID} --assignee-principal-type ServicePrincipal --role "Managed HSM Crypto Service Release User" --hsm-name "mr-e2e-${UID}" --scope /keys/marblerun-skr-key
