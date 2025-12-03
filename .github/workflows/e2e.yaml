@@ -245,7 +245,7 @@ jobs:
           cat > policy.json << EOF
           {
             "version": "1.0.0",
-            "allOf": [
+            "anyOf": [
               {
                 "authority": "https://shareduks.uks.attest.azure.net",
                 "allOf": [
