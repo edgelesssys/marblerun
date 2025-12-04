@@ -80,6 +80,11 @@ const sidebars = {
         },
         {
           type: 'doc',
+          label: 'Azure HSM integration',
+          id: 'features/hsm-sealing',
+        },
+        {
+          type: 'doc',
           label: 'Supported runtimes',
           id: 'features/runtimes',
         },
