@@ -9,9 +9,11 @@ package helm
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
+	"github.com/edgelesssys/marblerun/coordinator/constants"
 	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/chart/loader"
 	"helm.sh/helm/v4/pkg/cli"
@@ -66,6 +68,17 @@ func (h *Helm) InstallChart(
 		"coordinator": map[string]any{
 			"distributedDeployment": true,
 			"replicas":              replicas,
+			"hsm": map[string]any{
+				"keyName":    os.Getenv(constants.EnvHSMKeyName),
+				"keyVersion": os.Getenv(constants.EnvHSMKeyVersion),
+				"vaultURL":   os.Getenv(constants.EnvHSMVaultURL),
+				"maaURL":     os.Getenv(constants.EnvMAAURL),
+			},
+			"azureCredentials": map[string]any{
+				"clientID":     os.Getenv(constants.EnvAzureClientID),
+				"tenantID":     os.Getenv(constants.EnvAzureTenantID),
+				"clientSecret": os.Getenv(constants.EnvAzureClientSecret),
+			},
 		},
 		"pullSecret": map[string]any{
 			"name": "access-token",
