@@ -38,7 +38,7 @@ View the [official documentation](https://learn.microsoft.com/en-us/azure/key-va
     az keyvault security-domain download --hsm-name MarbleRunHSM --sd-wrapping-keys ./hsm/cert_0.cer ./hsm/cert_1.cer ./hsm/cert_2.cer --sd-quorum 2 --security-domain-file hsm/MarbleRunHSM-SD.json
     ```
 
-    Store the certificates and security domain file securely. They are needed for disaster recovery of your HSM.
+    Store the certificates and security domain file securely. They're needed for disaster recovery of your HSM.
 
 4. Assign the yourself permissions to create keys in the HSM:
 
@@ -48,7 +48,7 @@ View the [official documentation](https://learn.microsoft.com/en-us/azure/key-va
 
 5. Create a key release policy for your key
 
-    The key release policy controls what enclaves are allowed to access the key it is bound to.
+    The key release policy controls what enclaves are allowed to access the key it's bound to.
     For more details on how to configure your policies, see [Azure's policy examples](https://learn.microsoft.com/en-us/azure/confidential-computing/skr-policy-examples).
 
     Make sure that `authority` matches the location you are deploying MarbleRun to.

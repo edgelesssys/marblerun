@@ -17,6 +17,7 @@ Gramine
 hardcode
 helloworld
 hostname
+HSM
 IP
 Istio
 JSend
