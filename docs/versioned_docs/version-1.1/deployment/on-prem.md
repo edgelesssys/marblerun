@@ -45,13 +45,13 @@ DCAP is the new attestation mechanism for SGX [replacing EPID](https://www.intel
 You can find an overview of DCAP in the [official Intel docs](https://download.01.org/intel-sgx/sgx-dcap/1.11/linux/docs/DCAP_ECDSA_Orientation.pdf).
 MarbleRun only supports DCAP and requires DCAP libraries installed and configured on your system.
 
-From the perspective of MarbleRun and your workloads DCAP is accessed with a [Quote Generation Library (QGL)](https://github.com/intel/SGXDataCenterAttestationPrimitives/blob/master/QuoteGeneration/README.md) and a [Quote Verification Library (QVL)](https://github.com/intel/SGXDataCenterAttestationPrimitives/blob/master/QuoteVerification/README.md) for generating and verifying quotes respectively.
+From the perspective of MarbleRun and your workloads DCAP is accessed with a [Quote Generation Library (QGL)](https://github.com/intel/confidential-computing.tee.dcap/blob/main/QuoteVerification/README.md) and a [Quote Verification Library (QVL)](https://github.com/intel/SGXDataCenterAttestationPrimitives/blob/master/QuoteVerification/README.md) for generating and verifying quotes respectively.
 The QGL and QVL libraries need to be configured to talk to a [Provisioning Certificate Caching Service (PCCS)](https://download.01.org/intel-sgx/sgx-dcap/1.11/linux/docs/DCAP_ECDSA_Orientation.pdf).
 You currently have two options regarding PCCS for your on-premises machines and clusters:
 
 1. Use a public PCCS service by configuring your QGL and QVL to point to the public endpoints. Currently, Azure and Alibaba Cloud provide such a service, but require using infrastructure by these providers to make full use of the service.
 
-1. Run your own PCCS and expose it to your machine or cluster. See [Intel's demo reference implementation](https://github.com/intel/SGXDataCenterAttestationPrimitives/blob/dcap_1.21_reproducible/QuoteGeneration/pccs/README.md) and [design guide](https://download.01.org/intel-sgx/latest/dcap-latest/linux/docs/SGX_DCAP_Caching_Service_Design_Guide.pdf) for more information.
+1. Run your own PCCS and expose it to your machine or cluster. See [Intel's demo reference implementation](https://github.com/intel/confidential-computing.tee.dcap/blob/dcap_1.21_reproducible/QuoteGeneration/pccs/README.md) and [design guide](https://download.01.org/intel-sgx/latest/dcap-latest/linux/docs/SGX_DCAP_Caching_Service_Design_Guide.pdf) for more information.
 
     Follow these steps to set up your machines for your PCCS:
 

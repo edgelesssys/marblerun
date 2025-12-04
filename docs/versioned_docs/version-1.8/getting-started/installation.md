@@ -12,7 +12,7 @@ Make sure the following requirements are met:
 
 An easy way to get started is to run Kubernetes on your local machine using [minikube](https://minikube.sigs.k8s.io/docs/start/).
 Check the [prerequisites](../deployment/kubernetes.md#prerequisites) if you want to set up an SGX-enabled cluster.
-Another easy way is to use [Azure Kubernetes Service (AKS)](https://docs.microsoft.com/en-us/azure/aks/kubernetes-walkthrough-portal), which offers SGX-enabled nodes.
+Another easy way is to use [Azure Kubernetes Service (AKS)](https://learn.microsoft.com/en-us/azure/aks/learn/quick-kubernetes-deploy-portal), which offers SGX-enabled nodes.
 
 You can validate your setup by running the following:
 

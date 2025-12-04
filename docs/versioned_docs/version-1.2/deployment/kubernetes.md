@@ -82,7 +82,7 @@ Intel SGX supports two modes for obtaining remote attestation quotes:
 While Marbles built with [Ego](../building-marbles/ego.md) perform in-process attestation, other frameworks, such as [Gramine](../building-marbles/gramine.md), use out-of-process attestation.
 If your confidential application uses out-of-process attestation, you will need to expose the AESM device to your container.
 
-You can follow [the AKS guide](https://docs.microsoft.com/en-us/azure/confidential-computing/confidential-nodes-aks-addon) to make your deployments able to use AESM for quote generation. Note, that in this case, your Kubernetes nodes need the AESM service installed. See the [Intel installation guide](https://download.01.org/intel-sgx/sgx-linux/2.12/docs/Intel_SGX_Installation_Guide_Linux_2.12_Open_Source.pdf) for more information.
+You can follow [the AKS guide](https://learn.microsoft.com/en-us/azure/confidential-computing/confidential-nodes-aks-addon) to make your deployments able to use AESM for quote generation. Note, that in this case, your Kubernetes nodes need the AESM service installed. See the [Intel installation guide](https://download.01.org/intel-sgx/sgx-linux/2.12/docs/Intel_SGX_Installation_Guide_Linux_2.12_Open_Source.pdf) for more information.
 
 ## Option 1: Install with the MarbleRun CLI
 
@@ -116,7 +116,7 @@ See the [how to add a service](../workflows/add-service.md) documentation for mo
 
 ## Option 2: Install with Helm
 
-Make sure that you are using the latest release of Helm and have access to the MarbleRun Helm repositories. For upgrade instructions, see the [Helm install docs](https://docs.helm.sh/using_helm/#installing-helm). For more information on configuring and using Helm, see [Install applications with Helm in Azure Kubernetes Service (AKS)](https://docs.microsoft.com/en-us/azure/aks/kubernetes-helm).
+Make sure that you are using the latest release of Helm and have access to the MarbleRun Helm repositories. For upgrade instructions, see the [Helm install docs](https://docs.helm.sh/using_helm/#installing-helm). For more information on configuring and using Helm, see [Install applications with Helm in Azure Kubernetes Service (AKS)](https://learn.microsoft.com/en-us/azure/aks/kubernetes-helm).
 
 ### Adding MarbleRun's Helm repository
 

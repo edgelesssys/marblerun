@@ -128,7 +128,7 @@ Entries for these types can be defined in two ways:
     * `string`: No encoding. This is the default
     * `base64`: The manifest contains `Data` in [Base64](https://pkg.go.dev/encoding/base64). This can be useful to set content that can otherwise not be parsed in JSON format, or to avoid having to worry about correctly escaping newlines in a multi-line document
     * `hex`: Same as `base64`, but [Hex Encoding](https://pkg.go.dev/encoding/hex) is used instead
-  * `NoTemplates`: If this flag is set, content in `Data` isn't processed for templates. Use this if your file contains [Go Templates](https://golang.org/pkg/text/template/) structures that shouldn't be interpreted by MarbleRun.
+  * `NoTemplates`: If this flag is set, content in `Data` isn't processed for templates. Use this if your file contains [Go Templates](https://pkg.go.dev/text/template) structures that shouldn't be interpreted by MarbleRun.
 
 ### Argv
 
@@ -150,7 +150,7 @@ The general format is the following:
 
 ### Templates
 
-`Parameters` are passed from the Coordinator to secure enclaves (i.e., Marbles) after successful initial remote attestation. In the remote attestation step, the Coordinator ensures that enclaves run the software defined in the `Packages` section. It's important to note that `Parameters` are only accessible from within the corresponding secure enclave. `Parameters` may contain arbitrary static data. However, they can also be used to securely communicate different types of dynamically generated cryptographic keys and certificates to Marbles. For this, you can use [Go Templates](https://golang.org/pkg/text/template/) with the following syntax.
+`Parameters` are passed from the Coordinator to secure enclaves (i.e., Marbles) after successful initial remote attestation. In the remote attestation step, the Coordinator ensures that enclaves run the software defined in the `Packages` section. It's important to note that `Parameters` are only accessible from within the corresponding secure enclave. `Parameters` may contain arbitrary static data. However, they can also be used to securely communicate different types of dynamically generated cryptographic keys and certificates to Marbles. For this, you can use [Go Templates](https://pkg.go.dev/text/template) with the following syntax.
 
 `{{ <encoding> <name of secret> }}`
 

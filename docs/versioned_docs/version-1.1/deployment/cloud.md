@@ -4,7 +4,7 @@ This guide walks you through setting up MarbleRun on different CSP offerings ind
 
 ## Azure confidential computing VMs
 
-[Azure confidential computing services](https://azure.microsoft.com/en-us/solutions/confidential-compute/) provide access to VMs with Intel SGX enabled in [DCsv2 VM instances](https://docs.microsoft.com/en-us/azure/virtual-machines/dcv2-series).
+[Azure confidential computing services](https://azure.microsoft.com/en-us/solutions/confidential-compute/) provide access to VMs with Intel SGX enabled in [DCsv2 VM instances](https://learn.microsoft.com/en-us/azure/virtual-machines/sizes/general-purpose/dcsv2-series).
 The description below uses a VM running Ubuntu 18.04.
 
 ### Prerequisites
@@ -82,7 +82,7 @@ VMs and exposes the underlying confidential compute hardware.
 
 ### Prerequisites
 
-Follow the instructions on the [AKS Confidential Computing Quick Start guide](https://docs.microsoft.com/en-us/azure/confidential-computing/confidential-enclave-nodes-aks-get-started)
+Follow the instructions on the [AKS Confidential Computing Quick Start guide](https://learn.microsoft.com/en-us/azure/confidential-computing/confidential-enclave-nodes-aks-get-started)
 to provision an AKS cluster with Intel SGX enabled worker nodes.
 
 ### Deploy MarbleRun
