@@ -11,7 +11,6 @@ async function createConfig() {
     url: 'https://docs.edgeless.systems',
     baseUrl: '/marblerun/',
     onBrokenLinks: 'throw',
-    onBrokenMarkdownLinks: 'throw',
     onBrokenAnchors: 'throw',
     favicon: 'img/favicon.png',
 
@@ -19,6 +18,13 @@ async function createConfig() {
     // If you aren't using GitHub pages, you don't need these.
     organizationName: 'Edgeless Systems', // Usually your GitHub org/user name.
     projectName: 'marblerun', // Usually your repo name.
+
+    markdown: {
+      hooks: {
+        onBrokenMarkdownLinks: 'throw',
+        onBrokenMarkdownImages: 'throw',
+      }
+    },
 
     // scripts
     scripts: [
