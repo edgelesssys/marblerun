@@ -33,6 +33,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/state"
 	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
 	"github.com/edgelesssys/marblerun/test/e2e/cmd"
+	"github.com/edgelesssys/marblerun/test/e2e/helm"
 	"github.com/edgelesssys/marblerun/test/e2e/kubectl"
 	"github.com/edgelesssys/marblerun/test/e2e/manifest"
 	"github.com/edgelesssys/marblerun/util/k8sutil"
@@ -2165,6 +2166,19 @@ func setUpNamespace(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl)
 	return namespace, releaseName
 }
 
+func installChart(ctx context.Context, t *testing.T, namespace, releaseName string, replicas int) {
+	t.Helper()
+
+	require := require.New(t)
+
+	helm, err := helm.New(t, *kubeConfigPath, namespace)
+	require.NoError(err)
+	t.Logf("Installing chart %q from %q", releaseName, *chartPath)
+	uninstall, err := helm.InstallChart(ctx, releaseName, namespace, *chartPath, replicas, defaultTimeout, nil)
+	require.NoError(err)
+	t.Cleanup(uninstall)
+}
+
 func writeManifest(t *testing.T, mnf manifest.Manifest, tmpDir string) string {
 	t.Helper()
 
@@ -2218,6 +2232,38 @@ func withPortForwardAny(
 	pod := pods[rand.Intn(len(pods))]
 
 	withPortForward(ctx, t, kubectl, namespace, pod, coordinatorClientPort, fn)
+}
+
+func setManifest(
+	ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd,
+	tmpDir string, mnf manifest.Manifest, replicas int,
+) string {
+	namespace, releaseName := setUpNamespace(ctx, t, kubectl)
+	manifestPath := writeManifest(t, mnf, tmpDir)
+	installChart(ctx, t, namespace, releaseName, replicas)
+
+	// Verify all instances are accepting a manifest
+	getStatus(ctx, t, kubectl, cmd, namespace, state.AcceptingManifest)
+
+	// Set manifest for any Coordinator instance
+	t.Log("Setting manifest")
+	withPortForwardAny(ctx, t, kubectl, namespace, func(port string) error {
+		_, err := cmd.Run(
+			ctx,
+			"manifest", "set",
+			manifestPath, net.JoinHostPort(localhost, port),
+			"--recoverydata", filepath.Join(tmpDir, recoveryDataFile),
+			"--coordinator-cert", filepath.Join(tmpDir, coordinatorCertFileDefault),
+			eraConfig,
+		)
+		return err
+	})
+	t.Log("Manifest set")
+
+	// Verify all instances are accepting marbles
+	getStatus(ctx, t, kubectl, cmd, namespace, state.AcceptingMarbles)
+
+	return namespace
 }
 
 func getStatus(
