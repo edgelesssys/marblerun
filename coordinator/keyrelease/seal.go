@@ -9,6 +9,7 @@ package keyrelease
 import (
 	"bytes"
 	"context"
+	"fmt"
 
 	"github.com/edgelesssys/ego/ecrypto"
 	"github.com/edgelesssys/marblerun/coordinator/seal"
@@ -35,9 +36,9 @@ func (k *KeyReleaser) SealEncryptionKey(additionalData []byte, mode seal.Mode) (
 		}
 	}
 
-	hsmWrappedKey, err := ecrypto.Encrypt(encryptedKey, k.hsmSealingKey, additionalData)
+	hsmWrappedKey, err := ecrypto.Encrypt(encryptedKey, k.hsmSealingKey, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("encrypting with HSM key: %w", err)
 	}
 	return append(HSMSealedPrefix, hsmWrappedKey...), nil
 }
@@ -53,9 +54,9 @@ func (k *KeyReleaser) UnsealEncryptionKey(encryptedKey, additionalData []byte) (
 		}
 
 		var err error
-		encryptedKey, err = ecrypto.Decrypt(hsmWrappedKey, k.hsmSealingKey, additionalData)
+		encryptedKey, err = ecrypto.Decrypt(hsmWrappedKey, k.hsmSealingKey, nil)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("decrypting HSM wrapped key: %w", err)
 		}
 	}
 
