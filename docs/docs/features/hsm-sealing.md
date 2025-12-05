@@ -59,7 +59,7 @@ View the [official documentation](https://learn.microsoft.com/en-us/azure/key-va
     ```json
     {
         "version": "1.0.0",
-        "allOf": [
+        "anyOf": [
             {
                 "authority": "https://shareduks.uks.attest.azure.net",
                 "allOf": [
