@@ -138,6 +138,10 @@ type UpdateApplyResponse struct {
 	MissingAcknowledgments int `json:"missingAcknowledgments"`
 	// MissingUsers is a list of users that have not acknowledged the update.
 	MissingUsers []string `json:"missingUsers"`
+	// RecoverySecrets is a map containing the encrypted secrets to be used for recovering the Coordinator.
+	// The map keys match the names of the supplied RecoveryKeys in the manifest.
+	// Only set when the update made a change to the recovery keys.
+	RecoverySecrets map[string][]byte `json:"recoverySecrets,omitzero"`
 }
 
 // UpdateManifestGetResponse is the response to a GET request to /update-manifest.
@@ -164,6 +168,10 @@ type UpdateManifestPostResponse struct {
 	MissingUsers []string `json:"missingUsers"`
 	// MissingAcknowledgements is the number of missing acknowledgments before the update is accepted.
 	MissingAcknowledgments int `json:"missingAcknowledgments"`
+	// RecoverySecrets is a map containing the encrypted secrets to be used for recovering the Coordinator.
+	// The map keys match the names of the supplied RecoveryKeys in the manifest.
+	// Only set when the update made a change to the recovery keys.
+	RecoverySecrets map[string][]byte `json:"recoverySecrets,omitzero"`
 }
 
 // UpdateCancelPostResponse is the response to a POST request to /update-cancel.

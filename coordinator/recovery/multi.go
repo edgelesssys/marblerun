@@ -52,6 +52,7 @@ func (r *MultiPartyRecovery) GenerateEncryptionKey(recoveryKeys map[string]strin
 	case len(recoveryKeys) <= 1:
 		r.log.Debug("Single recovery key received, generating single-party encryption key")
 		r.encryptionKey, err = generateRandomKey()
+		r.secretMap, r.SecretHashMap = nil, nil // wipe potentially previous multi-party recovery data
 	// If multiple keys are provided, and the recovery threshold equals the amount of provided keys (or is 0, i.e. the default),
 	// generate multiple keys and XOR them together for multi-party recovery
 	case recoveryThreshold == uint(len(recoveryKeys)) || recoveryThreshold == 0:

@@ -17,8 +17,8 @@ import (
 )
 
 var (
-	recoveryPublicKey, recoveryPrivateKey       = generateTestRecoveryKey()
-	recoveryPublicKeyTwo, recoveryPrivateKeyTwo = generateTestRecoveryKey()
+	recoveryPublicKey, recoveryPrivateKey       = GenerateTestRecoveryKey()
+	recoveryPublicKeyTwo, recoveryPrivateKeyTwo = GenerateTestRecoveryKey()
 
 	adminOneCert, adminOnePrivKey = MustGenerateAdminTestCert()
 	adminTwoCert, adminTwoPrivKey = MustGenerateAdminTestCert()
@@ -46,7 +46,7 @@ var (
 
 // MustGenerateAdminTestCert creates a certificate and private key for testing.
 func MustGenerateAdminTestCert() (cert []byte, privKey *rsa.PrivateKey) {
-	_, key := generateTestRecoveryKey()
+	_, key := GenerateTestRecoveryKey()
 
 	// Create some demo certificate
 	template := x509.Certificate{
@@ -709,7 +709,8 @@ var ManifestJSONMissingParameters = `{
 	}
 }`
 
-func generateTestRecoveryKey() (publicKeyPem []byte, privateKey *rsa.PrivateKey) {
+// GenerateTestRecoveryKey generates an [*rsa.PrivateKey] and matching PEM encoded public key for a manifest.
+func GenerateTestRecoveryKey() (publicKeyPem []byte, privateKey *rsa.PrivateKey) {
 	key, err := rsa.GenerateKey(rand.Reader, 3096)
 	if err != nil {
 		panic(err)

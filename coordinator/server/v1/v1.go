@@ -189,7 +189,7 @@ func (s *ClientAPIServer) UpdatePost(w http.ResponseWriter, r *http.Request) {
 		handler.WriteJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if _, _, err = s.api.UpdateManifest(r.Context(), updateManifest, verifiedUser); err != nil {
+	if _, _, _, err = s.api.UpdateManifest(r.Context(), updateManifest, verifiedUser); err != nil {
 		handler.WriteJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -295,7 +295,7 @@ func (s *ClientAPIServer) UpdateManifestPost(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	_, missing, err := s.api.AcknowledgePendingUpdate(r.Context(), rawUpdateManifest, verifiedUser)
+	_, _, missing, err := s.api.AcknowledgePendingUpdate(r.Context(), rawUpdateManifest, verifiedUser)
 	if err != nil {
 		if errors.Is(err, clientapi.ErrNoPendingUpdate) {
 			handler.WriteJSONError(w, err.Error(), http.StatusNotFound)
