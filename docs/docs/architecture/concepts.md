@@ -6,11 +6,11 @@ This article describes the concepts of [confidential computing](#confidential-co
 
 Confidential computing protects data in use by performing computations in hardware-based secure enclaves. The most prominent enclave to date is probably [Intel SGX](https://www.intel.de/content/www/de/de/architecture-and-technology/software-guard-extensions.html).
 Enclaves prevent unauthorized access or modification of applications and data while in use, thereby increasing the security assurances for organizations that manage sensitive and regulated data.
-For information about confidential computing, see the Confidential Computing Consortium [white paper](https://confidentialcomputing.io/white-papers/).
+For information about confidential computing, see the Confidential Computing Consortium [white paper](https://confidentialcomputing.io/resources/white-papers-reports/).
 
 ## Service meshes
 
-A service mesh is an infrastructure layer for managing, observing, and securing communications in a container-based cluster. In the Kubernetes world, [Istio](https://istio.io), [HashiCorp Consul](https://www.consul.io/), and [Linkerd](https://linkerd.io/) are the most popular general-purpose service meshes.
+A service mesh is an infrastructure layer for managing, observing, and securing communications in a container-based cluster. In the Kubernetes world, [Istio](https://istio.io), [HashiCorp Consul](https://developer.hashicorp.com/consul), and [Linkerd](https://linkerd.io/) are the most popular general-purpose service meshes.
 
 When we started looking into the concept of *confidential microservices*, we realized that there are additional challenges and requirements for service meshes in the context of confidential computing.
 

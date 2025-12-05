@@ -10,10 +10,10 @@ Depending on your setup, you may follow the quickstart for SGX-enabled clusters.
 To get a feel for how MarbleRun would work for one of your services, you can install a demo application.
 The emojivoto application is a standalone Kubernetes application that uses a mix of gRPC and HTTP calls to allow users to vote on their favorite emojis.
 Created as a demo application for the popular [Linkerd](https://linkerd.io) service mesh, we've made a confidential variant that uses a confidential service mesh for all gRPC and HTTP connections.
-Clone the [demo application's repository](https://github.com/edgelesssys/emojivoto.git) from GitHub by running the following:
+Clone the [demo application's repository](https://github.com/edgelesssys/emojivoto) from GitHub by running the following:
 
 ```bash
-git clone https://github.com/edgelesssys/emojivoto.git && cd emojivoto
+git clone https://github.com/edgelesssys/emojivoto && cd emojivoto
 ```
 
 ## Step 1: Install the control plane onto your cluster

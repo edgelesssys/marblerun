@@ -4,8 +4,8 @@
 
 There are two basic examples of how to build confidential applications with MarbleRun.
 
-* See [`helloworld`](https://github.com/edgelesssys/marblerun/blob/master/samples/helloworld) for how to integrate MarbleRun with your Golang application. 🌎
-* See [`helloc++`](https://github.com/edgelesssys/marblerun/blob/master/samples/helloc%2B%2B) for how to integrate MarbleRun with your C++ application.
+* See [`helloworld`](https://github.com/edgelesssys/marblerun/tree/master/samples/helloworld) for how to integrate MarbleRun with your Golang application. 🌎
+* See [`helloc++`](https://github.com/edgelesssys/marblerun/tree/master/samples/helloc++) for how to integrate MarbleRun with your C++ application.
 
 ## Emoji voting
 

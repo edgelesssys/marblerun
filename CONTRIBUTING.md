@@ -13,7 +13,7 @@ MarbleRun is licensed under the [Business Source License 1.1](LICENSE). When con
 
 ## Development guidelines
 
-Adhere to the style and best practices described in [Effective Go](https://golang.org/doc/effective_go.html). Read [Common Review Comments](https://github.com/golang/go/wiki/CodeReviewComments) for further information.
+Adhere to the style and best practices described in [Effective Go](https://go.dev/doc/effective_go). Read [Common Review Comments](https://github.com/golang/go/wiki/CodeReviewComments) for further information.
 
 ## Pull request process
 

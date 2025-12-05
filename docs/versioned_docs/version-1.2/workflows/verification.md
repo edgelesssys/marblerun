@@ -20,8 +20,9 @@ sudo apt install az-dcap-client
 
 ### Intel QPL
 
-Otherwise, you can use the [Intel DCAP Quote Provider Library](https://github.com/intel/SGXDataCenterAttestationPrimitives/tree/master/QuoteGeneration/qpl).
+Otherwise, you can use the [Intel DCAP Quote Provider Library](https://github.com/intel/confidential-computing.tee.dcap/tree/main/QuoteGeneration/qpl).
 You can install the library via Intel's Ubuntu package repository:
+
 ```bash
 # Add the repository and key
 wget -qO - https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo apt-key add -
@@ -32,20 +33,20 @@ sudo apt install libsgx-dcap-default-qpl
 
 Our tools build on [OpenEnclave](https://github.com/openenclave/openenclave) for quote verification, which expects the QPL as `libdcap_quoteprov.so`.
 We need to create a link to Intel's library:
+
 ```bash
 cd /usr/lib/x86_64-linux-gnu/
 sudo ln -s libdcap_quoteprov.so.1 libdcap_quoteprov.so
 ```
 
 To make sure the QPL connects to the correct PCCS we need to edit the [configuration](https://github.com/intel/SGXDataCenterAttestationPrimitives/blob/master/QuoteGeneration/qpl/README.md#configuration) in `/etc/sgx_default_qcnl.conf`.
+
 ```
 # PCCS server address
 PCCS_URL=<YOUR_PCCS_URL>
 # To accept insecure HTTPS cert, set this option to FALSE
 USE_SECURE_CERT=<TRUE/FALSE>
 ```
-
-
 
 ## Establishing trust in the Coordinator
 
