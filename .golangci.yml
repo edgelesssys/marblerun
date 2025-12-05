@@ -43,6 +43,12 @@ linters:
       text: "package-comments: package comment should be of the form"
     - linters: ["revive"]
       text: "package-comments: should have a package comment"
+    - path: "api/"
+      linters: ["revive"]
+      text: "var-naming: avoid meaningless package names"
+    - path: "coordinator/crypto/"
+      linters: ["revive"]
+      text: "var-naming: avoid package names that conflict with Go standard library package names"
     presets:
       # Disabled since this rule enforces error checks on fmt.FprintX and Close methods
       - std-error-handling
