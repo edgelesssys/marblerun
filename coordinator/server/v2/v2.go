@@ -316,7 +316,7 @@ func (s *ClientAPIServer) UpdatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	missingUsers, missingAcks, err := s.api.UpdateManifest(r.Context(), req.Manifest, verifiedUser)
+	recoverySecretMap, missingUsers, missingAcks, err := s.api.UpdateManifest(r.Context(), req.Manifest, verifiedUser)
 	if err != nil {
 		handler.WriteJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -325,6 +325,7 @@ func (s *ClientAPIServer) UpdatePost(w http.ResponseWriter, r *http.Request) {
 	handler.WriteJSON(w, UpdateApplyResponse{
 		MissingAcknowledgments: missingAcks,
 		MissingUsers:           missingUsers,
+		RecoverySecrets:        recoverySecretMap,
 	})
 }
 
@@ -373,7 +374,7 @@ func (s *ClientAPIServer) UpdateManifestPost(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	missingUsers, missingAcks, err := s.api.AcknowledgePendingUpdate(r.Context(), req.Manifest, verifiedUser)
+	recoverySecretMap, missingUsers, missingAcks, err := s.api.AcknowledgePendingUpdate(r.Context(), req.Manifest, verifiedUser)
 	if err != nil {
 		if errors.Is(err, clientapi.ErrNoPendingUpdate) {
 			handler.WriteJSONError(w, err.Error(), http.StatusNotFound)
@@ -397,6 +398,7 @@ func (s *ClientAPIServer) UpdateManifestPost(w http.ResponseWriter, r *http.Requ
 		Message:                msg,
 		MissingUsers:           missingUsers,
 		MissingAcknowledgments: missingAcks,
+		RecoverySecrets:        recoverySecretMap,
 	})
 }
 

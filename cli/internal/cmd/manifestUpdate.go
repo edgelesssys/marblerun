@@ -8,6 +8,7 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
@@ -47,6 +48,8 @@ An admin certificate specified in the original manifest is needed to verify the 
 	}
 	addClientAuthFlags(cmd, cmd.Flags())
 
+	cmd.Flags().StringP("recoverydata", "r", "", "File to write recovery data to when keys change, print to stdout if not specified")
+
 	return cmd
 }
 
@@ -64,6 +67,8 @@ All participants must use the same manifest to acknowledge the pending update.
 		RunE:    runUpdateAcknowledge,
 	}
 	addClientAuthFlags(cmd, cmd.Flags())
+
+	cmd.Flags().StringP("recoverydata", "r", "", "File to write recovery data to when keys change, print to stdout if not specified")
 
 	return cmd
 }
@@ -122,7 +127,7 @@ func runUpdateApply(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	missingUsers, missingAcks, err := api.ManifestUpdateApply(cmd.Context(), hostname, root, manifest, keyPair)
+	recoveryData, missingUsers, missingAcks, err := api.ManifestUpdateApply(cmd.Context(), hostname, root, manifest, keyPair)
 	if err != nil {
 		return fmt.Errorf("applying update: %w", err)
 	}
@@ -145,6 +150,11 @@ func runUpdateApply(cmd *cobra.Command, args []string) error {
 		)
 	}
 	cmd.Println(msg)
+
+	if len(recoveryData) > 0 {
+		return saveNewRecoveryData(cmd, recoveryData)
+	}
+
 	return nil
 }
 
@@ -172,7 +182,7 @@ func runUpdateAcknowledge(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	missingUsers, missingAcks, err := api.ManifestUpdateAcknowledge(cmd.Context(), hostname, root, manifest, keyPair)
+	recoveryData, missingUsers, missingAcks, err := api.ManifestUpdateAcknowledge(cmd.Context(), hostname, root, manifest, keyPair)
 	if err != nil {
 		return fmt.Errorf("acknowledging update manifest: %w", err)
 	}
@@ -188,6 +198,11 @@ func runUpdateAcknowledge(cmd *cobra.Command, args []string) error {
 		msg = fmt.Sprintf("%d users still need to acknowledge the update manifest.\nThe following users have not yet accepted: %s", missingAcks, strings.Join(missingUsers, ", "))
 	}
 	cmd.Println(msg)
+
+	if len(recoveryData) > 0 {
+		return saveNewRecoveryData(cmd, recoveryData)
+	}
+
 	return nil
 }
 
@@ -273,6 +288,35 @@ func cliManifestUpdateGet(
 		response = string(manifest)
 	}
 	fmt.Fprint(out, response)
+
+	return nil
+}
+
+func saveNewRecoveryData(cmd *cobra.Command, recoveryData map[string][]byte) error {
+	recoveryFilename, err := cmd.Flags().GetString("recoverydata")
+	if err != nil {
+		return err
+	}
+
+	// recovery secret was sent, print or save to file
+	wrappedRecoveryData := struct {
+		RecoverySecrets map[string][]byte `json:"RecoverySecrets"`
+	}{
+		RecoverySecrets: recoveryData,
+	}
+	recoveryDataJSON, err := json.Marshal(wrappedRecoveryData)
+	if err != nil {
+		return fmt.Errorf("marshalling recovery data: %w", err)
+	}
+	if recoveryFilename != "" {
+		recFile := file.New(recoveryFilename, afero.NewOsFs())
+		if err := recFile.Write(recoveryDataJSON, file.OptOverwrite); err != nil {
+			return err
+		}
+		cmd.Printf("Recovery data saved to: %s\n", recFile.Name())
+	} else {
+		cmd.Println(string(recoveryDataJSON))
+	}
 
 	return nil
 }

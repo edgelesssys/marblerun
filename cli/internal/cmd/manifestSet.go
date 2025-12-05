@@ -29,7 +29,7 @@ func newManifestSet() *cobra.Command {
 		RunE:    runManifestSet,
 	}
 
-	cmd.Flags().StringP("recoverydata", "r", "", "File to write recovery data to, print to stdout if non specified")
+	cmd.Flags().StringP("recoverydata", "r", "", "File to write recovery data to, print to stdout if not specified")
 
 	return cmd
 }

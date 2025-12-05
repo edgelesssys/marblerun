@@ -11,6 +11,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/binary"
@@ -2056,6 +2057,126 @@ func TestE2EActions(t *testing.T) {
 
 				// Run all test actions again to verify the recovered Coordinator behaves the same
 				actions = append(actions, actions...)
+
+				return actions
+			}(),
+		},
+		"update recovery keys": {
+			getStartingManifest: manifest.DefaultManifest,
+			actions: func() []testAction {
+				var actions []testAction
+
+				var recPub1, recPub2 []byte
+				var recPriv1, recPriv2 *rsa.PrivateKey
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
+					t.Log("Creating new recovery keys")
+					require := require.New(t)
+					recPub1, recPriv1 = manifest.GenerateKey(t)
+					recPub2, recPriv2 = manifest.GenerateKey(t)
+
+					priv1Encoded, err := x509.MarshalPKCS8PrivateKey(recPriv1)
+					require.NoError(err)
+					require.NoError(os.WriteFile(filepath.Join(tmpDir, "rec1.priv"), pem.EncodeToMemory(&pem.Block{
+						Type:  "PRIVATE KEY",
+						Bytes: priv1Encoded,
+					}), 0o644))
+
+					priv2Encoded, err := x509.MarshalPKCS8PrivateKey(recPriv2)
+					require.NoError(err)
+					require.NoError(os.WriteFile(filepath.Join(tmpDir, "rec2.priv"), pem.EncodeToMemory(&pem.Block{
+						Type:  "PRIVATE KEY",
+						Bytes: priv2Encoded,
+					}), 0o644))
+
+					// Create Update Manifest
+					mnf := loadTestManifest(require, tmpDir)
+					mnf.RecoveryKeys = map[string]string{
+						"recovery1": string(recPub1),
+						"recovery2": string(recPub2),
+					}
+
+					mnfRaw, err := json.MarshalIndent(mnf, "", "  ")
+					require.NoError(err)
+					require.NoError(os.WriteFile(filepath.Join(tmpDir, manifestFile), mnfRaw, 0o644))
+					t.Logf("Setting update manifest:\n%s", mnfRaw)
+					updateMnfPath := filepath.Join(tmpDir, "update.json")
+					require.NoError(os.WriteFile(updateMnfPath, mnfRaw, 0o644))
+
+					// Upload update manifest
+					withPortForwardAny(ctx, t, kubectl, namespace, func(port string) error {
+						_, err := cmd.Run(
+							ctx,
+							"manifest", "update", "apply",
+							updateMnfPath, net.JoinHostPort(localhost, port),
+							"--key", filepath.Join(tmpDir, keyFileDefault),
+							"--cert", filepath.Join(tmpDir, certFileDefault),
+							"--coordinator-cert", filepath.Join(tmpDir, coordinatorCertFileDefault),
+							"--recoverydata", filepath.Join(tmpDir, "newRecoveryData.bin"),
+							eraConfig,
+						)
+						return err
+					})
+				})
+
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
+					t.Log("Scaling Coordinator deployment to 0")
+
+					require.NoError(t, kubectl.ScaleDeployment(ctx, namespace, coordinatorDeployment, 0))
+				})
+
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace string, _ string) {
+					t.Log("Scaling up Coordinator deployment back up")
+					require.NoError(t, kubectl.ScaleDeployment(ctx, namespace, coordinatorDeployment, *replicas))
+
+					getStatus(ctx, t, kubectl, cmd, namespace, state.AcceptingMarbles)
+				})
+
+				// Now trigger recovery and recover with our new keys
+				actions = append(actions, triggerRecoveryActions...)
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
+					require := require.New(t)
+					recoveryJSON, err := os.ReadFile(filepath.Join(tmpDir, "newRecoveryData.bin"))
+					require.NoError(err)
+
+					t.Logf("Parsing recovery data from %s", recoveryJSON)
+					encryptedRecoveryKey1File := filepath.Join(tmpDir, "encrypted_recovery_key_1")
+					encryptedRecoveryKey2File := filepath.Join(tmpDir, "encrypted_recovery_key_2")
+					encryptedRecoveryData := map[string]map[string][]byte{}
+					require.NoError(json.Unmarshal(recoveryJSON, &encryptedRecoveryData))
+					keyMap := encryptedRecoveryData["RecoverySecrets"]
+					require.NoError(os.WriteFile(encryptedRecoveryKey1File, keyMap["recovery1"], 0o644))
+					require.NoError(os.WriteFile(encryptedRecoveryKey2File, keyMap["recovery2"], 0o644))
+
+					t.Log("Recovering Coordinator with first key")
+					withPortForwardAny(ctx, t, kubectl, namespace, func(port string) error {
+						_, err := cmd.Run(
+							ctx,
+							"recover",
+							encryptedRecoveryKey1File,
+							net.JoinHostPort(localhost, port),
+							eraConfig,
+							"--key", filepath.Join(tmpDir, "rec1.priv"),
+						)
+						return err
+					})
+
+					t.Log("Recovering Coordinator with second key")
+					withPortForwardAny(ctx, t, kubectl, namespace, func(port string) error {
+						_, err := cmd.Run(
+							ctx,
+							"recover",
+							encryptedRecoveryKey2File,
+							net.JoinHostPort(localhost, port),
+							eraConfig,
+							"--key", filepath.Join(tmpDir, "rec2.priv"),
+						)
+						return err
+					})
+				})
+
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
+					getStatus(ctx, t, kubectl, cmd, namespace, state.AcceptingMarbles)
+				})
 
 				return actions
 			}(),

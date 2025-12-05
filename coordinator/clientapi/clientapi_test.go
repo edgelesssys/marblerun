@@ -1048,7 +1048,7 @@ func TestUpdateManifest(t *testing.T) {
 			updater: user.NewUser("admin", mustParseCert(t, test.AdminCert)),
 			wantErr: true,
 		},
-		"invalid manifest: missing recovery keys": {
+		"recover keys removed": {
 			updateManifest: func() manifest.Manifest {
 				manifest := testUpdateManifest()
 				manifest.RecoveryKeys = nil
@@ -1068,9 +1068,9 @@ func TestUpdateManifest(t *testing.T) {
 				u.Assign(user.NewPermission(user.PermissionUpdateManifest, []string{}))
 				return u
 			}(),
-			wantErr: true,
+			wantErr: false,
 		},
-		"invalid manifest: changed recovery keys": {
+		"changed recovery keys": {
 			updateManifest: func() manifest.Manifest {
 				manifest := testUpdateManifest()
 				manifest.RecoveryKeys = map[string]string{
@@ -1092,11 +1092,13 @@ func TestUpdateManifest(t *testing.T) {
 				u.Assign(user.NewPermission(user.PermissionUpdateManifest, []string{}))
 				return u
 			}(),
-			wantErr: true,
+			wantErr: false,
 		},
-		"invalid manifest: changed recovery threshold": {
+		"changed recovery threshold": {
 			updateManifest: func() manifest.Manifest {
 				manifest := testUpdateManifest()
+				manifest.RecoveryKeys["key2"] = manifest.RecoveryKeys["key"]
+				manifest.RecoveryKeys["key3"] = manifest.RecoveryKeys["key"]
 				manifest.Config.RecoveryThreshold = 2
 				return manifest
 			}(),
@@ -1119,7 +1121,7 @@ func TestUpdateManifest(t *testing.T) {
 				u.Assign(user.NewPermission(user.PermissionUpdateManifest, []string{}))
 				return u
 			}(),
-			wantErr: true,
+			wantErr: false,
 		},
 		"symmetric secret file": {
 			updateManifest: func() manifest.Manifest {
@@ -1234,7 +1236,7 @@ func TestUpdateManifest(t *testing.T) {
 			updateManifest, err := json.Marshal(tc.updateManifest)
 			require.NoError(err)
 
-			_, _, err = api.UpdateManifest(ctx, updateManifest, tc.updater)
+			_, _, _, err = api.UpdateManifest(ctx, updateManifest, tc.updater)
 			if tc.wantErr {
 				assert.Error(err)
 				time.Sleep(50 * time.Millisecond) // Short wait since the clean up is async.
@@ -1312,11 +1314,11 @@ func TestMultiPartyUpdate(t *testing.T) {
 	assert.Error(err)
 
 	// try to acknowledge update, should fail
-	_, _, err = api.AcknowledgePendingUpdate(ctx, updateMnfJSON, admin1)
+	_, _, _, err = api.AcknowledgePendingUpdate(ctx, updateMnfJSON, admin1)
 	assert.Error(err)
 
 	// Initialize update with first admin
-	missingUsers, missingAcks, err := api.UpdateManifest(ctx, updateMnfJSON, admin1)
+	_, missingUsers, missingAcks, err := api.UpdateManifest(ctx, updateMnfJSON, admin1)
 	require.NoError(err)
 
 	pendingUpdate := getPendingUpdate(t, api.txHandle)
@@ -1332,29 +1334,29 @@ func TestMultiPartyUpdate(t *testing.T) {
 	assert.Equal(2, pending.MissingAcknowledgments())
 
 	// Try to acknowledge with first admin, should do nothing
-	missing, missingAcks, err := api.AcknowledgePendingUpdate(ctx, updateMnfJSON, admin1)
+	_, missing, missingAcks, err := api.AcknowledgePendingUpdate(ctx, updateMnfJSON, admin1)
 	assert.NoError(err)
 	assert.ElementsMatch([]string{admin2.Name(), admin3.Name()}, missing)
 	assert.Equal(2, missingAcks)
 
 	// Try to overwrite the pending update by starting a new update, should fail
-	_, _, err = api.UpdateManifest(ctx, updateMnfJSON, admin1)
+	_, _, _, err = api.UpdateManifest(ctx, updateMnfJSON, admin1)
 	assert.Error(err)
-	_, _, err = api.UpdateManifest(ctx, []byte(test.UpdateManifest), admin1)
+	_, _, _, err = api.UpdateManifest(ctx, []byte(test.UpdateManifest), admin1)
 	assert.Error(err)
 
 	// Acknowledge with different manifest, should fail
-	_, _, err = api.AcknowledgePendingUpdate(ctx, mnfJSON, admin2)
+	_, _, _, err = api.AcknowledgePendingUpdate(ctx, mnfJSON, admin2)
 	assert.Error(err)
 
 	// Acknowledge with second admin
-	missing, missingAcks, err = api.AcknowledgePendingUpdate(ctx, updateMnfJSON, admin2)
+	_, missing, missingAcks, err = api.AcknowledgePendingUpdate(ctx, updateMnfJSON, admin2)
 	require.NoError(err)
 	assert.ElementsMatch([]string{admin3.Name()}, missing)
 	assert.Equal(1, missingAcks)
 
 	// Acknowledge with third admin
-	missing, missingAcks, err = api.AcknowledgePendingUpdate(ctx, updateMnfJSON, admin3)
+	_, missing, missingAcks, err = api.AcknowledgePendingUpdate(ctx, updateMnfJSON, admin3)
 	require.NoError(err)
 	assert.Len(missing, 0)
 	assert.Equal(0, missingAcks)
@@ -1368,7 +1370,7 @@ func TestMultiPartyUpdate(t *testing.T) {
 	assert.Error(err)
 
 	// Start a new update and try to cancel it
-	missingUsers, missingAcks, err = api.UpdateManifest(ctx, updateMnfJSON, admin1)
+	_, missingUsers, missingAcks, err = api.UpdateManifest(ctx, updateMnfJSON, admin1)
 	require.NoError(err)
 
 	pendingUpdate = getPendingUpdate(t, api.txHandle)

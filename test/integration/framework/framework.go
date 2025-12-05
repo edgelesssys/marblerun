@@ -209,7 +209,7 @@ func (i IntegrationTest) SetManifest(manifest manifest.Manifest) (map[string][]b
 }
 
 // SetUpdateManifest sets performs a manifest update for the Coordinator.
-func (i IntegrationTest) SetUpdateManifest(manifest manifest.Manifest, certPEM []byte, key *rsa.PrivateKey) (missingUsers []string, missingAcknowledgements int, err error) {
+func (i IntegrationTest) SetUpdateManifest(manifest manifest.Manifest, certPEM []byte, key *rsa.PrivateKey) (recoveryData map[string][]byte, missingUsers []string, missingAcknowledgements int, err error) {
 	// Setup required client certificate for authentication
 	privk, err := x509.MarshalPKCS8PrivateKey(key)
 	i.require.NoError(err)

@@ -499,28 +499,29 @@ func (a *ClientAPI) SetMonotonicCounter(ctx context.Context, marbleType string, 
 // UpdateManifest allows the user to update manifest.
 // If multiple users are allowed to update the manifest, the update is only applied once all users have acknowledged the update.
 // This operation blocks other manifest updates until the update is applied or cancelled.
-func (a *ClientAPI) UpdateManifest(ctx context.Context, rawUpdateManifest []byte, updater *user.User) (missingUsers []string, missingAcknowledgments int, err error) {
+func (a *ClientAPI) UpdateManifest(ctx context.Context, rawUpdateManifest []byte, updater *user.User) (recoverySecretMap map[string][]byte, missingUsers []string, missingAcknowledgments int, err error) {
 	a.log.Info("UpdateManifest called")
 	var updateManifest manifest.Manifest
 	if err := json.Unmarshal(rawUpdateManifest, &updateManifest); err != nil {
-		return nil, 0, fmt.Errorf("unmarshaling update manifest: %w", err)
+		return nil, nil, 0, fmt.Errorf("unmarshaling update manifest: %w", err)
 	}
 
 	updateGetter, rollback, _, err := dwrapper.WrapTransaction(ctx, a.txHandle)
 	if err != nil {
-		return nil, 0, err
+		return nil, nil, 0, err
 	}
 	// Check if there is already an update in progress
 	_, err = updateGetter.GetPendingUpdate()
 	rollback()
 	if err == nil {
 		a.log.Error("UpdateManifest: Update already in progress. Acknowledge the update to apply it, or cancel it to start a new one")
-		return nil, 0, errors.New("update already in progress. Acknowledge the update to apply it, or cancel it to start a new one")
+		return nil, nil, 0, errors.New("update already in progress. Acknowledge the update to apply it, or cancel it to start a new one")
 	}
 
 	// Run regular update manifest if only packages are updated
 	if updateManifest.IsUpdateManifest() {
-		return a.updateManifest(ctx, rawUpdateManifest, updater)
+		missingUsers, missingAcknowledgments, err = a.updateManifest(ctx, rawUpdateManifest, updater)
+		return nil, missingUsers, missingAcknowledgments, err
 	}
 
 	// We are updating the entire manifest
@@ -528,46 +529,32 @@ func (a *ClientAPI) UpdateManifest(ctx context.Context, rawUpdateManifest []byte
 	// Only accept update manifest if we already have a manifest
 	if err := a.core.RequireState(ctx, state.AcceptingMarbles); err != nil {
 		a.log.Error("UpdateManifest: Coordinator not in correct state", zap.Error(err))
-		return nil, 0, err
+		return nil, nil, 0, err
 	}
 
 	// Check if the user is allowed to update the entire manifest
 	if !updater.IsGranted(user.NewPermission(user.PermissionUpdateManifest, []string{})) {
 		a.log.Error("UpdateManifest: User is not allowed to update the complete manifest", zap.String("user", updater.Name()))
-		return nil, 0, fmt.Errorf("user %s is not allowed to update the complete manifest", updater.Name())
+		return nil, nil, 0, fmt.Errorf("user %s is not allowed to update the complete manifest", updater.Name())
 	}
 
 	// Check if the new manifest is valid
 	if err := updateManifest.Check(a.log); err != nil {
 		a.log.Error("UpdateManifest: Invalid manifest", zap.Error(err))
-		return nil, 0, fmt.Errorf("invalid manifest: %w", err)
+		return nil, nil, 0, fmt.Errorf("invalid manifest: %w", err)
 	}
 
 	wrapper, rollback, commit, err := dwrapper.WrapTransaction(ctx, a.txHandle)
 	if err != nil {
 		a.log.Error("UpdateManifest: Failed to initialize store transaction", zap.Error(err))
-		return nil, 0, err
+		return nil, nil, 0, err
 	}
 	defer rollback()
 
 	currentManifest, err := wrapper.GetManifest()
 	if err != nil {
 		a.log.Error("UpdateManifest: Failed to retrieve current manifest", zap.Error(err))
-		return nil, 0, fmt.Errorf("retrieving current manifest: %w", err)
-	}
-	if len(currentManifest.RecoveryKeys) != len(updateManifest.RecoveryKeys) {
-		a.log.Error("UpdateManifest: Invalid manifest: Recovery keys cannot be updated")
-		return nil, 0, errors.New("recovery keys cannot be updated")
-	}
-	for name, key := range updateManifest.RecoveryKeys {
-		if currentManifest.RecoveryKeys[name] != key {
-			a.log.Error("UpdateManifest: Invalid manifest: Recovery keys cannot be updated")
-			return nil, 0, errors.New("recovery keys cannot be updated")
-		}
-	}
-	if currentManifest.Config.RecoveryThreshold != updateManifest.Config.RecoveryThreshold {
-		a.log.Error("UpdateManifest: Invalid manifest: Recovery threshold cannot be updated")
-		return nil, 0, errors.New("recovery threshold cannot be updated")
+		return nil, nil, 0, fmt.Errorf("retrieving current manifest: %w", err)
 	}
 
 	// Get all users that are allowed to update the manifest
@@ -576,19 +563,19 @@ func (a *ClientAPI) UpdateManifest(ctx context.Context, rawUpdateManifest []byte
 	userIter, err := wrapper.GetIterator(request.User)
 	if err != nil {
 		a.log.Error("UpdateManifest: Failed retrieving users", zap.Error(err))
-		return nil, 0, fmt.Errorf("retrieving users: %w", err)
+		return nil, nil, 0, fmt.Errorf("retrieving users: %w", err)
 	}
 	var requiredUsers []string
 	for userIter.HasNext() {
 		userName, err := userIter.GetNext()
 		if err != nil {
 			a.log.Error("UpdateManifest: Failed retrieving user", zap.Error(err), zap.String("user", userName))
-			return nil, 0, fmt.Errorf("retrieving user: %w", err)
+			return nil, nil, 0, fmt.Errorf("retrieving user: %w", err)
 		}
 		updatingUser, err := wrapper.GetUser(userName)
 		if err != nil {
 			a.log.Error("UpdateManifest: Failed retrieving user", zap.Error(err), zap.String("user", userName))
-			return nil, 0, fmt.Errorf("retrieving user: %w", err)
+			return nil, nil, 0, fmt.Errorf("retrieving user: %w", err)
 		}
 		if updatingUser.IsGranted(user.NewPermission(user.PermissionUpdateManifest, []string{})) {
 			requiredUsers = append(requiredUsers, userName)
@@ -603,11 +590,11 @@ func (a *ClientAPI) UpdateManifest(ctx context.Context, rawUpdateManifest []byte
 	pendingUpdate := multiupdate.New(rawUpdateManifest, requiredUsers, requiredAcknowledgements)
 	if err := pendingUpdate.AddAcknowledgment(rawUpdateManifest, updater.Name()); err != nil {
 		a.log.Error("UpdateManifest: Failed to add user's acknowledgment", zap.Error(err), zap.String("user", updater.Name()))
-		return nil, 0, fmt.Errorf("adding acknowledgment: %w", err)
+		return nil, nil, 0, fmt.Errorf("adding acknowledgment: %w", err)
 	}
 	if err := wrapper.PutPendingUpdate(pendingUpdate); err != nil {
 		a.log.Error("UpdateManifest: Failed to store pending update", zap.Error(err))
-		return nil, 0, fmt.Errorf("storing pending update: %w", err)
+		return nil, nil, 0, fmt.Errorf("storing pending update: %w", err)
 	}
 	missing := pendingUpdate.MissingAcknowledgments()
 
@@ -628,24 +615,25 @@ func (a *ClientAPI) UpdateManifest(ctx context.Context, rawUpdateManifest []byte
 		)
 	}
 	if err := wrapper.AppendUpdateLog(a.updateLog.String()); err != nil {
-		return nil, 0, fmt.Errorf("saving update log to store: %w", err)
+		return nil, nil, 0, fmt.Errorf("saving update log to store: %w", err)
 	}
 
 	if err := commit(ctx); err != nil {
 		a.log.Error("UpdateManifest: Failed to commit store transaction", zap.Error(err))
-		return nil, 0, fmt.Errorf("committing store transaction: %w", err)
+		return nil, nil, 0, fmt.Errorf("committing store transaction: %w", err)
 	}
 
 	// Check if only the current user needs to acknowledge the update
 	// In this case, apply the update directly
 	if missing == 0 {
 		a.log.Info("All users have acknowledged the update manifest, applying update")
-		return nil, 0, a.updateApply(ctx, rawUpdateManifest)
+		recoverySecretMap, err := a.updateApply(ctx, rawUpdateManifest)
+		return recoverySecretMap, nil, 0, err
 	}
 
 	a.log.Info("UpdateManifest successful. Waiting for acknowledgments to apply the update", zap.Int("missingAcknowledgments", missing))
 
-	return pendingUpdate.MissingUsers(), missing, nil
+	return nil, pendingUpdate.MissingUsers(), missing, nil
 }
 
 // updateManifest allows to update certain package parameters of the original manifest, supplied via a JSON manifest.
