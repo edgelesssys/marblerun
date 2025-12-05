@@ -147,6 +147,14 @@ spec:
             mountPath: /etc/sgx_default_qcnl.conf
             subPath: sgx_default_qcnl.conf
           {{ end }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{ .Values.global.coordinatorComponentLabel }}: coordinator
+              {{ .Values.global.coordinatorNamespaceLabel }}: {{ .Release.Namespace }}
       volumes:
         {{- if or (not .Values.coordinator.distributedDeployment) (ne .Values.coordinator.storeBackend "k8s-secret") }}
         - name: coordinator-pv-storage
