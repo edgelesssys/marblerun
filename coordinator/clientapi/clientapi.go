@@ -77,7 +77,7 @@ type keyDistributionServer interface {
 	StartSharing(context.Context) error
 }
 
-type hsmSealer interface {
+type hsmEnabler interface {
 	Enable()
 }
 
@@ -103,7 +103,7 @@ type ClientAPI struct {
 	txHandle               transactionHandle
 	recoverySignatureCache map[string][]byte
 	keyServer              keyDistributionServer
-	hsmSealer              hsmSealer
+	hsmEnabler             hsmEnabler
 
 	updateLog updateLog
 	log       *zap.Logger
@@ -111,7 +111,7 @@ type ClientAPI struct {
 
 // New returns an initialized instance of the ClientAPI.
 func New(txHandle transactionHandle, recovery recovery.Recovery, core core,
-	keyServer keyDistributionServer, hsmSealer hsmSealer, log *zap.Logger,
+	keyServer keyDistributionServer, hsmEnabler hsmEnabler, log *zap.Logger,
 ) (*ClientAPI, error) {
 	updateLog, err := updatelog.New()
 	if err != nil {
@@ -119,13 +119,13 @@ func New(txHandle transactionHandle, recovery recovery.Recovery, core core,
 	}
 
 	return &ClientAPI{
-		core:      core,
-		recovery:  recovery,
-		txHandle:  txHandle,
-		keyServer: keyServer,
-		hsmSealer: hsmSealer,
-		updateLog: updateLog,
-		log:       log,
+		core:       core,
+		recovery:   recovery,
+		txHandle:   txHandle,
+		keyServer:  keyServer,
+		hsmEnabler: hsmEnabler,
+		updateLog:  updateLog,
+		log:        log,
 	}, nil
 }
 
@@ -317,7 +317,7 @@ func (a *ClientAPI) SetManifest(ctx context.Context, rawManifest []byte) (recove
 	}
 
 	if mnf.HasFeatureEnabled(manifest.FeatureAzureHSMSealing) {
-		a.hsmSealer.Enable()
+		a.hsmEnabler.Enable()
 	}
 
 	txdata, rollback, commit, err := wrapper.WrapTransaction(ctx, a.txHandle)

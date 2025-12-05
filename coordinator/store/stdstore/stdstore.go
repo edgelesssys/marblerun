@@ -39,7 +39,7 @@ type StdStore struct {
 	data       map[string][]byte
 	mux, txmux sync.Mutex
 	sealer     seal.Sealer
-	hsmSealer  hsmSealer
+	hsmEnabler hsmEnabler
 	sealMode   seal.Mode
 
 	fs           afero.Afero
@@ -51,14 +51,14 @@ type StdStore struct {
 }
 
 // New creates and initializes a new StdStore object.
-func New(sealer seal.Sealer, hsmSealer hsmSealer, fs afero.Fs, sealDir string, log *zap.Logger) *StdStore {
+func New(sealer seal.Sealer, hsmEnabler hsmEnabler, fs afero.Fs, sealDir string, log *zap.Logger) *StdStore {
 	s := &StdStore{
-		data:      make(map[string][]byte),
-		sealer:    sealer,
-		hsmSealer: hsmSealer,
-		fs:        afero.Afero{Fs: fs},
-		sealDir:   sealDir,
-		log:       log,
+		data:       make(map[string][]byte),
+		sealer:     sealer,
+		hsmEnabler: hsmEnabler,
+		fs:         afero.Afero{Fs: fs},
+		sealDir:    sealDir,
+		log:        log,
 	}
 
 	return s
@@ -390,7 +390,7 @@ func (s *StdStore) reloadOptions(rawState map[string][]byte) error {
 
 	if mnf.HasFeatureEnabled(manifest.FeatureAzureHSMSealing) {
 		s.log.Debug("Enabling HSM sealing")
-		s.hsmSealer.Enable()
+		s.hsmEnabler.Enable()
 	}
 	return nil
 }
@@ -477,6 +477,6 @@ func (i *StdIterator) HasNext() bool {
 	return i.idx < len(i.keys)
 }
 
-type hsmSealer interface {
+type hsmEnabler interface {
 	Enable()
 }
