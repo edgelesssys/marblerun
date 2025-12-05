@@ -34,7 +34,7 @@ type Store struct {
 	stateHandle    stateHandle
 	quoteGenerator regenerator
 	sealer         Sealer
-	hsmSealer      hsmSealer
+	hsmEnabler     hsmEnabler
 	recoveryData   []byte
 
 	recoveryMode bool
@@ -52,7 +52,7 @@ type Store struct {
 }
 
 // New creates and initializes a new store for distributed Coordinators.
-func New(sealer Sealer, hsmSealer hsmSealer, name, namespace string, log *zap.Logger) (*Store, error) {
+func New(sealer Sealer, hsmEnabler hsmEnabler, name, namespace string, log *zap.Logger) (*Store, error) {
 	clientset, err := kube.GetClient()
 	if err != nil {
 		return nil, err
@@ -62,7 +62,7 @@ func New(sealer Sealer, hsmSealer hsmSealer, name, namespace string, log *zap.Lo
 		quoteGenerator: &quoteRegenerator{},
 		stateHandle:    k8sstore.New(clientset, namespace, name, log),
 		sealer:         sealer,
-		hsmSealer:      hsmSealer,
+		hsmEnabler:     hsmEnabler,
 		log:            log,
 	}, nil
 }
@@ -412,7 +412,7 @@ func (s *Store) reloadOptions(rawState map[string][]byte) error {
 
 	if mnf.HasFeatureEnabled(manifest.FeatureAzureHSMSealing) {
 		s.log.Debug("Enabling HSM sealing")
-		s.hsmSealer.Enable()
+		s.hsmEnabler.Enable()
 	}
 	return nil
 }
@@ -487,6 +487,6 @@ type regenerator interface {
 	SetGenerator(quoteGenerator)
 }
 
-type hsmSealer interface {
+type hsmEnabler interface {
 	Enable()
 }
