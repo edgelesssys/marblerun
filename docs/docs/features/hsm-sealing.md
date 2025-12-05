@@ -120,7 +120,7 @@ client_id=$(jq -r '.appId' hsm/coordinator-sp-credentials.json)
 client_secret=$(jq -r '.password' hsm/coordinator-sp-credentials.json)
 tenant_id=$(jq -r '.tenant' hsm/coordinator-sp-credentials.json)
 
-vault_url=$(az keyvault show --hsm-name MarbleRunHSM --query 'properties.vaultUri' -o tsv)
+vault_url=$(az keyvault show --hsm-name MarbleRunHSM --query 'properties.hsmUri' -o tsv)
 ```
 
 <Tabs groupId="installation">
