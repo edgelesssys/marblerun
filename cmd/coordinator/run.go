@@ -172,7 +172,7 @@ func setUpStore(backend string, sealer seal.Sealer, sealDir string, qv quote.Val
 			zap.String("namespace", namespace),
 		)
 
-		// Wrap dSealer for distributed store
+		// Wrap sealer for distributed store
 		sealer, err := dseal.New(sealer, kekMapName, namespace, log)
 		if err != nil {
 			log.Fatal("Failed setting up sealer", zap.Error(err))
