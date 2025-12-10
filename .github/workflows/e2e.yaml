@@ -23,11 +23,16 @@ on:
         description: 'Number of tests to run in parallel'
         required: false
         default: '2'
-      enableHSMTest:
-        description: 'Enable tests requiring an HSM'
-        required: false
-        default: false
-        type: boolean
+      hsmSealing:
+        description: 'HSM sealing tests'
+        required: true
+        type: choice
+        options:
+          - 'disabled'
+          - 'enabled'
+          - 'fake'
+        default: 'disabled'
+
   workflow_call:
     inputs:
       vmType:
@@ -50,11 +55,11 @@ on:
         required: false
         default: 2
         type: number
-      enableHSMTest:
-        description: 'Enable HSM sealing tests'
-        required: false
-        default: false
-        type: boolean
+      hsmSealing:
+        description: 'HSM sealing tests'
+        required: true
+        type: string
+        default: 'disabled'
     secrets:
       AZURE_CLIENT_ID:
         required: true
@@ -130,6 +135,7 @@ jobs:
         env:
           CR: ghcr.io/edgelesssys/marblerun-e2e
           CONTAINER: coordinator
+          COORDINATOR_BUILD_TAGS: ${{ inputs.hsmSealing == 'fake' && 'fakehsm' || '' }}
         run: |
           set -e
           export PATH=${PATH}:/opt/edgelessrt/bin
@@ -207,7 +213,7 @@ jobs:
   provision-hsm:
     name: Provision HSM for e2e tests
     needs: build-test-containers
-    if: ${{ inputs.enableHSMTest }}
+    if: ${{ inputs.hsmSealing == 'enabled' }}
     runs-on: ubuntu-24.04
 
     steps:
@@ -273,6 +279,7 @@ jobs:
   e2e-test:
     name: Run e2e test
     needs: [build-test-containers, provision-hsm]
+    if: ${{ always() && needs.build-test-containers.result == 'success' && (needs.provision-hsm.result == 'success' || needs.provision-hsm.result == 'skipped') }}
     env:
       CR: ghcr.io/edgelesssys/marblerun-e2e
       CONTAINER: coordinator
@@ -355,13 +362,13 @@ jobs:
           EDG_AZURE_HSM_KEY_NAME: marblerun-skr-key
           EDG_AZURE_HSM_VAULT_URL: https://mr-e2e-${{ needs.build-test-containers.outputs.run-uid }}.managedhsm.azure.net/
           EDG_MAA_URL: "https://shareduks.uks.attest.azure.net"
-          HSM_ENABLED: ${{ inputs.enableHSMTest }}
+          HSM_SEALING: ${{ inputs.hsmSealing }}
         run: |
           PCCS_URL=https://global.acccache.azure.net/sgx/certification/v4/ PCCS_USE_SECURE_CERT=true configure-qpl
           echo "${ERA_CONFIG}" | base64 -d > era.json
           echo "${MARBLE_CONFIG}" | base64 -d > marble-config.json
           tags="e2e"
-          if [ "${HSM_ENABLED}" = "true" ]; then
+          if [ "${HSM_SEALING}" = "enabled" ] || [ "${HSM_SEALING}" = "fake" ]; then
             tags="${tags},hsmsealing"
           fi
 
@@ -396,7 +403,7 @@ jobs:
   teardown-hsm:
     name: Teardown HSM
     needs: [build-test-containers, provision-hsm, e2e-test]
-    if: always() && inputs.enableHSMTest
+    if: always() && inputs.hsmSealing == 'enabled'
     runs-on: ubuntu-24.04
 
     steps:
