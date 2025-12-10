@@ -46,6 +46,9 @@ func TestHSMSealing(t *testing.T) {
 		framework.MakeEnv(constants.EnvAzureHSMKeyVersion, "stub"),
 		framework.MakeEnv(constants.EnvAzureHSMVaultURL, "stub"),
 		framework.MakeEnv(constants.EnvMAAURL, "stub"),
+		framework.MakeEnv(constants.EnvAzureClientID, "stub"),
+		framework.MakeEnv(constants.EnvAzureTenantID, "stub"),
+		framework.MakeEnv(constants.EnvAzureClientSecret, "stub"),
 	}...)
 	defer cfg.Cleanup()
 	cancelCoordinator := f.StartCoordinator(f.Ctx, cfg)
