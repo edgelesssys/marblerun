@@ -101,9 +101,9 @@ func New(sealer seal.Sealer, log *zap.Logger) (*KeyReleaser, error) {
 	}, nil
 }
 
-// Enable the wrapping and unwrapping of keys using an HSM key from Azure Key Vault.
-func (k *KeyReleaser) Enable() {
-	k.enabled = true
+// SetEnabled enables the wrapping and unwrapping of keys using an HSM key from Azure Key Vault.
+func (k *KeyReleaser) SetEnabled(enabled bool) {
+	k.enabled = enabled
 }
 
 // insecureClient returns an HTTP client that skips TLS certificate verification.

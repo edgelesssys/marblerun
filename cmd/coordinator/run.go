@@ -266,5 +266,5 @@ type keyDistributor interface {
 }
 
 type hsmEnabler interface {
-	Enable()
+	SetEnabled(enabled bool)
 }

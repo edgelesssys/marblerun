@@ -238,6 +238,8 @@ func (a *ClientAPI) updateApply(ctx context.Context, rawUpdateManifest []byte) (
 		return fmt.Errorf("saving update log to store: %w", err)
 	}
 
+	a.hsmEnabler.SetEnabled(updateManifest.HasFeatureEnabled(manifest.FeatureAzureHSMSealing))
+
 	a.log.Info("An updated manifest overriding the original manifest was set.")
 	a.log.Info("Please restart your Marbles to enforce the update.")
 

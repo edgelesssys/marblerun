@@ -78,7 +78,7 @@ type keyDistributionServer interface {
 }
 
 type hsmEnabler interface {
-	Enable()
+	SetEnabled(enabled bool)
 }
 
 // QuoteVerifyError is returned if a given quote could not be verified.
@@ -316,9 +316,7 @@ func (a *ClientAPI) SetManifest(ctx context.Context, rawManifest []byte) (recove
 		return nil, fmt.Errorf("checking manifest: %w", err)
 	}
 
-	if mnf.HasFeatureEnabled(manifest.FeatureAzureHSMSealing) {
-		a.hsmEnabler.Enable()
-	}
+	a.hsmEnabler.SetEnabled(mnf.HasFeatureEnabled(manifest.FeatureAzureHSMSealing))
 
 	txdata, rollback, commit, err := wrapper.WrapTransaction(ctx, a.txHandle)
 	if err != nil {

@@ -112,4 +112,4 @@ func TestStoreWrapperRollback(t *testing.T) {
 
 type stubEnabler struct{}
 
-func (stubEnabler) Enable() {}
+func (stubEnabler) SetEnabled(_ bool) {}

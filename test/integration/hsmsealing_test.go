@@ -34,8 +34,11 @@ func TestHSMSealing(t *testing.T) {
 
 	t.Log("Testing HSM Sealing")
 	var hsmSealingManifest manifest.Manifest
-	require.NoError(json.Unmarshal([]byte(test.IntegrationManifestJSON), &hsmSealingManifest))
+	require.NoError(json.Unmarshal([]byte(test.IntegrationMultiPartyManifestJSON), &hsmSealingManifest))
 	hsmSealingManifest.Config.FeatureGates = append(hsmSealingManifest.Config.FeatureGates, manifest.FeatureAzureHSMSealing)
+	// Remove second user and recovery key since we don't need them for this test
+	delete(hsmSealingManifest.Users, "admin-2")
+	delete(hsmSealingManifest.RecoveryKeys, "testRecKey2")
 
 	mnf, err := json.Marshal(hsmSealingManifest)
 	require.NoError(err)
@@ -97,5 +100,5 @@ func TestHSMSealing(t *testing.T) {
 	log.Println("Verifying sealed key")
 	sealedKey, err := os.ReadFile(filepath.Join(cfg.SealDir, stdstore.SealedKeyFname))
 	require.NoError(err, "failed to read sealed key")
-	assert.False(bytes.HasPrefix(sealedKey, keyrelease.HSMSealedPrefix), "sealed key is not HSM sealed")
+	assert.False(bytes.HasPrefix(sealedKey, keyrelease.HSMSealedPrefix), "sealed key is still HSM sealed")
 }

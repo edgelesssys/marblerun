@@ -416,10 +416,7 @@ func (s *Store) reloadOptions(rawState map[string][]byte) error {
 	s.sealer.SetSealMode(seal.ModeFromString(mnf.Config.SealMode))
 	s.log.Debug("Seal mode set", zap.Int("sealMode", int(s.sealMode)))
 
-	if mnf.HasFeatureEnabled(manifest.FeatureAzureHSMSealing) {
-		s.log.Debug("Enabling HSM sealing")
-		s.hsmEnabler.Enable()
-	}
+	s.hsmEnabler.SetEnabled(mnf.HasFeatureEnabled(manifest.FeatureAzureHSMSealing))
 	return nil
 }
 
@@ -494,5 +491,5 @@ type regenerator interface {
 }
 
 type hsmEnabler interface {
-	Enable()
+	SetEnabled(enabled bool)
 }

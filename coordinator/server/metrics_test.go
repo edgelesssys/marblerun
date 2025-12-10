@@ -106,4 +106,4 @@ func newTestClientAPI(t *testing.T) *clientapi.ClientAPI {
 
 type stubEnabler struct{}
 
-func (stubEnabler) Enable() {}
+func (stubEnabler) SetEnabled(_ bool) {}
