@@ -530,12 +530,13 @@ func TestSetManifest(t *testing.T) {
 			require.NoError(err)
 
 			api := &ClientAPI{
-				txHandle:  tc.store,
-				core:      tc.core,
-				recovery:  &stubRecovery{},
-				updateLog: updateLog,
-				keyServer: &distributor.Stub{},
-				log:       log,
+				txHandle:   tc.store,
+				core:       tc.core,
+				recovery:   &stubRecovery{},
+				updateLog:  updateLog,
+				hsmEnabler: stubEnabler{},
+				keyServer:  &distributor.Stub{},
+				log:        log,
 			}
 
 			wrapper := wrapper.New(tc.store)
@@ -1832,4 +1833,4 @@ func getPendingUpdate(t *testing.T, txHandle transactionHandle) *multiupdate.Mul
 
 type stubEnabler struct{}
 
-func (stubEnabler) Enable() {}
+func (stubEnabler) SetEnabled(_ bool) {}

@@ -388,10 +388,7 @@ func (s *StdStore) reloadOptions(rawState map[string][]byte) error {
 	s.sealMode = seal.ModeFromString(mnf.Config.SealMode)
 	s.log.Debug("Seal mode set", zap.Int("sealMode", int(s.sealMode)))
 
-	if mnf.HasFeatureEnabled(manifest.FeatureAzureHSMSealing) {
-		s.log.Debug("Enabling HSM sealing")
-		s.hsmEnabler.Enable()
-	}
+	s.hsmEnabler.SetEnabled(mnf.HasFeatureEnabled(manifest.FeatureAzureHSMSealing))
 	return nil
 }
 
@@ -478,5 +475,5 @@ func (i *StdIterator) HasNext() bool {
 }
 
 type hsmEnabler interface {
-	Enable()
+	SetEnabled(enabled bool)
 }

@@ -417,4 +417,4 @@ func recoveryKeyWithSignature(t *testing.T, priv *rsa.PrivateKey) ([]byte, []byt
 
 type stubEnabler struct{}
 
-func (stubEnabler) Enable() {}
+func (stubEnabler) SetEnabled(_ bool) {}
