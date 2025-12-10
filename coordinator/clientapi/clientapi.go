@@ -571,10 +571,6 @@ func (a *ClientAPI) UpdateManifest(ctx context.Context, rawUpdateManifest []byte
 		a.log.Error("UpdateManifest: Invalid manifest: Recovery threshold cannot be updated")
 		return nil, 0, errors.New("recovery threshold cannot be updated")
 	}
-	if currentManifest.HasFeatureEnabled(manifest.FeatureAzureHSMSealing) != updateManifest.HasFeatureEnabled(manifest.FeatureAzureHSMSealing) {
-		a.log.Error("UpdateManifest: Invalid manifest: Azure HSM sealing feature cannot be updated")
-		return nil, 0, errors.New("azure HSM sealing feature cannot be updated")
-	}
 
 	// Get all users that are allowed to update the manifest
 	// and create a new pending update

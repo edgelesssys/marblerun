@@ -12,6 +12,7 @@ import (
 	"bytes"
 	"crypto/x509"
 	"encoding/binary"
+	"encoding/json"
 	"encoding/pem"
 	"net"
 	"os"
@@ -80,7 +81,7 @@ func TestHSMSealing(t *testing.T) {
 	t.Log("Verifying sealed key")
 	sealedState, err := kubectl.GetSecretData(ctx, namespace, stateSecretName)
 	require.NoError(err)
-	assert.Truef(bytes.HasPrefix(sealedState[stdstore.SealedKeyFname], keyrelease.HSMSealedPrefix), "sealed key is not HSM sealed")
+	assert.True(bytes.HasPrefix(sealedState[stdstore.SealedKeyFname], keyrelease.HSMSealedPrefix), "sealed key is not HSM sealed")
 
 	t.Log("Scaling down Coordinator deployment to 0")
 	require.NoError(kubectl.ScaleDeployment(ctx, namespace, coordinatorDeployment, 0))
@@ -102,7 +103,7 @@ func TestHSMSealing(t *testing.T) {
 	t.Log("Verifying sealed key")
 	sealedState, err = kubectl.GetSecretData(ctx, namespace, stateSecretName)
 	require.NoError(err)
-	assert.Truef(bytes.HasPrefix(sealedState[stdstore.SealedKeyFname], keyrelease.HSMSealedPrefix), "sealed key is not HSM sealed")
+	assert.True(bytes.HasPrefix(sealedState[stdstore.SealedKeyFname], keyrelease.HSMSealedPrefix), "sealed key is not HSM sealed")
 
 	expectedMnf, err := os.ReadFile(filepath.Join(tmpDir, manifestFile))
 	require.NoError(err)
@@ -132,4 +133,70 @@ func TestHSMSealing(t *testing.T) {
 	sealedData := secretData[stdstore.SealedDataFname]
 	recoveryDataLen := binary.LittleEndian.Uint32(sealedData[:4])
 	require.Greater(recoveryDataLen, uint32(0))
+
+	// Disable HSM sealing
+	t.Log("Updating manifest to disable HSM sealing")
+	mnf = manifest.DefaultManifest(crt, pub, marbleConfig)
+	mnf.Config.FeatureGates = nil
+	updateMnf, err := json.Marshal(mnf)
+	require.NoError(err)
+	updateManifest(ctx, t, kubectl, cmd, namespace, tmpDir, updateMnf, certFileDefault, keyFileDefault)
+
+	t.Log("Verifying sealed key")
+	sealedState, err = kubectl.GetSecretData(ctx, namespace, stateSecretName)
+	require.NoError(err)
+	assert.False(bytes.HasPrefix(sealedState[stdstore.SealedKeyFname], keyrelease.HSMSealedPrefix), "sealed key is still HSM sealed")
+
+	// Verify all instances have the update applied
+	// This forces each instance to re-load the state from disk
+	forAllPods(ctx, t, kubectl, namespace, func(pod, port string) error {
+		t.Logf("Checking manifest on %q", pod)
+		if _, err := cmd.Run(
+			ctx,
+			"manifest", "get",
+			net.JoinHostPort(localhost, port),
+			"--output", actualMnfFile,
+			eraConfig,
+		); err != nil {
+			return err
+		}
+
+		actualMnf, err := os.ReadFile(actualMnfFile)
+		require.NoError(err)
+		assert.Equal(updateMnf, actualMnf)
+		return nil
+	})
+
+	t.Log("Verifying sealed key")
+	sealedState, err = kubectl.GetSecretData(ctx, namespace, stateSecretName)
+	require.NoError(err)
+	assert.False(bytes.HasPrefix(sealedState[stdstore.SealedKeyFname], keyrelease.HSMSealedPrefix), "sealed key is still HSM sealed")
+
+	// Apply an update to each instance
+	// This forces each instance to individually re-seal the key
+	forAllPods(ctx, t, kubectl, namespace, func(pod, port string) error {
+		defaultPackage := mnf.Packages[manifest.DefaultMarble]
+		defaultPackage.SecurityVersion++
+		mnf.Packages[manifest.DefaultMarble] = defaultPackage
+		updateMnf, err := json.Marshal(mnf)
+		require.NoError(err)
+		updateMnfPath := filepath.Join(tmpDir, "update.json")
+		require.NoError(os.WriteFile(updateMnfPath, updateMnf, 0o644))
+
+		_, err = cmd.Run(
+			ctx,
+			"manifest", "update", "apply",
+			updateMnfPath, net.JoinHostPort(localhost, port),
+			"--key", filepath.Join(tmpDir, keyFileDefault),
+			"--cert", filepath.Join(tmpDir, certFileDefault),
+			"--coordinator-cert", filepath.Join(tmpDir, coordinatorCertFileDefault),
+			eraConfig,
+		)
+		return err
+	})
+
+	t.Log("Verifying sealed key")
+	sealedState, err = kubectl.GetSecretData(ctx, namespace, stateSecretName)
+	require.NoError(err)
+	assert.False(bytes.HasPrefix(sealedState[stdstore.SealedKeyFname], keyrelease.HSMSealedPrefix), "sealed key is still HSM sealed")
 }

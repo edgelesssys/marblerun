@@ -158,6 +158,12 @@ func (s *Store) BeginTransaction(ctx context.Context) (tx store.Transaction, err
 	}
 
 	if err == nil {
+		// Ensure any changes to the state since it was last loaded,
+		// e.g. through updating the manifest on a different instance,
+		// are properly loaded in the store
+		if err := s.reloadOptions(data); err != nil {
+			return nil, err
+		}
 		tx := transaction.New(s, data, state, s.log)
 
 		if err := s.quoteGenerator.Regenerate(tx); err != nil {
