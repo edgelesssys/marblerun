@@ -88,13 +88,13 @@ const (
 	// EnvKubernetesServicePort is the environment variable defining the port of the API server.
 	EnvKubernetesServicePort = "KUBERNETES_SERVICE_PORT"
 
-	// EnvHSMVaultURL holds the Azure Key Vault URL for Secure Key Release.
-	EnvHSMVaultURL = "EDG_HSM_VAULT_URL"
-	// EnvHSMKeyName holds the name of the key to use for Secure Key Release.
-	EnvHSMKeyName = "EDG_HSM_KEY_NAME"
-	// EnvHSMKeyVersion holds the version of the key to use for Secure Key Release.
+	// EnvAzureHSMVaultURL holds the Azure Key Vault URL for Secure Key Release.
+	EnvAzureHSMVaultURL = "EDG_AZURE_HSM_VAULT_URL"
+	// EnvAzureHSMKeyName holds the name of the key to use for Secure Key Release.
+	EnvAzureHSMKeyName = "EDG_AZURE_HSM_KEY_NAME"
+	// EnvAzureHSMKeyVersion holds the version of the key to use for Secure Key Release.
 	// If empty, the latest version is used.
-	EnvHSMKeyVersion = "EDG_HSM_KEY_VERSION"
+	EnvAzureHSMKeyVersion = "EDG_AZURE_HSM_KEY_VERSION"
 	// EnvMAAURL holds the MAA (Microsoft Attestation Agent) URL to use for retrieving an
 	// attestation token to authenticate against the keyvault for Secure Key Release.
 	EnvMAAURL = "EDG_MAA_URL"

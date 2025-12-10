@@ -68,10 +68,10 @@ func (h *Helm) InstallChart(
 		"coordinator": map[string]any{
 			"distributedDeployment": true,
 			"replicas":              replicas,
-			"hsm": map[string]any{
-				"keyName":    os.Getenv(constants.EnvHSMKeyName),
-				"keyVersion": os.Getenv(constants.EnvHSMKeyVersion),
-				"vaultURL":   os.Getenv(constants.EnvHSMVaultURL),
+			"azureHSM": map[string]any{
+				"keyName":    os.Getenv(constants.EnvAzureHSMKeyName),
+				"keyVersion": os.Getenv(constants.EnvAzureHSMKeyVersion),
+				"vaultURL":   os.Getenv(constants.EnvAzureHSMVaultURL),
 				"maaURL":     os.Getenv(constants.EnvMAAURL),
 			},
 			"azureCredentials": map[string]any{
