@@ -535,11 +535,20 @@ func (m Manifest) Check(zaplogger *zap.Logger) error {
 			if os.Getenv(constants.EnvMAAURL) == "" {
 				missingEnvs = append(missingEnvs, constants.EnvMAAURL)
 			}
-			if os.Getenv(constants.EnvHSMVaultURL) == "" {
-				missingEnvs = append(missingEnvs, constants.EnvHSMVaultURL)
+			if os.Getenv(constants.EnvAzureHSMVaultURL) == "" {
+				missingEnvs = append(missingEnvs, constants.EnvAzureHSMVaultURL)
 			}
-			if os.Getenv(constants.EnvHSMKeyName) == "" {
-				missingEnvs = append(missingEnvs, constants.EnvHSMKeyName)
+			if os.Getenv(constants.EnvAzureHSMKeyName) == "" {
+				missingEnvs = append(missingEnvs, constants.EnvAzureHSMKeyName)
+			}
+			if os.Getenv(constants.EnvAzureClientID) == "" {
+				missingEnvs = append(missingEnvs, constants.EnvAzureClientID)
+			}
+			if os.Getenv(constants.EnvAzureTenantID) == "" {
+				missingEnvs = append(missingEnvs, constants.EnvAzureTenantID)
+			}
+			if os.Getenv(constants.EnvAzureClientSecret) == "" {
+				missingEnvs = append(missingEnvs, constants.EnvAzureClientSecret)
 			}
 			if len(missingEnvs) > 0 {
 				return fmt.Errorf("manifest enables sealing with Azure HSM key, but required environment variables are not set: %v", missingEnvs)

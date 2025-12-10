@@ -59,9 +59,9 @@ func New(sealer seal.Sealer, log *zap.Logger) (*KeyReleaser, error) {
 	if err := os.Setenv(strings.TrimPrefix(constants.EnvAzureClientSecret, "EDG_"), os.Getenv(constants.EnvAzureClientSecret)); err != nil {
 		return nil, err
 	}
-	vaultURL := os.Getenv(constants.EnvHSMVaultURL)
-	keyName := os.Getenv(constants.EnvHSMKeyName)
-	keyVersion := os.Getenv(constants.EnvHSMKeyVersion)
+	vaultURL := os.Getenv(constants.EnvAzureHSMVaultURL)
+	keyName := os.Getenv(constants.EnvAzureHSMKeyName)
+	keyVersion := os.Getenv(constants.EnvAzureHSMKeyVersion)
 	maaURL := util.Getenv(constants.EnvMAAURL, "https://shareduks.uks.attest.azure.net") // fallback to uk-south attestation provider
 
 	cred, err := azidentity.NewDefaultAzureCredential(&azidentity.DefaultAzureCredentialOptions{

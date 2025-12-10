@@ -352,8 +352,8 @@ jobs:
           EDG_AZURE_CLIENT_ID: ${{ secrets.HSM_RELEASE_CLIENT_ID }}
           EDG_AZURE_TENANT_ID: ${{ secrets.HSM_RELEASE_TENANT_ID }}
           EDG_AZURE_CLIENT_SECRET: ${{ secrets.HSM_RELEASE_CLIENT_SECRET }}
-          EDG_HSM_KEY_NAME: marblerun-skr-key
-          EDG_HSM_VAULT_URL: https://mr-e2e-${{ needs.build-test-containers.outputs.run-uid }}.managedhsm.azure.net/
+          EDG_AZURE_HSM_KEY_NAME: marblerun-skr-key
+          EDG_AZURE_HSM_VAULT_URL: https://mr-e2e-${{ needs.build-test-containers.outputs.run-uid }}.managedhsm.azure.net/
           EDG_MAA_URL: "https://shareduks.uks.attest.azure.net"
           HSM_ENABLED: ${{ inputs.enableHSMTest }}
         run: |

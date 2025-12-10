@@ -78,12 +78,12 @@ spec:
                 key: AZURE_CLIENT_SECRET
           {{- end }}
           {{- end }}
-          {{- with .Values.coordinator.hsm }}
-          - name: EDG_HSM_KEY_NAME
+          {{- with .Values.coordinator.azureHSM }}
+          - name: EDG_AZURE_HSM_KEY_NAME
             value: {{ .keyName }}
-          - name: EDG_HSM_KEY_VERSION
+          - name: EDG_AZURE_HSM_KEY_VERSION
             value: {{ .keyVersion }}
-          - name: EDG_HSM_VAULT_URL
+          - name: EDG_AZURE_HSM_VAULT_URL
             value: {{ .vaultURL }}
           - name: EDG_MAA_URL
             value: {{ .maaURL }}

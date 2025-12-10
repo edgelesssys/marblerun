@@ -18,7 +18,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/edgelesssys/marblerun/coordinator/constants"
 	"github.com/edgelesssys/marblerun/coordinator/keyrelease"
 	"github.com/edgelesssys/marblerun/coordinator/state"
 	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
@@ -45,7 +44,6 @@ func TestHSMSealing(t *testing.T) {
 	require.NoError(os.WriteFile(filepath.Join(tmpDir, certFileDefault), crt, 0o644))
 
 	mnf := manifest.DefaultManifest(crt, pub, marbleConfig)
-	mnf.Config.FeatureGates = append(mnf.Config.FeatureGates, "AzureHSMSealing")
 	manifestPath := writeManifest(t, mnf, tmpDir)
 
 	namespace, releaseName := setUpNamespace(ctx, t, kubectl)
@@ -53,22 +51,7 @@ func TestHSMSealing(t *testing.T) {
 	helm, err := helm.New(t, *kubeConfigPath, namespace)
 	require.NoError(err)
 	t.Logf("Installing chart %q from %q", namespace, *chartPath)
-	extraVals := map[string]any{
-		"coordinator": map[string]any{
-			"hsm": map[string]any{
-				"keyName":    os.Getenv(constants.EnvHSMKeyName),
-				"keyVersion": os.Getenv(constants.EnvHSMKeyVersion),
-				"vaultURL":   os.Getenv(constants.EnvHSMVaultURL),
-				"maaURL":     os.Getenv(constants.EnvMAAURL),
-			},
-			"azureCredentials": map[string]any{
-				"clientID":     os.Getenv(constants.EnvAzureClientID),
-				"tenantID":     os.Getenv(constants.EnvAzureTenantID),
-				"clientSecret": os.Getenv(constants.EnvAzureClientSecret),
-			},
-		},
-	}
-	uninstall, err := helm.InstallChart(ctx, releaseName, namespace, *chartPath, *replicas, defaultTimeout, extraVals)
+	uninstall, err := helm.InstallChart(ctx, releaseName, namespace, *chartPath, *replicas, defaultTimeout, nil)
 	require.NoError(err)
 	t.Cleanup(uninstall)
 	getLogsOnFailure(t, kubectl, namespace)

@@ -65,10 +65,7 @@ func (k *KeyReleaser) requestKey(ctx context.Context) error {
 	}
 
 	// Extract the key encryption key (KEK) and the encrypted key (the _actual_ key) from the ciphertext
-	encryptedKEK := make([]byte, wrappingKeySize/8)
-	copy(encryptedKEK, ciphertext[:wrappingKeySize/8])
-	encryptedKey := make([]byte, len(ciphertext)-wrappingKeySize/8)
-	copy(encryptedKey, ciphertext[wrappingKeySize/8:])
+	encryptedKEK, encryptedKey := ciphertext[:wrappingKeySize/8], ciphertext[wrappingKeySize/8:]
 
 	// The KEK was encrypted using the wrapping key we provided earlier.
 	k.log.Debug("Decrypting KEK with wrapping key")

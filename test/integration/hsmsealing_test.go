@@ -42,10 +42,13 @@ func TestHSMSealing(t *testing.T) {
 
 	f := framework.New(t, *buildDir, simFlag, *noenclave, marbleTestAddr, meshServerAddr, clientServerAddr, string(mnf), string(mnf))
 	cfg := framework.NewCoordinatorConfig([]string{
-		framework.MakeEnv(constants.EnvHSMKeyName, "stub"),
-		framework.MakeEnv(constants.EnvHSMKeyVersion, "stub"),
-		framework.MakeEnv(constants.EnvHSMVaultURL, "stub"),
+		framework.MakeEnv(constants.EnvAzureHSMKeyName, "stub"),
+		framework.MakeEnv(constants.EnvAzureHSMKeyVersion, "stub"),
+		framework.MakeEnv(constants.EnvAzureHSMVaultURL, "stub"),
 		framework.MakeEnv(constants.EnvMAAURL, "stub"),
+		framework.MakeEnv(constants.EnvAzureClientID, "stub"),
+		framework.MakeEnv(constants.EnvAzureTenantID, "stub"),
+		framework.MakeEnv(constants.EnvAzureClientSecret, "stub"),
 	}...)
 	defer cfg.Cleanup()
 	cancelCoordinator := f.StartCoordinator(f.Ctx, cfg)
