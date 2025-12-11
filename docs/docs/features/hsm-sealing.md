@@ -160,9 +160,9 @@ export EDG_AZURE_CLIENT_SECRET=${client_secret}
 export EDG_AZURE_TENANT_ID=${tenant_id}
 
 # HSM key information
-export EDG_HSM_KEY_NAME="marblerun-skr-key"
-export EDG_HSM_KEY_VERSION="" # Optionally, set to use a specific key version
-export EDG_HSM_VAULT_URL=${vault_url}
+export EDG_AZURE_HSM_KEY_NAME="marblerun-skr-key"
+export EDG_AZURE_HSM_KEY_VERSION="" # Optionally, set to use a specific key version
+export EDG_AZURE_HSM_VAULT_URL=${vault_url}
 
 # MAA URL. Make sure this matches the location of your deployment, and the value you set in the key policy
 export EDG_MAA_URL="https://shareduks.uks.attest.azure.net"
