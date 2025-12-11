@@ -279,6 +279,7 @@ jobs:
   e2e-test:
     name: Run e2e test
     needs: [build-test-containers, provision-hsm]
+    if: ${{ always() && needs.build-test-containers.result == 'success' && (needs.provision-hsm.result == 'success' || needs.provision-hsm.result == 'skipped') }}
     env:
       CR: ghcr.io/edgelesssys/marblerun-e2e
       CONTAINER: coordinator
