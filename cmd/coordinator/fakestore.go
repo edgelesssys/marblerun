@@ -13,14 +13,14 @@ import (
 	"fmt"
 
 	"github.com/edgelesssys/marblerun/coordinator/distributor"
-	"github.com/edgelesssys/marblerun/coordinator/seal"
+	"github.com/edgelesssys/marblerun/coordinator/keyrelease"
 	dseal "github.com/edgelesssys/marblerun/coordinator/seal/distributed"
 	"github.com/edgelesssys/marblerun/coordinator/store"
 	dstore "github.com/edgelesssys/marblerun/coordinator/store/distributed"
 	"go.uber.org/zap"
 )
 
-func newDefaultStore(sealer seal.Sealer, sealDir string, log *zap.Logger) (store.Store, keyDistributor, error) {
+func newDefaultStore(sealer *keyrelease.KeyReleaser, sealDir string, log *zap.Logger) (store.Store, keyDistributor, error) {
 	log.Info("Setting up fake k8s store")
 
 	const namespace = "fake"
@@ -32,7 +32,7 @@ func newDefaultStore(sealer seal.Sealer, sealDir string, log *zap.Logger) (store
 	}
 
 	// Create fake distributed store
-	store, err := dstore.NewWithFakeK8s(esealer, "state", namespace, sealDir, log)
+	store, err := dstore.NewWithFakeK8s(esealer, sealer, "state", namespace, sealDir, log)
 	if err != nil {
 		return nil, nil, fmt.Errorf("setting up store backend: %w", err)
 	}
