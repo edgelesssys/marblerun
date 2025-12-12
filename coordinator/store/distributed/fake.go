@@ -14,11 +14,12 @@ import (
 )
 
 // NewWithFakeK8s creates a new store with a fake k8sstore backed by files in sealDir.
-func NewWithFakeK8s(sealer Sealer, name, namespace, sealDir string, log *zap.Logger) (*Store, error) {
+func NewWithFakeK8s(sealer Sealer, hsmEnabler hsmEnabler, name, namespace, sealDir string, log *zap.Logger) (*Store, error) {
 	return &Store{
 		quoteGenerator: &quoteRegenerator{},
 		stateHandle:    k8sstore.NewWithFakeK8s(namespace, name, sealDir, log),
 		sealer:         sealer,
+		hsmEnabler:     hsmEnabler,
 		log:            log,
 	}, nil
 }

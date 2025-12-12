@@ -39,6 +39,7 @@ type StdStore struct {
 	data       map[string][]byte
 	mux, txmux sync.Mutex
 	sealer     seal.Sealer
+	hsmEnabler hsmEnabler
 	sealMode   seal.Mode
 
 	fs           afero.Afero
@@ -50,13 +51,14 @@ type StdStore struct {
 }
 
 // New creates and initializes a new StdStore object.
-func New(sealer seal.Sealer, fs afero.Fs, sealDir string, log *zap.Logger) *StdStore {
+func New(sealer seal.Sealer, hsmEnabler hsmEnabler, fs afero.Fs, sealDir string, log *zap.Logger) *StdStore {
 	s := &StdStore{
-		data:    make(map[string][]byte),
-		sealer:  sealer,
-		fs:      afero.Afero{Fs: fs},
-		sealDir: sealDir,
-		log:     log,
+		data:       make(map[string][]byte),
+		sealer:     sealer,
+		hsmEnabler: hsmEnabler,
+		fs:         afero.Afero{Fs: fs},
+		sealDir:    sealDir,
+		log:        log,
 	}
 
 	return s
@@ -168,7 +170,7 @@ func (s *StdStore) LoadState() (recoveryData, sealedData []byte, err error) {
 	if err := json.Unmarshal(stateRaw, &loadedData); err != nil {
 		return encodedRecoveryData, sealedData, err
 	}
-	if err := s.reloadSealMode(loadedData); err != nil {
+	if err := s.reloadOptions(loadedData); err != nil {
 		return encodedRecoveryData, sealedData, err
 	}
 
@@ -371,8 +373,8 @@ func (s *StdStore) atomicWriteFile(fileName string, data []byte) error {
 	return nil
 }
 
-func (s *StdStore) reloadSealMode(rawState map[string][]byte) error {
-	s.log.Debug("Reloading seal mode")
+func (s *StdStore) reloadOptions(rawState map[string][]byte) error {
+	s.log.Debug("Reloading manifest options")
 	rawMnf, ok := rawState[request.Manifest]
 	if !ok {
 		return nil // no manifest set
@@ -385,6 +387,8 @@ func (s *StdStore) reloadSealMode(rawState map[string][]byte) error {
 
 	s.sealMode = seal.ModeFromString(mnf.Config.SealMode)
 	s.log.Debug("Seal mode set", zap.Int("sealMode", int(s.sealMode)))
+
+	s.hsmEnabler.SetEnabled(mnf.HasFeatureEnabled(manifest.FeatureAzureHSMSealing))
 	return nil
 }
 
@@ -468,4 +472,8 @@ func (i *StdIterator) GetNext() (string, error) {
 // HasNext implements the Iterator interface.
 func (i *StdIterator) HasNext() bool {
 	return i.idx < len(i.keys)
+}
+
+type hsmEnabler interface {
+	SetEnabled(enabled bool)
 }

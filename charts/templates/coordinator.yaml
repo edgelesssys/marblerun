@@ -59,6 +59,35 @@ spec:
             value: "{{ .Values.coordinator.sealDir }}"
           - name: OE_SIMULATION
             value: {{ if .Values.coordinator.simulation }}"1"{{ else }}"0"{{ end }}
+          {{- with .Values.coordinator.azureCredentials }}
+          {{- if or .secretName (and .clientID .tenantID .clientSecret ) }}
+          - name: EDG_AZURE_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                name: {{ .secretName | default "coordinator-azure-credentials" }}
+                key: AZURE_CLIENT_ID
+          - name: EDG_AZURE_TENANT_ID
+            valueFrom:
+              secretKeyRef:
+                name: {{ .secretName | default "coordinator-azure-credentials" }}
+                key: AZURE_TENANT_ID
+          - name: EDG_AZURE_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: {{ .secretName | default "coordinator-azure-credentials" }}
+                key: AZURE_CLIENT_SECRET
+          {{- end }}
+          {{- end }}
+          {{- with .Values.coordinator.azureHSM }}
+          - name: EDG_AZURE_HSM_KEY_NAME
+            value: {{ .keyName }}
+          - name: EDG_AZURE_HSM_KEY_VERSION
+            value: {{ .keyVersion }}
+          - name: EDG_AZURE_HSM_VAULT_URL
+            value: {{ .vaultURL }}
+          - name: EDG_MAA_URL
+            value: {{ .maaURL }}
+          {{- end }}
           {{- if .Values.coordinator.distributedDeployment }}
           - name: EDG_STORE_BACKEND
             value: {{ .Values.coordinator.storeBackend }}
@@ -118,6 +147,14 @@ spec:
             mountPath: /etc/sgx_default_qcnl.conf
             subPath: sgx_default_qcnl.conf
           {{ end }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{ .Values.global.coordinatorComponentLabel }}: coordinator
+              {{ .Values.global.coordinatorNamespaceLabel }}: {{ .Release.Namespace }}
       volumes:
         {{- if or (not .Values.coordinator.distributedDeployment) (ne .Values.coordinator.storeBackend "k8s-secret") }}
         - name: coordinator-pv-storage

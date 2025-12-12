@@ -15,10 +15,13 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"os"
+	"slices"
 	"sort"
 	"strings"
 	"text/template"
 
+	"github.com/edgelesssys/marblerun/coordinator/constants"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/edgelesssys/marblerun/util"
@@ -45,6 +48,9 @@ const (
 
 	// FeatureMonotonicCounter enables the monotonic counter feature and the /monotonic-counter endpoint.
 	FeatureMonotonicCounter = "MonotonicCounter"
+
+	// FeatureAzureHSMSealing enables the additional sealing of the data encryption key using Azure HSM.
+	FeatureAzureHSMSealing = "AzureHSMSealing"
 )
 
 // Manifest defines the rules of a MarbleRun deployment.
@@ -522,8 +528,31 @@ func (m Manifest) Check(zaplogger *zap.Logger) error {
 	}
 
 	for _, feature := range m.Config.FeatureGates {
-		switch feature {
-		case FeatureSignQuoteEndpoint, FeatureMonotonicCounter:
+		switch strings.ToLower(feature) {
+		case strings.ToLower(FeatureSignQuoteEndpoint), strings.ToLower(FeatureMonotonicCounter):
+		case strings.ToLower(FeatureAzureHSMSealing):
+			var missingEnvs []string
+			if os.Getenv(constants.EnvMAAURL) == "" {
+				missingEnvs = append(missingEnvs, constants.EnvMAAURL)
+			}
+			if os.Getenv(constants.EnvAzureHSMVaultURL) == "" {
+				missingEnvs = append(missingEnvs, constants.EnvAzureHSMVaultURL)
+			}
+			if os.Getenv(constants.EnvAzureHSMKeyName) == "" {
+				missingEnvs = append(missingEnvs, constants.EnvAzureHSMKeyName)
+			}
+			if os.Getenv(constants.EnvAzureClientID) == "" {
+				missingEnvs = append(missingEnvs, constants.EnvAzureClientID)
+			}
+			if os.Getenv(constants.EnvAzureTenantID) == "" {
+				missingEnvs = append(missingEnvs, constants.EnvAzureTenantID)
+			}
+			if os.Getenv(constants.EnvAzureClientSecret) == "" {
+				missingEnvs = append(missingEnvs, constants.EnvAzureClientSecret)
+			}
+			if len(missingEnvs) > 0 {
+				return fmt.Errorf("manifest enables sealing with Azure HSM key, but required environment variables are not set: %v", missingEnvs)
+			}
 		default:
 			return fmt.Errorf("unknown feature gate: %s", feature)
 		}
@@ -648,6 +677,13 @@ func (m Manifest) CheckUpdate(originalPackages map[string]quote.PackagePropertie
 	}
 
 	return nil
+}
+
+// HasFeatureEnabled checks if a specific feature is enabled in the manifest.
+func (m Manifest) HasFeatureEnabled(feature string) bool {
+	return slices.ContainsFunc(m.Config.FeatureGates, func(s string) bool {
+		return strings.EqualFold(s, feature)
+	})
 }
 
 // ReservedSecrets is a tuple of secrets reserved for a single Marble.

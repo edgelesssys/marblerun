@@ -64,8 +64,8 @@ type Secret struct {
 	Cert        map[string]any `json:"Cert,omitempty"`
 }
 
-// DefaultManifest returns a manifest using the given user certificate and key.
-func DefaultManifest(userCertPEM []byte, recoveryKeyPEM []byte, defaultPackage PackageProperties) Manifest {
+// defaultManifest returns a manifest using the given user certificate and key.
+func defaultManifest(userCertPEM []byte, recoveryKeyPEM []byte, defaultPackage PackageProperties) Manifest {
 	return Manifest{
 		Packages: map[string]PackageProperties{
 			DefaultPackage: defaultPackage,

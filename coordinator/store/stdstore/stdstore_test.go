@@ -22,7 +22,7 @@ func TestStdStore(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.Background()
 
-	str := New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
+	str := New(&seal.MockSealer{}, stubEnabler{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
 	_, _, err := str.LoadState()
 	assert.NoError(err)
 
@@ -57,7 +57,7 @@ func TestStdIterator(t *testing.T) {
 	assert := assert.New(t)
 
 	sealer := &seal.MockSealer{}
-	store := New(sealer, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
+	store := New(sealer, stubEnabler{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
 	store.data = map[string][]byte{
 		"test:1":    {0x00, 0x11},
 		"test:2":    {0x00, 0x11},
@@ -124,7 +124,7 @@ func TestStdStoreSealing(t *testing.T) {
 			fs := afero.NewMemMapFs()
 			sealer := &seal.MockSealer{}
 
-			store := New(sealer, fs, "", zaptest.NewLogger(t))
+			store := New(sealer, stubEnabler{}, fs, "", zaptest.NewLogger(t))
 			_, _, err := store.LoadState()
 			require.NoError(err)
 
@@ -134,7 +134,7 @@ func TestStdStoreSealing(t *testing.T) {
 			require.NoError(store.Put("test:input", testData1))
 
 			// Check sealing with a new store initialized with the sealed state
-			store2 := New(sealer, fs, "", zaptest.NewLogger(t))
+			store2 := New(sealer, stubEnabler{}, fs, "", zaptest.NewLogger(t))
 			_, _, err = store2.LoadState()
 			require.NoError(err)
 			val, err := store2.Get("test:input")
@@ -153,7 +153,7 @@ func TestStdStoreRollback(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.Background()
 
-	store := New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
+	store := New(&seal.MockSealer{}, stubEnabler{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
 	_, _, err := store.LoadState()
 	assert.NoError(err)
 
@@ -200,7 +200,7 @@ func TestStdStoreRollback(t *testing.T) {
 func TestStdStoreDelete(t *testing.T) {
 	assert := assert.New(t)
 
-	str := New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
+	str := New(&seal.MockSealer{}, stubEnabler{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
 
 	inputName := "test:input"
 	inputData := []byte("test data")
@@ -217,3 +217,7 @@ func TestStdStoreDelete(t *testing.T) {
 	assert.Error(err)
 	assert.ErrorIs(err, store.ErrValueUnset)
 }
+
+type stubEnabler struct{}
+
+func (stubEnabler) SetEnabled(_ bool) {}
