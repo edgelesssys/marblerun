@@ -331,7 +331,7 @@ marblerun manifest set manifest.json $MARBLERUN --recovery-data=recovery-secret.
 
 ```
   -h, --help                  help for set
-  -r, --recoverydata string   File to write recovery data to, print to stdout if non specified
+  -r, --recoverydata string   File to write recovery data to, print to stdout if not specified
 ```
 
 ### Options inherited from parent commands
@@ -437,6 +437,7 @@ marblerun manifest update apply update-manifest.json $MARBLERUN --cert=admin-cer
       --pkcs11-config string       Path to a PKCS#11 configuration file to load the client certificate with
       --pkcs11-key-id string       ID of the private key in the PKCS#11 token
       --pkcs11-key-label string    Label of the private key in the PKCS#11 token
+  -r, --recoverydata string        File to write recovery data to when keys change, print to stdout if not specified
 ```
 
 ### Options inherited from parent commands
@@ -485,6 +486,7 @@ marblerun manifest update acknowledge update-manifest.json $MARBLERUN --cert=adm
       --pkcs11-config string       Path to a PKCS#11 configuration file to load the client certificate with
       --pkcs11-key-id string       ID of the private key in the PKCS#11 token
       --pkcs11-key-label string    Label of the private key in the PKCS#11 token
+  -r, --recoverydata string        File to write recovery data to when keys change, print to stdout if not specified
 ```
 
 ### Options inherited from parent commands

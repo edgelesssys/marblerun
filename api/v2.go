@@ -104,55 +104,51 @@ func manifestSetV2(ctx context.Context, client *rest.Client, manifest []byte) (r
 }
 
 // manifestUpdateApplyV2 updates the Coordinator manifest using the v2 API.
-func manifestUpdateApplyV2(ctx context.Context, client *rest.Client, manifest []byte) ([]string, int, error) {
+func manifestUpdateApplyV2(ctx context.Context, client *rest.Client, manifest []byte) (map[string][]byte, []string, int, error) {
 	request, err := json.Marshal(apiv2.UpdateApplyRequest{Manifest: manifest})
 	if err != nil {
-		return nil, 0, fmt.Errorf("marshalling request: %w", err)
+		return nil, nil, 0, fmt.Errorf("marshalling request: %w", err)
 	}
 
 	resp, err := client.Post(ctx, rest.V2API+rest.UpdateEndpoint, rest.ContentJSON, bytes.NewReader(request))
 	if err != nil {
-		return nil, 0, err
+		return nil, nil, 0, err
 	}
 
 	// Coordinators before v1.8.0 did not return a body on update apply
 	if len(resp) == 0 {
-		return []string{}, 0, nil
+		return nil, []string{}, 0, nil
 	}
 
 	var response apiv2.UpdateApplyResponse
 	if err := json.Unmarshal(resp, &response); err != nil {
-		return nil, 0, fmt.Errorf("unmarshalling Coordinator response: %w", err)
+		return nil, nil, 0, fmt.Errorf("unmarshalling Coordinator response: %w", err)
 	}
-	return response.MissingUsers, response.MissingAcknowledgments, nil
+	return response.RecoverySecrets, response.MissingUsers, response.MissingAcknowledgments, nil
 }
 
 // manifestUpdateAcknowledgeV2 acknowledges an update manifest using the v2 API.
-func manifestUpdateAcknowledgeV2(ctx context.Context, client *rest.Client, updateManifest []byte) (missingUsers []string, missingAcknowledgments int, err error) {
+func manifestUpdateAcknowledgeV2(ctx context.Context, client *rest.Client, updateManifest []byte) (recoveryData map[string][]byte, missingUsers []string, missingAcknowledgments int, err error) {
 	updateManifestJSON, err := json.Marshal(struct {
 		Manifest []byte `json:"manifest"`
 	}{
 		Manifest: updateManifest,
 	})
 	if err != nil {
-		return nil, -1, err
+		return nil, nil, -1, err
 	}
 
 	resp, err := client.Post(ctx, rest.V2API+rest.UpdateStatusEndpoint, rest.ContentJSON, bytes.NewReader(updateManifestJSON))
 	if err != nil {
-		return nil, -1, err
+		return nil, nil, -1, err
 	}
 
-	var response struct {
-		Message                string   `json:"message"`
-		MissingUsers           []string `json:"missingUsers"`
-		MissingAcknowledgments int      `json:"missingAcknowledgments"`
-	}
+	var response apiv2.UpdateManifestPostResponse
 	if err := json.Unmarshal(resp, &response); err != nil {
-		return nil, -1, fmt.Errorf("unmarshalling Coordinator response: %w", err)
+		return nil, nil, -1, fmt.Errorf("unmarshalling Coordinator response: %w", err)
 	}
 
-	return response.MissingUsers, response.MissingAcknowledgments, nil
+	return response.RecoverySecrets, response.MissingUsers, response.MissingAcknowledgments, nil
 }
 
 // secretGetV2 requests secrets from the Coordinator using the v2 API.
