@@ -165,12 +165,9 @@ func TestShamirRecovery(t *testing.T) {
 		}{keyName, recPriv})
 	}
 
-	encryptionKey, err := rec.GenerateEncryptionKey(recoveryKeysPub, 3)
+	encryptionKey, _, recoverySecretMap, err := rec.GenerateEncryptionKey(recoveryKeysPub, 3)
 	require.NoError(t, err)
 	rStore.wantKey = encryptionKey
-
-	recoverySecretMap, _, err := rec.GenerateRecoveryData(recoveryKeysPub)
-	require.NoError(t, err)
 
 	// Try out all combinations
 	for i := range recoveryKeysPriv {

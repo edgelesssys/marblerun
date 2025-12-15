@@ -351,15 +351,10 @@ func (a *ClientAPI) SetManifest(ctx context.Context, rawManifest []byte) (recove
 	}
 
 	// Set encryption key & generate recovery data
-	encryptionKey, err := a.recovery.GenerateEncryptionKey(mnf.RecoveryKeys, mnf.Config.RecoveryThreshold)
+	encryptionKey, recoveryData, recoverySecretMap, err := a.recovery.GenerateEncryptionKey(mnf.RecoveryKeys, mnf.Config.RecoveryThreshold)
 	if err != nil {
 		a.log.Error("Could not set up encryption key for sealing the state", zap.Error(err))
 		return nil, fmt.Errorf("generating recovery encryption key: %w", err)
-	}
-	recoverySecretMap, recoveryData, err := a.recovery.GenerateRecoveryData(mnf.RecoveryKeys)
-	if err != nil {
-		a.log.Error("Could not generate recovery data", zap.Error(err))
-		return nil, fmt.Errorf("generating recovery data: %w", err)
 	}
 	a.txHandle.SetEncryptionKey(encryptionKey, seal.ModeFromString(mnf.Config.SealMode))
 

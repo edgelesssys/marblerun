@@ -1538,8 +1538,7 @@ func (s *fakeStore) BeginReadTransaction(ctx context.Context, recoveryKey []byte
 type stubRecovery struct {
 	generateEncryptionKeyRes []byte
 	generateEncryptionKeyErr error
-	generateRecoveryDataRes  map[string][]byte
-	generateRecoveryDataErr  error
+	secretMap                map[string][]byte
 	recoverKeyRes            []byte
 	recoverKeyErr            error
 	recoverKeysLeft          int
@@ -1552,12 +1551,8 @@ type stubRecovery struct {
 	decryptRecoverySecretErr error
 }
 
-func (s *stubRecovery) GenerateEncryptionKey(_ map[string]string, _ uint) ([]byte, error) {
-	return s.generateEncryptionKeyRes, s.generateEncryptionKeyErr
-}
-
-func (s *stubRecovery) GenerateRecoveryData(_ map[string]string) (map[string][]byte, []byte, error) {
-	return s.generateRecoveryDataRes, nil, s.generateRecoveryDataErr
+func (s *stubRecovery) GenerateEncryptionKey(_ map[string]string, _ uint) ([]byte, []byte, map[string][]byte, error) {
+	return s.generateEncryptionKeyRes, nil, s.secretMap, s.generateEncryptionKeyErr
 }
 
 func (s *stubRecovery) RecoverKey(_ []byte) (int, []byte, error) {

@@ -22,8 +22,7 @@ const (
 
 // Recovery describes an interface which the core uses for recovery operations.
 type Recovery interface {
-	GenerateEncryptionKey(recoveryKeys map[string]string, recoveryThreshold uint) ([]byte, error)
-	GenerateRecoveryData(recoveryKeys map[string]string) (map[string][]byte, []byte, error)
+	GenerateEncryptionKey(recoveryKeys map[string]string, recoveryThreshold uint) ([]byte, []byte, map[string][]byte, error)
 	RecoverKey(secret []byte) (int, []byte, error)
 	SetRecoveryData(data []byte) error
 	EphemeralPublicKey() (crypto.PublicKey, error)

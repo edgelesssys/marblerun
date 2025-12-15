@@ -251,16 +251,11 @@ func (a *ClientAPI) updateApply(ctx context.Context, rawUpdateManifest []byte) (
 	}
 
 	if recoveryKeysHaveChanged(currentManifest, updateManifest) {
-		encryptionKey, err := a.recovery.GenerateEncryptionKey(updateManifest.RecoveryKeys, updateManifest.Config.RecoveryThreshold)
+		var recoveryData, encryptionKey []byte
+		encryptionKey, recoveryData, recoverySecretMap, err = a.recovery.GenerateEncryptionKey(updateManifest.RecoveryKeys, updateManifest.Config.RecoveryThreshold)
 		if err != nil {
 			a.log.Error("Could not set up encryption key for sealing the state", zap.Error(err))
 			return nil, fmt.Errorf("generating recovery encryption key: %w", err)
-		}
-		var recoveryData []byte
-		recoverySecretMap, recoveryData, err = a.recovery.GenerateRecoveryData(updateManifest.RecoveryKeys)
-		if err != nil {
-			a.log.Error("Could not generate recovery data", zap.Error(err))
-			return nil, fmt.Errorf("generating recovery data: %w", err)
 		}
 		a.txHandle.SetEncryptionKey(encryptionKey, seal.ModeFromString(updateManifest.Config.SealMode))
 		a.txHandle.SetRecoveryData(recoveryData)

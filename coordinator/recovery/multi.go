@@ -44,64 +44,63 @@ func New(store store, log *zap.Logger) *MultiPartyRecovery {
 }
 
 // GenerateEncryptionKey generates an encryption key according to the implicitly defined recovery mode.
-func (r *MultiPartyRecovery) GenerateEncryptionKey(recoveryKeys map[string]string, recoveryThreshold uint) ([]byte, error) {
-	var err error
+func (r *MultiPartyRecovery) GenerateEncryptionKey(recoveryKeys map[string]string, recoveryThreshold uint,
+) (encryptionKey, recoveryData []byte, secretMap map[string][]byte, err error) {
+	var secretHashMap map[string]bool
 
 	switch {
 	// If only one recovery keys is provided, generate a single random key for single-party recovery
 	case len(recoveryKeys) <= 1:
 		r.log.Debug("Single recovery key received, generating single-party encryption key")
-		r.encryptionKey, err = generateRandomKey()
-		r.secretMap, r.SecretHashMap = nil, nil // wipe potentially previous multi-party recovery data
+		encryptionKey, err = generateRandomKey()
 	// If multiple keys are provided, and the recovery threshold equals the amount of provided keys (or is 0, i.e. the default),
 	// generate multiple keys and XOR them together for multi-party recovery
 	case recoveryThreshold == uint(len(recoveryKeys)) || recoveryThreshold == 0:
 		r.log.Debug("Multiple recovery keys received, generating multi-party encryption key", zap.Int("recoveryKeys", len(recoveryKeys)))
-		r.encryptionKey, r.secretMap, r.SecretHashMap, err = generateMultiPartyRecoveryKey(recoveryKeys, r.log)
+		encryptionKey, secretMap, secretHashMap, err = generateMultiPartyRecoveryKey(recoveryKeys, r.log)
 	// Multiple keys with a threshold were provided: use Shamir's secrets sharing to generate the encryption key
 	case int(recoveryThreshold) < len(recoveryKeys):
 		r.log.Debug("Multiple recovery keys with threshold received, using Shamir's secrets sharing to generate encryption key", zap.Int("recoveryKeys", len(recoveryKeys)), zap.Uint("recoveryThreshold", recoveryThreshold))
-		r.encryptionKey, r.secretMap, r.SecretHashMap, err = generateShamirRecoveryKey(recoveryKeys, recoveryThreshold, r.log)
+		encryptionKey, secretMap, secretHashMap, err = generateShamirRecoveryKey(recoveryKeys, recoveryThreshold, r.log)
 	default:
 		err = fmt.Errorf("invalid configuration to create recovery key: %d recovery keys with recovery threshold of %d", len(recoveryKeys), recoveryThreshold)
 	}
-
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
-	return r.encryptionKey, nil
-}
 
-// GenerateRecoveryData generates the recovery data which is returned to the user.
-func (r *MultiPartyRecovery) GenerateRecoveryData(recoveryKeys map[string]string) (map[string][]byte, []byte, error) {
 	r.log.Debug("Generating recovery data")
 	// For single party recovery, just create a new map here and return one single key
-	if len(r.secretMap) == 0 {
+	if len(secretMap) == 0 {
 		r.log.Debug("Coordinator is in single-party recovery mode, creating secret map")
-		r.secretMap = make(map[string][]byte, 1)
+		secretMap = make(map[string][]byte, 1)
 		for index, value := range recoveryKeys {
 			// Parse RSA Public Key
 			recoveryk, err := ccrypto.ParseRSAPublicKeyFromPEM(value)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 
 			// Encrypt encryption key with user-specified RSA public key
-			r.secretMap[index], err = util.EncryptOAEP(recoveryk, r.encryptionKey)
+			secretMap[index], err = util.EncryptOAEP(recoveryk, encryptionKey)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 		}
 	}
 
 	// prepare recovery info data
-	marshalledSecretHashMap, err := json.Marshal(r.SecretHashMap)
+	marshalledSecretHashMap, err := json.Marshal(secretHashMap)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	// Return freshly generated map for single-party recovery, or return already existing one for multi-part recovery
 	r.log.Debug("Recovery data generated", zap.ByteString("recoveryData", marshalledSecretHashMap))
-	return r.secretMap, marshalledSecretHashMap, nil
+
+	r.encryptionKey = encryptionKey
+	r.secretMap = secretMap
+	r.SecretHashMap = secretHashMap
+	return r.encryptionKey, marshalledSecretHashMap, r.secretMap, nil
 }
 
 // RecoverKey is called by the client api, decides whether to perform single-party recovery or multi-party recovery and returns the (hopefully correct) key.
