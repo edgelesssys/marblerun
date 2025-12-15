@@ -47,6 +47,7 @@ type KeyReleaser struct {
 	keyName       string
 	keyVersion    string
 	maaURL        string
+	vaultURL      string
 	client        *azkeys.Client
 
 	log *zap.Logger
@@ -103,6 +104,7 @@ func New(sealer seal.Sealer, log *zap.Logger) (*KeyReleaser, error) {
 		keyName:           keyName,
 		keyVersion:        keyVersion,
 		maaURL:            maaURL,
+		vaultURL:          vaultURL,
 		client:            client,
 		enabled:           false,
 		log:               log,

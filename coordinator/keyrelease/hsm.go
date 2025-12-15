@@ -13,12 +13,17 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha512"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net/url"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/keyvault/azkeys"
 	"github.com/edgelesssys/ego/enclave"
+	"github.com/lestrrat-go/jwx/v3/jwa"
 	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/lestrrat-go/jwx/v3/jws"
 	"github.com/tink-crypto/tink-go/v2/kwp/subtle"
@@ -59,7 +64,7 @@ func (k *KeyReleaser) requestKey(ctx context.Context) error {
 	}
 
 	k.log.Debug("Parsing released key")
-	ciphertext, err := parseCiphertextFromResponse(*res.Value)
+	ciphertext, err := parseCiphertextFromResponse(*res.Value, k.vaultURL)
 	if err != nil {
 		return fmt.Errorf("parsing released key: %w", err)
 	}
@@ -121,19 +126,28 @@ func createWrappingKey() (*rsa.PrivateKey, []byte, error) {
 }
 
 // parseCiphertextFromResponse extracts the wrapped key from the key vault response.
-func parseCiphertextFromResponse(response string) ([]byte, error) {
-	// The response is a JWS containing a JSON payload with the key material.
-	// We don't care about deep verification of the JWS since the key in the payload
-	// is encrypted with a an asymmetric key only we possess.
-	// Further, even if the key is "malicious", e.g. known by an attacker,
-	// the security of the MarbleRun state won't be negatively impacted in comparison
-	// to not using SKR at all to seal the state. This is because we perform double sealing.
-	// I.e. we seal the DEK with the SGX enclave key and then seal this again with the SKR-released key.
-	jws, err := jws.Parse([]byte(response))
+func parseCiphertextFromResponse(response, vaultURL string) ([]byte, error) {
+	// Extract header from JWS response
+	headerString, _, _ := strings.Cut(response, ".")
+	headerBytes, err := base64.RawURLEncoding.DecodeString(headerString)
 	if err != nil {
-		return nil, fmt.Errorf("parsing JWS: %w", err)
+		return nil, fmt.Errorf("decoding header: %w", err)
+	}
+	var header jwsHeader
+	if err := json.Unmarshal(headerBytes, &header); err != nil {
+		return nil, fmt.Errorf("unmarshalling header: %w", err)
+	}
+	if err := header.verify(vaultURL); err != nil {
+		return nil, fmt.Errorf("verifying jws header: %w", err)
 	}
 
+	// Verify JWS signature and extract payload
+	payload, err := jws.Verify([]byte(response), jws.WithKey(header.Alg, header.CertChain[0].PublicKey))
+	if err != nil {
+		return nil, fmt.Errorf("verifying JWS: %w", err)
+	}
+
+	// Parse payload to extract the wrapped key
 	var skrResponse struct {
 		Response struct {
 			Key struct {
@@ -143,7 +157,7 @@ func parseCiphertextFromResponse(response string) ([]byte, error) {
 			} `json:"key"`
 		} `json:"response"`
 	}
-	if err = json.Unmarshal(jws.Payload(), &skrResponse); err != nil {
+	if err = json.Unmarshal(payload, &skrResponse); err != nil {
 		return nil, fmt.Errorf("unmarshalling JWS payload: %w", err)
 	}
 	keyHSMBytes, err := base64.RawURLEncoding.DecodeString(skrResponse.Response.Key.Key.KeyHSM)
@@ -162,6 +176,55 @@ func parseCiphertextFromResponse(response string) ([]byte, error) {
 	}
 
 	return ciphertext, nil
+}
+
+type jwsHeader struct {
+	Alg       jwa.SignatureAlgorithm `json:"alg"`
+	CertChain []*x509.Certificate    `json:"x5c"`
+}
+
+func (h *jwsHeader) UnmarshalJSON(data []byte) error {
+	var aux struct {
+		Alg string   `json:"alg"`
+		X5C [][]byte `json:"x5c"`
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	alg, ok := jwa.LookupSignatureAlgorithm(aux.Alg)
+	if !ok {
+		return fmt.Errorf("unsupported JWS alg: %s", aux.Alg)
+	}
+	h.Alg = alg
+
+	h.CertChain = make([]*x509.Certificate, len(aux.X5C))
+	for i, certBytes := range aux.X5C {
+		cert, err := x509.ParseCertificate(certBytes)
+		if err != nil {
+			return fmt.Errorf("parsing certificate from jws header: %w", err)
+		}
+		h.CertChain[i] = cert
+	}
+	if len(h.CertChain) == 0 {
+		return errors.New("no certificates in jws header")
+	}
+	return nil
+}
+
+func (h jwsHeader) verify(vaultURL string) error {
+	leafCert := h.CertChain[0]
+
+	intermediates := x509.NewCertPool()
+	for _, cert := range h.CertChain[1:] {
+		intermediates.AddCert(cert)
+	}
+
+	url, err := url.Parse(vaultURL)
+	if err != nil {
+		return fmt.Errorf("parsing vault url: %w", err)
+	}
+	_, err = leafCert.Verify(x509.VerifyOptions{Roots: rootCerts, Intermediates: intermediates, DNSName: url.Hostname()})
+	return err
 }
 
 func toPtr[T any](v T) *T {
