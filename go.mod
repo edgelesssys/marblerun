@@ -4,7 +4,7 @@ go 1.25.1
 
 require (
 	github.com/ThalesGroup/crypto11 v1.6.0
-	github.com/cert-manager/cert-manager v1.19.1
+	github.com/cert-manager/cert-manager v1.19.2
 	github.com/edgelesssys/ego v1.8.1-0.20251208162923-f2f9bc5962ca
 	github.com/gofrs/flock v0.13.0
 	github.com/google/go-cmp v0.7.0
@@ -23,12 +23,12 @@ require (
 	golang.org/x/crypto v0.46.0
 	golang.org/x/sys v0.39.0
 	google.golang.org/grpc v1.77.0
-	google.golang.org/protobuf v1.36.10
+	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v3 v3.0.1
-	helm.sh/helm/v4 v4.0.1
-	k8s.io/api v0.34.2
-	k8s.io/apimachinery v0.34.2
-	k8s.io/client-go v0.34.2
+	helm.sh/helm/v4 v4.0.4
+	k8s.io/api v0.34.3
+	k8s.io/apimachinery v0.34.3
+	k8s.io/client-go v0.34.3
 	k8s.io/utils v0.0.0-20251002143259-bc988d571ff4
 	sigs.k8s.io/controller-runtime v0.22.4
 	sigs.k8s.io/yaml v1.6.0
