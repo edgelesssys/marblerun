@@ -8,6 +8,7 @@ package cmd
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -292,7 +293,16 @@ func cliManifestUpdateGet(
 	return nil
 }
 
-func saveNewRecoveryData(cmd *cobra.Command, recoveryData map[string][]byte) error {
+func saveNewRecoveryData(cmd *cobra.Command, recoveryData map[string][]byte) (retErr error) {
+	defer func() {
+		if retErr != nil {
+			cmd.Println("Error: Failed saving recovery data to file.")
+			cmd.Println("Ensure the following is stored in a secure location:")
+			for user, data := range recoveryData {
+				cmd.Printf("%q: %q\n", user, base64.StdEncoding.EncodeToString(data))
+			}
+		}
+	}()
 	recoveryFilename, err := cmd.Flags().GetString("recoverydata")
 	if err != nil {
 		return err
