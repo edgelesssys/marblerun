@@ -9,6 +9,7 @@ package keyrelease
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"net/http"
 	"os"
@@ -28,6 +29,9 @@ import (
 const (
 	wrappingKeySize = 4096
 )
+
+// rootCerts holds root certificates for TLS connections with Azure services.
+var rootCerts *x509.CertPool
 
 type distributedSealer interface {
 	dstore.Sealer
@@ -64,9 +68,13 @@ func New(sealer seal.Sealer, log *zap.Logger) (*KeyReleaser, error) {
 	keyVersion := os.Getenv(constants.EnvAzureHSMKeyVersion)
 	maaURL := util.Getenv(constants.EnvMAAURL, "https://shareduks.uks.attest.azure.net") // fallback to uk-south attestation provider
 
+	if err := initEnclave(); err != nil {
+		return nil, err
+	}
+
 	cred, err := azidentity.NewDefaultAzureCredential(&azidentity.DefaultAzureCredentialOptions{
 		ClientOptions: azcore.ClientOptions{
-			Transport: insecureClient(), // Skip TLS verification. There is no need for a trusted connection
+			Transport: azureTLSClient(),
 		},
 	})
 	if err != nil {
@@ -75,7 +83,7 @@ func New(sealer seal.Sealer, log *zap.Logger) (*KeyReleaser, error) {
 
 	client, err := azkeys.NewClient(vaultURL, cred, &azkeys.ClientOptions{
 		ClientOptions: azcore.ClientOptions{
-			Transport: insecureClient(), // Skip TLS verification. There is no need for a trusted connection
+			Transport: azureTLSClient(),
 		},
 	})
 	if err != nil {
@@ -106,12 +114,11 @@ func (k *KeyReleaser) SetEnabled(enabled bool) {
 	k.enabled = enabled
 }
 
-// insecureClient returns an HTTP client that skips TLS certificate verification.
-// This is used to bypass the fact that the enclave does not have a set of Root CAs.
-func insecureClient() *http.Client {
+// azureTLSClient returns an HTTP client with access to system root CAs.
+func azureTLSClient() *http.Client {
 	return &http.Client{
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			TLSClientConfig: &tls.Config{RootCAs: rootCerts},
 		},
 	}
 }
