@@ -58,10 +58,12 @@ if(PRODUCTION)
 endif()
 configure_file(enclave/coordinator.conf coordinator.conf)
 
-# Sign enclave
 add_custom_command(
   OUTPUT coordinator-enclave.signed
   DEPENDS coordinator-enclave ${CMAKE_BINARY_DIR}/coordinator.conf signing-key
+  # Add fips140 verification checksum, which is usually added by the Go linker, which is not used with -buildmode=c-archive
+  COMMAND go run github.com/edgelesssys/goelffips@latest $<TARGET_FILE:coordinator-enclave>
+  # Sign enclave
   COMMAND openenclave::oesign sign -e $<TARGET_FILE:coordinator-enclave> -c
           ${CMAKE_BINARY_DIR}/coordinator.conf -k private.pem)
 

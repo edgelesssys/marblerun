@@ -9,6 +9,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/fips140"
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
@@ -51,6 +52,10 @@ func run(log *zap.Logger, validator quote.Validator, issuer quote.Issuer, sealDi
 		strings.Contains(strings.ToLower(os.Getenv(constants.EnvFeatureGates)), "distributedcoordinator") // for backward compatibility
 
 	log.Info("Starting coordinator", zap.String("version", Version), zap.String("commit", GitCommit), zap.Bool("distributed", distributedDeployment))
+
+	if !fips140.Enabled() {
+		log.Fatal("FIPS 140 not enabled")
+	}
 
 	// fetching env vars
 	dnsNamesString := util.Getenv(constants.DNSNames, constants.DNSNamesDefault)
