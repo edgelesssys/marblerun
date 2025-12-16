@@ -96,10 +96,24 @@ func GetSecret(t *testing.T, txHandle transactionHandle, name string) manifest.S
 	})
 }
 
+// GetPreviousSecret returns the previous secret with the given name.
+func GetPreviousSecret(t *testing.T, txHandle transactionHandle, name string) manifest.Secret {
+	return get(t, txHandle, func(tx wrapper.Wrapper) (manifest.Secret, error) {
+		return tx.GetPreviousSecret(name)
+	})
+}
+
 // GetSecretMap returns a map of all secrets in the store.
 func GetSecretMap(t *testing.T, txHandle transactionHandle) map[string]manifest.Secret {
 	return get(t, txHandle, func(tx wrapper.Wrapper) (map[string]manifest.Secret, error) {
 		return tx.GetSecretMap()
+	})
+}
+
+// GetPreviousSecretMap returns a map of all previous secrets in the store.
+func GetPreviousSecretMap(t *testing.T, txHandle transactionHandle) map[string]manifest.Secret {
+	return get(t, txHandle, func(tx wrapper.Wrapper) (map[string]manifest.Secret, error) {
+		return tx.GetPreviousSecretMap()
 	})
 }
 

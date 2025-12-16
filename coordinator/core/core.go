@@ -8,6 +8,7 @@ SPDX-License-Identifier: BUSL-1.1
 package core
 
 import (
+	"bytes"
 	"context"
 	"crypto"
 	"crypto/ecdsa"
@@ -45,9 +46,10 @@ import (
 type Core struct {
 	mux sync.Mutex
 
-	quote []byte
-	qv    quote.Validator
-	qi    quote.Issuer
+	reportData []byte
+	quote      []byte
+	qv         quote.Validator
+	qi         quote.Issuer
 
 	recovery recovery.Recovery
 	metrics  *coreMetrics
@@ -260,26 +262,40 @@ func (c *Core) GetTLSMarbleRootCertificate(clientHello *tls.ClientHelloInfo) (*t
 }
 
 // GetQuote returns the quote of the Coordinator.
-// If reportData is not nil, a new quote is generated over the data and returned.
-func (c *Core) GetQuote(reportData []byte) ([]byte, error) {
-	if len(reportData) == 0 {
+// If quoteID does not match the cached quoteID of the Core, a new quote is generated over the data and returned.
+func (c *Core) GetQuote(reportData []byte, nonce []byte) ([]byte, error) {
+	// Generate a quote using the nonce
+	if len(nonce) > 0 {
+		c.log.Debug("Generating new quote for report data with nonce")
+		quote, err := c.qi.Issue(append(reportData, nonce...))
+		if err != nil && err.Error() != "OE_UNSUPPORTED" {
+			return nil, QuoteError{err}
+		}
+		return quote, nil
+	}
+
+	// If quoteID matches the cached one (i.e. the root certificate hans't changed)
+	// simply return the cached quote
+	if bytes.Equal(c.reportData, reportData) {
 		c.log.Debug("Returning cached quote")
 		return c.quote, nil
 	}
-	c.log.Debug("Generating new quote for report data")
-	quote, err := c.qi.Issue(reportData)
-	if err != nil && err.Error() != "OE_UNSUPPORTED" {
-		return nil, QuoteError{err}
+
+	// Otherwise, the cached quote no longer matches the requested report data
+	// and we need to generate a new quote
+	c.log.Debug("Generating quote for updated root certificate")
+	if err := c.GenerateQuote(reportData); err != nil {
+		return nil, err
 	}
-	return quote, nil
+	return c.quote, nil
 }
 
-// GenerateQuote generates a quote for the Coordinator using the given certificate.
+// GenerateQuote generates a quote for the Coordinator using the given data.
 // If no quote can be generated due to the system not supporting SGX, no error is returned,
 // and the Coordinator proceeds to run in simulation mode.
-func (c *Core) GenerateQuote(cert []byte) error {
+func (c *Core) GenerateQuote(reportData []byte) error {
 	c.log.Info("Generating quote")
-	quote, err := c.qi.Issue(cert)
+	quote, err := c.qi.Issue(reportData)
 	if err != nil {
 		if err.Error() == "OE_UNSUPPORTED" {
 			c.log.Warn("Failed to get quote. Proceeding in simulation mode.", zap.Error(err))
@@ -292,6 +308,7 @@ func (c *Core) GenerateQuote(cert []byte) error {
 	}
 
 	c.quote = quote
+	c.reportData = reportData
 	c.log.Debug("Quote generated and stored")
 
 	return nil
@@ -563,19 +580,46 @@ func (c *Core) setCAData(dnsNames []string, putter interface {
 		return fmt.Errorf("generating marble root certificate: %w", err)
 	}
 
-	if err := putter.PutCertificate(constants.SKCoordinatorRootCert, rootCert); err != nil {
-		return err
+	for _, cfg := range []struct {
+		skCoRootCert         string
+		skCoIntermediateCert string
+		skMarbleRootCert     string
+		skCoRootKey          string
+		skCoIntermediateKey  string
+	}{
+		{
+			constants.SKCoordinatorRootCert,
+			constants.SKCoordinatorIntermediateCert,
+			constants.SKMarbleRootCert,
+			constants.SKCoordinatorRootKey,
+			constants.SKCoordinatorIntermediateKey,
+		},
+		{ // Save current CA data as placeholders for previous CA data
+			constants.SKPreviousCoordinatorRootCert,
+			constants.SKPreviousCoordinatorIntermediateCert,
+			constants.SKPreviousMarbleRootCert,
+			constants.SKPreviousCoordinatorRootKey,
+			constants.SKPreviousCoordinatorIntermediateKey,
+		},
+	} {
+		if err := putter.PutCertificate(cfg.skCoRootCert, rootCert); err != nil {
+			return err
+		}
+		if err := putter.PutCertificate(cfg.skCoIntermediateCert, intermediateCert); err != nil {
+			return err
+		}
+		if err := putter.PutCertificate(cfg.skMarbleRootCert, marbleRootCert); err != nil {
+			return err
+		}
+		if err := putter.PutPrivateKey(cfg.skCoRootKey, rootPrivK); err != nil {
+			return err
+		}
+		if err := putter.PutPrivateKey(cfg.skCoIntermediateKey, intermediatePrivK); err != nil {
+			return err
+		}
 	}
-	if err := putter.PutCertificate(constants.SKCoordinatorIntermediateCert, intermediateCert); err != nil {
-		return err
-	}
-	if err := putter.PutCertificate(constants.SKMarbleRootCert, marbleRootCert); err != nil {
-		return err
-	}
-	if err := putter.PutPrivateKey(constants.SKCoordinatorRootKey, rootPrivK); err != nil {
-		return err
-	}
-	return putter.PutPrivateKey(constants.SKCoordinatorIntermediateKey, intermediatePrivK)
+
+	return nil
 }
 
 // QuoteError is returned when the quote could not be retrieved.

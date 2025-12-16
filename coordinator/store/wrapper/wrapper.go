@@ -41,7 +41,7 @@ type Wrapper struct {
 	store dataStore
 }
 
-// New creates a new wrapper for a store or transaction.
+// New creates a nes Wrapper for a store or transaction.
 func New(store dataStore) Wrapper {
 	return Wrapper{store}
 }
@@ -79,6 +79,11 @@ func (s Wrapper) IncrementActivations(marbleType string) error {
 	return s.store.Put(request, rawActivations)
 }
 
+// DeleteActivation deletes an activation from the store.
+func (s Wrapper) DeleteActivation(marbleType string) error {
+	return s.store.Delete(strings.Join([]string{request.Activations, marbleType}, ":"))
+}
+
 // GetCertificate returns a certificate from store.
 func (s Wrapper) GetCertificate(certType string) (*x509.Certificate, error) {
 	request := strings.Join([]string{request.Certificate, certType}, ":")
@@ -96,6 +101,11 @@ func (s Wrapper) PutCertificate(certType string, cert *x509.Certificate) error {
 	return s.store.Put(request, cert.Raw)
 }
 
+// DeleteCertificate deletes a certificate from the store.
+func (s Wrapper) DeleteCertificate(certType string) error {
+	return s.store.Delete(strings.Join([]string{request.Certificate, certType}, ":"))
+}
+
 // GetInfrastructure returns infrastructure information from store.
 func (s Wrapper) GetInfrastructure(infraName string) (quote.InfrastructureProperties, error) {
 	var infra quote.InfrastructureProperties
@@ -106,6 +116,11 @@ func (s Wrapper) GetInfrastructure(infraName string) (quote.InfrastructureProper
 // PutInfrastructure saves infrastructure information to store.
 func (s Wrapper) PutInfrastructure(infraName string, infra quote.InfrastructureProperties) error {
 	return s.put(request.Infrastructure, infraName, infra)
+}
+
+// DeleteInfrastructure deletes an infrastructure from the store.
+func (s Wrapper) DeleteInfrastructure(infraName string) error {
+	return s.store.Delete(strings.Join([]string{request.Infrastructure, infraName}, ":"))
 }
 
 // GetMarble returns information for a specific Marble from store.
@@ -120,6 +135,11 @@ func (s Wrapper) PutMarble(marbleName string, marble manifest.Marble) error {
 	return s.put(request.Marble, marbleName, marble)
 }
 
+// DeleteMarble deletes a marble from the store.
+func (s Wrapper) DeleteMarble(marbleType string) error {
+	return s.store.Delete(strings.Join([]string{request.Marble, marbleType}, ":"))
+}
+
 // GetPackage returns a Package from store.
 func (s Wrapper) GetPackage(pkgName string) (quote.PackageProperties, error) {
 	var pkg quote.PackageProperties
@@ -130,6 +150,11 @@ func (s Wrapper) GetPackage(pkgName string) (quote.PackageProperties, error) {
 // PutPackage saves a Package to store.
 func (s Wrapper) PutPackage(pkgName string, pkg quote.PackageProperties) error {
 	return s.put(request.Package, pkgName, pkg)
+}
+
+// DeletePackage deletes a package from the store.
+func (s Wrapper) DeletePackage(packageName string) error {
+	return s.store.Delete(strings.Join([]string{request.Package, packageName}, ":"))
 }
 
 // GetPrivateKey returns a private key from store.
@@ -198,27 +223,36 @@ func (s Wrapper) PutSecret(secretName string, secret manifest.Secret) error {
 	return s.put(request.Secret, secretName, secret)
 }
 
+// DeleteSecret deletes a secret from the store.
+func (s Wrapper) DeleteSecret(secretName string) error {
+	return s.store.Delete(strings.Join([]string{request.Secret, secretName}, ":"))
+}
+
+// GetPreviousSecret returns a previous secret from store.
+func (s Wrapper) GetPreviousSecret(secretName string) (manifest.Secret, error) {
+	var loadedSecret manifest.Secret
+	err := s.get(request.PreviousSecret, secretName, &loadedSecret)
+	return loadedSecret, err
+}
+
+// PutPreviousSecret saves a previous secret to store.
+func (s Wrapper) PutPreviousSecret(secretName string, secret manifest.Secret) error {
+	return s.put(request.PreviousSecret, secretName, secret)
+}
+
+// DeletePreviousSecret deletes a previous secret from the store.
+func (s Wrapper) DeletePreviousSecret(secretName string) error {
+	return s.store.Delete(strings.Join([]string{request.PreviousSecret, secretName}, ":"))
+}
+
 // GetSecretMap returns a map of all secrets.
 func (s Wrapper) GetSecretMap() (map[string]manifest.Secret, error) {
-	iter, err := s.GetIterator(request.Secret)
-	if err != nil {
-		return nil, err
-	}
+	return s.getSecretMap(request.Secret, s.GetSecret)
+}
 
-	secretMap := map[string]manifest.Secret{}
-	for iter.HasNext() {
-		// all secrets (user-defined and private only as uninitialized placeholders) are set with the initial manifest
-		// if we encounter an error here something went wrong with the store, or the provided list was faulty
-		name, err := iter.GetNext()
-		if err != nil {
-			return nil, err
-		}
-		secretMap[name], err = s.GetSecret(name)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return secretMap, nil
+// GetPreviousSecretMap returns a map of all previous secrets.
+func (s Wrapper) GetPreviousSecretMap() (map[string]manifest.Secret, error) {
+	return s.getSecretMap(request.PreviousSecret, s.GetPreviousSecret)
 }
 
 // GetState returns the state from store.
@@ -254,6 +288,11 @@ func (s Wrapper) PutTLS(tagName string, tag manifest.TLStag) error {
 	return s.put(request.TLS, tagName, tag)
 }
 
+// DeleteTLS deletes a TLS certificate from the store.
+func (s Wrapper) DeleteTLS(tagName string) error {
+	return s.store.Delete(strings.Join([]string{request.TLS, tagName}, ":"))
+}
+
 // GetUpdateLog returns the update log from store.
 func (s Wrapper) GetUpdateLog() (string, error) {
 	log, err := s.store.Get(request.UpdateLog)
@@ -286,6 +325,11 @@ func (s Wrapper) PutUser(newUser *user.User) error {
 	return s.put(request.User, newUser.Name(), newUser)
 }
 
+// DeleteUser deletes a user from the store.
+func (s Wrapper) DeleteUser(username string) error {
+	return s.store.Delete(strings.Join([]string{request.User, username}, ":"))
+}
+
 // SetMonotonicCounter increases the value of a monotonic counter in the store and returns the previous value.
 func (s Wrapper) SetMonotonicCounter(name string, value uint64) (uint64, error) {
 	request := request.MonotonicCounter + ":" + name
@@ -304,6 +348,28 @@ func (s Wrapper) SetMonotonicCounter(name string, value uint64) (uint64, error) 
 	}
 
 	return currentValue, nil
+}
+
+func (s Wrapper) getSecretMap(requestResource string, getSecret func(string) (manifest.Secret, error)) (map[string]manifest.Secret, error) {
+	iter, err := s.GetIterator(requestResource)
+	if err != nil {
+		return nil, err
+	}
+
+	secretMap := map[string]manifest.Secret{}
+	for iter.HasNext() {
+		// all secrets (user-defined and private only as uninitialized placeholders) are set with the initial manifest
+		// if we encounter an error here something went wrong with the store, or the provided list was faulty
+		name, err := iter.GetNext()
+		if err != nil {
+			return nil, err
+		}
+		secretMap[name], err = getSecret(name)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return secretMap, nil
 }
 
 // put is the default method for marshaling and saving data to store.
@@ -348,6 +414,8 @@ type dataStore interface {
 	Get(string) ([]byte, error)
 	// Put saves a value to store by key
 	Put(string, []byte) error
+	// Delete removes a value from store by key
+	Delete(string) error
 	// Iterator returns an Iterator for a given prefix
 	Iterator(string) (store.Iterator, error)
 }

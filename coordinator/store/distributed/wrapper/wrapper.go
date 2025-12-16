@@ -9,11 +9,9 @@ package wrapper
 import (
 	"context"
 	"encoding/json"
-	"strings"
 
 	"github.com/edgelesssys/marblerun/coordinator/multiupdate"
 	"github.com/edgelesssys/marblerun/coordinator/store"
-	"github.com/edgelesssys/marblerun/coordinator/store/request"
 	"github.com/edgelesssys/marblerun/coordinator/store/wrapper"
 )
 
@@ -40,46 +38,6 @@ func New(store dataStore) Wrapper {
 		Wrapper: wrapper.New(store),
 		store:   store,
 	}
-}
-
-// DeleteActivation deletes an activation from the store.
-func (w Wrapper) DeleteActivation(marbleType string) error {
-	return w.store.Delete(strings.Join([]string{request.Activations, marbleType}, ":"))
-}
-
-// DeleteCertificate deletes a certificate from the store.
-func (w Wrapper) DeleteCertificate(certType string) error {
-	return w.store.Delete(strings.Join([]string{request.Certificate, certType}, ":"))
-}
-
-// DeleteInfrastructure deletes an infrastructure from the store.
-func (w Wrapper) DeleteInfrastructure(infraName string) error {
-	return w.store.Delete(strings.Join([]string{request.Infrastructure, infraName}, ":"))
-}
-
-// DeleteMarble deletes a marble from the store.
-func (w Wrapper) DeleteMarble(marbleType string) error {
-	return w.store.Delete(strings.Join([]string{request.Marble, marbleType}, ":"))
-}
-
-// DeletePackage deletes a package from the store.
-func (w Wrapper) DeletePackage(packageName string) error {
-	return w.store.Delete(strings.Join([]string{request.Package, packageName}, ":"))
-}
-
-// DeleteSecret deletes a secret from the store.
-func (w Wrapper) DeleteSecret(secretName string) error {
-	return w.store.Delete(strings.Join([]string{request.Secret, secretName}, ":"))
-}
-
-// DeleteTLS deletes a TLS certificate from the store.
-func (w Wrapper) DeleteTLS(tagName string) error {
-	return w.store.Delete(strings.Join([]string{request.TLS, tagName}, ":"))
-}
-
-// DeleteUser deletes a user from the store.
-func (w Wrapper) DeleteUser(username string) error {
-	return w.store.Delete(strings.Join([]string{request.User, username}, ":"))
 }
 
 // DeletePendingUpdate deletes a pending update from the store.

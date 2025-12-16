@@ -1059,6 +1059,71 @@ func TestMultiPartyManifestUpdate(t *testing.T) {
 	}
 }
 
+func TestRootSecretRotation(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	log.Println("Testing root key rotation...")
+
+	var mnf manifest.Manifest
+	require.NoError(json.Unmarshal([]byte(test.IntegrationMultiPartyManifestJSON), &mnf))
+	mnf.Config.UpdateThreshold = 1
+	mnfJSON, err := json.Marshal(mnf)
+	require.NoError(err)
+
+	updateMnf := mnf
+	updateMnf.Config.RotateRootSecret = true
+	updateMnfJSON, err := json.Marshal(updateMnf)
+	require.NoError(err)
+
+	f := framework.New(t, *buildDir, simFlag, *noenclave, marbleTestAddr, meshServerAddr, clientServerAddr, string(mnfJSON), string(updateMnfJSON))
+	f.UpdateManifest()
+
+	cfg := framework.NewCoordinatorConfig()
+	defer cfg.Cleanup()
+	f.StartCoordinator(f.Ctx, cfg)
+
+	_, err = f.SetManifest(f.TestManifest)
+	require.NoError(err)
+
+	log.Println("Retrieving current root certificate")
+	rootCert, _, _, err := api.VerifyCoordinator(t.Context(), f.ClientServerAddr, api.VerifyOptions{InsecureSkipVerify: true})
+	require.NoError(err)
+
+	// Root cert should be usable to connect to the Coordinator
+	status, _, err := api.GetStatus(t.Context(), f.ClientServerAddr, rootCert)
+	require.NoError(err)
+	assert.EqualValues(state.AcceptingMarbles, status)
+
+	log.Println("Starting a Server-Marble")
+	serverCfg := framework.NewMarbleConfig(meshServerAddr, "testMarbleServer", "server,backend,localhost")
+	defer serverCfg.Cleanup()
+	f.StartMarbleServer(f.Ctx, serverCfg)
+
+	log.Println("Updating manifest to rotate root secret...")
+	_, _, missing, err := f.SetUpdateManifest(updateMnf, test.AdminOneCert, test.AdminOnePrivKey)
+	require.NoError(err)
+	require.Equal(0, missing)
+
+	// Old root cert should no longer be valid
+	_, _, err = api.GetStatus(t.Context(), f.ClientServerAddr, rootCert)
+	assert.Error(err)
+
+	log.Println("Retrieving new root certificate")
+	newRootCert, _, _, err := api.VerifyCoordinator(t.Context(), f.ClientServerAddr, api.VerifyOptions{InsecureSkipVerify: true})
+	require.NoError(err)
+
+	// New root cert should be usable to connect to the Coordinator
+	status, _, err = api.GetStatus(t.Context(), f.ClientServerAddr, newRootCert)
+	require.NoError(err)
+	assert.EqualValues(state.AcceptingMarbles, status)
+
+	log.Println("Starting a Server-Marble")
+	serverCfg = framework.NewMarbleConfig(meshServerAddr, "testMarbleServer", "server,backend,localhost")
+	defer serverCfg.Cleanup()
+	f.StartMarbleServer(f.Ctx, serverCfg)
+}
+
 func newFramework(t *testing.T) *framework.IntegrationTest {
 	f := framework.New(t, *buildDir, simFlag, *noenclave, marbleTestAddr, meshServerAddr, clientServerAddr, test.IntegrationManifestJSON, test.UpdateManifest)
 	f.UpdateManifest()

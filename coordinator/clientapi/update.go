@@ -29,6 +29,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/store/request"
 	"github.com/edgelesssys/marblerun/coordinator/store/wrapper"
 	"github.com/edgelesssys/marblerun/coordinator/user"
+	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
@@ -39,8 +40,10 @@ var ErrNoPendingUpdate = errors.New("no update in progress")
 type secretGetter interface {
 	GetIterator(string) (wrapper.Iterator, error)
 	PutSecret(string, manifest.Secret) error
+	PutPreviousSecret(string, manifest.Secret) error
 	GetSecret(string) (manifest.Secret, error)
 	DeleteSecret(string) error
+	DeletePreviousSecret(string) error
 	PutCertificate(string, *x509.Certificate) error
 	GetCertificate(string) (*x509.Certificate, error)
 	PutPrivateKey(string, *ecdsa.PrivateKey) error
@@ -369,7 +372,15 @@ func (a *ClientAPI) updateSecrets(wrapper secretGetter, mnf manifest.Manifest) e
 			a.log.Error("Failed to delete secret set to be removed in new manifest", zap.Error(err), zap.String("secret", name))
 			return fmt.Errorf("deleting secret: %w", err)
 		}
+		// We only keep secrets as long as they are defined in the manifest
+		if err := wrapper.DeletePreviousSecret(name); err != nil {
+			a.log.Error("Failed to delete previous secret set to be removed in new manifest", zap.Error(err), zap.String("secret", name))
+			return fmt.Errorf("deleting previous secret: %w", err)
+		}
 	}
+
+	toGenerate := make([]string, len(added))
+	copy(toGenerate, added)
 
 	// Delete secrets which definitions have changed
 	// They will be regenerated in the next step
@@ -381,9 +392,15 @@ func (a *ClientAPI) updateSecrets(wrapper secretGetter, mnf manifest.Manifest) e
 				a.log.Error("Failed to delete secret set to be regenerated in new manifest", zap.Error(err), zap.String("secret", name))
 				return fmt.Errorf("deleting secret: %w", err)
 			}
-			added = append(added, name)
+			toGenerate = append(toGenerate, name)
 		} else {
 			unchanged = append(unchanged, name)
+		}
+
+		// Regardless of change, add the secret to previous secrets
+		if err := wrapper.PutPreviousSecret(name, existingSecrets[name]); err != nil {
+			a.log.Error("Failed moving secret to previous secrets", zap.Error(err), zap.String("secret", name))
+			return fmt.Errorf("moving secret %q to previous secrets: %w", name, err)
 		}
 	}
 
@@ -397,14 +414,78 @@ func (a *ClientAPI) updateSecrets(wrapper secretGetter, mnf manifest.Manifest) e
 		a.log.Error("Failed to get root private key", zap.Error(err))
 		return fmt.Errorf("loading root private key from store: %w", err)
 	}
+	intermediateCert, err := wrapper.GetCertificate(constants.SKCoordinatorIntermediateCert)
+	if err != nil {
+		a.log.Error("Failed to get intermediate certificate", zap.Error(err))
+		return fmt.Errorf("loading intermediate certificate from store: %w", err)
+	}
+	intermediatePrivK, err := wrapper.GetPrivateKey(constants.SKCoordinatorIntermediateKey)
+	if err != nil {
+		a.log.Error("Failed to get intermediate private key", zap.Error(err))
+		return fmt.Errorf("loading intermediate private key from store: %w", err)
+	}
+	marbleRootCert, err := wrapper.GetCertificate(constants.SKMarbleRootCert)
+	if err != nil {
+		a.log.Error("Failed to get Marble root certificate", zap.Error(err))
+		return fmt.Errorf("loading Marble root certificate from store: %w", err)
+	}
+
+	// Back up CA data
+	if err := wrapper.PutCertificate(constants.SKPreviousCoordinatorRootCert, rootCert); err != nil {
+		a.log.Error("Failed to back up existing root certificate", zap.Error(err))
+		return fmt.Errorf("backing up existing root certificate: %w", err)
+	}
+	if err := wrapper.PutPrivateKey(constants.SKPreviousCoordinatorRootKey, rootPrivK); err != nil {
+		a.log.Error("Failed to back up existing root private key", zap.Error(err))
+		return fmt.Errorf("backing up existing root private key: %w", err)
+	}
+	if err := wrapper.PutCertificate(constants.SKPreviousCoordinatorIntermediateCert, intermediateCert); err != nil {
+		a.log.Error("Failed to back up existing intermediate certificate", zap.Error(err))
+		return fmt.Errorf("backing up existing intermediate certificate: %w", err)
+	}
+	if err := wrapper.PutPrivateKey(constants.SKPreviousCoordinatorIntermediateKey, intermediatePrivK); err != nil {
+		a.log.Error("Failed to back up existing intermediate private key", zap.Error(err))
+		return fmt.Errorf("backing up existing intermediate private key: %w", err)
+	}
+	if err := wrapper.PutCertificate(constants.SKPreviousMarbleRootCert, marbleRootCert); err != nil {
+		a.log.Error("Failed to back up existing Marble root certificate", zap.Error(err))
+		return fmt.Errorf("backing up existing Marble root certificate: %w", err)
+	}
+
+	coordDNSNames := rootCert.DNSNames
+	for _, ip := range rootCert.IPAddresses {
+		for _, defaultIP := range util.DefaultCertificateIPAddresses {
+			if !ip.Equal(defaultIP) {
+				coordDNSNames = append(coordDNSNames, ip.String())
+			}
+		}
+	}
+
+	// Rotate root CA if configured
+	if mnf.Config.RotateRootSecret {
+		rootCert, rootPrivK, err = crypto.GenerateCert(coordDNSNames, constants.CoordinatorName, nil, nil, nil)
+		if err != nil {
+			a.log.Error("Could not generate a new root CA for Coordinator.", zap.Error(err))
+			return fmt.Errorf("generating new root CA for Coordinator: %w", err)
+		}
+
+		if err := wrapper.PutCertificate(constants.SKCoordinatorRootCert, rootCert); err != nil {
+			a.log.Error("Failed to save new root certificate", zap.Error(err))
+			return fmt.Errorf("saving new root certificate to store: %w", err)
+		}
+		if err := wrapper.PutPrivateKey(constants.SKCoordinatorRootKey, rootPrivK); err != nil {
+			a.log.Error("Failed to save new root private key", zap.Error(err))
+			return fmt.Errorf("saving new root private key to store: %w", err)
+		}
+	}
 
 	// Generate new cross-signed intermediate CA for Marble gRPC authentication
-	intermediateCert, intermediatePrivK, err := crypto.GenerateCert(rootCert.DNSNames, constants.CoordinatorIntermediateName, nil, rootCert, rootPrivK)
+	intermediateCert, intermediatePrivK, err = crypto.GenerateCert(coordDNSNames, constants.CoordinatorIntermediateName, nil, rootCert, rootPrivK)
 	if err != nil {
 		a.log.Error("Could not generate a new intermediate CA for Marble authentication.", zap.Error(err))
 		return fmt.Errorf("generating new intermediate CA for Marble authentication: %w", err)
 	}
-	marbleRootCert, _, err := crypto.GenerateCert(rootCert.DNSNames, constants.CoordinatorIntermediateName, intermediatePrivK, nil, nil)
+	marbleRootCert, _, err = crypto.GenerateCert(coordDNSNames, constants.CoordinatorIntermediateName, intermediatePrivK, nil, nil)
 	if err != nil {
 		return fmt.Errorf("generating new Marble root certificate: %w", err)
 	}
@@ -412,21 +493,28 @@ func (a *ClientAPI) updateSecrets(wrapper secretGetter, mnf manifest.Manifest) e
 	// Find out which secrets need to be regenerated
 	// User-defined secrets are never generated, but are saved to the store directly
 	// All certificates are regenerated, since the intermediate CA changed
-	// Symmetric keys are only generated if they are new in this manifest
-	// Existing symmetric keys are kept
+	// Symmetric keys are only generated if they are new in this manifest,
+	// or if the root secret should be rotated.
+	// Otherwise, existing symmetric keys are kept as is
 	secretsToGenerate := make(map[string]manifest.Secret)
-	for _, name := range added {
+	for _, name := range toGenerate {
 		if mnf.Secrets[name].UserDefined {
 			if err := wrapper.PutSecret(name, mnf.Secrets[name]); err != nil {
 				a.log.Error("Failed to re-save user-defined secret", zap.Error(err), zap.String("secret", name))
 				return fmt.Errorf("saving secret %q to store: %w", name, err)
+			}
+
+			// Add new user-defined secret also to previous secrets as empty placeholder
+			if err := wrapper.PutPreviousSecret(name, mnf.Secrets[name]); err != nil {
+				a.log.Error("Failed creating backup of secret", zap.Error(err), zap.String("secret", name))
+				return fmt.Errorf("creating backup of secret %q: %w", name, err)
 			}
 		} else {
 			secretsToGenerate[name] = mnf.Secrets[name]
 		}
 	}
 	for _, name := range unchanged {
-		if mnf.Secrets[name].Type != manifest.SecretTypeSymmetricKey && !mnf.Secrets[name].UserDefined {
+		if !mnf.Secrets[name].UserDefined && ((mnf.Secrets[name].Type != manifest.SecretTypeSymmetricKey) || mnf.Config.RotateRootSecret) {
 			secretsToGenerate[name] = mnf.Secrets[name]
 		}
 	}
@@ -445,13 +533,23 @@ func (a *ClientAPI) updateSecrets(wrapper secretGetter, mnf manifest.Manifest) e
 		return fmt.Errorf("generating placeholder secrets from manifest: %w", err)
 	}
 
-	for secretName, secret := range privSecrets {
-		secrets[secretName] = secret
-	}
+	maps.Copy(secrets, privSecrets)
 	for secretName, secret := range secrets {
 		if err := wrapper.PutSecret(secretName, secret); err != nil {
 			a.log.Error("Failed to save secret", zap.Error(err), zap.String("secret", secretName))
 			return fmt.Errorf("saving secret %q to store: %w", secretName, err)
+		}
+	}
+
+	// Add newly added secrets to previous secrets as placeholders
+	for _, secretName := range added {
+		// Skip user-defined secrets, we already added placeholders for them
+		if mnf.Secrets[secretName].UserDefined {
+			continue
+		}
+		if err := wrapper.PutPreviousSecret(secretName, secrets[secretName]); err != nil {
+			a.log.Error("Failed creating backup of secret", zap.Error(err), zap.String("secret", secretName))
+			return fmt.Errorf("creating backup of secret %q: %w", secretName, err)
 		}
 	}
 

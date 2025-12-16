@@ -7,6 +7,7 @@ SPDX-License-Identifier: BUSL-1.1
 package core
 
 import (
+	"bytes"
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
@@ -330,26 +331,40 @@ func TestUnsetRestart(t *testing.T) {
 
 func TestGetQuote(t *testing.T) {
 	testCases := map[string]struct {
-		reportData []byte
-		savedQuote []byte
-		issuer     stubIssuer
-		wantErr    bool
+		reportData      []byte
+		nonce           []byte
+		savedQuote      []byte
+		savedReportData []byte
+		issuer          stubIssuer
+		wantErr         bool
 	}{
-		"no report data": {
-			reportData: nil,
-			savedQuote: []byte("quote"),
-			issuer:     stubIssuer{},
+		"no nonce": {
+			reportData:      []byte("report data"),
+			savedQuote:      []byte("quote"),
+			savedReportData: []byte("report data"),
+			issuer:          stubIssuer{},
 		},
-		"with report data": {
-			reportData: []byte("report data"),
-			savedQuote: []byte("quote"),
-			issuer:     stubIssuer{},
+		"with nonce": {
+			reportData:      []byte("report data"),
+			nonce:           []byte("nonce"),
+			savedQuote:      []byte("quote"),
+			savedReportData: []byte("report data"),
+			issuer:          stubIssuer{},
+		},
+		"with new report data": {
+			reportData:      []byte("new report data"),
+			nonce:           []byte("nonce"),
+			savedQuote:      []byte("quote"),
+			savedReportData: []byte("report data"),
+			issuer:          stubIssuer{},
 		},
 		"issuer error": {
-			reportData: []byte("report data"),
-			savedQuote: []byte("quote"),
-			issuer:     stubIssuer{err: assert.AnError},
-			wantErr:    true,
+			reportData:      []byte("report data"),
+			nonce:           []byte("nonce"),
+			savedQuote:      []byte("quote"),
+			savedReportData: []byte("report data"),
+			issuer:          stubIssuer{err: assert.AnError},
+			wantErr:         true,
 		},
 		"OE_UNSUPPORTED error is ignored": {
 			issuer: stubIssuer{err: errors.New("OE_UNSUPPORTED")},
@@ -362,21 +377,26 @@ func TestGetQuote(t *testing.T) {
 
 			zapLogger := zaptest.NewLogger(t)
 			core := Core{
-				qi:    &tc.issuer,
-				log:   zapLogger,
-				quote: tc.savedQuote,
+				qi:         &tc.issuer,
+				log:        zapLogger,
+				quote:      tc.savedQuote,
+				reportData: tc.savedReportData,
 			}
 
-			quote, err := core.GetQuote(tc.reportData)
+			quote, err := core.GetQuote(tc.reportData, tc.nonce)
 			if tc.wantErr {
 				assert.Error(err)
 				return
 			}
 			assert.NoError(err)
-			if len(tc.reportData) == 0 {
-				assert.Equal(tc.savedQuote, quote)
+			if len(tc.nonce) == 0 {
+				if bytes.Equal(tc.savedReportData, tc.reportData) {
+					assert.Equal(tc.savedQuote, quote)
+				} else {
+					assert.Equal(tc.reportData, quote) // stubIssuer returns the input message as quote
+				}
 			} else {
-				assert.Equal(tc.reportData, quote) // stubIssuer returns the input message as quote
+				assert.Equal(append(tc.reportData, tc.nonce...), quote) // stubIssuer returns the input message as quote
 			}
 		})
 	}

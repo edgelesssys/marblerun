@@ -2503,6 +2503,88 @@ func TestE2EActions(t *testing.T) {
 				return actions
 			}(),
 		},
+		"rotate root secret": {
+			getStartingManifest: manifest.DefaultManifest,
+			actions: func() []testAction {
+				var actions []testAction
+
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
+					forAllPods(ctx, t, kubectl, namespace, func(_, port string) error {
+						res, err := cmd.Run(ctx,
+							"status", net.JoinHostPort(localhost, port),
+							"--coordinator-cert", filepath.Join(tmpDir, coordinatorCertFileDefault),
+						)
+						if err != nil {
+							return err
+						}
+						if !strings.Contains(res, fmt.Sprintf("%d: Coordinator is running correctly and ready to accept marbles", state.AcceptingMarbles)) {
+							return fmt.Errorf("Coordinator not in expected state: %s", res)
+						}
+						return nil
+					})
+				})
+
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
+					t.Log("Updating manifest and rotating root secret")
+					require := require.New(t)
+					mnf := loadTestManifest(require, tmpDir)
+					mnf.Config.RotateRootSecret = true
+
+					mnfJSON, err := json.MarshalIndent(mnf, "", "  ")
+					require.NoError(err)
+
+					updateManifest(ctx, t, kubectl, cmd, namespace, tmpDir, mnfJSON, certFileDefault, keyFileDefault)
+				})
+
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
+					t.Log("Testing old certificate against new Coordinator TLS certificate")
+					forAllPods(ctx, t, kubectl, namespace, func(_, port string) error {
+						res, err := cmd.Run(ctx,
+							"status", net.JoinHostPort(localhost, port),
+							"--coordinator-cert", filepath.Join(tmpDir, coordinatorCertFileDefault),
+						)
+						if err == nil {
+							return fmt.Errorf("CLI was able to connect to Coordinator when it shouldn't have: %s", res)
+						}
+						return nil
+					})
+				})
+
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
+					t.Log("Retrieving new Coordinator certificate")
+
+					withPortForwardAny(ctx, t, kubectl, namespace, func(port string) error {
+						_, err := cmd.Run(ctx,
+							"manifest", "verify", filepath.Join(tmpDir, "update.json"),
+							net.JoinHostPort(localhost, port),
+							"--coordinator-cert", filepath.Join(tmpDir, coordinatorCertFileDefault+".new"),
+							eraConfig,
+						)
+						return err
+					})
+				})
+
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
+					t.Log("Verifying TLS connection with new certificate")
+
+					forAllPods(ctx, t, kubectl, namespace, func(_, port string) error {
+						res, err := cmd.Run(ctx,
+							"status", net.JoinHostPort(localhost, port),
+							"--coordinator-cert", filepath.Join(tmpDir, coordinatorCertFileDefault+".new"),
+						)
+						if err != nil {
+							return err
+						}
+						if !strings.Contains(res, fmt.Sprintf("%d: Coordinator is running correctly and ready to accept marbles", state.AcceptingMarbles)) {
+							return fmt.Errorf("Coordinator not in expected state: %s", res)
+						}
+						return nil
+					})
+				})
+
+				return actions
+			}(),
+		},
 	}
 
 	changeRecoveryTC := testCases["update recovery keys 1 to 2"]

@@ -1004,6 +1004,27 @@ func TestUpdateManifest(t *testing.T) {
 				return u
 			}(),
 		},
+		"rotate root secret": {
+			updateManifest: func() manifest.Manifest {
+				mnf := testUpdateManifest()
+				mnf.Config.RotateRootSecret = true
+				return mnf
+			}(),
+			prepareAPI: func(require *require.Assertions, api *ClientAPI) {
+				manifest, err := json.Marshal(testManifest())
+				require.NoError(err)
+				_, err = api.SetManifest(ctx, manifest)
+				require.NoError(err)
+			},
+			core: &fakeCore{
+				state: state.AcceptingManifest,
+			},
+			updater: func() *user.User {
+				u := user.NewUser("admin", mustParseCert(t, test.AdminCert))
+				u.Assign(user.NewPermission(user.PermissionUpdateManifest, []string{}))
+				return u
+			}(),
+		},
 		"successful multi-party update initialization": {
 			updateManifest: testUpdateManifest(),
 			prepareAPI: func(require *require.Assertions, api *ClientAPI) {
@@ -1477,8 +1498,8 @@ func (c *fakeCore) GenerateSecrets(newSecrets map[string]manifest.Secret, id uui
 	return secrets, nil
 }
 
-func (c *fakeCore) GetQuote(reportData []byte) ([]byte, error) {
-	if reportData != nil {
+func (c *fakeCore) GetQuote(_, nonce []byte) ([]byte, error) {
+	if nonce != nil {
 		return append([]byte("nonce"), c.quote...), nil
 	}
 	return c.quote, nil

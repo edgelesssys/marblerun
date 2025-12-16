@@ -107,6 +107,42 @@ func TestTemplateDryRun(t *testing.T) {
 			}
 			}`),
 		},
+		"previous secrets reference": {
+			manifest: []byte(`{
+			"Packages": {
+				"backend": {
+					"UniqueID": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+					"Debug": false
+				}
+			},
+			"Marbles": {
+				"backend_first": {
+					"Package": "backend",
+					"MaxActivations": 1,
+					"Parameters": {
+						"Files": {
+							"/tmp/abc.txt": "{{ raw .Secrets.bar }}",
+							"/tmp/defg.txt": "{{ hex .Secrets.foo }}",
+							"/tmp/prev_abc.txt": "{{ raw .Previous.Secrets.foo }}",
+							"/tmp/prev_defg.txt": "{{ hex .Previous.Secrets.bar }}"
+						}
+					}
+				}
+			},
+			"Secrets": {
+				"foo": {
+					"Size": 128,
+					"Shared": true,
+					"Type": "symmetric-key"
+				},
+				"bar": {
+					"Size": 128,
+					"Shared": true,
+					"Type": "symmetric-key"
+				}
+			}
+			}`),
+		},
 		"missingSecret": {
 			manifest: []byte(`{
 			"Packages": {
@@ -237,6 +273,25 @@ func TestTemplateDryRun(t *testing.T) {
 							"marble_key": "{{ pem .MarbleRun.MarbleCert.Private }}",
 							"coordinator_root": "{{ pem .MarbleRun.CoordinatorRoot.Cert }}",
 							"coordinator_intermediate": "{{ pem .MarbleRun.CoordinatorIntermediate.Cert }}"
+						}
+					}
+				}
+			}
+			}`),
+		},
+		"reserved secrets from previous state": {
+			manifest: []byte(`{
+			"Packages": { "backend": { "UniqueID": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" }},
+			"Marbles": {
+				"backend_first": {
+					"Package": "backend",
+					"Parameters": {
+						"Files": {
+							"root_ca": "{{ pem .Previous.MarbleRun.RootCA.Cert }}",
+							"marble_cert": "{{ pem .Previous.MarbleRun.MarbleCert.Cert }}",
+							"marble_key": "{{ pem .Previous.MarbleRun.MarbleCert.Private }}",
+							"coordinator_root": "{{ pem .Previous.MarbleRun.CoordinatorRoot.Cert }}",
+							"coordinator_intermediate": "{{ pem .Previous.MarbleRun.CoordinatorIntermediate.Cert }}"
 						}
 					}
 				}

@@ -54,7 +54,7 @@ type core interface {
 	GenerateSecrets(
 		map[string]manifest.Secret, uuid.UUID, string, *x509.Certificate, *ecdsa.PrivateKey, *ecdsa.PrivateKey,
 	) (map[string]manifest.Secret, error)
-	GetQuote(reportData []byte) ([]byte, error)
+	GetQuote(reportData, nonce []byte) ([]byte, error)
 	GenerateQuote([]byte) error
 }
 
@@ -182,11 +182,7 @@ func (a *ClientAPI) GetCertQuote(ctx context.Context, nonce []byte) (cert string
 	}
 
 	// Get existing quote for root cert, or generate a new one over provided nonce
-	var reportData []byte
-	if len(nonce) > 0 {
-		reportData = append(rootCert.Raw, nonce...)
-	}
-	quote, err := a.core.GetQuote(reportData)
+	quote, err := a.core.GetQuote(rootCert.Raw, nonce)
 	if err != nil {
 		return "", nil, fmt.Errorf("getting quote: %w", err)
 	}
@@ -382,10 +378,16 @@ func (a *ClientAPI) SetManifest(ctx context.Context, rawManifest []byte) (recove
 		if err := txdata.PutSecret(secretName, secret); err != nil {
 			return nil, fmt.Errorf("saving secret %q to store: %w", secretName, err)
 		}
+		if err := txdata.PutPreviousSecret(secretName, secret); err != nil {
+			return nil, fmt.Errorf("saving secret %q to store: %w", secretName, err)
+		}
 	}
 	for secretName, secret := range mnf.Secrets {
 		if secret.UserDefined {
 			if err := txdata.PutSecret(secretName, secret); err != nil {
+				return nil, fmt.Errorf("saving secret %q to store: %w", secretName, err)
+			}
+			if err := txdata.PutPreviousSecret(secretName, secret); err != nil {
 				return nil, fmt.Errorf("saving secret %q to store: %w", secretName, err)
 			}
 

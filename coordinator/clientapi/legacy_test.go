@@ -613,7 +613,7 @@ func TestVerifyUser_Legacy(t *testing.T) {
 	assert.Equal(*user.Certificate(), *adminTestCert)
 }
 
-func setupAPI(t *testing.T, core *fakeCore) (*ClientAPI, wrapper.Wrapper) {
+func setupAPI(t *testing.T, core core) (*ClientAPI, wrapper.Wrapper) {
 	t.Helper()
 	require := require.New(t)
 

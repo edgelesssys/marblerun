@@ -19,6 +19,7 @@ const (
 	Package           = "package"
 	PrivateKey        = "privateKey"
 	Secret            = "secret"
+	PreviousSecret    = "previousSecret"
 	State             = "state"
 	TLS               = "TLS"
 	User              = "user"
