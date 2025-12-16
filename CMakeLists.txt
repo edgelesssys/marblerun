@@ -44,11 +44,14 @@ add_custom_target(coordinator-noenclave ALL
 
 add_executable(coordinator-enclave enclave/main.c)
 add_dependencies(coordinator-enclave coordinatorlib)
+configure_file(${ERT_SYMCRYPT_SO} . COPYONLY)
 
 target_link_libraries(coordinator-enclave
   openenclave::oeenclave
+  openenclave::oesymcryptprovider
   openenclave::ertmeshentry
   ${CMAKE_BINARY_DIR}/libcoordinator.a
+  -Wl,-Bdynamic ${CMAKE_BINARY_DIR}/libsymcrypt.so.103 -Wl,-Bstatic
  )
 
 # Configure coordinator.conf
@@ -120,7 +123,7 @@ add_custom_target(marble-test-noenclave ALL
   -buildvcs=false
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/cmd/marble-test)
 
-add_executable(marble-test-enclave enclave/main.c)
+add_executable(marble-test-enclave enclave/main_test.c)
 add_dependencies(marble-test-enclave marbletestlib)
 
 target_link_libraries(marble-test-enclave

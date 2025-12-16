@@ -98,7 +98,7 @@ jobs:
 
       - name: Install dependencies
         env:
-          ERT_VERSION: "0.4.13"
+          ERT_VERSION: "0.5.0"
         run: |
           ERT_DEB=${ERT_VERSION}_amd64_ubuntu-24.04
           wget -qO- https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo apt-key add
@@ -145,7 +145,7 @@ jobs:
           mkdir build && cd build
           cmake ..
           make -j $(nproc) sign-coordinator sign-marble-test
-          cp ./coordinator-enclave.signed ../
+          cp ./coordinator-enclave.signed ./libsymcrypt.so.103 ../
           # Save era config to output
           echo "era-config=$(awk '!/UniqueID/' ./coordinator-config.json | base64 -w0)" >> $GITHUB_OUTPUT
           echo "marble-config=$(cat ./marble-test-config.json | base64 -w0)" >> $GITHUB_OUTPUT
