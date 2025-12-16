@@ -2062,7 +2062,7 @@ func TestE2EActions(t *testing.T) {
 				return actions
 			}(),
 		},
-		"update recovery keys: 1 to 2": {
+		"update recovery keys 1 to 2": {
 			getStartingManifest: manifest.DefaultManifest,
 			actions: func() []testAction {
 				var actions []testAction
@@ -2230,7 +2230,7 @@ func TestE2EActions(t *testing.T) {
 				return actions
 			}(),
 		},
-		"update recovery keys: none to 1": {
+		"update recovery keys none to 1": {
 			getStartingManifest: func(crt, key []byte, defaultPackage manifest.PackageProperties) manifest.Manifest {
 				mnf := manifest.DefaultManifest(crt, key, defaultPackage)
 				mnf.RecoveryKeys = nil
@@ -2326,7 +2326,7 @@ func TestE2EActions(t *testing.T) {
 				return actions
 			}(),
 		},
-		"update recovery keys: 2 to 1": {
+		"update recovery keys 2 to 1": {
 			getStartingManifest: func(crt, key []byte, defaultPackage manifest.PackageProperties) manifest.Manifest {
 				mnf := manifest.DefaultManifest(crt, key, defaultPackage)
 				recPub, _ := manifest.GenerateKey(t)
@@ -2385,7 +2385,7 @@ func TestE2EActions(t *testing.T) {
 				return actions
 			}(),
 		},
-		"update recovery keys: remove keys": {
+		"remove recovery keys": {
 			getStartingManifest: manifest.DefaultManifest,
 			actions: func() []testAction {
 				var actions []testAction
@@ -2499,7 +2499,7 @@ func TestE2EActions(t *testing.T) {
 		},
 	}
 
-	changeRecoveryTC := testCases["update recovery keys: 1 to 2"]
+	changeRecoveryTC := testCases["update recovery keys 1 to 2"]
 	changeRecoveryTC.getStartingManifest = func(crt, key []byte, defaultPackage manifest.PackageProperties) manifest.Manifest {
 		mnf := manifest.DefaultManifest(crt, key, defaultPackage)
 		recPub, _ := manifest.GenerateKey(t)
