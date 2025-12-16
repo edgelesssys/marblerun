@@ -11,7 +11,7 @@ RUN apt-get install -y --no-install-recommends \
   ninja-build \
   wget
 
-ARG erttag=v0.4.13
+ARG erttag=v0.5.0
 ARG mrtag=v1.8.0
 ARG goversion=1.25.1
 RUN wget -qO- https://go.dev/dl/go${goversion}.linux-amd64.tar.gz | tar -C /usr/local -xz \
@@ -62,7 +62,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
   libsgx-dcap-default-qpl=$DCAP_VERSION \
   && apt-get purge -y wget && apt-get autoremove -y && apt-get clean -y
 
-COPY --from=build /mrbuild/coordinator-enclave.signed /mrbuild/coordinator-config.json /marblerun/dockerfiles/start.sh /
+COPY --from=build /mrbuild/coordinator-enclave.signed /mrbuild/libsymcrypt.so.103 /mrbuild/coordinator-config.json /marblerun/dockerfiles/start.sh /
 COPY --from=build /opt/edgelessrt/bin/erthost /opt/edgelessrt/bin/
 RUN chgrp -R 0 /usr/lib/ && chmod -R g=u /usr/lib/
 ENV PATH=${PATH}:/opt/edgelessrt/bin
