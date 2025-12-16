@@ -7,7 +7,7 @@ set(PROJECT_VERSION ${CMAKE_ARGV4})
 set(OUTPUT_NAME ${CMAKE_ARGV5})
 set(INJECT_PATH ${CMAKE_ARGV6})
 set(TRIMPATH ${CMAKE_ARGV7})
-
+set(ENV{GOFIPS140} latest)
 
 if("${COMPILER}" STREQUAL "go")
     execute_process(
