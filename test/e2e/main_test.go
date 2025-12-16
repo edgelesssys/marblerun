@@ -2359,6 +2359,7 @@ func TestE2EActions(t *testing.T) {
 							"--key", filepath.Join(tmpDir, keyFileDefault),
 							"--cert", filepath.Join(tmpDir, certFileDefault),
 							"--coordinator-cert", filepath.Join(tmpDir, coordinatorCertFileDefault),
+							"--recoverydata", filepath.Join(tmpDir, recoveryDataFile),
 							eraConfig,
 						)
 						return err
