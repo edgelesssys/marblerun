@@ -1499,7 +1499,9 @@ type fakeStore struct {
 	beginTransactionErr   error
 	setRecoveryDataCalled bool
 	recoveryData          []byte
+	oldRecoveryData       []byte
 	encryptionKey         []byte
+	oldEncryptionKey      []byte
 	loadStateRes          []byte
 	loadStateErr          error
 	loadCalled            bool
@@ -1514,7 +1516,12 @@ func (s *fakeStore) BeginTransaction(ctx context.Context) (store.Transaction, er
 }
 
 func (s *fakeStore) SetEncryptionKey(key []byte, _ seal.Mode) {
+	s.oldEncryptionKey = s.encryptionKey
 	s.encryptionKey = key
+}
+
+func (s *fakeStore) ResetEncryptionKey() {
+	s.encryptionKey = s.oldEncryptionKey
 }
 
 func (s *fakeStore) SealEncryptionKey(_ []byte) error {
@@ -1522,8 +1529,13 @@ func (s *fakeStore) SealEncryptionKey(_ []byte) error {
 }
 
 func (s *fakeStore) SetRecoveryData(recoveryData []byte) {
+	s.oldRecoveryData = s.recoveryData
 	s.setRecoveryDataCalled = true
 	s.recoveryData = recoveryData
+}
+
+func (s *fakeStore) ResetRecoveryData() {
+	s.recoveryData = s.oldRecoveryData
 }
 
 func (s *fakeStore) LoadState() ([]byte, []byte, error) {
@@ -1615,6 +1627,8 @@ func (s *fakeStoreTransaction) SetEncryptionKey(_ []byte, mode seal.Mode) {
 	s.sealMode = mode
 }
 
+func (s *fakeStoreTransaction) ResetEncryptionKey() {}
+
 func (s *fakeStoreTransaction) SealEncryptionKey(_ []byte) error {
 	return s.sealEncryptionKeyErr
 }
@@ -1622,6 +1636,8 @@ func (s *fakeStoreTransaction) SealEncryptionKey(_ []byte) error {
 func (s *fakeStoreTransaction) SetRecoveryData(_ []byte) {
 	s.setRecoveryDataCalled = true
 }
+
+func (s *fakeStoreTransaction) ResetRecoveryData() {}
 
 func (s *fakeStoreTransaction) LoadState() ([]byte, []byte, error) {
 	s.loadStateCalled = true

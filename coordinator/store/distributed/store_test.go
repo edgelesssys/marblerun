@@ -328,6 +328,7 @@ type safeMockSealer struct {
 	mux sync.Mutex
 
 	key             []byte
+	oldKey          []byte
 	data            []byte
 	unencryptedData []byte
 	unsealError     error
@@ -368,7 +369,15 @@ func (s *safeMockSealer) SealEncryptionKey(_ []byte, _ seal.Mode) ([]byte, error
 func (s *safeMockSealer) SetEncryptionKey(key []byte) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
+	s.oldKey = s.key
 	s.key = key
+}
+
+// ResetEncryptionKey implements the Sealer interface.
+func (s *safeMockSealer) ResetEncryptionKey() {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+	s.key = s.oldKey
 }
 
 // UnsealEncryptionKey implements the Sealer interface.

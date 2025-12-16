@@ -62,8 +62,10 @@ type transactionHandle interface {
 	BeginTransaction(context.Context) (store.Transaction, error)
 	BeginReadTransaction(context.Context, []byte) (store.ReadTransaction, error)
 	SetEncryptionKey([]byte, seal.Mode)
+	ResetEncryptionKey()
 	SealEncryptionKey(additionalData []byte) error
 	SetRecoveryData([]byte)
+	ResetRecoveryData()
 	LoadState() (recoveryData, sealedState []byte, err error)
 }
 

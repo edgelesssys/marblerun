@@ -46,14 +46,17 @@ type Sealer interface {
 	SealEncryptionKey(additionalData []byte, mode Mode) (encryptedKey []byte, err error)
 	// SetEncryptionKey sets the encryption key of the sealer.
 	SetEncryptionKey(key []byte)
+	// ResetEncryptionKey resets the encryption key of the sealer.
+	ResetEncryptionKey()
 	// UnsealEncryptionKey decrypts an encrypted key.
 	UnsealEncryptionKey(encryptedKey, additionalData []byte) ([]byte, error)
 }
 
 // AESGCMSealer implements the Sealer interface using AES-GCM for confidentiality and authentication.
 type AESGCMSealer struct {
-	encryptionKey []byte
-	log           *zap.Logger
+	encryptionKey    []byte
+	oldEncryptionKey []byte
+	log              *zap.Logger
 }
 
 // NewAESGCMSealer creates and initializes a new AESGCMSealer object.
@@ -95,7 +98,13 @@ func (s *AESGCMSealer) SealEncryptionKey(additionalData []byte, mode Mode) ([]by
 
 // SetEncryptionKey sets the encryption key of the Sealer.
 func (s *AESGCMSealer) SetEncryptionKey(encryptionKey []byte) {
+	s.oldEncryptionKey = s.encryptionKey
 	s.encryptionKey = encryptionKey
+}
+
+// ResetEncryptionKey resets the encryption key of the Sealer.
+func (s *AESGCMSealer) ResetEncryptionKey() {
+	s.encryptionKey = s.oldEncryptionKey
 }
 
 // UnsealEncryptionKey unseals the encryption key.

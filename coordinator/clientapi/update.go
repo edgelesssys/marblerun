@@ -259,6 +259,13 @@ func (a *ClientAPI) updateApply(ctx context.Context, rawUpdateManifest []byte) (
 		}
 		a.txHandle.SetEncryptionKey(encryptionKey, seal.ModeFromString(updateManifest.Config.SealMode))
 		a.txHandle.SetRecoveryData(recoveryData)
+
+		defer func() {
+			if err != nil {
+				a.txHandle.ResetEncryptionKey()
+				a.txHandle.ResetRecoveryData()
+			}
+		}()
 	}
 
 	a.hsmEnabler.SetEnabled(updateManifest.HasFeatureEnabled(manifest.FeatureAzureHSMSealing))

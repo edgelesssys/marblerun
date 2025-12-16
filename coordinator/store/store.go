@@ -19,10 +19,14 @@ type Store interface {
 	BeginTransaction(context.Context) (Transaction, error)
 	// SetEncryptionKey sets the encryption key for the store.
 	SetEncryptionKey([]byte, seal.Mode)
+	// ResetEncryptionKey resets the encryption key for the store.
+	ResetEncryptionKey()
 	// SealEncryptionKey seals the encryption key for the store.
 	SealEncryptionKey(additionalData []byte) error
 	// SetRecoveryData sets recovery data for the store.
 	SetRecoveryData([]byte)
+	// ResetRecoveryData resets the recovery data for the store.
+	ResetRecoveryData()
 	// LoadState loads the sealed state of a store.
 	LoadState() (recoveryData, sealedData []byte, err error)
 	// BeginReadTransaction loads the store from a sealed state without committing any data to it,

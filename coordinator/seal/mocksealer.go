@@ -11,6 +11,7 @@ type MockSealer struct {
 	data            []byte
 	unencryptedData []byte
 	key             []byte
+	oldKey          []byte
 	// mock unseal error
 	UnsealError error
 }
@@ -43,7 +44,13 @@ func (s *MockSealer) SealEncryptionKey(_ []byte, mode Mode) ([]byte, error) {
 
 // SetEncryptionKey implements the Sealer interface.
 func (s *MockSealer) SetEncryptionKey(key []byte) {
+	s.oldKey = s.key
 	s.key = key
+}
+
+// ResetEncryptionKey implements the Sealer interface.
+func (s *MockSealer) ResetEncryptionKey() {
+	s.key = s.oldKey
 }
 
 // UnsealEncryptionKey implements the Sealer interface.

@@ -55,7 +55,7 @@ func TestCertificateVerify(t *testing.T) {
 	require.NotNil(coreServer)
 
 	// set manifest
-	clientAPI, err := clientapi.New(coreServer.txHandle, coreServer.recovery, coreServer, &distributor.Stub{}, stubEnabler{}, zapLogger)
+	clientAPI, err := clientapi.New(stor, coreServer.recovery, coreServer, &distributor.Stub{}, stubEnabler{}, zapLogger)
 	require.NoError(err)
 	_, err = clientAPI.SetManifest(context.Background(), []byte(test.ManifestJSON))
 	require.NoError(err)

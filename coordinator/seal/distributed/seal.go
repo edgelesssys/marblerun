@@ -64,6 +64,7 @@ type Sealer struct {
 	mode               seal.Mode
 	keyEncryptionKey   []byte
 	encryptionKey      []byte
+	oldEncryptionKey   []byte
 	keyHandler         keyHandler
 	log                *zap.Logger
 
@@ -161,8 +162,18 @@ func (s *Sealer) SetEncryptionKey(key []byte) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	s.log.Debug("Setting encryption key")
+	s.oldEncryptionKey = s.encryptionKey
 	s.encryptionKey = key
 	s.Sealer.SetEncryptionKey(key)
+}
+
+// ResetEncryptionKey resets the encryption key for the sealer.
+func (s *Sealer) ResetEncryptionKey() {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+	s.log.Debug("Resetting encryption key")
+	s.encryptionKey = s.oldEncryptionKey
+	s.Sealer.ResetEncryptionKey()
 }
 
 // SealEncryptionKey seals the sealer's encryption key using the sealer's key encryption key.

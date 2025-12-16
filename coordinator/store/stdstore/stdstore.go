@@ -36,16 +36,18 @@ const (
 
 // StdStore is the standard implementation of the Store interface.
 type StdStore struct {
-	data       map[string][]byte
-	mux, txmux sync.Mutex
-	sealer     seal.Sealer
-	hsmEnabler hsmEnabler
-	sealMode   seal.Mode
+	data        map[string][]byte
+	mux, txmux  sync.Mutex
+	sealer      seal.Sealer
+	hsmEnabler  hsmEnabler
+	sealMode    seal.Mode
+	oldSealMode seal.Mode
 
-	fs           afero.Afero
-	recoveryData []byte
-	recoveryMode bool
-	sealDir      string
+	fs              afero.Afero
+	recoveryData    []byte
+	oldRecoveryData []byte
+	recoveryMode    bool
+	sealDir         string
 
 	log *zap.Logger
 }
@@ -181,8 +183,15 @@ func (s *StdStore) LoadState() (recoveryData, sealedData []byte, err error) {
 // SetRecoveryData sets the recovery data that is added to the sealed data.
 func (s *StdStore) SetRecoveryData(recoveryData []byte) {
 	s.log.Debug("Setting recovery data and removing recovery mode", zap.ByteString("recoveryData", recoveryData))
+	s.oldRecoveryData = s.recoveryData
 	s.recoveryData = recoveryData
 	s.recoveryMode = false
+}
+
+// ResetRecoveryData restores the old recovery data.
+func (s *StdStore) ResetRecoveryData() {
+	s.log.Debug("Resetting recovery data to old recovery data", zap.ByteString("recoveryData", s.oldRecoveryData))
+	s.recoveryData = s.oldRecoveryData
 }
 
 // BeginReadTransaction loads the sealed state and returns a read-only transaction.
@@ -218,7 +227,15 @@ func (s *StdStore) BeginReadTransaction(_ context.Context, encryptionKey []byte)
 func (s *StdStore) SetEncryptionKey(encryptionKey []byte, mode seal.Mode) {
 	s.log.Debug("Setting encryption key", zap.Int("mode", int(mode)))
 	s.sealer.SetEncryptionKey(encryptionKey)
+	s.oldSealMode = s.sealMode
 	s.sealMode = mode
+}
+
+// ResetEncryptionKey restores the old encryption key.
+func (s *StdStore) ResetEncryptionKey() {
+	s.log.Debug("Resetting encryption key", zap.Int("mode", int(s.oldSealMode)))
+	s.sealMode = s.oldSealMode
+	s.sealer.ResetEncryptionKey()
 }
 
 // SealEncryptionKey seals the encryption key and writes it to disk.
