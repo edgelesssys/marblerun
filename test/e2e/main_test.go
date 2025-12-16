@@ -11,7 +11,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/binary"
@@ -167,31 +166,33 @@ func TestE2EActions(t *testing.T) {
 		},
 	}
 
-	verifyManifestHasntChangedAction := func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
-		require := require.New(t)
-		assert := assert.New(t)
+	verifyManifestHasntChangedAction := func(mnfFile string) func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
+		return func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
+			require := require.New(t)
+			assert := assert.New(t)
 
-		expectedMnf, err := os.ReadFile(filepath.Join(tmpDir, manifestFile))
-		require.NoError(err)
-		actualMnfFile := filepath.Join(tmpDir, "current.json")
-
-		forAllPods(ctx, t, kubectl, namespace, func(pod, port string) error {
-			t.Logf("Checking manifest on %q", pod)
-			if _, err := cmd.Run(
-				ctx,
-				"manifest", "get",
-				net.JoinHostPort(localhost, port),
-				"--output", actualMnfFile,
-				eraConfig,
-			); err != nil {
-				return err
-			}
-
-			actualMnf, err := os.ReadFile(actualMnfFile)
+			expectedMnf, err := os.ReadFile(filepath.Join(tmpDir, mnfFile))
 			require.NoError(err)
-			assert.Equal(expectedMnf, actualMnf)
-			return nil
-		})
+			actualMnfFile := filepath.Join(tmpDir, "current.json")
+
+			forAllPods(ctx, t, kubectl, namespace, func(pod, port string) error {
+				t.Logf("Checking manifest on %q", pod)
+				if _, err := cmd.Run(
+					ctx,
+					"manifest", "get",
+					net.JoinHostPort(localhost, port),
+					"--output", actualMnfFile,
+					eraConfig,
+				); err != nil {
+					return err
+				}
+
+				actualMnf, err := os.ReadFile(actualMnfFile)
+				require.NoError(err)
+				assert.Equal(expectedMnf, actualMnf)
+				return nil
+			})
+		}
 	}
 
 	verifyMarblePodAction := func(marbleType string, checkFunc func(t *testing.T, res *http.Response, err error) error) testAction {
@@ -878,7 +879,7 @@ func TestE2EActions(t *testing.T) {
 
 				actions = append(actions, triggerRecoveryActions...)
 				actions = append(actions, recoverCoordinatorActions...)
-				actions = append(actions, verifyManifestHasntChangedAction)
+				actions = append(actions, verifyManifestHasntChangedAction(manifestFile))
 
 				// Run all test actions again to verify the recovered Coordinator behaves the same
 				actions = append(actions, actions...)
@@ -1017,7 +1018,7 @@ func TestE2EActions(t *testing.T) {
 					recoverCoordinator(ctx, t, kubectl, cmd, manifest.DefaultUser2, keyFileDefault, namespace, tmpDir)
 				})
 				actions = append(actions, recoverCoordinatorActions...)
-				actions = append(actions, verifyManifestHasntChangedAction)
+				actions = append(actions, verifyManifestHasntChangedAction(manifestFile))
 
 				// After recovery, Marbles should start again
 				actions = append(actions, verifyMarblePodAction(manifest.DefaultMarble, verifyMarbleHasStarted))
@@ -1064,7 +1065,7 @@ func TestE2EActions(t *testing.T) {
 					recoverCoordinator(ctx, t, kubectl, cmd, manifest.DefaultUser2, keyFileDefault, namespace, tmpDir)
 				})
 				actions = append(actions, recoverCoordinatorActions...)
-				actions = append(actions, verifyManifestHasntChangedAction)
+				actions = append(actions, verifyManifestHasntChangedAction(manifestFile))
 
 				// After recovery, Marbles should start again
 				actions = append(actions, verifyMarblePodAction(manifest.DefaultMarble, verifyMarbleHasStarted))
@@ -1119,7 +1120,7 @@ func TestE2EActions(t *testing.T) {
 					recoverCoordinator(ctx, t, kubectl, cmd, manifest.DefaultUser2, keyFileDefault, namespace, tmpDir)
 				})
 				actions = append(actions, recoverCoordinatorActions...)
-				actions = append(actions, verifyManifestHasntChangedAction)
+				actions = append(actions, verifyManifestHasntChangedAction(manifestFile))
 
 				// After recovery, Marbles should start again
 				actions = append(actions, verifyMarblePodAction(manifest.DefaultMarble, verifyMarbleHasStarted))
@@ -2053,7 +2054,7 @@ func TestE2EActions(t *testing.T) {
 					recoverCoordinator(ctx, t, kubectl, cmd, manifest.DefaultUser2, keyFileDefault, namespace, tmpDir)
 				})
 				actions = append(actions, recoverCoordinatorActions...)
-				actions = append(actions, verifyManifestHasntChangedAction)
+				actions = append(actions, verifyManifestHasntChangedAction(manifestFile))
 
 				// Run all test actions again to verify the recovered Coordinator behaves the same
 				actions = append(actions, actions...)
@@ -2061,18 +2062,30 @@ func TestE2EActions(t *testing.T) {
 				return actions
 			}(),
 		},
-		"update recovery keys": {
+		"update recovery keys: 1 to 2": {
 			getStartingManifest: manifest.DefaultManifest,
 			actions: func() []testAction {
 				var actions []testAction
 
-				var recPub1, recPub2 []byte
-				var recPriv1, recPriv2 *rsa.PrivateKey
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, _ *cmd.Cmd, namespace string, _ string) {
+					if *replicas < 2 {
+						t.Skipf("Skipping test, requires at least 2 replicas, got %d", *replicas)
+					}
+				})
+
+				var pods []string
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, _ *cmd.Cmd, namespace string, _ string) {
+					var err error
+					pods, err = kubectl.GetAvailablePodNamesForDeployment(ctx, namespace, coordinatorDeployment)
+					require.NoError(t, err)
+					require.Len(t, pods, 2, "expected at least 2 pods for coordinator deployment")
+				})
+
 				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
 					t.Log("Creating new recovery keys")
 					require := require.New(t)
-					recPub1, recPriv1 = manifest.GenerateKey(t)
-					recPub2, recPriv2 = manifest.GenerateKey(t)
+					recPub1, recPriv1 := manifest.GenerateKey(t)
+					recPub2, recPriv2 := manifest.GenerateKey(t)
 
 					priv1Encoded, err := x509.MarshalPKCS8PrivateKey(recPriv1)
 					require.NoError(err)
@@ -2097,13 +2110,12 @@ func TestE2EActions(t *testing.T) {
 
 					mnfRaw, err := json.MarshalIndent(mnf, "", "  ")
 					require.NoError(err)
-					require.NoError(os.WriteFile(filepath.Join(tmpDir, manifestFile), mnfRaw, 0o644))
 					t.Logf("Setting update manifest:\n%s", mnfRaw)
 					updateMnfPath := filepath.Join(tmpDir, "update.json")
 					require.NoError(os.WriteFile(updateMnfPath, mnfRaw, 0o644))
 
-					// Upload update manifest
-					withPortForwardAny(ctx, t, kubectl, namespace, func(port string) error {
+					// Upload update manifest to first Pod in list
+					withPortForward(ctx, t, kubectl, namespace, pods[0], coordinatorClientPort, func(port string) error {
 						_, err := cmd.Run(
 							ctx,
 							"manifest", "update", "apply",
@@ -2119,13 +2131,50 @@ func TestE2EActions(t *testing.T) {
 				})
 
 				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
+					t.Log("Setting another update manifest")
+					require := require.New(t)
+
+					mnfJSON, err := os.ReadFile(filepath.Join(tmpDir, "update.json"))
+					require.NoError(err)
+					var mnf manifest.Manifest
+					require.NoError(json.Unmarshal(mnfJSON, &mnf))
+
+					mnf.Packages["anotherPackage"] = manifest.PackageProperties{
+						UniqueID: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+					}
+
+					mnfRaw, err := json.MarshalIndent(mnf, "", "  ")
+					require.NoError(err)
+					t.Logf("Setting second update manifest:\n%s", mnfRaw)
+					updateMnfPath := filepath.Join(tmpDir, "update2.json")
+					require.NoError(os.WriteFile(updateMnfPath, mnfRaw, 0o644))
+
+					// Upload update manifest to second Pod in list
+					// The instance receiving this update should be a different one from the one that received
+					// the recovery key update, i.e. this instance did not update its recovery data directly.
+					// Recovery must still work with the new keys after this instance sealed the state.
+					withPortForward(ctx, t, kubectl, namespace, pods[1], coordinatorClientPort, func(port string) error {
+						_, err := cmd.Run(
+							ctx,
+							"manifest", "update", "apply",
+							updateMnfPath, net.JoinHostPort(localhost, port),
+							"--key", filepath.Join(tmpDir, keyFileDefault),
+							"--cert", filepath.Join(tmpDir, certFileDefault),
+							"--coordinator-cert", filepath.Join(tmpDir, coordinatorCertFileDefault),
+							eraConfig,
+						)
+						return err
+					})
+				})
+
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
 					t.Log("Scaling Coordinator deployment to 0")
 
 					require.NoError(t, kubectl.ScaleDeployment(ctx, namespace, coordinatorDeployment, 0))
 				})
 
 				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace string, _ string) {
-					t.Log("Scaling up Coordinator deployment back up")
+					t.Log("Scaling Coordinator deployment back up. Should recover automatically")
 					require.NoError(t, kubectl.ScaleDeployment(ctx, namespace, coordinatorDeployment, *replicas))
 
 					getStatus(ctx, t, kubectl, cmd, namespace, state.AcceptingMarbles)
@@ -2181,7 +2230,283 @@ func TestE2EActions(t *testing.T) {
 				return actions
 			}(),
 		},
+		"update recovery keys: none to 1": {
+			getStartingManifest: func(crt, key []byte, defaultPackage manifest.PackageProperties) manifest.Manifest {
+				mnf := manifest.DefaultManifest(crt, key, defaultPackage)
+				mnf.RecoveryKeys = nil
+				return mnf
+			},
+			actions: func() []testAction {
+				var actions []testAction
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
+					t.Log("Creating new recovery keys")
+					require := require.New(t)
+					recPub, recPriv := manifest.GenerateKey(t)
+
+					privEncoded, err := x509.MarshalPKCS8PrivateKey(recPriv)
+					require.NoError(err)
+					require.NoError(os.WriteFile(filepath.Join(tmpDir, "rec1.priv"), pem.EncodeToMemory(&pem.Block{
+						Type:  "PRIVATE KEY",
+						Bytes: privEncoded,
+					}), 0o644))
+
+					// Create Update Manifest
+					mnf := loadTestManifest(require, tmpDir)
+					mnf.RecoveryKeys = map[string]string{
+						"recovery1": string(recPub),
+					}
+
+					mnfRaw, err := json.MarshalIndent(mnf, "", "  ")
+					require.NoError(err)
+					t.Logf("Setting update manifest:\n%s", mnfRaw)
+					updateMnfPath := filepath.Join(tmpDir, "update.json")
+					require.NoError(os.WriteFile(updateMnfPath, mnfRaw, 0o644))
+
+					// Upload update manifest
+					withPortForwardAny(ctx, t, kubectl, namespace, func(port string) error {
+						_, err := cmd.Run(
+							ctx,
+							"manifest", "update", "apply",
+							updateMnfPath, net.JoinHostPort(localhost, port),
+							"--key", filepath.Join(tmpDir, keyFileDefault),
+							"--cert", filepath.Join(tmpDir, certFileDefault),
+							"--coordinator-cert", filepath.Join(tmpDir, coordinatorCertFileDefault),
+							"--recoverydata", filepath.Join(tmpDir, "newRecoveryData.bin"),
+							eraConfig,
+						)
+						return err
+					})
+				})
+
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
+					t.Log("Scaling Coordinator deployment to 0")
+
+					require.NoError(t, kubectl.ScaleDeployment(ctx, namespace, coordinatorDeployment, 0))
+				})
+
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace string, _ string) {
+					t.Log("Scaling Coordinator deployment back up. Should recover automatically")
+					require.NoError(t, kubectl.ScaleDeployment(ctx, namespace, coordinatorDeployment, *replicas))
+
+					getStatus(ctx, t, kubectl, cmd, namespace, state.AcceptingMarbles)
+				})
+
+				// Now trigger recovery and recover with our new key
+				actions = append(actions, triggerRecoveryActions...)
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
+					require := require.New(t)
+					recoveryJSON, err := os.ReadFile(filepath.Join(tmpDir, "newRecoveryData.bin"))
+					require.NoError(err)
+
+					t.Logf("Parsing recovery data from %s", recoveryJSON)
+					encryptedRecoveryKeyFile := filepath.Join(tmpDir, "encrypted_recovery_key")
+					encryptedRecoveryData := map[string]map[string][]byte{}
+					require.NoError(json.Unmarshal(recoveryJSON, &encryptedRecoveryData))
+					keyMap := encryptedRecoveryData["RecoverySecrets"]
+					require.NoError(os.WriteFile(encryptedRecoveryKeyFile, keyMap["recovery1"], 0o644))
+
+					t.Log("Recovering Coordinator with first key")
+					withPortForwardAny(ctx, t, kubectl, namespace, func(port string) error {
+						_, err := cmd.Run(
+							ctx,
+							"recover",
+							encryptedRecoveryKeyFile,
+							net.JoinHostPort(localhost, port),
+							eraConfig,
+							"--key", filepath.Join(tmpDir, "rec1.priv"),
+						)
+						return err
+					})
+				})
+
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
+					getStatus(ctx, t, kubectl, cmd, namespace, state.AcceptingMarbles)
+				})
+
+				return actions
+			}(),
+		},
+		"update recovery keys: 2 to 1": {
+			getStartingManifest: func(crt, key []byte, defaultPackage manifest.PackageProperties) manifest.Manifest {
+				mnf := manifest.DefaultManifest(crt, key, defaultPackage)
+				recPub, _ := manifest.GenerateKey(t)
+				mnf.RecoveryKeys["additional_key"] = string(recPub)
+				return mnf
+			},
+			actions: func() []testAction {
+				var actions []testAction
+
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
+					t.Log("Removing a recovery key")
+					require := require.New(t)
+
+					// Create Update Manifest
+					mnf := loadTestManifest(require, tmpDir)
+					delete(mnf.RecoveryKeys, "additional_key")
+
+					mnfRaw, err := json.MarshalIndent(mnf, "", "  ")
+					require.NoError(err)
+					t.Logf("Setting update manifest:\n%s", mnfRaw)
+					updateMnfPath := filepath.Join(tmpDir, "update.json")
+					require.NoError(os.WriteFile(updateMnfPath, mnfRaw, 0o644))
+
+					// Upload update manifest
+					withPortForwardAny(ctx, t, kubectl, namespace, func(port string) error {
+						_, err := cmd.Run(
+							ctx,
+							"manifest", "update", "apply",
+							updateMnfPath, net.JoinHostPort(localhost, port),
+							"--key", filepath.Join(tmpDir, keyFileDefault),
+							"--cert", filepath.Join(tmpDir, certFileDefault),
+							"--coordinator-cert", filepath.Join(tmpDir, coordinatorCertFileDefault),
+							eraConfig,
+						)
+						return err
+					})
+				})
+
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
+					t.Log("Scaling Coordinator deployment to 0")
+
+					require.NoError(t, kubectl.ScaleDeployment(ctx, namespace, coordinatorDeployment, 0))
+				})
+
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace string, _ string) {
+					t.Log("Scaling Coordinator deployment back up. Should recover automatically")
+					require.NoError(t, kubectl.ScaleDeployment(ctx, namespace, coordinatorDeployment, *replicas))
+
+					getStatus(ctx, t, kubectl, cmd, namespace, state.AcceptingMarbles)
+				})
+
+				actions = append(actions, triggerRecoveryActions...)
+				actions = append(actions, recoverCoordinatorActions...)
+				actions = append(actions, verifyManifestHasntChangedAction("update.json"))
+
+				return actions
+			}(),
+		},
+		"update recovery keys: remove keys": {
+			getStartingManifest: manifest.DefaultManifest,
+			actions: func() []testAction {
+				var actions []testAction
+
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
+					t.Log("Removing all recovery keys")
+					require := require.New(t)
+
+					// Create Update Manifest
+					mnf := loadTestManifest(require, tmpDir)
+					mnf.RecoveryKeys = nil
+
+					mnfRaw, err := json.MarshalIndent(mnf, "", "  ")
+					require.NoError(err)
+					t.Logf("Setting update manifest:\n%s", mnfRaw)
+					updateMnfPath := filepath.Join(tmpDir, "update.json")
+					require.NoError(os.WriteFile(updateMnfPath, mnfRaw, 0o644))
+
+					// Upload update manifest
+					withPortForwardAny(ctx, t, kubectl, namespace, func(port string) error {
+						_, err := cmd.Run(
+							ctx,
+							"manifest", "update", "apply",
+							updateMnfPath, net.JoinHostPort(localhost, port),
+							"--key", filepath.Join(tmpDir, keyFileDefault),
+							"--cert", filepath.Join(tmpDir, certFileDefault),
+							"--coordinator-cert", filepath.Join(tmpDir, coordinatorCertFileDefault),
+							eraConfig,
+						)
+						return err
+					})
+				})
+
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
+					t.Log("Scaling Coordinator deployment to 0")
+
+					require.NoError(t, kubectl.ScaleDeployment(ctx, namespace, coordinatorDeployment, 0))
+				})
+
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace string, _ string) {
+					t.Log("Scaling Coordinator deployment back up. Should recover automatically")
+					require.NoError(t, kubectl.ScaleDeployment(ctx, namespace, coordinatorDeployment, *replicas))
+
+					getStatus(ctx, t, kubectl, cmd, namespace, state.AcceptingMarbles)
+				})
+
+				return actions
+			}(),
+		},
+		"update single recovery key": {
+			getStartingManifest: manifest.DefaultManifest,
+			actions: func() []testAction {
+				var actions []testAction
+
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
+					t.Log("Updating a single recovery key")
+					require := require.New(t)
+					recPub, recPriv := manifest.GenerateKey(t)
+
+					privEncoded, err := x509.MarshalPKCS8PrivateKey(recPriv)
+					require.NoError(err)
+					require.NoError(os.WriteFile(filepath.Join(tmpDir, "rec1.priv"), pem.EncodeToMemory(&pem.Block{
+						Type:  "PRIVATE KEY",
+						Bytes: privEncoded,
+					}), 0o644))
+
+					// Create Update Manifest
+					mnf := loadTestManifest(require, tmpDir)
+					mnf.RecoveryKeys[manifest.DefaultUser] = string(recPub)
+
+					mnfRaw, err := json.MarshalIndent(mnf, "", "  ")
+					require.NoError(err)
+					t.Logf("Setting update manifest:\n%s", mnfRaw)
+					updateMnfPath := filepath.Join(tmpDir, "update.json")
+					require.NoError(os.WriteFile(updateMnfPath, mnfRaw, 0o644))
+
+					// Upload update manifest
+					withPortForwardAny(ctx, t, kubectl, namespace, func(port string) error {
+						_, err := cmd.Run(
+							ctx,
+							"manifest", "update", "apply",
+							updateMnfPath, net.JoinHostPort(localhost, port),
+							"--key", filepath.Join(tmpDir, keyFileDefault),
+							"--cert", filepath.Join(tmpDir, certFileDefault),
+							"--coordinator-cert", filepath.Join(tmpDir, coordinatorCertFileDefault),
+							"--recoverydata", filepath.Join(tmpDir, "newRecoveryData.bin"),
+							eraConfig,
+						)
+						return err
+					})
+				})
+
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
+					t.Log("Scaling Coordinator deployment to 0")
+
+					require.NoError(t, kubectl.ScaleDeployment(ctx, namespace, coordinatorDeployment, 0))
+				})
+
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace string, _ string) {
+					t.Log("Scaling Coordinator deployment back up. Should recover automatically")
+					require.NoError(t, kubectl.ScaleDeployment(ctx, namespace, coordinatorDeployment, *replicas))
+
+					getStatus(ctx, t, kubectl, cmd, namespace, state.AcceptingMarbles)
+				})
+
+				actions = append(actions, triggerRecoveryActions...)
+				actions = append(actions, recoverCoordinatorActions...)
+				actions = append(actions, verifyManifestHasntChangedAction("update.json"))
+				return actions
+			}(),
+		},
 	}
+
+	changeRecoveryTC := testCases["update recovery keys: 1 to 2"]
+	changeRecoveryTC.getStartingManifest = func(crt, key []byte, defaultPackage manifest.PackageProperties) manifest.Manifest {
+		mnf := manifest.DefaultManifest(crt, key, defaultPackage)
+		recPub, _ := manifest.GenerateKey(t)
+		mnf.RecoveryKeys["additional_key"] = string(recPub)
+		return mnf
+	}
+	testCases["update multiple recovery keys"] = changeRecoveryTC
 
 	for _, sealMode := range []string{"Disabled", "ProductKey", "UniqueKey"} {
 		tc := testCases["recover state"]
