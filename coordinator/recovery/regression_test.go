@@ -44,11 +44,11 @@ func TestMultiPartyRecoveryMultiWithoutRecoveryData(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	rStore := &fakeStore{}
 	rec := recovery.New(rStore, zapLogger)
-	cStore := stdstore.New(sealer, fs, "", zapLogger)
+	cStore := stdstore.New(sealer, stubEnabler{}, fs, "", zapLogger)
 
 	c, err := core.NewCore([]string{"localhost"}, validator, issuer, cStore, rec, zapLogger, nil, nil)
 	require.NoError(err)
-	clientAPI, err := clientapi.New(cStore, rec, c, &distributor.Stub{}, zapLogger)
+	clientAPI, err := clientapi.New(cStore, rec, c, &distributor.Stub{}, stubEnabler{}, zapLogger)
 	require.NoError(err)
 
 	// new core does not allow recover
@@ -66,11 +66,11 @@ func TestMultiPartyRecoveryMultiWithoutRecoveryData(t *testing.T) {
 
 	// Initialize new core and let unseal fail
 	sealer.UnsealError = &seal.EncryptionKeyError{}
-	c2Store := stdstore.New(sealer, fs, "", zapLogger)
+	c2Store := stdstore.New(sealer, stubEnabler{}, fs, "", zapLogger)
 	c2, err := core.NewCore([]string{"localhost"}, validator, issuer, c2Store, rec, zapLogger, nil, nil)
 	sealer.UnsealError = nil
 	require.NoError(err)
-	clientAPI, err = clientapi.New(c2Store, rec, c2, &distributor.Stub{}, zapLogger)
+	clientAPI, err = clientapi.New(c2Store, rec, c2, &distributor.Stub{}, stubEnabler{}, zapLogger)
 	require.NoError(err)
 	c2State, err := wrapper.New(c2Store).GetState()
 	assert.NoError(err)
@@ -155,3 +155,7 @@ func recoveryKeyWithSignature(t *testing.T, priv *rsa.PrivateKey) ([]byte, []byt
 	require.NoError(t, err)
 	return key, sig
 }
+
+type stubEnabler struct{}
+
+func (stubEnabler) SetEnabled(_ bool) {}

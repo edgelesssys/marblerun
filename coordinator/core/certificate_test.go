@@ -48,14 +48,14 @@ func TestCertificateVerify(t *testing.T) {
 	// create core
 	validator := quote.NewMockValidator()
 	issuer := quote.NewMockIssuer()
-	stor := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zapLogger)
+	stor := stdstore.New(&seal.MockSealer{}, stubEnabler{}, afero.NewMemMapFs(), "", zapLogger)
 	recovery := recovery.New(stor, zapLogger)
 	coreServer, err := NewCore([]string{"localhost"}, validator, issuer, stor, recovery, zapLogger, nil, nil)
 	require.NoError(err)
 	require.NotNil(coreServer)
 
 	// set manifest
-	clientAPI, err := clientapi.New(coreServer.txHandle, coreServer.recovery, coreServer, &distributor.Stub{}, zapLogger)
+	clientAPI, err := clientapi.New(coreServer.txHandle, coreServer.recovery, coreServer, &distributor.Stub{}, stubEnabler{}, zapLogger)
 	require.NoError(err)
 	_, err = clientAPI.SetManifest(context.Background(), []byte(test.ManifestJSON))
 	require.NoError(err)

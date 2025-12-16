@@ -18,7 +18,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/edgelesssys/ego/attestation"
@@ -78,6 +77,10 @@ type keyDistributionServer interface {
 	StartSharing(context.Context) error
 }
 
+type hsmEnabler interface {
+	SetEnabled(enabled bool)
+}
+
 // QuoteVerifyError is returned if a given quote could not be verified.
 type QuoteVerifyError struct {
 	err error
@@ -100,6 +103,7 @@ type ClientAPI struct {
 	txHandle               transactionHandle
 	recoverySignatureCache map[string][]byte
 	keyServer              keyDistributionServer
+	hsmEnabler             hsmEnabler
 
 	updateLog updateLog
 	log       *zap.Logger
@@ -107,7 +111,7 @@ type ClientAPI struct {
 
 // New returns an initialized instance of the ClientAPI.
 func New(txHandle transactionHandle, recovery recovery.Recovery, core core,
-	keyServer keyDistributionServer, log *zap.Logger,
+	keyServer keyDistributionServer, hsmEnabler hsmEnabler, log *zap.Logger,
 ) (*ClientAPI, error) {
 	updateLog, err := updatelog.New()
 	if err != nil {
@@ -115,12 +119,13 @@ func New(txHandle transactionHandle, recovery recovery.Recovery, core core,
 	}
 
 	return &ClientAPI{
-		core:      core,
-		recovery:  recovery,
-		txHandle:  txHandle,
-		keyServer: keyServer,
-		updateLog: updateLog,
-		log:       log,
+		core:       core,
+		recovery:   recovery,
+		txHandle:   txHandle,
+		keyServer:  keyServer,
+		hsmEnabler: hsmEnabler,
+		updateLog:  updateLog,
+		log:        log,
 	}, nil
 }
 
@@ -310,6 +315,8 @@ func (a *ClientAPI) SetManifest(ctx context.Context, rawManifest []byte) (recove
 	if err := mnf.Check(a.log); err != nil {
 		return nil, fmt.Errorf("checking manifest: %w", err)
 	}
+
+	a.hsmEnabler.SetEnabled(mnf.HasFeatureEnabled(manifest.FeatureAzureHSMSealing))
 
 	txdata, rollback, commit, err := wrapper.WrapTransaction(ctx, a.txHandle)
 	if err != nil {
@@ -993,9 +1000,7 @@ func (a *ClientAPI) FeatureEnabled(ctx context.Context, feature string) bool {
 		return false
 	}
 
-	return slices.ContainsFunc(mnf.Config.FeatureGates, func(s string) bool {
-		return strings.EqualFold(s, feature)
-	})
+	return mnf.HasFeatureEnabled(feature)
 }
 
 func encodeMonotonicCounterID(marbleType string, marbleUUID uuid.UUID, name string) string {

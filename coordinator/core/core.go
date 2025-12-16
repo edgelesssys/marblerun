@@ -32,12 +32,10 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/coordinator/state"
 	"github.com/edgelesssys/marblerun/coordinator/store"
-	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
 	"github.com/edgelesssys/marblerun/coordinator/store/wrapper"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/spf13/afero"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
@@ -186,25 +184,6 @@ func NewCore(
 
 	err = c.GenerateQuote(rootCert.Raw)
 	return c, err
-}
-
-// NewCoreWithMocks creates a new core object with quote and seal mocks for testing.
-func NewCoreWithMocks() *Core {
-	zapLogger, err := zap.NewDevelopment()
-	if err != nil {
-		panic(err)
-	}
-
-	validator := quote.NewMockValidator()
-	issuer := quote.NewMockIssuer()
-	sealer := &seal.MockSealer{}
-	store := stdstore.New(sealer, afero.Afero{Fs: afero.NewMemMapFs()}, "", zapLogger)
-	recovery := recovery.New(store, zapLogger)
-	core, err := NewCore([]string{"localhost"}, validator, issuer, store, recovery, zapLogger, nil, nil)
-	if err != nil {
-		panic(err)
-	}
-	return core
 }
 
 // inSimulationMode returns true if we operate in OE_SIMULATION mode.

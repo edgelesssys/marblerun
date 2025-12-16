@@ -24,6 +24,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/distributor/keyclient"
 	"github.com/edgelesssys/marblerun/coordinator/distributor/keyserver"
 	"github.com/edgelesssys/marblerun/coordinator/events"
+	"github.com/edgelesssys/marblerun/coordinator/keyrelease"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/recovery"
 	"github.com/edgelesssys/marblerun/coordinator/seal"
@@ -83,7 +84,7 @@ func run(log *zap.Logger, validator quote.Validator, issuer quote.Issuer, sealDi
 	if !distributedDeployment {
 		backend = "default"
 	}
-	store, keyDistributor := setUpStore(backend, sealer, sealDir, validator, issuer, log)
+	store, keyDistributor, hsmEnabler := setUpStore(backend, sealer, sealDir, validator, issuer, log)
 	rec := recovery.New(store, log)
 
 	// creating core
@@ -99,7 +100,7 @@ func run(log *zap.Logger, validator quote.Validator, issuer quote.Issuer, sealDi
 	if distributedStore, ok := store.(*dstore.Store); ok {
 		distributedStore.SetQuoteGenerator(co)
 	}
-	clientAPI, err := clientapi.New(store, rec, co, keyDistributor, log)
+	clientAPI, err := clientapi.New(store, rec, co, keyDistributor, hsmEnabler, log)
 	if err != nil {
 		log.Fatal("Creating client server failed", zap.Error(err))
 	}
@@ -150,9 +151,10 @@ func isDevMode() bool {
 	return util.Getenv(constants.DevMode, constants.DevModeDefault) == "1"
 }
 
-func setUpStore(backend string, sealer seal.Sealer, sealDir string, qv quote.Validator, qi quote.Issuer, log *zap.Logger) (store.Store, keyDistributor) {
+func setUpStore(backend string, sealer seal.Sealer, sealDir string, qv quote.Validator, qi quote.Issuer, log *zap.Logger) (store.Store, keyDistributor, hsmEnabler) {
 	var store store.Store
 	var keyDistributor keyDistributor
+	var hsmEnabler hsmEnabler
 
 	switch backend {
 	case constants.StoreBackendKubernetes:
@@ -176,8 +178,14 @@ func setUpStore(backend string, sealer seal.Sealer, sealDir string, qv quote.Val
 			log.Fatal("Failed setting up sealer", zap.Error(err))
 		}
 
+		hsmSealer, err := keyrelease.New(sealer, log)
+		if err != nil {
+			log.Fatal("Failed to create KeyReleaser", zap.Error(err))
+		}
+		hsmEnabler = hsmSealer
+
 		// Create distributed store
-		distributedStore, err := dstore.New(sealer, stateName, namespace, log)
+		distributedStore, err := dstore.New(hsmSealer, hsmSealer, stateName, namespace, log)
 		if err != nil {
 			log.Fatal("Failed setting up store backend", zap.Error(err))
 		}
@@ -225,19 +233,23 @@ func setUpStore(backend string, sealer seal.Sealer, sealDir string, qv quote.Val
 
 		keyServer := keyserver.New(instanceProperties, qv, distributedStore, log)
 
-		keyDistributor = distributor.New(keyServiceName, namespace, sealer, keyClient, keyServer, store, log)
+		keyDistributor = distributor.New(keyServiceName, namespace, hsmSealer, keyClient, keyServer, store, log)
 	default:
 		if err := os.MkdirAll(sealDir, 0o700); err != nil {
 			log.Fatal("Cannot create or access sealdir. Please check the permissions for the specified path.", zap.Error(err))
 		}
-		var err error
-		store, keyDistributor, err = newDefaultStore(sealer, sealDir, log)
+		hsmSealer, err := keyrelease.New(sealer, log)
+		if err != nil {
+			log.Fatal("Failed to create KeyReleaser", zap.Error(err))
+		}
+		hsmEnabler = hsmSealer
+		store, keyDistributor, err = newDefaultStore(hsmSealer, sealDir, log)
 		if err != nil {
 			log.Fatal("Failed creating default store", zap.Error(err))
 		}
 	}
 
-	return store, keyDistributor
+	return store, keyDistributor, hsmEnabler
 }
 
 func isSimulationMode() bool {
@@ -251,4 +263,8 @@ func isSimulationMode() bool {
 type keyDistributor interface {
 	StartSharing(context.Context) error
 	Start()
+}
+
+type hsmEnabler interface {
+	SetEnabled(enabled bool)
 }

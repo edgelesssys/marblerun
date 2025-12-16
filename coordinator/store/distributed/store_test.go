@@ -42,6 +42,7 @@ func TestDistributedStore(t *testing.T) {
 	sealer := &noEnclaveSealer{NoEnclaveSealer: seal.NewNoEnclaveSealer(log)}
 	store := &Store{
 		quoteGenerator: &stubRegenerator{},
+		hsmEnabler:     stubHSMEnabler{},
 		stateHandle:    stateHandle,
 		sealer:         sealer,
 		log:            log,
@@ -68,8 +69,8 @@ func TestDistributedStore(t *testing.T) {
 	err = tx.Put(key, value)
 	require.NoError(err)
 
-	// Before setting an encryption key, sealing should be disabled
-	assert.Equal(seal.ModeDisabled, store.GetSealMode())
+	// This transaction should know about the seal mode set in the manifest
+	assert.Equal(sealMode, store.GetSealMode())
 
 	// Set new encryption key
 	store.SetEncryptionKey(encryptionKey, sealMode)
@@ -123,6 +124,7 @@ func TestDistributedStore(t *testing.T) {
 		quoteGenerator: &stubRegenerator{},
 		stateHandle:    stateHandle,
 		sealer:         &noEnclaveSealer{NoEnclaveSealer: seal.NewNoEnclaveSealer(log)},
+		hsmEnabler:     stubHSMEnabler{},
 		log:            log,
 	}
 
@@ -390,3 +392,7 @@ func (s *stubRegenerator) Regenerate(_ store.Transaction) error {
 }
 
 func (s *stubRegenerator) SetGenerator(_ quoteGenerator) {}
+
+type stubHSMEnabler struct{}
+
+func (stubHSMEnabler) SetEnabled(_ bool) {}

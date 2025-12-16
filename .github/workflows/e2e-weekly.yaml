@@ -12,12 +12,18 @@ jobs:
       AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
       AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_OBJECT_ID: ${{ secrets.AZURE_OBJECT_ID }}
+      HSM_RELEASE_CLIENT_ID: ${{ secrets.HSM_RELEASE_CLIENT_ID }}
+      HSM_RELEASE_TENANT_ID: ${{ secrets.HSM_RELEASE_TENANT_ID }}
+      HSM_RELEASE_CLIENT_SECRET: ${{ secrets.HSM_RELEASE_CLIENT_SECRET }}
+      HSM_RELEASE_OBJECT_ID: ${{ secrets.HSM_RELEASE_OBJECT_ID }}
     uses: ./.github/workflows/e2e.yaml
     with:
       vmType: 'Standard_DC4s_v3'
       nodes: 3
       replicas: 3
       parallel: 1
+      hsmSealing: 'disabled'
 
   notify-failure:
     runs-on: ubuntu-24.04

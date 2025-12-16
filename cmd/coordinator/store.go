@@ -10,14 +10,14 @@ package main
 
 import (
 	"github.com/edgelesssys/marblerun/coordinator/distributor"
-	"github.com/edgelesssys/marblerun/coordinator/seal"
+	"github.com/edgelesssys/marblerun/coordinator/keyrelease"
 	"github.com/edgelesssys/marblerun/coordinator/store"
 	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
 	"github.com/spf13/afero"
 	"go.uber.org/zap"
 )
 
-func newDefaultStore(sealer seal.Sealer, sealDir string, log *zap.Logger) (store.Store, keyDistributor, error) {
+func newDefaultStore(sealer *keyrelease.KeyReleaser, sealDir string, log *zap.Logger) (store.Store, keyDistributor, error) {
 	log.Info("Setting up default store")
-	return stdstore.New(sealer, afero.NewOsFs(), sealDir, log), &distributor.Stub{}, nil
+	return stdstore.New(sealer, sealer, afero.NewOsFs(), sealDir, log), &distributor.Stub{}, nil
 }

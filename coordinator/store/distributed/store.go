@@ -34,6 +34,7 @@ type Store struct {
 	stateHandle    stateHandle
 	quoteGenerator regenerator
 	sealer         Sealer
+	hsmEnabler     hsmEnabler
 	recoveryData   []byte
 
 	recoveryMode bool
@@ -51,7 +52,7 @@ type Store struct {
 }
 
 // New creates and initializes a new store for distributed Coordinators.
-func New(sealer Sealer, name, namespace string, log *zap.Logger) (*Store, error) {
+func New(sealer Sealer, hsmEnabler hsmEnabler, name, namespace string, log *zap.Logger) (*Store, error) {
 	clientset, err := kube.GetClient()
 	if err != nil {
 		return nil, err
@@ -61,6 +62,7 @@ func New(sealer Sealer, name, namespace string, log *zap.Logger) (*Store, error)
 		quoteGenerator: &quoteRegenerator{},
 		stateHandle:    k8sstore.New(clientset, namespace, name, log),
 		sealer:         sealer,
+		hsmEnabler:     hsmEnabler,
 		log:            log,
 	}, nil
 }
@@ -120,7 +122,7 @@ func (s *Store) LoadState() ([]byte, []byte, error) {
 		// clear temporary recovery state if we successfully loaded the state
 		s.tmpRecoveryState = nil
 
-		if err := s.reloadSealMode(rawState); err != nil {
+		if err := s.reloadOptions(rawState); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -156,6 +158,12 @@ func (s *Store) BeginTransaction(ctx context.Context) (tx store.Transaction, err
 	}
 
 	if err == nil {
+		// Ensure any changes to the state since it was last loaded,
+		// e.g. through updating the manifest on a different instance,
+		// are properly loaded in the store
+		if err := s.reloadOptions(data); err != nil {
+			return nil, err
+		}
 		tx := transaction.New(s, data, state, s.log)
 
 		if err := s.quoteGenerator.Regenerate(tx); err != nil {
@@ -392,8 +400,8 @@ func (s *Store) unsealEncryptionKey(state *transaction.State) error {
 	return nil
 }
 
-func (s *Store) reloadSealMode(rawState map[string][]byte) error {
-	s.log.Debug("Reloading seal mode")
+func (s *Store) reloadOptions(rawState map[string][]byte) error {
+	s.log.Debug("Reloading manifest options")
 	rawMnf, ok := rawState[request.Manifest]
 	if !ok {
 		return nil // no manifest set
@@ -407,6 +415,8 @@ func (s *Store) reloadSealMode(rawState map[string][]byte) error {
 	s.sealMode = seal.ModeFromString(mnf.Config.SealMode)
 	s.sealer.SetSealMode(seal.ModeFromString(mnf.Config.SealMode))
 	s.log.Debug("Seal mode set", zap.Int("sealMode", int(s.sealMode)))
+
+	s.hsmEnabler.SetEnabled(mnf.HasFeatureEnabled(manifest.FeatureAzureHSMSealing))
 	return nil
 }
 
@@ -478,4 +488,8 @@ type quoteGenerator interface {
 type regenerator interface {
 	Regenerate(tx store.Transaction) error
 	SetGenerator(quoteGenerator)
+}
+
+type hsmEnabler interface {
+	SetEnabled(enabled bool)
 }

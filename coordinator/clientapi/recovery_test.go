@@ -146,7 +146,7 @@ func TestDecryptRecoverySecret(t *testing.T) {
 func TestRecover(t *testing.T) {
 	_, rootCert := test.MustSetupTestCerts(test.RecoveryPrivateKeyOne)
 	defaultStore := func() store.Store {
-		s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
+		s := stdstore.New(&seal.MockSealer{}, stubEnabler{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
 		s.SetEncryptionKey([]byte("key"), seal.ModeProductKey) // set encryption key to set seal mode
 		wr := wrapper.New(s)
 		require.NoError(t, wr.PutCertificate(constants.SKCoordinatorRootCert, rootCert))
@@ -258,7 +258,7 @@ func TestRecover(t *testing.T) {
 		"GetCertificate fails": {
 			store: &fakeStore{
 				store: func() store.Store {
-					s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
+					s := stdstore.New(&seal.MockSealer{}, stubEnabler{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
 					s.SetEncryptionKey([]byte("key"), seal.ModeProductKey) // set encryption key to set seal mode
 					wr := wrapper.New(s)
 					require.NoError(t, wr.PutRawManifest([]byte(test.ManifestJSONWithRecoveryKey)))
@@ -301,7 +301,7 @@ func TestRecover(t *testing.T) {
 		"manifest defines multiple recovery keys": {
 			store: &fakeStore{
 				store: func() store.Store {
-					s := stdstore.New(&seal.MockSealer{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
+					s := stdstore.New(&seal.MockSealer{}, stubEnabler{}, afero.NewMemMapFs(), "", zaptest.NewLogger(t))
 					s.SetEncryptionKey([]byte("key"), seal.ModeProductKey) // set encryption key to set seal mode
 					wr := wrapper.New(s)
 					require.NoError(t, wr.PutCertificate(constants.SKCoordinatorRootCert, rootCert))
