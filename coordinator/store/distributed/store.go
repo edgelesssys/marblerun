@@ -38,7 +38,6 @@ type Store struct {
 	hsmEnabler      hsmEnabler
 	recoveryData    []byte
 	oldRecoveryData []byte
-	oldRecoveryKey  []byte
 
 	recoveryMode bool
 	// tmpRecoveryState is a map to hold the state during recovery.
@@ -100,6 +99,7 @@ func (s *Store) ResetEncryptionKey() {
 	s.log.Debug("Resetting encryption key", zap.Int("mode", int(s.oldSealMode)))
 	s.sealMode = s.oldSealMode
 	s.sealer.ResetEncryptionKey()
+	s.sealer.SetSealMode(s.sealMode)
 }
 
 // SealEncryptionKey seals the encryption key with the current seal mode.
