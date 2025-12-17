@@ -2078,7 +2078,7 @@ func TestE2EActions(t *testing.T) {
 					var err error
 					pods, err = kubectl.GetAvailablePodNamesForDeployment(ctx, namespace, coordinatorDeployment)
 					require.NoError(t, err)
-					require.Len(t, pods, 2, "expected at least 2 pods for coordinator deployment")
+					require.GreaterOrEqual(t, len(pods), 2, "expected at least 2 pods for coordinator deployment")
 				})
 
 				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
@@ -2446,9 +2446,11 @@ func TestE2EActions(t *testing.T) {
 					require := require.New(t)
 					recPub, recPriv := manifest.GenerateKey(t)
 
+					require.NoError(os.Rename(filepath.Join(tmpDir, keyFileDefault), filepath.Join(tmpDir, "priv.key")))
+
 					privEncoded, err := x509.MarshalPKCS8PrivateKey(recPriv)
 					require.NoError(err)
-					require.NoError(os.WriteFile(filepath.Join(tmpDir, "rec1.priv"), pem.EncodeToMemory(&pem.Block{
+					require.NoError(os.WriteFile(filepath.Join(tmpDir, keyFileDefault), pem.EncodeToMemory(&pem.Block{
 						Type:  "PRIVATE KEY",
 						Bytes: privEncoded,
 					}), 0o644))
@@ -2463,16 +2465,19 @@ func TestE2EActions(t *testing.T) {
 					updateMnfPath := filepath.Join(tmpDir, "update.json")
 					require.NoError(os.WriteFile(updateMnfPath, mnfRaw, 0o644))
 
+					recoveryDataFile := filepath.Join(tmpDir, recoveryDataFile)
+					require.NoError(os.Remove(recoveryDataFile))
+
 					// Upload update manifest
 					withPortForwardAny(ctx, t, kubectl, namespace, func(port string) error {
 						_, err := cmd.Run(
 							ctx,
 							"manifest", "update", "apply",
 							updateMnfPath, net.JoinHostPort(localhost, port),
-							"--key", filepath.Join(tmpDir, keyFileDefault),
+							"--key", filepath.Join(tmpDir, "priv.key"),
 							"--cert", filepath.Join(tmpDir, certFileDefault),
 							"--coordinator-cert", filepath.Join(tmpDir, coordinatorCertFileDefault),
-							"--recoverydata", filepath.Join(tmpDir, "newRecoveryData.bin"),
+							"--recoverydata", recoveryDataFile,
 							eraConfig,
 						)
 						return err
