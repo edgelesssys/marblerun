@@ -63,7 +63,15 @@ Use the CLI to deploy an update, specifying the client certificate and private k
 marblerun manifest update apply update-manifest.json $MARBLERUN --cert=user-cert.pem --key=user-key.pem
 ```
 
-On success, no message will be returned and your MarbleRun logs should highlight whether the update manifest has been set or further acknowledgements are required. On error, the API endpoint will return an error message. If you receive `unauthorized user`, MarbleRun either received no client certificate over the TLS connection, or you used the wrong certificate.
+If further acknowledgements are required, the CLI displays the number of missing acknowledgements and a list of users who may send them.
+On error, the API endpoint will return an error message. If you receive `unauthorized user`, MarbleRun either received no client certificate over the TLS connection, or you used the wrong certificate.
+
+:::caution
+
+If the update changes the recovery keys of the deployment you will receive a JSON reply including the new recovery secrets.
+Keep these values somewhere safe. Without it, you can't [recover the Coordinator](../features/recovery.md).
+
+:::
 
 ## Acknowledging a multi-party update
 
@@ -78,6 +86,13 @@ marblerun manifest update acknowledge update-manifest.json $MARBLERUN --cert=use
 ```
 
 See the [CLI reference](../reference/cli.md#marblerun-manifest-update) for further operations like getting the deployed update manifest or canceling the update procedure.
+
+:::caution
+
+If the update changes the recovery keys of the deployment you will receive a JSON reply including the new recovery secrets.
+Keep these values somewhere safe. Without it, you can't [recover the Coordinator](../features/recovery.md).
+
+:::
 
 ## Example: Multi-party update
 
