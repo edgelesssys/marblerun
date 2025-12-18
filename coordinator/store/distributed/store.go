@@ -8,6 +8,7 @@ SPDX-License-Identifier: BUSL-1.1
 package store
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/binary"
@@ -31,11 +32,12 @@ import (
 
 // Store is an implementation of the store interface for distributed Coordinators.
 type Store struct {
-	stateHandle    stateHandle
-	quoteGenerator regenerator
-	sealer         Sealer
-	hsmEnabler     hsmEnabler
-	recoveryData   []byte
+	stateHandle     stateHandle
+	quoteGenerator  regenerator
+	sealer          Sealer
+	hsmEnabler      hsmEnabler
+	recoveryData    []byte
+	oldRecoveryData []byte
 
 	recoveryMode bool
 	// tmpRecoveryState is a map to hold the state during recovery.
@@ -46,7 +48,8 @@ type Store struct {
 	// modeLock is used to ensure the cached sealing key and mode is only updated in one place.
 	modeLock sync.Mutex
 	// sealMode is the current seal mode.
-	sealMode seal.Mode
+	sealMode    seal.Mode
+	oldSealMode seal.Mode
 
 	log *zap.Logger
 }
@@ -85,7 +88,18 @@ func (s *Store) SetEncryptionKey(key []byte, mode seal.Mode) {
 	s.log.Debug("Setting encryption key", zap.Int("mode", int(mode)))
 	s.sealer.SetEncryptionKey(key)
 	s.sealer.SetSealMode(mode)
+	s.oldSealMode = s.sealMode
 	s.sealMode = mode
+}
+
+// ResetEncryptionKey restores the old encryption key.
+func (s *Store) ResetEncryptionKey() {
+	s.modeLock.Lock()
+	defer s.modeLock.Unlock()
+	s.log.Debug("Resetting encryption key", zap.Int("mode", int(s.oldSealMode)))
+	s.sealMode = s.oldSealMode
+	s.sealer.ResetEncryptionKey()
+	s.sealer.SetSealMode(s.sealMode)
 }
 
 // SealEncryptionKey seals the encryption key with the current seal mode.
@@ -108,8 +122,17 @@ func (s *Store) SetRecoveryData(recoveryData []byte) {
 	defer s.mux.Unlock()
 	s.log.Debug("Setting recovery data and removing recovery mode", zap.ByteString("recoveryData", recoveryData))
 
+	s.oldRecoveryData = s.recoveryData
 	s.recoveryData = recoveryData
 	s.recoveryMode = false
+}
+
+// ResetRecoveryData restores the old recovery data.
+func (s *Store) ResetRecoveryData() {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+	s.log.Debug("Resetting recovery data to old recovery data", zap.ByteString("recoveryData", s.oldRecoveryData))
+	s.recoveryData = s.oldRecoveryData
 }
 
 // LoadState loads sealed data from the backend.
@@ -153,7 +176,7 @@ func (s *Store) BeginTransaction(ctx context.Context) (tx store.Transaction, err
 
 	// If there's more than one replica, there are edge cases where an instance is running that doesn't
 	// have the recovery data set. If that's the case, take the recovery data from the state.
-	if s.recoveryData == nil {
+	if s.recoveryData == nil || !bytes.Equal(s.recoveryData, recoveryData) {
 		s.recoveryData = recoveryData
 	}
 

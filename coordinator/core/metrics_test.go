@@ -53,7 +53,7 @@ func TestStoreWrapperMetrics(t *testing.T) {
 	assert.Equal(1, promtest.CollectAndCount(c.metrics.coordinatorState))
 	assert.Equal(float64(state.AcceptingManifest), promtest.ToFloat64(c.metrics.coordinatorState))
 
-	clientAPI, err := clientapi.New(c.txHandle, c.recovery, c, &distributor.Stub{}, stubEnabler{}, zapLogger)
+	clientAPI, err := clientapi.New(store, c.recovery, c, &distributor.Stub{}, stubEnabler{}, zapLogger)
 	require.NoError(err)
 	_, err = clientAPI.SetManifest(ctx, []byte(test.ManifestJSONWithRecoveryKey))
 	require.NoError(err)
@@ -66,13 +66,14 @@ func TestStoreWrapperMetrics(t *testing.T) {
 	reg = prometheus.NewRegistry()
 	fac = promauto.With(reg)
 	sealer.UnsealError = &seal.EncryptionKeyError{}
-	c, err = NewCore([]string{"localhost"}, validator, issuer, stdstore.New(sealer, stubEnabler{}, fs, "", zapLogger), recovery, zapLogger, &fac, nil)
+	store2 := stdstore.New(sealer, stubEnabler{}, fs, "", zapLogger)
+	c, err = NewCore([]string{"localhost"}, validator, issuer, store2, recovery, zapLogger, &fac, nil)
 	sealer.UnsealError = nil
 	require.NoError(err)
 	assert.Equal(1, promtest.CollectAndCount(c.metrics.coordinatorState))
 	assert.Equal(float64(state.Recovery), promtest.ToFloat64(c.metrics.coordinatorState))
 
-	clientAPI, err = clientapi.New(c.txHandle, c.recovery, c, &distributor.Stub{}, stubEnabler{}, zapLogger)
+	clientAPI, err = clientapi.New(store2, c.recovery, c, &distributor.Stub{}, stubEnabler{}, zapLogger)
 	require.NoError(err)
 
 	key, sig := recoveryKeyWithSignature(t, test.RecoveryPrivateKeyOne)
@@ -127,7 +128,7 @@ func TestMarbleAPIMetrics(t *testing.T) {
 	assert.Equal(float64(0), promtest.ToFloat64(metrics.activationSuccess.WithLabelValues("backendFirst", marbleUUID.String())))
 
 	// set manifest
-	clientAPI, err := clientapi.New(c.txHandle, c.recovery, c, &distributor.Stub{}, stubEnabler{}, zapLogger)
+	clientAPI, err := clientapi.New(store, c.recovery, c, &distributor.Stub{}, stubEnabler{}, zapLogger)
 	require.NoError(err)
 	_, err = clientAPI.SetManifest(context.Background(), []byte(test.ManifestJSON))
 	require.NoError(err)

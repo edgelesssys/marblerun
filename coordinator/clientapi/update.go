@@ -16,12 +16,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"time"
 
 	"github.com/edgelesssys/marblerun/coordinator/constants"
 	"github.com/edgelesssys/marblerun/coordinator/crypto"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/multiupdate"
+	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/coordinator/store"
 	dwrapper "github.com/edgelesssys/marblerun/coordinator/store/distributed/wrapper"
 	"github.com/edgelesssys/marblerun/coordinator/store/request"
@@ -46,29 +48,29 @@ type secretGetter interface {
 }
 
 // AcknowledgePendingUpdate adds the user to the list of acknowledgments and returns a list of missing acknowledgments.
-func (a *ClientAPI) AcknowledgePendingUpdate(ctx context.Context, rawUpdateManifest []byte, user *user.User) ([]string, int, error) {
+func (a *ClientAPI) AcknowledgePendingUpdate(ctx context.Context, rawUpdateManifest []byte, user *user.User) (map[string][]byte, []string, int, error) {
 	wrapper, rollback, commit, err := dwrapper.WrapTransaction(ctx, a.txHandle)
 	if err != nil {
-		return nil, -1, err
+		return nil, nil, -1, err
 	}
 	defer rollback()
 
 	pendingUpdate, err := wrapper.GetPendingUpdate()
 	if err != nil {
 		if errors.Is(err, store.ErrValueUnset) {
-			return nil, -1, ErrNoPendingUpdate
+			return nil, nil, -1, ErrNoPendingUpdate
 		}
-		return nil, -1, err
+		return nil, nil, -1, err
 	}
 
 	if err := pendingUpdate.AddAcknowledgment(rawUpdateManifest, user.Name()); err != nil {
-		return nil, -1, err
+		return nil, nil, -1, err
 	}
 
 	missingAcks := pendingUpdate.MissingAcknowledgments()
 	missingUsers := pendingUpdate.MissingUsers()
 	if err := wrapper.PutPendingUpdate(pendingUpdate); err != nil {
-		return nil, -1, fmt.Errorf("saving pending update to store: %w", err)
+		return nil, nil, -1, fmt.Errorf("saving pending update to store: %w", err)
 	}
 	a.updateLog.Reset()
 	a.updateLog.Info(
@@ -79,23 +81,28 @@ func (a *ClientAPI) AcknowledgePendingUpdate(ctx context.Context, rawUpdateManif
 		zap.String("manifestFingerprint", pendingUpdate.ManifestFingerprint()),
 	)
 	if err := wrapper.AppendUpdateLog(a.updateLog.String()); err != nil {
-		return nil, -1, fmt.Errorf("saving update log to store: %w", err)
+		return nil, nil, -1, fmt.Errorf("saving update log to store: %w", err)
 	}
 	if err := commit(ctx); err != nil {
-		return nil, -1, fmt.Errorf("committing store transaction: %w", err)
+		return nil, nil, -1, fmt.Errorf("committing store transaction: %w", err)
 	}
 
 	a.log.Info("Received update acknowledgement", zap.String("user", user.Name()), zap.Int("missingAcknowledgments", missingAcks), zap.Strings("missingUsers", missingUsers))
 	if missingAcks > 0 {
-		return missingUsers, missingAcks, nil
+		return nil, missingUsers, missingAcks, nil
 	}
 
 	a.log.Info("All users have acknowledged the update manifest, applying update")
-	return nil, 0, a.updateApply(ctx, pendingUpdate.Manifest())
+	recoverySecretMap, err := a.updateApply(ctx, pendingUpdate.Manifest())
+	if err != nil {
+		return nil, nil, 0, err
+	}
+
+	return recoverySecretMap, nil, 0, nil
 }
 
 // updateApply applies the update manifest.
-func (a *ClientAPI) updateApply(ctx context.Context, rawUpdateManifest []byte) (err error) {
+func (a *ClientAPI) updateApply(ctx context.Context, rawUpdateManifest []byte) (recoverySecretMap map[string][]byte, err error) {
 	manifestFingerprint := func() string {
 		hash := sha256.Sum256(rawUpdateManifest)
 		return hex.EncodeToString(hash[:])
@@ -143,21 +150,26 @@ func (a *ClientAPI) updateApply(ctx context.Context, rawUpdateManifest []byte) (
 
 	var updateManifest manifest.Manifest
 	if err := json.Unmarshal(rawUpdateManifest, &updateManifest); err != nil {
-		return fmt.Errorf("unmarshaling update manifest: %w", err)
+		return nil, fmt.Errorf("unmarshaling update manifest: %w", err)
 	}
 
 	wrapper, rollback, commit, err := dwrapper.WrapTransaction(ctx, a.txHandle)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer rollback()
+
+	currentManifest, err := wrapper.GetManifest()
+	if err != nil {
+		return nil, fmt.Errorf("retrieving current manifest: %w", err)
+	}
 
 	// Check existing packages against new packages
 	if err := updateManifestEntries(
 		wrapper, request.Package, updateManifest.Packages,
 		wrapper.GetPackage, wrapper.PutPackage, wrapper.DeletePackage,
 	); err != nil {
-		return fmt.Errorf("updating packages: %w", err)
+		return nil, fmt.Errorf("updating packages: %w", err)
 	}
 
 	// Check existing marbles against new marbles
@@ -165,7 +177,7 @@ func (a *ClientAPI) updateApply(ctx context.Context, rawUpdateManifest []byte) (
 		wrapper, request.Marble, updateManifest.Marbles,
 		wrapper.GetMarble, wrapper.PutMarble, wrapper.DeleteMarble,
 	); err != nil {
-		return fmt.Errorf("updating marbles: %w", err)
+		return nil, fmt.Errorf("updating marbles: %w", err)
 	}
 
 	// Check tTLS tags against new tags
@@ -173,7 +185,7 @@ func (a *ClientAPI) updateApply(ctx context.Context, rawUpdateManifest []byte) (
 		wrapper, request.TLS, updateManifest.TLS,
 		wrapper.GetTLS, wrapper.PutTLS, wrapper.DeleteTLS,
 	); err != nil {
-		return fmt.Errorf("updating TLS configs: %w", err)
+		return nil, fmt.Errorf("updating TLS configs: %w", err)
 	}
 
 	// Check infrastructures against new infrastructures
@@ -181,13 +193,13 @@ func (a *ClientAPI) updateApply(ctx context.Context, rawUpdateManifest []byte) (
 		wrapper, request.Infrastructure, updateManifest.Infrastructures,
 		wrapper.GetInfrastructure, wrapper.PutInfrastructure, wrapper.DeleteInfrastructure,
 	); err != nil {
-		return fmt.Errorf("updating infrastructures: %w", err)
+		return nil, fmt.Errorf("updating infrastructures: %w", err)
 	}
 
 	// Update users
 	newUsers, err := updateManifest.GenerateUsers()
 	if err != nil {
-		return fmt.Errorf("generating users from manifest: %w", err)
+		return nil, fmt.Errorf("generating users from manifest: %w", err)
 	}
 	userMap := make(map[string]*user.User)
 	for _, user := range newUsers {
@@ -199,43 +211,61 @@ func (a *ClientAPI) updateApply(ctx context.Context, rawUpdateManifest []byte) (
 		func(_ string, u *user.User) error { return wrapper.PutUser(u) },
 		wrapper.DeleteUser,
 	); err != nil {
-		return fmt.Errorf("updating users: %w", err)
+		return nil, fmt.Errorf("updating users: %w", err)
 	}
 
 	// Update secrets
 	if err := a.updateSecrets(wrapper, updateManifest); err != nil {
-		return fmt.Errorf("updating secrets: %w", err)
+		return nil, fmt.Errorf("updating secrets: %w", err)
 	}
 
 	// Update the manifest in the store
 	if err := wrapper.PutRawManifest(rawUpdateManifest); err != nil {
-		return fmt.Errorf("saving updated manifest to store: %w", err)
+		return nil, fmt.Errorf("saving updated manifest to store: %w", err)
 	}
 
 	rootPrivK, err := wrapper.GetPrivateKey(constants.SKCoordinatorRootKey)
 	if err != nil {
-		return fmt.Errorf("loading root private key from store: %w", err)
+		return nil, fmt.Errorf("loading root private key from store: %w", err)
 	}
 	// sign raw manifest via ECDSA root key
 	hash := sha256.Sum256(rawUpdateManifest)
 	signature, err := ecdsa.SignASN1(rand.Reader, rootPrivK, hash[:])
 	if err != nil {
 		a.log.Error("Failed to create the manifest signature", zap.Error(err))
-		return fmt.Errorf("signing manifest: %w", err)
+		return nil, fmt.Errorf("signing manifest: %w", err)
 	}
 	if err := wrapper.PutManifestSignature(signature); err != nil {
-		return fmt.Errorf("saving manifest signature to store: %w", err)
+		return nil, fmt.Errorf("saving manifest signature to store: %w", err)
 	}
 
 	// Remove the pending update, we're done
 	if err := wrapper.DeletePendingUpdate(); err != nil {
-		return fmt.Errorf("deleting pending update from store: %w", err)
+		return nil, fmt.Errorf("deleting pending update from store: %w", err)
 	}
 
 	a.updateLog.Reset()
 	a.updateLog.Info("Complete Manifest updated", zap.String("manifestFingerprint", manifestFingerprint))
 	if err := wrapper.AppendUpdateLog(a.updateLog.String()); err != nil {
-		return fmt.Errorf("saving update log to store: %w", err)
+		return nil, fmt.Errorf("saving update log to store: %w", err)
+	}
+
+	if recoveryKeysHaveChanged(currentManifest, updateManifest) {
+		var recoveryData, encryptionKey []byte
+		encryptionKey, recoveryData, recoverySecretMap, err = a.recovery.GenerateEncryptionKey(updateManifest.RecoveryKeys, updateManifest.Config.RecoveryThreshold)
+		if err != nil {
+			a.log.Error("Could not set up encryption key for sealing the state", zap.Error(err))
+			return nil, fmt.Errorf("generating recovery encryption key: %w", err)
+		}
+		a.txHandle.SetEncryptionKey(encryptionKey, seal.ModeFromString(updateManifest.Config.SealMode))
+		a.txHandle.SetRecoveryData(recoveryData)
+
+		defer func() {
+			if err != nil {
+				a.txHandle.ResetEncryptionKey()
+				a.txHandle.ResetRecoveryData()
+			}
+		}()
 	}
 
 	a.hsmEnabler.SetEnabled(updateManifest.HasFeatureEnabled(manifest.FeatureAzureHSMSealing))
@@ -244,12 +274,12 @@ func (a *ClientAPI) updateApply(ctx context.Context, rawUpdateManifest []byte) (
 	a.log.Info("Please restart your Marbles to enforce the update.")
 
 	if err := commit(ctx); err != nil {
-		return fmt.Errorf("committing store transaction: %w", err)
+		return nil, fmt.Errorf("committing store transaction: %w", err)
 	}
 
 	a.log.Info("UpdateManifest successful")
 
-	return nil
+	return recoverySecretMap, nil
 }
 
 // CancelPendingUpdate cancels the pending update.
@@ -454,4 +484,17 @@ func (a *ClientAPI) updateSecrets(wrapper secretGetter, mnf manifest.Manifest) e
 	}
 
 	return nil
+}
+
+func recoveryKeysHaveChanged(currentManifest, updateManifest manifest.Manifest) bool {
+	if len(currentManifest.RecoveryKeys) != len(updateManifest.RecoveryKeys) {
+		return true
+	}
+	// Since a threshold of 0 is equivalent to all keys required, we need to check cases where one config is only different on paper
+	if currentManifest.Config.RecoveryThreshold == 0 && (len(updateManifest.RecoveryKeys) == int(updateManifest.Config.RecoveryThreshold)) ||
+		updateManifest.Config.RecoveryThreshold == 0 && (len(currentManifest.RecoveryKeys) == int(currentManifest.Config.RecoveryThreshold)) ||
+		currentManifest.Config.RecoveryThreshold == updateManifest.Config.RecoveryThreshold {
+		return !maps.Equal(currentManifest.RecoveryKeys, updateManifest.RecoveryKeys)
+	}
+	return true
 }

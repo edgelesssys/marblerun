@@ -34,14 +34,14 @@ type ClientAPI interface {
 	SignQuote(ctx context.Context, quote []byte) (signature []byte, tcbStatus string, err error)
 	VerifyMarble(ctx context.Context, clientCerts []*x509.Certificate) (string, uuid.UUID, error)
 	VerifyUser(ctx context.Context, clientCerts []*x509.Certificate) (*user.User, error)
-	UpdateManifest(ctx context.Context, rawUpdateManifest []byte, updater *user.User) ([]string, int, error)
+	UpdateManifest(ctx context.Context, rawUpdateManifest []byte, updater *user.User) (map[string][]byte, []string, int, error)
 	WriteSecrets(ctx context.Context, secrets map[string]manifest.UserSecret, updater *user.User) error
 	FeatureEnabled(ctx context.Context, feature string) bool
 	RecoveryPublicKey(ctx context.Context) ([]byte, error)
 	DecryptRecoverySecret(ctx context.Context, encryptedSecret []byte) ([]byte, error)
 
 	GetPendingUpdate(ctx context.Context) (*multiupdate.MultiPartyUpdate, error)
-	AcknowledgePendingUpdate(ctx context.Context, rawUpdateManifest []byte, user *user.User) ([]string, int, error)
+	AcknowledgePendingUpdate(ctx context.Context, rawUpdateManifest []byte, user *user.User) (map[string][]byte, []string, int, error)
 	CancelPendingUpdate(ctx context.Context, updater *user.User) (err error)
 }
 

@@ -15,8 +15,9 @@ import (
 
 // NoEnclaveSealer is a sealer for a -noenclave instance and performs encryption with a fixed key.
 type NoEnclaveSealer struct {
-	encryptionKey []byte
-	log           *zap.Logger
+	encryptionKey    []byte
+	oldEncryptionKey []byte
+	log              *zap.Logger
 }
 
 // NewNoEnclaveSealer creates and initializes a new NoEnclaveSealer object.
@@ -51,7 +52,13 @@ func (s *NoEnclaveSealer) SealEncryptionKey(_ []byte, _ Mode) ([]byte, error) {
 
 // SetEncryptionKey implements the Sealer interface.
 func (s *NoEnclaveSealer) SetEncryptionKey(key []byte) {
+	s.oldEncryptionKey = s.encryptionKey
 	s.encryptionKey = key
+}
+
+// ResetEncryptionKey implements the Sealer interface.
+func (s *NoEnclaveSealer) ResetEncryptionKey() {
+	s.encryptionKey = s.oldEncryptionKey
 }
 
 // UnsealEncryptionKey implements the Sealer interface.

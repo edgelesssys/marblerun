@@ -470,7 +470,7 @@ func TestManifestUpdate(t *testing.T) {
 
 	// Set the update manifest
 	t.Log("Setting the Update Manifest")
-	_, missingAcks, err := f.SetUpdateManifest(f.UpdatedManifest, test.AdminCert, test.RecoveryPrivateKeyOne)
+	_, _, missingAcks, err := f.SetUpdateManifest(f.UpdatedManifest, test.AdminCert, test.RecoveryPrivateKeyOne)
 	require.NoError(err, "failed to set Update Manifest")
 	assert.Equal(0, missingAcks, "failed to set Update Manifest")
 
@@ -899,13 +899,114 @@ func TestShamirRecoveryEncryptedSecrets(t *testing.T) {
 	f.VerifyCertAfterRecovery(cert, cancelCoordinator, cfg)
 }
 
+func TestRecoveryKeyChange(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	log.Println("Testing recovery key change on update...")
+
+	var mnf manifest.Manifest
+	require.NoError(json.Unmarshal([]byte(test.IntegrationMultiPartyManifestJSON), &mnf))
+	mnf.Config.UpdateThreshold = 1 // simplify test by having only one admin approve updates
+	mnfJSON, err := json.Marshal(mnf)
+	require.NoError(err)
+
+	var updateMnf manifest.Manifest
+	require.NoError(json.Unmarshal([]byte(test.IntegrationMultiPartyUpdateJSON), &updateMnf))
+	recPub1, recPriv1 := test.GenerateTestRecoveryKey()
+	recPub2, recPriv2 := test.GenerateTestRecoveryKey()
+	updateMnf.RecoveryKeys = map[string]string{
+		"newRecKey1": string(recPub1),
+		"newRecKey2": string(recPub2),
+	}
+	updateMnfJSON, err := json.Marshal(updateMnf)
+	require.NoError(err)
+
+	f := framework.New(t, *buildDir, simFlag, *noenclave, marbleTestAddr, meshServerAddr, clientServerAddr, string(mnfJSON), string(updateMnfJSON))
+	f.UpdateManifest()
+
+	cfg := framework.NewCoordinatorConfig()
+	defer cfg.Cleanup()
+	cancelCoordinator := f.StartCoordinator(f.Ctx, cfg)
+
+	recoveryData, err := f.SetManifest(f.TestManifest)
+	require.NoError(err)
+
+	statusCode, err := f.GetStatus()
+	require.NoError(err)
+	assert.EqualValues(state.AcceptingMarbles, statusCode)
+
+	// Trigger recovery mode
+	cancelCoordinator, coordCert := f.TriggerRecovery(cfg, cancelCoordinator)
+
+	// Decode & Decrypt recovery data from when we set the manifest
+	log.Println("Decoding and decrypting recovery data...")
+	secretOne, err := api.DecryptRecoveryData(recoveryData["testRecKey1"], test.RecoveryPrivateKeyOne)
+	require.NoError(err, "Failed to decrypt the recovery data for testRecKey1.")
+	secretTwo, err := api.DecryptRecoveryData(recoveryData["testRecKey2"], test.RecoveryPrivateKeyTwo)
+	require.NoError(err, "Failed to decrypt the recovery data for testRecKey2.")
+
+	// Upload first secret to server, server should stay in recovery mode
+	log.Println("Uploading first decrypted secret...")
+	require.NoError(f.SetRecover(secretOne, test.RecoveryPrivateKeyOne))
+	log.Println("Coordinator successfully accepted first decrypted secret.")
+	statusCode, err = f.GetStatus()
+	require.NoError(err)
+	assert.EqualValues(state.Recovery, statusCode, "Server is not in recovery state, but should be.")
+
+	// Upload second secret to server, server should be recovered
+	log.Println("Uploading second decrypted secret...")
+	require.NoError(f.SetRecover(secretTwo, test.RecoveryPrivateKeyTwo))
+	log.Println("Coordinator successfully accepted second decrypted secret.")
+	log.Println("Successfully performed recovery, now checking status again...")
+	statusCode, err = f.GetStatus()
+	require.NoError(err)
+	assert.EqualValues(state.AcceptingMarbles, statusCode, "Server is in wrong status after recovery.")
+
+	cancelCoordinator = f.VerifyCertAfterRecovery(coordCert, cancelCoordinator, cfg)
+
+	log.Println("Updating manifest to change recovery keys...")
+	newRecoveryData, _, missingAcks, err := f.SetUpdateManifest(updateMnf, test.AdminOneCert, test.AdminOnePrivKey)
+	require.NoError(err)
+	require.Equal(0, missingAcks)
+	require.Len(newRecoveryData, 2, "Expected 2 recovery secrets after update.")
+	assert.NotEqual(recoveryData, newRecoveryData, "Expected 2 new recovery secrets after update.")
+
+	// Coordinator should be able to recover on its own if the sealing key is available
+	cancelCoordinator = f.VerifyCertAfterRecovery(coordCert, cancelCoordinator, cfg)
+
+	// Trigger recovery mode again and recover with the new keys
+	cancelCoordinator, _ = f.TriggerRecovery(cfg, cancelCoordinator)
+	defer cancelCoordinator()
+	log.Println("Decoding and decrypting recovery data...")
+	secretOne, err = api.DecryptRecoveryData(newRecoveryData["newRecKey1"], recPriv1)
+	require.NoError(err, "Failed to decrypt the recovery data for testRecKey1.")
+	secretTwo, err = api.DecryptRecoveryData(newRecoveryData["newRecKey2"], recPriv2)
+	require.NoError(err, "Failed to decrypt the recovery data for testRecKey2.")
+
+	// Upload first secret to server, server should stay in recovery mode
+	log.Println("Uploading first decrypted secret...")
+	require.NoError(f.SetRecover(secretOne, recPriv1))
+	log.Println("Coordinator successfully accepted first decrypted secret.")
+	statusCode, err = f.GetStatus()
+	require.NoError(err)
+	assert.EqualValues(state.Recovery, statusCode, "Server is not in recovery state, but should be.")
+
+	// Upload second secret to server, server should be recovered
+	log.Println("Uploading second decrypted secret...")
+	require.NoError(f.SetRecover(secretTwo, recPriv2))
+	log.Println("Coordinator successfully accepted second decrypted secret.")
+	log.Println("Successfully performed recovery, now checking status again...")
+	statusCode, err = f.GetStatus()
+	require.NoError(err)
+	assert.EqualValues(state.AcceptingMarbles, statusCode, "Server is in wrong status after recovery.")
+}
+
 func TestMultiPartyManifestUpdate(t *testing.T) {
 	require := require.New(t)
+	assert := assert.New(t)
 
 	log.Println("Testing multi-party manifest update...")
-
-	var multiPartyUpdateManifest manifest.Manifest
-	require.NoError(json.Unmarshal([]byte(test.IntegrationMultiPartyManifestJSON), &multiPartyUpdateManifest))
 
 	f := framework.New(t, *buildDir, simFlag, *noenclave, marbleTestAddr, meshServerAddr, clientServerAddr, test.IntegrationMultiPartyManifestJSON, test.IntegrationMultiPartyUpdateJSON)
 	f.UpdateManifest()
@@ -929,16 +1030,18 @@ func TestMultiPartyManifestUpdate(t *testing.T) {
 	log.Println("Initiating multi-party manifest update...")
 	adminOneTLSCert, err := tlsKeyPair(test.AdminOnePrivKey, test.AdminOneCert)
 	require.NoError(err)
-	_, missingAcks, err := api.ManifestUpdateApply(f.Ctx, f.ClientServerAddr, nil, manifestRaw, &adminOneTLSCert)
+	newRecoveryData, _, missingAcks, err := api.ManifestUpdateApply(f.Ctx, f.ClientServerAddr, nil, manifestRaw, &adminOneTLSCert)
 	require.NoError(err)
 	require.Equal(1, missingAcks)
+	assert.Empty(newRecoveryData)
 
 	log.Println("Acknowledging multi-party manifest update...")
 	adminTwoTLSCert, err := tlsKeyPair(test.AdminTwoPrivKey, test.AdminTwoCert)
 	require.NoError(err)
-	_, missingAcks, err = api.ManifestUpdateAcknowledge(f.Ctx, f.ClientServerAddr, nil, manifestRaw, &adminTwoTLSCert)
+	newRecoveryData, _, missingAcks, err = api.ManifestUpdateAcknowledge(f.Ctx, f.ClientServerAddr, nil, manifestRaw, &adminTwoTLSCert)
 	require.NoError(err)
 	require.Equal(0, missingAcks)
+	assert.Empty(newRecoveryData)
 	log.Println("Successfully performed multi-party manifest update.")
 
 	log.Println("Restarting Server-Marble. This should now fail...")

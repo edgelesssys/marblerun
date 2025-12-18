@@ -364,7 +364,7 @@ func TestUpdateManifest_Legacy(t *testing.T) {
 	assert.NoError(err)
 
 	// Update manifest
-	_, _, err = c.UpdateManifest(ctx, []byte(test.UpdateManifest), admin)
+	_, _, _, err = c.UpdateManifest(ctx, []byte(test.UpdateManifest), admin)
 	require.NoError(err)
 
 	// Get new certificates
@@ -439,14 +439,14 @@ func TestUpdateManifestInvalid_Legacy(t *testing.T) {
 
 	// Try to update with unregistered user
 	someUser := user.NewUser("invalid", nil)
-	_, _, err = c.UpdateManifest(ctx, []byte(test.UpdateManifest), someUser)
+	_, _, _, err = c.UpdateManifest(ctx, []byte(test.UpdateManifest), someUser)
 	assert.Error(err)
 
 	admin, err := data.GetUser("admin")
 	assert.NoError(err)
 
 	// Try to update manifest (frontend's SecurityVersion should rise from 3 to 5)
-	_, _, err = c.UpdateManifest(ctx, []byte(test.UpdateManifest), admin)
+	_, _, _, err = c.UpdateManifest(ctx, []byte(test.UpdateManifest), admin)
 	require.NoError(err)
 	cUpdatedPackage, err := data.GetPackage("frontend")
 	assert.NoError(err)
@@ -460,7 +460,7 @@ func TestUpdateManifestInvalid_Legacy(t *testing.T) {
 	badUpdateManifest.Packages["nonExisting"] = badUpdateManifest.Packages["frontend"]
 	badRawManifest, err := json.Marshal(badUpdateManifest)
 	require.NoError(err)
-	_, _, err = c.UpdateManifest(ctx, badRawManifest, admin)
+	_, _, _, err = c.UpdateManifest(ctx, badRawManifest, admin)
 	assert.Error(err)
 
 	delete(badUpdateManifest.Packages, "nonExisting")
@@ -471,7 +471,7 @@ func TestUpdateManifestInvalid_Legacy(t *testing.T) {
 	badUpdateManifest.Packages["frontend"] = badModPackage
 	badRawManifest, err = json.Marshal(badUpdateManifest)
 	require.NoError(err)
-	_, _, err = c.UpdateManifest(ctx, badRawManifest, admin)
+	_, _, _, err = c.UpdateManifest(ctx, badRawManifest, admin)
 	assert.Error(err)
 
 	badModPackage.Debug = false
@@ -481,7 +481,7 @@ func TestUpdateManifestInvalid_Legacy(t *testing.T) {
 	badUpdateManifest.Packages["frontend"] = badModPackage
 	badRawManifest, err = json.Marshal(badUpdateManifest)
 	require.NoError(err)
-	_, _, err = c.UpdateManifest(ctx, badRawManifest, admin)
+	_, _, _, err = c.UpdateManifest(ctx, badRawManifest, admin)
 	assert.Error(err)
 
 	// Test if downgrading fails
@@ -491,7 +491,7 @@ func TestUpdateManifestInvalid_Legacy(t *testing.T) {
 	badUpdateManifest.Packages["frontend"] = badModPackage
 	badRawManifest, err = json.Marshal(badUpdateManifest)
 	require.NoError(err)
-	_, _, err = c.UpdateManifest(ctx, badRawManifest, admin)
+	_, _, _, err = c.UpdateManifest(ctx, badRawManifest, admin)
 	assert.Error(err)
 
 	// Test if downgrading fails
@@ -501,7 +501,7 @@ func TestUpdateManifestInvalid_Legacy(t *testing.T) {
 	badUpdateManifest.Packages["frontend"] = badModPackage
 	badRawManifest, err = json.Marshal(badUpdateManifest)
 	require.NoError(err)
-	_, _, err = c.UpdateManifest(ctx, badRawManifest, admin)
+	_, _, _, err = c.UpdateManifest(ctx, badRawManifest, admin)
 	assert.Error(err)
 
 	// Test if removing a package from a currently existing update manifest fails
@@ -509,14 +509,14 @@ func TestUpdateManifestInvalid_Legacy(t *testing.T) {
 	delete(badUpdateManifest.Packages, "frontend")
 	badRawManifest, err = json.Marshal(badUpdateManifest)
 	require.NoError(err)
-	_, _, err = c.UpdateManifest(ctx, badRawManifest, admin)
+	_, _, _, err = c.UpdateManifest(ctx, badRawManifest, admin)
 	assert.Error(err)
 
 	// Test what happens if no packages are defined at all
 	badUpdateManifest.Packages = nil
 	badRawManifest, err = json.Marshal(badUpdateManifest)
 	require.NoError(err)
-	_, _, err = c.UpdateManifest(ctx, badRawManifest, admin)
+	_, _, _, err = c.UpdateManifest(ctx, badRawManifest, admin)
 	assert.Error(err)
 }
 
@@ -569,7 +569,7 @@ func TestUpdateDebugMarble_Legacy(t *testing.T) {
 
 	// Try to update manifest
 	// frontend's security version, which was previously unset, should now be set to 5
-	_, _, err = c.UpdateManifest(ctx, []byte(test.UpdateManifest), admin)
+	_, _, _, err = c.UpdateManifest(ctx, []byte(test.UpdateManifest), admin)
 	require.NoError(err)
 
 	updatedPackage, err := data.GetPackage("frontend")

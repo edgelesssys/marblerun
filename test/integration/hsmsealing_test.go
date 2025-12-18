@@ -92,7 +92,7 @@ func TestHSMSealing(t *testing.T) {
 
 	// Update the manifest to disable HSM sealing
 	hsmSealingManifest.Config.FeatureGates = nil
-	_, missing, err := f.SetUpdateManifest(hsmSealingManifest, test.AdminOneCert, test.AdminOnePrivKey)
+	_, _, missing, err := f.SetUpdateManifest(hsmSealingManifest, test.AdminOneCert, test.AdminOnePrivKey)
 	require.NoError(err, "failed to update manifest to disable HSM sealing")
 	require.Zero(missing, "manifest update incomplete: missing user acknowledgements")
 

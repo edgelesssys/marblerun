@@ -1048,7 +1048,7 @@ func TestUpdateManifest(t *testing.T) {
 			updater: user.NewUser("admin", mustParseCert(t, test.AdminCert)),
 			wantErr: true,
 		},
-		"invalid manifest: missing recovery keys": {
+		"recover keys removed": {
 			updateManifest: func() manifest.Manifest {
 				manifest := testUpdateManifest()
 				manifest.RecoveryKeys = nil
@@ -1068,9 +1068,9 @@ func TestUpdateManifest(t *testing.T) {
 				u.Assign(user.NewPermission(user.PermissionUpdateManifest, []string{}))
 				return u
 			}(),
-			wantErr: true,
+			wantErr: false,
 		},
-		"invalid manifest: changed recovery keys": {
+		"changed recovery keys": {
 			updateManifest: func() manifest.Manifest {
 				manifest := testUpdateManifest()
 				manifest.RecoveryKeys = map[string]string{
@@ -1092,11 +1092,13 @@ func TestUpdateManifest(t *testing.T) {
 				u.Assign(user.NewPermission(user.PermissionUpdateManifest, []string{}))
 				return u
 			}(),
-			wantErr: true,
+			wantErr: false,
 		},
-		"invalid manifest: changed recovery threshold": {
+		"changed recovery threshold": {
 			updateManifest: func() manifest.Manifest {
 				manifest := testUpdateManifest()
+				manifest.RecoveryKeys["key2"] = manifest.RecoveryKeys["key"]
+				manifest.RecoveryKeys["key3"] = manifest.RecoveryKeys["key"]
 				manifest.Config.RecoveryThreshold = 2
 				return manifest
 			}(),
@@ -1119,7 +1121,7 @@ func TestUpdateManifest(t *testing.T) {
 				u.Assign(user.NewPermission(user.PermissionUpdateManifest, []string{}))
 				return u
 			}(),
-			wantErr: true,
+			wantErr: false,
 		},
 		"symmetric secret file": {
 			updateManifest: func() manifest.Manifest {
@@ -1234,7 +1236,7 @@ func TestUpdateManifest(t *testing.T) {
 			updateManifest, err := json.Marshal(tc.updateManifest)
 			require.NoError(err)
 
-			_, _, err = api.UpdateManifest(ctx, updateManifest, tc.updater)
+			_, _, _, err = api.UpdateManifest(ctx, updateManifest, tc.updater)
 			if tc.wantErr {
 				assert.Error(err)
 				time.Sleep(50 * time.Millisecond) // Short wait since the clean up is async.
@@ -1312,11 +1314,11 @@ func TestMultiPartyUpdate(t *testing.T) {
 	assert.Error(err)
 
 	// try to acknowledge update, should fail
-	_, _, err = api.AcknowledgePendingUpdate(ctx, updateMnfJSON, admin1)
+	_, _, _, err = api.AcknowledgePendingUpdate(ctx, updateMnfJSON, admin1)
 	assert.Error(err)
 
 	// Initialize update with first admin
-	missingUsers, missingAcks, err := api.UpdateManifest(ctx, updateMnfJSON, admin1)
+	_, missingUsers, missingAcks, err := api.UpdateManifest(ctx, updateMnfJSON, admin1)
 	require.NoError(err)
 
 	pendingUpdate := getPendingUpdate(t, api.txHandle)
@@ -1332,29 +1334,29 @@ func TestMultiPartyUpdate(t *testing.T) {
 	assert.Equal(2, pending.MissingAcknowledgments())
 
 	// Try to acknowledge with first admin, should do nothing
-	missing, missingAcks, err := api.AcknowledgePendingUpdate(ctx, updateMnfJSON, admin1)
+	_, missing, missingAcks, err := api.AcknowledgePendingUpdate(ctx, updateMnfJSON, admin1)
 	assert.NoError(err)
 	assert.ElementsMatch([]string{admin2.Name(), admin3.Name()}, missing)
 	assert.Equal(2, missingAcks)
 
 	// Try to overwrite the pending update by starting a new update, should fail
-	_, _, err = api.UpdateManifest(ctx, updateMnfJSON, admin1)
+	_, _, _, err = api.UpdateManifest(ctx, updateMnfJSON, admin1)
 	assert.Error(err)
-	_, _, err = api.UpdateManifest(ctx, []byte(test.UpdateManifest), admin1)
+	_, _, _, err = api.UpdateManifest(ctx, []byte(test.UpdateManifest), admin1)
 	assert.Error(err)
 
 	// Acknowledge with different manifest, should fail
-	_, _, err = api.AcknowledgePendingUpdate(ctx, mnfJSON, admin2)
+	_, _, _, err = api.AcknowledgePendingUpdate(ctx, mnfJSON, admin2)
 	assert.Error(err)
 
 	// Acknowledge with second admin
-	missing, missingAcks, err = api.AcknowledgePendingUpdate(ctx, updateMnfJSON, admin2)
+	_, missing, missingAcks, err = api.AcknowledgePendingUpdate(ctx, updateMnfJSON, admin2)
 	require.NoError(err)
 	assert.ElementsMatch([]string{admin3.Name()}, missing)
 	assert.Equal(1, missingAcks)
 
 	// Acknowledge with third admin
-	missing, missingAcks, err = api.AcknowledgePendingUpdate(ctx, updateMnfJSON, admin3)
+	_, missing, missingAcks, err = api.AcknowledgePendingUpdate(ctx, updateMnfJSON, admin3)
 	require.NoError(err)
 	assert.Len(missing, 0)
 	assert.Equal(0, missingAcks)
@@ -1368,7 +1370,7 @@ func TestMultiPartyUpdate(t *testing.T) {
 	assert.Error(err)
 
 	// Start a new update and try to cancel it
-	missingUsers, missingAcks, err = api.UpdateManifest(ctx, updateMnfJSON, admin1)
+	_, missingUsers, missingAcks, err = api.UpdateManifest(ctx, updateMnfJSON, admin1)
 	require.NoError(err)
 
 	pendingUpdate = getPendingUpdate(t, api.txHandle)
@@ -1497,7 +1499,9 @@ type fakeStore struct {
 	beginTransactionErr   error
 	setRecoveryDataCalled bool
 	recoveryData          []byte
+	oldRecoveryData       []byte
 	encryptionKey         []byte
+	oldEncryptionKey      []byte
 	loadStateRes          []byte
 	loadStateErr          error
 	loadCalled            bool
@@ -1512,7 +1516,12 @@ func (s *fakeStore) BeginTransaction(ctx context.Context) (store.Transaction, er
 }
 
 func (s *fakeStore) SetEncryptionKey(key []byte, _ seal.Mode) {
+	s.oldEncryptionKey = s.encryptionKey
 	s.encryptionKey = key
+}
+
+func (s *fakeStore) ResetEncryptionKey() {
+	s.encryptionKey = s.oldEncryptionKey
 }
 
 func (s *fakeStore) SealEncryptionKey(_ []byte) error {
@@ -1520,8 +1529,13 @@ func (s *fakeStore) SealEncryptionKey(_ []byte) error {
 }
 
 func (s *fakeStore) SetRecoveryData(recoveryData []byte) {
+	s.oldRecoveryData = s.recoveryData
 	s.setRecoveryDataCalled = true
 	s.recoveryData = recoveryData
+}
+
+func (s *fakeStore) ResetRecoveryData() {
+	s.recoveryData = s.oldRecoveryData
 }
 
 func (s *fakeStore) LoadState() ([]byte, []byte, error) {
@@ -1536,8 +1550,7 @@ func (s *fakeStore) BeginReadTransaction(ctx context.Context, recoveryKey []byte
 type stubRecovery struct {
 	generateEncryptionKeyRes []byte
 	generateEncryptionKeyErr error
-	generateRecoveryDataRes  map[string][]byte
-	generateRecoveryDataErr  error
+	secretMap                map[string][]byte
 	recoverKeyRes            []byte
 	recoverKeyErr            error
 	recoverKeysLeft          int
@@ -1550,12 +1563,8 @@ type stubRecovery struct {
 	decryptRecoverySecretErr error
 }
 
-func (s *stubRecovery) GenerateEncryptionKey(_ map[string]string, _ uint) ([]byte, error) {
-	return s.generateEncryptionKeyRes, s.generateEncryptionKeyErr
-}
-
-func (s *stubRecovery) GenerateRecoveryData(_ map[string]string) (map[string][]byte, []byte, error) {
-	return s.generateRecoveryDataRes, nil, s.generateRecoveryDataErr
+func (s *stubRecovery) GenerateEncryptionKey(_ map[string]string, _ uint) ([]byte, []byte, map[string][]byte, error) {
+	return s.generateEncryptionKeyRes, nil, s.secretMap, s.generateEncryptionKeyErr
 }
 
 func (s *stubRecovery) RecoverKey(_ []byte) (int, []byte, error) {
@@ -1618,6 +1627,8 @@ func (s *fakeStoreTransaction) SetEncryptionKey(_ []byte, mode seal.Mode) {
 	s.sealMode = mode
 }
 
+func (s *fakeStoreTransaction) ResetEncryptionKey() {}
+
 func (s *fakeStoreTransaction) SealEncryptionKey(_ []byte) error {
 	return s.sealEncryptionKeyErr
 }
@@ -1625,6 +1636,8 @@ func (s *fakeStoreTransaction) SealEncryptionKey(_ []byte) error {
 func (s *fakeStoreTransaction) SetRecoveryData(_ []byte) {
 	s.setRecoveryDataCalled = true
 }
+
+func (s *fakeStoreTransaction) ResetRecoveryData() {}
 
 func (s *fakeStoreTransaction) LoadState() ([]byte, []byte, error) {
 	s.loadStateCalled = true

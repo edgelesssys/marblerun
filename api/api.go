@@ -316,22 +316,25 @@ func ManifestSet(ctx context.Context, endpoint string, trustedRoot *x509.Certifi
 // ManifestUpdateApply sets a manifest update for a MarbleRun deployment.
 // On a complete manifest update, returns a list of users that may acknowledge the update
 // and the number of remaining acknowledgements before the update is applied.
-func ManifestUpdateApply(ctx context.Context, endpoint string, trustedRoot *x509.Certificate, updateManifest []byte, clientKeyPair *tls.Certificate) ([]string, int, error) {
+// Returns recovery data if the manifest changed the recovery secrets.
+func ManifestUpdateApply(
+	ctx context.Context, endpoint string, trustedRoot *x509.Certificate, updateManifest []byte, clientKeyPair *tls.Certificate,
+) (recoveryData map[string][]byte, missingUsers []string, missingAcknowledgements int, err error) {
 	client, err := rest.NewClient(endpoint, trustedRoot, clientKeyPair)
 	if err != nil {
-		return nil, 0, fmt.Errorf("setting up client: %w", err)
+		return nil, nil, 0, fmt.Errorf("setting up client: %w", err)
 	}
 
-	missingUsers, missingAcks, err := manifestUpdateApplyV2(ctx, client, updateManifest)
+	recoveryData, missingUsers, missingAcks, err := manifestUpdateApplyV2(ctx, client, updateManifest)
 	if rest.IsNotAllowedErr(err) {
 		missingAcks = 0
 		missingUsers = nil
 		err = manifestUpdateApplyV1(ctx, client, updateManifest)
 	}
 	if err != nil {
-		return nil, 0, fmt.Errorf("applying manifest update: %w", err)
+		return nil, nil, 0, fmt.Errorf("applying manifest update: %w", err)
 	}
-	return missingUsers, missingAcks, nil
+	return recoveryData, missingUsers, missingAcks, nil
 }
 
 // ManifestUpdateGet retrieves a pending manifest update of a MarbleRun deployment.
@@ -362,23 +365,24 @@ func ManifestUpdateGet(ctx context.Context, endpoint string, trustedRoot *x509.C
 
 // ManifestUpdateAcknowledge acknowledges the pending manifest update of a MarbleRun deployment.
 // On success, it returns the number of remaining acknowledgements before the update is applied.
+// Returns recovery data if the manifest changed the recovery secrets.
 func ManifestUpdateAcknowledge(
 	ctx context.Context, endpoint string, trustedRoot *x509.Certificate, updateManifest []byte, clientKeyPair *tls.Certificate,
-) (missingUsers []string, missingAcknowledgements int, err error) {
+) (recoveryData map[string][]byte, missingUsers []string, missingAcknowledgements int, err error) {
 	client, err := rest.NewClient(endpoint, trustedRoot, clientKeyPair)
 	if err != nil {
-		return nil, -1, fmt.Errorf("setting up client: %w", err)
+		return nil, nil, -1, fmt.Errorf("setting up client: %w", err)
 	}
 
 	// Attempt to acknowledge the update using the v2 API first
-	missingUsers, missingAcknowledgements, err = manifestUpdateAcknowledgeV2(ctx, client, updateManifest)
+	recoveryData, missingUsers, missingAcknowledgements, err = manifestUpdateAcknowledgeV2(ctx, client, updateManifest)
 	if rest.IsNotAllowedErr(err) {
 		missingUsers, missingAcknowledgements, err = manifestUpdateAcknowledgeV1(ctx, client, updateManifest)
 	}
 	if err != nil {
-		return nil, -1, fmt.Errorf("sending manifest update acknowledgement: %w", err)
+		return nil, nil, -1, fmt.Errorf("sending manifest update acknowledgement: %w", err)
 	}
-	return missingUsers, missingAcknowledgements, err
+	return recoveryData, missingUsers, missingAcknowledgements, nil
 }
 
 // ManifestUpdateCancel cancels a pending manifest update of a MarbleRun deployment.
