@@ -549,4 +549,4 @@ The user submitting the update implicitly acknowledges it as well, meaning an `U
 
 * `SignQuoteEndpoint`: enables the [sign-quote endpoint](../reference/coordinator.md#verify-and-sign-an-sgx-quote)
 * `MonotonicCounter`: enables the [monotonic counter feature](https://github.com/edgelesssys/marblerun/tree/master/samples/estore)
-* `AzureHSMSealing`:: enables [Azure Managed HSM sealing using Secure Key Release](../features/hsm-sealing.md)
+* `AzureHSMSealing`: enables [Azure Managed HSM sealing using Secure Key Release](../features/hsm-sealing.md)

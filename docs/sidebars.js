@@ -190,6 +190,11 @@ const sidebars = {
           label: 'Recover the Coordinator',
           id: 'workflows/recover-coordinator',
         },
+        {
+          type: 'doc',
+          label: 'Configure Azure HSM sealing',
+          id: 'workflows/hsm-sealing',
+        },
       ],
     },
     {
