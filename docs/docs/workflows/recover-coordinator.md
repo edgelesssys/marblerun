@@ -51,6 +51,12 @@ After recovery, you can scale the Coordinator back to the desired number of inst
 
 :::
 
+:::tip
+
+Use the [`RecoveryThreshold` manifest option](./define-manifest.md#config) to set the number of secrets required to recover the Coordinator.
+
+:::
+
 ### Example
 
 The following gives an example of a multi-party recovery workflow.
