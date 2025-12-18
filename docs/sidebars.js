@@ -80,6 +80,11 @@ const sidebars = {
         },
         {
           type: 'doc',
+          label: 'Azure HSM integration',
+          id: 'features/hsm-sealing',
+        },
+        {
+          type: 'doc',
           label: 'Supported runtimes',
           id: 'features/runtimes',
         },
@@ -184,6 +189,11 @@ const sidebars = {
           type: 'doc',
           label: 'Recover the Coordinator',
           id: 'workflows/recover-coordinator',
+        },
+        {
+          type: 'doc',
+          label: 'Configure Azure HSM sealing',
+          id: 'workflows/hsm-sealing',
         },
       ],
     },
