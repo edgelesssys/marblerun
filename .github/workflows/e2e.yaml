@@ -98,7 +98,7 @@ jobs:
 
       - name: Install dependencies
         env:
-          ERT_VERSION: "0.4.13"
+          ERT_VERSION: "0.5.0"
         run: |
           ERT_DEB=${ERT_VERSION}_amd64_ubuntu-24.04
           wget -qO- https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo apt-key add
