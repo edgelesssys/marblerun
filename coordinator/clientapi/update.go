@@ -17,6 +17,8 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"net"
+	"slices"
 	"time"
 
 	"github.com/edgelesssys/marblerun/coordinator/constants"
@@ -435,10 +437,8 @@ func (a *ClientAPI) updateSecrets(wrapper secretGetter, mnf manifest.Manifest) e
 
 	coordDNSNames := rootCert.DNSNames
 	for _, ip := range rootCert.IPAddresses {
-		for _, defaultIP := range util.DefaultCertificateIPAddresses {
-			if !ip.Equal(defaultIP) {
-				coordDNSNames = append(coordDNSNames, ip.String())
-			}
+		if !slices.ContainsFunc(util.DefaultCertificateIPAddresses, func(defaultIP net.IP) bool { return ip.Equal(defaultIP) }) {
+			coordDNSNames = append(coordDNSNames, ip.String())
 		}
 	}
 
