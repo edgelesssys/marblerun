@@ -593,7 +593,9 @@ func (m Manifest) TemplateDryRun(secrets map[string]Secret) error {
 	}
 	templateSecrets := TemplateSecrets{
 		SecretsWrapper: secretsWrapper,
-		Previous:       secretsWrapper, // simply duplicate current secrets for the dry run
+		Previous: struct{ Secrets map[string]Secret }{
+			Secrets: secrets, // simply duplicate current secrets for the dry run
+		},
 	}
 	// make sure templates in file/env declarations can actually be executed
 	for marbleName, marble := range m.Marbles {
@@ -708,10 +710,12 @@ type SecretsWrapper struct {
 
 // TemplateSecrets is used to bundle current and previous secrets for template execution.
 // Secrets of the current manifest are available under .Secrets, and .MarbleRun,
-// while secrets of the previous manifest are available under .Previous.Secrets and .Previous.MarbleRun.
+// while secrets of the previous manifest are available under .Previous.Secrets.
 type TemplateSecrets struct {
 	SecretsWrapper
-	Previous SecretsWrapper
+	Previous struct {
+		Secrets map[string]Secret
+	}
 }
 
 // PrivateKey is a symmetric key or an asymmetric private key in PKCS #8, ASN.1 DER form,

@@ -1105,17 +1105,9 @@ func TestRootSecretRotation(t *testing.T) {
 	require.NoError(err)
 	require.Equal(0, missing)
 
-	// Old root cert should no longer be valid
-	_, _, err = api.GetStatus(t.Context(), f.ClientServerAddr, rootCert)
-	assert.Error(err)
-
-	log.Println("Retrieving new root certificate")
-	newRootCert, _, _, err := api.VerifyCoordinator(t.Context(), f.ClientServerAddr, api.VerifyOptions{InsecureSkipVerify: true})
-	require.NoError(err)
-
-	// New root cert should be usable to connect to the Coordinator
-	status, _, err = api.GetStatus(t.Context(), f.ClientServerAddr, newRootCert)
-	require.NoError(err)
+	// Old root cert should still be valid
+	status, _, err = api.GetStatus(t.Context(), f.ClientServerAddr, rootCert)
+	assert.NoError(err)
 	assert.EqualValues(state.AcceptingMarbles, status)
 
 	log.Println("Starting a Server-Marble")

@@ -1458,7 +1458,7 @@ func (c *fakeCore) GetState(_ context.Context) (state.State, string, error) {
 	return c.state, c.getStateMsg, c.getStateErr
 }
 
-func (c *fakeCore) GenerateSecrets(newSecrets map[string]manifest.Secret, id uuid.UUID, _ string, rootCert *x509.Certificate, privK *ecdsa.PrivateKey, _ *ecdsa.PrivateKey,
+func (c *fakeCore) GenerateSecrets(newSecrets map[string]manifest.Secret, id uuid.UUID, _ string, rootCert *x509.Certificate, privK *ecdsa.PrivateKey, _ []byte,
 ) (map[string]manifest.Secret, error) {
 	if c.generateSecretsErr != nil {
 		return nil, c.generateSecretsErr
@@ -1498,8 +1498,8 @@ func (c *fakeCore) GenerateSecrets(newSecrets map[string]manifest.Secret, id uui
 	return secrets, nil
 }
 
-func (c *fakeCore) GetQuote(_, nonce []byte) ([]byte, error) {
-	if nonce != nil {
+func (c *fakeCore) GetQuote(reportData []byte) ([]byte, error) {
+	if reportData != nil {
 		return append([]byte("nonce"), c.quote...), nil
 	}
 	return c.quote, nil

@@ -52,9 +52,9 @@ type core interface {
 	}) error
 	GetState(context.Context) (state.State, string, error)
 	GenerateSecrets(
-		map[string]manifest.Secret, uuid.UUID, string, *x509.Certificate, *ecdsa.PrivateKey, *ecdsa.PrivateKey,
+		map[string]manifest.Secret, uuid.UUID, string, *x509.Certificate, *ecdsa.PrivateKey, []byte,
 	) (map[string]manifest.Secret, error)
-	GetQuote(reportData, nonce []byte) ([]byte, error)
+	GetQuote(reportData []byte) ([]byte, error)
 	GenerateQuote([]byte) error
 }
 
@@ -182,7 +182,11 @@ func (a *ClientAPI) GetCertQuote(ctx context.Context, nonce []byte) (cert string
 	}
 
 	// Get existing quote for root cert, or generate a new one over provided nonce
-	quote, err := a.core.GetQuote(rootCert.Raw, nonce)
+	var reportData []byte
+	if len(nonce) > 0 {
+		reportData = append(rootCert.Raw, nonce...)
+	}
+	quote, err := a.core.GetQuote(reportData)
 	if err != nil {
 		return "", nil, fmt.Errorf("getting quote: %w", err)
 	}
@@ -334,15 +338,19 @@ func (a *ClientAPI) SetManifest(ctx context.Context, rawManifest []byte) (recove
 	if err != nil {
 		return nil, fmt.Errorf("loading intermediate private key from store: %w", err)
 	}
+	rootSecret, err := txdata.GetRootSecret()
+	if err != nil {
+		return nil, fmt.Errorf("loading root secret from store: %w", err)
+	}
 
 	// Generate shared secrets specified in manifest
-	secrets, err := a.core.GenerateSecrets(mnf.Secrets, uuid.Nil, "", marbleRootCert, intermediatePrivK, rootPrivK)
+	secrets, err := a.core.GenerateSecrets(mnf.Secrets, uuid.Nil, "", marbleRootCert, intermediatePrivK, rootSecret)
 	if err != nil {
 		a.log.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
 		return nil, fmt.Errorf("generating secrets from manifest: %w", err)
 	}
 	// generate placeholders for private secrets specified in manifest
-	privSecrets, err := a.core.GenerateSecrets(mnf.Secrets, uuid.New(), "", marbleRootCert, intermediatePrivK, rootPrivK)
+	privSecrets, err := a.core.GenerateSecrets(mnf.Secrets, uuid.New(), "", marbleRootCert, intermediatePrivK, rootSecret)
 	if err != nil {
 		a.log.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
 		return nil, fmt.Errorf("generating placeholder secrets from manifest: %w", err)
@@ -697,6 +705,10 @@ func (a *ClientAPI) updateManifest(ctx context.Context, rawUpdateManifest []byte
 	if err != nil {
 		return nil, 0, fmt.Errorf("loading root private key from store: %w", err)
 	}
+	rootSecret, err := txdata.GetRootSecret()
+	if err != nil {
+		return nil, 0, fmt.Errorf("loading root secret from store: %w", err)
+	}
 
 	// Generate new cross-signed intermediate CA for Marble gRPC authentication
 	intermediateCert, intermediatePrivK, err := crypto.GenerateCert(rootCert.DNSNames, constants.CoordinatorIntermediateName, nil, rootCert, rootPrivK)
@@ -722,7 +734,7 @@ func (a *ClientAPI) updateManifest(ctx context.Context, rawUpdateManifest []byte
 	}
 
 	// Regenerate shared secrets specified in manifest
-	regeneratedSecrets, err := a.core.GenerateSecrets(secretsToRegenerate, uuid.Nil, "", marbleRootCert, intermediatePrivK, rootPrivK)
+	regeneratedSecrets, err := a.core.GenerateSecrets(secretsToRegenerate, uuid.Nil, "", marbleRootCert, intermediatePrivK, rootSecret)
 	if err != nil {
 		a.log.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
 		return nil, 0, fmt.Errorf("regenerating shared secrets for updated manifest: %w", err)

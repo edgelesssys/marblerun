@@ -34,16 +34,6 @@ const (
 	SKCoordinatorIntermediateKey = "coordinatorIntermediateKey"
 	// SKMarbleRootCert is the key for the root certificate for Marble certificates.
 	SKMarbleRootCert = "marbleRootCert"
-	// SKPreviousCoordinatorRootCert is the key for the Coordinator's root certificate of the previous manifest.
-	SKPreviousCoordinatorRootCert = "previousCoordinatorRootCert"
-	// SKPreviousCoordinatorRootKey is the key for private key corresponding to the Coordinator's root certificate of the previous manifest.
-	SKPreviousCoordinatorRootKey = "previousCoordinatorRootKey"
-	// SKPreviousCoordinatorIntermediateCert is the key for the Coordinator's intermediate certificate of the previous manifest.
-	SKPreviousCoordinatorIntermediateCert = "previousCoordinatorIntermediateCert"
-	// SKPreviousCoordinatorIntermediateKey is the key for private key corresponding to the Coordinator's intermediate certificate of the previous manifest.
-	SKPreviousCoordinatorIntermediateKey = "previousCoordinatorIntermediateKey"
-	// SKPreviousMarbleRootCert is the key for the root certificate for Marble certificates of the previous manifest.
-	SKPreviousMarbleRootCert = "previousMarbleRootCert"
 
 	// MeshAddr is the coordinator's address for the gRPC server to listen on.
 	MeshAddr = "EDG_COORDINATOR_MESH_ADDR"

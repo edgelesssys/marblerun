@@ -220,6 +220,8 @@ func TestUpdateSecrets(t *testing.T) {
 			require.NoError(err)
 			defer rollback()
 
+			rootSecret, err := wrapper.GetRootSecret()
+			require.NoError(err)
 			rootCert, err := wrapper.GetCertificate(constants.SKCoordinatorRootCert)
 			require.NoError(err)
 			rootKey, err := wrapper.GetPrivateKey(constants.SKCoordinatorRootKey)
@@ -255,26 +257,24 @@ func TestUpdateSecrets(t *testing.T) {
 			require.NoError(commit(ctx))
 
 			newRootCert := testutil.GetCertificate(t, api.txHandle, constants.SKCoordinatorRootCert)
+			assert.Equal(rootCert, newRootCert, "root certificate should be unchanged")
 			newRootKey := testutil.GetPrivateKey(t, api.txHandle, constants.SKCoordinatorRootKey)
+			assert.Equal(rootKey, newRootKey, "root private key should be unchanged")
 			newIntermediateCert := testutil.GetCertificate(t, api.txHandle, constants.SKCoordinatorIntermediateCert)
 			assert.NotEqual(intermediateCert, newIntermediateCert)
 			newIntermediateKey := testutil.GetPrivateKey(t, api.txHandle, constants.SKCoordinatorIntermediateKey)
 			assert.NotEqual(intermediateKey, newIntermediateKey)
 			newMarbleCert := testutil.GetCertificate(t, api.txHandle, constants.SKMarbleRootCert)
 			assert.NotEqual(marbleCert, newMarbleCert)
+			previousRootSecret := testutil.GetPreviousRootSecret(t, api.txHandle)
+			assert.Equal(rootSecret, previousRootSecret, "root secret should be saved as previous root secret")
+			newRootSecret := testutil.GetRootSecret(t, api.txHandle)
 
 			if tc.manifest.Config.RotateRootSecret {
-				assert.NotEqual(rootCert, newRootCert, "root cert should be rotated")
-				assert.NotEqual(rootKey, newRootKey, "root key should be rotated")
+				assert.NotEqual(rootSecret, newRootSecret, "root secret should have rotated")
 			} else {
-				assert.Equal(rootCert, newRootCert, "root cert should be unchanged")
-				assert.Equal(rootKey, newRootKey, "root key should be unchanged")
+				assert.Equal(rootSecret, newRootSecret, "root secret should be unchanged")
 			}
-
-			previousRootCert := testutil.GetCertificate(t, api.txHandle, constants.SKPreviousCoordinatorRootCert)
-			assert.Equal(rootCert, previousRootCert)
-			previousRootKey := testutil.GetPrivateKey(t, api.txHandle, constants.SKPreviousCoordinatorRootKey)
-			assert.Equal(rootKey, previousRootKey)
 
 			for name := range tc.manifest.Secrets {
 				testutil.GetSecret(t, api.txHandle, name)

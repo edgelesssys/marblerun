@@ -485,9 +485,10 @@ func TestParseSecrets(t *testing.T) {
 			MarbleRun: testReservedSecrets,
 			Secrets:   testSecrets,
 		},
-		Previous: manifest.SecretsWrapper{
-			MarbleRun: testReservedSecrets,
-			Secrets:   testSecrets,
+		Previous: struct {
+			Secrets map[string]manifest.Secret
+		}{
+			Secrets: testSecrets,
 		},
 	}
 
@@ -537,18 +538,18 @@ func TestParseSecrets(t *testing.T) {
 
 			// Test all the reserved placeholder secrets
 			expectedResult := "-----BEGIN PUBLIC KEY-----\nAAAq\n-----END PUBLIC KEY-----\n"
-			parsedSecret, err = parseSecrets("{{ pem "+prefix+".MarbleRun.RootCA.Public }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
+			parsedSecret, err = parseSecrets("{{ pem .MarbleRun.RootCA.Public }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
 			require.NoError(err)
 			assert.EqualValues(expectedResult, parsedSecret)
 
 			expectedResult = "-----BEGIN PUBLIC KEY-----\nKgAA\n-----END PUBLIC KEY-----\n"
-			parsedSecret, err = parseSecrets("{{ pem "+prefix+".MarbleRun.MarbleCert.Public }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
+			parsedSecret, err = parseSecrets("{{ pem .MarbleRun.MarbleCert.Public }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
 			require.NoError(err)
 			assert.EqualValues(expectedResult, parsedSecret)
 
 			expectedResult = "-----BEGIN PRIVATE KEY-----\nBwAA\n-----END PRIVATE KEY-----\n"
 
-			parsedSecret, err = parseSecrets("{{ pem "+prefix+".MarbleRun.MarbleCert.Private }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
+			parsedSecret, err = parseSecrets("{{ pem .MarbleRun.MarbleCert.Private }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
 			require.NoError(err)
 			assert.EqualValues(expectedResult, parsedSecret)
 

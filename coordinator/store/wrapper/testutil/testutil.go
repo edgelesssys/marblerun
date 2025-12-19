@@ -89,6 +89,20 @@ func GetManifestSignature(t *testing.T, txHandle transactionHandle) []byte {
 	})
 }
 
+// GetRootSecret returns the root secret.
+func GetRootSecret(t *testing.T, txHandler transactionHandle) []byte {
+	return get(t, txHandler, func(tx wrapper.Wrapper) ([]byte, error) {
+		return tx.GetRootSecret()
+	})
+}
+
+// GetPreviousRootSecret returns the previous root secret.
+func GetPreviousRootSecret(t *testing.T, txHandler transactionHandle) []byte {
+	return get(t, txHandler, func(tx wrapper.Wrapper) ([]byte, error) {
+		return tx.GetPreviousRootSecret()
+	})
+}
+
 // GetSecret returns the secret with the given name.
 func GetSecret(t *testing.T, txHandle transactionHandle, name string) manifest.Secret {
 	return get(t, txHandle, func(tx wrapper.Wrapper) (manifest.Secret, error) {

@@ -92,7 +92,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (res *rpc.A
 	}
 
 	// Generate marble authentication secrets
-	authSecrets, previousAuthSecrets, err := c.generateMarbleAuthSecrets(txdata, req, marbleUUID)
+	authSecrets, err := c.generateMarbleAuthSecrets(txdata, req, marbleUUID)
 	if err != nil {
 		c.log.Error("Generating marble authentication secrets failed", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "generating marble authentication secrets: %s", err)
@@ -116,7 +116,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (res *rpc.A
 		return nil, status.Errorf(codes.Internal, "creating TTLS config: %s", err)
 	}
 
-	params, err := customizeParameters(marble.Parameters, authSecrets, previousAuthSecrets, secrets, previousSecrets)
+	params, err := customizeParameters(marble.Parameters, authSecrets, secrets, previousSecrets)
 	if err != nil {
 		c.log.Error("Customizing marble parameters failed", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "customizing marble parameters: %s", err)
@@ -218,39 +218,35 @@ func (c *Core) verifyManifestRequirement(txdata storeGetter, tlsCert *x509.Certi
 func (c *Core) generateMarbleSecrets(txdata storeGetter, marbleUUID uuid.UUID, marbleName string) (secrets, previousSecrets map[string]manifest.Secret, err error) {
 	marbleSecrets := make([]map[string]manifest.Secret, 2)
 
+	marbleRootCert, err := txdata.GetCertificate(constants.SKMarbleRootCert)
+	if err != nil {
+		c.log.Error("Couldn't retrieve marble root certificate", zap.Error(err))
+		return nil, nil, status.Errorf(codes.Internal, "retrieving marbleRootCert certificate: %s", err)
+	}
+
+	intermediatePrivK, err := txdata.GetPrivateKey(constants.SKCoordinatorIntermediateKey)
+	if err != nil {
+		c.log.Error("Couldn't retrieve marbleRootCert private key", zap.Error(err))
+		return nil, nil, status.Errorf(codes.Internal, "retrieving marble root private key: %s", err)
+	}
+
 	for i, cfg := range []struct {
-		marbleRootCert             string
-		coordinatorRootKey         string
-		coordinatorIntermediateKey string
-		getSecrets                 func() (map[string]manifest.Secret, error)
+		getSecrets    func() (map[string]manifest.Secret, error)
+		getRootSecret func() ([]byte, error)
 	}{
 		{
-			constants.SKMarbleRootCert,
-			constants.SKCoordinatorRootKey,
-			constants.SKCoordinatorIntermediateKey,
 			txdata.GetSecretMap,
+			txdata.GetRootSecret,
 		},
 		{
-			constants.SKPreviousMarbleRootCert,
-			constants.SKPreviousCoordinatorRootKey,
-			constants.SKPreviousCoordinatorIntermediateKey,
 			txdata.GetPreviousSecretMap,
+			txdata.GetPreviousRootSecret,
 		},
 	} {
-		marbleRootCert, err := txdata.GetCertificate(cfg.marbleRootCert)
+		rootSecret, err := cfg.getRootSecret()
 		if err != nil {
-			c.log.Error("Couldn't retrieve marble root certificate", zap.Error(err))
-			return nil, nil, status.Errorf(codes.Internal, "retrieving marbleRootCert certificate: %s", err)
-		}
-		rootPrivK, err := txdata.GetPrivateKey(cfg.coordinatorRootKey)
-		if err != nil {
-			c.log.Error("Couldn't retrieve marbleRootCert private key", zap.Error(err))
-			return nil, nil, status.Errorf(codes.Internal, "retrieving marble root private key: %s", err)
-		}
-		intermediatePrivK, err := txdata.GetPrivateKey(cfg.coordinatorIntermediateKey)
-		if err != nil {
-			c.log.Error("Couldn't retrieve marbleRootCert private key", zap.Error(err))
-			return nil, nil, status.Errorf(codes.Internal, "retrieving marble root private key: %s", err)
+			c.log.Error("Loading root secret from store failed", zap.Error(err))
+			return nil, nil, status.Errorf(codes.Internal, "retrieving root secret: %s", err)
 		}
 
 		globalSecrets, err := cfg.getSecrets()
@@ -260,7 +256,7 @@ func (c *Core) generateMarbleSecrets(txdata storeGetter, marbleUUID uuid.UUID, m
 		}
 
 		// Generate unique (= per marble) secrets
-		privateSecrets, err := c.GenerateSecrets(globalSecrets, marbleUUID, marbleName, marbleRootCert, intermediatePrivK, rootPrivK)
+		privateSecrets, err := c.GenerateSecrets(globalSecrets, marbleUUID, marbleName, marbleRootCert, intermediatePrivK, rootSecret)
 		if err != nil {
 			c.log.Error("Couldn't generate specified secrets for the given manifest", zap.Error(err))
 			return nil, nil, status.Errorf(codes.Internal, "generating secrets for marble: %s", err)
@@ -322,7 +318,7 @@ func (c *Core) generateCertFromCSR(rootCert *x509.Certificate, rootPrivK crypto.
 
 // customizeParameters replaces the placeholders in the manifest's parameters with the actual values.
 func customizeParameters(
-	params manifest.Parameters, authSecrets, previousAuthSecrets manifest.ReservedSecrets, userSecrets, previousUserSecrets map[string]manifest.Secret,
+	params manifest.Parameters, authSecrets manifest.ReservedSecrets, userSecrets, previousUserSecrets map[string]manifest.Secret,
 ) (*rpc.Parameters, error) {
 	customParams := rpc.Parameters{
 		Argv:  params.Argv,
@@ -336,9 +332,8 @@ func customizeParameters(
 			MarbleRun: authSecrets,
 			Secrets:   userSecrets,
 		},
-		Previous: manifest.SecretsWrapper{
-			MarbleRun: previousAuthSecrets,
-			Secrets:   previousUserSecrets,
+		Previous: struct{ Secrets map[string]manifest.Secret }{
+			Secrets: previousUserSecrets,
 		},
 	}
 
@@ -417,79 +412,58 @@ func parseSecrets(data string, tplFunc template.FuncMap, secretsWrapped manifest
 	return templateResult.String(), nil
 }
 
-func (c *Core) generateMarbleAuthSecrets(txdata storeGetter, req *rpc.ActivationReq, marbleUUID uuid.UUID) (secrets, previousSecrets manifest.ReservedSecrets, err error) {
+func (c *Core) generateMarbleAuthSecrets(txdata storeGetter, req *rpc.ActivationReq, marbleUUID uuid.UUID) (secrets manifest.ReservedSecrets, err error) {
 	// generate key-pair for marble
 	privk, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 	if err != nil {
-		return manifest.ReservedSecrets{}, manifest.ReservedSecrets{}, err
+		return manifest.ReservedSecrets{}, err
 	}
 	encodedPrivKey, err := x509.MarshalPKCS8PrivateKey(privk)
 	if err != nil {
-		return manifest.ReservedSecrets{}, manifest.ReservedSecrets{}, err
+		return manifest.ReservedSecrets{}, err
 	}
 	encodedPubKey, err := x509.MarshalPKIXPublicKey(&privk.PublicKey)
 	if err != nil {
-		return manifest.ReservedSecrets{}, manifest.ReservedSecrets{}, err
+		return manifest.ReservedSecrets{}, err
 	}
 
-	authSecrets := make([]manifest.ReservedSecrets, 2)
-	for i, cfg := range []struct {
-		marbleRootCert              string
-		coordinatorRootCert         string
-		coordinatorIntermediateCert string
-		coordinatorIntermediateKey  string
-	}{
-		{
-			constants.SKMarbleRootCert,
-			constants.SKCoordinatorRootCert,
-			constants.SKCoordinatorIntermediateCert,
-			constants.SKCoordinatorIntermediateKey,
-		},
-		{
-			constants.SKPreviousMarbleRootCert,
-			constants.SKPreviousCoordinatorRootCert,
-			constants.SKPreviousCoordinatorIntermediateCert,
-			constants.SKPreviousCoordinatorIntermediateKey,
-		},
-	} {
-		marbleRootCert, err := txdata.GetCertificate(cfg.marbleRootCert)
-		if err != nil {
-			return manifest.ReservedSecrets{}, manifest.ReservedSecrets{}, err
-		}
-		coordinatorRootCert, err := txdata.GetCertificate(cfg.coordinatorRootCert)
-		if err != nil {
-			return manifest.ReservedSecrets{}, manifest.ReservedSecrets{}, err
-		}
-		coordinatorIntermediateCert, err := txdata.GetCertificate(cfg.coordinatorIntermediateCert)
-		if err != nil {
-			return manifest.ReservedSecrets{}, manifest.ReservedSecrets{}, err
-		}
-		intermediatePrivK, err := txdata.GetPrivateKey(cfg.coordinatorIntermediateKey)
-		if err != nil {
-			return manifest.ReservedSecrets{}, manifest.ReservedSecrets{}, fmt.Errorf("loading marble root certificate private key: %w", err)
-		}
-
-		// Generate Marble certificate
-		certRaw, err := c.generateCertFromCSR(marbleRootCert, intermediatePrivK, req.GetCSR(), privk.PublicKey, req.GetMarbleType(), marbleUUID.String())
-		if err != nil {
-			return manifest.ReservedSecrets{}, manifest.ReservedSecrets{}, err
-		}
-
-		marbleCert, err := x509.ParseCertificate(certRaw)
-		if err != nil {
-			return manifest.ReservedSecrets{}, manifest.ReservedSecrets{}, err
-		}
-
-		// customize marble's parameters
-		authSecrets[i] = manifest.ReservedSecrets{
-			RootCA:                  manifest.Secret{Cert: manifest.Certificate(*marbleRootCert)},
-			MarbleCert:              manifest.Secret{Cert: manifest.Certificate(*marbleCert), Public: encodedPubKey, Private: encodedPrivKey},
-			CoordinatorRoot:         manifest.Secret{Cert: manifest.Certificate(*coordinatorRootCert)},
-			CoordinatorIntermediate: manifest.Secret{Cert: manifest.Certificate(*coordinatorIntermediateCert)},
-		}
+	marbleRootCert, err := txdata.GetCertificate(constants.SKMarbleRootCert)
+	if err != nil {
+		return manifest.ReservedSecrets{}, err
+	}
+	coordinatorRootCert, err := txdata.GetCertificate(constants.SKCoordinatorRootCert)
+	if err != nil {
+		return manifest.ReservedSecrets{}, err
+	}
+	coordinatorIntermediateCert, err := txdata.GetCertificate(constants.SKCoordinatorIntermediateCert)
+	if err != nil {
+		return manifest.ReservedSecrets{}, err
+	}
+	intermediatePrivK, err := txdata.GetPrivateKey(constants.SKCoordinatorIntermediateKey)
+	if err != nil {
+		return manifest.ReservedSecrets{}, fmt.Errorf("loading marble root certificate private key: %w", err)
 	}
 
-	return authSecrets[0], authSecrets[1], nil
+	// Generate Marble certificate
+	certRaw, err := c.generateCertFromCSR(marbleRootCert, intermediatePrivK, req.GetCSR(), privk.PublicKey, req.GetMarbleType(), marbleUUID.String())
+	if err != nil {
+		return manifest.ReservedSecrets{}, err
+	}
+
+	marbleCert, err := x509.ParseCertificate(certRaw)
+	if err != nil {
+		return manifest.ReservedSecrets{}, err
+	}
+
+	// customize marble's parameters
+	authSecrets := manifest.ReservedSecrets{
+		RootCA:                  manifest.Secret{Cert: manifest.Certificate(*marbleRootCert)},
+		MarbleCert:              manifest.Secret{Cert: manifest.Certificate(*marbleCert), Public: encodedPubKey, Private: encodedPrivKey},
+		CoordinatorRoot:         manifest.Secret{Cert: manifest.Certificate(*coordinatorRootCert)},
+		CoordinatorIntermediate: manifest.Secret{Cert: manifest.Certificate(*coordinatorIntermediateCert)},
+	}
+
+	return authSecrets, nil
 }
 
 func (c *Core) setTTLSConfig(txdata storeGetter, marble *manifest.Marble, specialSecrets manifest.ReservedSecrets, userSecrets map[string]manifest.Secret) error {
@@ -576,6 +550,8 @@ type storeGetter interface {
 	GetMarble(marble string) (manifest.Marble, error)
 	GetPackage(name string) (quote.PackageProperties, error)
 	GetPrivateKey(name string) (*ecdsa.PrivateKey, error)
+	GetRootSecret() ([]byte, error)
+	GetPreviousRootSecret() ([]byte, error)
 	GetSecretMap() (map[string]manifest.Secret, error)
 	GetPreviousSecretMap() (map[string]manifest.Secret, error)
 	GetSecret(name string) (manifest.Secret, error)

@@ -81,7 +81,6 @@ func defaultManifest(userCertPEM []byte, recoveryKeyPEM []byte, defaultPackage P
 						"/data/marble.key":                              {Data: "{{ pem .MarbleRun.MarbleCert.Private }}", Encoding: "string"},
 						"/data/ca.crt":                                  {Data: "{{ pem .MarbleRun.RootCA.Cert }}", Encoding: "string"},
 						"/dev/attestation/previous_protected_files_key": {Data: "{{ hex .Previous.Secrets.ProtectedFilesKey }}", Encoding: "string"},
-						"/data/previous_ca.crt":                         {Data: "{{ pem .Previous.MarbleRun.RootCA.Cert }}", Encoding: "string"},
 					},
 				},
 			},

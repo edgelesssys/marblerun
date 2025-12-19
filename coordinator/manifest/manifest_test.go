@@ -279,25 +279,6 @@ func TestTemplateDryRun(t *testing.T) {
 			}
 			}`),
 		},
-		"reserved secrets from previous state": {
-			manifest: []byte(`{
-			"Packages": { "backend": { "UniqueID": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" }},
-			"Marbles": {
-				"backend_first": {
-					"Package": "backend",
-					"Parameters": {
-						"Files": {
-							"root_ca": "{{ pem .Previous.MarbleRun.RootCA.Cert }}",
-							"marble_cert": "{{ pem .Previous.MarbleRun.MarbleCert.Cert }}",
-							"marble_key": "{{ pem .Previous.MarbleRun.MarbleCert.Private }}",
-							"coordinator_root": "{{ pem .Previous.MarbleRun.CoordinatorRoot.Cert }}",
-							"coordinator_intermediate": "{{ pem .Previous.MarbleRun.CoordinatorIntermediate.Cert }}"
-						}
-					}
-				}
-			}
-			}`),
-		},
 		"reserved root ca does not support private": {
 			manifest: []byte(`{
 			"Packages": { "backend": { "UniqueID": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" }},

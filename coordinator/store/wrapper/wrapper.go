@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/edgelesssys/marblerun/coordinator/constants"
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/quote"
 	"github.com/edgelesssys/marblerun/coordinator/state"
@@ -209,6 +210,39 @@ func (s Wrapper) GetManifestSignature() ([]byte, error) {
 // PutManifestSignature saves the manifests signature to store.
 func (s Wrapper) PutManifestSignature(manifestSignature []byte) error {
 	return s.store.Put(request.ManifestSignature, manifestSignature)
+}
+
+// GetRootSecret returns the Coordinator's root secret.
+// Falls back to using the coordinator root private key for backwards compatibility if not set.
+func (s Wrapper) GetRootSecret() ([]byte, error) {
+	rootSecret, err := s.store.Get(request.RootSecret)
+	if err != nil {
+		if !errors.Is(err, store.ErrValueUnset) {
+			return nil, err
+		}
+		// Backwards compatibility: If root secret is not set, use the coordinator root private key
+		rootPrivK, err := s.GetPrivateKey(constants.SKCoordinatorRootKey)
+		if err != nil {
+			return nil, err
+		}
+		rootSecret = rootPrivK.D.Bytes()
+	}
+	return rootSecret, nil
+}
+
+// PutRootSecret saves the Coordinator's root secret to store.
+func (s Wrapper) PutRootSecret(rootSecret []byte) error {
+	return s.store.Put(request.RootSecret, rootSecret)
+}
+
+// GetPreviousRootSecret returns the previous Coordinator's root secret.
+func (s Wrapper) GetPreviousRootSecret() ([]byte, error) {
+	return s.store.Get(request.PreviousRootSecret)
+}
+
+// PutPreviousRootSecret saves the previous Coordinator's root secret to store.
+func (s Wrapper) PutPreviousRootSecret(previousRootSecret []byte) error {
+	return s.store.Put(request.PreviousRootSecret, previousRootSecret)
 }
 
 // GetSecret returns a secret from store.

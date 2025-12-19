@@ -8,7 +8,6 @@ SPDX-License-Identifier: BUSL-1.1
 package core
 
 import (
-	"bytes"
 	"context"
 	"crypto"
 	"crypto/ecdsa"
@@ -46,10 +45,9 @@ import (
 type Core struct {
 	mux sync.Mutex
 
-	reportData []byte
-	quote      []byte
-	qv         quote.Validator
-	qi         quote.Issuer
+	quote []byte
+	qv    quote.Validator
+	qi    quote.Issuer
 
 	recovery recovery.Recovery
 	metrics  *coreMetrics
@@ -262,40 +260,26 @@ func (c *Core) GetTLSMarbleRootCertificate(clientHello *tls.ClientHelloInfo) (*t
 }
 
 // GetQuote returns the quote of the Coordinator.
-// If quoteID does not match the cached quoteID of the Core, a new quote is generated over the data and returned.
-func (c *Core) GetQuote(reportData []byte, nonce []byte) ([]byte, error) {
-	// Generate a quote using the nonce
-	if len(nonce) > 0 {
-		c.log.Debug("Generating new quote for report data with nonce")
-		quote, err := c.qi.Issue(append(reportData, nonce...))
-		if err != nil && err.Error() != "OE_UNSUPPORTED" {
-			return nil, QuoteError{err}
-		}
-		return quote, nil
-	}
-
-	// If quoteID matches the cached one (i.e. the root certificate hans't changed)
-	// simply return the cached quote
-	if bytes.Equal(c.reportData, reportData) {
+// If reportData is not nil, a new quote is generated over the data and returned.
+func (c *Core) GetQuote(reportData []byte) ([]byte, error) {
+	if len(reportData) == 0 {
 		c.log.Debug("Returning cached quote")
 		return c.quote, nil
 	}
-
-	// Otherwise, the cached quote no longer matches the requested report data
-	// and we need to generate a new quote
-	c.log.Debug("Generating quote for updated root certificate")
-	if err := c.GenerateQuote(reportData); err != nil {
-		return nil, err
+	c.log.Debug("Generating new quote for report data")
+	quote, err := c.qi.Issue(reportData)
+	if err != nil && err.Error() != "OE_UNSUPPORTED" {
+		return nil, QuoteError{err}
 	}
-	return c.quote, nil
+	return quote, nil
 }
 
-// GenerateQuote generates a quote for the Coordinator using the given data.
+// GenerateQuote generates a quote for the Coordinator using the given certificate.
 // If no quote can be generated due to the system not supporting SGX, no error is returned,
 // and the Coordinator proceeds to run in simulation mode.
-func (c *Core) GenerateQuote(reportData []byte) error {
+func (c *Core) GenerateQuote(cert []byte) error {
 	c.log.Info("Generating quote")
-	quote, err := c.qi.Issue(reportData)
+	quote, err := c.qi.Issue(cert)
 	if err != nil {
 		if err.Error() == "OE_UNSUPPORTED" {
 			c.log.Warn("Failed to get quote. Proceeding in simulation mode.", zap.Error(err))
@@ -308,7 +292,6 @@ func (c *Core) GenerateQuote(reportData []byte) error {
 	}
 
 	c.quote = quote
-	c.reportData = reportData
 	c.log.Debug("Quote generated and stored")
 
 	return nil
@@ -359,7 +342,7 @@ func (c *Core) GetState(ctx context.Context) (state.State, string, error) {
 // GenerateSecrets generates secrets for the given manifest and parent certificate.
 func (c *Core) GenerateSecrets(
 	secrets map[string]manifest.Secret, id uuid.UUID, marbleName string,
-	parentCertificate *x509.Certificate, parentPrivKey *ecdsa.PrivateKey, rootPrivK *ecdsa.PrivateKey,
+	parentCertificate *x509.Certificate, parentPrivKey *ecdsa.PrivateKey, rootSecret []byte,
 ) (map[string]manifest.Secret, error) {
 	// Create a new map so we do not overwrite the entries in the manifest
 	newSecrets := make(map[string]manifest.Secret)
@@ -397,11 +380,10 @@ func (c *Core) GenerateSecrets(
 				}
 			} else {
 				salt := id.String() + name
-				secretKeyDerive := rootPrivK.D.Bytes()
 				var err error
 
 				// Derive key using the uuid and secret name as salt, and the marble's name as info
-				generatedValue, err = util.DeriveKey(secretKeyDerive, []byte(salt), []byte(marbleName), secret.Size/8)
+				generatedValue, err = util.DeriveKey(rootSecret, []byte(salt), []byte(marbleName), secret.Size/8)
 				if err != nil {
 					return nil, err
 				}
@@ -564,8 +546,15 @@ func (c *Core) generateCertificateForSecret(secret manifest.Secret, parentCertif
 func (c *Core) setCAData(dnsNames []string, putter interface {
 	PutCertificate(name string, cert *x509.Certificate) error
 	PutPrivateKey(name string, key *ecdsa.PrivateKey) error
+	PutRootSecret(secret []byte) error
+	PutPreviousRootSecret(secret []byte) error
 },
 ) error {
+	rootSecret := make([]byte, 32)
+	_, err := rand.Read(rootSecret)
+	if err != nil {
+		return fmt.Errorf("generating root secret: %w", err)
+	}
 	rootCert, rootPrivK, err := corecrypto.GenerateCert(dnsNames, constants.CoordinatorName, nil, nil, nil)
 	if err != nil {
 		return fmt.Errorf("generating root certificate and key: %w", err)
@@ -580,43 +569,27 @@ func (c *Core) setCAData(dnsNames []string, putter interface {
 		return fmt.Errorf("generating marble root certificate: %w", err)
 	}
 
-	for _, cfg := range []struct {
-		skCoRootCert         string
-		skCoIntermediateCert string
-		skMarbleRootCert     string
-		skCoRootKey          string
-		skCoIntermediateKey  string
-	}{
-		{
-			constants.SKCoordinatorRootCert,
-			constants.SKCoordinatorIntermediateCert,
-			constants.SKMarbleRootCert,
-			constants.SKCoordinatorRootKey,
-			constants.SKCoordinatorIntermediateKey,
-		},
-		{ // Save current CA data as placeholders for previous CA data
-			constants.SKPreviousCoordinatorRootCert,
-			constants.SKPreviousCoordinatorIntermediateCert,
-			constants.SKPreviousMarbleRootCert,
-			constants.SKPreviousCoordinatorRootKey,
-			constants.SKPreviousCoordinatorIntermediateKey,
-		},
-	} {
-		if err := putter.PutCertificate(cfg.skCoRootCert, rootCert); err != nil {
-			return err
-		}
-		if err := putter.PutCertificate(cfg.skCoIntermediateCert, intermediateCert); err != nil {
-			return err
-		}
-		if err := putter.PutCertificate(cfg.skMarbleRootCert, marbleRootCert); err != nil {
-			return err
-		}
-		if err := putter.PutPrivateKey(cfg.skCoRootKey, rootPrivK); err != nil {
-			return err
-		}
-		if err := putter.PutPrivateKey(cfg.skCoIntermediateKey, intermediatePrivK); err != nil {
-			return err
-		}
+	if err := putter.PutCertificate(constants.SKCoordinatorRootCert, rootCert); err != nil {
+		return err
+	}
+	if err := putter.PutCertificate(constants.SKCoordinatorIntermediateCert, intermediateCert); err != nil {
+		return err
+	}
+	if err := putter.PutCertificate(constants.SKMarbleRootCert, marbleRootCert); err != nil {
+		return err
+	}
+	if err := putter.PutPrivateKey(constants.SKCoordinatorRootKey, rootPrivK); err != nil {
+		return err
+	}
+	if err := putter.PutPrivateKey(constants.SKCoordinatorIntermediateKey, intermediatePrivK); err != nil {
+		return err
+	}
+	if err := putter.PutRootSecret(rootSecret); err != nil {
+		return fmt.Errorf("storing root secret: %w", err)
+	}
+	// Save root secret also as placeholder for previous root secret
+	if err := putter.PutPreviousRootSecret(rootSecret); err != nil {
+		return fmt.Errorf("storing previous root secret: %w", err)
 	}
 
 	return nil
