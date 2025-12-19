@@ -156,7 +156,7 @@ The general format is the following:
 
 `Parameters` are passed from the Coordinator to secure enclaves (i.e., Marbles) after successful initial remote attestation. In the remote attestation step, the Coordinator ensures that enclaves run the software defined in the `Packages` section. It's important to note that `Parameters` are only accessible from within the corresponding secure enclave. `Parameters` may contain arbitrary static data. However, they can also be used to securely communicate different types of dynamically generated cryptographic keys and certificates to Marbles. For this, you can use [Go Templates](https://pkg.go.dev/text/template) with the following syntax.
 
-`{{ <encoding> <name of secret> }}`
+`{{ <encoding> .Secrets.<name of secret> }}`
 
 The following encoding types are available to both `Files` and `Env`:
 
@@ -181,6 +181,14 @@ The following named keys and certificates are always available.
 * `.MarbleRun.CoordinatorIntermediate.Cert`: the intermediate certificate of the Coordinator; see [the public Key infrastructure and certificate authority section](../architecture/security.md#public-key-infrastructure-and-certificate-authority) for more information on how this certificate relates to `.MarbleRun.RootCA`.
 
 Finally, the optional field `MaxActivations` can be used to restrict the number of distinct instances that can be created of a Marble.
+
+:::tip
+
+After you rotate the Coordinator's root secret using the [`RotateRootSecret` config option](#config), secrets based on the previous root secret can still be accessed using the `.Previous` key:
+
+`{{ <encoding> .Previous.Secrets.<name of secret> }}`
+
+:::
 
 ## Secrets
 
@@ -528,7 +536,8 @@ The optional entry `Config` holds configuration settings for the Coordinator.
         "SealMode": "ProductKey",
         "UpdateThreshold": 5,
         "RecoveryThreshold": 3,
-        "FeatureGates": []
+        "FeatureGates": [],
+        "RotateRootSecret": false
     }
     //...
 }
@@ -555,3 +564,7 @@ If not set, or set to zero, all recovery keys defined in the manifest are requir
 * `SignQuoteEndpoint`: enables the [sign-quote endpoint](../reference/coordinator.md#verify-and-sign-an-sgx-quote)
 * `MonotonicCounter`: enables the [monotonic counter feature](https://github.com/edgelesssys/marblerun/tree/master/samples/estore)
 * `AzureHSMSealing`: enables [Azure Managed HSM sealing using Secure Key Release](../features/hsm-sealing.md)
+
+`RotateRootSecret`, if set to true, re-generates the Coordinator's root secret when the manifest is applied.
+This causes all symmetric-key secrets to be re-generated as well.
+Symmetric-key secrets of the previous manifest can still be accessed using the `.Previous` key in your [parameter templates](#templates).
