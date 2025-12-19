@@ -112,3 +112,59 @@ Assume the following `RecoveryKeys` were set in the manifest:
     {"level":"info","ts":1674206836.5563517,"caller":"core/core.go:261","msg":"generating quote"}
     {"level":"info","ts":1674206836.6043515,"caller":"clientapi/clientapi.go:281","msg":"Recover successful"}
     ```
+
+## Offline recovery secret signing
+
+When recovering a Coordinator, the CLI decrypts and signs the secret with your private recovery key before sending it to the Coordinator over a TLS secured connection.
+Depending on your deployment, it may not be acceptable to have your private key or the decrypted recovery secret on a machine connected to the internet.
+For this case, MarbleRun provides the option to retrieve a public key from the Coordinator to encrypt your signed recovery secret on an air-gapped system.
+
+The following gives an example of how to recover MarbleRun with your private recovery key on an air-gapped system.
+
+Assume the following `RecoveryKeys` was set in the manifest:
+
+```javascript
+    "RecoveryKeys": {
+        "alice": "-----BEGIN PUBLIC KEY-----\nMIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAk/6gfFF+cbcTlj8MT+4M\njjpM+suTwNM9gjv47EAAQ==\n-----END PUBLIC KEY-----\n"
+    }
+```
+
+1. The Coordinator returned the following `RecoverySecrets`:
+
+    ```shell-session
+    $ marblerun manifest set manifest.json $MARBLERUN
+    ...
+    {"RecoverySecrets":{"alice":"EbkX/skIPrJISf8PiXdzRIKnwQyJ+VejtGzHGfES5NIPuCeEFedqgCVDk="}}
+    ```
+
+2. On a machine with access to the Coordinator, retrieve the Coordinator's recovery public key:
+
+    ```shell-session
+    $ marblerun status $MARBLERUN
+    1: Coordinator is in recovery mode. Either upload a key to unseal the saved state, or set a new manifest. For more information on how to proceed, consult the documentation.
+    $ marblerun recover-with-signature public-key $MARBLERUN --output recovery-public.pem
+    ```
+
+    This will save the Coordinator's recovery public key to `recovery-public.pem`.
+
+3. Move the recovery public key to the system with access to your private recovery key
+
+4. Sign your recovery secret:
+
+    ```shell-session
+    echo "EbkX/skIPrJISf8PiXdzRIKnwQyJ+VejtGzHGfES5NIPuCeEFedqgCVDk=" > recovery_data
+    openssl base64 -d -in recovery_data > recovery_key_encrypted
+    marblerun recover-with-signature sign-secret recovery_key_encrypted --key private.pem --output recovery-secret.sig
+    ```
+
+5. Encrypt your recovery secret with the Coordinator's public key
+
+    ```shell-session
+    marblerun recover-with-signature encrypt-secret recovery_key_encrypted --coordinator-pub-key recovery-public.pem --key private.pem --output recovery-secret.enc
+    ```
+
+6. Move your encrypted recovery secret, `recovery-secret.enc`, and its matching signature, `recovery-secret.sig` back to a machine with access to the Coordinator
+
+    ```shell-session
+    marblerun recover-with-signature recovery-secret.enc $MARBLERUN --signature recovery-secret.sig
+    ```
