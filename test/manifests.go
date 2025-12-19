@@ -661,7 +661,7 @@ var IntegrationMultiPartyManifestJSON = `{
 		},
 		"test_key": {
 			"Type": "symmetric-key",
-			"Size": 32,
+			"Size": 256,
 			"Shared": true
 		}
 	},

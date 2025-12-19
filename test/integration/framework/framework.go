@@ -287,7 +287,7 @@ func (i IntegrationTest) GetMarbleCmd(ctx context.Context, cfg MarbleConfig) *ex
 }
 
 // StartMarbleServer starts a Server Marble.
-func (i IntegrationTest) StartMarbleServer(ctx context.Context, cfg MarbleConfig) {
+func (i IntegrationTest) StartMarbleServer(ctx context.Context, cfg MarbleConfig) func() error {
 	cmd := i.GetMarbleCmd(ctx, cfg)
 	cmdErr := i.StartCommand("serv", cmd)
 
@@ -305,7 +305,7 @@ func (i IntegrationTest) StartMarbleServer(ctx context.Context, cfg MarbleConfig
 		if err == nil {
 			conn.Close()
 			i.t.Log("Server started")
-			return
+			return cmd.Cancel
 		}
 	}
 }

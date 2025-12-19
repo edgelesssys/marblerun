@@ -2504,7 +2504,23 @@ func TestE2EActions(t *testing.T) {
 			}(),
 		},
 		"rotate root secret": {
-			getStartingManifest: manifest.DefaultManifest,
+			getStartingManifest: func(crt, key []byte, defaultPackage manifest.PackageProperties) manifest.Manifest {
+				mnf := manifest.DefaultManifest(crt, key, defaultPackage)
+				marble := mnf.Marbles[manifest.DefaultMarble]
+				marbleSecretFile := "/test-secret"
+				previousMarbleSecretFile := marbleSecretFile + ".previous"
+				marble.Parameters.Argv = []string{"marble", "secrets", marbleSecretFile, previousMarbleSecretFile}
+				marble.Parameters.Files[marbleSecretFile] = oss_mnf.File{
+					Data:     "{{ raw .Secrets.ProtectedFilesKey }}",
+					Encoding: "string",
+				}
+				marble.Parameters.Files[previousMarbleSecretFile] = oss_mnf.File{
+					Data:     "{{ raw .Previous.Secrets.ProtectedFilesKey }}",
+					Encoding: "string",
+				}
+				mnf.Marbles[manifest.DefaultMarble] = marble
+				return mnf
+			},
 			actions: func() []testAction {
 				var actions []testAction
 
@@ -2523,6 +2539,33 @@ func TestE2EActions(t *testing.T) {
 						return nil
 					})
 				})
+
+				var symmetricKey []byte
+				marbleSecretFile := "/test-secret"
+				previousMarbleSecretFile := marbleSecretFile + ".previous"
+
+				actions = append(actions, verifyMarblePodAction(manifest.DefaultMarble, func(_ *testing.T, res *http.Response, err error) error {
+					if err != nil {
+						return err
+					}
+					if http.StatusOK != res.StatusCode {
+						return fmt.Errorf("http.Get returned: %s", res.Status)
+					}
+					body, err := io.ReadAll(res.Body)
+					if err != nil {
+						return err
+					}
+					marbleSecrets := make(map[string][]byte)
+					if err := json.Unmarshal(body, &marbleSecrets); err != nil {
+						return fmt.Errorf("failed to unmarshal response '%s': %w", body, err)
+					}
+					if len(marbleSecrets) != 2 {
+						return fmt.Errorf("expected one secret from Marble, got %d", len(marbleSecrets))
+					}
+					symmetricKey = marbleSecrets[marbleSecretFile]
+					assert.Equal(t, symmetricKey, marbleSecrets[marbleSecretFile])
+					return nil
+				}))
 
 				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
 					t.Log("Updating manifest and rotating root secret")
@@ -2552,6 +2595,66 @@ func TestE2EActions(t *testing.T) {
 						return nil
 					})
 				})
+
+				var newSymmetricKey []byte
+				actions = append(actions, verifyMarblePodAction(manifest.DefaultMarble, func(t *testing.T, res *http.Response, err error) error {
+					if err != nil {
+						return err
+					}
+					if http.StatusOK != res.StatusCode {
+						return fmt.Errorf("http.Get returned: %s", res.Status)
+					}
+					body, err := io.ReadAll(res.Body)
+					if err != nil {
+						return err
+					}
+					marbleSecrets := make(map[string][]byte)
+					if err := json.Unmarshal(body, &marbleSecrets); err != nil {
+						return fmt.Errorf("failed to unmarshal response '%s': %w", body, err)
+					}
+					if len(marbleSecrets) != 2 {
+						return fmt.Errorf("expected one secret from Marble, got %d", len(marbleSecrets))
+					}
+					assert.Equal(t, symmetricKey, marbleSecrets[previousMarbleSecretFile])
+					assert.NotEqual(t, symmetricKey, marbleSecrets[marbleSecretFile])
+					newSymmetricKey = marbleSecrets[marbleSecretFile]
+					return nil
+				}))
+
+				actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
+					t.Log("Updating manifest again without rotating root secret")
+					require := require.New(t)
+					mnf := loadTestManifest(require, tmpDir)
+					mnf.Config.RotateRootSecret = false
+
+					mnfJSON, err := json.MarshalIndent(mnf, "", "  ")
+					require.NoError(err)
+
+					updateManifest(ctx, t, kubectl, cmd, namespace, tmpDir, mnfJSON, certFileDefault, keyFileDefault)
+				})
+
+				actions = append(actions, verifyMarblePodAction(manifest.DefaultMarble, func(t *testing.T, res *http.Response, err error) error {
+					if err != nil {
+						return err
+					}
+					if http.StatusOK != res.StatusCode {
+						return fmt.Errorf("http.Get returned: %s", res.Status)
+					}
+					body, err := io.ReadAll(res.Body)
+					if err != nil {
+						return err
+					}
+					marbleSecrets := make(map[string][]byte)
+					if err := json.Unmarshal(body, &marbleSecrets); err != nil {
+						return fmt.Errorf("failed to unmarshal response '%s': %w", body, err)
+					}
+					if len(marbleSecrets) != 2 {
+						return fmt.Errorf("expected one secret from Marble, got %d", len(marbleSecrets))
+					}
+					assert.Equal(t, symmetricKey, marbleSecrets[previousMarbleSecretFile])
+					assert.Equal(t, newSymmetricKey, marbleSecrets[marbleSecretFile])
+					return nil
+				}))
 
 				return actions
 			}(),

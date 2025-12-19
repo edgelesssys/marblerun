@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"flag"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -1068,6 +1069,9 @@ func TestRootSecretRotation(t *testing.T) {
 	var mnf manifest.Manifest
 	require.NoError(json.Unmarshal([]byte(test.IntegrationMultiPartyManifestJSON), &mnf))
 	mnf.Config.UpdateThreshold = 1
+	marble := mnf.Marbles["testMarbleServer"]
+	marble.Parameters.Argv = []string{"./marble", "secrets", "/tmp/coordinator_test/symmetric_key", "/tmp/coordinator_test/symmetric_key_previous"}
+	mnf.Marbles["testMarbleServer"] = marble
 	mnfJSON, err := json.Marshal(mnf)
 	require.NoError(err)
 
@@ -1087,7 +1091,7 @@ func TestRootSecretRotation(t *testing.T) {
 	require.NoError(err)
 
 	log.Println("Retrieving current root certificate")
-	rootCert, _, _, err := api.VerifyCoordinator(t.Context(), f.ClientServerAddr, api.VerifyOptions{InsecureSkipVerify: true})
+	rootCert, intermediateCert, _, err := api.VerifyCoordinator(t.Context(), f.ClientServerAddr, api.VerifyOptions{InsecureSkipVerify: true})
 	require.NoError(err)
 
 	// Root cert should be usable to connect to the Coordinator
@@ -1098,7 +1102,35 @@ func TestRootSecretRotation(t *testing.T) {
 	log.Println("Starting a Server-Marble")
 	serverCfg := framework.NewMarbleConfig(meshServerAddr, "testMarbleServer", "server,backend,localhost")
 	defer serverCfg.Cleanup()
-	f.StartMarbleServer(f.Ctx, serverCfg)
+	cancel := f.StartMarbleServer(f.Ctx, serverCfg)
+
+	caPool := x509.NewCertPool()
+	caPool.AddCert(rootCert)
+	caPool.AddCert(intermediateCert)
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs: caPool,
+			},
+		},
+	}
+
+	req, err := http.NewRequestWithContext(f.Ctx, http.MethodGet, "https://"+f.MarbleTestAddr, http.NoBody)
+	require.NoError(err)
+	res, err := client.Do(req)
+	require.NoError(err)
+	require.Equal(http.StatusOK, res.StatusCode)
+	defer res.Body.Close()
+	response, err := io.ReadAll(res.Body)
+	require.NoError(err)
+	secrets := map[string][]byte{}
+	require.NoError(json.Unmarshal(response, &secrets))
+	symmetricKey, ok := secrets["/tmp/coordinator_test/symmetric_key"]
+	require.True(ok)
+	assert.Equal(symmetricKey, secrets["/tmp/coordinator_test/symmetric_key_previous"], "Previous and current secret should be the same on first update")
+
+	// Stop marble
+	cancel()
 
 	log.Println("Updating manifest to rotate root secret...")
 	_, _, missing, err := f.SetUpdateManifest(updateMnf, test.AdminOneCert, test.AdminOnePrivKey)
@@ -1110,10 +1142,67 @@ func TestRootSecretRotation(t *testing.T) {
 	assert.NoError(err)
 	assert.EqualValues(state.AcceptingMarbles, status)
 
+	_, intermediateCert, _, err = api.VerifyCoordinator(t.Context(), f.ClientServerAddr, api.VerifyOptions{InsecureSkipVerify: true})
+	require.NoError(err)
+	caPool.AddCert(intermediateCert)
+
 	log.Println("Starting a Server-Marble")
 	serverCfg = framework.NewMarbleConfig(meshServerAddr, "testMarbleServer", "server,backend,localhost")
 	defer serverCfg.Cleanup()
-	f.StartMarbleServer(f.Ctx, serverCfg)
+	cancel = f.StartMarbleServer(f.Ctx, serverCfg)
+
+	req, err = http.NewRequestWithContext(f.Ctx, http.MethodGet, "https://"+f.MarbleTestAddr, http.NoBody)
+	require.NoError(err)
+	res, err = client.Do(req)
+	require.NoError(err)
+	require.Equal(http.StatusOK, res.StatusCode)
+	defer res.Body.Close()
+	response, err = io.ReadAll(res.Body)
+	require.NoError(err)
+	newSecrets := map[string][]byte{}
+	require.NoError(json.Unmarshal(response, &newSecrets))
+	previousSymmetricKey, ok := newSecrets["/tmp/coordinator_test/symmetric_key_previous"]
+	require.True(ok)
+	newSymmetricKey, ok := newSecrets["/tmp/coordinator_test/symmetric_key"]
+	require.True(ok)
+	assert.NotEqual(symmetricKey, newSymmetricKey, "Symmetric key should have changed after root secret rotation")
+	assert.Equal(previousSymmetricKey, symmetricKey, "Previous symmetric key should match the one before rotation")
+
+	// Stop marble
+	cancel()
+
+	log.Println("Updating manifest again without rotating root secret...")
+	updateMnf.Config.RotateRootSecret = false
+	_, _, missing, err = f.SetUpdateManifest(updateMnf, test.AdminOneCert, test.AdminOnePrivKey)
+	require.NoError(err)
+	require.Equal(0, missing)
+
+	_, intermediateCert, _, err = api.VerifyCoordinator(t.Context(), f.ClientServerAddr, api.VerifyOptions{InsecureSkipVerify: true})
+	require.NoError(err)
+	caPool.AddCert(intermediateCert)
+
+	log.Println("Starting a Server-Marble")
+	serverCfg = framework.NewMarbleConfig(meshServerAddr, "testMarbleServer", "server,backend,localhost")
+	defer serverCfg.Cleanup()
+	cancel = f.StartMarbleServer(f.Ctx, serverCfg)
+	defer cancel()
+
+	req, err = http.NewRequestWithContext(f.Ctx, http.MethodGet, "https://"+f.MarbleTestAddr, http.NoBody)
+	require.NoError(err)
+	res, err = client.Do(req)
+	require.NoError(err)
+	require.Equal(http.StatusOK, res.StatusCode)
+	defer res.Body.Close()
+	response, err = io.ReadAll(res.Body)
+	require.NoError(err)
+	newSecrets2 := map[string][]byte{}
+	require.NoError(json.Unmarshal(response, &newSecrets2))
+	previousSymmetricKey2, ok := newSecrets2["/tmp/coordinator_test/symmetric_key_previous"]
+	require.True(ok)
+	newSymmetricKey2, ok := newSecrets2["/tmp/coordinator_test/symmetric_key"]
+	require.True(ok)
+	assert.Equal(newSymmetricKey, newSymmetricKey2, "Secrets should not have rotated")
+	assert.Equal(previousSymmetricKey, previousSymmetricKey2, "Secrets should not have rotated")
 }
 
 func newFramework(t *testing.T) *framework.IntegrationTest {
