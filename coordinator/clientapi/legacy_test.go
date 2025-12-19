@@ -9,6 +9,7 @@ package clientapi
 import (
 	"context"
 	"crypto/ecdsa"
+	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/json"
@@ -622,6 +623,11 @@ func setupAPI(t *testing.T, core core) (*ClientAPI, wrapper.Wrapper) {
 
 	wrapper := wrapper.New(store)
 
+	rootSecret := make([]byte, 32)
+	_, err := rand.Read(rootSecret)
+	require.NoError(err)
+	require.NoError(wrapper.PutRootSecret(rootSecret))
+	require.NoError(wrapper.PutPreviousRootSecret(rootSecret))
 	rootCert, rootKey, err := crypto.GenerateCert([]string{"localhost"}, "MarbleRun Unit Test Root", nil, nil, nil)
 	require.NoError(err)
 	intermediateCert, intermediateKey, err := crypto.GenerateCert([]string{"localhost"}, "MarbleRun Unit Test Intermediate", nil, rootCert, rootKey)
