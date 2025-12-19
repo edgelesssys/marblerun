@@ -469,8 +469,8 @@ func (a *ClientAPI) updateSecrets(wrapper secretGetter, mnf manifest.Manifest) e
 
 			// Add new user-defined secret also to previous secrets as empty placeholder
 			if err := wrapper.PutPreviousSecret(name, mnf.Secrets[name]); err != nil {
-				a.log.Error("Failed creating backup of secret", zap.Error(err), zap.String("secret", name))
-				return fmt.Errorf("creating backup of secret %q: %w", name, err)
+				a.log.Error("Failed saving placeholder for secret", zap.Error(err), zap.String("secret", name))
+				return fmt.Errorf("creating placeholder for secret %q: %w", name, err)
 			}
 		} else {
 			secretsToGenerate[name] = mnf.Secrets[name]
