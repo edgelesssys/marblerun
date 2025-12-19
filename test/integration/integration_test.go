@@ -1130,7 +1130,7 @@ func TestRootSecretRotation(t *testing.T) {
 	assert.Equal(symmetricKey, secrets["/tmp/coordinator_test/symmetric_key_previous"], "Previous and current secret should be the same on first update")
 
 	// Stop marble
-	cancel()
+	require.NoError(cancel())
 
 	log.Println("Updating manifest to rotate root secret...")
 	_, _, missing, err := f.SetUpdateManifest(updateMnf, test.AdminOneCert, test.AdminOnePrivKey)
@@ -1169,7 +1169,7 @@ func TestRootSecretRotation(t *testing.T) {
 	assert.Equal(previousSymmetricKey, symmetricKey, "Previous symmetric key should match the one before rotation")
 
 	// Stop marble
-	cancel()
+	require.NoError(cancel())
 
 	log.Println("Updating manifest again without rotating root secret...")
 	updateMnf.Config.RotateRootSecret = false
@@ -1184,8 +1184,7 @@ func TestRootSecretRotation(t *testing.T) {
 	log.Println("Starting a Server-Marble")
 	serverCfg = framework.NewMarbleConfig(meshServerAddr, "testMarbleServer", "server,backend,localhost")
 	defer serverCfg.Cleanup()
-	cancel = f.StartMarbleServer(f.Ctx, serverCfg)
-	defer cancel()
+	f.StartMarbleServer(f.Ctx, serverCfg)
 
 	req, err = http.NewRequestWithContext(f.Ctx, http.MethodGet, "https://"+f.MarbleTestAddr, http.NoBody)
 	require.NoError(err)
