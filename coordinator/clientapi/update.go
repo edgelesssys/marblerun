@@ -422,30 +422,15 @@ func (a *ClientAPI) updateSecrets(wrapper secretGetter, mnf manifest.Manifest) e
 		a.log.Error("Failed to get root private key", zap.Error(err))
 		return fmt.Errorf("loading root private key from store: %w", err)
 	}
-	intermediateCert, err := wrapper.GetCertificate(constants.SKCoordinatorIntermediateCert)
-	if err != nil {
-		a.log.Error("Failed to get intermediate certificate", zap.Error(err))
-		return fmt.Errorf("loading intermediate certificate from store: %w", err)
-	}
-	intermediatePrivK, err := wrapper.GetPrivateKey(constants.SKCoordinatorIntermediateKey)
-	if err != nil {
-		a.log.Error("Failed to get intermediate private key", zap.Error(err))
-		return fmt.Errorf("loading intermediate private key from store: %w", err)
-	}
-	marbleRootCert, err := wrapper.GetCertificate(constants.SKMarbleRootCert)
-	if err != nil {
-		a.log.Error("Failed to get Marble root certificate", zap.Error(err))
-		return fmt.Errorf("loading Marble root certificate from store: %w", err)
-	}
-
-	// Back up root secret
-	if err := wrapper.PutPreviousRootSecret(rootSecret); err != nil {
-		a.log.Error("Failed backing up root secret", zap.Error(err))
-		return fmt.Errorf("backing up root secret: %w", err)
-	}
 
 	// Rotate root secret if configured
 	if mnf.Config.RotateRootSecret {
+		// Back up root secret
+		if err := wrapper.PutPreviousRootSecret(rootSecret); err != nil {
+			a.log.Error("Failed backing up root secret", zap.Error(err))
+			return fmt.Errorf("backing up root secret: %w", err)
+		}
+
 		rootSecret = make([]byte, 32)
 		if _, err := rand.Read(rootSecret); err != nil {
 			a.log.Error("Could not generate new root secret", zap.Error(err))
@@ -467,12 +452,12 @@ func (a *ClientAPI) updateSecrets(wrapper secretGetter, mnf manifest.Manifest) e
 	}
 
 	// Generate new cross-signed intermediate CA for Marble gRPC authentication
-	intermediateCert, intermediatePrivK, err = crypto.GenerateCert(coordDNSNames, constants.CoordinatorIntermediateName, nil, rootCert, rootPrivK)
+	intermediateCert, intermediatePrivK, err := crypto.GenerateCert(coordDNSNames, constants.CoordinatorIntermediateName, nil, rootCert, rootPrivK)
 	if err != nil {
 		a.log.Error("Could not generate a new intermediate CA for Marble authentication.", zap.Error(err))
 		return fmt.Errorf("generating new intermediate CA for Marble authentication: %w", err)
 	}
-	marbleRootCert, _, err = crypto.GenerateCert(coordDNSNames, constants.CoordinatorIntermediateName, intermediatePrivK, nil, nil)
+	marbleRootCert, _, err := crypto.GenerateCert(coordDNSNames, constants.CoordinatorIntermediateName, intermediatePrivK, nil, nil)
 	if err != nil {
 		return fmt.Errorf("generating new Marble root certificate: %w", err)
 	}

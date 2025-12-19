@@ -628,9 +628,9 @@ var IntegrationMultiPartyManifestJSON = `{
 				"Files": {
 					"/tmp/coordinator_test/defg.txt": "foo",
 					"/tmp/coordinator_test/jkl.mno": "bar",
-					"symmetric_key": "{{ raw .Secrets.test_key }}",
-					"symmetric_key_previous": "{{ raw .Previous.Secrets.test_key }}",
-					"coordinator_root.pem": "{{ pem .MarbleRun.CoordinatorRoot.Cert }}"
+					"/tmp/coordinator_test/symmetric_key": "{{ raw .Secrets.test_key }}",
+					"/tmp/coordinator_test/symmetric_key_previous": "{{ raw .Previous.Secrets.test_key }}",
+					"/tmp/coordinator_test/coordinator_root.pem": "{{ pem .MarbleRun.CoordinatorRoot.Cert }}"
 				},
 				"Argv": [
 					"./marble",
