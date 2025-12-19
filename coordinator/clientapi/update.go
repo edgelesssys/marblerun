@@ -382,9 +382,6 @@ func (a *ClientAPI) updateSecrets(wrapper secretGetter, mnf manifest.Manifest) e
 		}
 	}
 
-	toGenerate := make([]string, len(added))
-	copy(toGenerate, added)
-
 	// Delete secrets which definitions have changed
 	// They will be regenerated in the next step
 	// Secrets that have not changed are kept
@@ -395,15 +392,9 @@ func (a *ClientAPI) updateSecrets(wrapper secretGetter, mnf manifest.Manifest) e
 				a.log.Error("Failed to delete secret set to be regenerated in new manifest", zap.Error(err), zap.String("secret", name))
 				return fmt.Errorf("deleting secret: %w", err)
 			}
-			toGenerate = append(toGenerate, name)
+			added = append(added, name)
 		} else {
 			unchanged = append(unchanged, name)
-		}
-
-		// Regardless of change, add the secret to previous secrets
-		if err := wrapper.PutPreviousSecret(name, existingSecrets[name]); err != nil {
-			a.log.Error("Failed moving secret to previous secrets", zap.Error(err), zap.String("secret", name))
-			return fmt.Errorf("moving secret %q to previous secrets: %w", name, err)
 		}
 	}
 
@@ -469,7 +460,7 @@ func (a *ClientAPI) updateSecrets(wrapper secretGetter, mnf manifest.Manifest) e
 	// or if the root secret should be rotated.
 	// Otherwise, existing symmetric keys are kept as is
 	secretsToGenerate := make(map[string]manifest.Secret)
-	for _, name := range toGenerate {
+	for _, name := range added {
 		if mnf.Secrets[name].UserDefined {
 			if err := wrapper.PutSecret(name, mnf.Secrets[name]); err != nil {
 				a.log.Error("Failed to re-save user-defined secret", zap.Error(err), zap.String("secret", name))

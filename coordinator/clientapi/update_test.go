@@ -36,17 +36,24 @@ func TestUpdateSecrets(t *testing.T) {
 	}
 
 	testCases := map[string]struct {
-		manifest      manifest.Manifest
-		prepareStore  func(*require.Assertions, wrapper.Wrapper)
-		core          *fakeCore
-		wantUnchanged []string
-		wantChanged   []string
-		wantErr       bool
+		manifest       manifest.Manifest
+		prepareStore   func(*require.Assertions, wrapper.Wrapper)
+		core           *fakeCore
+		wantUnchanged  []string
+		wantChanged    []string
+		wantAsPrevious []string
+		wantErr        bool
 	}{
 		"success": {
 			manifest: testManifest(),
 			prepareStore: func(r *require.Assertions, w wrapper.Wrapper) {
 				r.NoError(w.PutSecret("secret-a", manifest.Secret{
+					Type:    manifest.SecretTypeSymmetricKey,
+					Size:    256,
+					Private: bytes.Repeat([]byte{0x01}, 32),
+					Public:  bytes.Repeat([]byte{0x01}, 32),
+				}))
+				r.NoError(w.PutPreviousSecret("secret-a", manifest.Secret{
 					Type:    manifest.SecretTypeSymmetricKey,
 					Size:    256,
 					Private: bytes.Repeat([]byte{0x01}, 32),
@@ -63,6 +70,12 @@ func TestUpdateSecrets(t *testing.T) {
 			}(),
 			prepareStore: func(r *require.Assertions, w wrapper.Wrapper) {
 				r.NoError(w.PutSecret("secret-a", manifest.Secret{
+					Type:    manifest.SecretTypeSymmetricKey,
+					Size:    256,
+					Private: bytes.Repeat([]byte{0x01}, 32),
+					Public:  bytes.Repeat([]byte{0x01}, 32),
+				}))
+				r.NoError(w.PutPreviousSecret("secret-a", manifest.Secret{
 					Type:    manifest.SecretTypeSymmetricKey,
 					Size:    256,
 					Private: bytes.Repeat([]byte{0x01}, 32),
@@ -96,9 +109,23 @@ func TestUpdateSecrets(t *testing.T) {
 					Private: bytes.Repeat([]byte{0x01}, 32),
 					Public:  bytes.Repeat([]byte{0x01}, 32),
 				}))
+				r.NoError(w.PutPreviousSecret("secret-a", manifest.Secret{
+					Type:    manifest.SecretTypeSymmetricKey,
+					Size:    256,
+					Private: bytes.Repeat([]byte{0x01}, 32),
+					Public:  bytes.Repeat([]byte{0x01}, 32),
+				}))
+				r.NoError(w.PutPreviousSecret("secret-d", manifest.Secret{
+					Type:    manifest.SecretTypeSymmetricKey,
+					Shared:  true,
+					Size:    256,
+					Private: bytes.Repeat([]byte{0x01}, 32),
+					Public:  bytes.Repeat([]byte{0x01}, 32),
+				}))
 			},
-			core:        &fakeCore{},
-			wantChanged: []string{"secret-d"},
+			core:           &fakeCore{},
+			wantChanged:    []string{"secret-d"},
+			wantAsPrevious: []string{"secret-d"},
 		},
 		"rotate root secret with secret definition change": {
 			manifest: func() manifest.Manifest {
@@ -125,9 +152,23 @@ func TestUpdateSecrets(t *testing.T) {
 					Private: bytes.Repeat([]byte{0x01}, 32),
 					Public:  bytes.Repeat([]byte{0x01}, 32),
 				}))
+				r.NoError(w.PutPreviousSecret("secret-a", manifest.Secret{
+					Type:    manifest.SecretTypeSymmetricKey,
+					Size:    256,
+					Private: bytes.Repeat([]byte{0x01}, 32),
+					Public:  bytes.Repeat([]byte{0x01}, 32),
+				}))
+				r.NoError(w.PutPreviousSecret("secret-d", manifest.Secret{
+					Type:    manifest.SecretTypeSymmetricKey,
+					Shared:  true,
+					Size:    256,
+					Private: bytes.Repeat([]byte{0x01}, 32),
+					Public:  bytes.Repeat([]byte{0x01}, 32),
+				}))
 			},
-			core:        &fakeCore{},
-			wantChanged: []string{"secret-d"},
+			core:           &fakeCore{},
+			wantChanged:    []string{"secret-d"},
+			wantAsPrevious: nil, // secret definition change should put a new secret as previous secret
 		},
 		"user defined secrets": {
 			manifest: func() manifest.Manifest {
@@ -151,6 +192,19 @@ func TestUpdateSecrets(t *testing.T) {
 					Public:      bytes.Repeat([]byte{0x01}, 32),
 				}))
 				r.NoError(w.PutSecret("secret-d", manifest.Secret{
+					Type:        manifest.SecretTypePlain,
+					UserDefined: true,
+					Private:     bytes.Repeat([]byte{0x01}, 32),
+					Public:      bytes.Repeat([]byte{0x01}, 32),
+				}))
+				r.NoError(w.PutPreviousSecret("secret-a", manifest.Secret{
+					Type:        manifest.SecretTypeSymmetricKey,
+					Size:        256,
+					UserDefined: true,
+					Private:     bytes.Repeat([]byte{0x01}, 32),
+					Public:      bytes.Repeat([]byte{0x01}, 32),
+				}))
+				r.NoError(w.PutPreviousSecret("secret-d", manifest.Secret{
 					Type:        manifest.SecretTypePlain,
 					UserDefined: true,
 					Private:     bytes.Repeat([]byte{0x01}, 32),
@@ -182,6 +236,18 @@ func TestUpdateSecrets(t *testing.T) {
 					Private: bytes.Repeat([]byte{0x01}, 32),
 					Public:  bytes.Repeat([]byte{0x01}, 32),
 				}))
+				r.NoError(w.PutPreviousSecret("secret-a", manifest.Secret{
+					Type:    manifest.SecretTypeSymmetricKey,
+					Size:    256,
+					Private: bytes.Repeat([]byte{0x01}, 32),
+					Public:  bytes.Repeat([]byte{0x01}, 32),
+				}))
+				r.NoError(w.PutPreviousSecret("secret-d", manifest.Secret{
+					Type:    manifest.SecretTypeSymmetricKey,
+					Size:    256,
+					Private: bytes.Repeat([]byte{0x01}, 32),
+					Public:  bytes.Repeat([]byte{0x01}, 32),
+				}))
 			},
 			core:          &fakeCore{},
 			wantUnchanged: []string{"secret-d"},
@@ -197,6 +263,12 @@ func TestUpdateSecrets(t *testing.T) {
 			manifest: testManifest(),
 			prepareStore: func(r *require.Assertions, w wrapper.Wrapper) {
 				r.NoError(w.PutSecret("secret-a", manifest.Secret{
+					Type:    manifest.SecretTypeSymmetricKey,
+					Size:    256,
+					Private: bytes.Repeat([]byte{0x01}, 32),
+					Public:  bytes.Repeat([]byte{0x01}, 32),
+				}))
+				r.NoError(w.PutPreviousSecret("secret-a", manifest.Secret{
 					Type:    manifest.SecretTypeSymmetricKey,
 					Size:    256,
 					Private: bytes.Repeat([]byte{0x01}, 32),
@@ -285,9 +357,9 @@ func TestUpdateSecrets(t *testing.T) {
 			savedPreviousSecrets := testutil.GetPreviousSecretMap(t, api.txHandle)
 			assert.Equal(len(tc.manifest.Secrets), len(savedPreviousSecrets), "all current secrets should also be in previous secrets")
 
-			for name, originalSecret := range originalSecrets {
+			for _, name := range tc.wantAsPrevious {
 				if savedSecret, ok := savedPreviousSecrets[name]; ok {
-					assert.Equalf(originalSecret, savedSecret, "previous secret does not match expected for %s", name)
+					assert.Equalf(originalSecrets[name], savedSecret, "previous secret does not match expected for %s", name)
 				} else {
 					_, ok := savedSecrets[name]
 					assert.Falsef(ok, "secret %s should have been deleted", name)
