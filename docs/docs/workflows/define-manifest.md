@@ -527,6 +527,7 @@ The optional entry `Config` holds configuration settings for the Coordinator.
     {
         "SealMode": "ProductKey",
         "UpdateThreshold": 5,
+        "RecoveryThreshold": 3,
         "FeatureGates": []
     }
     //...
@@ -544,6 +545,10 @@ See the section on [seal key types](../architecture/security.md#seal-key) for mo
 `UpdateThreshold` specifies the number of acknowledgments required for a [multi-party manifest update](./update-manifest.md#full-update).
 If not set, or set to zero, all users with roles that have the `UpdateManifest` action need to acknowledge the update.
 The user submitting the update implicitly acknowledges it as well, meaning an `UpdateThreshold` of `1` requires no further acknowledgements from other users.
+
+`RecoveryThreshold` specifies the number of recovery secrets required for [multi-party recovery](../features/recovery.md#multi-party-recovery).
+If set, must be at least `2` and at most the number of defined recovery keys.
+If not set, or set to zero, all recovery keys defined in the manifest are required for recovery.
 
 `FeatureGates` allows you to opt-in to additional features that may be useful for certain use cases. The following features are available:
 
