@@ -9,6 +9,7 @@ package core
 import (
 	"bytes"
 	"context"
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -18,6 +19,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"text/template"
 	"time"
@@ -96,38 +98,10 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (res *rpc.A
 		return nil, status.Errorf(codes.Internal, "generating marble authentication secrets: %s", err)
 	}
 
-	marbleRootCert, err := txdata.GetCertificate(constants.SKMarbleRootCert)
+	secrets, previousSecrets, err := c.generateMarbleSecrets(txdata, marbleUUID, marbleName)
 	if err != nil {
-		c.log.Error("Couldn't retrieve marble root certificate", zap.Error(err))
-		return nil, status.Errorf(codes.Internal, "retrieving marbleRootCert certificate: %s", err)
-	}
-	rootPrivK, err := txdata.GetPrivateKey(constants.SKCoordinatorRootKey)
-	if err != nil {
-		c.log.Error("Couldn't retrieve marbleRootCert private key", zap.Error(err))
-		return nil, status.Errorf(codes.Internal, "retrieving marble root private key: %s", err)
-	}
-	intermediatePrivK, err := txdata.GetPrivateKey(constants.SKCoordinatorIntermediateKey)
-	if err != nil {
-		c.log.Error("Couldn't retrieve marbleRootCert private key", zap.Error(err))
-		return nil, status.Errorf(codes.Internal, "retrieving marble root private key: %s", err)
-	}
-
-	secrets, err := txdata.GetSecretMap()
-	if err != nil {
-		c.log.Error("Loading secrets from store failed", zap.Error(err))
-		return nil, status.Errorf(codes.Internal, "retrieving secrets: %s", err)
-	}
-
-	// Generate unique (= per marble) secrets
-	privateSecrets, err := c.GenerateSecrets(secrets, marbleUUID, marbleName, marbleRootCert, intermediatePrivK, rootPrivK)
-	if err != nil {
-		c.log.Error("Couldn't generate specified secrets for the given manifest", zap.Error(err))
-		return nil, status.Errorf(codes.Internal, "generating secrets for marble: %s", err)
-	}
-
-	// Union newly generated unique secrets with shared and user-defined secrets
-	for k, v := range privateSecrets {
-		secrets[k] = v
+		c.log.Error("Generating marble secrets failed", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "generating marble secrets: %s", err)
 	}
 
 	marble, err := txdata.GetMarble(req.MarbleType)
@@ -142,7 +116,7 @@ func (c *Core) Activate(ctx context.Context, req *rpc.ActivationReq) (res *rpc.A
 		return nil, status.Errorf(codes.Internal, "creating TTLS config: %s", err)
 	}
 
-	params, err := customizeParameters(marble.Parameters, authSecrets, secrets)
+	params, err := customizeParameters(marble.Parameters, authSecrets, secrets, previousSecrets)
 	if err != nil {
 		c.log.Error("Customizing marble parameters failed", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "customizing marble parameters: %s", err)
@@ -241,8 +215,64 @@ func (c *Core) verifyManifestRequirement(txdata storeGetter, tlsCert *x509.Certi
 	return marbleName, nil
 }
 
+func (c *Core) generateMarbleSecrets(txdata storeGetter, marbleUUID uuid.UUID, marbleName string) (secrets, previousSecrets map[string]manifest.Secret, err error) {
+	marbleSecrets := make([]map[string]manifest.Secret, 2)
+
+	marbleRootCert, err := txdata.GetCertificate(constants.SKMarbleRootCert)
+	if err != nil {
+		c.log.Error("Couldn't retrieve marble root certificate", zap.Error(err))
+		return nil, nil, status.Errorf(codes.Internal, "retrieving marbleRootCert certificate: %s", err)
+	}
+
+	intermediatePrivK, err := txdata.GetPrivateKey(constants.SKCoordinatorIntermediateKey)
+	if err != nil {
+		c.log.Error("Couldn't retrieve marbleRootCert private key", zap.Error(err))
+		return nil, nil, status.Errorf(codes.Internal, "retrieving marble root private key: %s", err)
+	}
+
+	for i, cfg := range []struct {
+		getSecrets    func() (map[string]manifest.Secret, error)
+		getRootSecret func() ([]byte, error)
+	}{
+		{
+			txdata.GetSecretMap,
+			txdata.GetRootSecret,
+		},
+		{
+			txdata.GetPreviousSecretMap,
+			txdata.GetPreviousRootSecret,
+		},
+	} {
+		rootSecret, err := cfg.getRootSecret()
+		if err != nil {
+			c.log.Error("Loading root secret from store failed", zap.Error(err))
+			return nil, nil, status.Errorf(codes.Internal, "retrieving root secret: %s", err)
+		}
+
+		globalSecrets, err := cfg.getSecrets()
+		if err != nil {
+			c.log.Error("Loading secrets from store failed", zap.Error(err))
+			return nil, nil, status.Errorf(codes.Internal, "retrieving secrets: %s", err)
+		}
+
+		// Generate unique (= per marble) secrets
+		privateSecrets, err := c.GenerateSecrets(globalSecrets, marbleUUID, marbleName, marbleRootCert, intermediatePrivK, rootSecret)
+		if err != nil {
+			c.log.Error("Couldn't generate specified secrets for the given manifest", zap.Error(err))
+			return nil, nil, status.Errorf(codes.Internal, "generating secrets for marble: %s", err)
+		}
+
+		// Union newly generated unique secrets with shared and user-defined secrets
+		maps.Copy(globalSecrets, privateSecrets)
+
+		marbleSecrets[i] = globalSecrets
+	}
+
+	return marbleSecrets[0], marbleSecrets[1], nil
+}
+
 // generateCertFromCSR signs the CSR from marble attempting to register.
-func (c *Core) generateCertFromCSR(txdata storeGetter, csrReq []byte, pubk ecdsa.PublicKey, marbleType string, marbleUUID string) ([]byte, error) {
+func (c *Core) generateCertFromCSR(rootCert *x509.Certificate, rootPrivK crypto.PrivateKey, csrReq []byte, pubk ecdsa.PublicKey, marbleType string, marbleUUID string) ([]byte, error) {
 	// parse and verify CSR
 	csr, err := x509.ParseCertificateRequest(csrReq)
 	if err != nil {
@@ -257,18 +287,9 @@ func (c *Core) generateCertFromCSR(txdata storeGetter, csrReq []byte, pubk ecdsa
 		return nil, fmt.Errorf("generating certificate serial number: %w", err)
 	}
 
-	marbleRootCert, err := txdata.GetCertificate(constants.SKMarbleRootCert)
-	if err != nil {
-		return nil, fmt.Errorf("loading marble root certificate: %w", err)
-	}
-	intermediatePrivK, err := txdata.GetPrivateKey(constants.SKCoordinatorIntermediateKey)
-	if err != nil {
-		return nil, fmt.Errorf("loading marble root certificate private key: %w", err)
-	}
-
 	// create certificate
 	csr.Subject.CommonName = marbleUUID
-	csr.Subject.Organization = marbleRootCert.Issuer.Organization
+	csr.Subject.Organization = rootCert.Issuer.Organization
 	notBefore := time.Now()
 	// TODO: produce shorter lived certificates
 	notAfter := notBefore.Add(math.MaxInt64)
@@ -287,7 +308,7 @@ func (c *Core) generateCertFromCSR(txdata storeGetter, csrReq []byte, pubk ecdsa
 		IPAddresses:           csr.IPAddresses,
 	}
 
-	certRaw, err := x509.CreateCertificate(rand.Reader, &template, marbleRootCert, &pubk, intermediatePrivK)
+	certRaw, err := x509.CreateCertificate(rand.Reader, &template, rootCert, &pubk, rootPrivK)
 	if err != nil {
 		return nil, fmt.Errorf("issuing marble certificate: %w", err)
 	}
@@ -296,7 +317,9 @@ func (c *Core) generateCertFromCSR(txdata storeGetter, csrReq []byte, pubk ecdsa
 }
 
 // customizeParameters replaces the placeholders in the manifest's parameters with the actual values.
-func customizeParameters(params manifest.Parameters, specialSecrets manifest.ReservedSecrets, userSecrets map[string]manifest.Secret) (*rpc.Parameters, error) {
+func customizeParameters(
+	params manifest.Parameters, authSecrets manifest.ReservedSecrets, userSecrets, previousUserSecrets map[string]manifest.Secret,
+) (*rpc.Parameters, error) {
 	customParams := rpc.Parameters{
 		Argv:  params.Argv,
 		Files: make(map[string][]byte),
@@ -304,9 +327,14 @@ func customizeParameters(params manifest.Parameters, specialSecrets manifest.Res
 	}
 
 	// Wrap the authentication secrets to have the "MarbleRun" prefix in front of them when mentioned in a manifest
-	secretsWrapped := manifest.SecretsWrapper{
-		MarbleRun: specialSecrets,
-		Secrets:   userSecrets,
+	secretsWrapped := manifest.TemplateSecrets{
+		SecretsWrapper: manifest.SecretsWrapper{
+			MarbleRun: authSecrets,
+			Secrets:   userSecrets,
+		},
+		Previous: struct{ Secrets map[string]manifest.Secret }{
+			Secrets: previousUserSecrets,
+		},
 	}
 
 	var err error
@@ -340,23 +368,23 @@ func customizeParameters(params manifest.Parameters, specialSecrets manifest.Res
 	}
 
 	// Set as environment variables
-	rootCaPem, err := manifest.EncodeSecretDataToPem(specialSecrets.RootCA.Cert)
+	rootCaPem, err := manifest.EncodeSecretDataToPem(authSecrets.RootCA.Cert)
 	if err != nil {
 		return nil, fmt.Errorf("encoding root CA: %w", err)
 	}
-	marbleCertPem, err := manifest.EncodeSecretDataToPem(specialSecrets.MarbleCert.Cert)
+	marbleCertPem, err := manifest.EncodeSecretDataToPem(authSecrets.MarbleCert.Cert)
 	if err != nil {
 		return nil, fmt.Errorf("encoding marble certificate: %w", err)
 	}
-	encodedPrivKey, err := manifest.EncodeSecretDataToPem(specialSecrets.MarbleCert.Private)
+	encodedPrivKey, err := manifest.EncodeSecretDataToPem(authSecrets.MarbleCert.Private)
 	if err != nil {
 		return nil, fmt.Errorf("encoding marble private key: %w", err)
 	}
-	coordinatorRootPem, err := manifest.EncodeSecretDataToPem(specialSecrets.CoordinatorRoot.Cert)
+	coordinatorRootPem, err := manifest.EncodeSecretDataToPem(authSecrets.CoordinatorRoot.Cert)
 	if err != nil {
 		return nil, fmt.Errorf("encoding Coordinator root CA: %w", err)
 	}
-	coordinatorIntermediatePem, err := manifest.EncodeSecretDataToPem(specialSecrets.CoordinatorIntermediate.Cert)
+	coordinatorIntermediatePem, err := manifest.EncodeSecretDataToPem(authSecrets.CoordinatorIntermediate.Cert)
 	if err != nil {
 		return nil, fmt.Errorf("encoding Coordinator intermediate certificate: %w", err)
 	}
@@ -369,7 +397,7 @@ func customizeParameters(params manifest.Parameters, specialSecrets manifest.Res
 	return &customParams, nil
 }
 
-func parseSecrets(data string, tplFunc template.FuncMap, secretsWrapped manifest.SecretsWrapper) (string, error) {
+func parseSecrets(data string, tplFunc template.FuncMap, secretsWrapped manifest.TemplateSecrets) (string, error) {
 	var templateResult bytes.Buffer
 
 	tpl, err := template.New("data").Funcs(tplFunc).Parse(data)
@@ -384,7 +412,7 @@ func parseSecrets(data string, tplFunc template.FuncMap, secretsWrapped manifest
 	return templateResult.String(), nil
 }
 
-func (c *Core) generateMarbleAuthSecrets(txdata storeGetter, req *rpc.ActivationReq, marbleUUID uuid.UUID) (manifest.ReservedSecrets, error) {
+func (c *Core) generateMarbleAuthSecrets(txdata storeGetter, req *rpc.ActivationReq, marbleUUID uuid.UUID) (secrets manifest.ReservedSecrets, err error) {
 	// generate key-pair for marble
 	privk, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 	if err != nil {
@@ -399,17 +427,6 @@ func (c *Core) generateMarbleAuthSecrets(txdata storeGetter, req *rpc.Activation
 		return manifest.ReservedSecrets{}, err
 	}
 
-	// Generate Marble certificate
-	certRaw, err := c.generateCertFromCSR(txdata, req.GetCSR(), privk.PublicKey, req.GetMarbleType(), marbleUUID.String())
-	if err != nil {
-		return manifest.ReservedSecrets{}, err
-	}
-
-	marbleCert, err := x509.ParseCertificate(certRaw)
-	if err != nil {
-		return manifest.ReservedSecrets{}, err
-	}
-
 	marbleRootCert, err := txdata.GetCertificate(constants.SKMarbleRootCert)
 	if err != nil {
 		return manifest.ReservedSecrets{}, err
@@ -419,6 +436,21 @@ func (c *Core) generateMarbleAuthSecrets(txdata storeGetter, req *rpc.Activation
 		return manifest.ReservedSecrets{}, err
 	}
 	coordinatorIntermediateCert, err := txdata.GetCertificate(constants.SKCoordinatorIntermediateCert)
+	if err != nil {
+		return manifest.ReservedSecrets{}, err
+	}
+	intermediatePrivK, err := txdata.GetPrivateKey(constants.SKCoordinatorIntermediateKey)
+	if err != nil {
+		return manifest.ReservedSecrets{}, fmt.Errorf("loading marble root certificate private key: %w", err)
+	}
+
+	// Generate Marble certificate
+	certRaw, err := c.generateCertFromCSR(marbleRootCert, intermediatePrivK, req.GetCSR(), privk.PublicKey, req.GetMarbleType(), marbleUUID.String())
+	if err != nil {
+		return manifest.ReservedSecrets{}, err
+	}
+
+	marbleCert, err := x509.ParseCertificate(certRaw)
 	if err != nil {
 		return manifest.ReservedSecrets{}, err
 	}
@@ -518,7 +550,10 @@ type storeGetter interface {
 	GetMarble(marble string) (manifest.Marble, error)
 	GetPackage(name string) (quote.PackageProperties, error)
 	GetPrivateKey(name string) (*ecdsa.PrivateKey, error)
+	GetRootSecret() ([]byte, error)
+	GetPreviousRootSecret() ([]byte, error)
 	GetSecretMap() (map[string]manifest.Secret, error)
+	GetPreviousSecretMap() (map[string]manifest.Secret, error)
 	GetSecret(name string) (manifest.Secret, error)
 	GetTLS(name string) (manifest.TLStag, error)
 }

@@ -9,6 +9,7 @@ package clientapi
 import (
 	"context"
 	"crypto/ecdsa"
+	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/json"
@@ -613,7 +614,7 @@ func TestVerifyUser_Legacy(t *testing.T) {
 	assert.Equal(*user.Certificate(), *adminTestCert)
 }
 
-func setupAPI(t *testing.T, core *fakeCore) (*ClientAPI, wrapper.Wrapper) {
+func setupAPI(t *testing.T, core core) (*ClientAPI, wrapper.Wrapper) {
 	t.Helper()
 	require := require.New(t)
 
@@ -622,11 +623,17 @@ func setupAPI(t *testing.T, core *fakeCore) (*ClientAPI, wrapper.Wrapper) {
 
 	wrapper := wrapper.New(store)
 
-	rootCert, rootKey, err := crypto.GenerateCert([]string{"localhost"}, "MarbleRun Unit Test Root", nil, nil, nil)
+	rootSecret := make([]byte, 32)
+	_, err := rand.Read(rootSecret)
 	require.NoError(err)
-	intermediateCert, intermediateKey, err := crypto.GenerateCert([]string{"localhost"}, "MarbleRun Unit Test Intermediate", nil, rootCert, rootKey)
+	require.NoError(wrapper.PutRootSecret(rootSecret))
+	require.NoError(wrapper.PutPreviousRootSecret(rootSecret))
+	subjAltNames := []string{"localhost", "192.0.2.1"}
+	rootCert, rootKey, err := crypto.GenerateCert(subjAltNames, "MarbleRun Unit Test Root", nil, nil, nil)
 	require.NoError(err)
-	marbleCert, _, err := crypto.GenerateCert([]string{"localhost"}, "MarbleRun Unit Test Marble", intermediateKey, nil, nil)
+	intermediateCert, intermediateKey, err := crypto.GenerateCert(subjAltNames, "MarbleRun Unit Test Intermediate", nil, rootCert, rootKey)
+	require.NoError(err)
+	marbleCert, _, err := crypto.GenerateCert(subjAltNames, "MarbleRun Unit Test Marble", intermediateKey, nil, nil)
 	require.NoError(err)
 
 	require.NoError(wrapper.PutCertificate(constants.SKCoordinatorRootCert, rootCert))

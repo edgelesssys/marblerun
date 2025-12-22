@@ -627,7 +627,10 @@ var IntegrationMultiPartyManifestJSON = `{
 			"Parameters": {
 				"Files": {
 					"/tmp/coordinator_test/defg.txt": "foo",
-					"/tmp/coordinator_test/jkl.mno": "bar"
+					"/tmp/coordinator_test/jkl.mno": "bar",
+					"/tmp/coordinator_test/symmetric_key": "{{ raw .Secrets.test_key }}",
+					"/tmp/coordinator_test/symmetric_key_previous": "{{ raw .Previous.Secrets.test_key }}",
+					"/tmp/coordinator_test/coordinator_root.pem": "{{ pem .MarbleRun.CoordinatorRoot.Cert }}"
 				},
 				"Argv": [
 					"./marble",
@@ -658,7 +661,7 @@ var IntegrationMultiPartyManifestJSON = `{
 		},
 		"test_key": {
 			"Type": "symmetric-key",
-			"Size": 32,
+			"Size": 256,
 			"Shared": true
 		}
 	},

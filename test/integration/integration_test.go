@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"flag"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -1057,6 +1058,150 @@ func TestMultiPartyManifestUpdate(t *testing.T) {
 	case <-time.After(20 * time.Second):
 		t.Error("server-marble was able to restart after manifest update")
 	}
+}
+
+func TestRootSecretRotation(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	log.Println("Testing root key rotation...")
+
+	var mnf manifest.Manifest
+	require.NoError(json.Unmarshal([]byte(test.IntegrationMultiPartyManifestJSON), &mnf))
+	mnf.Config.UpdateThreshold = 1
+	marble := mnf.Marbles["testMarbleServer"]
+	marble.Parameters.Argv = []string{"./marble", "secrets", "/tmp/coordinator_test/symmetric_key", "/tmp/coordinator_test/symmetric_key_previous"}
+	mnf.Marbles["testMarbleServer"] = marble
+	mnfJSON, err := json.Marshal(mnf)
+	require.NoError(err)
+
+	updateMnf := mnf
+	updateMnf.Config.RotateRootSecret = true
+	updateMnfJSON, err := json.Marshal(updateMnf)
+	require.NoError(err)
+
+	f := framework.New(t, *buildDir, simFlag, *noenclave, marbleTestAddr, meshServerAddr, clientServerAddr, string(mnfJSON), string(updateMnfJSON))
+	f.UpdateManifest()
+
+	cfg := framework.NewCoordinatorConfig()
+	defer cfg.Cleanup()
+	f.StartCoordinator(f.Ctx, cfg)
+
+	_, err = f.SetManifest(f.TestManifest)
+	require.NoError(err)
+
+	log.Println("Retrieving current root certificate")
+	rootCert, intermediateCert, _, err := api.VerifyCoordinator(t.Context(), f.ClientServerAddr, api.VerifyOptions{InsecureSkipVerify: true})
+	require.NoError(err)
+
+	// Root cert should be usable to connect to the Coordinator
+	status, _, err := api.GetStatus(t.Context(), f.ClientServerAddr, rootCert)
+	require.NoError(err)
+	assert.EqualValues(state.AcceptingMarbles, status)
+
+	log.Println("Starting a Server-Marble")
+	serverCfg := framework.NewMarbleConfig(meshServerAddr, "testMarbleServer", "server,backend,localhost")
+	defer serverCfg.Cleanup()
+	cancel := f.StartMarbleServer(f.Ctx, serverCfg)
+
+	caPool := x509.NewCertPool()
+	caPool.AddCert(rootCert)
+	caPool.AddCert(intermediateCert)
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs: caPool,
+			},
+		},
+	}
+
+	req, err := http.NewRequestWithContext(f.Ctx, http.MethodGet, "https://"+f.MarbleTestAddr, http.NoBody)
+	require.NoError(err)
+	res, err := client.Do(req)
+	require.NoError(err)
+	require.Equal(http.StatusOK, res.StatusCode)
+	defer res.Body.Close()
+	response, err := io.ReadAll(res.Body)
+	require.NoError(err)
+	secrets := map[string][]byte{}
+	require.NoError(json.Unmarshal(response, &secrets))
+	symmetricKey, ok := secrets["/tmp/coordinator_test/symmetric_key"]
+	require.True(ok)
+	assert.Equal(symmetricKey, secrets["/tmp/coordinator_test/symmetric_key_previous"], "Previous and current secret should be the same on first update")
+
+	// Stop marble
+	require.NoError(cancel())
+
+	log.Println("Updating manifest to rotate root secret...")
+	_, _, missing, err := f.SetUpdateManifest(updateMnf, test.AdminOneCert, test.AdminOnePrivKey)
+	require.NoError(err)
+	require.Equal(0, missing)
+
+	// Old root cert should still be valid
+	status, _, err = api.GetStatus(t.Context(), f.ClientServerAddr, rootCert)
+	assert.NoError(err)
+	assert.EqualValues(state.AcceptingMarbles, status)
+
+	_, intermediateCert, _, err = api.VerifyCoordinator(t.Context(), f.ClientServerAddr, api.VerifyOptions{InsecureSkipVerify: true})
+	require.NoError(err)
+	caPool.AddCert(intermediateCert)
+
+	log.Println("Starting a Server-Marble")
+	serverCfg = framework.NewMarbleConfig(meshServerAddr, "testMarbleServer", "server,backend,localhost")
+	defer serverCfg.Cleanup()
+	cancel = f.StartMarbleServer(f.Ctx, serverCfg)
+
+	req, err = http.NewRequestWithContext(f.Ctx, http.MethodGet, "https://"+f.MarbleTestAddr, http.NoBody)
+	require.NoError(err)
+	res, err = client.Do(req)
+	require.NoError(err)
+	require.Equal(http.StatusOK, res.StatusCode)
+	defer res.Body.Close()
+	response, err = io.ReadAll(res.Body)
+	require.NoError(err)
+	newSecrets := map[string][]byte{}
+	require.NoError(json.Unmarshal(response, &newSecrets))
+	previousSymmetricKey, ok := newSecrets["/tmp/coordinator_test/symmetric_key_previous"]
+	require.True(ok)
+	newSymmetricKey, ok := newSecrets["/tmp/coordinator_test/symmetric_key"]
+	require.True(ok)
+	assert.NotEqual(symmetricKey, newSymmetricKey, "Symmetric key should have changed after root secret rotation")
+	assert.Equal(previousSymmetricKey, symmetricKey, "Previous symmetric key should match the one before rotation")
+
+	// Stop marble
+	require.NoError(cancel())
+
+	log.Println("Updating manifest again without rotating root secret...")
+	updateMnf.Config.RotateRootSecret = false
+	_, _, missing, err = f.SetUpdateManifest(updateMnf, test.AdminOneCert, test.AdminOnePrivKey)
+	require.NoError(err)
+	require.Equal(0, missing)
+
+	_, intermediateCert, _, err = api.VerifyCoordinator(t.Context(), f.ClientServerAddr, api.VerifyOptions{InsecureSkipVerify: true})
+	require.NoError(err)
+	caPool.AddCert(intermediateCert)
+
+	log.Println("Starting a Server-Marble")
+	serverCfg = framework.NewMarbleConfig(meshServerAddr, "testMarbleServer", "server,backend,localhost")
+	defer serverCfg.Cleanup()
+	f.StartMarbleServer(f.Ctx, serverCfg)
+
+	req, err = http.NewRequestWithContext(f.Ctx, http.MethodGet, "https://"+f.MarbleTestAddr, http.NoBody)
+	require.NoError(err)
+	res, err = client.Do(req)
+	require.NoError(err)
+	require.Equal(http.StatusOK, res.StatusCode)
+	defer res.Body.Close()
+	response, err = io.ReadAll(res.Body)
+	require.NoError(err)
+	newSecrets2 := map[string][]byte{}
+	require.NoError(json.Unmarshal(response, &newSecrets2))
+	previousSymmetricKey2, ok := newSecrets2["/tmp/coordinator_test/symmetric_key_previous"]
+	require.True(ok)
+	newSymmetricKey2, ok := newSecrets2["/tmp/coordinator_test/symmetric_key"]
+	require.True(ok)
+	assert.Equal(newSymmetricKey, newSymmetricKey2, "Secrets should not have rotated")
+	assert.Equal(previousSymmetricKey, previousSymmetricKey2, "Secrets should not have rotated")
 }
 
 func newFramework(t *testing.T) *framework.IntegrationTest {

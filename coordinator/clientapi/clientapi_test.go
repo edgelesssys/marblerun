@@ -1004,6 +1004,27 @@ func TestUpdateManifest(t *testing.T) {
 				return u
 			}(),
 		},
+		"rotate root secret": {
+			updateManifest: func() manifest.Manifest {
+				mnf := testUpdateManifest()
+				mnf.Config.RotateRootSecret = true
+				return mnf
+			}(),
+			prepareAPI: func(require *require.Assertions, api *ClientAPI) {
+				manifest, err := json.Marshal(testManifest())
+				require.NoError(err)
+				_, err = api.SetManifest(ctx, manifest)
+				require.NoError(err)
+			},
+			core: &fakeCore{
+				state: state.AcceptingManifest,
+			},
+			updater: func() *user.User {
+				u := user.NewUser("admin", mustParseCert(t, test.AdminCert))
+				u.Assign(user.NewPermission(user.PermissionUpdateManifest, []string{}))
+				return u
+			}(),
+		},
 		"successful multi-party update initialization": {
 			updateManifest: testUpdateManifest(),
 			prepareAPI: func(require *require.Assertions, api *ClientAPI) {
@@ -1437,7 +1458,7 @@ func (c *fakeCore) GetState(_ context.Context) (state.State, string, error) {
 	return c.state, c.getStateMsg, c.getStateErr
 }
 
-func (c *fakeCore) GenerateSecrets(newSecrets map[string]manifest.Secret, id uuid.UUID, _ string, rootCert *x509.Certificate, privK *ecdsa.PrivateKey, _ *ecdsa.PrivateKey,
+func (c *fakeCore) GenerateSecrets(newSecrets map[string]manifest.Secret, id uuid.UUID, _ string, rootCert *x509.Certificate, privK *ecdsa.PrivateKey, _ []byte,
 ) (map[string]manifest.Secret, error) {
 	if c.generateSecretsErr != nil {
 		return nil, c.generateSecretsErr

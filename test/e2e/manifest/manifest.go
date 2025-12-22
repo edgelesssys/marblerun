@@ -76,10 +76,11 @@ func defaultManifest(userCertPEM []byte, recoveryKeyPEM []byte, defaultPackage P
 				Parameters: manifest.Parameters{
 					Argv: []string{"marble", "serve-no-client-auth"},
 					Files: map[string]manifest.File{
-						"/dev/attestation/protected_files_key": {Data: "{{ hex .Secrets.ProtectedFilesKey }}", Encoding: "string"},
-						"/data/marble.crt":                     {Data: "{{ pem .MarbleRun.MarbleCert.Cert }}", Encoding: "string"},
-						"/data/marble.key":                     {Data: "{{ pem .MarbleRun.MarbleCert.Private }}", Encoding: "string"},
-						"/data/ca.crt":                         {Data: "{{ pem .MarbleRun.RootCA.Cert }}", Encoding: "string"},
+						"/dev/attestation/protected_files_key":          {Data: "{{ hex .Secrets.ProtectedFilesKey }}", Encoding: "string"},
+						"/data/marble.crt":                              {Data: "{{ pem .MarbleRun.MarbleCert.Cert }}", Encoding: "string"},
+						"/data/marble.key":                              {Data: "{{ pem .MarbleRun.MarbleCert.Private }}", Encoding: "string"},
+						"/data/ca.crt":                                  {Data: "{{ pem .MarbleRun.RootCA.Cert }}", Encoding: "string"},
+						"/dev/attestation/previous_protected_files_key": {Data: "{{ hex .Previous.Secrets.ProtectedFilesKey }}", Encoding: "string"},
 					},
 				},
 			},

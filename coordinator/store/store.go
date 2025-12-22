@@ -63,6 +63,8 @@ type ReadTransaction interface {
 	Get(string) ([]byte, error)
 	// Put saves a value to store by key
 	Put(string, []byte) error
+	// Delete removes a value from store by key
+	Delete(string) error
 	// Iterator returns an Iterator for a given prefix
 	Iterator(string) (Iterator, error)
 }

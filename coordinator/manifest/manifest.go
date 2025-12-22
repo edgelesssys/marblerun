@@ -86,6 +86,8 @@ type Config struct {
 	UpdateThreshold uint
 	// RecoveryThreshold is the amount of recovery secrets required to recover the sealed state.
 	RecoveryThreshold uint
+	// RotateRootSecret enables rotation of the Coordinator's root secret on manifest updates.
+	RotateRootSecret bool
 }
 
 // Marble describes a service in the mesh that should be handled and verified by the Coordinator.
@@ -570,7 +572,7 @@ func (m Manifest) Check(zaplogger *zap.Logger) error {
 
 // TemplateDryRun performs a dry run for Files and Env declarations in a manifest.
 func (m Manifest) TemplateDryRun(secrets map[string]Secret) error {
-	templateSecrets := SecretsWrapper{
+	secretsWrapper := SecretsWrapper{
 		Secrets: secrets,
 		MarbleRun: ReservedSecrets{
 			RootCA: Secret{
@@ -587,6 +589,12 @@ func (m Manifest) TemplateDryRun(secrets map[string]Secret) error {
 			CoordinatorIntermediate: Secret{
 				Cert: Certificate{Raw: []byte{0x41}},
 			},
+		},
+	}
+	templateSecrets := TemplateSecrets{
+		SecretsWrapper: secretsWrapper,
+		Previous: struct{ Secrets map[string]Secret }{
+			Secrets: secrets, // simply duplicate current secrets for the dry run
 		},
 	}
 	// make sure templates in file/env declarations can actually be executed
@@ -698,6 +706,16 @@ type ReservedSecrets struct {
 type SecretsWrapper struct {
 	MarbleRun ReservedSecrets
 	Secrets   map[string]Secret
+}
+
+// TemplateSecrets is used to bundle current and previous secrets for template execution.
+// Secrets of the current manifest are available under .Secrets, and .MarbleRun,
+// while secrets of the previous manifest are available under .Previous.Secrets.
+type TemplateSecrets struct {
+	SecretsWrapper
+	Previous struct {
+		Secrets map[string]Secret
+	}
 }
 
 // PrivateKey is a symmetric key or an asymmetric private key in PKCS #8, ASN.1 DER form,
@@ -977,7 +995,7 @@ func warnOrFailForMissingValue(debugMode bool, parameter string, packageName str
 }
 
 // checkTemplate executes the template with the given data and returns an error if the template is invalid.
-func checkTemplate(data string, tplFunc template.FuncMap, secrets SecretsWrapper) error {
+func checkTemplate(data string, tplFunc template.FuncMap, secrets TemplateSecrets) error {
 	tpl, err := template.New("data").Funcs(tplFunc).Parse(data)
 	if err != nil {
 		return err

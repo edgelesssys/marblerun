@@ -96,12 +96,12 @@ func TestActivate(t *testing.T) {
 		}
 		return "Alibaba"
 	}
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		spawner.newMarbleAsync(t, "backendOther", pickInfra(i), true)
 	}
 
 	// activate 10 frontend
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		spawner.newMarbleAsync(t, "frontend", pickInfra(i), true)
 	}
 
@@ -442,16 +442,13 @@ func (ms *marbleSpawner) verifyCertificateFromEnvironment(envName string, params
 }
 
 func TestParseSecrets(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-
 	// Generate keys
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
-	require.NoError(err)
+	require.NoError(t, err)
 	privKey, err := x509.MarshalPKCS8PrivateKey(key)
-	require.NoError(err)
+	require.NoError(t, err)
 	pubKey, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
-	require.NoError(err)
+	require.NoError(t, err)
 
 	// Create some demo certificate
 	template := x509.Certificate{
@@ -462,14 +459,10 @@ func TestParseSecrets(t *testing.T) {
 	}
 
 	testCertRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
 	testCert, err := x509.ParseCertificate(testCertRaw)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
 	// Define secrets
 	testSecrets := map[string]manifest.Secret{
@@ -477,6 +470,9 @@ func TestParseSecrets(t *testing.T) {
 		"anothercoolsecret": {Type: manifest.SecretTypeSymmetricKey, Size: 8, Public: []byte{7, 6, 5, 4, 3, 2, 1, 0}, Private: []byte{7, 6, 5, 4, 3, 2, 1, 0}},
 		"testcertificate":   {Type: manifest.SecretTypeCertRSA, Size: 2048, Cert: manifest.Certificate(*testCert), Public: pubKey, Private: privKey},
 		"emptysecret":       {},
+		"plainSecret":       {Type: manifest.SecretTypePlain, Public: []byte{1, 2, 3}},
+		"nullSecret":        {Type: manifest.SecretTypePlain, Public: []byte{0, 1, 2}},
+		"otherSecret":       {Type: manifest.SecretTypeSymmetricKey, Public: []byte{4, 5, 6}},
 	}
 
 	testReservedSecrets := manifest.ReservedSecrets{
@@ -484,92 +480,100 @@ func TestParseSecrets(t *testing.T) {
 		MarbleCert: manifest.Secret{Public: []byte{42, 0, 0}, Private: []byte{7, 0, 0}},
 	}
 
-	testWrappedSecrets := manifest.SecretsWrapper{
-		MarbleRun: testReservedSecrets,
-		Secrets:   testSecrets,
+	testWrappedSecrets := manifest.TemplateSecrets{
+		SecretsWrapper: manifest.SecretsWrapper{
+			MarbleRun: testReservedSecrets,
+			Secrets:   testSecrets,
+		},
+		Previous: struct {
+			Secrets map[string]manifest.Secret
+		}{
+			Secrets: testSecrets,
+		},
 	}
 
-	// Test all formats, pem should fail for raw/symmetric secrets
-	parsedSecret, err := parseSecrets("{{ raw .Secrets.mysecret }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
-	require.NoError(err)
-	assert.EqualValues(testSecrets["mysecret"].Public, []byte(parsedSecret))
+	for name, prefix := range map[string]string{"current": "", "previous": ".Previous"} {
+		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
+			require := require.New(t)
 
-	parsedSecret, err = parseSecrets("{{ hex .Secrets.mysecret }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
-	require.NoError(err)
-	assert.EqualValues("000102030405060708090a0b0c0d0e0f", parsedSecret)
+			// Test all formats, pem should fail for raw/symmetric secrets
+			parsedSecret, err := parseSecrets("{{ raw "+prefix+".Secrets.mysecret }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
+			require.NoError(err)
+			assert.EqualValues(testSecrets["mysecret"].Public, []byte(parsedSecret))
 
-	_, err = parseSecrets("{{ pem .Secrets.mysecret }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
-	assert.Error(err)
+			parsedSecret, err = parseSecrets("{{ hex "+prefix+".Secrets.mysecret }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
+			require.NoError(err)
+			assert.EqualValues("000102030405060708090a0b0c0d0e0f", parsedSecret)
 
-	parsedSecret, err = parseSecrets("{{ base64 .Secrets.mysecret }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
-	require.NoError(err)
-	assert.EqualValues("AAECAwQFBgcICQoLDA0ODw==", parsedSecret)
+			_, err = parseSecrets("{{ pem "+prefix+".Secrets.mysecret }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
+			assert.Error(err)
 
-	// Check if we can decode a certificate from PEM
-	parsedSecret, err = parseSecrets("{{ pem .Secrets.testcertificate.Cert }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
-	require.NoError(err)
-	assert.Contains(parsedSecret, "-----BEGIN CERTIFICATE-----\n")
+			parsedSecret, err = parseSecrets("{{ base64 "+prefix+".Secrets.mysecret }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
+			require.NoError(err)
+			assert.EqualValues("AAECAwQFBgcICQoLDA0ODw==", parsedSecret)
 
-	p, _ := pem.Decode([]byte(parsedSecret))
-	require.NotNil(p)
-	parsedCertificate, err := x509.ParseCertificate(p.Bytes)
-	require.NoError(err)
-	assert.EqualValues(testCert, parsedCertificate)
+			// Check if we can decode a certificate from PEM
+			parsedSecret, err = parseSecrets("{{ pem "+prefix+".Secrets.testcertificate.Cert }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
+			require.NoError(err)
+			assert.Contains(parsedSecret, "-----BEGIN CERTIFICATE-----\n")
 
-	// Check if we can parse a certificate from the outputted raw type
-	parsedSecret, err = parseSecrets("{{ raw .Secrets.testcertificate.Cert }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
-	require.NoError(err)
-	parsedCertificate, err = x509.ParseCertificate([]byte(parsedSecret))
-	require.NoError(err)
-	assert.EqualValues(testCert, parsedCertificate)
+			p, _ := pem.Decode([]byte(parsedSecret))
+			require.NotNil(p)
+			parsedCertificate, err := x509.ParseCertificate(p.Bytes)
+			require.NoError(err)
+			assert.EqualValues(testCert, parsedCertificate)
 
-	// Test if we can access a second secret
-	parsedSecret, err = parseSecrets("{{ raw .Secrets.anothercoolsecret }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
-	require.NoError(err)
-	assert.EqualValues(testSecrets["anothercoolsecret"].Public, []byte(parsedSecret))
+			// Check if we can parse a certificate from the outputted raw type
+			parsedSecret, err = parseSecrets("{{ raw "+prefix+".Secrets.testcertificate.Cert }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
+			require.NoError(err)
+			parsedCertificate, err = x509.ParseCertificate([]byte(parsedSecret))
+			require.NoError(err)
+			assert.EqualValues(testCert, parsedCertificate)
 
-	// Test all the reserved placeholder secrets
-	expectedResult := "-----BEGIN PUBLIC KEY-----\nAAAq\n-----END PUBLIC KEY-----\n"
-	parsedSecret, err = parseSecrets("{{ pem .MarbleRun.RootCA.Public }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
-	require.NoError(err)
-	assert.EqualValues(expectedResult, parsedSecret)
+			// Test if we can access a second secret
+			parsedSecret, err = parseSecrets("{{ raw "+prefix+".Secrets.anothercoolsecret }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
+			require.NoError(err)
+			assert.EqualValues(testSecrets["anothercoolsecret"].Public, []byte(parsedSecret))
 
-	expectedResult = "-----BEGIN PUBLIC KEY-----\nKgAA\n-----END PUBLIC KEY-----\n"
-	parsedSecret, err = parseSecrets("{{ pem .MarbleRun.MarbleCert.Public }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
-	require.NoError(err)
-	assert.EqualValues(expectedResult, parsedSecret)
+			// Test all the reserved placeholder secrets
+			expectedResult := "-----BEGIN PUBLIC KEY-----\nAAAq\n-----END PUBLIC KEY-----\n"
+			parsedSecret, err = parseSecrets("{{ pem .MarbleRun.RootCA.Public }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
+			require.NoError(err)
+			assert.EqualValues(expectedResult, parsedSecret)
 
-	expectedResult = "-----BEGIN PRIVATE KEY-----\nBwAA\n-----END PRIVATE KEY-----\n"
+			expectedResult = "-----BEGIN PUBLIC KEY-----\nKgAA\n-----END PUBLIC KEY-----\n"
+			parsedSecret, err = parseSecrets("{{ pem .MarbleRun.MarbleCert.Public }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
+			require.NoError(err)
+			assert.EqualValues(expectedResult, parsedSecret)
 
-	parsedSecret, err = parseSecrets("{{ pem .MarbleRun.MarbleCert.Private }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
-	require.NoError(err)
-	assert.EqualValues(expectedResult, parsedSecret)
+			expectedResult = "-----BEGIN PRIVATE KEY-----\nBwAA\n-----END PRIVATE KEY-----\n"
 
-	// We should get an error if we try to get a non-existing secret
-	_, err = parseSecrets("{{ hex .Secrets.idontexist }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
-	assert.Error(err)
+			parsedSecret, err = parseSecrets("{{ pem .MarbleRun.MarbleCert.Private }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
+			require.NoError(err)
+			assert.EqualValues(expectedResult, parsedSecret)
 
-	// We should get an error if we try to access an empty secret
-	_, err = parseSecrets("{{ hex .Secrets.emptysecret }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
-	assert.Error(err)
+			// We should get an error if we try to get a non-existing secret
+			_, err = parseSecrets("{{ hex "+prefix+".Secrets.idontexist }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
+			assert.Error(err)
 
-	testWrappedSecrets.Secrets = map[string]manifest.Secret{
-		"plainSecret": {Type: manifest.SecretTypePlain, Public: []byte{1, 2, 3}},
-		"nullSecret":  {Type: manifest.SecretTypePlain, Public: []byte{0, 1, 2}},
-		"otherSecret": {Type: manifest.SecretTypeSymmetricKey, Public: []byte{4, 5, 6}},
+			// We should get an error if we try to access an empty secret
+			_, err = parseSecrets("{{ hex "+prefix+".Secrets.emptysecret }}", manifest.ManifestFileTemplateFuncMap, testWrappedSecrets)
+			assert.Error(err)
+
+			// plain secrets are allowed to use string formatting
+			_, err = parseSecrets("{{ string "+prefix+".Secrets.plainSecret }}", manifest.ManifestEnvTemplateFuncMap, testWrappedSecrets)
+			assert.NoError(err)
+
+			// NULL bytes in secret results in an error
+			_, err = parseSecrets("{{ string .Secrets.nullSecret }}", manifest.ManifestEnvTemplateFuncMap, testWrappedSecrets)
+			assert.Error(err)
+
+			// non plain secrets always result in an error
+			_, err = parseSecrets("{{ string "+prefix+".Secrets.otherSecret }}", manifest.ManifestEnvTemplateFuncMap, testWrappedSecrets)
+			assert.Error(err)
+		})
 	}
-
-	// plain secrets are allowed to use string formating
-	_, err = parseSecrets("{{ string .Secrets.plainSecret }}", manifest.ManifestEnvTemplateFuncMap, testWrappedSecrets)
-	assert.NoError(err)
-
-	// NULL bytes in secret results in an error
-	_, err = parseSecrets("{{ string .Secrets.nullSecret }}", manifest.ManifestEnvTemplateFuncMap, testWrappedSecrets)
-	assert.Error(err)
-
-	// non plain secrets always result in an error
-	_, err = parseSecrets("{{ string .Secrets.otherSecret }}", manifest.ManifestEnvTemplateFuncMap, testWrappedSecrets)
-	assert.Error(err)
 }
 
 func TestSecurityLevelUpdate(t *testing.T) {

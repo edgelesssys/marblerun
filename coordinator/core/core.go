@@ -342,7 +342,7 @@ func (c *Core) GetState(ctx context.Context) (state.State, string, error) {
 // GenerateSecrets generates secrets for the given manifest and parent certificate.
 func (c *Core) GenerateSecrets(
 	secrets map[string]manifest.Secret, id uuid.UUID, marbleName string,
-	parentCertificate *x509.Certificate, parentPrivKey *ecdsa.PrivateKey, rootPrivK *ecdsa.PrivateKey,
+	parentCertificate *x509.Certificate, parentPrivKey *ecdsa.PrivateKey, rootSecret []byte,
 ) (map[string]manifest.Secret, error) {
 	// Create a new map so we do not overwrite the entries in the manifest
 	newSecrets := make(map[string]manifest.Secret)
@@ -380,11 +380,10 @@ func (c *Core) GenerateSecrets(
 				}
 			} else {
 				salt := id.String() + name
-				secretKeyDerive := rootPrivK.D.Bytes()
 				var err error
 
 				// Derive key using the uuid and secret name as salt, and the marble's name as info
-				generatedValue, err = util.DeriveKey(secretKeyDerive, []byte(salt), []byte(marbleName), secret.Size/8)
+				generatedValue, err = util.DeriveKey(rootSecret, []byte(salt), []byte(marbleName), secret.Size/8)
 				if err != nil {
 					return nil, err
 				}
@@ -547,8 +546,15 @@ func (c *Core) generateCertificateForSecret(secret manifest.Secret, parentCertif
 func (c *Core) setCAData(dnsNames []string, putter interface {
 	PutCertificate(name string, cert *x509.Certificate) error
 	PutPrivateKey(name string, key *ecdsa.PrivateKey) error
+	PutRootSecret(secret []byte) error
+	PutPreviousRootSecret(secret []byte) error
 },
 ) error {
+	rootSecret := make([]byte, 32)
+	_, err := rand.Read(rootSecret)
+	if err != nil {
+		return fmt.Errorf("generating root secret: %w", err)
+	}
 	rootCert, rootPrivK, err := corecrypto.GenerateCert(dnsNames, constants.CoordinatorName, nil, nil, nil)
 	if err != nil {
 		return fmt.Errorf("generating root certificate and key: %w", err)
@@ -575,7 +581,18 @@ func (c *Core) setCAData(dnsNames []string, putter interface {
 	if err := putter.PutPrivateKey(constants.SKCoordinatorRootKey, rootPrivK); err != nil {
 		return err
 	}
-	return putter.PutPrivateKey(constants.SKCoordinatorIntermediateKey, intermediatePrivK)
+	if err := putter.PutPrivateKey(constants.SKCoordinatorIntermediateKey, intermediatePrivK); err != nil {
+		return err
+	}
+	if err := putter.PutRootSecret(rootSecret); err != nil {
+		return fmt.Errorf("storing root secret: %w", err)
+	}
+	// Save root secret also as placeholder for previous root secret
+	if err := putter.PutPreviousRootSecret(rootSecret); err != nil {
+		return fmt.Errorf("storing previous root secret: %w", err)
+	}
+
+	return nil
 }
 
 // QuoteError is returned when the quote could not be retrieved.
