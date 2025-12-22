@@ -24,7 +24,7 @@ import (
 func TestNodeSupportsSGX(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
-	testClient := fake.NewSimpleClientset()
+	testClient := fake.NewClientset()
 
 	// Test node not supporting SGX
 	testNode := &corev1.Node{
@@ -95,7 +95,7 @@ func TestNodeSupportsSGX(t *testing.T) {
 func TestCliCheckSGXSupport(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	testClient := fake.NewSimpleClientset()
+	testClient := fake.NewClientset()
 
 	cmd := &cobra.Command{}
 	var out bytes.Buffer
