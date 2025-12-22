@@ -32,7 +32,7 @@ import (
 
 func TestCreateSecret(t *testing.T) {
 	require := require.New(t)
-	testClient := fake.NewSimpleClientset()
+	testClient := fake.NewClientset()
 	ctx := context.Background()
 
 	testKey, err := rsa.GenerateKey(rand.Reader, 1024)
@@ -60,7 +60,7 @@ func TestCreateSecret(t *testing.T) {
 func TestGetCertificateHandler(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	testClient := fake.NewSimpleClientset()
+	testClient := fake.NewClientset()
 
 	var out bytes.Buffer
 
@@ -99,7 +99,7 @@ func TestGetCertificateHandler(t *testing.T) {
 
 func TestVerifyNamespace(t *testing.T) {
 	require := require.New(t)
-	testClient := fake.NewSimpleClientset()
+	testClient := fake.NewClientset()
 	ctx := context.Background()
 
 	_, err := testClient.CoreV1().Namespaces().Get(ctx, "test-space", metav1.GetOptions{})
@@ -125,7 +125,7 @@ func TestInstallWebhook(t *testing.T) {
 	}{
 		"set up webhook certs": {
 			kubeClient: func() *fake.Clientset {
-				testClient := fake.NewSimpleClientset()
+				testClient := fake.NewClientset()
 				testClient.Discovery().(*fakediscovery.FakeDiscovery).FakedServerVersion = &version.Info{
 					Major:      "1",
 					Minor:      "18",
@@ -142,7 +142,7 @@ func TestInstallWebhook(t *testing.T) {
 			},
 		},
 		"use cert-manager": {
-			kubeClient: fake.NewSimpleClientset(),
+			kubeClient: fake.NewClientset(),
 			cmChecker:  stubCMChecker{err: nil},
 			assert: func(t *testing.T, values []string, err error) {
 				assert.NoError(t, err)
@@ -169,7 +169,7 @@ func TestGetSGXResourceKey(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	testClient := fake.NewSimpleClientset()
+	testClient := fake.NewClientset()
 	ctx := context.Background()
 
 	// Test Intel Device Plugin
@@ -197,7 +197,7 @@ func TestErrorAndCleanup(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	testClient := fake.NewSimpleClientset()
+	testClient := fake.NewClientset()
 	testClient.Discovery().(*fakediscovery.FakeDiscovery).FakedServerVersion = &version.Info{
 		Major:      "1",
 		Minor:      "19",

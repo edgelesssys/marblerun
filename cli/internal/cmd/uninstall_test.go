@@ -25,7 +25,7 @@ import (
 func TestCleanupWebhook(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	testClient := fake.NewSimpleClientset()
+	testClient := fake.NewClientset()
 	testClient.Discovery().(*fakediscovery.FakeDiscovery).FakedServerVersion = &version.Info{
 		Major:      "1",
 		Minor:      "19",

@@ -53,7 +53,7 @@ func TestCertificateV1(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.Background()
 
-	testClient := fake.NewSimpleClientset()
+	testClient := fake.NewClientset()
 
 	testHandler, err := newCertificateV1(testClient, helm.Namespace)
 	require.NoError(err)

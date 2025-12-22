@@ -24,7 +24,7 @@ import (
 func TestDeploymentIsReady(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
-	testClient := fake.NewSimpleClientset()
+	testClient := fake.NewClientset()
 	ctx := context.Background()
 
 	_, _, err := deploymentIsReady(ctx, testClient, helm.CoordinatorDeployment, helm.Namespace)
@@ -64,7 +64,7 @@ func TestDeploymentIsReady(t *testing.T) {
 func TestCheckDeploymentStatus(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	testClient := fake.NewSimpleClientset()
+	testClient := fake.NewClientset()
 	ctx := context.Background()
 	cmd := &cobra.Command{}
 	var out bytes.Buffer
@@ -94,7 +94,7 @@ func TestCheckDeploymentStatus(t *testing.T) {
 func TestCliCheck(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	testClient := fake.NewSimpleClientset()
+	testClient := fake.NewClientset()
 	ctx := context.Background()
 	cmd := &cobra.Command{}
 	var out bytes.Buffer
