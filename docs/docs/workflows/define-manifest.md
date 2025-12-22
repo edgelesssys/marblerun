@@ -184,7 +184,7 @@ Finally, the optional field `MaxActivations` can be used to restrict the number 
 
 :::tip
 
-After you rotate the Coordinator's root secret using the [`RotateRootSecret` config option](#config), secrets based on the previous root secret can still be accessed using the `.Previous` key:
+After rotating the Coordinator's root secret using the [`RotateRootSecret` config option](#config), secrets based on the previous root secret can still be accessed using the `.Previous` key:
 
 `{{ <encoding> .Previous.Secrets.<name of secret> }}`
 
