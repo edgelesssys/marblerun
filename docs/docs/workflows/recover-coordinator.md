@@ -115,9 +115,9 @@ Assume the following `RecoveryKeys` were set in the manifest:
 
 ## Offline recovery secret signing
 
-When recovering a Coordinator, the CLI decrypts and signs the secret with your private recovery key before sending it to the Coordinator over a TLS secured connection.
+When recovering a Coordinator, the CLI decrypts and signs the secret with your private recovery key before sending it to the Coordinator over a TLS connection.
 Depending on your deployment, it may not be acceptable to have your private key or the decrypted recovery secret on a machine connected to the internet.
-For this case, MarbleRun provides the option to retrieve a public key from the Coordinator to encrypt your signed recovery secret on an air-gapped system.
+For this case, you can retrieve a public key from the Coordinator to encrypt your signed recovery secret on an air-gapped system.
 
 The following gives an example of how to recover MarbleRun with your private recovery key on an air-gapped system.
 
