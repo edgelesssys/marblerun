@@ -628,11 +628,12 @@ func setupAPI(t *testing.T, core core) (*ClientAPI, wrapper.Wrapper) {
 	require.NoError(err)
 	require.NoError(wrapper.PutRootSecret(rootSecret))
 	require.NoError(wrapper.PutPreviousRootSecret(rootSecret))
-	rootCert, rootKey, err := crypto.GenerateCert([]string{"localhost"}, "MarbleRun Unit Test Root", nil, nil, nil)
+	subjAltNames := []string{"localhost", "192.0.2.1"}
+	rootCert, rootKey, err := crypto.GenerateCert(subjAltNames, "MarbleRun Unit Test Root", nil, nil, nil)
 	require.NoError(err)
-	intermediateCert, intermediateKey, err := crypto.GenerateCert([]string{"localhost"}, "MarbleRun Unit Test Intermediate", nil, rootCert, rootKey)
+	intermediateCert, intermediateKey, err := crypto.GenerateCert(subjAltNames, "MarbleRun Unit Test Intermediate", nil, rootCert, rootKey)
 	require.NoError(err)
-	marbleCert, _, err := crypto.GenerateCert([]string{"localhost"}, "MarbleRun Unit Test Marble", intermediateKey, nil, nil)
+	marbleCert, _, err := crypto.GenerateCert(subjAltNames, "MarbleRun Unit Test Marble", intermediateKey, nil, nil)
 	require.NoError(err)
 
 	require.NoError(wrapper.PutCertificate(constants.SKCoordinatorRootCert, rootCert))

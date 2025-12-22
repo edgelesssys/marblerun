@@ -42,7 +42,7 @@ type Wrapper struct {
 	store dataStore
 }
 
-// New creates a nes Wrapper for a store or transaction.
+// New creates a new Wrapper for a store or transaction.
 func New(store dataStore) Wrapper {
 	return Wrapper{store}
 }

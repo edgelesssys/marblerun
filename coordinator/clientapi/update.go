@@ -435,20 +435,20 @@ func (a *ClientAPI) updateSecrets(wrapper secretGetter, mnf manifest.Manifest) e
 		}
 	}
 
-	coordDNSNames := rootCert.DNSNames
+	coordSANs := rootCert.DNSNames
 	for _, ip := range rootCert.IPAddresses {
 		if !slices.ContainsFunc(util.DefaultCertificateIPAddresses, func(defaultIP net.IP) bool { return ip.Equal(defaultIP) }) {
-			coordDNSNames = append(coordDNSNames, ip.String())
+			coordSANs = append(coordSANs, ip.String())
 		}
 	}
 
 	// Generate new cross-signed intermediate CA for Marble gRPC authentication
-	intermediateCert, intermediatePrivK, err := crypto.GenerateCert(coordDNSNames, constants.CoordinatorIntermediateName, nil, rootCert, rootPrivK)
+	intermediateCert, intermediatePrivK, err := crypto.GenerateCert(coordSANs, constants.CoordinatorIntermediateName, nil, rootCert, rootPrivK)
 	if err != nil {
 		a.log.Error("Could not generate a new intermediate CA for Marble authentication.", zap.Error(err))
 		return fmt.Errorf("generating new intermediate CA for Marble authentication: %w", err)
 	}
-	marbleRootCert, _, err := crypto.GenerateCert(coordDNSNames, constants.CoordinatorIntermediateName, intermediatePrivK, nil, nil)
+	marbleRootCert, _, err := crypto.GenerateCert(coordSANs, constants.CoordinatorIntermediateName, intermediatePrivK, nil, nil)
 	if err != nil {
 		return fmt.Errorf("generating new Marble root certificate: %w", err)
 	}

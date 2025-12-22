@@ -2563,7 +2563,7 @@ func TestE2EActions(t *testing.T) {
 						return fmt.Errorf("expected one secret from Marble, got %d", len(marbleSecrets))
 					}
 					symmetricKey = marbleSecrets[marbleSecretFile]
-					assert.Equal(t, symmetricKey, marbleSecrets[marbleSecretFile])
+					assert.Equal(t, symmetricKey, marbleSecrets[previousMarbleSecretFile])
 					return nil
 				}))
 
