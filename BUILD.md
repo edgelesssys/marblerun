@@ -1,4 +1,3 @@
-
 # Build and development guide
 
 ## Repo layout
@@ -36,9 +35,9 @@ docker build -o. - < dockerfiles/Dockerfile.cli
 
 *Prerequisites*:
 
-* Ubuntu 20.04 or 22.04
+* Ubuntu 22.04
 * [Edgeless RT](https://github.com/edgelesssys/edgelessrt) is installed and sourced
-* Go 1.21 or newer
+* Go 1.25 or newer
 
 Build the Coordinator control plane and Marble test applications:
 
@@ -197,25 +196,25 @@ make marble-injector
 ### Unit tests
 
 ```bash
-go test -race ./...
+go test -race -count=3 ./...
 ```
 
 ### With SGX-DCAP attestation on enabled hardware (e.g., in Azure)
 
 ```bash
-go test -v -tags integration ./test -b ../build
+go test -v -tags integration ./test/integration -b ../../build
 ```
 
 ### With SGX simulation mode
 
 ```bash
-go test -v -tags integration ./test -b ../build -s
+go test -v -tags integration ./test/integration -b ../../build -s
 ```
 
 ### Without SGX
 
 ```bash
-go test -v -tags integration ./test -b ../build -noenclave
+go test -v -tags integration ./test/integration -b ../../build -noenclave
 ```
 
 ## Docker image
