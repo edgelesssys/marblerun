@@ -190,15 +190,12 @@ func UpdateValues(options Options, chartValues map[string]any) (map[string]any, 
 }
 
 // Install installs MarbleRun using the provided chart and values.
-func (c *Client) Install(ctx context.Context, wait bool, chart *chart.Chart, values map[string]any) error {
+func (c *Client) Install(ctx context.Context, chart *chart.Chart, values map[string]any) error {
 	installer := action.NewInstall(c.config)
 	installer.Namespace = c.namespace
 	installer.ReleaseName = release
 	installer.CreateNamespace = true
-	if wait {
-		installer.WaitStrategy = kube.StatusWatcherStrategy
-		installer.WaitForJobs = true
-	}
+	installer.WaitStrategy = kube.StatusWatcherStrategy
 	installer.Timeout = time.Minute * 5
 
 	if err := util.ValidateAgainstSchema(chart, values); err != nil {
@@ -210,11 +207,9 @@ func (c *Client) Install(ctx context.Context, wait bool, chart *chart.Chart, val
 }
 
 // Uninstall removes the MarbleRun deployment from the cluster.
-func (c *Client) Uninstall(wait bool) error {
+func (c *Client) Uninstall() error {
 	uninstaller := action.NewUninstall(c.config)
-	if wait {
-		uninstaller.WaitStrategy = kube.StatusWatcherStrategy
-	}
+	uninstaller.WaitStrategy = kube.StatusWatcherStrategy
 	uninstaller.Timeout = time.Minute * 5
 
 	_, err := uninstaller.Run(release)

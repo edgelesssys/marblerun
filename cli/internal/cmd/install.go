@@ -50,7 +50,6 @@ marblerun install --dcap-pccs-url https://pccs.example.com/sgx/certification/v4/
 	cmd.Flags().String("dcap-secure-cert", "TRUE", "To accept insecure HTTPS certificate from the PCCS, set this option to FALSE. Mutually exclusive with \"--dcap-qcnl-config-file\"")
 	cmd.Flags().Bool("simulation", false, "Set MarbleRun to start in simulation mode")
 	cmd.Flags().Bool("disable-auto-injection", false, "Install MarbleRun without auto-injection webhook")
-	cmd.Flags().Bool("wait", false, "Wait for MarbleRun installation to complete before returning")
 	cmd.Flags().Int("mesh-server-port", 2001, "Set the mesh server port. Needs to be configured to the same port as in the data-plane marbles")
 	cmd.Flags().Int("client-server-port", 4433, "Set the client server port. Needs to be configured to the same port as in your client tool stack")
 
@@ -138,7 +137,7 @@ func cliInstall(cmd *cobra.Command, helmClient *helm.Client, kubeClient kubernet
 		return errorAndCleanup(cmd.Context(), fmt.Errorf("generating helm values: %w", err), kubeClient, namespace)
 	}
 
-	if err := helmClient.Install(cmd.Context(), flags.wait, chart, values); err != nil {
+	if err := helmClient.Install(cmd.Context(), chart, values); err != nil {
 		return errorAndCleanup(cmd.Context(), fmt.Errorf("installing MarbleRun: %w", err), kubeClient, namespace)
 	}
 
@@ -288,7 +287,6 @@ type installFlags struct {
 	distributedDeployment bool
 	simulation            bool
 	disableInjection      bool
-	wait                  bool
 	clientPort            int
 	meshPort              int
 }
@@ -334,10 +332,6 @@ func parseInstallFlags(cmd *cobra.Command) (installFlags, error) {
 	if err != nil {
 		return installFlags{}, err
 	}
-	wait, err := cmd.Flags().GetBool("wait")
-	if err != nil {
-		return installFlags{}, err
-	}
 	clientPort, err := cmd.Flags().GetInt("client-server-port")
 	if err != nil {
 		return installFlags{}, err
@@ -358,7 +352,6 @@ func parseInstallFlags(cmd *cobra.Command) (installFlags, error) {
 		distributedDeployment: distributedDeployment,
 		simulation:            simulation,
 		disableInjection:      disableInjection,
-		wait:                  wait,
 		clientPort:            clientPort,
 		meshPort:              meshPort,
 	}, nil

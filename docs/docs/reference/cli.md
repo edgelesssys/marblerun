@@ -80,7 +80,6 @@ marblerun install --dcap-pccs-url https://pccs.example.com/sgx/certification/v4/
       --resource-key string            Resource providing SGX, different depending on used device plugin. Use this to set tolerations/resources if your device plugin is not supported by MarbleRun
       --simulation                     Set MarbleRun to start in simulation mode
       --version string                 Version of the Coordinator to install, latest by default
-      --wait                           Wait for MarbleRun installation to complete before returning
 ```
 
 ### Options inherited from parent commands
@@ -112,7 +111,6 @@ marblerun uninstall [flags]
 
 ```
   -h, --help   help for uninstall
-      --wait   Wait for the uninstallation to complete before returning
 ```
 
 ### Options inherited from parent commands

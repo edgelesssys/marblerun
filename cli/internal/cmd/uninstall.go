@@ -26,9 +26,6 @@ func NewUninstallCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 		RunE:  runUninstall,
 	}
-
-	cmd.Flags().Bool("wait", false, "Wait for the uninstallation to complete before returning")
-
 	return cmd
 }
 
@@ -53,11 +50,7 @@ func runUninstall(cmd *cobra.Command, _ []string) error {
 func cliUninstall(
 	cmd *cobra.Command, helmClient *helm.Client, kubeClient kubernetes.Interface, namespace string,
 ) error {
-	wait, err := cmd.Flags().GetBool("wait")
-	if err != nil {
-		return err
-	}
-	if err := helmClient.Uninstall(wait); err != nil {
+	if err := helmClient.Uninstall(); err != nil {
 		return err
 	}
 
