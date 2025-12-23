@@ -13,8 +13,10 @@ import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
+	"crypto/hkdf"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -383,7 +385,7 @@ func (c *Core) GenerateSecrets(
 				var err error
 
 				// Derive key using the uuid and secret name as salt, and the marble's name as info
-				generatedValue, err = util.DeriveKey(rootSecret, []byte(salt), []byte(marbleName), secret.Size/8)
+				generatedValue, err = hkdf.Key(sha256.New, rootSecret, []byte(salt), marbleName, int(secret.Size/8))
 				if err != nil {
 					return nil, err
 				}

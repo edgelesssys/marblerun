@@ -18,27 +18,14 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"os"
 	"slices"
-
-	"golang.org/x/crypto/hkdf"
 )
 
 // DefaultCertificateIPAddresses defines a placeholder value used for automated x509 certificate generation.
 var DefaultCertificateIPAddresses = []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback}
-
-// DeriveKey derives a key from a secret.
-func DeriveKey(secret, salt, info []byte, length uint) ([]byte, error) {
-	hkdf := hkdf.New(sha256.New, secret, salt, info)
-	key := make([]byte, length)
-	if _, err := io.ReadFull(hkdf, key); err != nil {
-		return nil, err
-	}
-	return key, nil
-}
 
 // MustGetenv returns the environment variable `name` if it exists or panics otherwise.
 func MustGetenv(name string) string {
