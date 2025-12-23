@@ -21,7 +21,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/keyvault/azkeys"
+	"github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azkeys"
 	"github.com/edgelesssys/ego/enclave"
 	"github.com/lestrrat-go/jwx/v3/jwa"
 	"github.com/lestrrat-go/jwx/v3/jwk"
@@ -56,7 +56,7 @@ func (k *KeyReleaser) requestKey(ctx context.Context) error {
 	k.log.Debug("Requesting key release from Azure Key Vault")
 	res, err := k.client.Release(ctx, k.keyName, k.keyVersion, azkeys.ReleaseParameters{
 		TargetAttestationToken: &attestationToken,
-		Enc:                    toPtr(azkeys.KeyEncryptionAlgorithmRSAAESKEYWRAP384),
+		Algorithm:              toPtr(azkeys.KeyEncryptionAlgorithmRSAAESKEYWRAP384),
 		Nonce:                  toPtr(string(nonce)),
 	}, nil)
 	if err != nil {
