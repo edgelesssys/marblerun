@@ -235,9 +235,13 @@ func (s Wrapper) PutRootSecret(rootSecret []byte) error {
 	return s.store.Put(request.RootSecret, rootSecret)
 }
 
-// GetPreviousRootSecret returns the previous Coordinator's root secret.
+// GetPreviousRootSecret returns the previous Coordinator's root secret or the current one if there's none yet.
 func (s Wrapper) GetPreviousRootSecret() ([]byte, error) {
-	return s.store.Get(request.PreviousRootSecret)
+	previousRootSecret, err := s.store.Get(request.PreviousRootSecret)
+	if errors.Is(err, store.ErrValueUnset) {
+		return s.GetRootSecret()
+	}
+	return previousRootSecret, err
 }
 
 // PutPreviousRootSecret saves the previous Coordinator's root secret to store.

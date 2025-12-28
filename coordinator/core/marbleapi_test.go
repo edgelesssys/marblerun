@@ -30,6 +30,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
 	"github.com/edgelesssys/marblerun/coordinator/seal"
 	"github.com/edgelesssys/marblerun/coordinator/state"
+	"github.com/edgelesssys/marblerun/coordinator/store/request"
 	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
 	"github.com/edgelesssys/marblerun/coordinator/store/wrapper/testutil"
 	globalconstants "github.com/edgelesssys/marblerun/internal/constants"
@@ -783,4 +784,48 @@ func TestActivateWithTTLSforMarbleWithoutEnvVars(t *testing.T) {
 	resp, err := coreServer.Activate(ctx, &rpc.ActivationReq{Quote: qu, CSR: csr, MarbleType: "marble", UUID: uuid.NewString()})
 	require.NoError(err)
 	assert.True(strings.HasPrefix(string(resp.Parameters.Env[globalconstants.EnvMarbleTTLSConfig]), `{"tls":{"Incoming":{"*:2000":{"cacrt":"-----BEGIN CERTIFICATE-----`))
+}
+
+func TestActivateWithoutStoredRootSecret(t *testing.T) {
+	// Backward compatibility: earlier versions of MarbleRun did not store a dedicated root secret
+
+	assert := assert.New(t)
+	require := require.New(t)
+
+	var manifest manifest.Manifest
+	require.NoError(json.Unmarshal([]byte(test.ManifestJSON), &manifest))
+
+	log := zaptest.NewLogger(t)
+	validator := quote.NewMockValidator()
+	issuer := quote.NewMockIssuer()
+	store := stdstore.New(&seal.MockSealer{}, stubEnabler{}, afero.NewMemMapFs(), "", log)
+	coreServer, err := NewCore(nil, validator, issuer, store, recovery.New(store, log), log, nil, nil)
+	require.NoError(err)
+
+	clientAPI, err := clientapi.New(store, coreServer.recovery, coreServer, &distributor.Stub{}, stubEnabler{}, coreServer.log)
+	require.NoError(err)
+
+	_, err = clientAPI.SetManifest(context.Background(), []byte(test.ManifestJSON))
+	require.NoError(err)
+
+	// Delete root secrets to simulate older version
+	require.NoError(store.Delete(request.RootSecret))
+	require.NoError(store.Delete(request.PreviousRootSecret))
+
+	cert, csr, _ := util.MustGenerateTestMarbleCredentials()
+	qu, err := issuer.Issue(cert.Raw)
+	require.NoError(err)
+	validator.AddValidQuote(qu, cert.Raw, manifest.Packages["frontend"], manifest.Infrastructures["Azure"])
+
+	ctx := peer.NewContext(context.Background(), &peer.Peer{
+		AuthInfo: credentials.TLSInfo{
+			State: tls.ConnectionState{
+				PeerCertificates: []*x509.Certificate{cert},
+			},
+		},
+	})
+
+	resp, err := coreServer.Activate(ctx, &rpc.ActivationReq{Quote: qu, CSR: csr, MarbleType: "frontend", UUID: uuid.NewString()})
+	require.NoError(err)
+	assert.NotNil(resp.Parameters)
 }

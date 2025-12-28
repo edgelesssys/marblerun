@@ -549,7 +549,6 @@ func (c *Core) setCAData(dnsNames []string, putter interface {
 	PutCertificate(name string, cert *x509.Certificate) error
 	PutPrivateKey(name string, key *ecdsa.PrivateKey) error
 	PutRootSecret(secret []byte) error
-	PutPreviousRootSecret(secret []byte) error
 },
 ) error {
 	rootSecret := make([]byte, 32)
@@ -588,10 +587,6 @@ func (c *Core) setCAData(dnsNames []string, putter interface {
 	}
 	if err := putter.PutRootSecret(rootSecret); err != nil {
 		return fmt.Errorf("storing root secret: %w", err)
-	}
-	// Save root secret also as placeholder for previous root secret
-	if err := putter.PutPreviousRootSecret(rootSecret); err != nil {
-		return fmt.Errorf("storing previous root secret: %w", err)
 	}
 
 	return nil
