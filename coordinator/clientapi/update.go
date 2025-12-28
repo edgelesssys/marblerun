@@ -479,6 +479,17 @@ func (a *ClientAPI) updateSecrets(wrapper secretGetter, mnf manifest.Manifest) e
 	for _, name := range unchanged {
 		if !mnf.Secrets[name].UserDefined && ((mnf.Secrets[name].Type != manifest.SecretTypeSymmetricKey) || mnf.Config.RotateRootSecret) {
 			secretsToGenerate[name] = mnf.Secrets[name]
+			// Back up existing (shared) secret before regenerating.
+			// This also serves as placeholder for a private secret migrated from older MarbleRun versions.
+			secret, err := wrapper.GetSecret(name)
+			if err != nil {
+				a.log.Error("Failed to get secret", zap.Error(err), zap.String("secret", name))
+				return fmt.Errorf("getting secret %q from store: %w", name, err)
+			}
+			if err := wrapper.PutPreviousSecret(name, secret); err != nil {
+				a.log.Error("Failed creating backup of secret", zap.Error(err), zap.String("secret", name))
+				return fmt.Errorf("creating backup of secret %q: %w", name, err)
+			}
 		}
 	}
 

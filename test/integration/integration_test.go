@@ -1184,7 +1184,7 @@ func TestRootSecretRotation(t *testing.T) {
 	log.Println("Starting a Server-Marble")
 	serverCfg = framework.NewMarbleConfig(meshServerAddr, "testMarbleServer", "server,backend,localhost")
 	defer serverCfg.Cleanup()
-	f.StartMarbleServer(f.Ctx, serverCfg)
+	cancel = f.StartMarbleServer(f.Ctx, serverCfg)
 
 	req, err = http.NewRequestWithContext(f.Ctx, http.MethodGet, "https://"+f.MarbleTestAddr, http.NoBody)
 	require.NoError(err)
@@ -1202,6 +1202,41 @@ func TestRootSecretRotation(t *testing.T) {
 	require.True(ok)
 	assert.Equal(newSymmetricKey, newSymmetricKey2, "Secrets should not have rotated")
 	assert.Equal(previousSymmetricKey, previousSymmetricKey2, "Secrets should not have rotated")
+
+	// Stop marble
+	require.NoError(cancel())
+
+	log.Println("Updating manifest again with rotating root secret...")
+	updateMnf.Config.RotateRootSecret = true
+	_, _, missing, err = f.SetUpdateManifest(updateMnf, test.AdminOneCert, test.AdminOnePrivKey)
+	require.NoError(err)
+	require.Equal(0, missing)
+
+	_, intermediateCert, _, err = api.VerifyCoordinator(t.Context(), f.ClientServerAddr, api.VerifyOptions{InsecureSkipVerify: true})
+	require.NoError(err)
+	caPool.AddCert(intermediateCert)
+
+	log.Println("Starting a Server-Marble")
+	serverCfg = framework.NewMarbleConfig(meshServerAddr, "testMarbleServer", "server,backend,localhost")
+	defer serverCfg.Cleanup()
+	f.StartMarbleServer(f.Ctx, serverCfg)
+
+	req, err = http.NewRequestWithContext(f.Ctx, http.MethodGet, "https://"+f.MarbleTestAddr, http.NoBody)
+	require.NoError(err)
+	res, err = client.Do(req)
+	require.NoError(err)
+	require.Equal(http.StatusOK, res.StatusCode)
+	defer res.Body.Close()
+	response, err = io.ReadAll(res.Body)
+	require.NoError(err)
+	newSecrets3 := map[string][]byte{}
+	require.NoError(json.Unmarshal(response, &newSecrets3))
+	previousSymmetricKey3, ok := newSecrets3["/tmp/coordinator_test/symmetric_key_previous"]
+	require.True(ok)
+	newSymmetricKey3, ok := newSecrets3["/tmp/coordinator_test/symmetric_key"]
+	require.True(ok)
+	assert.NotEqual(newSymmetricKey2, newSymmetricKey3, "Symmetric key should have changed after root secret rotation")
+	assert.Equal(newSymmetricKey2, previousSymmetricKey3, "Previous symmetric key should match the one before rotation")
 }
 
 func newFramework(t *testing.T) *framework.IntegrationTest {
