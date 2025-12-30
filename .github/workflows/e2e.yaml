@@ -348,7 +348,6 @@ jobs:
 
       - name: Run e2e test
         env:
-          ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ERA_CONFIG: ${{ needs.build-test-containers.outputs.era-config }}
           MARBLE_CONFIG: ${{ needs.build-test-containers.outputs.marble-config }}
           PARALLEL_RUNS: ${{ inputs.parallel || '2' }}
@@ -377,7 +376,6 @@ jobs:
             --cli /usr/bin/marblerun \
             --chart $PWD/charts/ \
             --kubeconfig $HOME/.kube/config \
-            --access-token $ACCESS_TOKEN \
             --replicas ${REPLICAS} \
             --era-config $PWD/era.json \
             --marble-config $PWD/marble-config.json \

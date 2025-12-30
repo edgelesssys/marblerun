@@ -80,9 +80,6 @@ func (h *Helm) InstallChart(
 				"clientSecret": os.Getenv(constants.EnvAzureClientSecret),
 			},
 		},
-		"pullSecret": map[string]any{
-			"name": "access-token",
-		},
 	}
 	values = mergeMaps(values, extraValues)
 
