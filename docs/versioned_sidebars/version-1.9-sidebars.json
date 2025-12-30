@@ -1,0 +1,247 @@
+{
+  "docs": [
+    {
+      "type": "doc",
+      "label": "Introduction",
+      "id": "intro"
+    },
+    {
+      "type": "category",
+      "label": "Getting started",
+      "items": [
+        {
+          "type": "doc",
+          "label": "Installation",
+          "id": "getting-started/installation"
+        },
+        {
+          "type": "doc",
+          "label": "First steps",
+          "id": "getting-started/quickstart"
+        },
+        {
+          "type": "doc",
+          "label": "Examples",
+          "id": "getting-started/examples"
+        }
+      ]
+    },
+    {
+      "type": "category",
+      "label": "Features",
+      "items": [
+        {
+          "type": "doc",
+          "label": "Manifest",
+          "id": "features/manifest"
+        },
+        {
+          "type": "doc",
+          "label": "Attestation",
+          "id": "features/attestation"
+        },
+        {
+          "type": "doc",
+          "label": "State and recovery",
+          "id": "features/recovery"
+        },
+        {
+          "type": "doc",
+          "label": "Secrets management",
+          "id": "features/secrets-management"
+        },
+        {
+          "type": "doc",
+          "label": "Transparent TLS",
+          "id": "features/transparent-TLS"
+        },
+        {
+          "type": "doc",
+          "label": "Kubernetes integration",
+          "id": "features/kubernetes-integration"
+        },
+        {
+          "type": "doc",
+          "label": "Azure HSM integration",
+          "id": "features/hsm-sealing"
+        },
+        {
+          "type": "doc",
+          "label": "Supported runtimes",
+          "id": "features/runtimes"
+        }
+      ]
+    },
+    {
+      "type": "category",
+      "label": "Deployment",
+      "items": [
+        {
+          "type": "doc",
+          "label": "Kubernetes",
+          "id": "deployment/kubernetes"
+        },
+        {
+          "type": "doc",
+          "label": "Standalone",
+          "id": "deployment/standalone"
+        },
+        {
+          "type": "category",
+          "label": "Platforms",
+          "items": [
+            {
+              "type": "doc",
+              "label": "Supported platforms",
+              "id": "deployment/platforms/platforms"
+            },
+            {
+              "type": "doc",
+              "label": "Azure",
+              "id": "deployment/platforms/azure"
+            },
+            {
+              "type": "doc",
+              "label": "Alibaba Cloud",
+              "id": "deployment/platforms/alibaba"
+            },
+            {
+              "type": "doc",
+              "label": "On-premises",
+              "id": "deployment/platforms/on-prem"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "category",
+      "label": "Workflows",
+      "items": [
+        {
+          "type": "doc",
+          "label": "Define a manifest",
+          "id": "workflows/define-manifest"
+        },
+        {
+          "type": "doc",
+          "label": "Set a manifest",
+          "id": "workflows/set-manifest"
+        },
+        {
+          "type": "doc",
+          "label": "Add a service",
+          "id": "workflows/add-service"
+        },
+        {
+          "type": "doc",
+          "label": "Verify a deployment",
+          "id": "workflows/verification"
+        },
+        {
+          "type": "doc",
+          "label": "Monitoring and logging",
+          "id": "workflows/monitoring"
+        },
+        {
+          "type": "doc",
+          "label": "Backup and restore",
+          "id": "workflows/backup"
+        },
+        {
+          "type": "doc",
+          "label": "User authentication",
+          "id": "workflows/user-authentication"
+        },
+        {
+          "type": "doc",
+          "label": "Update a manifest",
+          "id": "workflows/update-manifest"
+        },
+        {
+          "type": "doc",
+          "label": "Manage secrets",
+          "id": "workflows/managing-secrets"
+        },
+        {
+          "type": "doc",
+          "label": "Update a deployment",
+          "id": "workflows/updates"
+        },
+        {
+          "type": "doc",
+          "label": "Recover the Coordinator",
+          "id": "workflows/recover-coordinator"
+        },
+        {
+          "type": "doc",
+          "label": "Configure Azure HSM sealing",
+          "id": "workflows/hsm-sealing"
+        }
+      ]
+    },
+    {
+      "type": "category",
+      "label": "Architecture",
+      "items": [
+        {
+          "type": "doc",
+          "label": "Concepts",
+          "id": "architecture/concepts"
+        },
+        {
+          "type": "doc",
+          "label": "Coordinator",
+          "id": "architecture/coordinator"
+        },
+        {
+          "type": "doc",
+          "label": "Marbles",
+          "id": "architecture/marbles"
+        },
+        {
+          "type": "doc",
+          "label": "Keys and cryptography",
+          "id": "architecture/security"
+        }
+      ]
+    },
+    {
+      "type": "category",
+      "label": "Building Marbles",
+      "items": [
+        {
+          "type": "doc",
+          "label": "EGo",
+          "id": "building-marbles/ego"
+        },
+        {
+          "type": "doc",
+          "label": "Gramine",
+          "id": "building-marbles/gramine"
+        },
+        {
+          "type": "doc",
+          "label": "Occlum",
+          "id": "building-marbles/occlum"
+        }
+      ]
+    },
+    {
+      "type": "category",
+      "label": "Reference",
+      "items": [
+        {
+          "type": "doc",
+          "label": "Coordinator client API",
+          "id": "reference/coordinator"
+        },
+        {
+          "type": "doc",
+          "label": "CLI",
+          "id": "reference/cli"
+        }
+      ]
+    }
+  ]
+}
