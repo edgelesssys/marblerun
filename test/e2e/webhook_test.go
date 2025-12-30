@@ -26,7 +26,7 @@ func TestWebhookCertRenewal(t *testing.T) {
 	ctx, assert, require, kubectl, _, _ := createBaseObjects(t)
 
 	namespace := "webhook-test"
-	uid, cleanUp, err := kubectl.SetUpNamespace(ctx, namespace, *accessToken)
+	uid, cleanUp, err := kubectl.SetUpNamespace(ctx, namespace)
 	require.NoError(err)
 	t.Cleanup(cleanUp)
 	namespace += "-" + uid

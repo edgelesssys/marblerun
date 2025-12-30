@@ -8,7 +8,6 @@ package kubectl
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -63,8 +62,8 @@ func New(t *testing.T, kubeConfigPath string) (*Kubectl, error) {
 	}, nil
 }
 
-// SetUpNamespace creates a namespace and a pull secret for the MarbleRun installation.
-func (k *Kubectl) SetUpNamespace(ctx context.Context, namespace, accessToken string) (string, func(), error) {
+// SetUpNamespace creates a namespace for the MarbleRun installation.
+func (k *Kubectl) SetUpNamespace(ctx context.Context, namespace string) (string, func(), error) {
 	k.t.Helper()
 
 	uid := generateUID()
@@ -119,25 +118,6 @@ func (k *Kubectl) SetUpNamespace(ctx context.Context, namespace, accessToken str
 				return
 			}
 		}
-	}
-
-	auth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", accessToken, accessToken)))
-	if _, err := k.client.CoreV1().Secrets(namespace).Create(
-		ctx,
-		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "access-token",
-				Namespace: namespace,
-			},
-			Data: map[string][]byte{
-				".dockerconfigjson": []byte(fmt.Sprintf(`{"auths":{"ghcr.io":{"auth":"%s"}}}`, auth)),
-			},
-			Type: corev1.SecretTypeDockerConfigJson,
-		},
-		metav1.CreateOptions{},
-	); err != nil {
-		cleanUp()
-		return "", nil, fmt.Errorf("creating pullSecret: %w", err)
 	}
 
 	return uid, cleanUp, nil
@@ -483,7 +463,6 @@ func (k *Kubectl) GetSecretData(ctx context.Context, namespace, secretName strin
 // Returns the name of the created pod.
 func (k *Kubectl) CreatePod(ctx context.Context, pod *corev1.Pod) (string, error) {
 	k.t.Helper()
-	pod.Spec.ImagePullSecrets = []corev1.LocalObjectReference{{Name: "access-token"}}
 	pod, err := k.client.CoreV1().Pods(pod.Namespace).Create(ctx, pod, metav1.CreateOptions{})
 	return pod.Name, err
 }
