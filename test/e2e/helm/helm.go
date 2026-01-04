@@ -88,7 +88,9 @@ func (h *Helm) InstallChart(
 	}
 
 	uninstall := func() {
-		if _, err := action.NewUninstall(h.config).Run(releaseName); err != nil {
+		uninstall := action.NewUninstall(h.config)
+		uninstall.WaitStrategy = kube.StatusWatcherStrategy
+		if _, err := uninstall.Run(releaseName); err != nil {
 			h.t.Logf("Uninstalling chart: %s", err)
 		}
 	}
