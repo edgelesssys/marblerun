@@ -8,7 +8,7 @@ replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20251222
 
 require (
 	github.com/edgelesssys/estore v1.2.0
-	github.com/edgelesssys/marblerun v1.8.0
+	github.com/edgelesssys/marblerun v1.9.0
 )
 
 require (
