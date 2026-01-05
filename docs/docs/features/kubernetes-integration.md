@@ -33,14 +33,11 @@ In MarbleRun, Marbles (i.e., secure enclaves) are defined in the [manifest](../w
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
-metadata:
-  name: voting
-  namespace: emojivoto
-  labels:
-    app.kubernetes.io/name: voting
-    app.kubernetes.io/part-of: emojivoto
-    app.kubernetes.io/version: v1
-    marblerun/marbletype: voting-svc
+spec:
+  template:
+    metadata:
+      labels:
+        marblerun/marbletype: voting-svc
 ```
 
 The label is used to map Kubernetes Pods to MarbleRun Marbles.
