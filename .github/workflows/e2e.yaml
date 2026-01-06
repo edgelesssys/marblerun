@@ -87,14 +87,19 @@ jobs:
       run-uid: ${{ steps.generate-uid.outputs.run-uid }}
       coordinator-digest: ${{ steps.build-coordinator.outputs.digest }}
       update-digest: ${{ steps.build-coordinator-update.outputs.digest }}
+      previous-release-digest: ${{ steps.build-previous-release-coordinator.outputs.digest }}
       marble-digest: ${{ steps.build-marble.outputs.digest }}
       era-config: ${{ steps.build-binaries.outputs.era-config }}
+      previous-release-era-config: ${{ steps.build-previous-release-coordinator.outputs.era-config }}
       marble-config: ${{ steps.build-binaries.outputs.marble-config }}
     runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          fetch-depth: 0
+          fetch-tags: true # Required to check out latest release later
 
       - name: Install dependencies
         env:
@@ -133,13 +138,10 @@ jobs:
       - name: Build binaries
         id: build-binaries
         env:
-          CR: ghcr.io/edgelesssys/marblerun-e2e
-          CONTAINER: coordinator
           COORDINATOR_BUILD_TAGS: ${{ inputs.hsmSealing == 'fake' && 'fakehsm' || '' }}
         run: |
           set -e
           export PATH=${PATH}:/opt/edgelessrt/bin
-          openssl genrsa -out private.pem -3 3072
 
           # Build binaries
           mkdir build && cd build
@@ -205,6 +207,51 @@ jobs:
 
           # Split image ref into registry/repo/tag and sha256 digest and set in output
           image_ref=$(docker inspect --format='{{index .RepoDigests 0}}' ${CR}/${CONTAINER}:${UUID})
+          IFS='@' read -ra ADDR <<< "${image_ref}"
+          digest=${ADDR[1]}
+
+          echo "digest=${digest}" >> $GITHUB_OUTPUT
+
+      - name: Get latest release tag
+        id: get-tag
+        run: |
+          latest_tag=$(git tag --sort=-v:refname | head -n 1)
+          echo "latest_tag=${latest_tag}" >> $GITHUB_OUTPUT
+
+      - name: Checkout latest release
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          ref: ${{ steps.get-tag.outputs.latest_tag }}
+          path: previous
+      
+      - name: Build Coordinator container from latest release
+        id: build-previous-release-coordinator
+        env:
+          COORDINATOR_BUILD_TAGS: ${{ inputs.hsmSealing == 'fake' && 'fakehsm' || '' }}
+          DOCKER_BUILDKIT: 1
+          CR: ghcr.io/edgelesssys/marblerun-e2e
+          CONTAINER: coordinator
+          UUID: ${{ steps.generate-uid.outputs.run-uid }}
+        working-directory: previous
+        run: |
+          set -e
+          export PATH=${PATH}:/opt/edgelessrt/bin
+
+          # Build binaries
+          mkdir build && cd build
+          cp ${GITHUB_WORKSPACE}/build/private.pem ${GITHUB_WORKSPACE}/build/public.pem ./
+          cmake ..
+          make -j $(nproc) sign-coordinator
+          cp ./coordinator-enclave.signed ./libsymcrypt.so.103 ../
+          # Save era config to output
+          echo "era-config=$(awk '!/UniqueID/' ./coordinator-config.json | base64 -w0)" >> $GITHUB_OUTPUT
+          cd ..
+          
+          docker build --tag ${CR}/${CONTAINER}:${UUID}-release -f .github/scripts/coordinator.Dockerfile .
+          docker push ${CR}/${CONTAINER}:${UUID}-release
+
+          # Split image ref into registry/repo/tag and sha256 digest and set in output
+          image_ref=$(docker inspect --format='{{index .RepoDigests 0}}' ${CR}/${CONTAINER}:${UUID}-release)
           IFS='@' read -ra ADDR <<< "${image_ref}"
           digest=${ADDR[1]}
 
@@ -292,6 +339,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          fetch-depth: 0
+          fetch-tags: true # Required to check out latest release later
 
       - name: Install dependencies
         run: |
@@ -346,6 +396,25 @@ jobs:
             (.coordinator.hash=\"${{ needs.build-test-containers.outputs.coordinator-digest }}\")" \
             ./charts/values.yaml
 
+      - name: Get latest release tag
+        id: get-tag
+        run: |
+          latest_tag=$(git tag --sort=-v:refname | head -n 1)
+          echo "latest_tag=${latest_tag}" >> $GITHUB_OUTPUT
+
+      - name: Checkout latest release
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          ref: ${{ steps.get-tag.outputs.latest_tag }}
+          path: previous  
+      
+      - name: Update latest release MarbleRun chart
+        run: |
+          yq -i eval "(.coordinator.repository=\"$CR\") |
+            (.coordinator.version=\"${{ needs.build-test-containers.outputs.run-uid }}-release\") |
+            (.coordinator.hash=\"${{ needs.build-test-containers.outputs.previous-release-digest }}\")" \
+            ./previous/charts/values.yaml
+
       - name: Run e2e test
         env:
           ERA_CONFIG: ${{ needs.build-test-containers.outputs.era-config }}
@@ -375,6 +444,7 @@ jobs:
             --run "${TEST_FILTER}" \
             --cli /usr/bin/marblerun \
             --chart $PWD/charts/ \
+            --previous-release-chart $PWD/previous/charts/ \
             --kubeconfig $HOME/.kube/config \
             --replicas ${REPLICAS} \
             --era-config $PWD/era.json \
