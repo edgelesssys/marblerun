@@ -98,6 +98,31 @@ func (h *Helm) InstallChart(
 	return uninstall, nil
 }
 
+// UpgradeChart upgrades an existing MarbleRun installation.
+func (h *Helm) UpgradeChart(
+	ctx context.Context, releaseName, chartPath, namespace string, timeout time.Duration, extraValues map[string]any,
+) error {
+	h.t.Helper()
+
+	upgrade := action.NewUpgrade(h.config)
+	upgrade.Namespace = namespace
+	upgrade.Timeout = timeout
+	upgrade.WaitForJobs = true
+	upgrade.WaitStrategy = kube.StatusWatcherStrategy
+	upgrade.ReuseValues = true // reuse values from install, so we don't have to specify them again
+
+	// Load the chart from the path.
+	chart, err := loader.Load(chartPath)
+	if err != nil {
+		return fmt.Errorf("loading chart: %w", err)
+	}
+
+	if _, err := upgrade.RunWithContext(ctx, releaseName, chart, extraValues); err != nil {
+		return fmt.Errorf("upgrading chart: %w", err)
+	}
+	return nil
+}
+
 func mergeMaps(a, b map[string]any) map[string]any {
 	out := make(map[string]any, len(a))
 	for k, v := range a {
