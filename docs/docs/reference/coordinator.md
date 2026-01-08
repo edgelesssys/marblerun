@@ -163,7 +163,7 @@ Example request body:
 
 #### Returns
 
-* `recoveryKeys` object
+* `RecoverySecrets` object
 
     An optional field that will be present if the manifest contains `RecoveryKeys`.
     Key-value mapping of strings to strings, where the key matches each supplied key from `RecoveryKeys` in the manifest,
@@ -175,7 +175,7 @@ Example response:
 {
     "status": "success",
     "data": {
-        "recoveryKeys": {
+        "RecoverySecrets": {
             "recoveryKey1": "ZW5jcnlwdGVkUmVjb3ZlcnlTZWNyZXQxCg==",
             "recoveryKey2": "ZW5jcnlwdGVkUmVjb3ZlcnlTZWNyZXQyCg=="
         }
@@ -400,6 +400,45 @@ Example response:
     "data": {
         "remaining": 2,
         "message": "Secret was processed successfully. Upload the next secret. Remaining secrets: 2"
+    }
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Retrieve Coordinator recovery public key
+
+<Tabs groupId="apiVersion">
+<TabItem value="v2" label="v2">
+
+```http
+GET /api/v2/recover/public-key
+```
+
+Retrieve a public key for encryption of recovery secrets.
+Use the returned key to encrypt your decrypted recovery secret before sending it to a Coordinator for recovery.
+See [the offline recovery secret signing workflow](../workflows/recover-coordinator.md#offline-recovery-secret-signing) for more details on how the endpoint is used.
+
+#### Returns
+
+* `algorithm` string
+
+    Algorithm of the key, for example `RSA`.
+    Currently, only RSA is supported.
+
+* `ephemeralPublicKey` string
+
+    DER encoded public key
+
+Example response:
+
+```JSON
+{
+    "status": "success",
+    "data": {
+        "algorithm": "RSA",
+        "ephemeralPublicKey": "MIICIjANBgkqhkiG9...EAAQ=="
     }
 }
 ```
@@ -907,6 +946,13 @@ Example request body:
 
     An array of user IDs that haven't yet acknowledged the update.
 
+* `recoverySecrets` object
+
+    An optional field that will be present if the manifest was successfully applied,
+    and the new manifest's `RecoveryKeys` differ from the previous one.
+    Key-value mapping of strings to strings, where the key matches each supplied key from `RecoveryKeys` in the new manifest,
+    and the value is the base64 encoded encrypted recovery secret.
+
 Example response:
 
 ```json
@@ -1014,6 +1060,13 @@ Example request body:
 * `missingUsers` array of strings
 
     An array of user IDs that haven't yet acknowledged the update.
+
+* `recoverySecrets` object
+
+    An optional field that will be present if the manifest was successfully applied,
+    and the new manifest's `RecoveryKeys` differ from the previous one.
+    Key-value mapping of strings to strings, where the key matches each supplied key from `RecoveryKeys` in the new manifest,
+    and the value is the base64 encoded encrypted recovery secret.
 
 Example response:
 

@@ -8,6 +8,8 @@ collateral
 config
 CPU
 crypto
+DCAP
+DER
 Dockerfile
 emojivoto
 Env
@@ -33,6 +35,7 @@ precheck
 premain
 Redis
 runtime
+SGX
 subcommand
 Tensorflow
 toleration
