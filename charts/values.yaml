@@ -75,6 +75,8 @@ coordinator:
   sealDir: "/coordinator/data/"
   # OE_SIMULATION needs be set to "1" when running on systems without SGX1+FLC capabilities
   simulation: false
+  # Enable debug logging in the coordinator
+  debugLogging: false
 
   probes:
     readiness:

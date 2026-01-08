@@ -40,6 +40,10 @@ spec:
       serviceAccountName: marblerun-coordinator
       containers:
         - env:
+          {{- if .Values.coordinator.debugLogging }}
+          - name: EDG_DEBUG_LOGGING
+            value: "1"
+          {{- end }}
           - name: EDG_COORDINATOR_MESH_ADDR
             value: "{{ .Values.coordinator.meshServerHost }}:{{ .Values.coordinator.meshServerPort }}"
           - name: EDG_COORDINATOR_CLIENT_ADDR
