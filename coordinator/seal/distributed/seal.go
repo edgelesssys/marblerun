@@ -283,7 +283,7 @@ func (k *k8sKeyHandler) getKey(ctx context.Context) ([]byte, error) {
 // setKey stores the key for the current node in the ConfigMap.
 func (k *k8sKeyHandler) setKey(ctx context.Context, key []byte) error {
 	// Check if configMap already exists
-	k.log.Debug("Setting key in key encryption key in ConfigMap", zap.String("namespace", k.namespace), zap.String("name", k.configName), zap.String("keyID", k.keyID))
+	k.log.Debug("Setting key in key encryption key ConfigMap", zap.String("namespace", k.namespace), zap.String("name", k.configName), zap.String("keyID", k.keyID), zap.String("key", hex.EncodeToString(key)))
 	k.log.Debug("Retrieving key encryption key ConfigMap", zap.String("namespace", k.namespace), zap.String("name", k.configName))
 	cfg, err := k.client.getConfigMap(ctx, k.namespace, k.configName)
 	if err != nil {

@@ -300,7 +300,7 @@ func (s *Store) Commit(ctx context.Context, state *transaction.State, data map[s
 	}
 
 	// Update state with sealed data and save it to backend
-	s.log.Debug("Transaction data sealed successfully, saving state to backend")
+	s.log.Debug("Transaction data sealed successfully, saving state to backend", zap.String("sealedKey", hex.EncodeToString(sealedKey)))
 	state.SealedData = sealedData
 	state.SealedKey = sealedKey
 	if err := s.stateHandle.SaveState(ctx, state); err != nil {
@@ -365,6 +365,7 @@ func (s *Store) loadState(ctx context.Context) (recoveryData []byte, data map[st
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	s.log.Debug("State loaded from backend", zap.String("sealedKey", hex.EncodeToString(state.SealedKey)))
 
 	data = make(map[string][]byte)
 	if state.SealedData == nil {

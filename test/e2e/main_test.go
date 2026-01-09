@@ -1,4 +1,4 @@
-//go:build e2e
+//-- -go:build e2e
 
 /*
 Copyright (c) Edgeless Systems GmbH
@@ -1630,6 +1630,21 @@ func TestE2EActions(t *testing.T) {
 					image, err := kubectl.GetDeploymentImage(ctx, namespace, coordinatorDeployment, coordinatorContainerName)
 					require.NoError(err)
 					image = getCoordinatorUpdateImage(t, image)
+
+					logs, err := kubectl.GetLogsFromNamespace(context.Background(), namespace)
+					require.NoError(err)
+
+					t.Cleanup(func() {
+						if t.Failed() {
+							for podName, log := range logs {
+								fileName := strings.ReplaceAll(fmt.Sprintf("%s-%s-%s.log", t.Name(), namespace, podName), "/", "_")
+								if err := os.WriteFile(fileName, log, 0o644); err != nil {
+									t.Logf("Failed writing logs for pod %q: %s", podName, err)
+								}
+							}
+						}
+					})
+
 					require.NoError(kubectl.SetDeploymentImage(ctx, namespace, coordinatorDeployment, coordinatorContainerName, image))
 					getStatus(ctx, t, kubectl, cmd, namespace, state.AcceptingMarbles)
 				},
@@ -3196,7 +3211,7 @@ func getLogsOnFailure(t *testing.T, kubectl *kubectl.Kubectl, namespace string) 
 		}
 
 		for podName, log := range logs {
-			fileName := strings.ReplaceAll(fmt.Sprintf("%s-%s.log", t.Name(), podName), "/", "_")
+			fileName := strings.ReplaceAll(fmt.Sprintf("%s-%s-%s.log", t.Name(), namespace, podName), "/", "_")
 			if err := os.WriteFile(fileName, log, 0o644); err != nil {
 				t.Logf("Failed writing logs for pod %q: %s", podName, err)
 			}
