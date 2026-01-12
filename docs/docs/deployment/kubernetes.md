@@ -97,7 +97,7 @@ You can install MarbleRun using the CLI as follows:
 marblerun install --distributed-deployment --domain=mycluster.uksouth.cloudapp.azure.com
 ```
 
-The distributed deployment mode starts three instances of the MarbleRun Coordinator across different nodes on your cluster.
+The distributed deployment mode allows you to scale the MarbleRun Coordinator across different nodes on your cluster.
 This ensures high availability of MarbleRun's control plane and is the recommended deployment mode for production use cases.
 
 See [the key management documentation](../architecture/security.md#distributed-coordinator) for more details on how distributed MarbleRun deployments manage their state.
@@ -174,7 +174,7 @@ helm install marblerun edgeless/marblerun \
     --set marbleInjector.useCertManager=true
 ```
 
-The distributed deployment mode starts three instances of the MarbleRun Coordinator across different nodes on your cluster.
+The distributed deployment mode allows you to scale the MarbleRun Coordinator across different nodes on your cluster.
 This ensures high availability of MarbleRun's control plane and is the recommended deployment mode for production use cases.
 
 See [the key management documentation](../architecture/security.md#distributed-coordinator) for more details on how distributed MarbleRun deployments manage their state.
@@ -282,3 +282,4 @@ Otherwise, set the [necessary configuration](https://github.com/intel/SGXDataCen
         --create-namespace \
         -n marblerun \
         --set-file dcap.qcnlConfig=/path/to/sgx_qcnl.conf
+  ```
