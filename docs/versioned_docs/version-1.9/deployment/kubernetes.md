@@ -89,17 +89,44 @@ You can follow [the AKS guide](https://learn.microsoft.com/en-us/azure/confident
 Use MarbleRun's [CLI](../reference/cli.md) that facilitates the administrative tasks.
 You can install MarbleRun using the CLI as follows:
 
-* For a cluster with SGX support:
+<Tabs groupId="installation">
 
-    ```bash
-    marblerun install --domain=mycluster.uksouth.cloudapp.azure.com
-    ```
+<TabItem value="distributed" label="Distributed">
 
-* For a cluster without SGX support:
+```bash
+marblerun install --distributed-deployment --domain=mycluster.uksouth.cloudapp.azure.com
+```
 
-    ```bash
-    marblerun install --domain=mycluster.uksouth.cloudapp.azure.com --simulation
-    ```
+The distributed deployment mode allows you to scale the MarbleRun Coordinator across different nodes on your cluster.
+This ensures high availability of MarbleRun's control plane and is the recommended deployment mode for production use cases.
+
+See [the key management documentation](../architecture/security.md#distributed-coordinator) for more details on how distributed MarbleRun deployments manage their state.
+
+</TabItem>
+
+<TabItem value="standalone" label="Standalone">
+
+```bash
+marblerun install --domain=mycluster.uksouth.cloudapp.azure.com
+```
+
+The standalone installation deploys a single MarbleRun Coordinator.
+Please note that moving the Pod to a different node requires [manual recovery](../workflows/recover-coordinator.md).
+Consider using a distributed deployment if availability, scaling, or automatic recovery are a concern.
+
+</TabItem>
+
+<TabItem value="simulation" label="Simulation Mode">
+
+```bash
+marblerun install --domain=mycluster.uksouth.cloudapp.azure.com --simulation
+```
+
+MarbleRun's simulation mode deploys a single Coordinator instance without the need for SGX support.
+Since the Coordinator isn't actually running in an SGX enclave, this mode must only be used for evaluation and testing purposes.
+
+</TabItem>
+</Tabs>
 
 This command will pull the latest Helm chart from [our repository](https:/helm.edgeless.systems) and manages the installation of said chart.
 
@@ -132,30 +159,64 @@ Review the `values.yaml` file of the chart for a full list of available configur
 
 Update the hostname with your cluster's FQDN.
 
-* For a cluster with SGX support:
+<Tabs groupId="installation">
 
-    ```bash
-    helm install marblerun edgeless/marblerun \
-        --create-namespace \
-        -n marblerun \
-        --set coordinator.hostname=mycluster.uksouth.cloudapp.azure.com \
-        --set marbleInjector.start=true \
-        --set marbleInjector.useCertManager=true
-    ```
+<TabItem value="distributed" label="Distributed">
 
-* For a cluster without SGX support:
+```bash
+helm install marblerun edgeless/marblerun \
+    --create-namespace \
+    -n marblerun \
+    --set coordinator.replicas=3 \
+    --set coordinator.distributedDeployment=true \
+    --set coordinator.hostname=mycluster.uksouth.cloudapp.azure.com \
+    --set marbleInjector.start=true \
+    --set marbleInjector.useCertManager=true
+```
 
-    ```bash
-    helm install marblerun edgeless/marblerun \
-        --create-namespace \
-        -n marblerun \
-        --set coordinator.resources=null \
-        --set coordinator.simulation=1 \
-        --set tolerations=null \
-        --set coordinator.hostname=mycluster.uksouth.cloudapp.azure.com \
-        --set marbleInjector.start=true \
-        --set marbleInjector.useCertManager=true
-    ```
+The distributed deployment mode allows you to scale the MarbleRun Coordinator across different nodes on your cluster.
+This ensures high availability of MarbleRun's control plane and is the recommended deployment mode for production use cases.
+
+See [the key management documentation](../architecture/security.md#distributed-coordinator) for more details on how distributed MarbleRun deployments manage their state.
+
+</TabItem>
+
+<TabItem value="standalone" label="Standalone">
+
+```bash
+helm install marblerun edgeless/marblerun \
+    --create-namespace \
+    -n marblerun \
+    --set coordinator.hostname=mycluster.uksouth.cloudapp.azure.com \
+    --set marbleInjector.start=true \
+    --set marbleInjector.useCertManager=true
+```
+
+The standalone installation deploys a single MarbleRun Coordinator.
+Please note that moving the Pod to a different node requires [manual recovery](../workflows/recover-coordinator.md).
+Consider using a distributed deployment if availability, scaling, or automatic recovery are a concern.
+
+</TabItem>
+
+<TabItem value="simulation" label="Simulation Mode">
+
+```bash
+helm install marblerun edgeless/marblerun \
+    --create-namespace \
+    -n marblerun \
+    --set coordinator.resources=null \
+    --set coordinator.simulation=1 \
+    --set tolerations=null \
+    --set coordinator.hostname=mycluster.uksouth.cloudapp.azure.com \
+    --set marbleInjector.start=true \
+    --set marbleInjector.useCertManager=true
+```
+
+MarbleRun's simulation mode deploys a single Coordinator instance without the need for SGX support.
+Since the Coordinator isn't actually running in an SGX enclave, this mode must only be used for evaluation and testing purposes.
+
+</TabItem>
+</Tabs>
 
 By default `coordinator.hostname` is set to `localhost`.
 The domain is used as the CommonName in the Coordinator's TLS certificate.
@@ -198,13 +259,27 @@ Otherwise, set the [necessary configuration](https://github.com/intel/SGXDataCen
   marblerun install --dcap-pccs-url <PCCS_URL> --dcap-secure-cert <TRUE/FALSE>
   ```
 
+  or pass the path to a custom DCAP config file using `--dcap-qcnl-config-file`:
+
+  ```bash
+  marblerun install --dcap-qcnl-config-file=/path/to/sgx_qcnl.conf
+  ```
+
 * Using Helm
 
   ```bash
   helm install marblerun edgeless/marblerun \
         --create-namespace \
         -n marblerun \
-        --set coordinator.hostname=mycluster.uksouth.cloudapp.azure.com \
         --set dcap.pccsUrl=<PCCS_URL> \
         --set dcap.useSecureCert=<TRUE/FALSE>
+  ```
+
+  or pass the path to a custom DCAP config to Helm:
+
+  ```bash
+  helm install marblerun edgeless/marblerun \
+        --create-namespace \
+        -n marblerun \
+        --set-file dcap.qcnlConfig=/path/to/sgx_qcnl.conf
   ```
