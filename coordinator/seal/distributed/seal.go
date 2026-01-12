@@ -211,7 +211,17 @@ func (s *Sealer) SetSealMode(mode seal.Mode) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	s.log.Debug("Setting seal mode", zap.Int("sealMode", int(mode)))
+
+	needsResealing := s.mode != mode && s.keyEncryptionKey != nil
+
 	s.mode = mode
+
+	if needsResealing {
+		s.log.Debug("Seal mode changed: resealing key encryption key")
+		if err := s.sealKEK(context.Background()); err != nil {
+			s.log.Error("Failed to reseal key encryption key after seal mode change", zap.Error(err))
+		}
+	}
 }
 
 // sealKEK seals the sealer's key encryption key using the enclave's product or unique key (if not disabled).
