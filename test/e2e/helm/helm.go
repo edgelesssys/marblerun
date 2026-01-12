@@ -79,6 +79,7 @@ func (h *Helm) InstallChart(
 				"tenantID":     os.Getenv(constants.EnvAzureTenantID),
 				"clientSecret": os.Getenv(constants.EnvAzureClientSecret),
 			},
+			"debugLogging": true,
 		},
 	}
 	values = mergeMaps(values, extraValues)
