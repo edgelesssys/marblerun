@@ -72,6 +72,7 @@ var (
 	cliPath                      = flag.String("cli", "", "path to MarbleRun CLI")
 	kubeConfigPath               = flag.String("kubeconfig", "", "path to kubeconfig file")
 	chartPath                    = flag.String("chart", "../../charts", "path to helm chart")
+	oldChartPath                 = flag.String("previous-release-chart", "", "path to helm chart of a previous release for upgrade tests")
 	coordinatorUpdateImageSuffix = flag.String("coordinator-update-image-suffix", "", "suffix of the coordinator image to use in update tests")
 	marbleImageName              = flag.String("marble-image-name", "ghcr.io/edgelesssys/marblerun-e2e/test-marble", "name of the marble container image to use in tests")
 	marbleImageVersion           = flag.String("marble-image-version", "latest", "version/tag of the marble container image to use in tests")
