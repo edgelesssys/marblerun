@@ -49,9 +49,8 @@
     },
     {
       "groupName": "Node dependencies",
-      "matchLanguages": [
-        "js",
-        "node"
+      "matchManagers": [
+        "npm"
       ],
       "prPriority": -20,
       "schedule": [
