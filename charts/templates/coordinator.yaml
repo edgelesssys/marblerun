@@ -184,7 +184,9 @@ metadata:
     app.kubernetes.io/part-of: marblerun
     app.kubernetes.io/version: "{{ .Values.coordinator.version }}"
 spec:
+  {{- if .Values.coordinator.storageClass }}
   storageClassName: {{ .Values.coordinator.storageClass }}
+  {{- end }}
   accessModes:
     - ReadWriteOnce
   resources:

@@ -2,24 +2,31 @@
 
 The following gives a walkthrough of typical deployment updates in a Kubernetes cluster and how to handle them with MarbleRun.
 
+## Before updating
+
+Read the [release notes](https://github.com/edgelesssys/marblerun/releases) and check for any potential breaking changes affecting your deployment.
+
+Make sure to [create a backup](./backup.md) of your current deployment before proceeding.
+
 ## Updating to a new MarbleRun version
 
 When updating to a new MarbleRun version, updates to both the control plane and data plane components may be required.
 
 ### Updating the Coordinator
 
-Updating the Coordinator follows the regular steps for [updating a deployment in Kubernetes](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#updating-a-deployment).
+Get the latest chart information from the edgeless Helm repository:
 
 ```bash
-kubectl -n marblerun set image deployment/marblerun-coordinator coordinator=ghcr.io/edgelesssys/marblerun/coordinator:latest --record
+helm repo update edgeless
 ```
 
-You can also use Helm to upgrade the image. Note that Helm requires you to pass all the flags with `upgrade` that you set during the initial deployment.
+Alternatively, you can get the chart directly from [GitHub](https://github.com/edgelesssys/marblerun/tree/master/charts).
+
+Use `helm upgrade` to update your deployment. Note that Helm requires you to pass all the flags with `upgrade` that you set during the initial deployment.
 
 ```bash
-helm upgrade marblerun edgeless/marblerun \
-    -n marblerun \
-    --set coordinator.version=latest
+VERSION=v1.X.X
+helm upgrade marblerun edgeless/marblerun -n marblerun --version ${VERSION}
 ```
 
 :::caution
