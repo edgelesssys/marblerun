@@ -13,6 +13,7 @@ async function createConfig() {
     onBrokenLinks: 'throw',
     onBrokenAnchors: 'throw',
     favicon: 'img/favicon.png',
+    trailingSlash: false,
 
     // GitHub pages deployment config.
     // If you aren't using GitHub pages, you don't need these.
