@@ -94,7 +94,7 @@
       "customType": "regex",
       "managerFilePatterns": [
         "/^\\.github/workflows/[^/]+\\.ya?ml$/",
-        "/^dockerfiles/Dockerfile\\.[^/]+$/"
+        "/^dockerfiles/Dockerfile\\.[^/]*$/"
       ],
       "matchStrings": [
         "ERT_VERSION: \"(?<currentValue>.*?)\"",
