@@ -43,7 +43,9 @@
         "pinDigest",
         "rollback"
       ],
-      "schedule": ["before 8am on monday"]
+      "schedule": [
+        "before 8am on monday"
+      ]
     },
     {
       "groupName": "Node dependencies",
@@ -52,7 +54,9 @@
         "node"
       ],
       "prPriority": -20,
-      "schedule": ["before 8am on monday"]
+      "schedule": [
+        "before 8am on monday"
+      ]
     },
     {
       "groupName": "GitHub action dependencies",
@@ -69,20 +73,34 @@
         "rollback",
         "bump"
       ],
-      "schedule": ["before 8am on monday"]
+      "schedule": [
+        "before 8am on monday"
+      ]
     },
     {
       "groupName": "EdgelessRT",
-      "matchManagers": [ "custom.regex" ],
-      "assignees": [ "daniel-weisse" ],
-      "additionalReviewers": [ "daniel-weisse" ]
+      "matchManagers": [
+        "custom.regex"
+      ],
+      "assignees": [
+        "daniel-weisse"
+      ],
+      "additionalReviewers": [
+        "daniel-weisse"
+      ]
     }
   ],
   "customManagers": [
     {
       "customType": "regex",
-      "managerFilePatterns": [ "/^\\.github/workflows/[^/]+\\.ya?ml$/" ],
-      "matchStrings": [ "ERT_VERSION: \"(?<currentValue>.*?)\"" ],
+      "managerFilePatterns": [
+        "/^\\.github/workflows/[^/]+\\.ya?ml$/",
+        "/^dockerfiles/Dockerfile\\.[^/]+$/"
+      ],
+      "matchStrings": [
+        "ERT_VERSION: \"(?<currentValue>.*?)\"",
+        "ARG erttag=(?<currentValue>.*?)"
+      ],
       "packageNameTemplate": "edgelesssys/edgelessrt",
       "datasourceTemplate": "github-tags"
     }
