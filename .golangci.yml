@@ -49,6 +49,9 @@ linters:
     - path: "coordinator/crypto/"
       linters: ["revive"]
       text: "var-naming: avoid package names that conflict with Go standard library package names"
+    - path: "coordinator/user/"
+      linters: ["revive"]
+      text: "var-naming: avoid package names that conflict with Go standard library package names"
     presets:
       # Disabled since this rule enforces error checks on fmt.FprintX and Close methods
       - std-error-handling
