@@ -42,7 +42,7 @@ COPY --from=build \
 COPY --from=build /mrbuild/marblerun /marblerun-ubuntu-22.04
 
 # the coordinator container image
-FROM ubuntu:jammy-20251013 AS release
+FROM ubuntu:jammy-20260210.1 AS release
 ARG PSW_VERSION=2.27.100.1-jammy1
 ARG DCAP_VERSION=1.24.100.2-jammy1
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates libcurl4 wget \
