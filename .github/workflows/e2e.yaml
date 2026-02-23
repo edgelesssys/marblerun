@@ -223,7 +223,7 @@ jobs:
         with:
           ref: ${{ steps.get-tag.outputs.latest_tag }}
           path: previous
-      
+
       - name: Build Coordinator container from latest release
         id: build-previous-release-coordinator
         env:
@@ -246,7 +246,7 @@ jobs:
           # Save era config to output
           echo "era-config=$(awk '!/UniqueID/' ./coordinator-config.json | base64 -w0)" >> $GITHUB_OUTPUT
           cd ..
-          
+
           docker build --tag ${CR}/${CONTAINER}:${UUID}-release -f .github/scripts/coordinator.Dockerfile .
           docker push ${CR}/${CONTAINER}:${UUID}-release
 
@@ -406,8 +406,8 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ steps.get-tag.outputs.latest_tag }}
-          path: previous  
-      
+          path: previous
+
       - name: Update latest release MarbleRun chart
         run: |
           yq -i eval "(.coordinator.repository=\"$CR\") |
@@ -440,7 +440,7 @@ jobs:
             tags="${tags},hsmsealing"
           fi
 
-          go test ./test/e2e/ -tags ${tags} --timeout 0 --parallel ${PARALLEL_RUNS} \
+          go test ./test/e2e/ -tags ${tags} --timeout 4h --parallel ${PARALLEL_RUNS} \
             --run "${TEST_FILTER}" \
             --cli /usr/bin/marblerun \
             --chart $PWD/charts/ \
