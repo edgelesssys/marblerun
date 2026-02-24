@@ -89,8 +89,8 @@ coordinator:
       timeoutSeconds: 30
     startup:
       initialDelaySeconds: 15
-      failureThreshold: 3
-      periodSeconds: 2
+      failureThreshold: 20
+      periodSeconds: 5
       timeoutSeconds: 30
 
   distributedDeployment: false
