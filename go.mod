@@ -7,7 +7,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.13.1
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azkeys v1.4.0
 	github.com/ThalesGroup/crypto11 v1.6.0
-	github.com/cert-manager/cert-manager v1.19.3
+	github.com/cert-manager/cert-manager v1.19.4
 	github.com/edgelesssys/ego v1.8.1
 	github.com/gofrs/flock v0.13.0
 	github.com/google/go-cmp v0.7.0
@@ -153,8 +153,8 @@ require (
 	github.com/valyala/fastjson v1.6.7 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/xlab/treeprint v1.2.0 // indirect
-	go.opentelemetry.io/otel v1.39.0 // indirect
-	go.opentelemetry.io/otel/trace v1.39.0 // indirect
+	go.opentelemetry.io/otel v1.40.0 // indirect
+	go.opentelemetry.io/otel/trace v1.40.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.9.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
