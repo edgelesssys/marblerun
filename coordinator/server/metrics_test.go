@@ -75,7 +75,7 @@ func TestClientApiRequestMetrics(t *testing.T) {
 			assert.Equal(float64(0), promtest.ToFloat64(metrics.request.WithLabelValues(tc.expectedStatusCode, strings.ToLower(tc.method))))
 
 			for i := 1; i < 6; i++ {
-				req := httptest.NewRequest(tc.method, tc.target, nil)
+				req := httptest.NewRequestWithContext(t.Context(), tc.method, tc.target, nil)
 				resp := httptest.NewRecorder()
 				mux.ServeHTTP(resp, req)
 				assert.Equal(1, promtest.CollectAndCount(metrics.request))
