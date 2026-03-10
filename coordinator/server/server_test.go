@@ -38,7 +38,7 @@ func TestQuote(t *testing.T) {
 
 	mux := CreateServeMux(newTestClientAPI(t), nil, zaptest.NewLogger(t))
 
-	req := httptest.NewRequest(http.MethodGet, "/quote", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/quote", nil)
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
 	assert.Equal(http.StatusOK, resp.Code)
@@ -52,13 +52,13 @@ func TestManifest(t *testing.T) {
 	mux := CreateServeMux(c, nil, zaptest.NewLogger(t))
 
 	// set manifest
-	req := httptest.NewRequest(http.MethodPost, "/manifest", strings.NewReader(test.ManifestJSON))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/manifest", strings.NewReader(test.ManifestJSON))
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
 	require.Equal(http.StatusOK, resp.Code)
 
 	// get manifest signature
-	req = httptest.NewRequest(http.MethodGet, "/manifest", nil)
+	req = httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/manifest", nil)
 	resp = httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
 	require.Equal(http.StatusOK, resp.Code)
@@ -69,7 +69,7 @@ func TestManifest(t *testing.T) {
 	assert.JSONEq(`{"status":"success","data":{"ManifestSignatureRootECDSA":"`+base64.StdEncoding.EncodeToString(sigRootECDSA)+`","ManifestSignature":"`+hex.EncodeToString(fingerprint[:])+`","Manifest":"`+base64.StdEncoding.EncodeToString(manifest)+`"}}`, resp.Body.String())
 
 	// try setting manifest again, should fail
-	req = httptest.NewRequest(http.MethodPost, "/manifest", strings.NewReader(test.ManifestJSON))
+	req = httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/manifest", strings.NewReader(test.ManifestJSON))
 	resp = httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
 	require.Equal(http.StatusBadRequest, resp.Code)
@@ -82,7 +82,7 @@ func TestManifestWithRecoveryKey(t *testing.T) {
 	mux := CreateServeMux(c, nil, zaptest.NewLogger(t))
 
 	// set manifest
-	req := httptest.NewRequest(http.MethodPost, "/manifest", strings.NewReader(test.ManifestJSONWithRecoveryKey))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/manifest", strings.NewReader(test.ManifestJSONWithRecoveryKey))
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
 	require.Equal(http.StatusOK, resp.Code)
@@ -110,7 +110,7 @@ func TestGetUpdateLog(t *testing.T) {
 	require.NoError(err)
 	mux := CreateServeMux(c, nil, zaptest.NewLogger(t))
 
-	req := httptest.NewRequest(http.MethodGet, "/update", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/update", nil)
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
 	assert.Equal(http.StatusOK, resp.Code)
@@ -162,7 +162,7 @@ func TestMonotonicCounter(t *testing.T) {
 
 			mux := CreateServeMux(&tc.api, nil, nil)
 
-			req := httptest.NewRequest(http.MethodPost, "/api/v2/monotonic-counter", strings.NewReader(tc.req))
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/v2/monotonic-counter", strings.NewReader(tc.req))
 			req.TLS = &tls.ConnectionState{}
 
 			resp := httptest.NewRecorder()
@@ -187,7 +187,7 @@ func TestUpdate(t *testing.T) {
 	mux := CreateServeMux(c, nil, zaptest.NewLogger(t))
 
 	// Make HTTP update request with no TLS at all, should be unauthenticated
-	req := httptest.NewRequest(http.MethodPost, "/update", strings.NewReader(test.UpdateManifest))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/update", strings.NewReader(test.UpdateManifest))
 	resp := httptest.NewRecorder()
 	err = testRequestWithCert(req, resp, mux)
 	assert.NoError(err)
@@ -204,7 +204,7 @@ func TestReadSecret(t *testing.T) {
 	mux := CreateServeMux(c, nil, zaptest.NewLogger(t))
 
 	// Make HTTP secret request with no TLS at all, should be unauthenticated
-	req := httptest.NewRequest(http.MethodGet, "/secrets?s=symmetricKeyShared", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/secrets?s=symmetricKeyShared", nil)
 	resp := httptest.NewRecorder()
 	err = testRequestWithCert(req, resp, mux)
 	assert.NoError(err)
@@ -221,7 +221,7 @@ func TestSetSecret(t *testing.T) {
 	mux := CreateServeMux(c, nil, zaptest.NewLogger(t))
 
 	// Make HTTP secret request with no TLS at all, should be unauthenticated
-	req := httptest.NewRequest(http.MethodPost, "/secrets", strings.NewReader(test.UserSecrets))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/secrets", strings.NewReader(test.UserSecrets))
 	resp := httptest.NewRecorder()
 	err = testRequestWithCert(req, resp, mux)
 	assert.NoError(err)
@@ -266,7 +266,7 @@ func TestConcurrent(t *testing.T) {
 	var wg sync.WaitGroup
 
 	getQuote := func() {
-		req := httptest.NewRequest(http.MethodGet, "/quote", nil)
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/quote", nil)
 		resp := httptest.NewRecorder()
 		mux.ServeHTTP(resp, req)
 		assert.Equal(http.StatusOK, resp.Code)
@@ -274,7 +274,7 @@ func TestConcurrent(t *testing.T) {
 	}
 
 	getManifest := func() {
-		req := httptest.NewRequest(http.MethodGet, "/manifest", nil)
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/manifest", nil)
 		resp := httptest.NewRecorder()
 		mux.ServeHTTP(resp, req)
 		assert.Equal(http.StatusOK, resp.Code)
@@ -282,7 +282,7 @@ func TestConcurrent(t *testing.T) {
 	}
 
 	postManifest := func() {
-		req := httptest.NewRequest(http.MethodPost, "/manifest", strings.NewReader(test.ManifestJSON))
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/manifest", strings.NewReader(test.ManifestJSON))
 		resp := httptest.NewRecorder()
 		mux.ServeHTTP(resp, req)
 		wg.Done()
