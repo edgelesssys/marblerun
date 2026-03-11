@@ -77,6 +77,15 @@
       ]
     },
     {
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchDepNames": [
+        "go"
+      ],
+      "enabled": false
+    },
+    {
       "groupName": "EdgelessRT",
       "matchManagers": [
         "custom.regex"
