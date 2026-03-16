@@ -1,6 +1,6 @@
 module github.com/edgelesssys/marblerun
 
-go 1.25.6
+go 1.26.1
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.21.0
@@ -8,7 +8,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azkeys v1.4.0
 	github.com/ThalesGroup/crypto11 v1.6.0
 	github.com/cert-manager/cert-manager v1.19.4
-	github.com/edgelesssys/ego v1.8.1
+	github.com/edgelesssys/ego v1.9.0
 	github.com/gofrs/flock v0.13.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
