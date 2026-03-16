@@ -103,7 +103,7 @@ jobs:
 
       - name: Install dependencies
         env:
-          ERT_VERSION: "0.5.1"
+          ERT_VERSION: "0.5.2"
         run: |
           ERT_DEB=${ERT_VERSION}_amd64_ubuntu-24.04
           wget -qO- https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo apt-key add
@@ -116,7 +116,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
-          go-version: '1.25'
+          go-version: '1.26'
 
       - name: Set up Docker buildx
         uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0

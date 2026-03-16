@@ -101,8 +101,8 @@ github.com/docker/go-metrics v0.0.1 h1:AgB/0SvBxihN0X8OR4SjsblXkbMvalQ8cjmtKQ2rQ
 github.com/docker/go-metrics v0.0.1/go.mod h1:cG1hvH2utMXtqgqqYE9plW6lDxS3/5ayHzueweSI3Vw=
 github.com/dylibso/observe-sdk/go v0.0.0-20240828172851-9145d8ad07e1 h1:idfl8M8rPW93NehFw5H1qqH8yG158t5POr+LX9avbJY=
 github.com/dylibso/observe-sdk/go v0.0.0-20240828172851-9145d8ad07e1/go.mod h1:C8DzXehI4zAbrdlbtOByKX6pfivJTBiV9Jjqv56Yd9Q=
-github.com/edgelesssys/ego v1.8.1 h1:cpc9PfxLbADg+ZelHz3g02JBr/89N9zXpsEQCq0IIH4=
-github.com/edgelesssys/ego v1.8.1/go.mod h1:fg0M/xfLWnrkoD2OZpY9xmltGlAPFsIiUmyHTuCS7zo=
+github.com/edgelesssys/ego v1.9.0 h1:BJyJaBWc74Zxt+M/O1sGhOee9TtM+0YBCtRSEM6E+fA=
+github.com/edgelesssys/ego v1.9.0/go.mod h1:fg0M/xfLWnrkoD2OZpY9xmltGlAPFsIiUmyHTuCS7zo=
 github.com/emicklei/go-restful/v3 v3.13.0 h1:C4Bl2xDndpU6nJ4bc1jXd+uTmYPVUwkD6bFY/oTyCes=
 github.com/emicklei/go-restful/v3 v3.13.0/go.mod h1:6n3XBCmQQb25CM2LCACGz8ukIrRry+4bhvbpWn3mrbc=
 github.com/evanphx/json-patch v5.9.0+incompatible h1:fBXyNpNMuTTDdquAq/uisOr2lShz4oaXpDTX2bLe7ls=
