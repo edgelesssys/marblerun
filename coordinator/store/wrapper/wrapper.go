@@ -225,7 +225,10 @@ func (s Wrapper) GetRootSecret() ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		rootSecret = rootPrivK.D.Bytes()
+		rootSecret, err = rootPrivK.Bytes()
+		if err != nil {
+			return nil, err
+		}
 	}
 	return rootSecret, nil
 }
