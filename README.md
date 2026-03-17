@@ -42,6 +42,12 @@ MarbleRun supports services built with one of the following frameworks:
 See the [Getting Started Guide][getting-started] to set up a distributed confidential-computing app in a few steps.
 See the [documentation][docs] for details.
 
+## License
+
+MarbleRun is available under the [Business Source License](LICENSE).
+This license allows non-production use.
+For production use and support, you can [get a commercial license](https://www.edgeless.systems/products/marblerun).
+
 ## Community & help
 
 * Got a question? Please file an [issue](https://github.com/edgelesssys/marblerun/issues).

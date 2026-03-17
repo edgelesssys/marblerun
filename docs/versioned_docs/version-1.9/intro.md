@@ -23,15 +23,11 @@ To keep things simple, MarbleRun offers a single remote attestation statement fo
 
 🔒 Authentication and integrity verification of microservices based on the manifest
 
-
 🔑 Secrets management for confidential microservices
-
 
 📃 Provisioning of certificates, configurations, and parameters
 
-
 🔬 Remote attestation of the entire deployment
-
 
 👥 Role-based access control (RBAC), verifiable updates, and multi-stakeholder support
 
@@ -43,3 +39,9 @@ MarbleRun is configured with a simple JSON document called the *manifest*.
 It specifies the distributed app's topology and infrastructure properties and provides configuration parameters for each service.
 
 ![overview](_media/overview.svg)
+
+## License
+
+MarbleRun is available under the [Business Source License](https://github.com/edgelesssys/marblerun/blob/master/LICENSE).
+This license allows non-production use.
+For production use and support, you can [get a commercial license](https://www.edgeless.systems/products/marblerun).
