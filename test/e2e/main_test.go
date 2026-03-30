@@ -2897,7 +2897,7 @@ func getStatusOfInstance(
 		return fmt.Errorf("getting status: %w", err)
 	}
 	if status != wantStatus {
-		return fmt.Errorf("got status %q, want %q", status, wantStatus)
+		return fmt.Errorf("got status %d, want %d", status, wantStatus)
 	}
 	return nil
 }
