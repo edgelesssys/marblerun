@@ -59,6 +59,9 @@ spec:
         name: marble-injector
         image: "{{ .Values.marbleInjector.repository }}/{{ .Values.marbleInjector.image }}:{{ .Values.marbleInjector.version }}@{{ .Values.marbleInjector.hash }}"
         imagePullPolicy: {{ .Values.marbleInjector.pullPolicy }}
+        env:
+        - name: EDG_HTTP_ERROR_LOG_LEVEL
+            value: {{ .Values.marbleInjector.httpErrorLogLevel }}
         volumeMounts:
           - name: webhook-certs
             mountPath: /etc/webhook/certs

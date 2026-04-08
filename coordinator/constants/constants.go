@@ -64,6 +64,11 @@ const (
 	// DebugLoggingDefault is the default value to use when the [DebugLogging] env variable is not set.
 	DebugLoggingDefault = "0"
 
+	// HTTPErrorLogLevel is the log level for HTTP error messages.
+	HTTPErrorLogLevel = "EDG_HTTP_ERROR_LOG_LEVEL"
+	// HTTPErrorLogLevelDefault is the default log level for HTTP error messages.
+	HTTPErrorLogLevelDefault = "error"
+
 	// StartupManifest is a path to a manifest to start with instead of waiting for a manifest from the api.
 	StartupManifest = "EDG_STARTUP_MANIFEST"
 

@@ -38,6 +38,9 @@ marbleInjector:
   useCertManager: false
   # Automatically injected by the MarbleRun CLI. Ignore in helm standalone installation
   CABundle: ""
+  # Log level for HTTP error messages (handshake failures, etc.)
+  # one of "debug", "info", "warn", "error"
+  httpErrorLogLevel: "error"
 
   # objectSelector configuration.
   # See: https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-objectselector
@@ -77,6 +80,9 @@ coordinator:
   simulation: false
   # Enable debug logging in the coordinator
   debugLogging: false
+  # Log level for HTTP error messages (handshake failures, etc.)
+  # one of "debug", "info", "warn", "error"
+  httpErrorLogLevel: "error"
 
   probes:
     readiness:
