@@ -61,7 +61,7 @@ func main() {
 		TLSConfig: &tls.Config{
 			GetCertificate: loadWebhookCert(certFile, keyFile),
 		},
-		ErrorLog: logging.NewWrapper(log),
+		ErrorLog: logging.NewHTTPLogWrapper(log),
 	}
 
 	log.Info("Starting Server")

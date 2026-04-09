@@ -122,7 +122,7 @@ func RunClientServer(mux http.Handler, address string, tlsConfig *tls.Config, za
 		Addr:      address,
 		Handler:   mux,
 		TLSConfig: tlsConfig,
-		ErrorLog:  mrlogging.NewWrapper(zapLogger),
+		ErrorLog:  mrlogging.NewHTTPLogWrapper(zapLogger),
 	}
 	zapLogger.Info("Starting client https server", zap.String("address", address))
 	err := server.ListenAndServeTLS("", "")

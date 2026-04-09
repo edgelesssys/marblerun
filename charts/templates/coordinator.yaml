@@ -44,6 +44,8 @@ spec:
           - name: EDG_DEBUG_LOGGING
             value: "1"
           {{- end }}
+          - name: EDG_HTTP_ERROR_LOG_LEVEL
+            value: {{ .Values.coordinator.httpErrorLogLevel }}
           - name: EDG_COORDINATOR_MESH_ADDR
             value: "{{ .Values.coordinator.meshServerHost }}:{{ .Values.coordinator.meshServerPort }}"
           - name: EDG_COORDINATOR_CLIENT_ADDR

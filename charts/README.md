@@ -35,7 +35,9 @@ their default values.
 |:---------------------------------------------|:---------------|:---------------|:-------------------------------------|
 | `coordinator.clientServerHost`               | string         | Hostname of the client-api server | `"0.0.0.0"` |
 | `coordinator.clientServerPort`               | int            | Port of the client-api server configuration | `4433` |
+| `coordinator.debugLogging`                   | bool           | Enable debug logging in the coordinator | `false` |
 | `coordinator.hostname`                       | string         | Additional DNS-Names or IPs for the coordinator TLS certificate | |
+| `coordinator.httpErrorLogLevel`              | string         | Log level for HTTP error messages (handshake failures, etc.) | `"error"` |
 | `coordinator.image`                          | string         | Name of the coordinator container image | `"coordinator"` |
 | `coordinator.meshServerHost`                 | string         | Hostname of the mesh-api server | `"0.0.0.0"` |
 | `coordinator.meshServerPort`                 | int            | Port of the mesh-api server configuration | `2001` |
@@ -48,7 +50,7 @@ their default values.
 | `coordinator.storageClass`                   | string         | Kubernetes [StorageClass](https://kubernetes.io/docs/concepts/storage/storage-classes/) to use for creating the Coordinator PVC. Leave empty to use the default StorageClass | |
 | `coordinator.distributedDeployment`          | bool           | Enable distributed deployment for the coordinator | `false` |
 | `coordinator.storeBackend`                   | string         | Store backend to use for distributed deployment. Only used if `coordinator.distributedDeployment` is set to `true` | `"k8s-secret"` |
-| `coordinator.stateSecretName`               | string         | Name of the secret to use for storing the coordinator state. Only used if `coordinator.distributedDeployment` is set to `true` | `"marblerun-state"` |
+| `coordinator.stateSecretName`                | string         | Name of the secret to use for storing the coordinator state. Only used if `coordinator.distributedDeployment` is set to `true` | `"marblerun-state"` |
 | `coordinator.kekConfigMap`                   | string         | Name of the ConfigMap containing the Key Encryption Keys for the k8s-secret store backend. Only used if `coordinator.distributedDeployment` is set to `true` | `"marblerun-sealed-kek"` |
 | `coordinator.keyAPIName`                     | string         | Name of the Kubernetes service connecting to the Coordinator key exchange API. Only used if `coordinator.distributedDeployment` is set to `true` | `"marblerun-keyapi"` |
 | `coordinator.version`                        | string         | Version of the coordinator container image to pull | `"v1.9.0"` |
@@ -57,6 +59,7 @@ their default values.
 | `global.podAnnotations`                      | object         | Additional annotations to add to all pods | `{}`|
 | `global.podLabels`                           | object         | Additional labels to add to all pods | `{}` |
 | `marbleInjector.CABundle`                    | string         | MutatingWebhook CA bundle. Automatically configured by the MarbleRun CLI. Ignore when using standalone helm chart | `""` |
+| `marbleInjector.httpErrorLogLevel`           | string         | Log level for HTTP error messages (handshake failures, etc.) | `"error"` |
 | `marbleInjector.image`                       | string         | Name of the marbleInjector container image | `"coordinator"` |
 | `marbleInjector.start`                       | bool           | Start the marbleInjector webhook | `false` |
 | `marbleInjector.replicas`                    | int            | Replicas of the marbleInjector webhook | `1` |
