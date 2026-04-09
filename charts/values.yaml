@@ -106,13 +106,26 @@ coordinator:
 
   keyAPIName: "coordinator-key-api"
 
+  # Credentials to access Azure Key Vault HSM
+  # Only needed if using HSM sealing
   azureCredentials:
-    # Set to use a predefined secret for Azure credentials
-    secretName: ""
+    # Client ID of the Azure managed identity allowed to access the HSM
     clientID: ""
+    # Set to true to use AKS workload identity for authentication
+    # See the official documentation for more details: https://learn.microsoft.com/en-us/azure/aks/workload-identity-overview
+    enableWorkloadIdentity: false
+
+    # Set to use a predefined secret with Azure credentials instead of creating one with this chart
+    secretName: ""
+
+    # tenant ID of the managed identity
+    # Required if not using workload identity or an existing secret
     tenantID: ""
+    # client secret of the managed identity
+    # Required if not using workload identity or an existing secret
     clientSecret: ""
 
+  # Azure Key Vault HSM configuration
   azureHSM:
     keyName: ""
     keyVersion: ""

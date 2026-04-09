@@ -55,15 +55,12 @@ type KeyReleaser struct {
 
 // New creates a new [KeyReleaser] with credentials from environment variables.
 func New(sealer seal.Sealer, log *zap.Logger) (*KeyReleaser, error) {
-	if err := os.Setenv(strings.TrimPrefix(constants.EnvAzureClientID, "EDG_"), os.Getenv(constants.EnvAzureClientID)); err != nil {
-		return nil, err
+	for _, env := range []string{constants.EnvAzureClientID, constants.EnvAzureTenantID, constants.EnvAzureClientSecret, constants.EnvAzureAuthorityHost} {
+		if err := os.Setenv(strings.TrimPrefix(env, "EDG_"), os.Getenv(env)); err != nil {
+			return nil, err
+		}
 	}
-	if err := os.Setenv(strings.TrimPrefix(constants.EnvAzureTenantID, "EDG_"), os.Getenv(constants.EnvAzureTenantID)); err != nil {
-		return nil, err
-	}
-	if err := os.Setenv(strings.TrimPrefix(constants.EnvAzureClientSecret, "EDG_"), os.Getenv(constants.EnvAzureClientSecret)); err != nil {
-		return nil, err
-	}
+
 	vaultURL := os.Getenv(constants.EnvAzureHSMVaultURL)
 	keyName := os.Getenv(constants.EnvAzureHSMKeyName)
 	keyVersion := os.Getenv(constants.EnvAzureHSMKeyVersion)

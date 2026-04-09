@@ -25,6 +25,9 @@ spec:
         app.kubernetes.io/name: coordinator
         app.kubernetes.io/part-of: marblerun
         app.kubernetes.io/version: "{{ .Values.coordinator.version }}"
+        {{- if .Values.coordinator.azureCredentials.enableWorkloadIdentity }}
+        azure.workload.identity/use: "true"
+        {{- end }}
         {{ .Values.global.coordinatorComponentLabel }}: coordinator
         {{ .Values.global.coordinatorNamespaceLabel }}: {{ .Release.Namespace }}
         {{- with .Values.global.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
@@ -66,7 +69,7 @@ spec:
           - name: OE_SIMULATION
             value: {{ if .Values.coordinator.simulation }}"1"{{ else }}"0"{{ end }}
           {{- with .Values.coordinator.azureCredentials }}
-          {{- if or .secretName (and .clientID .tenantID .clientSecret ) }}
+          {{- if and (not .enableWorkloadIdentity) (or .secretName (and .clientID .tenantID .clientSecret )) }}
           - name: EDG_AZURE_CLIENT_ID
             valueFrom:
               secretKeyRef:
