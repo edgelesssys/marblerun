@@ -50,6 +50,9 @@ func main() {
 	w := injector.New(addr, clusterDomain, sgxResource, log)
 
 	mux.HandleFunc("/mutate", w.HandleMutate)
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
 
 	s := &http.Server{
 		// Address forwarding to 443 should be handled by the marble-injector service object
