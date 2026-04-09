@@ -61,7 +61,7 @@ spec:
         imagePullPolicy: {{ .Values.marbleInjector.pullPolicy }}
         env:
         - name: EDG_HTTP_ERROR_LOG_LEVEL
-            value: {{ .Values.marbleInjector.httpErrorLogLevel }}
+          value: {{ .Values.marbleInjector.httpErrorLogLevel }}
         volumeMounts:
           - name: webhook-certs
             mountPath: /etc/webhook/certs

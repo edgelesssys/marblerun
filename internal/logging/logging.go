@@ -37,8 +37,8 @@ func New() (*zap.Logger, error) {
 	return log, nil
 }
 
-// NewWrapper creates a new [*log.Logger] that writes to the given [*zap.Logger].
-func NewWrapper(zapLogger *zap.Logger) *log.Logger {
+// NewHTTPLogWrapper creates a new [*log.Logger] for http servers that writes to the given [*zap.Logger].
+func NewHTTPLogWrapper(zapLogger *zap.Logger) *log.Logger {
 	levelStr := util.Getenv(constants.HTTPErrorLogLevel, constants.HTTPErrorLogLevelDefault)
 	logLevel, err := zapcore.ParseLevel(levelStr)
 	if err != nil {
