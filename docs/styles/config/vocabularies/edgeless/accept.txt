@@ -12,6 +12,7 @@ DCAP
 DER
 Dockerfile
 emojivoto
+Entra
 Env
 Equinix
 glibc

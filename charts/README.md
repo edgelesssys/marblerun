@@ -54,6 +54,15 @@ their default values.
 | `coordinator.kekConfigMap`                   | string         | Name of the ConfigMap containing the Key Encryption Keys for the k8s-secret store backend. Only used if `coordinator.distributedDeployment` is set to `true` | `"marblerun-sealed-kek"` |
 | `coordinator.keyAPIName`                     | string         | Name of the Kubernetes service connecting to the Coordinator key exchange API. Only used if `coordinator.distributedDeployment` is set to `true` | `"marblerun-keyapi"` |
 | `coordinator.version`                        | string         | Version of the coordinator container image to pull | `"v1.9.0"` |
+| `coordinator.azureCredentials.clientID`      | string         | Client ID of the Azure Service Principal / Managed Identity to use for Azure Managed HSM integration | `""` |
+| `coordinator.azureCredentials.enableWorkloadIdentity` | bool  | Set to `true` to use AKS Workload Identity to provide credentials to the Coordinator for HSM integration | `false` |
+| `coordinator.azureCredentials.tenantID`      | string         | Tenant ID of the Azure Service Principal to use for HSM integration. Not needed when `enableWorkloadIdentity` is set to `true` | `""` |
+| `coordinator.azureCredentials.clientSecret`  | string         | Client Secret of the Azure Service Principal to use for HSM integration. Not needed when `enableWorkloadIdentity` is set to `true` | `""` |
+| `coordinator.azureCredentials.secretName`    | string         | Name of a pre-existing Kubernetes Secret containing the Azure credentials for HSM integration. If set, `clientID`, `tenantID`, `clientSecret`, and `enableWorkloadIdentity` may be ignored | `""` |
+| `coordinator.azureHSM.keyName`               | string         | Name of the HSM key to use for sealing. Only needed if using Azure Managed HSM integration | `""` |
+| `coordinator.azureHSM.keyVersion`            | string         | Optional version of the HSM key to use for sealing. If not set, the latest key version is used | `""` |
+| `coordinator.azureHSM.vaultURL`              | string         | URL of HSM | `""` |
+| `coordinator.azureHSM.maaURL`                | string         | URL of the MAA service to request tokens from. This needs to match the `authority` set in your HSM key policy | `""` |
 | `global.coordinatorComponentLabel`           | string         | Control plane label. Do not edit | `"edgeless.systems/control-plane-component"` |
 | `global.coordinatorNamespaceLabel`           | string         | Control plane label. Do not edit | `"edgeless.systems/control-plane-ns"` |
 | `global.podAnnotations`                      | object         | Additional annotations to add to all pods | `{}`|
