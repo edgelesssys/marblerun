@@ -83,13 +83,21 @@ View the [official documentation](https://learn.microsoft.com/en-us/azure/key-va
     az keyvault key create --exportable true --hsm-name "MarbleRunHSM" --kty OCT-HSM --name "marblerun-skr-key" --policy ./policy.json
     ```
 
-7. Create a Service Principal for the MarbleRun Coordinator to access the HSM
+Once your HSM is up an running, you have two options for providing the Coordinator with credentials to access the HSM.
+You can either set up a [Service Principal](https://learn.microsoft.com/en-us/entra/identity-platform/app-objects-and-service-principals) and provide its credentials to the Coordinator,
+or, if running on Azure Kubernetes, use [Workload Identity](https://learn.microsoft.com/en-us/azure/aks/workload-identity-overview) which automatically injects short-lived credentials into the Coordinator Pods.
+
+<Tabs groupId="credentials">
+
+<TabItem value="service-principal" label="Service Principal">
+
+1. Create a Service Principal for the MarbleRun Coordinator to access the HSM
 
     ```bash
     az ad sp create-for-rbac --name "marblerun-coordinator-hsm-sp" > hsm/coordinator-sp-credentials.json
     ```
 
-8. Assign the "Managed HSM Crypto Service Release User" role to the Service Principal
+2. Assign the "Managed HSM Crypto Service Release User" role to the Service Principal
 
     This role allows the Service Principal to request key release of the key you created earlier.
     To actually receive the key, the request must be made from an enclave that meets the requirements from the attestation policy.
@@ -97,13 +105,106 @@ View the [official documentation](https://learn.microsoft.com/en-us/azure/key-va
     ```bash
     hsm_id=$(az keyvault show --hsm-name MarbleRunHSM --query id -o tsv)
     app_id=$(az ad sp list --display-name "marblerun-coordinator-hsm-sp" --query "[].id" -o tsv)
-    az keyvault role assignment create --assignee-object-id $app_id --assignee-principal-type ServicePrincipal --role "Managed HSM Crypto Service Release User" --hsm-name MarbleRunHSM --scope /keys/marblerun-skr-key
+    az keyvault role assignment create \
+        --assignee-object-id $app_id \
+        --assignee-principal-type ServicePrincipal \
+        --role "Managed HSM Crypto Service Release User" \
+        --hsm-name MarbleRunHSM \
+        --scope /keys/marblerun-skr-key
     ```
+
+</TabItem>
+
+<TabItem value="workload-identity" label="Workload Identity">
+
+Microsoft Entra Workload ID with Azure Kubernetes Service enables Kubernetes applications to access Azure resources using Kubernetes service accounts.
+See [the official documentation](https://learn.microsoft.com/en-us/azure/aks/workload-identity-deploy-cluster?tabs=existing-cluster) for a detailed walkthrough on how to deploy applications with workload identity.
+
+To start, make sure your AKS cluster has the workload identity and OpenID Connect (OIDC) issuer plugins enabled:
+
+```bash
+export RESOURCE_GROUP="<resource_group_name_of_your_aks_cluster>"
+export CLUSTER_NAME="<name_of_your_aks_cluster>"
+export LOCATION="<location_of_your_aks_cluster>"
+az aks update \
+    --resource-group "${RESOURCE_GROUP}" \
+    --name "${CLUSTER_NAME}" \
+    --enable-oidc-issuer \
+    --enable-workload-identity
+```
+
+1. Retrieve the OIDC issuer URL of your cluster
+
+    ```bash
+    export AKS_OIDC_ISSUER="$(az aks show --name "${CLUSTER_NAME}" \
+        --resource-group "${RESOURCE_GROUP}" \
+        --query "oidcIssuerProfile.issuerUrl" \
+        --output tsv)"
+    ```
+
+2. Create a managed identity for the Coordinator
+
+    ```bash
+    export SUBSCRIPTION="$(az account show --query id --output tsv)"
+    export USER_ASSIGNED_IDENTITY_NAME="marblerun-coordinator-id"
+    az identity create \
+        --name "${USER_ASSIGNED_IDENTITY_NAME}" \
+        --resource-group "${RESOURCE_GROUP}" \
+        --location "${LOCATION}" \
+        --subscription "${SUBSCRIPTION}"
+    ```
+
+3. Get the client ID of the managed identity
+
+    ```bash
+    export USER_ASSIGNED_CLIENT_ID="$(az identity show \
+        --resource-group "${RESOURCE_GROUP}" \
+        --name "${USER_ASSIGNED_IDENTITY_NAME}" \
+        --query 'clientId' \
+        --output tsv)"
+    ```
+
+4. Create the federated identity credential
+
+    ```bash
+    export SERVICE_ACCOUNT_NAMESPACE="marblerun" # Make sure to set this to the namespace you are deploying MarbleRun to
+    export SERVICE_ACCOUNT_NAME="marblerun-coordinator"
+    export FEDERATED_IDENTITY_CREDENTIAL_NAME="marblerun-coordinator-fed-creds"
+    az identity federated-credential create \
+        --name ${FEDERATED_IDENTITY_CREDENTIAL_NAME} \
+        --identity-name "${USER_ASSIGNED_IDENTITY_NAME}" \
+        --resource-group "${RESOURCE_GROUP}" \
+        --issuer "${AKS_OIDC_ISSUER}" \
+        --subject system:serviceaccount:"${SERVICE_ACCOUNT_NAMESPACE}":"${SERVICE_ACCOUNT_NAME}" \
+        --audience api://AzureADTokenExchange
+    ```
+
+5. Assign the "Managed HSM Crypto Service Release User" role to the managed identity
+
+    This role allows the identity to request key release of the key you created earlier.
+    To actually receive the key, the request must be made from an enclave that meets the requirements from the attestation policy.
+
+    ```bash
+    export IDENTITY_PRINCIPAL_ID=$(az identity show --name "${USER_ASSIGNED_IDENTITY_NAME}" --resource-group "${RESOURCE_GROUP}" --query principalId --output tsv)
+    az keyvault role assignment create \
+        --assignee-object-id "${IDENTITY_PRINCIPAL_ID}" \
+        --assignee-principal-type ServicePrincipal \
+        --role "Managed HSM Crypto Service Release User" \
+        --hsm-name MarbleRunHSM \
+        --scope /keys/marblerun-skr-key
+    ```
+
+</TabItem>
+</Tabs>
 
 ## Configuring MarbleRun to use Azure Managed HSM
 
 With the HSM set up, MarbleRun is now ready to request the key for sealing.
-For this, the Coordinator needs credentials for the Service Principal and information about how to retrieve the key.
+For this, the Coordinator needs credentials and information about how to retrieve the key.
+
+<Tabs groupId="credentials">
+
+<TabItem value="service-principal" label="Helm with Service Principal">
 
 Retrieve the credentials from the Service Principal JSON file:
 
@@ -115,11 +216,7 @@ tenant_id=$(jq -r '.tenant' hsm/coordinator-sp-credentials.json)
 vault_url=$(az keyvault show --hsm-name MarbleRunHSM --query 'properties.hsmUri' -o tsv)
 ```
 
-<Tabs groupId="installation">
-
-<TabItem value="helm" label="Helm">
-
-Add the following to your Helm's `values.yaml` file:
+Add the following to your Helm's `values.yaml` file, replacing the placeholders with the values you retrieved:
 
 ```yaml
 coordinator:
@@ -141,20 +238,47 @@ coordinator:
 
 </TabItem>
 
+<TabItem value="workload-identity" label="Helm with Workload Identity">
+
+Retrieve the client ID of the user assigned identity and the vault URL:
+
+```bash
+client_id=${USER_ASSIGNED_CLIENT_ID}
+vault_url=$(az keyvault show --hsm-name MarbleRunHSM --query 'properties.hsmUri' -o tsv)
+```
+
+Add the following to your Helm's `values.yaml` file, replacing the placeholders with the values you retrieved:
+
+```yaml
+coordinator:
+    azureCredentials:
+        clientID: ${client_id}
+        enableWorkloadIdentity: true
+    hsm:
+        keyName: "marblerun-skr-key"
+        vaultURL: ${vault_url}
+        # Make sure this matches the location of your deployment, and the value you set in the key policy
+        maaURL: "https://shareduks.uks.attest.azure.net"
+        # Optionally, set to use a specific key version
+        keyVersion: ""
+```
+
+</TabItem>
+
 <TabItem value="standalone" label="Standalone">
 
 Set the following environment variables to provided the needed information:
 
 ```bash
 # Azure credentials
-export EDG_AZURE_CLIENT_ID=${client_id}
-export EDG_AZURE_CLIENT_SECRET=${client_secret}
-export EDG_AZURE_TENANT_ID=${tenant_id}
+export EDG_AZURE_CLIENT_ID=$(jq -r '.appId' hsm/coordinator-sp-credentials.json)
+export EDG_AZURE_CLIENT_SECRET=$(jq -r '.password' hsm/coordinator-sp-credentials.json)
+export EDG_AZURE_TENANT_ID=$(jq -r '.tenant' hsm/coordinator-sp-credentials.json)
 
 # HSM key information
 export EDG_AZURE_HSM_KEY_NAME="marblerun-skr-key"
 export EDG_AZURE_HSM_KEY_VERSION="" # Optionally, set to use a specific key version
-export EDG_AZURE_HSM_VAULT_URL=${vault_url}
+export EDG_AZURE_HSM_VAULT_URL=$(az keyvault show --hsm-name MarbleRunHSM --query 'properties.hsmUri' -o tsv)
 
 # MAA URL. Make sure this matches the location of your deployment, and the value you set in the key policy
 export EDG_MAA_URL="https://shareduks.uks.attest.azure.net"
