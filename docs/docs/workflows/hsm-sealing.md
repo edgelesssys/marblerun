@@ -83,9 +83,11 @@ View the [official documentation](https://learn.microsoft.com/en-us/azure/key-va
     az keyvault key create --exportable true --hsm-name "MarbleRunHSM" --kty OCT-HSM --name "marblerun-skr-key" --policy ./policy.json
     ```
 
-Once your HSM is up an running, you have two options for providing the Coordinator with credentials to access the HSM.
-You can either set up a [Service Principal](https://learn.microsoft.com/en-us/entra/identity-platform/app-objects-and-service-principals) and provide its credentials to the Coordinator,
-or, if running on Azure Kubernetes, use [Workload Identity](https://learn.microsoft.com/en-us/azure/aks/workload-identity-overview) which automatically injects short-lived credentials into the Coordinator Pods.
+Once your HSM is up an running, you have two options for providing the Coordinator with credentials to access the HSM:
+
+* Set up a [Service Principal](https://learn.microsoft.com/en-us/entra/identity-platform/app-objects-and-service-principals) and provide its credentials to the Coordinator.
+
+* If running on Azure Kubernetes, use [Workload Identity](https://learn.microsoft.com/en-us/azure/aks/workload-identity-overview) which automatically injects short-lived credentials into the Coordinator Pods.
 
 <Tabs groupId="credentials">
 
