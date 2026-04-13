@@ -15,6 +15,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -63,10 +64,15 @@ func New(t *testing.T, kubeConfigPath string) (*Kubectl, error) {
 }
 
 // SetUpNamespace creates a namespace for the MarbleRun installation.
-func (k *Kubectl) SetUpNamespace(ctx context.Context, namespace string) (string, func(), error) {
+func (k *Kubectl) SetUpNamespace(ctx context.Context, namespace string, namespaceSuffix ...string) (string, func(), error) {
 	k.t.Helper()
 
-	uid := generateUID()
+	var uid string
+	if len(namespaceSuffix) == 0 {
+		uid = generateUID()
+	} else {
+		uid = strings.Join(namespaceSuffix, "")
+	}
 	namespace += "-" + uid
 
 	label := "marblerun/e2e-test"
