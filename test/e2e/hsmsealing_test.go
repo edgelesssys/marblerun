@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/edgelesssys/marblerun/coordinator/constants"
 	"github.com/edgelesssys/marblerun/coordinator/keyrelease"
 	"github.com/edgelesssys/marblerun/coordinator/state"
 	"github.com/edgelesssys/marblerun/coordinator/store/stdstore"
@@ -27,6 +28,24 @@ import (
 )
 
 func TestHSMSealing(t *testing.T) {
+	for name, extraValues := range map[string]map[string]any{
+		"client-secret": nil,
+		"workload-identity": {
+			"coordinator": map[string]any{
+				"azureCredentials": map[string]any{
+					"clientID":               os.Getenv(constants.EnvAzureClientID + "_MANAGED"),
+					"enableWorkloadIdentity": true,
+					"tenantID":               "",
+					"clientSecret":           "",
+				},
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) { testHSMSealing(t, name, extraValues) })
+	}
+}
+
+func testHSMSealing(t *testing.T, name string, extraHelmValues map[string]any) {
 	t.Parallel()
 
 	ctx, assert, require, kubectl, cmd, tmpDir := createBaseObjects(t)
@@ -47,12 +66,17 @@ func TestHSMSealing(t *testing.T) {
 	mnf := manifest.DefaultManifest(crt, pub, marbleConfig)
 	manifestPath := writeManifest(t, mnf, tmpDir)
 
-	namespace, releaseName := setUpNamespace(ctx, t, kubectl)
+	namespacePrefix := "marblerun-hsm"
+	uid, cleanUp, err := kubectl.SetUpNamespace(ctx, namespacePrefix, name)
+	require.NoError(err)
+	t.Cleanup(cleanUp)
+	releaseName := namespacePrefix + "-" + uid
+	namespace := releaseName
 
 	helm, err := helm.New(t, *kubeConfigPath, namespace)
 	require.NoError(err)
 	t.Logf("Installing chart %q from %q", namespace, *chartPath)
-	uninstall, err := helm.InstallChart(ctx, releaseName, namespace, *chartPath, *replicas, defaultTimeout, nil)
+	uninstall, err := helm.InstallChart(ctx, releaseName, namespace, *chartPath, *replicas, defaultTimeout, extraHelmValues)
 	require.NoError(err)
 	t.Cleanup(uninstall)
 	getLogsOnFailure(t, kubectl, namespace)

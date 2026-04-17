@@ -109,6 +109,10 @@ const (
 	EnvAzureTenantID = "EDG_AZURE_TENANT_ID"
 	// EnvAzureClientSecret holds the Azure Client Secret for authentication with the Azure SDK.
 	EnvAzureClientSecret = "EDG_AZURE_CLIENT_SECRET"
+	// EnvAzureFederatedTokenFile holds the path to the federated token file for authentication with the Azure SDK.
+	EnvAzureFederatedTokenFile = "EDG_AZURE_FEDERATED_TOKEN_FILE"
+	// EnvAzureAuthorityHost holds the Azure Authority Host for authentication with the Azure SDK.
+	EnvAzureAuthorityHost = "EDG_AZURE_AUTHORITY_HOST"
 
 	// StoreBackendKubernetes indicates that Kubernetes secrets should be used to hold
 	// the Coordinator's state.

@@ -533,7 +533,7 @@ func (m Manifest) Check(zaplogger *zap.Logger) error {
 		switch strings.ToLower(feature) {
 		case strings.ToLower(FeatureSignQuoteEndpoint), strings.ToLower(FeatureMonotonicCounter):
 		case strings.ToLower(FeatureAzureHSMSealing):
-			var missingEnvs []string
+			var missingEnvs, missingEnvsClientSecret, missingEnvsManagedIdentity []string
 			if os.Getenv(constants.EnvMAAURL) == "" {
 				missingEnvs = append(missingEnvs, constants.EnvMAAURL)
 			}
@@ -549,9 +549,24 @@ func (m Manifest) Check(zaplogger *zap.Logger) error {
 			if os.Getenv(constants.EnvAzureTenantID) == "" {
 				missingEnvs = append(missingEnvs, constants.EnvAzureTenantID)
 			}
+
+			// Env variables only required when using client secret auth
 			if os.Getenv(constants.EnvAzureClientSecret) == "" {
-				missingEnvs = append(missingEnvs, constants.EnvAzureClientSecret)
+				missingEnvsClientSecret = append(missingEnvsClientSecret, constants.EnvAzureClientSecret)
 			}
+
+			// Env variables only required when using workload identity federation
+			if os.Getenv(constants.EnvAzureAuthorityHost) == "" {
+				missingEnvsManagedIdentity = append(missingEnvsManagedIdentity, constants.EnvAzureAuthorityHost)
+			}
+			if os.Getenv(constants.EnvAzureFederatedTokenFile) == "" {
+				missingEnvsManagedIdentity = append(missingEnvsManagedIdentity, constants.EnvAzureFederatedTokenFile)
+			}
+
+			if len(missingEnvsClientSecret) > 0 && len(missingEnvsManagedIdentity) > 0 {
+				missingEnvs = append(missingEnvs, append(missingEnvsClientSecret, missingEnvsManagedIdentity...)...)
+			}
+
 			if len(missingEnvs) > 0 {
 				return fmt.Errorf("manifest enables sealing with Azure HSM key, but required environment variables are not set: %v", missingEnvs)
 			}

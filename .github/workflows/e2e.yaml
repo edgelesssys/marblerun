@@ -262,6 +262,8 @@ jobs:
     needs: build-test-containers
     if: ${{ inputs.hsmSealing == 'enabled' }}
     runs-on: ubuntu-24.04
+    env:
+      RESOURCE_GROUP: marblerun-e2e
 
     steps:
       - name: Checkout
@@ -277,7 +279,7 @@ jobs:
           UID: ${{ needs.build-test-containers.outputs.run-uid }}
           AZURE_OBJECT_ID: ${{ secrets.AZURE_OBJECT_ID }}
         run: |
-          az keyvault create --hsm-name "mr-e2e-${UID}" --resource-group "marblerun-e2e" --location "uksouth" --administrators $AZURE_OBJECT_ID --retention-days 7
+          az keyvault create --hsm-name "mr-e2e-${UID}" --resource-group "${RESOURCE_GROUP}" --location "uksouth" --administrators $AZURE_OBJECT_ID --retention-days 7
 
           openssl req -newkey rsa:2048 -subj "/C=DE" -nodes -keyout cert_0.key -x509 -days 365 -out cert_0.cer
           openssl req -newkey rsa:2048 -subj "/C=DE" -nodes -keyout cert_1.key -x509 -days 365 -out cert_1.cer
@@ -314,14 +316,27 @@ jobs:
 
           az keyvault key create --exportable true --hsm-name "mr-e2e-${UID}" --kty OCT-HSM --name "marblerun-skr-key" --policy ./policy.json
 
-      - name: Assign release permissions to SP
+      - name: Assign release permissions to SP and managed identity
         id: create-sp
         env:
           UID: ${{ needs.build-test-containers.outputs.run-uid }}
           APP_OID: ${{ secrets.HSM_RELEASE_OBJECT_ID }}
+          MANAGED_IDENTITY_OID: ${{ secrets.HSM_RELEASE_MANAGED_IDENTITY_OBJECT_ID }}
         run: |
           hsm_id=$(az keyvault show --hsm-name "mr-e2e-${UID}" --query id -o tsv)
-          az keyvault role assignment create --assignee-object-id ${APP_OID} --assignee-principal-type ServicePrincipal --role "Managed HSM Crypto Service Release User" --hsm-name "mr-e2e-${UID}" --scope /keys/marblerun-skr-key
+          az keyvault role assignment create \
+            --assignee-object-id ${APP_OID} \
+            --assignee-principal-type ServicePrincipal \
+            --role "Managed HSM Crypto Service Release User" \
+            --hsm-name "mr-e2e-${UID}" \
+            --scope /keys/marblerun-skr-key
+
+          az keyvault role assignment create \
+            --assignee-object-id "${MANAGED_IDENTITY_OID}" \
+            --assignee-principal-type ServicePrincipal \
+            --role "Managed HSM Crypto Service Release User" \
+            --hsm-name "mr-e2e-${UID}" \
+            --scope /keys/marblerun-skr-key
 
   e2e-test:
     name: Run e2e test
@@ -382,12 +397,29 @@ jobs:
             --vm-set-type VirtualMachineScaleSets \
             --aks-custom-headers usegen2vm=true \
             --generate-ssh-keys \
+            --enable-oidc-issuer \
+            --enable-workload-identity \
             --location northeurope
 
           az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME
 
           kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.12.0/cert-manager.yaml
           kubectl wait --for=condition=available --timeout=600s -n cert-manager --all deployments
+
+      - name: Set up Workload Identity
+        if: inputs.hsmSealing == 'enabled'
+        env:
+          MANAGED_CLIENT_ID: ${{ secrets.HSM_RELEASE_MANAGED_IDENTITY_CLIENT_ID}}
+        run: |
+          aks_oidc_issuer="$(az aks show --name $CLUSTER_NAME --resource-group $RESOURCE_GROUP --query 'oidcIssuerProfile.issuerUrl' --output tsv)"
+
+          az identity federated-credential create \
+            --name "marblerun-coordinator-fed-creds" \
+            --identity-name "marblerun-e2e-hsm-release" \
+            --resource-group $RESOURCE_GROUP \
+            --issuer "${aks_oidc_issuer}" \
+            --subject system:serviceaccount:"marblerun-hsm-workload-identity":"marblerun-coordinator" \
+            --audience api://AzureADTokenExchange
 
       - name: Update MarbleRun chart
         run: |
@@ -424,6 +456,7 @@ jobs:
           REPLICAS: ${{ inputs.replicas || '3' }}
           RUN_UID: ${{ needs.build-test-containers.outputs.run-uid }}
           MARBLE_DIGEST: ${{ needs.build-test-containers.outputs.marble-digest }}
+          EDG_AZURE_CLIENT_ID_MANAGED: ${{ secrets.HSM_RELEASE_MANAGED_IDENTITY_CLIENT_ID }}
           EDG_AZURE_CLIENT_ID: ${{ secrets.HSM_RELEASE_CLIENT_ID }}
           EDG_AZURE_TENANT_ID: ${{ secrets.HSM_RELEASE_TENANT_ID }}
           EDG_AZURE_CLIENT_SECRET: ${{ secrets.HSM_RELEASE_CLIENT_SECRET }}
@@ -486,3 +519,8 @@ jobs:
         run: |
           az keyvault delete --hsm-name "mr-e2e-${UID}" --resource-group "marblerun-e2e"
           az keyvault purge --hsm-name "mr-e2e-${UID}" --location uksouth
+          az identity federated-credential delete \
+            --resource-group "marblerun-e2e" \
+            --identity-name "marblerun-e2e-hsm-release" \
+            --name "marblerun-coordinator-fed-creds" \
+            --yes
