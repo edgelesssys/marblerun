@@ -18,7 +18,19 @@ MarbleRun is written entirely in Go and builds on Edgeless RT, which is written 
   * [`config`](marble/config): Environment variables for configuration
   * [`premain`](marble/premain): The data plane code that prepares the Marble's environment
 
-## Build
+## Reproduce the Coordinator enclave of a release
+
+Check out the tag of the version you want to reproduce.
+Then build with Docker:
+
+```bash
+openssl genrsa -out private.pem -3 3072
+DOCKER_BUILDKIT=1 docker build --secret id=signingkey,src=private.pem --target export -o. --build-arg production=ON - < dockerfiles/Dockerfile.coordinator
+```
+
+The resulting `coordinator-enclave.signed` has the same UniqueID as the binary release.
+
+## Build for development
 
 ### With Docker
 
