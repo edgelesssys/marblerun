@@ -473,6 +473,8 @@ jobs:
             tags="${tags},hsmsealing"
           fi
 
+          yq -i eval ".dcap.qcnlConfig = (load(\".github/scripts/azure_sgx_conf.json\") | @json)" ./charts/values.yaml
+
           go test ./test/e2e/ -tags ${tags} --timeout 0 --parallel ${PARALLEL_RUNS} \
             --run "${TEST_FILTER}" \
             --cli /usr/bin/marblerun \
