@@ -221,7 +221,7 @@ jobs:
           CONTAINER: marble-injector
           UUID: ${{ steps.generate-uid.outputs.run-uid }}
         run: |
-          docker build --arg mrtag=${{ github.ref_name }} --tag ${CR}/${CONTAINER}:${UUID} -f dockerfiles/Dockerfile.marble-injector .
+          docker build --build-arg mrtag=${{ github.ref_name }} --tag ${CR}/${CONTAINER}:${UUID} -f dockerfiles/Dockerfile.marble-injector .
           docker push ${CR}/${CONTAINER}:${UUID}
 
           image_ref=$(docker inspect --format='{{index .RepoDigests 0}}' ${CR}/${CONTAINER}:${UUID})
