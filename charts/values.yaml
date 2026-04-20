@@ -94,7 +94,7 @@ coordinator:
       periodSeconds: 60
       timeoutSeconds: 30
     startup:
-      initialDelaySeconds: 60
+      initialDelaySeconds: 15
       failureThreshold: 3
       periodSeconds: 2
       timeoutSeconds: 30
