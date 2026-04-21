@@ -78,7 +78,7 @@ on:
       HSM_RELEASE_CLIENT_SECRET:
         required: true
       HSM_RELEASE_OBJECT_ID:
-          required: true
+        required: true
 
 jobs:
   build-test-containers:
@@ -89,6 +89,7 @@ jobs:
       update-digest: ${{ steps.build-coordinator-update.outputs.digest }}
       previous-release-digest: ${{ steps.build-previous-release-coordinator.outputs.digest }}
       marble-digest: ${{ steps.build-marble.outputs.digest }}
+      marble-injector-digest: ${{ steps.build-marble-injector.outputs.digest }}
       era-config: ${{ steps.build-binaries.outputs.era-config }}
       previous-release-era-config: ${{ steps.build-previous-release-coordinator.outputs.era-config }}
       marble-config: ${{ steps.build-binaries.outputs.marble-config }}
@@ -206,6 +207,23 @@ jobs:
           docker push ${CR}/${CONTAINER}:${UUID}
 
           # Split image ref into registry/repo/tag and sha256 digest and set in output
+          image_ref=$(docker inspect --format='{{index .RepoDigests 0}}' ${CR}/${CONTAINER}:${UUID})
+          IFS='@' read -ra ADDR <<< "${image_ref}"
+          digest=${ADDR[1]}
+
+          echo "digest=${digest}" >> $GITHUB_OUTPUT
+
+      - name: Build and push marble-injector
+        id: build-marble-injector
+        env:
+          DOCKER_BUILDKIT: 1
+          CR: ghcr.io/edgelesssys/marblerun-e2e
+          CONTAINER: marble-injector
+          UUID: ${{ steps.generate-uid.outputs.run-uid }}
+        run: |
+          docker build --build-arg mrtag=${{ github.ref_name }} --tag ${CR}/${CONTAINER}:${UUID} -f dockerfiles/Dockerfile.marble-injector .
+          docker push ${CR}/${CONTAINER}:${UUID}
+
           image_ref=$(docker inspect --format='{{index .RepoDigests 0}}' ${CR}/${CONTAINER}:${UUID})
           IFS='@' read -ra ADDR <<< "${image_ref}"
           digest=${ADDR[1]}
@@ -422,11 +440,22 @@ jobs:
             --audience api://AzureADTokenExchange
 
       - name: Update MarbleRun chart
+        env:
+          IMAGE_VERSION: ${{ needs.build-test-containers.outputs.run-uid }}
+          COORDINATOR_DIGEST: ${{ needs.build-test-containers.outputs.coordinator-digest }}
+          MARBLE_INJECTOR_DIGEST: ${{ needs.build-test-containers.outputs.marble-injector-digest }}
         run: |
           yq -i eval "(.coordinator.repository=\"$CR\") |
-            (.coordinator.version=\"${{ needs.build-test-containers.outputs.run-uid }}\") |
-            (.coordinator.hash=\"${{ needs.build-test-containers.outputs.coordinator-digest }}\")" \
+            (.coordinator.version=\"$IMAGE_VERSION\") |
+            (.coordinator.hash=\"$COORDINATOR_DIGEST\")" \
             ./charts/values.yaml
+
+          yq -i eval "(.marbleInjector.repository=\"$CR\") |
+            (.marbleInjector.version=\"$IMAGE_VERSION\") |
+            (.marbleInjector.hash=\"$MARBLE_INJECTOR_DIGEST\")" \
+            ./charts/values.yaml
+
+          yq -i eval ".dcap.qcnlConfig = (load(\".github/scripts/azure_sgx_conf.json\") | @json)" ./charts/values.yaml
 
       - name: Get latest release tag
         id: get-tag
@@ -441,11 +470,16 @@ jobs:
           path: previous
 
       - name: Update latest release MarbleRun chart
+        env:
+          IMAGE_VERSION: ${{ needs.build-test-containers.outputs.run-uid }}
+          COORDINATOR_DIGEST: ${{ needs.build-test-containers.outputs.previous-release-digest }}
         run: |
           yq -i eval "(.coordinator.repository=\"$CR\") |
-            (.coordinator.version=\"${{ needs.build-test-containers.outputs.run-uid }}-release\") |
-            (.coordinator.hash=\"${{ needs.build-test-containers.outputs.previous-release-digest }}\")" \
+            (.coordinator.version=\"${IMAGE_VERSION}-release\") |
+            (.coordinator.hash=\"${COORDINATOR_DIGEST}\")" \
             ./previous/charts/values.yaml
+
+          yq -i eval ".dcap.qcnlConfig = (load(\".github/scripts/azure_sgx_conf.json\") | @json)" ./previous/charts/values.yaml
 
       - name: Run e2e test
         env:
