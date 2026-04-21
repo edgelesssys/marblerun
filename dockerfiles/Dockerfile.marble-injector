@@ -1,5 +1,5 @@
 FROM alpine/git:latest AS pull
-ARG mrtag=v1.9.0
+ARG mrtag=v1.9.1
 RUN git clone -b $mrtag --depth=1 https://github.com/edgelesssys/marblerun.git /marble-injector
 WORKDIR /marble-injector
 
