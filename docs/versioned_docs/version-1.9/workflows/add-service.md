@@ -140,14 +140,11 @@ An example for a Marble of type `web` could look like this:
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
-metadata:
-  name: web
-  namespace: emojivoto
-  labels:
-    app.kubernetes.io/name: web
-    app.kubernetes.io/part-of: emojivoto
-    app.kubernetes.io/version: v1
-    marblerun/marbletype: web
+spec:
+  template:
+    metadata:
+      labels:
+        marblerun/marbletype: web
 ```
 
 This will result in the following configuration being injected when your resources are created:
