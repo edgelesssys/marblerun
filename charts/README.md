@@ -53,7 +53,7 @@ their default values.
 | `coordinator.stateSecretName`                | string         | Name of the secret to use for storing the coordinator state. Only used if `coordinator.distributedDeployment` is set to `true` | `"marblerun-state"` |
 | `coordinator.kekConfigMap`                   | string         | Name of the ConfigMap containing the Key Encryption Keys for the k8s-secret store backend. Only used if `coordinator.distributedDeployment` is set to `true` | `"marblerun-sealed-kek"` |
 | `coordinator.keyAPIName`                     | string         | Name of the Kubernetes service connecting to the Coordinator key exchange API. Only used if `coordinator.distributedDeployment` is set to `true` | `"marblerun-keyapi"` |
-| `coordinator.version`                        | string         | Version of the coordinator container image to pull | `"v1.9.0"` |
+| `coordinator.version`                        | string         | Version of the coordinator container image to pull | `"v1.9.1"` |
 | `coordinator.azureCredentials.clientID`      | string         | Client ID of the Azure Service Principal / Managed Identity to use for Azure Managed HSM integration | `""` |
 | `coordinator.azureCredentials.enableWorkloadIdentity` | bool  | Set to `true` to use AKS Workload Identity to provide credentials to the Coordinator for HSM integration | `false` |
 | `coordinator.azureCredentials.tenantID`      | string         | Tenant ID of the Azure Service Principal to use for HSM integration. Not needed when `enableWorkloadIdentity` is set to `true` | `""` |
@@ -73,7 +73,7 @@ their default values.
 | `marbleInjector.start`                       | bool           | Start the marbleInjector webhook | `false` |
 | `marbleInjector.replicas`                    | int            | Replicas of the marbleInjector webhook | `1` |
 | `marbleInjector.repository`                  | string         | Name of the container registry to pull the marbleInjector image from | `"ghcr.io/edgelesssys/marblerun"` |
-| `marbleInjector.version`                     | string         | Version of the marbleInjector container image to pull | `"v1.9.0"` |
+| `marbleInjector.version`                     | string         | Version of the marbleInjector container image to pull | `"v1.9.1"` |
 | `marbleInjector.useCertManager`              | bool           | Set to use cert-manager for certificate provisioning. Required when using standalone helm chart for installation | `false` |
 | `marbleInjector.objectSelector`              | object         | ObjectSelector to trigger marble-injector mutation, See the [K8S documentation](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-objectselector) for more information | `{matchExpressions:[{key:"marblerun/marbletype",operator:"Exists"}]}` |
 | `marbleInjector.namespaceSelector`           | object         | NamespaceSelector to trigger marble-injector mutation, See the [K8S documentation](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-namespaceselector) for more information | `{}` |
