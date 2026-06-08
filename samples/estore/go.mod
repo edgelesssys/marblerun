@@ -4,7 +4,7 @@ go 1.26.1
 
 replace github.com/edgelesssys/marblerun => ../../
 
-replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20260523011958-0a33c5d7ca68
+replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20260526163538-3dc84a4a5aaa
 
 require (
 	github.com/edgelesssys/estore v1.2.0
@@ -41,10 +41,10 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.28.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
-	golang.org/x/crypto v0.50.0 // indirect
+	golang.org/x/crypto v0.51.0 // indirect
 	golang.org/x/exp v0.0.0-20241004190924-225e2abe05e6 // indirect
 	golang.org/x/sys v0.45.0 // indirect
-	golang.org/x/text v0.36.0 // indirect
+	golang.org/x/text v0.37.0 // indirect
 	google.golang.org/grpc v1.81.1 // indirect
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af // indirect
 )
