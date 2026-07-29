@@ -130,7 +130,7 @@ You can see how this is done in the [nginx example](https://github.com/edgelesss
 
 ## Troubleshooting
 
-### aesm_service returned error: 30
+### AESM service returns error code 30
 
 If you receive the following error message on launch:
 
