@@ -36,6 +36,7 @@ precheck
 premain
 Redis
 runtime
+runtimes
 SGX
 subcommand
 Tensorflow
