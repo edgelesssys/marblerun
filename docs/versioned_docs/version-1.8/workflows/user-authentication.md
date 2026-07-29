@@ -21,7 +21,7 @@ marblerun --cert admin_certificate.pem --key admin_private.pem [COMMAND]
 ## PKCS #11-based authentication
 
 The MarbleRun CLI supports authentication with private keys stored in a PKCS #11-compatible device.
-To load client credentials using PKCS #11, you must provide a [PKCS #11 config file](https://pkg.go.dev/github.com/ThalesGroup/crypto11@v1.2.6#Config), which specifies how to access the PKCS #11 token.
+To load client credentials using PKCS #11, you must provide a [PKCS #11 config file](https://pkg.go.dev/github.com/eclipse-keypont/crypto11@v1.6.5#Config), which specifies how to access the PKCS #11 token.
 Additionally, you must provide the ID and/or label of the private key and certificate to the CLI.
 
 The PKCS #11 config file is a JSON file that should specify the following fields:

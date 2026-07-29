@@ -13,7 +13,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ThalesGroup/crypto11"
+	"github.com/eclipse-keypont/crypto11"
 )
 
 // SignerDecrypter is a combined interface for [crypto.Signer] and [crypto.Decrypter].

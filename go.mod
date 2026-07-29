@@ -6,8 +6,8 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.22.0
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.14.0
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azkeys v1.5.0
-	github.com/ThalesGroup/crypto11 v1.6.2
 	github.com/cert-manager/cert-manager v1.20.3
+	github.com/eclipse-keypont/crypto11 v1.6.5
 	github.com/edgelesssys/ego v1.9.0
 	github.com/gofrs/flock v0.13.0
 	github.com/google/go-cmp v0.7.0
