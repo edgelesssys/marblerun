@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ThalesGroup/crypto11"
+	"github.com/eclipse-keypont/crypto11"
 	"github.com/edgelesssys/marblerun/util"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
