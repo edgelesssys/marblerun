@@ -130,7 +130,7 @@ func MethodNotAllowedHandler(w http.ResponseWriter, _ *http.Request) {
 }
 
 // ReadJSON reads a JSON request body into the given struct.
-// Body size is limited to 20 MB.
+// Body size is limited to 10 MB.
 func ReadJSON(w http.ResponseWriter, r *http.Request, v any) error {
 	body := http.MaxBytesReader(w, r.Body, maxBodySize)
 	defer body.Close()
@@ -138,10 +138,9 @@ func ReadJSON(w http.ResponseWriter, r *http.Request, v any) error {
 }
 
 // ReadBody reads the request body into a byte slice.
-// Body size is limited to 20 MB.
+// Body size is limited to 10 MB.
 func ReadBody(w http.ResponseWriter, r *http.Request) ([]byte, error) {
 	body := http.MaxBytesReader(w, r.Body, maxBodySize)
 	defer body.Close()
-	rawBody, err := io.ReadAll(body)
-	return rawBody, err
+	return io.ReadAll(body)
 }
