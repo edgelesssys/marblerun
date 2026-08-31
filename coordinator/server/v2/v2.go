@@ -10,10 +10,8 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 
@@ -57,7 +55,7 @@ func (s *ClientAPIServer) ManifestGet(w http.ResponseWriter, r *http.Request) {
 // If the manifest contains recovery data, the Coordinator will return the encrypted secrets to be used for recovery.
 func (s *ClientAPIServer) ManifestPost(w http.ResponseWriter, r *http.Request) {
 	var req ManifestSetRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := handler.ReadJSON(w, r, &req); err != nil {
 		handler.WriteJSONFailure(w, nil, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -87,7 +85,7 @@ func (s *ClientAPIServer) MonotonicCounterPost(w http.ResponseWriter, r *http.Re
 	}
 
 	var req MonotonicCounterRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := handler.ReadJSON(w, r, &req); err != nil {
 		handler.WriteJSONFailure(w, nil, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -127,7 +125,7 @@ func (s *ClientAPIServer) QuoteGet(w http.ResponseWriter, r *http.Request) {
 // This API endpoint is only available when the coordinator is in recovery mode.
 func (s *ClientAPIServer) RecoverPost(w http.ResponseWriter, r *http.Request) {
 	var req RecoveryRequest
-	if err := json.NewDecoder(io.LimitReader(r.Body, 20480)).Decode(&req); err != nil {
+	if err := handler.ReadJSON(w, r, &req); err != nil {
 		handler.WriteJSONFailure(w, nil, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -227,7 +225,7 @@ func (s *ClientAPIServer) SecretsPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req SecretsSetRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := handler.ReadJSON(w, r, &req); err != nil {
 		handler.WriteJSONFailure(w, nil, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -263,7 +261,7 @@ func (s *ClientAPIServer) SignQuotePost(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var req QuoteSignRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := handler.ReadJSON(w, r, &req); err != nil {
 		handler.WriteJSONFailure(
 			w, map[string]string{"sgxQuote": "failed to parse JSON data"},
 			fmt.Sprintf("bad request: %s", err), http.StatusBadRequest,
@@ -311,7 +309,7 @@ func (s *ClientAPIServer) UpdatePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req UpdateApplyRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := handler.ReadJSON(w, r, &req); err != nil {
 		handler.WriteJSONFailure(w, nil, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -368,7 +366,7 @@ func (s *ClientAPIServer) UpdateManifestPost(w http.ResponseWriter, r *http.Requ
 	}
 
 	var req UpdateManifestPostRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := handler.ReadJSON(w, r, &req); err != nil {
 		s.log.Error("Failed to read request body", zap.Error(err))
 		handler.WriteJSONFailure(w, nil, err.Error(), http.StatusBadRequest)
 		return

@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/edgelesssys/marblerun/coordinator/manifest"
@@ -20,6 +21,8 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/user"
 	"github.com/google/uuid"
 )
+
+const maxBodySize = 10 * 1024 * 1024 // 10 MB
 
 // ClientAPI is the interface implementing the backend logic of the REST API.
 type ClientAPI interface {
@@ -47,9 +50,9 @@ type ClientAPI interface {
 
 // GeneralResponse is a wrapper for all our REST API responses to follow the JSend style: https://github.com/omniti-labs/jsend
 type GeneralResponse struct {
-	Status  string      `json:"status"`
-	Data    interface{} `json:"data"`
-	Message string      `json:"message,omitempty"` // only used when status = "error"
+	Status  string `json:"status"`
+	Data    any    `json:"data"`
+	Message string `json:"message,omitempty"` // only used when status = "error"
 }
 
 // GetPost is a helper function to assign different handlers depending on the HTTP method.
@@ -93,7 +96,7 @@ func VerifyUser(verifyFunc func(context.Context, []*x509.Certificate) (*user.Use
 }
 
 // WriteJSON writes a JSend response to the given http.ResponseWriter.
-func WriteJSON(w http.ResponseWriter, v interface{}) {
+func WriteJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	dataToReturn := GeneralResponse{Status: "success", Data: v}
 	if err := json.NewEncoder(w).Encode(dataToReturn); err != nil {
@@ -112,7 +115,7 @@ func WriteJSONError(w http.ResponseWriter, errorString string, httpErrorCode int
 }
 
 // WriteJSONFailure writes a JSend failure response to the given http.ResponseWriter.
-func WriteJSONFailure(w http.ResponseWriter, v interface{}, message string, httpErrorCode int) {
+func WriteJSONFailure(w http.ResponseWriter, v any, message string, httpErrorCode int) {
 	w.Header().Set("Content-Type", "application/json")
 	dataToReturn := GeneralResponse{Status: "fail", Data: v, Message: message}
 	w.WriteHeader(httpErrorCode)
@@ -124,4 +127,21 @@ func WriteJSONFailure(w http.ResponseWriter, v interface{}, message string, http
 // MethodNotAllowedHandler returns a 405 Method Not Allowed error.
 func MethodNotAllowedHandler(w http.ResponseWriter, _ *http.Request) {
 	WriteJSONError(w, "", http.StatusMethodNotAllowed)
+}
+
+// ReadJSON reads a JSON request body into the given struct.
+// Body size is limited to 20 MB.
+func ReadJSON(w http.ResponseWriter, r *http.Request, v any) error {
+	body := http.MaxBytesReader(w, r.Body, maxBodySize)
+	defer body.Close()
+	return json.NewDecoder(body).Decode(v)
+}
+
+// ReadBody reads the request body into a byte slice.
+// Body size is limited to 20 MB.
+func ReadBody(w http.ResponseWriter, r *http.Request) ([]byte, error) {
+	body := http.MaxBytesReader(w, r.Body, maxBodySize)
+	defer body.Close()
+	rawBody, err := io.ReadAll(body)
+	return rawBody, err
 }
