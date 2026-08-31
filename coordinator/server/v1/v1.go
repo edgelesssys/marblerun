@@ -9,10 +9,8 @@ package v1
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 
@@ -109,7 +107,7 @@ func (s *ClientAPIServer) ManifestGet(w http.ResponseWriter, r *http.Request) {
 //
 //	curl --cacert marblerun.crt --data-binary @manifest.json "https://$MARBLERUN/manifest"
 func (s *ClientAPIServer) ManifestPost(w http.ResponseWriter, r *http.Request) {
-	manifest, err := io.ReadAll(r.Body)
+	manifest, err := handler.ReadBody(w, r)
 	if err != nil {
 		handler.WriteJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -184,7 +182,7 @@ func (s *ClientAPIServer) UpdatePost(w http.ResponseWriter, r *http.Request) {
 		handler.WriteJSONError(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
-	updateManifest, err := io.ReadAll(r.Body)
+	updateManifest, err := handler.ReadBody(w, r)
 	if err != nil {
 		handler.WriteJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -259,13 +257,8 @@ func (s *ClientAPIServer) SecretsPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rawSecrets, err := io.ReadAll(r.Body)
-	if err != nil {
-		handler.WriteJSONError(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 	var secrets map[string]manifest.UserSecret
-	if err := json.Unmarshal(rawSecrets, &secrets); err != nil {
+	if err := handler.ReadJSON(w, r, &secrets); err != nil {
 		handler.WriteJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -288,7 +281,7 @@ func (s *ClientAPIServer) UpdateManifestPost(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	rawUpdateManifest, err := io.ReadAll(r.Body)
+	rawUpdateManifest, err := handler.ReadBody(w, r)
 	if err != nil {
 		s.log.Error("Failed to read request body", zap.Error(err))
 		handler.WriteJSONError(w, err.Error(), http.StatusBadRequest)
