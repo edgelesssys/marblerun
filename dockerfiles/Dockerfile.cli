@@ -15,13 +15,15 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
 ARG erttag=v0.5.3
 ARG mrtag=v1.9.2
 ARG goversion=1.26.1
-RUN wget -qO- https://go.dev/dl/go${goversion}.linux-amd64.tar.gz | tar -C /usr/local -xz \
+RUN --mount=type=secret,id=netrc,target=/root/.netrc,required=false \
+  wget -qO- https://go.dev/dl/go${goversion}.linux-amd64.tar.gz | tar -C /usr/local -xz \
   && git clone -b $erttag --depth=1 https://github.com/edgelesssys/edgelessrt \
   && git clone -b $mrtag --depth=1 https://github.com/edgelesssys/marblerun \
   && mkdir ertbuild mrbuild
 
 # install ert
-RUN cd edgelessrt && export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct) && cd /ertbuild \
+RUN --mount=type=secret,id=netrc,target=/root/.netrc,required=false \
+  cd edgelessrt && export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct) && cd /ertbuild \
   && cmake -GNinja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF /edgelessrt \
   && ninja install
 
