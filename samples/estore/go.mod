@@ -4,7 +4,7 @@ go 1.26.1
 
 replace github.com/edgelesssys/marblerun => ../../
 
-replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20260825221802-da73d73af1c5
+replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20260831171406-18b4a7587f8a
 
 require (
 	github.com/edgelesssys/estore v1.2.0
@@ -18,7 +18,7 @@ require (
 	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b // indirect
 	github.com/cockroachdb/redact v1.1.5 // indirect
 	github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 // indirect
-	github.com/edgelesssys/ego v1.9.0 // indirect
+	github.com/edgelesssys/ego v1.9.1 // indirect
 	github.com/getsentry/sentry-go v0.29.1 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
@@ -30,7 +30,7 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_golang v1.24.1 // indirect
-	github.com/prometheus/client_model v0.6.2 // indirect
+	github.com/prometheus/client_model v0.6.3 // indirect
 	github.com/prometheus/common v0.70.1 // indirect
 	github.com/prometheus/procfs v0.21.1 // indirect
 	github.com/rogpeppe/go-internal v1.13.1 // indirect
