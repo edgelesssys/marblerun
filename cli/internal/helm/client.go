@@ -16,7 +16,7 @@ import (
 
 	"github.com/edgelesssys/marblerun/util/k8sutil"
 	"github.com/gofrs/flock"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/chart/common/util"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -107,7 +107,8 @@ func UpdateValues(options Options, chartValues map[string]any) (map[string]any, 
 
 	if options.SimulationMode {
 		// simulation mode, disable tolerations and resources, set simulation to true
-		stringValues = append(stringValues,
+		stringValues = append(
+			stringValues,
 			fmt.Sprintf("tolerations=%s", "null"),
 			fmt.Sprintf("coordinator.simulation=%t", options.SimulationMode),
 			fmt.Sprintf("coordinator.resources.limits=%s", "null"),
@@ -117,7 +118,8 @@ func UpdateValues(options Options, chartValues map[string]any) (map[string]any, 
 		if options.QCNLConfigFile != "" {
 			fileValues = append(fileValues, fmt.Sprintf("dcap.qcnlConfig=%s", options.QCNLConfigFile))
 		} else {
-			stringValues = append(stringValues,
+			stringValues = append(
+				stringValues,
 				fmt.Sprintf("dcap.pccsUrl=%s", options.PCCSURL),
 				fmt.Sprintf("dcap.useSecureCert=%s", options.UseSecureCert),
 			)
@@ -149,7 +151,8 @@ func UpdateValues(options Options, chartValues map[string]any) (map[string]any, 
 			idx++
 		}
 		if needToleration {
-			stringValues = append(stringValues,
+			stringValues = append(
+				stringValues,
 				fmt.Sprintf("tolerations[%d].key=%s", idx, options.SGXResourceKey),
 				fmt.Sprintf("tolerations[%d].operator=Exists", idx),
 				fmt.Sprintf("tolerations[%d].effect=NoSchedule", idx),

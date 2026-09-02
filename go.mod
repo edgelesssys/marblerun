@@ -8,7 +8,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azkeys v1.5.0
 	github.com/cert-manager/cert-manager v1.21.1
 	github.com/eclipse-keypont/crypto11 v1.6.8
-	github.com/edgelesssys/ego v1.9.0
+	github.com/edgelesssys/ego v1.9.1
 	github.com/gofrs/flock v0.13.1
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
@@ -16,7 +16,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.4
 	github.com/lestrrat-go/jwx/v3 v3.2.0
 	github.com/prometheus/client_golang v1.24.1
-	github.com/prometheus/client_model v0.6.2
+	github.com/prometheus/client_model v0.6.3
 	github.com/spf13/afero v1.15.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
@@ -25,10 +25,10 @@ require (
 	github.com/tink-crypto/tink-go/v2 v2.8.0
 	go.uber.org/goleak v1.3.0
 	go.uber.org/zap v1.28.0
+	go.yaml.in/yaml/v3 v3.0.5
 	golang.org/x/sys v0.47.0
 	google.golang.org/grpc v1.83.2
 	google.golang.org/protobuf v1.36.12
-	gopkg.in/yaml.v3 v3.0.1
 	helm.sh/helm/v4 v4.2.4
 	k8s.io/api v0.37.0
 	k8s.io/apimachinery v0.37.0
@@ -156,7 +156,6 @@ require (
 	go.opentelemetry.io/proto/otlp v1.10.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
-	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/crypto v0.55.0 // indirect
 	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
