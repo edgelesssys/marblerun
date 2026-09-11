@@ -4,7 +4,7 @@ RUN --mount=type=secret,id=netrc,target=/root/.netrc,required=false \
   git clone -b $mrtag --depth=1 https://github.com/edgelesssys/marblerun.git /marble-injector
 WORKDIR /marble-injector
 
-FROM ghcr.io/edgelesssys/edgelessrt-dev:v0.5.3 AS build
+FROM ghcr.io/edgelesssys/edgelessrt-dev:v0.5.4 AS build
 COPY --from=pull /marble-injector /marble-injector
 WORKDIR /marble-injector/build
 RUN cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
