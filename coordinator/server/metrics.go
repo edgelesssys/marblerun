@@ -14,8 +14,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-// serveMux is an interface of an HTTP request multiplexer.
-type serveMux interface {
+// ServeMux is an interface of an HTTP request multiplexer.
+type ServeMux interface {
 	Handle(pattern string, handler http.Handler)
 	HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request))
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
@@ -138,10 +138,14 @@ func (p *promServeMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // metricsMiddelware returns the handed next handler wrapped in a bunch of prometheus metric handlers.
 func (p *promServeMux) metricsMiddleware(pattern string, next http.Handler) http.Handler {
-	return promhttp.InstrumentHandlerDuration(p.metrics[pattern].duration,
-		promhttp.InstrumentHandlerCounter(p.metrics[pattern].request,
-			promhttp.InstrumentHandlerRequestSize(p.metrics[pattern].requestSize,
-				promhttp.InstrumentHandlerResponseSize(p.metrics[pattern].responseSize,
+	return promhttp.InstrumentHandlerDuration(
+		p.metrics[pattern].duration,
+		promhttp.InstrumentHandlerCounter(
+			p.metrics[pattern].request,
+			promhttp.InstrumentHandlerRequestSize(
+				p.metrics[pattern].requestSize,
+				promhttp.InstrumentHandlerResponseSize(
+					p.metrics[pattern].responseSize,
 					promhttp.InstrumentHandlerInFlight(p.metrics[pattern].inflight, next),
 				),
 			),
