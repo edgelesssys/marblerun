@@ -77,10 +77,10 @@ func RunMarbleServer(core *core.Core, addr string, addrChan chan string, errChan
 }
 
 // CreateServeMux creates a mux that serves the client API.
-func CreateServeMux(api handler.ClientAPI, promFactory *promauto.Factory, log *zap.Logger) serveMux {
+func CreateServeMux(api handler.ClientAPI, promFactory *promauto.Factory, log *zap.Logger) ServeMux {
 	serverV1 := v1.NewServer(api, log)
 	serverV2 := v2.NewServer(api, log)
-	var router serveMux
+	var router ServeMux
 	if promFactory != nil {
 		muxRouter := newPromServeMux(promFactory, "server", "client_api")
 		muxRouter.setMethodNotAllowedHandler(handler.MethodNotAllowedHandler)

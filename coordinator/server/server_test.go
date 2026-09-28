@@ -227,7 +227,7 @@ func TestSetSecret(t *testing.T) {
 	assert.NoError(err)
 }
 
-func testRequestWithCert(req *http.Request, resp *httptest.ResponseRecorder, mux serveMux) error {
+func testRequestWithCert(req *http.Request, resp *httptest.ResponseRecorder, mux ServeMux) error {
 	mux.ServeHTTP(resp, req)
 	if resp.Code != http.StatusUnauthorized {
 		return errors.New("request without certificate was not rejected")
