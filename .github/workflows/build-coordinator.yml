@@ -13,7 +13,7 @@ on:
 
 jobs:
   build-coordinator:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     container: ghcr.io/edgelesssys/edgelessrt-dev:ci
 
     steps:
