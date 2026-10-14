@@ -1,14 +1,12 @@
 module estore-sample
 
-go 1.26.1
+go 1.27.1
 
 replace github.com/edgelesssys/marblerun => ../../
 
-replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20261005182115-fad411399dd8
-
 require (
 	github.com/edgelesssys/estore v1.2.0
-	github.com/edgelesssys/marblerun v1.9.2
+	github.com/edgelesssys/marblerun v0.0.0 // Always use the local repository via replace above.
 )
 
 require (
@@ -44,6 +42,7 @@ require (
 	golang.org/x/exp v0.0.0-20241004190924-225e2abe05e6 // indirect
 	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260706201446-f0a921348800 // indirect
 	google.golang.org/grpc v1.84.0 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 )

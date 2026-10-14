@@ -1,6 +1,6 @@
 module github.com/edgelesssys/marblerun
 
-go 1.26.1
+go 1.27.1
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.23.3
