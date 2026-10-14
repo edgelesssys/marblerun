@@ -25,6 +25,19 @@
   ],
   "packageRules": [
     {
+      "description": "Block direct marblerun package updates to estore sample",
+      "matchManagers": [
+        "gomod"
+      ],
+      "matchFileNames": [
+        "samples/estore/go.mod"
+      ],
+      "matchPackageNames": [
+        "github.com/edgelesssys/marblerun"
+      ],
+      "enabled": false
+    },
+    {
       "groupName": "Go dependencies",
       "matchManagers": [
         "gomod"
