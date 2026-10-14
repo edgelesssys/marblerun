@@ -49,7 +49,7 @@ docker build -o. - < dockerfiles/Dockerfile.cli
 
 * Ubuntu 22.04
 * [Edgeless RT](https://github.com/edgelesssys/edgelessrt) is installed and sourced
-* Go 1.26 or newer
+* Go 1.27 or newer
 
 Build the Coordinator control plane and Marble test applications:
 
@@ -74,7 +74,7 @@ The Coordinator starts with the following default values. You can set your desir
 
 | Setting | Default Value | Environment Variable |
 | --- | --- | --- |
-| the listener address for the Marble server | localhost:2001 |  EDG_COORDINATOR_MESH_ADDR |
+| the listener address for the Marble server | localhost:2001 | EDG_COORDINATOR_MESH_ADDR |
 | the listener address for the client-API server | localhost: 4433 | EDG_COORDINATOR_CLIENT_ADDR |
 | the DNS names for the cluster’s root certificate | localhost | EDG_COORDINATOR_DNS_NAMES |
 | the file path for storing sealed data | $PWD/marblerun-coordinator-data | EDG_COORDINATOR_SEAL_DIR |
@@ -183,7 +183,7 @@ Run a simple application.
 
   | Setting | Default Value | Environment Variable |
   | --- | --- | --- |
-  | network address of the Coordinator’s API for Marbles | localhost:2001 |  EDG_MARBLE_COORDINATOR_ADDR |
+  | network address of the Coordinator’s API for Marbles | localhost:2001 | EDG_MARBLE_COORDINATOR_ADDR |
   | reference on one entry from your Manifest’s `Marbles` section | - (this needs to be set every time) | EDG_MARBLE_TYPE |
   | local file path where the Marble stores its UUID | $PWD/uuid | EDG_MARBLE_UUID_FILE |
   | DNS names the Coordinator will issue the Marble’s certificate for | localhost | EDG_MARBLE_DNS_NAMES |
