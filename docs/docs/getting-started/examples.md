@@ -11,13 +11,6 @@ There are two basic examples of how to build confidential applications with Marb
 
 The popular [Linkerd](https://linkerd.io) service mesh uses the simple and fun scalable *emojivoto* app as the default demo. You can find our confidential variant [on GitHub](https://github.com/edgelesssys/emojivoto). Your emoji votes have never been safer!
 
-## Confidential multi-stakeholder AI with Tensorflow
-
-We provide a hands-on example for a confidential multi-stakeholder inference service.
-
-* Read the [blog post](https://www.edgeless.systems/blog/confidential-multi-stakeholder-ai/)
-* Check it out [on GitHub](https://github.com/edgelesssys/marblerun-tensorflow-demo)
-
 ## Gramine-based examples
 
 We provide two examples for Gramine-based Marbles:
