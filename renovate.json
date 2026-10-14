@@ -108,7 +108,7 @@
       ],
       "matchStrings": [
         "ERT_VERSION: \"(?<currentValue>.*?)\"",
-        "ARG erttag=v(?<currentValue>.*?)"
+        "ARG erttag=v(?<currentValue>[^\\s]+)"
       ],
       "packageNameTemplate": "edgelesssys/edgelessrt",
       "datasourceTemplate": "github-tags"
