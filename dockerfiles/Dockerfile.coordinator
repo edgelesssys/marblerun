@@ -11,7 +11,7 @@ RUN apt-get install -y --no-install-recommends \
   ninja-build \
   wget
 
-ARG erttag=v0.5.3
+ARG erttag=v0.5.4
 ARG mrtag=v1.9.2
 ARG goversion=1.26.1
 RUN --mount=type=secret,id=netrc,target=/root/.netrc,required=false \
