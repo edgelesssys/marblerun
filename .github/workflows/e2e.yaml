@@ -93,7 +93,7 @@ jobs:
       era-config: ${{ steps.build-binaries.outputs.era-config }}
       previous-release-era-config: ${{ steps.build-previous-release-coordinator.outputs.era-config }}
       marble-config: ${{ steps.build-binaries.outputs.marble-config }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
       - name: Checkout
@@ -279,7 +279,7 @@ jobs:
     name: Provision HSM for e2e tests
     needs: build-test-containers
     if: ${{ inputs.hsmSealing == 'enabled' }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     env:
       RESOURCE_GROUP: marblerun-e2e
 
@@ -365,7 +365,7 @@ jobs:
       CONTAINER: coordinator
       RESOURCE_GROUP: marblerun-e2e
       CLUSTER_NAME: marblerun-e2e-${{ needs.build-test-containers.outputs.run-uid }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     container:
       image: ghcr.io/edgelesssys/edgelessrt-dev:ci
 
@@ -539,7 +539,7 @@ jobs:
     name: Teardown HSM
     needs: [build-test-containers, provision-hsm, e2e-test]
     if: always() && inputs.hsmSealing == 'enabled'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
       - name: Azure login
