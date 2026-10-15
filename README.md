@@ -53,7 +53,6 @@ For production use and support, you can [get a commercial license](https://www.e
 * Got a question? Please file an [issue](https://github.com/edgelesssys/marblerun/issues).
 * If you see an error message or run into an issue, please make sure to create a [bug report](https://github.com/edgelesssys/marblerun/issues).
 * Get the latest news and announcements on [Twitter](https://twitter.com/EdgelessSystems), [LinkedIn](https://www.linkedin.com/company/edgeless-systems/) or sign up for our monthly [newsletter](https://www.edgeless.systems/#newsletter-signup).
-* Visit our [blog](https://www.edgeless.systems/blog/) for technical deep-dives and tutorials.
 
 ## Contributing
 
