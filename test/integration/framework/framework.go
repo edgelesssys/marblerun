@@ -165,7 +165,7 @@ func (i IntegrationTest) StartCoordinator(ctx context.Context, cfg CoordinatorCo
 			i.t.Log("Coordinator started")
 			return func() {
 				_ = cmd.Cancel()
-				<-cmdErr
+				<-cmdErr //nolint:errcheck // Ignore error because we intentionally stopped the process
 			}
 		}
 	}
@@ -196,7 +196,7 @@ func (i IntegrationTest) StartCommand(friendlyName string, cmd *exec.Cmd) chan e
 	// On test end, wait until the process actually exited so that the next test can start cleanly.
 	i.t.Cleanup(func() {
 		_ = cmd.Cancel()
-		<-waitErr
+		<-waitErr //nolint:errcheck // Ignore error because we intentionally stopped the process
 	})
 	return waitErr
 }
