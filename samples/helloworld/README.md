@@ -11,6 +11,12 @@ ego-go build
 ego sign hello
 ```
 
+This creates `enclave.json`. Open the file and set `marble` to `true`. Then sign again:
+
+```sh
+ego sign hello
+```
+
 Get the enclave's unique ID aka `MRENCLAVE` with
 
 ```sh
