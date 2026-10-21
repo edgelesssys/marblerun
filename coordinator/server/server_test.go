@@ -163,7 +163,7 @@ func TestMonotonicCounter(t *testing.T) {
 			mux := CreateServeMux(&tc.api, nil, nil)
 
 			req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/v2/monotonic-counter", strings.NewReader(tc.req))
-			req.TLS = &tls.ConnectionState{}
+			req.TLS = &tls.ConnectionState{PeerCertificates: []*x509.Certificate{{}}}
 
 			resp := httptest.NewRecorder()
 			mux.ServeHTTP(resp, req)
@@ -228,6 +228,7 @@ func TestSetSecret(t *testing.T) {
 }
 
 func testRequestWithCert(req *http.Request, resp *httptest.ResponseRecorder, mux ServeMux) error {
+	req.TLS = &tls.ConnectionState{}
 	mux.ServeHTTP(resp, req)
 	if resp.Code != http.StatusUnauthorized {
 		return errors.New("request without certificate was not rejected")
@@ -239,7 +240,6 @@ func testRequestWithCert(req *http.Request, resp *httptest.ResponseRecorder, mux
 	otherTestCertSlice := []*x509.Certificate{otherTestCert}
 
 	// Create mock TLS object and with wrong certificate, should fail
-	req.TLS = &tls.ConnectionState{}
 	req.TLS.PeerCertificates = otherTestCertSlice
 	resp = httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
@@ -315,7 +315,7 @@ func (a *stubAPI) FeatureEnabled(_ context.Context, feature string) bool {
 	return a.featureEnabledResult
 }
 
-func (a *stubAPI) VerifyMarble(_ context.Context, _ []*x509.Certificate) (string, uuid.UUID, error) {
+func (a *stubAPI) VerifyMarble(_ context.Context, _ *x509.Certificate) (string, uuid.UUID, error) {
 	return "type", uuid.UUID{2, 3, 4}, a.verifyMarbleErr
 }
 

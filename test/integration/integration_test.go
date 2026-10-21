@@ -214,6 +214,15 @@ func TestClientAPI(t *testing.T) {
 	secret := secrets[secretName]
 	assert.Equal("symmetric-key", secret.Type)
 	assert.EqualValues(128, secret.Size)
+
+	// regression: don't accept auth with just a valid user certificate somehwere in the chain
+	otherPriv, err := rsa.GenerateKey(rand.Reader, 1024)
+	require.NoError(err)
+	otherDER, err := x509.CreateCertificate(rand.Reader, &x509.Certificate{}, &x509.Certificate{}, &otherPriv.PublicKey, otherPriv)
+	require.NoError(err)
+	otherCert := tls.Certificate{Certificate: [][]byte{otherDER, clCert.Certificate[0]}, PrivateKey: otherPriv}
+	_, err = api.SecretGet(context.Background(), clientServerAddr, cert, &otherCert, []string{secretName})
+	assert.ErrorContains(err, "unauthorized user")
 }
 
 func TestSettingSecrets(t *testing.T) {

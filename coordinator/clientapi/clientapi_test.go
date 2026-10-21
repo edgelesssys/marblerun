@@ -855,90 +855,61 @@ func TestVerifyMarble(t *testing.T) {
 	}
 
 	testCases := map[string]struct {
-		coreState   state.State
-		clientCerts []*x509.Certificate
-		wantType    string
-		wantUUID    uuid.UUID
-		wantErr     bool
+		coreState  state.State
+		clientCert *x509.Certificate
+		wantType   string
+		wantUUID   uuid.UUID
+		wantErr    bool
 	}{
 		"success": {
 			coreState: state.AcceptingMarbles,
-			clientCerts: []*x509.Certificate{
-				createCert(&x509.Certificate{
-					SerialNumber:    &big.Int{},
-					Subject:         pkix.Name{CommonName: "02030400-0000-0000-0000-000000000000"},
-					NotAfter:        time.Now().Add(time.Hour),
-					ExtraExtensions: []pkix.Extension{{Id: oid.MarbleType, Value: []byte("type")}},
-				}, marbleRootCert, marbleRootKey),
-			},
+			clientCert: createCert(&x509.Certificate{
+				SerialNumber:    &big.Int{},
+				Subject:         pkix.Name{CommonName: "02030400-0000-0000-0000-000000000000"},
+				NotAfter:        time.Now().Add(time.Hour),
+				ExtraExtensions: []pkix.Extension{{Id: oid.MarbleType, Value: []byte("type")}},
+			}, marbleRootCert, marbleRootKey),
 			wantType: "type",
 			wantUUID: uuid.UUID{2, 3, 4},
 		},
 		"wrong core state": {
 			coreState: state.AcceptingManifest,
-			clientCerts: []*x509.Certificate{
-				createCert(&x509.Certificate{
-					SerialNumber:    &big.Int{},
-					Subject:         pkix.Name{CommonName: "02030400-0000-0000-0000-000000000000"},
-					NotAfter:        time.Now().Add(time.Hour),
-					ExtraExtensions: []pkix.Extension{{Id: oid.MarbleType, Value: []byte("type")}},
-				}, marbleRootCert, marbleRootKey),
-			},
+			clientCert: createCert(&x509.Certificate{
+				SerialNumber:    &big.Int{},
+				Subject:         pkix.Name{CommonName: "02030400-0000-0000-0000-000000000000"},
+				NotAfter:        time.Now().Add(time.Hour),
+				ExtraExtensions: []pkix.Extension{{Id: oid.MarbleType, Value: []byte("type")}},
+			}, marbleRootCert, marbleRootKey),
 			wantErr: true,
 		},
 		"invalid signer": {
 			coreState: state.AcceptingMarbles,
-			clientCerts: []*x509.Certificate{
-				createCert(&x509.Certificate{
-					SerialNumber:    &big.Int{},
-					Subject:         pkix.Name{CommonName: "02030400-0000-0000-0000-000000000000"},
-					NotAfter:        time.Now().Add(time.Hour),
-					ExtraExtensions: []pkix.Extension{{Id: oid.MarbleType, Value: []byte("type")}},
-				}, otherRootCert, otherRootKey),
-			},
+			clientCert: createCert(&x509.Certificate{
+				SerialNumber:    &big.Int{},
+				Subject:         pkix.Name{CommonName: "02030400-0000-0000-0000-000000000000"},
+				NotAfter:        time.Now().Add(time.Hour),
+				ExtraExtensions: []pkix.Extension{{Id: oid.MarbleType, Value: []byte("type")}},
+			}, otherRootCert, otherRootKey),
 			wantErr: true,
 		},
 		"invalid CN": {
 			coreState: state.AcceptingMarbles,
-			clientCerts: []*x509.Certificate{
-				createCert(&x509.Certificate{
-					SerialNumber:    &big.Int{},
-					Subject:         pkix.Name{CommonName: "foo"},
-					NotAfter:        time.Now().Add(time.Hour),
-					ExtraExtensions: []pkix.Extension{{Id: oid.MarbleType, Value: []byte("type")}},
-				}, marbleRootCert, marbleRootKey),
-			},
+			clientCert: createCert(&x509.Certificate{
+				SerialNumber:    &big.Int{},
+				Subject:         pkix.Name{CommonName: "foo"},
+				NotAfter:        time.Now().Add(time.Hour),
+				ExtraExtensions: []pkix.Extension{{Id: oid.MarbleType, Value: []byte("type")}},
+			}, marbleRootCert, marbleRootKey),
 			wantErr: true,
 		},
 		"missing Marble type": {
 			coreState: state.AcceptingMarbles,
-			clientCerts: []*x509.Certificate{
-				createCert(&x509.Certificate{
-					SerialNumber: &big.Int{},
-					Subject:      pkix.Name{CommonName: "02030400-0000-0000-0000-000000000000"},
-					NotAfter:     time.Now().Add(time.Hour),
-				}, marbleRootCert, marbleRootKey),
-			},
+			clientCert: createCert(&x509.Certificate{
+				SerialNumber: &big.Int{},
+				Subject:      pkix.Name{CommonName: "02030400-0000-0000-0000-000000000000"},
+				NotAfter:     time.Now().Add(time.Hour),
+			}, marbleRootCert, marbleRootKey),
 			wantErr: true,
-		},
-		"multiple certificates": {
-			coreState: state.AcceptingMarbles,
-			clientCerts: []*x509.Certificate{
-				createCert(&x509.Certificate{
-					SerialNumber:    &big.Int{},
-					Subject:         pkix.Name{CommonName: "02030500-0000-0000-0000-000000000000"},
-					NotAfter:        time.Now().Add(time.Hour),
-					ExtraExtensions: []pkix.Extension{{Id: oid.MarbleType, Value: []byte("other")}},
-				}, otherRootCert, otherRootKey),
-				createCert(&x509.Certificate{
-					SerialNumber:    &big.Int{},
-					Subject:         pkix.Name{CommonName: "02030400-0000-0000-0000-000000000000"},
-					NotAfter:        time.Now().Add(time.Hour),
-					ExtraExtensions: []pkix.Extension{{Id: oid.MarbleType, Value: []byte("type")}},
-				}, marbleRootCert, marbleRootKey),
-			},
-			wantType: "type",
-			wantUUID: uuid.UUID{2, 3, 4},
 		},
 	}
 
@@ -956,7 +927,7 @@ func TestVerifyMarble(t *testing.T) {
 				log:      zaptest.NewLogger(t),
 			}
 
-			marbleType, marbleUUID, err := api.VerifyMarble(context.Background(), tc.clientCerts)
+			marbleType, marbleUUID, err := api.VerifyMarble(context.Background(), tc.clientCert)
 			if tc.wantErr {
 				assert.Error(err)
 				return
