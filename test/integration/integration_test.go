@@ -1082,6 +1082,7 @@ func TestRootSecretRotation(t *testing.T) {
 
 	f := framework.New(t, *buildDir, simFlag, *noenclave, marbleTestAddr, meshServerAddr, clientServerAddr, string(mnfJSON), string(updateMnfJSON))
 	f.UpdateManifest()
+	updateMnf.Packages["backend"] = f.TestManifest.Packages["backend"]
 
 	cfg := framework.NewCoordinatorConfig()
 	defer cfg.Cleanup()
