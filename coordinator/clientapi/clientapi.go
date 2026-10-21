@@ -783,7 +783,7 @@ func (a *ClientAPI) updateManifest(ctx context.Context, rawUpdateManifest []byte
 }
 
 // VerifyMarble checks if a given client certificate is a Marble certificate signed by this Coordinator.
-func (a *ClientAPI) VerifyMarble(ctx context.Context, clientCerts []*x509.Certificate) (string, uuid.UUID, error) {
+func (a *ClientAPI) VerifyMarble(ctx context.Context, clientCert *x509.Certificate) (string, uuid.UUID, error) {
 	defer a.core.Unlock()
 	if err := a.core.RequireState(ctx, state.AcceptingMarbles); err != nil {
 		a.log.Error("VerifyMarble: Coordinator not in correct state", zap.Error(err))
@@ -803,61 +803,47 @@ func (a *ClientAPI) VerifyMarble(ctx context.Context, clientCerts []*x509.Certif
 	verifyOpts := x509.VerifyOptions{Roots: x509.NewCertPool()}
 	verifyOpts.Roots.AddCert(marbleRootCert)
 
-	// Check if a supplied client cert was signed by the Marble root cert and get the type and UUID
-	var errs error
-	for _, suppliedCert := range clientCerts {
-		if _, err := suppliedCert.Verify(verifyOpts); err != nil {
-			errs = errors.Join(errs, err)
-			continue
-		}
-
-		marbleUUID, err := uuid.Parse(suppliedCert.Subject.CommonName)
-		if err != nil {
-			errs = errors.Join(errs, err)
-			continue
-		}
-
-		for _, ex := range suppliedCert.Extensions {
-			if ex.Id.Equal(oid.MarbleType) {
-				return string(ex.Value), marbleUUID, nil
-			}
-		}
-		errs = errors.Join(errs, errors.New("MarbleType extension not found in certificate"))
+	// Check if the supplied client cert was signed by the Marble root cert and get the type and UUID
+	if _, err := clientCert.Verify(verifyOpts); err != nil {
+		return "", uuid.UUID{}, err
 	}
-
-	if errs == nil {
-		errs = errors.New("client certificate did not match any Marble")
+	marbleUUID, err := uuid.Parse(clientCert.Subject.CommonName)
+	if err != nil {
+		return "", uuid.UUID{}, err
 	}
-	return "", uuid.UUID{}, errs
+	for _, ex := range clientCert.Extensions {
+		if ex.Id.Equal(oid.MarbleType) {
+			return string(ex.Value), marbleUUID, nil
+		}
+	}
+	return "", uuid.UUID{}, errors.New("MarbleType extension not found in certificate")
 }
 
 // VerifyUser checks if a given client certificate matches the admin certificates specified in the manifest.
-func (a *ClientAPI) VerifyUser(ctx context.Context, clientCerts []*x509.Certificate) (*user.User, error) {
+func (a *ClientAPI) VerifyUser(ctx context.Context, clientCert *x509.Certificate) (*user.User, error) {
 	txdata, rollback, _, err := wrapper.WrapTransaction(ctx, a.txHandle)
 	if err != nil {
 		return nil, err
 	}
 	defer rollback()
 
-	// Check if a supplied client cert matches the supplied ones from the manifest stored in the core
+	// Check if the supplied client cert matches the supplied ones from the manifest stored in the core
 	// NOTE: We do not use the "correct" X.509 verify here since we do not really care about expiration and chain verification here.
-	for _, suppliedCert := range clientCerts {
-		userIter, err := txdata.GetIterator(request.User)
+	userIter, err := txdata.GetIterator(request.User)
+	if err != nil {
+		return nil, fmt.Errorf("getting user iterator: %w", err)
+	}
+	for userIter.HasNext() {
+		name, err := userIter.GetNext()
 		if err != nil {
-			return nil, fmt.Errorf("getting user iterator: %w", err)
+			return nil, fmt.Errorf("getting next user: %w", err)
 		}
-		for userIter.HasNext() {
-			name, err := userIter.GetNext()
-			if err != nil {
-				return nil, fmt.Errorf("getting next user: %w", err)
-			}
-			user, err := txdata.GetUser(name)
-			if err != nil {
-				return nil, fmt.Errorf("getting user %q: %w", name, err)
-			}
-			if suppliedCert.Equal(user.Certificate()) {
-				return user, nil
-			}
+		user, err := txdata.GetUser(name)
+		if err != nil {
+			return nil, fmt.Errorf("getting user %q: %w", name, err)
+		}
+		if clientCert.Equal(user.Certificate()) {
+			return user, nil
 		}
 	}
 
