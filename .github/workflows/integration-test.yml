@@ -14,7 +14,7 @@ on:
 
 jobs:
   build-test:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     container:
       image: ghcr.io/edgelesssys/ego-dev:latest
     steps:
@@ -31,7 +31,7 @@ jobs:
           ego sign estore-sample
 
   integration-test:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     container:
       image: ghcr.io/edgelesssys/edgelessrt-dev:ci
 
