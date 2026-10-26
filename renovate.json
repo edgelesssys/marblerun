@@ -100,9 +100,11 @@
     },
     {
       "groupName": "EdgelessRT",
-      "matchManagers": [
-        "custom.regex"
+      "matchPackageNames": [
+        "edgelesssys/edgelessrt",
+        "ghcr.io/edgelesssys/edgelessrt*"
       ],
+      "separateMajorMinor": false,
       "assignees": [
         "daniel-weisse"
       ],
