@@ -27,8 +27,8 @@ marbleInjector:
   repository: ghcr.io/edgelesssys/marblerun
   image: marble-injector
   pullPolicy: IfNotPresent
-  version: v1.9.2
-  hash: sha256:eec8c2d9009894e255e1ce9dd6658036b42c9244c03e95049c537c8303efb4d2
+  version: v1.9.3
+  hash: sha256:8b0313e44699da66a03ec8c7cce9aef4c0404b4acb21f681a6985cbe861c1163
 
   # Set to true to install the injection webhook
   start: false
@@ -62,8 +62,8 @@ coordinator:
   repository: ghcr.io/edgelesssys/marblerun
   image: coordinator
   pullPolicy: IfNotPresent
-  version: v1.9.2
-  hash: sha256:e589db0d0a2ce79ffd26cd69bb615223008501040eb8a296512f351e7c1bffb8
+  version: v1.9.3
+  hash: sha256:d4ce44519ea7e854c2fbaac983766e97bdadf8911b1fe592ab72aff08c748b41
 
   # Environment configuration for the coordinator control-plane
   # meshServerPort needs to be configured to the same port as in the data-plane marbles
