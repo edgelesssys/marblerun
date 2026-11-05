@@ -1,7 +1,8 @@
 FROM alpine/git:latest AS pull
 ARG mrtag=v1.9.3
+ARG mrrepo=https://github.com/edgelesssys/marblerun
 RUN --mount=type=secret,id=netrc,target=/root/.netrc,required=false \
-  git clone -b $mrtag --depth=1 https://github.com/edgelesssys/marblerun.git /marble-injector
+  git clone -b $mrtag --depth=1 $mrrepo /marble-injector
 WORKDIR /marble-injector
 
 FROM ghcr.io/edgelesssys/edgelessrt-dev:v0.5.5 AS build
