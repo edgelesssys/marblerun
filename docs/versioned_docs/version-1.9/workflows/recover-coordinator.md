@@ -34,6 +34,12 @@ marblerun recover recovery_key_encrypted $MARBLERUN --key private_key.pem
 
 On success, the Coordinator applies the sealed state again. If the Coordinator can't restore the state with the uploaded key, an error will be returned in the logs, and the recovery endpoint will stay open for further interaction.
 
+:::tip
+
+You can also use [offline recovery secret signing](#offline-recovery-secret-signing) to avoid having plaintext secrets on a machine connected to the internet.
+
+:::
+
 ## Multi-party recovery
 
 If you've [configured your MarbleRun deployment for multi-party recovery](define-manifest.md#multi-party-recovery), send each party the corresponding [recovery secret](set-manifest.md). Ask them to perform the steps above. Once all parties have uploaded their secrets, the Coordinator recovers the sealed state and continues its operations.
