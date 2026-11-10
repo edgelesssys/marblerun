@@ -7,15 +7,19 @@ set(PROJECT_VERSION ${CMAKE_ARGV4})
 set(OUTPUT_NAME ${CMAKE_ARGV5})
 set(INJECT_PATH ${CMAKE_ARGV6})
 set(TRIMPATH ${CMAKE_ARGV7})
+if(DEFINED CMAKE_ARGV8)
+    set(BUILD_TAGS "-tags=${CMAKE_ARGV8}")
+endif()
 set(ENV{GOFIPS140} latest)
 
 if("${COMPILER}" STREQUAL "go")
     execute_process(
         COMMAND
-        go build ${TRIMPATH}
+        go build ${TRIMPATH} ${BUILD_TAGS}
         -o ${OUTPUT_NAME}
         -buildvcs=false
         -ldflags "-X '${INJECT_PATH}.Version=${PROJECT_VERSION}' -X '${INJECT_PATH}.GitCommit=${GIT_COMMIT}'"
+        RESULT_VARIABLE BUILD_RESULT
     )
 else()
     execute_process(
@@ -24,5 +28,10 @@ else()
         -o ${OUTPUT_NAME}
         -buildvcs=false
         -ldflags "-X '${INJECT_PATH}.Version=${PROJECT_VERSION}' -X '${INJECT_PATH}.GitCommit=${GIT_COMMIT}'"
+        RESULT_VARIABLE BUILD_RESULT
     )
+endif()
+
+if(NOT "${BUILD_RESULT}" STREQUAL "0")
+    message(FATAL_ERROR "${COMPILER} build failed: ${BUILD_RESULT}")
 endif()

@@ -63,6 +63,9 @@ func parseRestFlags(cmd *cobra.Command) (api.VerifyOptions, string, error) {
 	if err != nil {
 		return api.VerifyOptions{}, "", err
 	}
+	if !supportsAttestation && !insecure {
+		return api.VerifyOptions{}, "", errors.New("attestation is not supported by this CLI build. You may pass --insecure to skip verification (unsafe)")
+	}
 	acceptedTCBStatuses, err := cmd.Flags().GetStringSlice("accepted-tcb-statuses")
 	if err != nil {
 		return api.VerifyOptions{}, "", err
