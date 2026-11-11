@@ -22,6 +22,35 @@ import (
 	"go.uber.org/zap/zaptest"
 )
 
+func TestCertificateSecretOptions(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		secret  Secret
+		wantErr bool
+	}{
+		{"shared retention", Secret{Type: SecretTypeCertECDSA, Size: 256, Shared: true, KeepPrivateKey: true}, false},
+		{"private retention", Secret{Type: SecretTypeCertECDSA, Size: 256, KeepPrivateKey: true}, true},
+		{"private root signing", Secret{Type: SecretTypeCertED25519, SignWithRoot: true}, false},
+		{"both options", Secret{Type: SecretTypeCertRSA, Size: 2048, Shared: true, KeepPrivateKey: true, SignWithRoot: true}, false},
+		{"symmetric retention", Secret{Type: SecretTypeSymmetricKey, Size: 256, Shared: true, KeepPrivateKey: true}, true},
+		{"symmetric root signing", Secret{Type: SecretTypeSymmetricKey, Size: 256, SignWithRoot: true}, true},
+		{"user-defined retention", Secret{Type: SecretTypeCertED25519, Shared: true, UserDefined: true, KeepPrivateKey: true}, true},
+		{"user-defined root signing", Secret{Type: SecretTypeCertED25519, UserDefined: true, SignWithRoot: true}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var mnf Manifest
+			require.NoError(t, json.Unmarshal([]byte(test.ManifestJSON), &mnf))
+			mnf.Secrets["options"] = tc.secret
+			err := mnf.Check(zaptest.NewLogger(t))
+			if tc.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestFile(t *testing.T) {
 	dataJSON := []byte(`
 {

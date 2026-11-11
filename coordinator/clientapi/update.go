@@ -389,7 +389,16 @@ func (a *ClientAPI) updateSecrets(wrapper secretGetter, mnf manifest.Manifest) e
 	// Secrets that have not changed are kept
 	var unchanged []string
 	for _, name := range equal {
-		if !existingSecrets[name].EqualDefinition(mnf.Secrets[name]) {
+		definition := mnf.Secrets[name]
+		// Certificates may omit validity, in which case we default to 365 days
+		// Avoid treating these as secrets as if they changed definitions on an update
+		switch definition.Type {
+		case manifest.SecretTypeCertRSA, manifest.SecretTypeCertECDSA, manifest.SecretTypeCertED25519:
+			if !definition.UserDefined && definition.ValidFor == 0 && definition.Cert.NotAfter.IsZero() {
+				definition.ValidFor = 365
+			}
+		}
+		if !existingSecrets[name].EqualDefinition(definition) {
 			if err := wrapper.DeleteSecret(name); err != nil {
 				a.log.Error("Failed to delete secret set to be regenerated in new manifest", zap.Error(err), zap.String("secret", name))
 				return fmt.Errorf("deleting secret: %w", err)
@@ -455,7 +464,7 @@ func (a *ClientAPI) updateSecrets(wrapper secretGetter, mnf manifest.Manifest) e
 
 	// Find out which secrets need to be regenerated
 	// User-defined secrets are never generated, but are saved to the store directly
-	// All certificates are regenerated, since the intermediate CA changed
+	// Certificates are regenerated unless both key retention and root signing are enabled.
 	// Symmetric keys are only generated if they are new in this manifest,
 	// or if the root secret should be rotated.
 	// Otherwise, existing symmetric keys are kept as is
@@ -477,8 +486,17 @@ func (a *ClientAPI) updateSecrets(wrapper secretGetter, mnf manifest.Manifest) e
 		}
 	}
 	for _, name := range unchanged {
+		definition := mnf.Secrets[name]
+		if definition.KeepPrivateKey && definition.SignWithRoot && !mnf.Config.RotateRootSecret {
+			continue
+		}
 		if !mnf.Secrets[name].UserDefined && ((mnf.Secrets[name].Type != manifest.SecretTypeSymmetricKey) || mnf.Config.RotateRootSecret) {
-			secretsToGenerate[name] = mnf.Secrets[name]
+			if definition.KeepPrivateKey && !(definition.SignWithRoot && mnf.Config.RotateRootSecret) {
+				definition.Private = existingSecrets[name].Private
+			} else {
+				definition.Private = nil
+			}
+			secretsToGenerate[name] = definition
 			// Back up existing (shared) secret before regenerating.
 			// This also serves as placeholder for a private secret migrated from older MarbleRun versions.
 			secret, err := wrapper.GetSecret(name)
@@ -494,14 +512,14 @@ func (a *ClientAPI) updateSecrets(wrapper secretGetter, mnf manifest.Manifest) e
 	}
 
 	// Regenerate shared secrets specified in manifest
-	secrets, err := a.core.GenerateSecrets(secretsToGenerate, uuid.Nil, "", marbleRootCert, intermediatePrivK, rootSecret)
+	secrets, err := a.core.GenerateSecrets(secretsToGenerate, uuid.Nil, "", marbleRootCert, intermediatePrivK, rootSecret, rootCert, rootPrivK)
 	if err != nil {
 		a.log.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
 		return fmt.Errorf("generating secrets from manifest: %w", err)
 	}
 
 	// generate placeholders for private secrets specified in manifest
-	privSecrets, err := a.core.GenerateSecrets(secretsToGenerate, uuid.New(), "", marbleRootCert, intermediatePrivK, rootSecret)
+	privSecrets, err := a.core.GenerateSecrets(secretsToGenerate, uuid.New(), "", marbleRootCert, intermediatePrivK, rootSecret, rootCert, rootPrivK)
 	if err != nil {
 		a.log.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
 		return fmt.Errorf("generating placeholder secrets from manifest: %w", err)

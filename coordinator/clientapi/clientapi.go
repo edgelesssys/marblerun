@@ -53,6 +53,7 @@ type core interface {
 	GetState(context.Context) (state.State, string, error)
 	GenerateSecrets(
 		map[string]manifest.Secret, uuid.UUID, string, *x509.Certificate, *ecdsa.PrivateKey, []byte,
+		*x509.Certificate, *ecdsa.PrivateKey,
 	) (map[string]manifest.Secret, error)
 	GetQuote(reportData []byte) ([]byte, error)
 	GenerateQuote([]byte) error
@@ -330,6 +331,10 @@ func (a *ClientAPI) SetManifest(ctx context.Context, rawManifest []byte) (recove
 	if err != nil {
 		return nil, fmt.Errorf("loading root certificate from store: %w", err)
 	}
+	rootCert, err := txdata.GetCertificate(constants.SKCoordinatorRootCert)
+	if err != nil {
+		return nil, fmt.Errorf("loading Coordinator root certificate from store: %w", err)
+	}
 	rootPrivK, err := txdata.GetPrivateKey(constants.SKCoordinatorRootKey)
 	if err != nil {
 		return nil, fmt.Errorf("loading root private key from store: %w", err)
@@ -344,13 +349,13 @@ func (a *ClientAPI) SetManifest(ctx context.Context, rawManifest []byte) (recove
 	}
 
 	// Generate shared secrets specified in manifest
-	secrets, err := a.core.GenerateSecrets(mnf.Secrets, uuid.Nil, "", marbleRootCert, intermediatePrivK, rootSecret)
+	secrets, err := a.core.GenerateSecrets(mnf.Secrets, uuid.Nil, "", marbleRootCert, intermediatePrivK, rootSecret, rootCert, rootPrivK)
 	if err != nil {
 		a.log.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
 		return nil, fmt.Errorf("generating secrets from manifest: %w", err)
 	}
 	// generate placeholders for private secrets specified in manifest
-	privSecrets, err := a.core.GenerateSecrets(mnf.Secrets, uuid.New(), "", marbleRootCert, intermediatePrivK, rootSecret)
+	privSecrets, err := a.core.GenerateSecrets(mnf.Secrets, uuid.New(), "", marbleRootCert, intermediatePrivK, rootSecret, rootCert, rootPrivK)
 	if err != nil {
 		a.log.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
 		return nil, fmt.Errorf("generating placeholder secrets from manifest: %w", err)
@@ -728,13 +733,13 @@ func (a *ClientAPI) updateManifest(ctx context.Context, rawUpdateManifest []byte
 		return nil, 0, fmt.Errorf("loading existing shared secrets from store: %w", err)
 	}
 	for name, secret := range secrets {
-		if secret.Shared && secret.Type != manifest.SecretTypeSymmetricKey {
+		if secret.Shared && secret.Type != manifest.SecretTypeSymmetricKey && !(secret.KeepPrivateKey && secret.SignWithRoot) {
 			secretsToRegenerate[name] = secret
 		}
 	}
 
 	// Regenerate shared secrets specified in manifest
-	regeneratedSecrets, err := a.core.GenerateSecrets(secretsToRegenerate, uuid.Nil, "", marbleRootCert, intermediatePrivK, rootSecret)
+	regeneratedSecrets, err := a.core.GenerateSecrets(secretsToRegenerate, uuid.Nil, "", marbleRootCert, intermediatePrivK, rootSecret, rootCert, rootPrivK)
 	if err != nil {
 		a.log.Error("Could not generate specified secrets for the given manifest.", zap.Error(err))
 		return nil, 0, fmt.Errorf("regenerating shared secrets for updated manifest: %w", err)

@@ -217,6 +217,14 @@ func (c *Core) verifyManifestRequirement(txdata storeGetter, tlsCert *x509.Certi
 
 func (c *Core) generateMarbleSecrets(txdata storeGetter, marbleUUID uuid.UUID, marbleName string) (secrets, previousSecrets map[string]manifest.Secret, err error) {
 	marbleSecrets := make([]map[string]manifest.Secret, 2)
+	rootCert, err := txdata.GetCertificate(constants.SKCoordinatorRootCert)
+	if err != nil {
+		return nil, nil, status.Errorf(codes.Internal, "retrieving Coordinator root certificate: %s", err)
+	}
+	rootKey, err := txdata.GetPrivateKey(constants.SKCoordinatorRootKey)
+	if err != nil {
+		return nil, nil, status.Errorf(codes.Internal, "retrieving Coordinator root key: %s", err)
+	}
 
 	marbleRootCert, err := txdata.GetCertificate(constants.SKMarbleRootCert)
 	if err != nil {
@@ -256,7 +264,7 @@ func (c *Core) generateMarbleSecrets(txdata storeGetter, marbleUUID uuid.UUID, m
 		}
 
 		// Generate unique (= per marble) secrets
-		privateSecrets, err := c.GenerateSecrets(globalSecrets, marbleUUID, marbleName, marbleRootCert, intermediatePrivK, rootSecret)
+		privateSecrets, err := c.GenerateSecrets(globalSecrets, marbleUUID, marbleName, marbleRootCert, intermediatePrivK, rootSecret, rootCert, rootKey)
 		if err != nil {
 			c.log.Error("Couldn't generate specified secrets for the given manifest", zap.Error(err))
 			return nil, nil, status.Errorf(codes.Internal, "generating secrets for marble: %s", err)

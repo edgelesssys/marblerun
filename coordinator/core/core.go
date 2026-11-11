@@ -345,6 +345,7 @@ func (c *Core) GetState(ctx context.Context) (state.State, string, error) {
 func (c *Core) GenerateSecrets(
 	secrets map[string]manifest.Secret, id uuid.UUID, marbleName string,
 	parentCertificate *x509.Certificate, parentPrivKey *ecdsa.PrivateKey, rootSecret []byte,
+	rootCertificate *x509.Certificate, rootPrivKey *ecdsa.PrivateKey,
 ) (map[string]manifest.Secret, error) {
 	// Create a new map so we do not overwrite the entries in the manifest
 	newSecrets := make(map[string]manifest.Secret)
@@ -364,6 +365,25 @@ func (c *Core) GenerateSecrets(
 		}
 
 		c.log.Info("Generating secret", zap.String("name", name), zap.String("type", secret.Type), zap.Uint("size", secret.Size))
+		signerCert, signerKey := parentCertificate, parentPrivKey
+		if secret.SignWithRoot {
+			signerCert, signerKey = rootCertificate, rootPrivKey
+		}
+		if secret.KeepPrivateKey && len(secret.Private) > 0 {
+			key, err := x509.ParsePKCS8PrivateKey(secret.Private)
+			if err != nil {
+				return nil, fmt.Errorf("parsing retained key for secret %s: %w", name, err)
+			}
+			signer, ok := key.(crypto.Signer)
+			if !ok {
+				return nil, fmt.Errorf("retained key for secret %s cannot sign", name)
+			}
+			newSecrets[name], err = c.generateCertificateForSecret(secret, signerCert, signerKey, key, signer.Public())
+			if err != nil {
+				return nil, err
+			}
+			continue
+		}
 		switch secret.Type {
 		// Raw = Symmetric Key
 		case manifest.SecretTypeSymmetricKey:
@@ -406,7 +426,7 @@ func (c *Core) GenerateSecrets(
 			}
 
 			// Generate certificate
-			newSecrets[name], err = c.generateCertificateForSecret(secret, parentCertificate, parentPrivKey, privKey, &privKey.PublicKey)
+			newSecrets[name], err = c.generateCertificateForSecret(secret, signerCert, signerKey, privKey, &privKey.PublicKey)
 			if err != nil {
 				return nil, err
 			}
@@ -424,7 +444,7 @@ func (c *Core) GenerateSecrets(
 			}
 
 			// Generate certificate
-			newSecrets[name], err = c.generateCertificateForSecret(secret, parentCertificate, parentPrivKey, privKey, pubKey)
+			newSecrets[name], err = c.generateCertificateForSecret(secret, signerCert, signerKey, privKey, pubKey)
 			if err != nil {
 				return nil, err
 			}
@@ -454,7 +474,7 @@ func (c *Core) GenerateSecrets(
 			}
 
 			// Generate certificate
-			newSecrets[name], err = c.generateCertificateForSecret(secret, parentCertificate, parentPrivKey, privKey, &privKey.PublicKey)
+			newSecrets[name], err = c.generateCertificateForSecret(secret, signerCert, signerKey, privKey, &privKey.PublicKey)
 			if err != nil {
 				return nil, err
 			}

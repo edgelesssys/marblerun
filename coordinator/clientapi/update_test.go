@@ -214,6 +214,26 @@ func TestUpdateSecrets(t *testing.T) {
 			core:          &fakeCore{},
 			wantUnchanged: []string{"secret-d"},
 		},
+		"user defined certificate without validity is retained": {
+			manifest: func() manifest.Manifest {
+				m := testManifest()
+				m.Secrets["uploaded"] = manifest.Secret{Type: manifest.SecretTypeCertECDSA, UserDefined: true}
+				return m
+			}(),
+			prepareStore: func(r *require.Assertions, w wrapper.Wrapper) {
+				cert, err := w.GetCertificate(constants.SKCoordinatorRootCert)
+				r.NoError(err)
+				secret := manifest.Secret{
+					Type:        manifest.SecretTypeCertECDSA,
+					UserDefined: true,
+					Cert:        manifest.Certificate(*cert),
+				}
+				r.NoError(w.PutSecret("uploaded", secret))
+				r.NoError(w.PutPreviousSecret("uploaded", secret))
+			},
+			core:          &fakeCore{},
+			wantUnchanged: []string{"uploaded"},
+		},
 		"mixed secrets": {
 			manifest: func() manifest.Manifest {
 				m := testManifest()

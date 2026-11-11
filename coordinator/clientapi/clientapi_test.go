@@ -1459,6 +1459,7 @@ func (c *fakeCore) GetState(_ context.Context) (state.State, string, error) {
 }
 
 func (c *fakeCore) GenerateSecrets(newSecrets map[string]manifest.Secret, id uuid.UUID, _ string, rootCert *x509.Certificate, privK *ecdsa.PrivateKey, _ []byte,
+	_ *x509.Certificate, _ *ecdsa.PrivateKey,
 ) (map[string]manifest.Secret, error) {
 	if c.generateSecretsErr != nil {
 		return nil, c.generateSecretsErr

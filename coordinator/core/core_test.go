@@ -7,6 +7,7 @@ SPDX-License-Identifier: BUSL-1.1
 package core
 
 import (
+	"bytes"
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
@@ -14,7 +15,9 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"math/big"
 	"testing"
 	"time"
@@ -211,7 +214,7 @@ func TestGenerateSecrets(t *testing.T) {
 	rootSecret := testutil.GetRootSecret(t, c.txHandle)
 
 	// This should return valid secrets
-	generatedSecrets, err := c.GenerateSecrets(secretsToGenerate, uuid.Nil, "", rootCert, rootPrivK, rootSecret)
+	generatedSecrets, err := c.GenerateSecrets(secretsToGenerate, uuid.Nil, "", rootCert, rootPrivK, rootSecret, rootCert, rootPrivK)
 	require.NoError(err)
 	// Check if rawTest1 has 128 Bits/16 Bytes and rawTest2 256 Bits/8 Bytes
 	assert.Len(generatedSecrets["rawTest1"].Public, 16)
@@ -231,7 +234,7 @@ func TestGenerateSecrets(t *testing.T) {
 
 	// Make sure a certificate gets a new serial number if its regenerated
 	firstSerial := generatedSecrets["cert-rsa-test"].Cert.SerialNumber
-	secondGeneration, err := c.GenerateSecrets(generatedSecrets, uuid.Nil, "", rootCert, rootPrivK, rootSecret)
+	secondGeneration, err := c.GenerateSecrets(generatedSecrets, uuid.Nil, "", rootCert, rootPrivK, rootSecret, rootCert, rootPrivK)
 	assert.NoError(err)
 	assert.NotEqualValues(*firstSerial, *secondGeneration["cert-rsa-test"].Cert.SerialNumber)
 
@@ -273,32 +276,123 @@ func TestGenerateSecrets(t *testing.T) {
 	assert.NoError(err)
 
 	// Check if we get an empty secret map as output for an empty map as input
-	generatedSecrets, err = c.GenerateSecrets(secretsEmptyMap, uuid.Nil, "", rootCert, rootPrivK, rootSecret)
+	generatedSecrets, err = c.GenerateSecrets(secretsEmptyMap, uuid.Nil, "", rootCert, rootPrivK, rootSecret, rootCert, rootPrivK)
 	require.NoError(err)
 	assert.IsType(map[string]manifest.Secret{}, generatedSecrets)
 	assert.Len(generatedSecrets, 0)
 
 	// Check if we get an empty secret map as output for nil
-	generatedSecrets, err = c.GenerateSecrets(nil, uuid.Nil, "", rootCert, rootPrivK, rootSecret)
+	generatedSecrets, err = c.GenerateSecrets(nil, uuid.Nil, "", rootCert, rootPrivK, rootSecret, rootCert, rootPrivK)
 	require.NoError(err)
 	assert.IsType(map[string]manifest.Secret{}, generatedSecrets)
 	assert.Len(generatedSecrets, 0)
 
 	// If no size is specified, the function should fail
-	_, err = c.GenerateSecrets(secretsNoSize, uuid.Nil, "", rootCert, rootPrivK, rootSecret)
+	_, err = c.GenerateSecrets(secretsNoSize, uuid.Nil, "", rootCert, rootPrivK, rootSecret, rootCert, rootPrivK)
 	assert.Error(err)
 
 	// Also, it should fail if we try to generate a secret with an unknown type
-	_, err = c.GenerateSecrets(secretsInvalidType, uuid.Nil, "", rootCert, rootPrivK, rootSecret)
+	_, err = c.GenerateSecrets(secretsInvalidType, uuid.Nil, "", rootCert, rootPrivK, rootSecret, rootCert, rootPrivK)
 	assert.Error(err)
 
 	// If Ed25519 key size is specified, we should fail
-	_, err = c.GenerateSecrets(secretsEd25519WrongKeySize, uuid.Nil, "", rootCert, rootPrivK, rootSecret)
+	_, err = c.GenerateSecrets(secretsEd25519WrongKeySize, uuid.Nil, "", rootCert, rootPrivK, rootSecret, rootCert, rootPrivK)
 	assert.Error(err)
 
 	// However, for ECDSA we fail as we can have multiple curves
-	_, err = c.GenerateSecrets(secretsECDSAWrongKeySize, uuid.Nil, "", rootCert, rootPrivK, rootSecret)
+	_, err = c.GenerateSecrets(secretsECDSAWrongKeySize, uuid.Nil, "", rootCert, rootPrivK, rootSecret, rootCert, rootPrivK)
 	assert.Error(err)
+}
+
+func TestCertificateSecretUpdates(t *testing.T) {
+	for _, keyType := range []struct {
+		name string
+		size uint
+	}{{manifest.SecretTypeCertECDSA, 256}, {manifest.SecretTypeCertED25519, 0}, {manifest.SecretTypeCertRSA, 2048}} {
+		t.Run(keyType.name, func(t *testing.T) {
+			c := newCoreWithMocks()
+			api, err := clientapi.New(c.txHandle.(*stdstore.StdStore), c.recovery, c, &distributor.Stub{}, stubEnabler{}, zaptest.NewLogger(t))
+			require.NoError(t, err)
+			var mnf manifest.Manifest
+			require.NoError(t, json.Unmarshal([]byte(test.ManifestJSONWithRecoveryKey), &mnf))
+			mnf.Roles["static-secret-update"] = manifest.Role{ResourceType: "Manifest", Actions: []string{"UpdateManifest"}}
+			adminDef := mnf.Users["admin"]
+			adminDef.Roles = append(adminDef.Roles, "static-secret-update")
+			mnf.Users["admin"] = adminDef
+			for _, keep := range []bool{false, true} {
+				for _, root := range []bool{false, true} {
+					name := fmt.Sprintf("certificate-%t-%t", keep, root)
+					mnf.Secrets[name] = manifest.Secret{Type: keyType.name, Size: keyType.size, Shared: true, KeepPrivateKey: keep, SignWithRoot: root}
+				}
+			}
+			mnf.Secrets["private-root"] = manifest.Secret{Type: keyType.name, Size: keyType.size, SignWithRoot: true}
+			raw, err := json.Marshal(mnf)
+			require.NoError(t, err)
+			_, err = api.SetManifest(context.Background(), raw)
+			require.NoError(t, err)
+			admin := testutil.GetUser(t, c.txHandle, "admin")
+			rootCA := testutil.GetCertificate(t, c.txHandle, constants.SKCoordinatorRootCert)
+			checkSignatures := func() {
+				t.Helper()
+				intermediate := testutil.GetCertificate(t, c.txHandle, constants.SKMarbleRootCert)
+				for name, def := range mnf.Secrets {
+					if def.Type != keyType.name || def.UserDefined || (!def.Shared && !def.SignWithRoot) {
+						continue
+					}
+					secret := testutil.GetSecret(t, c.txHandle, name)
+					cert := x509.Certificate(secret.Cert)
+					if def.SignWithRoot {
+						require.NoError(t, cert.CheckSignatureFrom(rootCA), name)
+						require.Error(t, cert.CheckSignatureFrom(intermediate), name)
+					} else {
+						require.NoError(t, cert.CheckSignatureFrom(intermediate), name)
+					}
+				}
+				// Per-Marble generation must use the root signer without reusing
+				// the stored placeholder's key (or another Marble's key).
+				placeholder := testutil.GetSecret(t, c.txHandle, "private-root")
+				previousKey := placeholder.Private
+				for range 2 {
+					generated, err := c.GenerateSecrets(map[string]manifest.Secret{"private-root": placeholder}, uuid.New(), "backendFirst",
+						intermediate, testutil.GetPrivateKey(t, c.txHandle, constants.SKCoordinatorIntermediateKey),
+						testutil.GetRootSecret(t, c.txHandle), rootCA, testutil.GetPrivateKey(t, c.txHandle, constants.SKCoordinatorRootKey))
+					require.NoError(t, err)
+					secret := generated["private-root"]
+					cert := x509.Certificate(secret.Cert)
+					require.NoError(t, cert.CheckSignatureFrom(rootCA))
+					assert.NotEqual(t, previousKey, secret.Private)
+					previousKey = secret.Private
+				}
+			}
+			checkSignatures()
+			for _, update := range []string{"packages", "manifest", "rotate"} {
+				rotate := update == "rotate"
+				before := testutil.GetSecretMap(t, c.txHandle)
+				mnf.Config.RotateRootSecret = rotate
+				raw, err := json.Marshal(mnf)
+				require.NoError(t, err)
+				if update == "packages" {
+					raw = []byte(test.UpdateManifest)
+				}
+				_, _, _, err = api.UpdateManifest(context.Background(), raw, admin)
+				require.NoError(t, err)
+				checkSignatures()
+				for _, keep := range []bool{false, true} {
+					for _, root := range []bool{false, true} {
+						name := fmt.Sprintf("certificate-%t-%t", keep, root)
+						after := testutil.GetSecret(t, c.txHandle, name)
+						assert.Equal(t, keep && !(root && rotate), bytes.Equal(before[name].Private, after.Private), name)
+						assert.Equal(t, keep && root && !rotate, bytes.Equal(before[name].Cert.Raw, after.Cert.Raw), name)
+						if update != "packages" && !(keep && root && !rotate) {
+							previous := testutil.GetPreviousSecret(t, c.txHandle, name)
+							assert.Equal(t, before[name].Private, previous.Private, name)
+							assert.Equal(t, before[name].Cert.Raw, previous.Cert.Raw, name)
+						}
+					}
+				}
+			}
+		})
+	}
 }
 
 func TestUnsetRestart(t *testing.T) {

@@ -497,6 +497,14 @@ func (m Manifest) Check(zaplogger *zap.Logger) error {
 	}
 
 	for name, s := range m.Secrets {
+		if s.KeepPrivateKey && !s.Shared {
+			return fmt.Errorf("KeepPrivateKey requires Shared for secret: %s", name)
+		}
+		if s.KeepPrivateKey || s.SignWithRoot {
+			if s.UserDefined || (s.Type != SecretTypeCertRSA && s.Type != SecretTypeCertECDSA && s.Type != SecretTypeCertED25519) {
+				return fmt.Errorf("KeepPrivateKey and SignWithRoot are incompatible with user defined secret: %s", name)
+			}
+		}
 		switch s.Type {
 		case SecretTypePlain, SecretTypeSymmetricKey:
 			continue
@@ -761,6 +769,11 @@ type Secret struct {
 	Cert Certificate
 	// ValidFor is the validity of a certificate in days.
 	ValidFor uint
+	// KeepPrivateKey retains a shared certificate's key on manifest updates.
+	KeepPrivateKey bool
+	// SignWithRoot signs a generated certificate with the Coordinator root CA.
+	// Together with KeepPrivateKey, the certificate is also retained until root-secret rotation.
+	SignWithRoot bool
 	// Private is a private key of a certificate, or a symmetric key.
 	Private PrivateKey
 	// Public is a public key of a certificate, or a symmetric key.
@@ -787,6 +800,8 @@ func (s Secret) EqualDefinition(other Secret) bool {
 		s.Size == other.Size &&
 		s.Shared == other.Shared &&
 		s.UserDefined == other.UserDefined &&
+		s.KeepPrivateKey == other.KeepPrivateKey &&
+		s.SignWithRoot == other.SignWithRoot &&
 		s.ValidFor == other.ValidFor
 }
 
