@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.11)
 
 project(marblerun VERSION 1.9.3)
-find_package(OpenEnclave CONFIG REQUIRED)
 
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Debug)
@@ -9,6 +8,31 @@ endif ()
 if (NOT CMAKE_BUILD_TYPE STREQUAL Debug)
   set(TRIMPATH -trimpath)
 endif ()
+
+#
+# Cross-compile CLI for Mac
+#
+
+add_custom_target(cli-mac
+  COMMAND
+  ${CMAKE_COMMAND} -E env
+  GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 CC=oa64-clang
+  "CGO_CFLAGS=-O2 -mmacosx-version-min=13.0"
+  "CGO_LDFLAGS=-O2 -mmacosx-version-min=13.0"
+  ${CMAKE_COMMAND} -P ${CMAKE_SOURCE_DIR}/build_with_version.cmake
+  "go" "${PROJECT_VERSION}" "${CMAKE_BINARY_DIR}/marblerun-darwin-arm64"
+  "github.com/edgelesssys/marblerun/cli/internal/cmd"
+  "${TRIMPATH}" "ego_mock_eclient"
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/cli
+  VERBATIM
+)
+
+option(CLI_MAC_ONLY "Skip OpenEnclave setup and only build Mac CLI" OFF)
+if(CLI_MAC_ONLY)
+  return()
+endif()
+
+find_package(OpenEnclave CONFIG REQUIRED)
 
 # Generate key
 add_custom_command(

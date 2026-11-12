@@ -62,6 +62,14 @@ RUN chmod +x linuxdeploy-x86_64.AppImage && touch marblerun.svg \
   --custom-apprun=AppRun \
   -oappimage
 
+FROM ghcr.io/goreleaser/goreleaser-cross-toolchains:v0.2.2@sha256:6432af9e0b018c73715cf9040f3eba2ae038eec70d4bbeb0e59de5efc943a072 AS build-mac
+COPY --from=build /usr/local/go /usr/local/go
+COPY --from=build /marblerun /marblerun
+ENV PATH="/usr/local/go/bin:${PATH}"
+RUN cmake -S /marblerun -B /mrbuild -DCMAKE_BUILD_TYPE=Release -DCLI_MAC_ONLY=ON \
+  && cmake --build /mrbuild --target cli-mac
+
 FROM scratch
 COPY --from=build /mrbuild/marblerun /marblerun-ubuntu-20.04
 COPY --from=build /mrbuild/premain-libos /marblerun-x86_64.AppImage /
+COPY --from=build-mac /mrbuild/marblerun-darwin-arm64 /
