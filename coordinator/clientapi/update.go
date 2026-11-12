@@ -545,6 +545,13 @@ func (a *ClientAPI) updateSecrets(wrapper secretGetter, mnf manifest.Manifest) e
 		}
 	}
 
+	// Retained secrets are not regenerated, but must still be available to templates.
+	for _, name := range unchanged {
+		if _, generated := secrets[name]; !generated {
+			secrets[name] = existingSecrets[name]
+		}
+	}
+
 	// add dummy values for template validation to user defined and symmetric secrets
 	for secretName, secret := range mnf.Secrets {
 		if secret.UserDefined || secret.Type == manifest.SecretTypeSymmetricKey {

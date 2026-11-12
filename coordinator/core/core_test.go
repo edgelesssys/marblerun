@@ -326,6 +326,19 @@ func TestCertificateSecretUpdates(t *testing.T) {
 				}
 			}
 			mnf.Secrets["private-root"] = manifest.Secret{Type: keyType.name, Size: keyType.size, SignWithRoot: true}
+			for name, marble := range mnf.Marbles {
+				if marble.Parameters.Files == nil {
+					marble.Parameters.Files = make(map[string]manifest.File)
+				}
+				for _, prefix := range []string{".Secrets", ".Previous.Secrets"} {
+					for _, field := range []string{"Cert", "Private"} {
+						marble.Parameters.Files["/static"+prefix+field] = manifest.File{
+							Data: fmt.Sprintf(`{{ pem (index %s "certificate-true-true").%s }}`, prefix, field), Encoding: "string",
+						}
+					}
+				}
+				mnf.Marbles[name] = marble
+			}
 			raw, err := json.Marshal(mnf)
 			require.NoError(t, err)
 			_, err = api.SetManifest(context.Background(), raw)
@@ -365,7 +378,7 @@ func TestCertificateSecretUpdates(t *testing.T) {
 				}
 			}
 			checkSignatures()
-			for _, update := range []string{"packages", "manifest", "rotate"} {
+			for _, update := range []string{"packages", "manifest", "rotate", "manifest after rotation"} {
 				rotate := update == "rotate"
 				before := testutil.GetSecretMap(t, c.txHandle)
 				mnf.Config.RotateRootSecret = rotate
