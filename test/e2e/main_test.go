@@ -232,6 +232,14 @@ func TestE2EActions(t *testing.T) {
 		}
 	}
 
+	certificateSecrets := map[string]manifest.Secret{
+		"rotating":    {Type: oss_mnf.SecretTypeCertECDSA, Size: 256, Shared: true},
+		"retained":    {Type: oss_mnf.SecretTypeCertECDSA, Size: 256, Shared: true, KeepPrivateKey: true},
+		"root":        {Type: oss_mnf.SecretTypeCertECDSA, Size: 256, Shared: true, SignWithRoot: true},
+		"static":      {Type: oss_mnf.SecretTypeCertECDSA, Size: 256, Shared: true, KeepPrivateKey: true, SignWithRoot: true},
+		"privateRoot": {Type: oss_mnf.SecretTypeCertECDSA, Size: 256, SignWithRoot: true},
+	}
+
 	testCases := map[string]struct {
 		getStartingManifest func(crt, key []byte, defaultPackage manifest.PackageProperties) manifest.Manifest
 		actions             []testAction
@@ -2500,6 +2508,103 @@ func TestE2EActions(t *testing.T) {
 				actions = append(actions, triggerRecoveryActions...)
 				actions = append(actions, recoverCoordinatorActions...)
 				actions = append(actions, verifyManifestHasntChangedAction("update.json"))
+				return actions
+			}(),
+		},
+		"certificate secret retention and root signing": {
+			getStartingManifest: func(crt, key []byte, defaultPackage manifest.PackageProperties) manifest.Manifest {
+				mnf := manifest.DefaultManifest(crt, key, defaultPackage)
+				marble := mnf.Marbles[manifest.DefaultMarble]
+				marble.Parameters.Argv = []string{"marble", "secrets"}
+				files := map[string]string{
+					"/root-ca":         "{{ pem .MarbleRun.CoordinatorRoot.Cert }}",
+					"/intermediate-ca": "{{ pem .MarbleRun.CoordinatorIntermediate.Cert }}",
+				}
+				for name, secret := range certificateSecrets {
+					mnf.Secrets[name] = secret // Leave validity omitted to exercise default normalization.
+					files["/"+name+".crt"] = fmt.Sprintf("{{ pem .Secrets.%s.Cert }}", name)
+					files["/"+name+".key"] = fmt.Sprintf("{{ pem .Secrets.%s.Private }}", name)
+					if secret.Shared {
+						files["/"+name+".previous.crt"] = fmt.Sprintf("{{ pem .Previous.Secrets.%s.Cert }}", name)
+						files["/"+name+".previous.key"] = fmt.Sprintf("{{ pem .Previous.Secrets.%s.Private }}", name)
+					}
+				}
+				for path, data := range files {
+					marble.Parameters.Files[path] = oss_mnf.File{Data: data, Encoding: "string"}
+					marble.Parameters.Argv = append(marble.Parameters.Argv, path)
+				}
+				mnf.Marbles[manifest.DefaultMarble] = marble
+				return mnf
+			},
+			actions: func() []testAction {
+				var actions []testAction
+				var before map[string][]byte
+				// Verify initial provisioning, an ordinary update, rotation, and retention after rotation.
+				for phase, rotate := range []bool{false, false, true, false} {
+					if phase > 0 {
+						actions = append(actions, func(ctx context.Context, t *testing.T, kubectl *kubectl.Kubectl, cmd *cmd.Cmd, namespace, tmpDir string) {
+							mnf := loadTestManifest(require.New(t), tmpDir)
+							mnf.Config.RotateRootSecret = rotate
+							raw, err := json.Marshal(mnf)
+							require.NoError(t, err)
+							updateManifest(ctx, t, kubectl, cmd, namespace, tmpDir, raw, certFileDefault, keyFileDefault)
+						})
+					}
+					actions = append(actions, verifyMarblePodAction(manifest.DefaultMarble, func(t *testing.T, res *http.Response, err error) error {
+						if err != nil {
+							return err
+						}
+						if res.StatusCode != http.StatusOK {
+							return fmt.Errorf("reading Marble secrets: %s", res.Status)
+						}
+						var current map[string][]byte
+						if err := json.NewDecoder(res.Body).Decode(&current); err != nil {
+							return err
+						}
+						parseCert := func(path string) *x509.Certificate {
+							t.Helper()
+							block, _ := pem.Decode(current[path])
+							require.NotNil(t, block, path)
+							cert, err := x509.ParseCertificate(block.Bytes)
+							require.NoError(t, err, path)
+							return cert
+						}
+						root, intermediate := parseCert("/root-ca"), parseCert("/intermediate-ca")
+						for name, definition := range certificateSecrets {
+							certPath, keyPath := "/"+name+".crt", "/"+name+".key"
+							cert := parseCert(certPath)
+							_, err := tls.X509KeyPair(current[certPath], current[keyPath])
+							require.NoError(t, err, name)
+							parent, other := intermediate, root
+							if definition.SignWithRoot {
+								parent, other = root, intermediate
+							}
+							assert.NoError(t, cert.CheckSignatureFrom(parent), name)
+							assert.Error(t, cert.CheckSignatureFrom(other), name)
+							static := definition.KeepPrivateKey && definition.SignWithRoot && !rotate
+							if phase > 0 {
+								keepKey := definition.KeepPrivateKey && !(definition.SignWithRoot && rotate)
+								assert.Equal(t, keepKey, bytes.Equal(before[keyPath], current[keyPath]), "phase %d: %s key", phase, name)
+								assert.Equal(t, static, bytes.Equal(before[certPath], current[certPath]), "phase %d: %s certificate", phase, name)
+							}
+							if definition.Shared {
+								for _, suffix := range []string{"crt", "key"} {
+									path, previousPath := "/"+name+"."+suffix, "/"+name+".previous."+suffix
+									expected := current[path]
+									if phase > 0 {
+										expected = before[path]
+										if static {
+											expected = before[previousPath]
+										}
+									}
+									assert.Equal(t, expected, current[previousPath], "phase %d: %s", phase, previousPath)
+								}
+							}
+						}
+						before = current
+						return nil
+					}))
+				}
 				return actions
 			}(),
 		},

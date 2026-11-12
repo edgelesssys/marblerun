@@ -56,12 +56,14 @@ type PackageProperties struct {
 // Secret is an alternative to the manifest.Secret struct,
 // which allows marshalling of the Cert field.
 type Secret struct {
-	Type        string         `json:"Type,omitempty"`
-	Size        uint           `json:"Size,omitempty"`
-	Shared      bool           `json:"Shared,omitempty"`
-	UserDefined bool           `json:"UserDefined,omitempty"`
-	ValidFor    uint           `json:"ValidFor,omitempty"`
-	Cert        map[string]any `json:"Cert,omitempty"`
+	Type           string         `json:"Type,omitempty"`
+	Size           uint           `json:"Size,omitempty"`
+	Shared         bool           `json:"Shared,omitempty"`
+	UserDefined    bool           `json:"UserDefined,omitempty"`
+	KeepPrivateKey bool           `json:"KeepPrivateKey,omitempty"`
+	SignWithRoot   bool           `json:"SignWithRoot,omitempty"`
+	ValidFor       uint           `json:"ValidFor,omitempty"`
+	Cert           map[string]any `json:"Cert,omitempty"`
 }
 
 // defaultManifest returns a manifest using the given user certificate and key.
