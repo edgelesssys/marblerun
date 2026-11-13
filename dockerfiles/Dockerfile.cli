@@ -12,7 +12,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
   ninja-build \
   wget
 
-ARG erttag=v0.5.5
+ARG erttag=v0.5.6
 ARG mrtag=v1.9.4
 ARG goversion=1.27.3
 RUN --mount=type=secret,id=netrc,target=/root/.netrc,required=false \
