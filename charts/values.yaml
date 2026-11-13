@@ -102,6 +102,9 @@ coordinator:
   distributedDeployment: false
   storeBackend: "k8s-secret"
   stateSecretName: "marblerun-state"
+  # Enable only after ALL Coordinator replicas support chunked state.
+  # Existing state migrates automatically when it exceeds one Secret; migration is one-way.
+  chunkedState: false
   kekConfigMap: "marblerun-sealed-kek"
 
   keyAPIName: "coordinator-key-api"

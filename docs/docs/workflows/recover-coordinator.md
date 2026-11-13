@@ -34,6 +34,25 @@ marblerun recover recovery_key_encrypted $MARBLERUN --key private_key.pem
 
 On success, the Coordinator applies the sealed state again. If the Coordinator can't restore the state with the uploaded key, an error will be returned in the logs, and the recovery endpoint will stay open for further interaction.
 
+### Backups of chunked state
+
+The recovery key restores access to encrypted state; it cannot recreate missing state chunks.
+For a distributed deployment, back up the state head, every chunk referenced by its descriptor, and the sealed KEK ConfigMap, together with the separately held recovery material.
+The head alone is no longer a complete state backup after migration.
+
+For a consistent object-level backup, stop all Coordinator replicas before copying these objects so neither writers nor chunk cleanup can race the copy.
+Validate the chunk count, total byte length, and SHA-256 digest against the head descriptor before accepting the backup.
+A live backup instead needs to retry if its referenced snapshot is collected; merely listing all Secrets is not a consistent snapshot.
+
+Restoring an etcd snapshot preserves Kubernetes object identities. An object-level restore into a new namespace or cluster does not: Kubernetes assigns a new UID to the head.
+With all replicas stopped, restore the head first, then recreate the referenced chunks with names containing the new head UID, update their `marblerun.edgeless.systems/state-head` labels and owner references to that UID, and set their target namespace.
+Preserve the descriptor's revision, upload ID, indices, ciphertext, and wrapped key exactly. Clear server-assigned metadata such as resource versions and chunk UIDs before creating objects.
+Do not start the Coordinator until every referenced chunk and the key material have been restored and validated.
+If the SGX-bound key material cannot be unsealed on the new nodes, perform the recovery procedure above.
+
+Do not restore an old head into a running deployment or manually delete chunks solely by their revision number. Both actions can race active writers and readers.
+There is no automated object-level backup/restore command or reverse migration to legacy inline state.
+
 :::tip
 
 You can also use [offline recovery secret signing](#offline-recovery-secret-signing) to avoid having plaintext secrets on a machine connected to the internet.

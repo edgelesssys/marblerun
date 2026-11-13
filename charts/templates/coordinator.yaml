@@ -102,6 +102,8 @@ spec:
             value: {{ .Values.coordinator.storeBackend }}
           - name: EDG_K8S_STATE_NAME
             value: {{ .Values.coordinator.stateSecretName }}
+          - name: EDG_K8S_CHUNKED_STATE
+            value: {{ .Values.coordinator.chunkedState | quote }}
           - name: EDG_K8S_SERVICE_NAME
             value: {{ .Values.coordinator.keyAPIName }}
           - name: EDG_K8S_KEK_MAP

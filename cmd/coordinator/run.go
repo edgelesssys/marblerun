@@ -14,6 +14,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/edgelesssys/ego/attestation"
@@ -89,7 +90,11 @@ func run(log *zap.Logger, validator quote.Validator, issuer quote.Issuer, sealDi
 	if !distributedDeployment {
 		backend = "default"
 	}
-	store, keyDistributor, hsmEnabler := setUpStore(backend, sealer, sealDir, validator, issuer, log)
+	var storeRegistry prometheus.Registerer
+	if promRegistry != nil {
+		storeRegistry = promRegistry
+	}
+	store, keyDistributor, hsmEnabler := setUpStore(backend, sealer, sealDir, validator, issuer, storeRegistry, log)
 	rec := recovery.New(store, log)
 
 	// creating core
@@ -156,7 +161,7 @@ func isDevMode() bool {
 	return util.Getenv(constants.DevMode, constants.DevModeDefault) == "1"
 }
 
-func setUpStore(backend string, sealer seal.Sealer, sealDir string, qv quote.Validator, qi quote.Issuer, log *zap.Logger) (store.Store, keyDistributor, hsmEnabler) {
+func setUpStore(backend string, sealer seal.Sealer, sealDir string, qv quote.Validator, qi quote.Issuer, registry prometheus.Registerer, log *zap.Logger) (store.Store, keyDistributor, hsmEnabler) {
 	var store store.Store
 	var keyDistributor keyDistributor
 	var hsmEnabler hsmEnabler
@@ -190,7 +195,11 @@ func setUpStore(backend string, sealer seal.Sealer, sealDir string, qv quote.Val
 		hsmEnabler = hsmSealer
 
 		// Create distributed store
-		distributedStore, err := dstore.New(hsmSealer, hsmSealer, stateName, namespace, log)
+		chunking, err := strconv.ParseBool(util.Getenv(constants.EnvK8sChunkedState, "false"))
+		if err != nil {
+			log.Fatal("Invalid chunked state setting", zap.Error(err))
+		}
+		distributedStore, err := dstore.New(hsmSealer, hsmSealer, stateName, namespace, chunking, registry, log)
 		if err != nil {
 			log.Fatal("Failed setting up store backend", zap.Error(err))
 		}

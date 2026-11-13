@@ -81,6 +81,23 @@ The Coordinator starts with the following default values. You can set your desir
 
 *Note*: The Coordinator's state is sealed to `$PWD/marblerun-coordinator-data/sealed_data`. If you want a fresh restart remove this file first: `rm $PWD/marblerun-coordinator-data/sealed_data`.
 
+### Test distributed state storage
+
+The store unit tests run without an enclave or Kubernetes cluster:
+
+```bash
+go test -race ./coordinator/store/distributed/... ./coordinator/recovery/...
+```
+
+The storage integration test starts a disposable local API server and etcd. It tests the real chart RBAC, Secret limits, concurrent publication, cleanup, and restore under a new head UID. It never connects to an existing cluster. Install Helm and the `setup-envtest` tool, then run:
+
+```bash
+export KUBEBUILDER_ASSETS="$(setup-envtest use -p path 1.36.x)"
+go test -tags integration -run TestKubernetesState -v ./coordinator/store/distributed/k8sstore
+```
+
+Without `KUBEBUILDER_ASSETS`, this integration test is skipped. The `fakestore` build remains a filesystem-backed development backend, not a replacement for API-server integration tests.
+
 ### Create a Manifest
 
 See the [how to add a service](https://docs.edgeless.systems/marblerun/workflows/add-service) documentation on how to create a Manifest.

@@ -77,6 +77,8 @@ const (
 	// EnvK8sStateName is the environment variable defining the name of the secret
 	// holding the Coordinator's state.
 	EnvK8sStateName = "EDG_K8S_STATE_NAME"
+	// EnvK8sChunkedState permits the first transition from inline to chunked state.
+	EnvK8sChunkedState = "EDG_K8S_CHUNKED_STATE"
 	// EnvK8sKeyServiceName is the environment variable defining the name of the MarblerRun key distribution service.
 	EnvK8sKeyServiceName = "EDG_K8S_SERVICE_NAME"
 	// EnvK8sKEKMapName is the environment variable defining the name of the ConfigMap holding the sealed KEKs.

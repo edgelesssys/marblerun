@@ -27,6 +27,7 @@ import (
 	"github.com/edgelesssys/marblerun/coordinator/store/distributed/transaction"
 	"github.com/edgelesssys/marblerun/coordinator/store/distributed/wrapper"
 	"github.com/edgelesssys/marblerun/coordinator/store/request"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 )
 
@@ -55,7 +56,7 @@ type Store struct {
 }
 
 // New creates and initializes a new store for distributed Coordinators.
-func New(sealer Sealer, hsmEnabler hsmEnabler, name, namespace string, log *zap.Logger) (*Store, error) {
+func New(sealer Sealer, hsmEnabler hsmEnabler, name, namespace string, chunking bool, registry prometheus.Registerer, log *zap.Logger) (*Store, error) {
 	clientset, err := kube.GetClient()
 	if err != nil {
 		return nil, err
@@ -63,7 +64,7 @@ func New(sealer Sealer, hsmEnabler hsmEnabler, name, namespace string, log *zap.
 
 	return &Store{
 		quoteGenerator: &quoteRegenerator{},
-		stateHandle:    k8sstore.New(clientset, namespace, name, log),
+		stateHandle:    k8sstore.New(clientset, namespace, name, chunking, registry, log),
 		sealer:         sealer,
 		hsmEnabler:     hsmEnabler,
 		log:            log,
