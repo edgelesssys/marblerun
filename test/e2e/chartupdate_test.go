@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/edgelesssys/marblerun/api"
 	oss_mnf "github.com/edgelesssys/marblerun/coordinator/manifest"
 	"github.com/edgelesssys/marblerun/coordinator/state"
 	"github.com/edgelesssys/marblerun/test/e2e/helm"
@@ -34,6 +35,18 @@ func TestChartUpdate(t *testing.T) {
 	t.Parallel()
 
 	ctx, assert, require, kubectl, cmd, tmpDir := createBaseObjects(t)
+	oldEraConfig := eraConfig
+	if *eraConfigFile != "" {
+		config, err := api.VerifyOptionsFromConfig(*eraConfigFile)
+		require.NoError(err)
+		config.SecurityVersion = 1
+		configJSON, err := json.Marshal(config)
+		require.NoError(err)
+		configPath := filepath.Join(tmpDir, "old-era-config.json")
+		require.NoError(os.WriteFile(configPath, configJSON, 0o600))
+		oldEraConfig = fmt.Sprintf("--era-config=%s", configPath)
+	}
+
 	namespace, releaseName := setUpNamespace(ctx, t, kubectl)
 	getLogsOnFailure(t, kubectl, namespace)
 
@@ -74,7 +87,7 @@ func TestChartUpdate(t *testing.T) {
 			manifestPath, net.JoinHostPort(localhost, port),
 			"--recoverydata", filepath.Join(tmpDir, recoveryDataFile),
 			"--coordinator-cert", filepath.Join(tmpDir, coordinatorCertFileDefault),
-			eraConfig,
+			oldEraConfig,
 		)
 		return err
 	})
