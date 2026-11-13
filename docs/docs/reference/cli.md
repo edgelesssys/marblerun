@@ -67,19 +67,19 @@ marblerun install --dcap-pccs-url https://pccs.example.com/sgx/certification/v4/
 ### Options
 
 ```
-      --client-server-port int         Set the client server port. Needs to be configured to the same port as in your client tool stack (default 4433)
-      --dcap-pccs-url string           Provisioning Certificate Caching Service (PCCS) server address. Defaults to Azure PCCS. Mutually exclusive with "--dcap-qcnl-config-file" (default "https://global.acccache.azure.net/sgx/certification/v4/")
-      --dcap-qcnl-config-file string   Path to a custom QCNL configuration file. Mutually exclusive with "--dcap-pccs-url" and "--dcap-secure-cert".
-      --dcap-secure-cert string        To accept insecure HTTPS certificate from the PCCS, set this option to FALSE. Mutually exclusive with "--dcap-qcnl-config-file" (default "TRUE")
-      --disable-auto-injection         Install MarbleRun without auto-injection webhook
-      --distributed-deployment         Install MarbleRun in distributed deployment mode.
-      --domain strings                 Sets additional DNS names and IPs for the Coordinator TLS certificate
-  -h, --help                           help for install
-      --marblerun-chart-path string    Path to MarbleRun helm chart
-      --mesh-server-port int           Set the mesh server port. Needs to be configured to the same port as in the data-plane marbles (default 2001)
-      --resource-key string            Resource providing SGX, different depending on used device plugin. Use this to set tolerations/resources if your device plugin is not supported by MarbleRun
-      --simulation                     Set MarbleRun to start in simulation mode
-      --version string                 Version of the Coordinator to install, latest by default
+      --client-server-port int                Set the client server port. Needs to be configured to the same port as in your client tool stack (default 4433)
+      --dcap-pccs-url string                  Provisioning Certificate Caching Service (PCCS) server address. Defaults to Azure PCCS. Mutually exclusive with "--dcap-qcnl-config-file" (default "https://global.acccache.azure.net/sgx/certification/v4/")
+      --dcap-qcnl-config-file string          Path to a custom QCNL configuration file. Mutually exclusive with "--dcap-pccs-url" and "--dcap-secure-cert".
+      --dcap-secure-cert string               To accept insecure HTTPS certificate from the PCCS, set this option to FALSE. Mutually exclusive with "--dcap-qcnl-config-file" (default "TRUE")
+      --disable-auto-injection[=true|false]   Install MarbleRun without auto-injection webhook
+      --distributed-deployment[=true|false]   Install MarbleRun in distributed deployment mode.
+      --domain strings                        Sets additional DNS names and IPs for the Coordinator TLS certificate
+  -h, --help[=true|false]                     help for install
+      --marblerun-chart-path string           Path to MarbleRun helm chart
+      --mesh-server-port int                  Set the mesh server port. Needs to be configured to the same port as in the data-plane marbles (default 2001)
+      --resource-key string                   Resource providing SGX, different depending on used device plugin. Use this to set tolerations/resources if your device plugin is not supported by MarbleRun
+      --simulation[=true|false]               Set MarbleRun to start in simulation mode
+      --version string                        Version of the Coordinator to install, latest by default
 ```
 
 ### Options inherited from parent commands
@@ -89,7 +89,7 @@ marblerun install --dcap-pccs-url https://pccs.example.com/sgx/certification/v4/
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
-  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -i, --insecure[=true|false]           Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
       --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
@@ -110,7 +110,7 @@ marblerun uninstall [flags]
 ### Options
 
 ```
-  -h, --help   help for uninstall
+  -h, --help[=true|false]   help for uninstall
 ```
 
 ### Options inherited from parent commands
@@ -120,7 +120,7 @@ marblerun uninstall [flags]
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
-  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -i, --insecure[=true|false]           Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
       --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
@@ -141,7 +141,7 @@ marblerun precheck [flags]
 ### Options
 
 ```
-  -h, --help   help for precheck
+  -h, --help[=true|false]   help for precheck
 ```
 
 ### Options inherited from parent commands
@@ -151,7 +151,7 @@ marblerun precheck [flags]
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
-  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -i, --insecure[=true|false]           Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
       --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
@@ -172,8 +172,8 @@ marblerun check [flags]
 ### Options
 
 ```
-  -h, --help           help for check
-      --timeout uint   Time to wait before aborting in seconds (default 60)
+  -h, --help[=true|false]   help for check
+      --timeout uint        Time to wait before aborting in seconds (default 60)
 ```
 
 ### Options inherited from parent commands
@@ -183,7 +183,7 @@ marblerun check [flags]
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
-  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -i, --insecure[=true|false]           Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
       --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
@@ -209,7 +209,7 @@ manifest set manifest.json example.com:4433 [--era-config=config.json] [--insecu
 ### Options
 
 ```
-  -h, --help   help for manifest
+  -h, --help[=true|false]   help for manifest
 ```
 
 ### Options inherited from parent commands
@@ -219,7 +219,7 @@ manifest set manifest.json example.com:4433 [--era-config=config.json] [--insecu
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
-  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -i, --insecure[=true|false]           Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
       --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
@@ -247,11 +247,11 @@ marblerun manifest get $MARBLERUN -s --era-config=era.json
 ### Options
 
 ```
-  -u, --display-update   Set to merge updates into the displayed manifest
-  -h, --help             help for get
-      --keep-cert        Set to keep the certificate of the Coordinator and save it to the location specified by --coordinator-cert
-  -o, --output string    Save output to file instead of printing to stdout
-  -s, --signature        Set to additionally display the manifests signature
+  -u, --display-update[=true|false]   Set to merge updates into the displayed manifest
+  -h, --help[=true|false]             help for get
+      --keep-cert[=true|false]        Set to keep the certificate of the Coordinator and save it to the location specified by --coordinator-cert
+  -o, --output string                 Save output to file instead of printing to stdout
+  -s, --signature[=true|false]        Set to additionally display the manifests signature
 ```
 
 ### Options inherited from parent commands
@@ -261,7 +261,7 @@ marblerun manifest get $MARBLERUN -s --era-config=era.json
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
-  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -i, --insecure[=true|false]           Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
       --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
@@ -290,8 +290,8 @@ marblerun manifest log $MARBLERUN
 ### Options
 
 ```
-  -h, --help            help for log
-  -o, --output string   Save log to file instead of printing to stdout
+  -h, --help[=true|false]   help for log
+  -o, --output string       Save log to file instead of printing to stdout
 ```
 
 ### Options inherited from parent commands
@@ -301,7 +301,7 @@ marblerun manifest log $MARBLERUN
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
-  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -i, --insecure[=true|false]           Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
       --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
@@ -328,7 +328,7 @@ marblerun manifest set manifest.json $MARBLERUN --recovery-data=recovery-secret.
 ### Options
 
 ```
-  -h, --help                  help for set
+  -h, --help[=true|false]     help for set
   -r, --recoverydata string   File to write recovery data to, print to stdout if not specified
 ```
 
@@ -339,7 +339,7 @@ marblerun manifest set manifest.json $MARBLERUN --recovery-data=recovery-secret.
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
-  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -i, --insecure[=true|false]           Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
       --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
@@ -360,7 +360,7 @@ marblerun manifest signature <manifest.json> [flags]
 ### Options
 
 ```
-  -h, --help   help for signature
+  -h, --help[=true|false]   help for signature
 ```
 
 ### Options inherited from parent commands
@@ -370,7 +370,7 @@ marblerun manifest signature <manifest.json> [flags]
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
-  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -i, --insecure[=true|false]           Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
       --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
@@ -387,7 +387,7 @@ Manage manifest updates for the MarbleRun Coordinator.
 ### Options
 
 ```
-  -h, --help   help for update
+  -h, --help[=true|false]   help for update
 ```
 
 ### Options inherited from parent commands
@@ -397,7 +397,7 @@ Manage manifest updates for the MarbleRun Coordinator.
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
-  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -i, --insecure[=true|false]           Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
       --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
@@ -428,7 +428,7 @@ marblerun manifest update apply update-manifest.json $MARBLERUN --cert=admin-cer
 
 ```
   -c, --cert string                PEM encoded MarbleRun user certificate file
-  -h, --help                       help for apply
+  -h, --help[=true|false]          help for apply
   -k, --key string                 PEM encoded MarbleRun user key file
       --pkcs11-cert-id string      ID of the certificate in the PKCS#11 token
       --pkcs11-cert-label string   Label of the certificate in the PKCS#11 token
@@ -445,7 +445,7 @@ marblerun manifest update apply update-manifest.json $MARBLERUN --cert=admin-cer
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
-  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -i, --insecure[=true|false]           Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
       --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
@@ -477,7 +477,7 @@ marblerun manifest update acknowledge update-manifest.json $MARBLERUN --cert=adm
 
 ```
   -c, --cert string                PEM encoded MarbleRun user certificate file
-  -h, --help                       help for acknowledge
+  -h, --help[=true|false]          help for acknowledge
   -k, --key string                 PEM encoded MarbleRun user key file
       --pkcs11-cert-id string      ID of the certificate in the PKCS#11 token
       --pkcs11-cert-label string   Label of the certificate in the PKCS#11 token
@@ -494,7 +494,7 @@ marblerun manifest update acknowledge update-manifest.json $MARBLERUN --cert=adm
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
-  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -i, --insecure[=true|false]           Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
       --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
@@ -522,7 +522,7 @@ marblerun manifest update cancel $MARBLERUN --cert=admin-cert.pem --key=admin-ke
 
 ```
   -c, --cert string                PEM encoded MarbleRun user certificate file
-  -h, --help                       help for cancel
+  -h, --help[=true|false]          help for cancel
   -k, --key string                 PEM encoded MarbleRun user key file
       --pkcs11-cert-id string      ID of the certificate in the PKCS#11 token
       --pkcs11-cert-label string   Label of the certificate in the PKCS#11 token
@@ -538,7 +538,7 @@ marblerun manifest update cancel $MARBLERUN --cert=admin-cert.pem --key=admin-ke
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
-  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -i, --insecure[=true|false]           Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
       --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
@@ -565,9 +565,9 @@ marblerun manifest update get $MARBLERUN --era-config=era.json
 ### Options
 
 ```
-  -h, --help            help for get
-      --missing         Display number of missing acknowledgements instead of the manifest
-  -o, --output string   Save output to file instead of printing to stdout
+  -h, --help[=true|false]      help for get
+      --missing[=true|false]   Display number of missing acknowledgements instead of the manifest
+  -o, --output string          Save output to file instead of printing to stdout
 ```
 
 ### Options inherited from parent commands
@@ -577,7 +577,7 @@ marblerun manifest update get $MARBLERUN --era-config=era.json
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
-  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -i, --insecure[=true|false]           Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
       --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
@@ -604,7 +604,7 @@ marblerun manifest verify manifest.json $MARBLERUN
 ### Options
 
 ```
-  -h, --help   help for verify
+  -h, --help[=true|false]   help for verify
 ```
 
 ### Options inherited from parent commands
@@ -614,7 +614,7 @@ marblerun manifest verify manifest.json $MARBLERUN
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
-  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -i, --insecure[=true|false]           Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
       --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
@@ -631,7 +631,7 @@ Retrieves the certificate of the MarbleRun Coordinator
 ### Options
 
 ```
-  -h, --help   help for certificate
+  -h, --help[=true|false]   help for certificate
 ```
 
 ### Options inherited from parent commands
@@ -641,7 +641,7 @@ Retrieves the certificate of the MarbleRun Coordinator
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
-  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -i, --insecure[=true|false]           Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
       --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
@@ -662,8 +662,8 @@ marblerun certificate root <IP:PORT> [flags]
 ### Options
 
 ```
-  -h, --help            help for root
-  -o, --output string   File to save the certificate to (default "marblerunRootCA.crt")
+  -h, --help[=true|false]   help for root
+  -o, --output string       File to save the certificate to (default "marblerunRootCA.crt")
 ```
 
 ### Options inherited from parent commands
@@ -673,7 +673,7 @@ marblerun certificate root <IP:PORT> [flags]
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
-  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -i, --insecure[=true|false]           Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
       --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
@@ -694,8 +694,8 @@ marblerun certificate intermediate <IP:PORT> [flags]
 ### Options
 
 ```
-  -h, --help            help for intermediate
-  -o, --output string   File to save the certificate to (default "marblerunIntermediateCA.crt")
+  -h, --help[=true|false]   help for intermediate
+  -o, --output string       File to save the certificate to (default "marblerunIntermediateCA.crt")
 ```
 
 ### Options inherited from parent commands
@@ -705,7 +705,7 @@ marblerun certificate intermediate <IP:PORT> [flags]
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
-  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -i, --insecure[=true|false]           Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
       --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
@@ -726,8 +726,8 @@ marblerun certificate chain <IP:PORT> [flags]
 ### Options
 
 ```
-  -h, --help            help for chain
-  -o, --output string   File to save the certificate to (default "marblerunChainCA.crt")
+  -h, --help[=true|false]   help for chain
+  -o, --output string       File to save the certificate to (default "marblerunChainCA.crt")
 ```
 
 ### Options inherited from parent commands
@@ -737,7 +737,7 @@ marblerun certificate chain <IP:PORT> [flags]
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
-  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -i, --insecure[=true|false]           Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
       --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
@@ -757,7 +757,7 @@ Set or retrieve a secret defined in the manifest.
 
 ```
   -c, --cert string                PEM encoded MarbleRun user certificate file
-  -h, --help                       help for secret
+  -h, --help[=true|false]          help for secret
   -k, --key string                 PEM encoded MarbleRun user key file
       --pkcs11-cert-id string      ID of the certificate in the PKCS#11 token
       --pkcs11-cert-label string   Label of the certificate in the PKCS#11 token
@@ -773,7 +773,7 @@ Set or retrieve a secret defined in the manifest.
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
-  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -i, --insecure[=true|false]           Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
       --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
@@ -811,8 +811,8 @@ marblerun secret set certificate.pem $MARBLERUN -c admin.crt -k admin.key --from
 ### Options
 
 ```
-      --from-pem string   name of the secret from a PEM encoded file
-  -h, --help              help for set
+      --from-pem string     name of the secret from a PEM encoded file
+  -h, --help[=true|false]   help for set
 ```
 
 ### Options inherited from parent commands
@@ -823,7 +823,7 @@ marblerun secret set certificate.pem $MARBLERUN -c admin.crt -k admin.key --from
   -c, --cert string                     PEM encoded MarbleRun user certificate file
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
-  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -i, --insecure[=true|false]           Set to skip quote verification, needed when running in simulation mode
   -k, --key string                      PEM encoded MarbleRun user key file
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
@@ -860,8 +860,8 @@ marblerun secret get genericSecret symmetricKeyShared $MARBLERUN -c admin.crt -k
 ### Options
 
 ```
-  -h, --help            help for get
-  -o, --output string   File to save the secret to
+  -h, --help[=true|false]   help for get
+  -o, --output string       File to save the secret to
 ```
 
 ### Options inherited from parent commands
@@ -872,7 +872,7 @@ marblerun secret get genericSecret symmetricKeyShared $MARBLERUN -c admin.crt -k
   -c, --cert string                     PEM encoded MarbleRun user certificate file
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
-  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -i, --insecure[=true|false]           Set to skip quote verification, needed when running in simulation mode
   -k, --key string                      PEM encoded MarbleRun user key file
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
@@ -915,7 +915,7 @@ marblerun status <IP:PORT> [flags]
 ### Options
 
 ```
-  -h, --help   help for status
+  -h, --help[=true|false]   help for status
 ```
 
 ### Options inherited from parent commands
@@ -925,7 +925,7 @@ marblerun status <IP:PORT> [flags]
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
-  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -i, --insecure[=true|false]           Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
       --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
@@ -954,7 +954,7 @@ marblerun recover recovery_key_file $MARBLERUN
 ### Options
 
 ```
-  -h, --help                      help for recover
+  -h, --help[=true|false]         help for recover
   -k, --key string                Path to a recovery private key to decrypt and/or sign the recovery key
       --pkcs11-config string      Path to a PKCS#11 configuration file to load the recovery private key with
       --pkcs11-key-id string      ID of the private key in the PKCS#11 token
@@ -968,7 +968,7 @@ marblerun recover recovery_key_file $MARBLERUN
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
-  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -i, --insecure[=true|false]           Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
       --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
@@ -997,8 +997,8 @@ marblerun recover-with-signature recovery_key_file $MARBLERUN --signature recove
 ### Options
 
 ```
-  -h, --help               help for recover-with-signature
-  -s, --signature string   Path to a signature of the recovery secret
+  -h, --help[=true|false]   help for recover-with-signature
+  -s, --signature string    Path to a signature of the recovery secret
 ```
 
 ### Options inherited from parent commands
@@ -1008,7 +1008,7 @@ marblerun recover-with-signature recovery_key_file $MARBLERUN --signature recove
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
-  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -i, --insecure[=true|false]           Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
       --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
@@ -1029,8 +1029,8 @@ marblerun recover-with-signature public-key <IP:PORT> [flags]
 ### Options
 
 ```
-  -h, --help            help for public-key
-  -o, --output string   File to save the public key to
+  -h, --help[=true|false]   help for public-key
+  -o, --output string       File to save the public key to
 ```
 
 ### Options inherited from parent commands
@@ -1040,7 +1040,7 @@ marblerun recover-with-signature public-key <IP:PORT> [flags]
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
-  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -i, --insecure[=true|false]           Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
       --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
@@ -1064,7 +1064,7 @@ marblerun recover-with-signature encrypt-secret <recovery_key_file> [flags]
 
 ```
       --coordinator-pub-key string   Path to the Coordinator's PEM encoded ephemeral public key to encrypt the recovery secret with
-  -h, --help                         help for encrypt-secret
+  -h, --help[=true|false]            help for encrypt-secret
   -k, --key string                   Path to a recovery private key to decrypt and/or sign the recovery key
   -o, --output string                File to save the encrypted secret to
       --pkcs11-config string         Path to a PKCS#11 configuration file to load the recovery private key with
@@ -1079,7 +1079,7 @@ marblerun recover-with-signature encrypt-secret <recovery_key_file> [flags]
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
-  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -i, --insecure[=true|false]           Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
       --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
@@ -1102,7 +1102,7 @@ marblerun recover-with-signature sign-secret <recovery_key_file> [flags]
 ### Options
 
 ```
-  -h, --help                      help for sign-secret
+  -h, --help[=true|false]         help for sign-secret
   -k, --key string                Path to a recovery private key to decrypt and/or sign the recovery key
   -o, --output string             File to save the signature to
       --pkcs11-config string      Path to a PKCS#11 configuration file to load the recovery private key with
@@ -1117,7 +1117,7 @@ marblerun recover-with-signature sign-secret <recovery_key_file> [flags]
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
-  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -i, --insecure[=true|false]           Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
       --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
@@ -1138,7 +1138,7 @@ marblerun package-info [flags]
 ### Options
 
 ```
-  -h, --help   help for package-info
+  -h, --help[=true|false]   help for package-info
 ```
 
 ### Options inherited from parent commands
@@ -1148,7 +1148,7 @@ marblerun package-info [flags]
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
-  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -i, --insecure[=true|false]           Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
       --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
@@ -1169,7 +1169,7 @@ marblerun version [flags]
 ### Options
 
 ```
-  -h, --help   help for version
+  -h, --help[=true|false]   help for version
 ```
 
 ### Options inherited from parent commands
@@ -1179,7 +1179,7 @@ marblerun version [flags]
       --accepted-tcb-statuses strings   Comma-separated list of user accepted TCB statuses (default [UpToDate,SWHardeningNeeded])
       --coordinator-cert string         Path to MarbleRun Coordinator's root certificate to use for TLS connections (default "$HOME/.config/marblerun/coordinator-cert.pem")
       --era-config string               Path to a remote-attestation config file in JSON format. If none is provided, the command attempts to use './coordinator-era.json'. If that does not exist, the command will attempt to load a matching config file from the MarbleRun GitHub repository
-  -i, --insecure                        Set to skip quote verification, needed when running in simulation mode
+  -i, --insecure[=true|false]           Set to skip quote verification, needed when running in simulation mode
   -n, --namespace string                Kubernetes namespace of the MarbleRun installation (default "marblerun")
       --nonce string                    (Optional) nonce to use for quote verification. If set, the Coordinator will generate a quote over sha256(CoordinatorCert + nonce)
       --save-sgx-quote string           If set, save the Coordinator's SGX quote to the specified file
