@@ -22,7 +22,7 @@ However, a [manual step](#recovery) is required to recover the Coordinator's sta
 ### Distributed Coordinator
 
 When you use MarbleRun [with Kubernetes](../deployment/kubernetes.md), you can scale the Coordinator to multiple instances.
-The instances share a common state, encrypted and stored as a Kubernetes secret.
+The instances share a common state, encrypted and stored in Kubernetes Secrets.
 The encryption key is securely distributed among the Coordinator instances via attested TLS.
 Additionally, each Coordinator encrypts the encryption key with its SGX seal key and stores it in a ConfigMap.
 

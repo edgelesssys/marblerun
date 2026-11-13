@@ -96,7 +96,10 @@ During a recovery event, every party will upload their share of the secret, whic
 
 ### Distributed Coordinator
 
-The [distributed Coordinator](../features/recovery.md#distributed-coordinator) works similarly. However, all Coordinators share the same state stored encrypted in the Kubernetes [Secret](https://kubernetes.io/docs/concepts/configuration/secret/) called *marblerun-state*.
+The [distributed Coordinator](../features/recovery.md#distributed-coordinator) works similarly.
+However, all Coordinators share the same state stored encrypted in the Kubernetes [Secret](https://kubernetes.io/docs/concepts/configuration/secret/) called *marblerun-state*.
+Should the state outgrow [the size of one Secret](https://kubernetes.io/docs/concepts/configuration/secret/#restriction-data-size), it is split onto multiple secrets following the *marblerun-state-<id>* naming convention.
+*marblerun-state* then only holds the encrypted DEK and a reference to the state chunks.
 In contrast to the single instance, the KEK is generated at start-up by the first instance.
 The existing Coordinators authenticate every new Coordinator instance via remote attestation, and the KEK is subsequently shared via the secure and attested TLS connection.
 Every Coordinator instance uses an SGX seal key to seal the KEK into a Kubernetes [ConfigMap](https://kubernetes.io/docs/concepts/configuration/configmap/) called *marblerun-sealed-kek*.

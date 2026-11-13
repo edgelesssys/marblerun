@@ -13,10 +13,15 @@ The Coordinator supports live backup, so you can back up its state without stopp
 <Tabs groupId="deployment">
 <TabItem value="distributed" label="Kubernetes, distributed Coordinator">
 
-Make a copy of the `marblerun-state` Secret in the `marblerun` namespace:
+Make a copy of all Coordinator state Secrets that exist at the time of the backup in the `marblerun` namespace, including `marblerun-state`:
 
 ```bash
-kubectl -n marblerun get secret marblerun-state -o yaml > marblerun-state-backup.yaml
+kubectl -n marblerun get secrets -o json | jq '
+  .items |= map(select(.metadata.name == "marblerun-state"
+      or .metadata.labels["marblerun.edgeless.systems/state-chunk"] == "true")
+    | del(.metadata.uid, .metadata.resourceVersion, .metadata.creationTimestamp,
+          .metadata.managedFields, .metadata.annotations["kubectl.kubernetes.io/last-applied-configuration"]))
+' > marblerun-state-backup.yaml
 ```
 
 </TabItem>
@@ -45,16 +50,19 @@ Make a copy of the `sealed_data` file in the `marblerun-coordinator-data` direct
 <Tabs groupId="deployment">
 <TabItem value="distributed" label="Kubernetes, distributed Coordinator">
 
-1. Stop all Coordinator instances:
+1. Stop all Coordinator instances and wait for their Pods to terminate:
 
    ```bash
-   kubectl -n marblerun scale --replicas=0 deployment/marblerun-coordinator
+   kubectl -n marblerun scale --replicas=0 deployment/marblerun-coordinator &&
+     kubectl -n marblerun wait --for=delete pod -l app.kubernetes.io/name=coordinator --timeout=120s
    ```
 
-2. Apply the state from the backup:
+   Wait for all Coordinator Pods to terminate before restoring the Secrets.
+
+2. Recreate the state Secrets from the backup:
 
    ```bash
-   kubectl apply -f marblerun-state-backup.yaml
+   kubectl replace --force -f marblerun-state-backup.yaml
    ```
 
 3. Scale the Coordinator back to the desired number of instances:
@@ -65,11 +73,11 @@ Make a copy of the `sealed_data` file in the `marblerun-coordinator-data` direct
 
 :::tip
 
-If you want to restore MarbleRun in a fresh cluster, you can apply the state from the backup before installing MarbleRun:
+If you want to restore MarbleRun in a fresh cluster, you can create the state Secrets from the backup before installing MarbleRun:
 
 ```bash
 kubectl create ns marblerun
-kubectl apply -f marblerun-state-backup.yaml
+kubectl create -f marblerun-state-backup.yaml
 marblerun install ...
 ```
 
