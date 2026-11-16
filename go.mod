@@ -21,7 +21,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.1.0
 	github.com/stretchr/testify v1.12.1
-	github.com/tidwall/gjson v1.20.2
+	github.com/tidwall/gjson v1.20.3
 	github.com/tink-crypto/tink-go/v2 v2.9.0
 	go.uber.org/goleak v1.3.0
 	go.uber.org/zap v1.28.0
