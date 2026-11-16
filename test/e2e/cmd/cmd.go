@@ -18,12 +18,13 @@ import (
 
 // Cmd handles CLI commands.
 type Cmd struct {
-	t       *testing.T
-	cliPath string
+	t            *testing.T
+	cliPath      string
+	defaultFlags []string
 }
 
 // New returns a new Cmd.
-func New(t *testing.T, cliPath string) (*Cmd, error) {
+func New(t *testing.T, cliPath string, defaultFlags ...string) (*Cmd, error) {
 	t.Helper()
 
 	realPath, err := exec.LookPath(cliPath)
@@ -32,8 +33,9 @@ func New(t *testing.T, cliPath string) (*Cmd, error) {
 	}
 
 	return &Cmd{
-		t:       t,
-		cliPath: realPath,
+		t:            t,
+		cliPath:      realPath,
+		defaultFlags: append([]string(nil), defaultFlags...),
 	}, nil
 }
 
@@ -41,6 +43,7 @@ func New(t *testing.T, cliPath string) (*Cmd, error) {
 func (c *Cmd) Run(ctx context.Context, args ...string) (string, error) {
 	c.t.Helper()
 
+	args = append(append([]string(nil), c.defaultFlags...), args...)
 	cmd := exec.CommandContext(ctx, c.cliPath, args...)
 	out, err := cmd.CombinedOutput()
 	c.t.Logf("%s: %s", cmd, out)

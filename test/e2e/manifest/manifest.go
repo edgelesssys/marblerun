@@ -46,11 +46,12 @@ type Manifest struct {
 // PackageProperties is an alternative to the manifest.PackageProperties struct,
 // which allows for easier marshalling and handling of values.
 type PackageProperties struct {
-	Debug           bool   `json:"Debug,omitempty"`
-	UniqueID        string `json:"UniqueID,omitempty"`
-	SignerID        string `json:"SignerID,omitempty"`
-	ProductID       uint64 `json:"ProductID,omitempty"`
-	SecurityVersion uint   `json:"SecurityVersion,omitempty"`
+	AcceptedTCBStatuses []string `json:"AcceptedTCBStatuses,omitempty"`
+	Debug               bool     `json:"Debug,omitempty"`
+	UniqueID            string   `json:"UniqueID,omitempty"`
+	SignerID            string   `json:"SignerID,omitempty"`
+	ProductID           uint64   `json:"ProductID,omitempty"`
+	SecurityVersion     uint     `json:"SecurityVersion,omitempty"`
 }
 
 // Secret is an alternative to the manifest.Secret struct,
