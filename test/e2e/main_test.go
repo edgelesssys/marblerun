@@ -76,6 +76,7 @@ var (
 	coordinatorUpdateImageSuffix = flag.String("coordinator-update-image-suffix", "", "suffix of the coordinator image to use in update tests")
 	marbleImageName              = flag.String("marble-image-name", "ghcr.io/edgelesssys/marblerun-e2e/test-marble", "name of the marble container image to use in tests")
 	marbleImageVersion           = flag.String("marble-image-version", "latest", "version/tag of the marble container image to use in tests")
+	allowOutOfDateTCB            = flag.Bool("allow-out-of-date-tcb", false, "accept OutOfDate TCB status for Coordinator and Marble attestation in this test run")
 	eraConfigFile                = flag.String("era-config", "", "path to era config file, defaults to --insecure")
 	marbleConfigFile             = flag.String("marble-config", "", "path to marble config file, if not given, an empty debug config is used")
 
@@ -113,6 +114,13 @@ func TestMain(m *testing.M) {
 			fmt.Fprintf(os.Stderr, "Failed to unmarshal marble config: %s", err)
 			os.Exit(1)
 		}
+	}
+
+	if *allowOutOfDateTCB {
+		if len(marbleConfig.AcceptedTCBStatuses) == 0 {
+			marbleConfig.AcceptedTCBStatuses = []string{"UpToDate", "SWHardeningNeeded"}
+		}
+		marbleConfig.AcceptedTCBStatuses = append(marbleConfig.AcceptedTCBStatuses, "OutOfDate")
 	}
 
 	os.Exit(m.Run())
@@ -2743,7 +2751,11 @@ func createBaseObjects(t *testing.T) (
 	kubectl, err := kubectl.New(t, *kubeConfigPath)
 	require.NoError(err)
 
-	cmd, err := cmd.New(t, *cliPath)
+	var cliFlags []string
+	if *allowOutOfDateTCB {
+		cliFlags = append(cliFlags, "--accepted-tcb-statuses=UpToDate,SWHardeningNeeded,OutOfDate")
+	}
+	cmd, err := cmd.New(t, *cliPath, cliFlags...)
 	require.NoError(err)
 
 	tmpDir = t.TempDir()
