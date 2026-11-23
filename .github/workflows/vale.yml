@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Vale
-        uses: vale-cli/vale-action@518a9136acc6e6668ce7c00d367051e0941e87ff # reviewdog
+        uses: vale-cli/vale-action@c2c8bad96bb9b546c70d8d2e5ff2f542efe2bb3e # reviewdog
         with:
           files: docs/docs
           fail_on_error: true
